@@ -1,4 +1,4 @@
 saga-pilot
 ==========
 
-Workspace for SAGA-Pilot Architecture and Design
+The 'architecture' branch contains all architecture documents.
