@@ -1,28 +1,36 @@
 """
-Notes AM:
----------
 
-  - The current state of the API does not allow for explicit early binding, i.e.
+Discussion
+----------
+
+    AM: The current state of the API does not allow for explicit early
+    binding, i.e.
     you cannot define a pilot, add it to a queue, and assign CUs to it, w/o any
-    of this actually being executed. [ discussed: this is a feature, and
-    will be solved on the troy layer ]
+    of this actually being executed.
+    MS: discussed: this is a feature, and will be solved on the troy layer.
 
-    Related: it is not defined in what state a pilot needs to be when being
+    AM:  Related: it is not defined in what state a pilot needs to be when
+    being
     added to a queue.  Probably any non-final state.  Allowing to add a pilot in
     'new' state would cater to the early binding use case, but that implies
     a different way of handling pilot life time on PS level.
 
-    We are also missing direct submission, don't we? [added in the meanwhile]
+    AM: We are also missing direct submission, don't we?
+    MS: added in the meanwhile
 
-    I tried to adjust the state models to address these issues (the states were
-    placeholders anyways), but the call sequences need to be checked, too.
+    AM: I tried to adjust the state models to address these issues (the states
+    were placeholders anyways), but the call sequences need to be checked, too.
 
 
-  - Inspection on all entities is largely missing.
+    AM: Inspection on all entities is largely missing.
+    MS: I probably agree, we need to discuss the specifics of that.
 
-  - need means to expose bulk ops
+    AM: need means to expose bulk ops.
+    MS: Agree, let's discuss a mechanism. Probably also needs ties to the
+    "concurrent execution" property.
 
-  - async op model needs to be applied (borrow from saga-python?
+    AM: async op model needs to be applied (borrow from saga-python?
+    MS: I think that model will do.
 
 
 
@@ -166,30 +174,40 @@ class ComputeUnitDescription(dict):
 
     Class members:
 
-
-        # AM: ID is missing. [descriptions dont have id's]
-
         # Action description
         'executable',           # The "action" to execute
         'arguments',            # Arguments to the "action"
         'cleanup',              # AM: does not make sense for pilot systems,
                                 #     IMHO
+                                # MS: It would instruct the agent to actively
+                                # cleanup after the CU has finished?
         'environment',          # "environment" settings for the "action"
         'interactive',          # AM: does not make sense for CUs, IMHO
+                                # MS: Makes as much sense for CUs as it did
+                                # /does for "jobs", doesn't it?
         'contact',              # AM: is this ever used, really?  We have
                                 #     monitoring...
+                                # MS: You don't want email? :-) (Context,
+                                # this is just a 1-2-1 copy of the SAGA JD.
+                                # I'm happy to drop fields like this,
+                                # but it won't hurt much either to keep it.
+                                #
         'project',              # AM: does that make sense?  There is no
                                 #     accounting on pilot level...  What is
                                 #     the error mode (as that can only be 
                                 #     evaluated at runtime, if at all).
+                                # MS: I probably on this.
         'start_time',
         'working_directory',
 
         # I/O
-        'input',
-        'error',
-        'output',
+        'input',                # stdin
+        'error',                # stderr
+        'output',               # stdout
         'file_transfer',        # AM: how do those things tie into DUs?
+                                # MS: They don't I think, complimentary
+        'input_data',           # DUs for input.
+        'output_data',          # DUs for output.
 
         # Parallelism
         'number_of_processes',  # Total number of processes to start
@@ -210,6 +228,7 @@ class ComputeUnitDescription(dict):
 
         # AM: we also need simple dependencies, and the ability to mark
         # multiple CUs as 'Concurrent', etc.
+        # MS: Yes, we need to discuss the details of this.
     """
 
 
@@ -218,11 +237,20 @@ class ComputeUnitDescription(dict):
 class ComputeUnit():
     """ ComputeUnit object that allows for direct operations on CUs.
 
-    The ComputeUnit object is obtained either through the submit_unit
     """
 
     def __init__(self, cu_id=None):
-        """
+        """ Compute Unit constructor.
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -246,16 +274,15 @@ class ComputeUnit():
     def get_state_detail(self):
         """ Return the backend specific status of this Compute Unit.
 
-            Keyword argument(s)::
+        Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
-
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -325,11 +352,12 @@ class ComputeUnit():
         """ Returns an ID (string) for this instance """
         pass
 
-    def wait(self, timeout=-1.0, state='FINAL'):
-        """
-        Returns when the unit reaches the specified state, or after timeout
-        seconds, whichever comes first.  Calls with timeout<0.0 will wait
-        forever.
+    def wait(self, timeout=1.0, state='FINAL'):
+        """Returns when the unit reaches the specified state, or after timeout
+        seconds, whichever comes first.
+
+        Calls with timeout<0.0 will wait forever.
+
         """
         pass
 
@@ -339,19 +367,19 @@ class ComputeUnit():
 class DataUnitDescription(dict):
     """ DataUnitDescription.
 
-        {
-            # AM: ID is missing.
+    {
+        # AM: ID is missing.
 
-            'file_urls': [file1, file2, file3]        
-        } 
+        'file_urls': [file1, file2, file3]
+    }
         
-        Currently, no directories supported.
+    Currently, no directories supported.
 
-     AM: I am still confused about the symmetry aspects to ComputeUnits.  Why
-            is here no CandidateHosts, for example?  Project?  Contact?
-            LifeTime?  Without those properties, there is not much resource
-            management the data-pilot can do, beyond clever data staging
-            / caching...
+    AM: I am still confused about the symmetry aspects to ComputeUnits.  Why
+        is here no CandidateHosts, for example?  Project?  Contact?
+        LifeTime?  Without those properties, there is not much resource
+        management the data-pilot can do, beyond clever data staging
+        / caching...
 
     """
 
@@ -359,14 +387,13 @@ class DataUnitDescription(dict):
         """
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
-
+            name(type): description
+            or
+            None
 
     """
     pass
@@ -406,9 +433,7 @@ class DataUnit():
 
         Keyword arguments::
 
-            obj: the watched object instance
-            key: the watched attribute
-            val: the new value of the watched attribute
+            state(STATE): The state to wait for.
 
         Return::
 
@@ -418,19 +443,18 @@ class DataUnit():
         pass
 
     def list_data_unit_items(self):
-        """
-            List the content of the Data Unit.
+        """ List the content of the Data Unit.
 
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -441,13 +465,13 @@ class DataUnit():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -458,13 +482,13 @@ class DataUnit():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -518,78 +542,78 @@ class ComputePilotDescription(dict):
 
     Class members:
 
-        # AM: ID is missing. [ probably dont needs ID]
+    # AM: ID is missing. [ probably dont needs ID]
 
-        # Action description
-        'executable',           # The "action" to execute
-        'arguments',            # Arguments to the "action"
-        'cleanup',
-        'environment',          # "environment" settings for the "action"
-        'interactive',
-        'contact',
-        'project',
-        'start_time',
-        'working_directory',
+    # Action description
+    'executable',           # The "action" to execute
+    'arguments',            # Arguments to the "action"
+    'cleanup',
+    'environment',          # "environment" settings for the "action"
+    'interactive',
+    'contact',
+    'project',
+    'start_time',
+    'working_directory',
 
-        # AM: how is working_directory relevant?  Shouldn't that be left to
-        # the discretion of the pilot system?  Not sure if that notion of
-        # a pwd will exist for a pilot (it should exist for a CU)...
+    # AM: how is working_directory relevant?  Shouldn't that be left to
+    # the discretion of the pilot system?  Not sure if that notion of
+    # a pwd will exist for a pilot (it should exist for a CU)...
 
-        # interactive does not make sense.
+    # interactive does not make sense.
 
-        # AM: how is environment specified?  The env for the pilot should be
-        # up to the framework -- the user does not know how env is
-        # interpreted.  So, is that env for future  CUs/DUs?  That overlaps
-        # with env specified there.  What happens on conflicts?  cross refs?
-        # early/late binding?  Should be left out...
+    # AM: how is environment specified?  The env for the pilot should be
+    # up to the framework -- the user does not know how env is
+    # interpreted.  So, is that env for future  CUs/DUs?  That overlaps
+    # with env specified there.  What happens on conflicts?  cross refs?
+    # early/late binding?  Should be left out...
 
-        # AM: exe/args should be left out -- this is up to the discretion of
-        # the pilot systems.  The user cannot possibly know if this is an exe
-        # in the first place...
+    # AM: exe/args should be left out -- this is up to the discretion of
+    # the pilot systems.  The user cannot possibly know if this is an exe
+    # in the first place...
 
-        # I/O
-        'input',
-        'error',
-        'output',
-        'file_transfer',
+    # I/O
+    'input',
+    'error',
+    'output',
+    'file_transfer',
 
-        # AM: what does file_transfer mean?  Are those files presented to
-        # the CUs/DUs?  That overlaps with DUs, really?  Should be left
-        # out.
+    # AM: what does file_transfer mean?  Are those files presented to
+    # the CUs/DUs?  That overlaps with DUs, really?  Should be left
+    # out.
 
-        # Parallelism
-        'number_of_processes',  # Total number of processes to start
-        'processes_per_host',   # Nr of processes per host
-        'threads_per_process',  # Nr of threads to start per process
-        'total_core_count',     # Total number of cores requested
-        'spmd_variation',       # Type and startup mechanism
+    # Parallelism
+    'number_of_processes',  # Total number of processes to start
+    'processes_per_host',   # Nr of processes per host
+    'threads_per_process',  # Nr of threads to start per process
+    'total_core_count',     # Total number of cores requested
+    'spmd_variation',       # Type and startup mechanism
 
-        # AM: how is spmd_variation relevant?  Also, shouldn't we just
-        # specify a number of cores, and leave actual layout to the pilot
-        # system?  This would otherwise make automated pilot placement very
-        # hard...
+    # AM: how is spmd_variation relevant?  Also, shouldn't we just
+    # specify a number of cores, and leave actual layout to the pilot
+    # system?  This would otherwise make automated pilot placement very
+    # hard...
 
-        # Requirements
-        'candidate_hosts',
-        'cpu_architecture',
-        'total_physical_memory',
-        'operating_system_type',
-        'total_cpu_time',
-        'wall_time_limit',
-        'queue'
+    # Requirements
+    'candidate_hosts',
+    'cpu_architecture',
+    'total_physical_memory',
+    'operating_system_type',
+    'total_cpu_time',
+    'wall_time_limit',
+    'queue'
 
-        # AM: how is total memory specified?  Is that memory usable for CUs?
-        # individually / concurrently?
+    # AM: how is total memory specified?  Is that memory usable for CUs?
+    # individually / concurrently?
 
-        # AM: pilots don't directly consume cpu time -- wall-time should
-        # suffice?
+    # AM: pilots don't directly consume cpu time -- wall-time should
+    # suffice?
 
 
-        # AM: I think pilot description should be fully reduced to
-        # a description of the resource slice to be managed by the pilot,
-        # w/o any details on the actual pilot startup etc.
+    # AM: I think pilot description should be fully reduced to
+    # a description of the resource slice to be managed by the pilot,
+    # w/o any details on the actual pilot startup etc.
 
-        """
+    """
     pass
 
 
@@ -598,7 +622,7 @@ class ComputePilotDescription(dict):
 class ComputePilot():
     """ This represents instances of ComputePilots.
 
-        capacity
+        MS: capacity?
 
     """
 
@@ -623,13 +647,13 @@ class ComputePilot():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -640,13 +664,13 @@ class ComputePilot():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
 
 
         """
@@ -658,24 +682,45 @@ class ComputePilot():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
     """
     pass
 
     def get_id(self):
         """ Returns an ID (string) for this instance.
 
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
         """
         pass
 
     def get_description(self):
-        """ Returns a ComputePilotDescription for this instanc.
+        """ Returns a ComputePilotDescription for this instance.
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
         """
         pass
 
@@ -684,6 +729,17 @@ class ComputePilot():
         Returns when the pilot reaches the specified state, or after timeout
         seconds, whichever comes first.  Calls with timeout<0.0 will wait
         forever.
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
         """
         pass
 
@@ -771,7 +827,19 @@ class ComputePilotService():
         pass
 
     def get_state_detail(self):
-        """ Return implementation specific details of the PCS. """
+        """ Return implementation specific details of the PCS.
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
+        """
         pass
 
     def cancel(self):
@@ -858,13 +926,14 @@ class DataPilotDescription(dict):
         """
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
+
         """
         pass
 
@@ -874,7 +943,7 @@ class DataPilotDescription(dict):
 class DataPilot():
     """ DataPilot handle.
 
-    capacity
+    MS: capacity?
 
     # Class members
     #    'id',           # Reference to this PJ
@@ -972,13 +1041,13 @@ class DataPilot():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -989,15 +1058,15 @@ class DataPilot():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
 
-    """
+        """
 
     # AM: should be fully symmetric to CPS
 
@@ -1008,6 +1077,17 @@ class DataPilotService():
 
     def __init__(self):
         """
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
         """
         pass
 
@@ -1015,11 +1095,31 @@ class DataPilotService():
         """ Create a Data Pilot based on the Data Pilot Description and return
             a PilotData object.
 
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
         """
         pass
 
     def list_pilots(self):
         """ Return a list of all Data Pilots that are under control of this DPS.
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -1028,6 +1128,15 @@ class DataPilotService():
         """ Wait for all DPs to reach state 'RUNNING', i.e. have finished all
             transfers.
 
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
 
         """
         pass
@@ -1143,6 +1252,17 @@ class UnitService():
         # but will be hard to specify/implement, and if all is done and said
         # will will only be able to cover a limited set of cases (i.e. just
         # one of the above)...
+
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
 
         """ 
         pass
