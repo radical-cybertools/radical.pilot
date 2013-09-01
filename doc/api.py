@@ -346,11 +346,34 @@ class ComputeUnit():
     def get_description(self):
         """ Returns a ComputeUnitDescription for this instance.
 
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
+
         """
         pass
 
     def get_id(self):
-        """ Returns an ID (string) for this instance """
+        """ Returns an ID (string) for this instance.
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
+        """
         pass
 
     def wait(self, timeout=1.0, state='FINAL'):
@@ -358,6 +381,16 @@ class ComputeUnit():
         seconds, whichever comes first.
 
         Calls with timeout<0.0 will wait forever.
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
 
         """
         pass
