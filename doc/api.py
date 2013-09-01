@@ -848,24 +848,8 @@ class ComputePilotService():
     #     reconnect [I see a case for state, TBD]
 
     def get_state_detail(self):
-        """ Return implementation specific details of the PCS.
+        """ Return implementation specific details of the CPS.
 
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def get_state_detail(self):
-        """ Return implementation specific details of the PCS.
 
         Keyword argument(s)::
 
@@ -881,7 +865,7 @@ class ComputePilotService():
         pass
 
     def cancel(self):
-        """ Cancel the PCS (self).
+        """ Cancel the CPS (self).
 
         This also cancels the ...
 
@@ -902,7 +886,7 @@ class ComputePilotService():
         pass
 
     def list_pilots(self):
-        """ Return a list of ComputePilot IDs managed by this PCS.
+        """ Return a list of ComputePilot IDs managed by this CPS.
 
         Keyword argument::
 
@@ -918,7 +902,7 @@ class ComputePilotService():
         pass
 
     def wait(self, state='FINAL'):
-        """ Wait for all CU's under this PCS to complete.
+        """ Wait for all CU's under this CPS to complete.
 
         Keyword argument(s)::
 
@@ -1179,6 +1163,27 @@ class DataPilotService():
         """
         pass
 
+    def cancel(self):
+        """ Cancel the DPS (self).
+
+        This also cancels the ...
+
+        AM: We should also be able to cancel the DPS w/o canceling the
+            pilots! [I agree]
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
+        """
+        pass
+
     def list_pilots(self):
         """ Return a list of all Data Pilots that are under control of this DPS.
 
@@ -1196,7 +1201,7 @@ class DataPilotService():
         pass
 
     def wait(self, state='RUNNING'):
-        """ Wait for all DPs to reach specified state.
+        """ Wait for all DP's to reach specified state.
 
         Default state='RUNNING', i.e. have finished all transfers.
 
@@ -1213,6 +1218,22 @@ class DataPilotService():
         """
         pass
 
+
+    def get_state_detail(self):
+        """ Return implementation specific details of the DPS.
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
+        """
+        pass
 
 # ------------------------------------------------------------------------------
 #
