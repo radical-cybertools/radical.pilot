@@ -971,12 +971,11 @@ class DataPilot():
         """
         pass
 
-    def add_data_unit(self, du):
+    def add_unit(self, du):
         """ Add a Data Unit to this Data Pilot.
 
-        AM: what a bout remove / list?  What does that do exactly?  When are
-            data staged (if at all)?  What state needs the DU to be in?  Can
-            that fail?
+        AM: What does that do exactly?  When are data staged (if at all)?
+            What state needs the DU to be in?  Can that fail?
 
         This brings
 
@@ -986,6 +985,37 @@ class DataPilot():
 
         Return::
 
+            None
+
+        """
+        pass
+
+    def remove_unit(self, du):
+        """ Remove a Data Unit from this Data Pilot.
+
+        Keyword argument(s)::
+
+            du(DataUnit): description
+
+        Return::
+
+            None
+
+        """
+        pass
+
+    def list_units(self):
+        """ List Data Units in this Data Pilot.
+
+
+        Keyword argument(s)::
+
+            None
+
+        Return::
+
+            units([DU IDs]): List of DUs in this DP.
+            or
             None
 
         """
