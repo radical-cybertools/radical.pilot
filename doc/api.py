@@ -243,6 +243,11 @@ class ComputeUnit():
     def __init__(self, cu_id=None):
         """ Compute Unit constructor.
 
+        MS: If we just have textual IDs, then we can't construct CUs using
+        the ID only, as we would have no idea which US to talk too.
+        Which is fine, but then we get rid of the cu_id argument here and
+        "just" use the get_unit() call in the SU.
+
         Keyword argument(s)::
 
             name(type): description
@@ -666,7 +671,8 @@ class ComputePilot():
 
             id(string): if specified, don't create a new ComputePilot but
             instantiate it based on the id.
-            TODO: Not sure if this makes sense
+            MS: Similar to the discussion of the constructor in the
+            CU.
 
         Return::
             cp(ComputePilot): the ComputePilot object
