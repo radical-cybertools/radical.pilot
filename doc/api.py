@@ -94,6 +94,7 @@ Unit States
   a pilot, but not submitted to the pilot, yet -- most likely because the pilot
   is not yet running either.
   This state corresponds to the BES state Pending. This state is initial.
+  MS: I don't think we need this state.
 
 * Pending
   This state identifies a newly constructed unit which is not yet Running, but
@@ -395,8 +396,8 @@ class DataUnitDescription(dict):
             or
             None
 
-    """
-    pass
+        """
+        pass
 
 
 # ------------------------------------------------------------------------------
@@ -417,16 +418,16 @@ class DataUnit():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
-    Return::
+        Return::
 
-        name(type): description
-        or
-        None
+            name(type): description
+            or
+            None
 
-    """
-    pass
+        """
+        pass
 
     def wait(self, state='RUNNING'):
         """ Wait for Data Unit to become 'RUNNING'.
@@ -614,7 +615,6 @@ class ComputePilotDescription(dict):
     # w/o any details on the actual pilot startup etc.
 
     """
-    pass
 
 
 # ------------------------------------------------------------------------------
@@ -689,8 +689,8 @@ class ComputePilot():
             name(type): description
             or
             None
-    """
-    pass
+        """
+        pass
 
     def get_id(self):
         """ Returns an ID (string) for this instance.
@@ -707,6 +707,8 @@ class ComputePilot():
 
         """
         pass
+
+    # MS: BigJob has a get_url() to get a "persistent" uri of a CP
 
     def get_description(self):
         """ Returns a ComputePilotDescription for this instance.
@@ -791,6 +793,9 @@ class ComputePilotService():
 
         AM: why not 'submit()' ?  Create does not imply to schedule/run the
         pilot.  Is that the intent?  Then we need run() on the pilot.
+        MS: I tend to agree, but let me dig into my brain,
+        I think we discussed this also in the p* context. (It might be that
+        we just left it as that because bigjob used it)
 
 
         Keyword argument(s)::
@@ -864,27 +869,27 @@ class ComputePilotService():
         pass
 
     def list_pilots(self):
-        """ Return a list of ComputePilot's managed by this PCS.
+        """ Return a list of ComputePilot IDs managed by this PCS.
 
-        Keyword argument(s)::
+        Keyword argument::
 
-            name(type): description
+            None
 
         Return::
 
-            name(type): description
+            pilots([Compute Pilot IDs]): List of IDs of CPs.
             or
             None
 
         """
         pass
 
-    def wait(self):
+    def wait(self, state='FINAL'):
         """ Wait for all CU's under this PCS to complete.
 
         Keyword argument(s)::
 
-            name(type): description
+            state(STATE): The state to
 
         Return::
 
@@ -1067,6 +1072,9 @@ class DataPilot():
             None
 
         """
+        pass
+
+    # MS: BigJob has a get_url() to get a "persistent" uri of a DP
 
     # AM: should be fully symmetric to CPS
 
@@ -1124,13 +1132,14 @@ class DataPilotService():
         """
         pass
 
-    def wait(self):
-        """ Wait for all DPs to reach state 'RUNNING', i.e. have finished all
-            transfers.
+    def wait(self, state='RUNNING'):
+        """ Wait for all DPs to reach specified state.
+
+        Default state='RUNNING', i.e. have finished all transfers.
 
         Keyword argument(s)::
 
-            name(type): description
+            state(STATE): State to wait for
 
         Return::
 
@@ -1164,7 +1173,6 @@ class UnitService():
       create_queue (self, name, scheduler='default')
       drain_queue  (self, 
       list_queues  (self)
-
 
     """
 
@@ -1204,7 +1212,7 @@ class UnitService():
         pass
 
     def add_pilot(self, pilot):
-        """ Bring a Pilot (and the resources its represents into the scope of
+        """ Bring a Pilot (and the resources its represents) into the scope of
             the US.
 
         Keyword argument(s)::
@@ -1220,7 +1228,22 @@ class UnitService():
         """
         pass
 
-    # AM: need list_pilots(queue), and remove_pilot(queue)
+    def remove_pilot(self, pilot):
+        """ Remove a Pilot (and the resources its represents) from the scope of
+            the US.
+
+        Keyword argument(s)::
+
+            pilot(ComputePilot): A ComputePilot
+            or
+            pilot(DataPilot):
+
+        Return::
+
+            None
+
+        """
+        pass
 
     def submit_unit(self, ud):
         """
@@ -1281,6 +1304,7 @@ class UnitService():
             None
 
         """
+        pass
 
     def list_units(self, compute=True, data=True):
         """
