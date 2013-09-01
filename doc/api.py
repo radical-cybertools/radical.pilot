@@ -788,14 +788,8 @@ class ComputePilotService():
         """
         pass
 
-    def create_pilot(self, compute_pilot_description, context=None):
+    def submit_pilot(self, compute_pilot_description, context=None):
         """ Instantiate and return ComputePilot object.
-
-        AM: why not 'submit()' ?  Create does not imply to schedule/run the
-        pilot.  Is that the intent?  Then we need run() on the pilot.
-        MS: I tend to agree, but let me dig into my brain,
-        I think we discussed this also in the p* context. (It might be that
-        we just left it as that because bigjob used it)
 
 
         Keyword argument(s)::
@@ -1099,8 +1093,8 @@ class DataPilotService():
         """
         pass
 
-    def create_pilot(self, data_pilot_description):
-        """ Create a Data Pilot based on the Data Pilot Description and return
+    def submit_pilot(self, data_pilot_description):
+        """ Submit a Data Pilot based on the Data Pilot Description and return
             a PilotData object.
 
         Keyword argument(s)::
