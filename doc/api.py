@@ -430,7 +430,7 @@ class DataUnit():
     def __init__(self, data_unit_description=None, static=False):
         """ Data Unit constructor.
 
-        If static is True, the data is already located on the DataPilot
+        If static is True, the data is already located on the Data Pilot
         location. Therefore no transfer is required and only the data
         structure needs to be populated.
 
@@ -517,20 +517,30 @@ class DataUnit():
         """
         pass
 
-    def split(self, num_of_chunks=None, size_of_chunks=None):
-        """ Split the DU unit in a set of DUs based on the number of chunks
-            and chunk size.
+    def add_file(self, file):
+        """ Add file to the Data Unit.
 
-        Keyword arguments::
+        Keyword argument::
 
-            num_of_chunks(int): the number of chunks to create.
-            size_of_chunks(int): the size of chunks.
-
-            Only one of the two arguments should be specified.
+            file(uri): the location of the file to copy to the DU.
 
         Return::
 
-            chunks[DU id]: a list of DU id's that were created.
+            None
+
+        """
+        pass
+
+    def remove_file(self, file):
+        """ Remove file from the Data Unit.
+
+        Keyword argument::
+
+            file(name): the name of the file to remove from the DU.
+
+        Return::
+
+            None
 
         """
         pass
@@ -1108,6 +1118,39 @@ class DataPilot():
             name(type): description
             or
             None
+
+        """
+        pass
+
+    def split_unit(self, unit, num_of_chunks=None, size_of_chunks=None):
+        """ Split the DU unit in a set of DUs based on the number of chunks
+            and chunk size.
+
+        Keyword arguments::
+
+            unit(id): the DU to split.
+            num_of_chunks(int): the number of chunks to create.
+            size_of_chunks(int): the size of chunks.
+
+            Only one of the two arguments should be specified.
+
+        Return::
+
+            chunks[DU id]: a list of DU id's that were created.
+
+        """
+        pass
+
+    def merge_units(self, units):
+        """ Merge DU units into one DU.
+
+        Keyword arguments::
+
+            units(id): the DUs to merge.
+
+        Return::
+
+            unit(DU id): the merged unit.
 
         """
         pass
