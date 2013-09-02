@@ -567,73 +567,81 @@ class ComputePilotDescription(dict):
     Class members:
 
     # Action description
-    'executable',           # The "action" to execute
-    'arguments',            # Arguments to the "action"
     'cleanup',
     'environment',          # "environment" settings for the "action"
-    'interactive',
+
+    AM: how is environment specified?  The env for the pilot should be
+    up to the framework -- the user does not know how env is
+    interpreted.  So, is that env for future  CUs/DUs?  That overlaps
+    with env specified there.  What happens on conflicts?  cross refs?
+    early/late binding?  Should be left out...
+    MS: Didn't think too much about it, but I could think that it would
+    pass something so that the agent runs "nicer". Also here the question is
+    about how much the pilot-layer knows about the resource specifics.
+    I agree that this is not for the CU's.
+
     'contact',
     'project',
     'start_time',
     'working_directory',
 
-    # AM: how is working_directory relevant?  Shouldn't that be left to
-    # the discretion of the pilot system?  Not sure if that notion of
-    # a pwd will exist for a pilot (it should exist for a CU)...
-
-    # interactive does not make sense.
-
-    # AM: how is environment specified?  The env for the pilot should be
-    # up to the framework -- the user does not know how env is
-    # interpreted.  So, is that env for future  CUs/DUs?  That overlaps
-    # with env specified there.  What happens on conflicts?  cross refs?
-    # early/late binding?  Should be left out...
-
-    # AM: exe/args should be left out -- this is up to the discretion of
-    # the pilot systems.  The user cannot possibly know if this is an exe
-    # in the first place...
+    AM: how is working_directory relevant?  Shouldn't that be left to
+    the discretion of the pilot system?  Not sure if that notion of
+    a pwd will exist for a pilot (it should exist for a CU)...
+    MS: I'm tempted to say that the "thing" that calls saga-pilot, knows
+    possibly a bit more about the resource than saga-pilot. So it might
+    specify that the working directory should be different than the default?
 
     # I/O
-    'input',
-    'error',
-    'output',
-    'file_transfer',
+    'input',                # stdin # MS: Candidate for axing?
+    'error',                # stderr
+    'output',               # stdout
+    'file_transfer',        # File in/out staging
 
-    # AM: what does file_transfer mean?  Are those files presented to
-    # the CUs/DUs?  That overlaps with DUs, really?  Should be left
-    # out.
+    AM: what does file_transfer mean?  Are those files presented to
+    the CUs/DUs?  That overlaps with DUs, really?  Should be left
+    out.
+    MS: In the case of not using PilotData, this would be a way to make sure
+    every pilot has some piece of data available. (See discussion about
+    file_transfer vs pilot-data somewhere else)
 
     # Parallelism
     'number_of_processes',  # Total number of processes to start
     'processes_per_host',   # Nr of processes per host
     'threads_per_process',  # Nr of threads to start per process
     'total_core_count',     # Total number of cores requested
-    'spmd_variation',       # Type and startup mechanism
 
-    # AM: how is spmd_variation relevant?  Also, shouldn't we just
-    # specify a number of cores, and leave actual layout to the pilot
-    # system?  This would otherwise make automated pilot placement very
-    # hard...
+    AM: Also, shouldn't we just specify a number of cores, and leave actual
+    layout to the pilot system?  This would otherwise make automated pilot
+    placement very hard...
+    MS: No, I would say that we want to offer TROY the possibility of
+    launching more than 1 pilot into a resource slice. These saga derived
+    notions might not be what we want though, I'm happy to diverge from that.
 
     # Requirements
-    'candidate_hosts',
-    'cpu_architecture',
+    'candidate_hosts',          # List of specific hostnames to run on.
+    'cpu_architecture',         # Specify specific arch required.
     'total_physical_memory',
-    'operating_system_type',
-    'total_cpu_time',
-    'wall_time_limit',
-    'queue'
 
-    # AM: how is total memory specified?  Is that memory usable for CUs?
-    # individually / concurrently?
+    AM: how is total memory specified?  Is that memory usable for CUs?
+    individually / concurrently?
+    MS: This is a very good question that I dont have a direct answer on.
+    My hunch is that this should be related to the layout of the
+    cores/processes/hosts, etc., but that might become messy.
+    We need to be able to express memory requirements for the pilot in some
+    way though!
 
-    # AM: pilots don't directly consume cpu time -- wall-time should
-    # suffice?
+    'operating_system_type',  # Specify specific OS required.
+    'wall_time_limit',        # Pilot is not needed longer than X.
+    'queue'                   # Specify queue name of backend system.
 
-
-    # AM: I think pilot description should be fully reduced to
-    # a description of the resource slice to be managed by the pilot,
-    # w/o any details on the actual pilot startup etc.
+    AM: I think pilot description should be fully reduced to
+    a description of the resource slice to be managed by the pilot,
+    w/o any details on the actual pilot startup etc.
+    MS: I dont think I agree, I feel you are confusing TROY and Sinon again,
+    somebody needs to instruct Sinon about resource specifics. Note that we
+    already did get rid of some of the members and some more candidates are
+    left.
 
     """
 
