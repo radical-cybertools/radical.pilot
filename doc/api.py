@@ -3,24 +3,8 @@
 Discussion
 ----------
 
-    AM: The current state of the API does not allow for explicit early
-    binding, i.e.
-    you cannot define a pilot, add it to a queue, and assign CUs to it, w/o any
-    of this actually being executed.
-    MS: discussed: this is a feature, and will be solved on the troy layer.
-
-    AM:  Related: it is not defined in what state a pilot needs to be when
-    being
-    added to a queue.  Probably any non-final state.  Allowing to add a pilot in
-    'new' state would cater to the early binding use case, but that implies
-    a different way of handling pilot life time on PS level.
-
-    AM: We are also missing direct submission, don't we?
-    MS: added in the meanwhile
-
     AM: I tried to adjust the state models to address these issues (the states
     were placeholders anyways), but the call sequences need to be checked, too.
-
 
     AM: Inspection on all entities is largely missing.
     MS: I probably agree, we need to discuss the specifics of that.
@@ -44,15 +28,10 @@ Pilot States
 * Unknown
   No state information could be obtained for that pilot.
 
-* New
-  This state identifies a newly constructed pilot which is not yet submitted,
-  and thus is not yet scheduled to run on any specific resource.
-  This state corresponds to the BES state Pending. This state is initial.
-
 * Pending
   This state identifies a newly constructed pilot which is not yet Running, but
   is waiting to acquire control over the target resource.
-  This state corresponds to the BES state Pending.
+  This state corresponds to the BES state Pending.  This state is initial.
 
 * Running     
   The pilot has successfully acquired control over the target resource,  and can
@@ -192,12 +171,18 @@ class ComputeUnitDescription(dict):
                                 # this is just a 1-2-1 copy of the SAGA JD.
                                 # I'm happy to drop fields like this,
                                 # but it won't hurt much either to keep it.
+                                # AM: If it is here, it needs to be supported.  
+                                # But it is redundant with the monitoring
+                                # facilities we will have -- we can easily add
+                                # an email monitoring consumer to that
+                                # service...
                                 #
         'project',              # AM: does that make sense?  There is no
                                 #     accounting on pilot level...  What is
                                 #     the error mode (as that can only be 
                                 #     evaluated at runtime, if at all).
                                 # MS: I probably on this.
+                                # AM: this statement no verb ;)
         'start_time',
         'working_directory',
 
@@ -207,6 +192,8 @@ class ComputeUnitDescription(dict):
         'output',               # stdout
         'file_transfer',        # AM: how do those things tie into DUs?
                                 # MS: They don't I think, complimentary
+                                # AM: do we need / want two different handles on
+                                # data?
         'input_data',           # DUs for input.
         'output_data',          # DUs for output.
 
@@ -407,8 +394,6 @@ class DataUnitDescription(dict):
     """ DataUnitDescription.
 
     {
-        # AM: ID is missing.
-
         'file_urls': [file1, file2, file3]
     }
         
@@ -580,8 +565,6 @@ class ComputePilotDescription(dict):
     way that is dealt with by the Pilot-Manager.
 
     Class members:
-
-    # AM: ID is missing. [ probably dont needs ID]
 
     # Action description
     'executable',           # The "action" to execute
@@ -937,7 +920,7 @@ class DataPilotDescription(dict):
     # with Melissa if that is required / sufficient for expressing pilot
     # affinities (I expect they need more detail).
 
-    # AM: also, what about affinities on CU / DU level, where are tgose
+    # AM: also, what about affinities on CU / DU level, where are those
     # expressed?
 
     # AM: lifetime, resource information, etc.
