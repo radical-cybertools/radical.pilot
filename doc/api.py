@@ -481,7 +481,7 @@ class DataUnit():
         """
         pass
 
-    def list_data_unit_items(self):
+    def list_items(self):
         """ List the content of the Data Unit.
 
 
@@ -515,7 +515,7 @@ class DataUnit():
         """
         pass
 
-    def get_state_details(self):
+    def get_state_detail(self):
         """
             Return the backend specific details of the DataUnit.
 
