@@ -179,7 +179,7 @@ class ComputeUnitDescription(dict):
                                 #
         'project',              # AM: does that make sense?  There is no
                                 #     accounting on pilot level...  What is
-                                #     the error mode (as that can only be 
+                                #     the error mode (as that can only be
                                 #     evaluated at runtime, if at all).
                                 # MS: I probably on this.
                                 # AM: this statement no verb ;)
@@ -531,12 +531,12 @@ class DataUnit():
         """
         pass
 
-    def remove_file(self, file):
+    def remove_file(self, filename):
         """ Remove file from the Data Unit.
 
         Keyword argument::
 
-            file(name): the name of the file to remove from the DU.
+            filename(string): the name of the file to remove from the DU.
 
         Return::
 
@@ -790,7 +790,7 @@ class ComputePilot():
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
         Return::
 
@@ -800,6 +800,22 @@ class ComputePilot():
 
         """
         pass
+
+    def cancel_unit(self, unit_id):
+        """ Cancel a CU belonging to this CP.
+
+
+        Keyword argument(s)::
+
+            unit_id(id): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
+        """
 
 
 # ------------------------------------------------------------------------------
@@ -845,8 +861,20 @@ class ComputePilotService():
         """
         pass
 
-    # AM: as discussed, this should not have state, but should have an ID for
-    #     reconnect [I see a case for state, TBD]
+    def cancel_pilot(self, pilot_id):
+        """ Cancel a ComputePilot.
+
+
+        Keyword argument(s)::
+
+            pilot_id(ID): The ID of the Pilot to cancel
+
+        Return::
+
+            None
+
+        """
+        pass
 
     def get_state_detail(self):
         """ Return implementation specific details of the CPS.
@@ -864,6 +892,9 @@ class ComputePilotService():
 
         """
         pass
+
+    # AM: as discussed, this should not have state, but should have an ID for
+    #     reconnect [I see a case for state, TBD]
 
     def cancel(self):
         """ Cancel the CPS (self).
@@ -898,6 +929,24 @@ class ComputePilotService():
             pilots([Compute Pilot IDs]): List of IDs of CPs.
             or
             None
+
+        """
+        pass
+
+    def get_pilot(self, pilot_id):
+        """ Get a CP instance based on its ID.
+
+        This method is required as based on the ID only we don't know which
+        Pilot Service a Pilot belongs to.
+
+        Keyword argument::
+
+            pilot_id(string): The ID of the Pilot we want to acquire an
+            instance of.
+
+        Return::
+
+            pilot(ComputePilot): A ComputePilot object.
 
         """
         pass
@@ -964,7 +1013,7 @@ class DataPilotDescription(dict):
 # ------------------------------------------------------------------------------
 #
 class DataPilot():
-    """ DataPilot handle.
+    """ Object representing a physical storage resource.
 
     MS: capacity?
 
@@ -995,7 +1044,7 @@ class DataPilot():
         """
         pass
 
-    def add_unit(self, du):
+    def submit_unit(self, dud):
         """ Add a Data Unit to this Data Pilot.
 
         AM: What does that do exactly?  When are data staged (if at all)?
@@ -1005,7 +1054,7 @@ class DataPilot():
 
         Keyword argument(s)::
 
-            du(DataUnit): description
+            dud(DataUnit Desc): description
 
         Return::
 
@@ -1014,12 +1063,15 @@ class DataPilot():
         """
         pass
 
-    def remove_unit(self, du):
+    def cancel_unit(self, du_id):
         """ Remove a Data Unit from this Data Pilot.
+
+        MS: What should the (optional) semantics of this call be?
+
 
         Keyword argument(s)::
 
-            du(DataUnit): description
+            du_id(DataUnit): description
 
         Return::
 
@@ -1122,13 +1174,13 @@ class DataPilot():
         """
         pass
 
-    def split_unit(self, unit, num_of_chunks=None, size_of_chunks=None):
+    def split_unit(self, unit_id, num_of_chunks=None, size_of_chunks=None):
         """ Split the DU unit in a set of DUs based on the number of chunks
             and chunk size.
 
         Keyword arguments::
 
-            unit(id): the DU to split.
+            unit_id(DU id): the DU to split.
             num_of_chunks(int): the number of chunks to create.
             size_of_chunks(int): the size of chunks.
 
@@ -1141,16 +1193,16 @@ class DataPilot():
         """
         pass
 
-    def merge_units(self, units):
+    def merge_units(self, input_ids):
         """ Merge DU units into one DU.
 
         Keyword arguments::
 
-            units(id): the DUs to merge.
+            input_ids([DU ids]): the DUs to merge.
 
         Return::
 
-            unit(DU id): the merged unit.
+            output_id(DU id): the merged unit.
 
         """
         pass
@@ -1197,6 +1249,20 @@ class DataPilotService():
         """
         pass
 
+    def cancel_pilot(self, pilot_id):
+        """ Cancel a Data Pilot.
+
+        Keyword argument(s)::
+
+            pilot_id(ID): The ID of the Data Pilot to cancel.
+
+        Return::
+
+            None
+
+        """
+        pass
+
     def cancel(self):
         """ Cancel the DPS (self).
 
@@ -1234,6 +1300,24 @@ class DataPilotService():
         """
         pass
 
+    def get_pilot(self, pilot_id):
+        """ Get a DP instance based on its ID.
+
+        This method is required as based on the ID only we don't know which
+        Pilot Service a Pilot belongs to.
+
+        Keyword argument::
+
+            pilot_id(string): The ID of the Pilot we want to acquire an
+            instance of.
+
+        Return::
+
+            pilot(DataPilot): A DataPilot object.
+
+        """
+        pass
+
     def wait(self, state='RUNNING'):
         """ Wait for all DP's to reach specified state.
 
@@ -1252,7 +1336,6 @@ class DataPilotService():
         """
         pass
 
-
     def get_state_detail(self):
         """ Return implementation specific details of the DPS.
 
@@ -1268,6 +1351,7 @@ class DataPilotService():
 
         """
         pass
+
 
 # ------------------------------------------------------------------------------
 #
@@ -1317,7 +1401,6 @@ class UnitService():
 
         TODO: Would this cancel assigned Units too?
 
-
         Keyword argument::
 
             None
@@ -1333,11 +1416,15 @@ class UnitService():
         """ Bring a Pilot (and the resources its represents) into the scope of
             the US.
 
+        Note: "pilot" needs to be an instance, because the US would have no
+        way to identify the pilot just based on its ID.
+
+
         Keyword argument(s)::
 
-            pilot(ComputePilot): A ComputePilot
+            pilot(ComputePilot): A ComputePilot instance.
             or
-            pilot(DataPilot):
+            pilot(DataPilot): A DataPilot instance.
 
         Return::
 
@@ -1346,15 +1433,13 @@ class UnitService():
         """
         pass
 
-    def remove_pilot(self, pilot):
+    def remove_pilot(self, pilot_id):
         """ Remove a Pilot (and the resources its represents) from the scope of
             the US.
 
         Keyword argument(s)::
 
-            pilot(ComputePilot): A ComputePilot
-            or
-            pilot(DataPilot):
+            pilot_id(ID): A CP or DP ID.
 
         Return::
 
@@ -1363,19 +1448,19 @@ class UnitService():
         """
         pass
 
-    def submit_unit(self, ud):
+    def submit_unit(self, unit_desc):
         """
             Accepts a CUD or DUD and returns a CU or DU.
 
         Keyword argument(s)::
 
-            name(type): description
+            unit_desc(ComputeUnitDescription): The CUD.
+            or
+            unit_desc(DataUnitDescription): The DUD.
 
         Return::
 
-            name(type): description
-            or
-            None
+            unit_id(ID): The ID of the Unit submitted.
 
         """
         pass
@@ -1413,9 +1498,9 @@ class UnitService():
 
         Keyword argument(s)::
 
-            id(ComputeUnit): The ComputeUnit to cancel.
+            unit_id(ComputeUnit): The ComputeUnit to cancel.
             or
-            id(DataUnit): The DataUnit to cancel.
+            unit_id(DataUnit): The DataUnit to cancel.
 
          Return::
 
@@ -1485,7 +1570,8 @@ class UnitService():
 
         Keyword argument::
 
-            id(string): The ID of the Pilot we want to acquire an instance of.
+            pilot_id(string): The ID of the Pilot we want to acquire an
+            instance of.
 
         Return::
 
