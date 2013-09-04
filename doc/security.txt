@@ -1,0 +1,72 @@
+
+
+Create/Bootstrap a new service
+------------------------------
+
+  - registry presumably exists
+  - the spawner has the private and public fabric keys
+  - spawner creates a random one-time-password
+  - spawner creates a new service instance via saga-python, passing one-time-passwd in env
+  - new service uses one-time-pass to fetch fabric keys from spawner
+    - if that fails (connectivity issues etc), job fails with specific exit
+      code, spawner will discard one-time-pass
+  - spawner contacts new service with private key, ensuring that
+    setup worked, and configures service for the intended purpose
+    - create virtualenv
+    - fetch SAGA-Python, Sinon modules
+    - spawn real service, which can be
+      - communication bridge
+      - agent
+      - pilot manager
+      - queue service
+      - pub/sub server
+    - register service instance in service registry (which in itself
+      is a presumably fail safe, persistent fabric component)
+    - each service accepts request on a management port to create
+      new services, allowing to expand the fabric.
+      - desktop -> gateway -> head node -> compute node
+      - all management requests will need to be signed by the fabric's
+        private key (we could make this a req for all requests)
+    - each service accepts requests on management port to
+      register/de-register session IDs.
+
+
+
+Reconnect to fabric after application fail-over
+-----------------------------------------------
+
+  - fabric keys (and relevant session IDs) need to be retrieved from
+    persistent storage, or from the user.
+  - registry endpoint needs to be retrieved similarly
+  - connection is made to registry, using the fabric keys
+  - service endpoints are retrieved from registry
+  - relevant services are contacted with a CONNECT request
+
+  - note that this mechanism also works for attaching new clients /
+    apps to an existing fabric!
+
+
+
+Reconnect a service within a fabric after fail-over
+---------------------------------------------------
+
+  - service failure needs to be communicated / detected, e.g. by
+    - registry watching state (heartbeat pings?)
+    - a failing contact updates state in registry
+    - a dying service updates state in regiistry
+
+  - a failing service interaction needs to query registry for service
+    state -- if service is dead, an attempt to restart the service is
+    made from the calling entity (as presumably we know that the
+    communication route is functional).  
+  - the restart sequence is identical to the startup/bootstrap above,
+    but the service gets its old ID assigned (via env or parameters),
+    so that it can re-register as alive
+  - if the service can not pickup old state, it will exit as FAILED,
+    and it will be considered lost, along with all its state.  An
+    attempt can be made to start a new, fresh service instance of the
+    same type -- depending on the service type this may make sense or
+    not.  If not, that failure needs to travel up to the application.
+
+
+
