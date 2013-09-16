@@ -14,6 +14,7 @@ Discussion
     AM: async op model needs to be applied (borrow from saga-python?
     MS: I think that model will do.
 
+    AGREE: Merge Compute and Data Pilot services.
 
 
 SAGA-Pilot API spec
