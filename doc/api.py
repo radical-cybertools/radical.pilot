@@ -3,10 +3,6 @@
 Discussion
 ----------
 
-    AM: I tried to adjust the state models to address these issues (the states
-        were placeholders anyways), but the call sequences need to be checked, 
-        too.
-
     AM: Inspection on all entities is largely missing.
     MS: I probably agree, we need to discuss the specifics of that.
 
