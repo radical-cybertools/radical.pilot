@@ -768,7 +768,8 @@ class PilotService():
     
     def __init__(self):
         """Constructor for the PilotService.
-            This could take arguments to reconnect to an existing PS.
+        
+        This could take arguments to reconnect to an existing PS.
 
         Keyword argument(s)::
 
