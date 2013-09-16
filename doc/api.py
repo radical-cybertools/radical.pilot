@@ -14,8 +14,6 @@ Discussion
     AM: async op model needs to be applied (borrow from saga-python?
     MS: I think that model will do.
 
-    AGREE: Merge Compute and Data Pilot services.
-
 
 SAGA-Pilot API spec
 ===================
@@ -101,12 +99,11 @@ DUD = DU Description
 
 CP  = Compute Pilot
 CPD = CP Description
-CPS = CP Service
 
 DP  = Data Pilot
 DPD = DP Description
-DPS = DP Service
 
+PS = Pilot Service
 US  = Unit Service
 
 
@@ -763,15 +760,15 @@ class ComputePilot():
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilotService():
-    """ComputePilotService()
+class PilotService():
+    """PilotService()
 
-        Factory for ComputePilot instances.
+        Factory for ComputePilot and DataPilot instances.
     """
     
     def __init__(self):
-        """Constructor for the ComputePilotService.
-            This could take arguments to reconnect to an existing CPS.
+        """Constructor for the PilotService.
+            This could take arguments to reconnect to an existing PS.
 
         Keyword argument(s)::
 
@@ -786,7 +783,7 @@ class ComputePilotService():
         """
         pass
 
-    def submit_pilot(self, compute_pilot_description, context=None):
+    def submit_pilot(self, pilot_description, context=None):
         """Instantiate and return ComputePilot object.
 
 
@@ -822,11 +819,11 @@ class ComputePilotService():
     #     reconnect [I see a case for state, TBD]
 
     def cancel(self):
-        """Cancel the CPS (self).
+        """Cancel the PS (self).
 
         This also cancels the ...
 
-        AM: We should also be able to cancel the CPS w/o canceling the
+        AM: We should also be able to cancel the PS w/o canceling the
             pilots! [I agree]
 
         Keyword argument(s)::
@@ -843,7 +840,7 @@ class ComputePilotService():
         pass
 
     def list_pilots(self):
-        """Return a list of ComputePilot IDs managed by this CPS.
+        """Return a list of ComputePilot IDs managed by this PS.
 
         Keyword argument::
 
@@ -876,12 +873,15 @@ class ComputePilotService():
         """
         pass
 
-    def wait(self, state='FINAL'):
-        """Wait for all CU's under this CPS to complete.
+    def wait(self, state):
+        """Wait for all U's under this PS to reach a certain state.
+
+        ComputePilot: State = 'FINAL': all CUs are done.
+        DataPilot: state='RUNNING': all DUs have finished transfers.
 
         Keyword argument(s)::
 
-            state(STATE): The state to
+            state(STATE): The state to wait for.
 
         Return::
 
@@ -1116,132 +1116,7 @@ class DataPilot():
 
     # MS: BigJob has a get_url() to get a "persistent" uri of a DP
 
-    # AM: should be fully symmetric to CPS
-
-
-# ------------------------------------------------------------------------------
-#
-class DataPilotService():
-
-    def __init__(self):
-        """DPS Constructor.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def submit_pilot(self, data_pilot_description):
-        """Submit a Data Pilot based on the Data Pilot Description and return
-        a PilotData object.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def cancel_pilot(self, pilot_id):
-        """Cancel a Data Pilot.
-
-        Keyword argument(s)::
-
-            pilot_id(ID): The ID of the Data Pilot to cancel.
-
-        Return::
-
-            None
-
-        """
-        pass
-
-    def cancel(self):
-        """Cancel the DPS (self).
-
-        This also cancels the ...
-
-        AM: We should also be able to cancel the DPS w/o canceling the
-            pilots! [I agree]
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def list_pilots(self):
-        """Return a list of all Data Pilots that are under control of this DPS.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def get_pilot(self, pilot_id):
-        """Get a DP instance based on its ID.
-
-        This method is required as based on the ID only we don't know which
-        Pilot Service a Pilot belongs to.
-
-        Keyword argument::
-
-            pilot_id(string): The ID of the Pilot we want to acquire an
-            instance of.
-
-        Return::
-
-            pilot(DataPilot): A DataPilot object.
-
-        """
-        pass
-
-    def wait(self, state='RUNNING'):
-        """Wait for all DP's to reach specified state.
-
-        Default state='RUNNING', i.e. have finished all transfers.
-
-        Keyword argument(s)::
-
-            state(STATE): State to wait for
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
+    # AM: should be fully symmetric to PS
 
 
 # ------------------------------------------------------------------------------
