@@ -64,43 +64,30 @@ Unit States
 * Unknown
   No state information could be obtained for that unit.
 
-* New
-  This state identifies a newly constructed unit which is neither assigned to
-  a pilot, nor is it submitted to a UnitService.
-  This state corresponds to the BES state Pending. This state is initial.
-
-* Assigned
-  This state identifies a newly constructed unit which is already assigned to
-  a pilot, but not submitted to the pilot, yet -- most likely because the pilot
-  is not yet running either.
-  This state corresponds to the BES state Pending. This state is initial.
-  MS: I don't think we need this state.
-
 * Pending
-  This state identifies a newly constructed unit which is not yet Running, but
-  is waiting to be enacted by the Pilot.
+  This state identifies a newly submitted unit which is not yet Running, but
+  is waiting to be assigned to and enacted by a Pilot.
   This state corresponds to the BES state Pending. This state is initial.
 
 * Running     
-  The pilot has successfully acquired control over the target resource,  and can
-  serve unit requests.
+  The unit has successfully assigned to a pilot and is being executed by that
+  pilot -- i.e., it consumes resources.
   This state corresponds to the BES state Running.
 
-* Done    
-  The pilot has finished, and does not utilize any resources on the target
-  resource anymore.  It finished due to 'natural causes' -- for example, it
-  might have reached the end of its designated lifetime.
+* Done
+  The unit's execution has finished, and does not utilize any resources on the
+  target resource anymore.  It finished due to 'natural causes' -- for example,
+  it might have reached the end of its designated lifetime.
   This state corresponds to the BES state Finished. This state is final.
 
 * Canceled    
-  The pilot has been canceled, i.e. cancel() has been called on
-  the job instance. 
+  The unit has been canceled, i.e. cancel() has been called on it.
   This state corresponds to the BES state Canceled. This state is final.
 
 * Failed  
-  The pilot has abnormally finished -- it either met an internal error condition
-  which caused it to abort, or it has been unexpectedly killed by the resource
-  manager.
+  The unit has abnormally finished -- it either met an internal error condition
+  which caused it to abort, or it has been unexpectedly killed by the pilot or
+  unit manager.
   This state corresponds to the BES state Failed. This state is final.
 
 
