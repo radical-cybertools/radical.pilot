@@ -145,7 +145,7 @@ Signature Template:
 # ------------------------------------------------------------------------------
 # 
 class ComputeUnitDescription(dict):
-    """ Task description to instantiate a ComputeUnit.
+    """Task description to instantiate a ComputeUnit.
     
     The ComputeUnitDescription is a job/task/call description based on
     SAGA Job Description.
@@ -180,7 +180,7 @@ class ComputeUnitDescription(dict):
                                 #
         'project',              # AM: does that make sense?  There is no
                                 #     accounting on pilot level...  What is
-                                #     the error mode (as that can only be 
+                                #     the error mode (as that can only be
                                 #     evaluated at runtime, if at all).
                                 # MS: I probably on this.
                                 # AM: this statement no verb ;)
@@ -224,12 +224,12 @@ class ComputeUnitDescription(dict):
 # ------------------------------------------------------------------------------
 #
 class ComputeUnit():
-    """ ComputeUnit object that allows for direct operations on CUs.
+    """ComputeUnit object that allows for direct operations on CUs.
 
     """
 
     def __init__(self, cu_id=None):
-        """ Compute Unit constructor.
+        """Compute Unit constructor.
 
         MS: If we just have textual IDs, then we can't construct CUs using
         the ID only, as we would have no idea which US to talk too.
@@ -250,7 +250,7 @@ class ComputeUnit():
         pass
 
     def get_state(self):
-        """ Return the state of this Compute Unit.
+        """Return the state of this Compute Unit.
 
         Keyword argument(s)::
 
@@ -266,7 +266,7 @@ class ComputeUnit():
         pass
 
     def get_state_detail(self):
-        """ Return the backend specific status of this Compute Unit.
+        """Return the backend specific status of this Compute Unit.
 
         Keyword argument(s)::
 
@@ -282,7 +282,7 @@ class ComputeUnit():
         pass
 
     def list_metrics(self):
-        """ List the metrics available for this ComputeUnit.
+        """List the metrics available for this ComputeUnit.
 
         For example:
 
@@ -317,7 +317,7 @@ class ComputeUnit():
         pass
 
     def get_metric(self, metric):
-        """ Return the value for the specified metric.
+        """Return the value for the specified metric.
 
 
         AM: callback registration is missing.
@@ -337,7 +337,7 @@ class ComputeUnit():
         pass
 
     def get_description(self):
-        """ Returns a ComputeUnitDescription for this instance.
+        """Returns a ComputeUnitDescription for this instance.
 
         Keyword argument(s)::
 
@@ -354,7 +354,7 @@ class ComputeUnit():
         pass
 
     def get_id(self):
-        """ Returns an ID (string) for this instance.
+        """Returns an ID (string) for this instance.
 
         Keyword argument(s)::
 
@@ -392,7 +392,7 @@ class ComputeUnit():
 # ------------------------------------------------------------------------------
 # 
 class DataUnitDescription(dict):
-    """ DataUnitDescription.
+    """DataUnitDescription.
 
     {
         'file_urls': [file1, file2, file3]
@@ -427,17 +427,26 @@ class DataUnitDescription(dict):
 # ------------------------------------------------------------------------------
 #
 class DataUnit():
+    """DataUnit is a logical handle to a piece of data without explicitly
+    refering to its location.
+
+
+    MS: Need to think about copying & replication, i.e. at what level
+    do we expose that functionality.
+
+    """
 
     def __init__(self, data_unit_description=None, static=False):
         """ Data Unit constructor.
 
-        If static is True, the data is already located on the DataPilot
+        If static is True, the data is already located on the Data Pilot
         location. Therefore no transfer is required and only the data
         structure needs to be populated.
 
         AM: so, static negates early binding, right?
 
         AM: What is the use case for static?
+
 
 
         Keyword argument(s)::
@@ -454,7 +463,7 @@ class DataUnit():
         pass
 
     def wait(self, state='RUNNING'):
-        """ Wait for Data Unit to become 'RUNNING'.
+        """Wait for Data Unit to become 'RUNNING'.
 
         Keyword arguments::
 
@@ -467,8 +476,8 @@ class DataUnit():
         """
         pass
 
-    def list_data_unit_items(self):
-        """ List the content of the Data Unit.
+    def list_items(self):
+        """List the content of the Data Unit.
 
 
         Keyword argument(s)::
@@ -485,8 +494,7 @@ class DataUnit():
         pass
 
     def get_state(self):
-        """
-            Return the state of the Data Unit.
+        """Return the state of the Data Unit.
 
         Keyword argument(s)::
 
@@ -501,9 +509,8 @@ class DataUnit():
         """
         pass
 
-    def get_state_details(self):
-        """
-            Return the backend specific details of the DataUnit.
+    def get_state_detail(self):
+        """Return the backend specific details of the DataUnit.
 
         Keyword argument(s)::
 
@@ -518,26 +525,36 @@ class DataUnit():
         """
         pass
 
-    def split(self, num_of_chunks=None, size_of_chunks=None):
-        """ Split the DU unit in a set of DUs based on the number of chunks
-            and chunk size.
+    def add_file(self, file):
+        """Add file to the Data Unit.
 
-        Keyword arguments::
+        Keyword argument::
 
-            num_of_chunks(int): the number of chunks to create.
-            size_of_chunks(int): the size of chunks.
-
-            Only one of the two arguments should be specified.
+            file(uri): the location of the file to copy to the DU.
 
         Return::
 
-            chunks[DU id]: a list of DU id's that were created.
+            None
+
+        """
+        pass
+
+    def remove_file(self, filename):
+        """Remove file from the Data Unit.
+
+        Keyword argument::
+
+            filename(string): the name of the file to remove from the DU.
+
+        Return::
+
+            None
 
         """
         pass
 
     def export(self, dest_uri):
-        """ Export the data of this Data Unit to the specified destination
+        """Export the data of this Data Unit to the specified destination
             location.
 
         Keyword argument::
@@ -557,7 +574,7 @@ class DataUnit():
 # ------------------------------------------------------------------------------
 # 
 class ComputePilotDescription(dict):
-    """ Description used to instantiate a ComputePilot.
+    """Description used to instantiate a ComputePilot.
 
     The ComputePilotDescription is a description based on
     SAGA Job Description.
@@ -568,73 +585,81 @@ class ComputePilotDescription(dict):
     Class members:
 
     # Action description
-    'executable',           # The "action" to execute
-    'arguments',            # Arguments to the "action"
     'cleanup',
     'environment',          # "environment" settings for the "action"
-    'interactive',
+
+    AM: how is environment specified?  The env for the pilot should be
+    up to the framework -- the user does not know how env is
+    interpreted.  So, is that env for future  CUs/DUs?  That overlaps
+    with env specified there.  What happens on conflicts?  cross refs?
+    early/late binding?  Should be left out...
+    MS: Didn't think too much about it, but I could think that it would
+    pass something so that the agent runs "nicer". Also here the question is
+    about how much the pilot-layer knows about the resource specifics.
+    I agree that this is not for the CU's.
+
     'contact',
     'project',
     'start_time',
     'working_directory',
 
-    # AM: how is working_directory relevant?  Shouldn't that be left to
-    # the discretion of the pilot system?  Not sure if that notion of
-    # a pwd will exist for a pilot (it should exist for a CU)...
-
-    # interactive does not make sense.
-
-    # AM: how is environment specified?  The env for the pilot should be
-    # up to the framework -- the user does not know how env is
-    # interpreted.  So, is that env for future  CUs/DUs?  That overlaps
-    # with env specified there.  What happens on conflicts?  cross refs?
-    # early/late binding?  Should be left out...
-
-    # AM: exe/args should be left out -- this is up to the discretion of
-    # the pilot systems.  The user cannot possibly know if this is an exe
-    # in the first place...
+    AM: how is working_directory relevant?  Shouldn't that be left to
+    the discretion of the pilot system?  Not sure if that notion of
+    a pwd will exist for a pilot (it should exist for a CU)...
+    MS: I'm tempted to say that the "thing" that calls saga-pilot, knows
+    possibly a bit more about the resource than saga-pilot. So it might
+    specify that the working directory should be different than the default?
 
     # I/O
-    'input',
-    'error',
-    'output',
-    'file_transfer',
+    'input',                # stdin # MS: Candidate for axing?
+    'error',                # stderr
+    'output',               # stdout
+    'file_transfer',        # File in/out staging
 
-    # AM: what does file_transfer mean?  Are those files presented to
-    # the CUs/DUs?  That overlaps with DUs, really?  Should be left
-    # out.
+    AM: what does file_transfer mean?  Are those files presented to
+    the CUs/DUs?  That overlaps with DUs, really?  Should be left
+    out.
+    MS: In the case of not using PilotData, this would be a way to make sure
+    every pilot has some piece of data available. (See discussion about
+    file_transfer vs pilot-data somewhere else)
 
     # Parallelism
     'number_of_processes',  # Total number of processes to start
     'processes_per_host',   # Nr of processes per host
     'threads_per_process',  # Nr of threads to start per process
     'total_core_count',     # Total number of cores requested
-    'spmd_variation',       # Type and startup mechanism
 
-    # AM: how is spmd_variation relevant?  Also, shouldn't we just
-    # specify a number of cores, and leave actual layout to the pilot
-    # system?  This would otherwise make automated pilot placement very
-    # hard...
+    AM: Also, shouldn't we just specify a number of cores, and leave actual
+    layout to the pilot system?  This would otherwise make automated pilot
+    placement very hard...
+    MS: No, I would say that we want to offer TROY the possibility of
+    launching more than 1 pilot into a resource slice. These saga derived
+    notions might not be what we want though, I'm happy to diverge from that.
 
     # Requirements
-    'candidate_hosts',
-    'cpu_architecture',
+    'candidate_hosts',          # List of specific hostnames to run on.
+    'cpu_architecture',         # Specify specific arch required.
     'total_physical_memory',
-    'operating_system_type',
-    'total_cpu_time',
-    'wall_time_limit',
-    'queue'
 
-    # AM: how is total memory specified?  Is that memory usable for CUs?
-    # individually / concurrently?
+    AM: how is total memory specified?  Is that memory usable for CUs?
+    individually / concurrently?
+    MS: This is a very good question that I dont have a direct answer on.
+    My hunch is that this should be related to the layout of the
+    cores/processes/hosts, etc., but that might become messy.
+    We need to be able to express memory requirements for the pilot in some
+    way though!
 
-    # AM: pilots don't directly consume cpu time -- wall-time should
-    # suffice?
+    'operating_system_type',  # Specify specific OS required.
+    'wall_time_limit',        # Pilot is not needed longer than X.
+    'queue'                   # Specify queue name of backend system.
 
-
-    # AM: I think pilot description should be fully reduced to
-    # a description of the resource slice to be managed by the pilot,
-    # w/o any details on the actual pilot startup etc.
+    AM: I think pilot description should be fully reduced to
+    a description of the resource slice to be managed by the pilot,
+    w/o any details on the actual pilot startup etc.
+    MS: I dont think I agree, I feel you are confusing TROY and Sinon again,
+    somebody needs to instruct Sinon about resource specifics. Note that we
+    already did get rid of some of the members and some more candidates are
+    left.
 
     """
 
@@ -642,14 +667,14 @@ class ComputePilotDescription(dict):
 # ------------------------------------------------------------------------------
 #
 class ComputePilot():
-    """ This represents instances of ComputePilots.
+    """This represents instances of ComputePilots.
 
         MS: capacity?
 
     """
 
     def __init__(self, pilot_id=None):
-        """ Constructor for the ComputePilot.
+        """Constructor for the ComputePilot.
 
         Keyword argument::
 
@@ -666,7 +691,7 @@ class ComputePilot():
         pass
 
     def get_state(self):
-        """ Return state of PC.
+        """Return state of PC.
 
         Keyword argument(s)::
 
@@ -682,7 +707,7 @@ class ComputePilot():
         pass
 
     def get_state_detail(self):
-        """ Get implementation specific state details of PC.
+        """Get implementation specific state details of PC.
 
 
         Keyword argument(s)::
@@ -700,7 +725,8 @@ class ComputePilot():
         pass
 
     def cancel(self):
-        """
+        """Cancel the CP.
+
         AM: do we need 'drain' on cancel?  See SAGA resource API...
 
         Keyword argument(s)::
@@ -716,7 +742,7 @@ class ComputePilot():
         pass
 
     def get_id(self):
-        """ Returns an ID (string) for this instance.
+        """Returns an ID (string) for this instance.
 
         Keyword argument(s)::
 
@@ -734,7 +760,7 @@ class ComputePilot():
     # MS: BigJob has a get_url() to get a "persistent" uri of a CP
 
     def get_description(self):
-        """ Returns a ComputePilotDescription for this instance.
+        """Returns a ComputePilotDescription for this instance.
 
         Keyword argument(s)::
 
@@ -750,8 +776,7 @@ class ComputePilot():
         pass
 
     def wait(self, timeout=-1.0, state='RUNNING'):
-        """
-        Returns when the pilot reaches the specified state, or after timeout
+        """Returns when the pilot reaches the specified state, or after timeout
         seconds, whichever comes first.  Calls with timeout<0.0 will wait
         forever.
 
@@ -769,11 +794,11 @@ class ComputePilot():
         pass
 
     def submit_unit(self, ud):
-        """ Submit a CUD and returns a CU.
+        """Submit a CUD and returns a CU.
 
         Keyword argument(s)::
 
-        name(type): description
+            name(type): description
 
         Return::
 
@@ -784,18 +809,33 @@ class ComputePilot():
         """
         pass
 
+    def cancel_unit(self, unit_id):
+        """Cancel a CU belonging to this CP.
+
+
+        Keyword argument::
+
+            unit_id(id): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
+        """
+
 
 # ------------------------------------------------------------------------------
 #
 class ComputePilotService():
-    """ ComputePilotService()
+    """ComputePilotService()
 
         Factory for ComputePilot instances.
     """
     
     def __init__(self):
-        """
-            Constructor for the ComputePilotService.
+        """Constructor for the ComputePilotService.
             This could take arguments to reconnect to an existing CPS.
 
         Keyword argument(s)::
@@ -812,7 +852,39 @@ class ComputePilotService():
         pass
 
     def submit_pilot(self, compute_pilot_description, context=None):
-        """ Instantiate and return ComputePilot object.
+        """Instantiate and return ComputePilot object.
+
+
+        Keyword argument(s)::
+
+            name(type): description
+
+        Return::
+
+            name(type): description
+            or
+            None
+
+        """
+        pass
+
+    def cancel_pilot(self, pilot_id):
+        """Cancel a ComputePilot.
+
+
+        Keyword argument(s)::
+
+            pilot_id(ID): The ID of the Pilot to cancel
+
+        Return::
+
+            None
+
+        """
+        pass
+
+    def get_state_detail(self):
+        """Return implementation specific details of the CPS.
 
 
         Keyword argument(s)::
@@ -831,25 +903,8 @@ class ComputePilotService():
     # AM: as discussed, this should not have state, but should have an ID for
     #     reconnect [I see a case for state, TBD]
 
-    def get_state_detail(self):
-        """ Return implementation specific details of the CPS.
-
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
     def cancel(self):
-        """ Cancel the CPS (self).
+        """Cancel the CPS (self).
 
         This also cancels the ...
 
@@ -870,7 +925,7 @@ class ComputePilotService():
         pass
 
     def list_pilots(self):
-        """ Return a list of ComputePilot IDs managed by this CPS.
+        """Return a list of ComputePilot IDs managed by this CPS.
 
         Keyword argument::
 
@@ -885,8 +940,26 @@ class ComputePilotService():
         """
         pass
 
+    def get_pilot(self, pilot_id):
+        """Get a CP instance based on its ID.
+
+        This method is required as based on the ID only we don't know which
+        Pilot Service a Pilot belongs to.
+
+        Keyword argument::
+
+            pilot_id(string): The ID of the Pilot we want to acquire an
+            instance of.
+
+        Return::
+
+            pilot(ComputePilot): A ComputePilot object.
+
+        """
+        pass
+
     def wait(self, state='FINAL'):
-        """ Wait for all CU's under this CPS to complete.
+        """Wait for all CU's under this CPS to complete.
 
         Keyword argument(s)::
 
@@ -905,7 +978,7 @@ class ComputePilotService():
 # ------------------------------------------------------------------------------
 #
 class DataPilotDescription(dict):
-    """ DataPilotDescription.
+    """DataPilotDescription.
     {
         'service_url': "ssh://localhost/tmp/pilotstore/",
         'size':100,
@@ -929,7 +1002,8 @@ class DataPilotDescription(dict):
     """
 
     def __init__(self):
-        """
+        """DPD constructor.
+
         Keyword argument(s)::
 
             name(type): description
@@ -947,7 +1021,7 @@ class DataPilotDescription(dict):
 # ------------------------------------------------------------------------------
 #
 class DataPilot():
-    """ DataPilot handle.
+    """Object representing a physical storage resource.
 
     MS: capacity?
 
@@ -962,7 +1036,7 @@ class DataPilot():
     """
 
     def __init__(self):
-        """
+        """DP Constructor.
 
         Keyword argument(s)::
 
@@ -978,8 +1052,8 @@ class DataPilot():
         """
         pass
 
-    def add_unit(self, du):
-        """ Add a Data Unit to this Data Pilot.
+    def submit_unit(self, dud):
+        """Add a Data Unit to this Data Pilot.
 
         AM: What does that do exactly?  When are data staged (if at all)?
             What state needs the DU to be in?  Can that fail?
@@ -988,7 +1062,7 @@ class DataPilot():
 
         Keyword argument(s)::
 
-            du(DataUnit): description
+            dud(DataUnit Desc): description
 
         Return::
 
@@ -997,12 +1071,15 @@ class DataPilot():
         """
         pass
 
-    def remove_unit(self, du):
-        """ Remove a Data Unit from this Data Pilot.
+    def cancel_unit(self, du_id):
+        """Remove a Data Unit from this Data Pilot.
+
+        MS: What should the (optional) semantics of this call be?
+
 
         Keyword argument(s)::
 
-            du(DataUnit): description
+            du_id(DataUnit): description
 
         Return::
 
@@ -1012,7 +1089,7 @@ class DataPilot():
         pass
 
     def list_units(self):
-        """ List Data Units in this Data Pilot.
+        """List Data Units in this Data Pilot.
 
 
         Keyword argument(s)::
@@ -1029,7 +1106,7 @@ class DataPilot():
         pass
 
     def wait(self):
-        """ Wait for pending data transfers.
+        """Wait for pending data transfers.
 
         AM: Which transfers?  Assume I have a DU which is transfered, then
         I call wait, before DU1 is finished, a DU2 gets added and needs
@@ -1054,7 +1131,7 @@ class DataPilot():
         pass
 
     def cancel(self):
-        """ Cancel DataPilot
+        """Cancel DataPilot
 
         AM: what happens to the DUs?  To DUs which are in use?
 
@@ -1072,8 +1149,7 @@ class DataPilot():
         pass
 
     def get_state(self):
-        """
-            Return the state of the DataPilot.
+        """Return the state of the DataPilot.
 
         Keyword argument(s)::
 
@@ -1089,8 +1165,7 @@ class DataPilot():
         pass
 
     def get_state_detail(self):
-        """
-            Return the backend specific state detail of the DataPilot.
+        """Return the backend specific state detail of the DataPilot.
 
         Keyword argument(s)::
 
@@ -1105,6 +1180,39 @@ class DataPilot():
         """
         pass
 
+    def split_unit(self, unit_id, num_of_chunks=None, size_of_chunks=None):
+        """Split the DU unit in a set of DUs based on the number of chunks
+        and chunk size.
+
+        Keyword arguments::
+
+            unit_id(DU id): the DU to split.
+            num_of_chunks(int): the number of chunks to create.
+            size_of_chunks(int): the size of chunks.
+
+            Only one of the two arguments should be specified.
+
+        Return::
+
+            chunks[DU id]: a list of DU id's that were created.
+
+        """
+        pass
+
+    def merge_units(self, input_ids):
+        """Merge DU units into one DU.
+
+        Keyword arguments::
+
+            input_ids([DU ids]): the DUs to merge.
+
+        Return::
+
+            output_id(DU id): the merged unit.
+
+        """
+        pass
+
     # MS: BigJob has a get_url() to get a "persistent" uri of a DP
 
     # AM: should be fully symmetric to CPS
@@ -1115,7 +1223,7 @@ class DataPilot():
 class DataPilotService():
 
     def __init__(self):
-        """
+        """DPS Constructor.
 
         Keyword argument(s)::
 
@@ -1131,8 +1239,8 @@ class DataPilotService():
         pass
 
     def submit_pilot(self, data_pilot_description):
-        """ Submit a Data Pilot based on the Data Pilot Description and return
-            a PilotData object.
+        """Submit a Data Pilot based on the Data Pilot Description and return
+        a PilotData object.
 
         Keyword argument(s)::
 
@@ -1147,8 +1255,22 @@ class DataPilotService():
         """
         pass
 
+    def cancel_pilot(self, pilot_id):
+        """Cancel a Data Pilot.
+
+        Keyword argument(s)::
+
+            pilot_id(ID): The ID of the Data Pilot to cancel.
+
+        Return::
+
+            None
+
+        """
+        pass
+
     def cancel(self):
-        """ Cancel the DPS (self).
+        """Cancel the DPS (self).
 
         This also cancels the ...
 
@@ -1169,7 +1291,7 @@ class DataPilotService():
         pass
 
     def list_pilots(self):
-        """ Return a list of all Data Pilots that are under control of this DPS.
+        """Return a list of all Data Pilots that are under control of this DPS.
 
         Keyword argument(s)::
 
@@ -1184,8 +1306,26 @@ class DataPilotService():
         """
         pass
 
+    def get_pilot(self, pilot_id):
+        """Get a DP instance based on its ID.
+
+        This method is required as based on the ID only we don't know which
+        Pilot Service a Pilot belongs to.
+
+        Keyword argument::
+
+            pilot_id(string): The ID of the Pilot we want to acquire an
+            instance of.
+
+        Return::
+
+            pilot(DataPilot): A DataPilot object.
+
+        """
+        pass
+
     def wait(self, state='RUNNING'):
-        """ Wait for all DP's to reach specified state.
+        """Wait for all DP's to reach specified state.
 
         Default state='RUNNING', i.e. have finished all transfers.
 
@@ -1202,9 +1342,8 @@ class DataPilotService():
         """
         pass
 
-
     def get_state_detail(self):
-        """ Return implementation specific details of the DPS.
+        """Return implementation specific details of the DPS.
 
         Keyword argument(s)::
 
@@ -1219,10 +1358,11 @@ class DataPilotService():
         """
         pass
 
+
 # ------------------------------------------------------------------------------
 #
 class UnitService():
-    """ Service that brings the ComputePilot's and DataPilot's together.
+    """Service that brings the ComputePilot's and DataPilot's together.
 
     AM: and adds some scheduling, and enacts DU/CU dependencies.
 
@@ -1254,10 +1394,9 @@ class UnitService():
         pass
 
     def cancel(self):
-        """ Cancel this Unit Service.
+        """Cancel this Unit Service.
 
         TODO: Would this cancel assigned Units too?
-
 
         Keyword argument::
 
@@ -1271,14 +1410,18 @@ class UnitService():
         pass
 
     def add_pilot(self, pilot):
-        """ Bring a Pilot (and the resources its represents) into the scope of
-            the US.
+        """Bring a Pilot (and the resources its represents) into the scope of
+        the US.
+
+        Note: "pilot" needs to be an instance, because the US would have no
+        way to identify the pilot just based on its ID.
+
 
         Keyword argument(s)::
 
-            pilot(ComputePilot): A ComputePilot
+            pilot(ComputePilot): A ComputePilot instance.
             or
-            pilot(DataPilot):
+            pilot(DataPilot): A DataPilot instance.
 
         Return::
 
@@ -1287,15 +1430,13 @@ class UnitService():
         """
         pass
 
-    def remove_pilot(self, pilot):
-        """ Remove a Pilot (and the resources its represents) from the scope of
-            the US.
+    def remove_pilot(self, pilot_id):
+        """Remove a Pilot (and the resources its represents) from the scope of
+        the US.
 
         Keyword argument(s)::
 
-            pilot(ComputePilot): A ComputePilot
-            or
-            pilot(DataPilot):
+            pilot_id(ID): A CP or DP ID.
 
         Return::
 
@@ -1304,25 +1445,24 @@ class UnitService():
         """
         pass
 
-    def submit_unit(self, ud):
-        """
-            Accepts a CUD or DUD and returns a CU or DU.
+    def submit_unit(self, unit_desc):
+        """Accepts a CUD or DUD and returns a CU or DU.
 
         Keyword argument(s)::
 
-            name(type): description
+            unit_desc(ComputeUnitDescription): The CUD.
+            or
+            unit_desc(DataUnitDescription): The DUD.
 
         Return::
 
-            name(type): description
-            or
-            None
+            unit_id(ID): The ID of the Unit submitted.
 
         """
         pass
 
     def wait(self):
-        """ Wait for all the CUs and DUs handled by this UnitService.
+        """Wait for all the CUs and DUs handled by this UnitService.
 
         # AM: what does 'handled' mean?  All assigned to a pilot?  All
         # submitted to pilots? All DONE?  All in final state?  What happens
@@ -1350,13 +1490,13 @@ class UnitService():
         pass
 
     def cancel_unit(self, unit_id):
-        """ Cancel the specified Compute Unit or Data Unit by its ID.
+        """Cancel the specified Compute Unit or Data Unit by its ID.
 
         Keyword argument(s)::
 
-            id(ComputeUnit): The ComputeUnit to cancel.
+            unit_id(ComputeUnit): The ComputeUnit to cancel.
             or
-            id(DataUnit): The DataUnit to cancel.
+            unit_id(DataUnit): The DataUnit to cancel.
 
          Return::
 
@@ -1366,8 +1506,7 @@ class UnitService():
         pass
 
     def list_units(self, compute=True, data=True):
-        """
-            List the Units handled by this UnitService.
+        """List the Units handled by this UnitService.
 
 
         Keyword argument(s)::
@@ -1385,7 +1524,7 @@ class UnitService():
         pass
 
     def get_unit(self, unit_id):
-        """ Get a DU or CU based on its id.
+        """Get a DU or CU based on its id.
 
         Keyword argument::
 
@@ -1401,7 +1540,7 @@ class UnitService():
         pass
 
     def list_pilots(self, compute=True, data=True):
-        """ Return a list Pilot IDs of specified type of Pilots that are
+        """Return a list Pilot IDs of specified type of Pilots that are
         assigned to this UnitService.
 
         Keyword arguments::
@@ -1419,14 +1558,15 @@ class UnitService():
         pass
 
     def get_pilot(self, pilot_id):
-        """ Get a DP or CP instance based on its ID.
+        """Get a DP or CP instance based on its ID.
 
         This method is required as based on the ID only we don't know which
         Pilot Service a Pilot belongs to.
 
         Keyword argument::
 
-            id(string): The ID of the Pilot we want to acquire an instance of.
+            pilot_id(string): The ID of the Pilot we want to acquire an
+            instance of.
 
         Return::
 
