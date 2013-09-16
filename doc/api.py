@@ -4,7 +4,8 @@ Discussion
 ----------
 
     AM: I tried to adjust the state models to address these issues (the states
-    were placeholders anyways), but the call sequences need to be checked, too.
+        were placeholders anyways), but the call sequences need to be checked, 
+        too.
 
     AM: Inspection on all entities is largely missing.
     MS: I probably agree, we need to discuss the specifics of that.
@@ -1225,25 +1226,9 @@ class UnitService():
 
     AM: and adds some scheduling, and enacts DU/CU dependencies.
 
-    AM: I thought again about how that will map to the Sinon queues eventually.
-    Not sure what you think about it, but we could pass a queue parameter to
-    most calls, like:
-
-      add_pilot   (self, queue)
-      list_pilots (self, queue)
-      submit_unit (self, queue)
-
-      
-    which would also allow to create new queues -- which is something we would
-    need for Troy anyway, in some form:
-
-      create_queue (self, name, scheduler='default')
-      drain_queue  (self, 
-      list_queues  (self)
-
     """
 
-    def __init__(self):
+    def __init__(self, id=None, scheduler='default'):
         """ UnitService constructor.
 
         The instantiation of the Unit Service object could possibly be
@@ -1252,11 +1237,18 @@ class UnitService():
 
         Keyword argument::
 
-            None
+            id:        reconnect to an existing UnitService
+            scheduler: use the given scheduler.  Only applicabvle if id==None,
+                       i.e. if a new UnitService is requested.
 
         Return::
 
             None
+
+        Properties:
+         
+            id:        identifies the service instance for reconnection
+            scheduler: the scheduler used in this service instance
 
         """
         pass
@@ -1444,3 +1436,4 @@ class UnitService():
 
         """
         pass
+
