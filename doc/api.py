@@ -1191,6 +1191,10 @@ class UnitService():
             pilot(ComputePilot): A ComputePilot instance.
             or
             pilot(DataPilot): A DataPilot instance.
+            or
+            pilot([ComputePilot]): A list of ComputePilot instances.
+            or
+            pilot([DataPilot]): A list of DataPilot instances.
 
         Return::
 
@@ -1206,6 +1210,7 @@ class UnitService():
         Keyword argument(s)::
 
             pilot_id(ID): A CP or DP ID.
+            pilot_id([ID]): A list of CP or DP IDs.
 
         Return::
 
@@ -1222,10 +1227,16 @@ class UnitService():
             unit_desc(ComputeUnitDescription): The CUD.
             or
             unit_desc(DataUnitDescription): The DUD.
+            or
+            unit_desc([ComputeUnitDescription]): The list of CUDs.
+            or
+            unit_desc([DataUnitDescription]): The list of DUDs.
 
         Return::
 
             unit_id(ID): The ID of the Unit submitted.
+            or
+            unit_id([ID]): The list of IDs of the Units submitted.
 
         """
         pass
@@ -1263,9 +1274,9 @@ class UnitService():
 
         Keyword argument(s)::
 
-            unit_id(ComputeUnit): The ComputeUnit to cancel.
+            unit_id(ID): The Unit to cancel.
             or
-            unit_id(DataUnit): The DataUnit to cancel.
+            unit_id([ID]): The list of Units to cancel.
 
          Return::
 
@@ -1297,13 +1308,19 @@ class UnitService():
 
         Keyword argument::
 
-            id(string): The ID of the unit we want to acquire an instance of.
+            id(ID): The ID of the unit we want to acquire an instance of.
+            or
+            id([ID]): The list of IDs of the units we want to acquire instances of.
 
         Return::
 
             unit(ComputeUnit): A ComputeUnit object.
             or
             unit(DataUnit): A DataUnit object.
+            or
+            unit([ComputeUnit]): A list of ComputeUnit objects.
+            or
+            unit([DataUnit]): A list of DataUnit objects.
 
         """
         pass
@@ -1335,14 +1352,19 @@ class UnitService():
         Keyword argument::
 
             pilot_id(string): The ID of the Pilot we want to acquire an
-            instance of.
+                              instance of.
+            pilot_id([string]): The list of IDs of the Pilots we want to acquire
+                                instances of.
 
         Return::
 
             pilot(ComputePilot): A ComputePilot object.
             or
             pilot(DataPilot): A DataPilot object.
+            or
+            pilot([ComputePilot]): A list of ComputePilot objects.
+            or
+            pilot([DataPilot]): A list of DataPilot objects.
 
         """
         pass
-
