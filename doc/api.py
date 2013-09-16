@@ -790,24 +790,30 @@ class PilotService():
 
         Keyword argument(s)::
 
-            name(type): description
+            pilot_description(ComputePilotDescription): Instantiate a ComputePilot.
+            pilot_description([ComputePilotDescription]): Instantiate ComputePilots in bulk.
+            pilot_description(DataPilotDescription): Instantiate a DataPilot.
+            pilot_description([DataPilotDescription]): Instantiate DataPilots in bulk.
+            context(Context): The security context to use for the Pilot(s) on the
+                              backend.
 
         Return::
 
-            name(type): description
-            or
-            None
+            pilot_id(ID): An ID representing a Compute or Data Pilot.
+            pilot_id([ID]): A list of IDs representing a Compute or Data Pilots
+                            that were submitted in bulk.
 
         """
         pass
 
     def cancel_pilot(self, pilot_id):
-        """Cancel a ComputePilot.
+        """Cancel (a) ComputePilot(s).
 
 
         Keyword argument(s)::
 
-            pilot_id(ID): The ID of the Pilot to cancel
+            pilot_id(ID): The ID of the Pilot to cancel.
+            pilot_id([ID]): The IDs of the Pilots to cancel.
 
         Return::
 
@@ -829,12 +835,10 @@ class PilotService():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
-            name(type): description
-            or
             None
 
         """
@@ -857,19 +861,23 @@ class PilotService():
         pass
 
     def get_pilot(self, pilot_id):
-        """Get a CP instance based on its ID.
+        """Get (a) Pilot instance(s) based on ID.
 
         This method is required as based on the ID only we don't know which
         Pilot Service a Pilot belongs to.
 
         Keyword argument::
 
-            pilot_id(string): The ID of the Pilot we want to acquire an
-            instance of.
+            pilot_id(ID): The ID of the Pilot we want to acquire an
+                              instance of.
+            pilot_id([ID]): The IDs of the Pilot we want to acquire
+                                instances of.
 
         Return::
 
             pilot(ComputePilot): A ComputePilot object.
+            or
+            pilots([ComputePilot]): A list of ComputePilot objects.
 
         """
         pass
