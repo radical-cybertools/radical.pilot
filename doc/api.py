@@ -5,6 +5,7 @@ Discussion
 
     AM: Inspection on all entities is largely missing.
     MS: I probably agree, we need to discuss the specifics of that.
+    AGREEMENT: We'll introduce the attribute interface on: pilot, *unit, 
 
     AM: need means to expose bulk ops.
     MS: Agree, let's discuss a mechanism. Probably also needs ties to the
@@ -248,22 +249,6 @@ class ComputeUnit():
         """
         pass
 
-    def get_state_detail(self):
-        """Return the backend specific status of this Compute Unit.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
     def list_metrics(self):
         """List the metrics available for this ComputeUnit.
 
@@ -492,22 +477,6 @@ class DataUnit():
         """
         pass
 
-    def get_state_detail(self):
-        """Return the backend specific details of the DataUnit.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
     def add_file(self, file):
         """Add file to the Data Unit.
 
@@ -689,24 +658,6 @@ class ComputePilot():
         """
         pass
 
-    def get_state_detail(self):
-        """Get implementation specific state details of PC.
-
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-
-        """
-        pass
-
     def cancel(self):
         """Cancel the CP.
 
@@ -866,23 +817,6 @@ class ComputePilotService():
         """
         pass
 
-    def get_state_detail(self):
-        """Return implementation specific details of the CPS.
-
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
     # AM: as discussed, this should not have state, but should have an ID for
     #     reconnect [I see a case for state, TBD]
 
@@ -1014,7 +948,6 @@ class DataPilot():
     #    'context',      # SAGA context
     #    'resource_url', # Resource  URL
     #    'state',        # State of the PilotStore
-    #    'state_detail', # Adaptor specific state of the PilotStore
 
     """
 
@@ -1133,22 +1066,6 @@ class DataPilot():
 
     def get_state(self):
         """Return the state of the DataPilot.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def get_state_detail(self):
-        """Return the backend specific state detail of the DataPilot.
 
         Keyword argument(s)::
 
@@ -1315,22 +1232,6 @@ class DataPilotService():
         Keyword argument(s)::
 
             state(STATE): State to wait for
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def get_state_detail(self):
-        """Return implementation specific details of the DPS.
-
-        Keyword argument(s)::
-
-            name(type): description
 
         Return::
 
