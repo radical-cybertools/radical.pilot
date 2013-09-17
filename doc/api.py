@@ -3,12 +3,9 @@
 Discussion
 ----------
 
-    AM: I tried to adjust the state models to address these issues (the states
-        were placeholders anyways), but the call sequences need to be checked, 
-        too.
-
     AM: Inspection on all entities is largely missing.
     MS: I probably agree, we need to discuss the specifics of that.
+    AGREEMENT: We'll introduce the attribute interface on: pilot, *unit, 
 
     AM: need means to expose bulk ops.
     MS: Agree, let's discuss a mechanism. Probably also needs ties to the
@@ -17,6 +14,7 @@ Discussion
     AM: async op model needs to be applied (borrow from saga-python?
     MS: I think that model will do.
 
+    MS: Make errors / exceptions explicit.
 
 
 SAGA-Pilot API spec
@@ -91,6 +89,50 @@ Unit States
   This state corresponds to the BES state Failed. This state is final.
 
 
+
+Exceptions
+----------
+
+As SAGA-Pilot is obviously based on SAGA, the exceptions are derived from
+SAGA's exception model, and can be extended where we see fit.
+
+
+* NotImplemented
+  SAGA-Pilot does not implement this method or class.
+
+* IncorrectURL
+  The given URL could not be interpreted, for example due to an incorrect
+  / unknown schema. 
+
+* BadParameter
+  A given parameter is out of bound or ill formatted.
+
+* AlreadyExists
+  The entity to be created already exists.
+
+* DoesNotExist
+  An operation tried to access a non-existing entity.
+
+* IncorrectState
+  The operation is not allowed on the entity in its current state.
+
+* PermissionDenied
+  The used identity is not permitted to perform the requested operation.
+
+* AuthorizationFailed
+  The backend could not establish a valid identity.
+ 
+* AuthenticationFailed
+  The backend could not establish a valid identity.
+
+* Timeout
+  The interaction with the backend times out.
+
+* NoSuccess
+  Some other error occurred.
+
+
+
 Glossary
 --------
 
@@ -102,12 +144,11 @@ DUD = DU Description
 
 CP  = Compute Pilot
 CPD = CP Description
-CPS = CP Service
 
 DP  = Data Pilot
 DPD = DP Description
-DPS = DP Service
 
+PS = Pilot Service
 US  = Unit Service
 
 
@@ -117,11 +158,17 @@ Signature Template:
 
     Keyword argument(s)::
 
-        name(type): description
+        name(type): description.
 
     Return::
 
-        name(type): description
+        name(type): description.
+        or
+        None
+
+    Raises::
+
+        name: reason.
         or
         None
 
@@ -232,27 +279,15 @@ class ComputeUnit():
             or
             None
 
-        """
-        pass
+        Raises::
 
-    def get_state(self):
-        """Return the state of this Compute Unit.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
             None
 
         """
         pass
 
-    def get_state_detail(self):
-        """Return the backend specific status of this Compute Unit.
+    def get_state(self):
+        """Return the state of this Compute Unit.
 
         Keyword argument(s)::
 
@@ -495,22 +530,6 @@ class DataUnit():
         """
         pass
 
-    def get_state_detail(self):
-        """Return the backend specific details of the DataUnit.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
     def add_file(self, file):
         """Add file to the Data Unit.
 
@@ -692,24 +711,6 @@ class ComputePilot():
         """
         pass
 
-    def get_state_detail(self):
-        """Get implementation specific state details of PC.
-
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-
-        """
-        pass
-
     def cancel(self):
         """Cancel the CP.
 
@@ -779,18 +780,26 @@ class ComputePilot():
         """
         pass
 
-    def submit_unit(self, ud):
+    def submit_unit(self, unit_desc):
         """Submit a CUD and returns a CU.
 
         Keyword argument(s)::
 
-            name(type): description
+            unit_desc(ComputeUnitDescription): The CUD.
+            or
+            unit_desc(DataUnitDescription): The DUD.
+            or
+            unit_desc([ComputeUnitDescription]): The list of CUDs.
+            or
+            unit_desc([DataUnitDescription]): The list of DUDs.
 
         Return::
 
-            name(type): description
+            unit_id(ID): The ID of the Unit submitted.
             or
-            None
+            unit_id([ID]): The list of IDs of the Units submitted.
+
+
 
         """
         pass
@@ -801,28 +810,35 @@ class ComputePilot():
 
         Keyword argument::
 
-            unit_id(id): description
+            unit_id(id): ID of CU to cancel.
+            or
+            unit_id([id]): List of IDs from CUs to cancel.
 
         Return::
 
-            name(type): description
-            or
             None
+
+        Raises::
+            
+            DoesNotExist: No unit with that ID under this pilot. 
+            IncorrectState: Unit is already in final state.
+
 
         """
 
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilotService():
-    """ComputePilotService()
+class PilotService():
+    """PilotService()
 
-        Factory for ComputePilot instances.
+        Factory for ComputePilot and DataPilot instances.
     """
     
     def __init__(self):
-        """Constructor for the ComputePilotService.
-            This could take arguments to reconnect to an existing CPS.
+        """Constructor for the PilotService.
+        
+        This could take arguments to reconnect to an existing PS.
 
         Keyword argument(s)::
 
@@ -837,50 +853,39 @@ class ComputePilotService():
         """
         pass
 
-    def submit_pilot(self, compute_pilot_description, context=None):
+    def submit_pilot(self, pilot_description, context=None):
         """Instantiate and return ComputePilot object.
 
 
         Keyword argument(s)::
 
-            name(type): description
+            pilot_description(ComputePilotDescription): Instantiate a ComputePilot.
+            pilot_description([ComputePilotDescription]): Instantiate ComputePilots in bulk.
+            pilot_description(DataPilotDescription): Instantiate a DataPilot.
+            pilot_description([DataPilotDescription]): Instantiate DataPilots in bulk.
+            context(Context): The security context to use for the Pilot(s) on the
+                              backend.
 
         Return::
 
-            name(type): description
-            or
-            None
+            pilot_id(ID): An ID representing a Compute or Data Pilot.
+            pilot_id([ID]): A list of IDs representing a Compute or Data Pilots
+                            that were submitted in bulk.
 
         """
         pass
 
     def cancel_pilot(self, pilot_id):
-        """Cancel a ComputePilot.
+        """Cancel (a) ComputePilot(s).
 
 
         Keyword argument(s)::
 
-            pilot_id(ID): The ID of the Pilot to cancel
+            pilot_id(ID): The ID of the Pilot to cancel.
+            pilot_id([ID]): The IDs of the Pilots to cancel.
 
         Return::
 
-            None
-
-        """
-        pass
-
-    def get_state_detail(self):
-        """Return implementation specific details of the CPS.
-
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
             None
 
         """
@@ -890,28 +895,26 @@ class ComputePilotService():
     #     reconnect [I see a case for state, TBD]
 
     def cancel(self):
-        """Cancel the CPS (self).
+        """Cancel the PS (self).
 
         This also cancels the ...
 
-        AM: We should also be able to cancel the CPS w/o canceling the
+        AM: We should also be able to cancel the PS w/o canceling the
             pilots! [I agree]
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
-            name(type): description
-            or
             None
 
         """
         pass
 
     def list_pilots(self):
-        """Return a list of ComputePilot IDs managed by this CPS.
+        """Return a list of ComputePilot IDs managed by this PS.
 
         Keyword argument::
 
@@ -927,29 +930,36 @@ class ComputePilotService():
         pass
 
     def get_pilot(self, pilot_id):
-        """Get a CP instance based on its ID.
+        """Get (a) Pilot instance(s) based on ID.
 
         This method is required as based on the ID only we don't know which
         Pilot Service a Pilot belongs to.
 
         Keyword argument::
 
-            pilot_id(string): The ID of the Pilot we want to acquire an
-            instance of.
+            pilot_id(ID): The ID of the Pilot we want to acquire an
+                              instance of.
+            pilot_id([ID]): The IDs of the Pilot we want to acquire
+                                instances of.
 
         Return::
 
             pilot(ComputePilot): A ComputePilot object.
+            or
+            pilots([ComputePilot]): A list of ComputePilot objects.
 
         """
         pass
 
-    def wait(self, state='FINAL'):
-        """Wait for all CU's under this CPS to complete.
+    def wait(self, state):
+        """Wait for all U's under this PS to reach a certain state.
+
+        ComputePilot: State = 'FINAL': all CUs are done.
+        DataPilot: state='RUNNING': all DUs have finished transfers.
 
         Keyword argument(s)::
 
-            state(STATE): The state to
+            state(STATE): The state to wait for.
 
         Return::
 
@@ -1017,7 +1027,6 @@ class DataPilot():
     #    'context',      # SAGA context
     #    'resource_url', # Resource  URL
     #    'state',        # State of the PilotStore
-    #    'state_detail', # Adaptor specific state of the PilotStore
 
     """
 
@@ -1150,22 +1159,6 @@ class DataPilot():
         """
         pass
 
-    def get_state_detail(self):
-        """Return the backend specific state detail of the DataPilot.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
     def split_unit(self, unit_id, num_of_chunks=None, size_of_chunks=None):
         """Split the DU unit in a set of DUs based on the number of chunks
         and chunk size.
@@ -1201,148 +1194,7 @@ class DataPilot():
 
     # MS: BigJob has a get_url() to get a "persistent" uri of a DP
 
-    # AM: should be fully symmetric to CPS
-
-
-# ------------------------------------------------------------------------------
-#
-class DataPilotService():
-
-    def __init__(self):
-        """DPS Constructor.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def submit_pilot(self, data_pilot_description):
-        """Submit a Data Pilot based on the Data Pilot Description and return
-        a PilotData object.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def cancel_pilot(self, pilot_id):
-        """Cancel a Data Pilot.
-
-        Keyword argument(s)::
-
-            pilot_id(ID): The ID of the Data Pilot to cancel.
-
-        Return::
-
-            None
-
-        """
-        pass
-
-    def cancel(self):
-        """Cancel the DPS (self).
-
-        This also cancels the ...
-
-        AM: We should also be able to cancel the DPS w/o canceling the
-            pilots! [I agree]
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def list_pilots(self):
-        """Return a list of all Data Pilots that are under control of this DPS.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def get_pilot(self, pilot_id):
-        """Get a DP instance based on its ID.
-
-        This method is required as based on the ID only we don't know which
-        Pilot Service a Pilot belongs to.
-
-        Keyword argument::
-
-            pilot_id(string): The ID of the Pilot we want to acquire an
-            instance of.
-
-        Return::
-
-            pilot(DataPilot): A DataPilot object.
-
-        """
-        pass
-
-    def wait(self, state='RUNNING'):
-        """Wait for all DP's to reach specified state.
-
-        Default state='RUNNING', i.e. have finished all transfers.
-
-        Keyword argument(s)::
-
-            state(STATE): State to wait for
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    def get_state_detail(self):
-        """Return implementation specific details of the DPS.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
+    # AM: should be fully symmetric to PS
 
 
 # ------------------------------------------------------------------------------
@@ -1408,6 +1260,10 @@ class UnitService():
             pilot(ComputePilot): A ComputePilot instance.
             or
             pilot(DataPilot): A DataPilot instance.
+            or
+            pilot([ComputePilot]): A list of ComputePilot instances.
+            or
+            pilot([DataPilot]): A list of DataPilot instances.
 
         Return::
 
@@ -1423,6 +1279,7 @@ class UnitService():
         Keyword argument(s)::
 
             pilot_id(ID): A CP or DP ID.
+            pilot_id([ID]): A list of CP or DP IDs.
 
         Return::
 
@@ -1439,10 +1296,16 @@ class UnitService():
             unit_desc(ComputeUnitDescription): The CUD.
             or
             unit_desc(DataUnitDescription): The DUD.
+            or
+            unit_desc([ComputeUnitDescription]): The list of CUDs.
+            or
+            unit_desc([DataUnitDescription]): The list of DUDs.
 
         Return::
 
             unit_id(ID): The ID of the Unit submitted.
+            or
+            unit_id([ID]): The list of IDs of the Units submitted.
 
         """
         pass
@@ -1480,9 +1343,9 @@ class UnitService():
 
         Keyword argument(s)::
 
-            unit_id(ComputeUnit): The ComputeUnit to cancel.
+            unit_id(ID): The Unit to cancel.
             or
-            unit_id(DataUnit): The DataUnit to cancel.
+            unit_id([ID]): The list of Units to cancel.
 
          Return::
 
@@ -1514,13 +1377,19 @@ class UnitService():
 
         Keyword argument::
 
-            id(string): The ID of the unit we want to acquire an instance of.
+            id(ID): The ID of the unit we want to acquire an instance of.
+            or
+            id([ID]): The list of IDs of the units we want to acquire instances of.
 
         Return::
 
             unit(ComputeUnit): A ComputeUnit object.
             or
             unit(DataUnit): A DataUnit object.
+            or
+            unit([ComputeUnit]): A list of ComputeUnit objects.
+            or
+            unit([DataUnit]): A list of DataUnit objects.
 
         """
         pass
@@ -1552,14 +1421,19 @@ class UnitService():
         Keyword argument::
 
             pilot_id(string): The ID of the Pilot we want to acquire an
-            instance of.
+                              instance of.
+            pilot_id([string]): The list of IDs of the Pilots we want to acquire
+                                instances of.
 
         Return::
 
             pilot(ComputePilot): A ComputePilot object.
             or
             pilot(DataPilot): A DataPilot object.
+            or
+            pilot([ComputePilot]): A list of ComputePilot objects.
+            or
+            pilot([DataPilot]): A list of DataPilot objects.
 
         """
         pass
-
