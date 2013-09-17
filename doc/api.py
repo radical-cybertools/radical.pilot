@@ -99,6 +99,7 @@ SAGA's exception model, and can be extended where we see fit.
 
 * NotImplemented
   SAGA-Pilot does not implement this method or class.
+  AM: why would we need this one? :)
 
 * IncorrectURL
   The given URL could not be interpreted, for example due to an incorrect
@@ -109,6 +110,7 @@ SAGA's exception model, and can be extended where we see fit.
 
 * AlreadyExists
   The entity to be created already exists.
+  AM: I don't think we need this one either (we don't
 
 * DoesNotExist
   An operation tried to access a non-existing entity.
@@ -177,7 +179,13 @@ Signature Template:
 
 # ------------------------------------------------------------------------------
 # 
-class ComputeUnitDescription(dict):
+class UnitDescription(dict):
+  pass
+
+
+# ------------------------------------------------------------------------------
+# 
+class ComputeUnitDescription(UnitDescription):
     """Task description to instantiate a ComputeUnit.
     
     The ComputeUnitDescription is a job/task/call description based on
@@ -412,7 +420,7 @@ class ComputeUnit():
 
 # ------------------------------------------------------------------------------
 # 
-class DataUnitDescription(dict):
+class DataUnitDescription(UnitDescription):
     """DataUnitDescription.
 
     {
@@ -781,47 +789,47 @@ class ComputePilot():
         pass
 
     def submit_unit(self, unit_desc):
-        """Submit a CUD and returns a CU.
+        """
+        Submit a unit description and return a unit.
 
         Keyword argument(s)::
-
-            unit_desc(ComputeUnitDescription): The CUD.
-            or
-            unit_desc(DataUnitDescription): The DUD.
-            or
-            unit_desc([ComputeUnitDescription]): The list of CUDs.
-            or
-            unit_desc([DataUnitDescription]): The list of DUDs.
+            unit_desc: `UnitDescription` or list of `UnitDescription`s to be
+                       submitted.
 
         Return::
+            id(ID):    string or list of strings, the ID(s) of the submitted
+                       unit(s).
 
-            unit_id(ID): The ID of the Unit submitted.
-            or
-            unit_id([ID]): The list of IDs of the Units submitted.
-
+        Raises::
+            AM: consider AA exceptions for all calls?
+            BadParameter  : The given `UnitDescriptions`(s) were ill formatted,
+                            incomplete or of incorrect type.
+            NoSuccess     : The backend could not submit the unit.
+                            AM: how to return errors on bulk ops? :/
 
 
         """
         pass
 
-    def cancel_unit(self, unit_id):
+    def cancel_unit(self, ids):
         """Cancel a CU belonging to this CP.
 
-
         Keyword argument::
-
-            unit_id(id): ID of CU to cancel.
-            or
-            unit_id([id]): List of IDs from CUs to cancel.
+            id:  string or list of strings, 
+                 ID(s)  of CU(s) to cancel.
 
         Return::
-
             None
 
         Raises::
-            
-            DoesNotExist: No unit with that ID under this pilot. 
+            DoesNotExist  : No unit with that ID under this pilot. 
+            BadParameter  : The given ID(s) were ill formatted or of incorrect
+                            type.
             IncorrectState: Unit is already in final state.
+                            AM: we may want to make cancel on FINAL 
+                            units a noop to avoid races?
+            NoSuccess     : The backend could not cancel the unit.
+                            AM: how to return errors on bulk ops? :/
 
 
         """
