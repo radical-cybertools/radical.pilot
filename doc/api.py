@@ -18,8 +18,6 @@ Discussion
     AGREEMENT: add ttype parameters to calls, add sync enums, add task object
     from SAGA.  Only SYNC and ASYNC flags, no TASK.  Default SYNC obviously.
 
-    MS: Make errors / exceptions explicit.
-
 
 SAGA-Pilot API spec
 ===================
@@ -94,8 +92,8 @@ Compute Unit States
 
 
 
-Unit States
------------
+Data Unit States
+----------------
 
 * Unknown
   No state information could be obtained for that unit.
@@ -286,13 +284,16 @@ class ComputeUnit():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
-            name(type): description
-            or
+            state(State): State of CU.
+
+        Raises::
+
             None
+
 
         """
         pass
@@ -321,7 +322,7 @@ class ComputeUnit():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
@@ -370,17 +371,16 @@ class ComputeUnit():
         pass
 
     def get_id(self):
-        """Returns an ID (string) for this instance.
+        """Returns an ID (string) for this CU instance.
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
-            name(type): description
-            or
-            None
+            cu_id(ID): The ID of this CU.
+            
 
         """
         pass
@@ -505,7 +505,7 @@ class DataUnit():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
@@ -524,7 +524,7 @@ class DataUnit():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
@@ -712,8 +712,7 @@ class ComputePilot():
 
             id(string): if specified, don't create a new ComputePilot but
             instantiate it based on the id.
-            MS: Similar to the discussion of the constructor in the
-            CU.
+            # MS: Similar to the discussion of the constructor in the CU.
 
         Return::
             cp(ComputePilot): the ComputePilot object
@@ -727,7 +726,7 @@ class ComputePilot():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
@@ -745,7 +744,7 @@ class ComputePilot():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
@@ -760,7 +759,7 @@ class ComputePilot():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
@@ -778,7 +777,7 @@ class ComputePilot():
 
         Keyword argument(s)::
 
-            name(type): description
+            None
 
         Return::
 
@@ -830,12 +829,12 @@ class ComputePilot():
         """
         pass
 
-    def cancel_unit(self, ids):
+    def cancel_unit(self, unit_id):
         """
         Cancel a units belonging to this pilot.
 
         Keyword argument::
-            id:  string or list of strings, ID(s)  of unit(s) to cancel.
+            unit_id:  string or list of strings, ID(s)  of unit(s) to cancel.
 
         Return::
             None
@@ -886,8 +885,11 @@ class PilotService():
         Keyword argument(s)::
 
             pilot_description(ComputePilotDescription): Instantiate a ComputePilot.
+            or
             pilot_description([ComputePilotDescription]): Instantiate ComputePilots in bulk.
+            or
             pilot_description(DataPilotDescription): Instantiate a DataPilot.
+            or
             pilot_description([DataPilotDescription]): Instantiate DataPilots in bulk.
             context(Context): The security context to use for the Pilot(s) on the
                               backend.
@@ -895,6 +897,7 @@ class PilotService():
         Return::
 
             pilot_id(ID): An ID representing a Compute or Data Pilot.
+            or
             pilot_id([ID]): A list of IDs representing a Compute or Data Pilots
                             that were submitted in bulk.
 
@@ -908,6 +911,7 @@ class PilotService():
         Keyword argument(s)::
 
             pilot_id(ID): The ID of the Pilot to cancel.
+            or
             pilot_id([ID]): The IDs of the Pilots to cancel.
 
         Return::
@@ -965,6 +969,7 @@ class PilotService():
 
             pilot_id(ID): The ID of the Pilot we want to acquire an
                               instance of.
+            or
             pilot_id([ID]): The IDs of the Pilot we want to acquire
                                 instances of.
 
@@ -1376,6 +1381,7 @@ class UnitService():
         Keyword argument(s)::
 
             pilot_id(ID): A CP or DP ID.
+            or
             pilot_id([ID]): A list of CP or DP IDs.
 
         Return::
@@ -1519,6 +1525,7 @@ class UnitService():
 
             pilot_id(string): The ID of the Pilot we want to acquire an
                               instance of.
+            or
             pilot_id([string]): The list of IDs of the Pilots we want to acquire
                                 instances of.
 
