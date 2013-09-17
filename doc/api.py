@@ -1534,3 +1534,573 @@ class UnitService():
 
         """
         pass
+
+
+# ------------------------------------------------------------------------------
+# Attribute interface
+
+# ------------------------------------------------------------------------------
+#
+# define a couple of constants for the attribute API, mostly for registering
+# attributes.
+#
+
+# type enums
+ANY         = 'any'        # any python type can be set
+URL         = 'url'        # URL type (string + URL parser checks)
+INT         = 'int'        # Integer type
+FLOAT       = 'float'      # float type
+STRING      = 'string'     # string, duh!
+BOOL        = 'bool'       # True or False or Maybe
+ENUM        = 'enum'       # value is any one of a list of candidates
+TIME        = 'time'       # seconds since epoch, or any py time thing
+                           # which can be converted into such
+                           # FIXME: conversion not implemented
+
+# mode enums
+WRITEABLE   = 'writeable'  # the consumer of the interface can change
+                           # the attrib value
+READONLY    = 'readonly'   # the consumer of the interface can not
+                           # change the attrib value.  The
+                           # implementation can still change it.
+FINAL       = 'final'      # neither consumer nor implementation can
+                           # change the value anymore
+ALIAS       = 'alias'      # variable is deprecated, and alias'ed to
+                           # a different variable.
+
+# attrib extensions
+EXTENDED    = 'extended'   # attribute added as extension
+PRIVATE     = 'private'    # attribute added as private
+
+# flavor enums
+SCALAR      = 'scalar'     # the attribute value is a single data element
+DICT        = 'dict'       # the attribute value is a dict of data elements
+VECTOR      = 'vector'     # the attribute value is a list of data elements
+
+# ------------------------------------------------------------------------------
+#
+# Callback (Abstract) Class
+#
+class Callback () :
+    """
+    Callback base class.
+
+    All objects using the Attribute Interface allow to register a callback for
+    any changes of its attributes, such as 'state' and 'state_detail'.  Those
+    callbacks can be python call'ables, or derivates of this callback base
+    class.  Instances which inherit this base class MUST implement (overload)
+    the cb() method.
+
+    The callable, or the callback's cb() method is what is invoked whenever the
+    SAGA implementation is notified of an change on the monitored object's
+    attribute.
+
+    The cb instance receives three parameters upon invocation:
+
+
+      - obj: the watched object instance
+      - key:  the watched attribute (e.g. 'state' or 'state_detail')
+      - val:  the new value of the watched attribute
+
+    If the callback returns 'True', it will remain registered after invocation,
+    to monitor the attribute for the next subsequent state change.  On returning
+    'False' (or nothing), the callback will not be called again.
+
+    To register a callback on a object instance, use::
+
+      class MyCallback (saga.Callback):
+
+          def __init__ (self):
+              pass
+
+          def cb (self, obj, key, val) :
+              print " %s\\n %s (%s) : %s"  %  self._msg, obj, key, val
+
+      jd  = saga.job.Description ()
+      jd.executable = "/bin/date"
+
+      js  = saga.job.Service ("fork://localhost/")
+      job = js.create_job(jd)
+
+      cb = MyCallback()
+      job.add_callback(saga.STATE, cb)
+      job.run()
+
+
+    See documentation of the :class:`saga.Attribute` interface for further 
+    details and examples.
+    """
+
+    def __call__ (self, obj, key, val) :
+        return self.cb (obj, key, val)
+
+    def cb (self, obj, key, val) :
+        """ This is the method that needs to be implemented by the application
+
+            Keyword arguments::
+
+                obj:  the watched object instance
+                key:  the watched attribute
+                val:  the new value of the watched attribute
+
+            Return::
+
+                keep:   bool, signals to keep (True) or remove (False) the callback
+                        after invocation
+
+            Callback invocation MAY (and in general will) happen in a separate
+            thread -- so the application need to make sure that the callback
+            code is thread-safe.
+
+            The boolean return value is used to signal if the callback should
+            continue to listen for events (return True) , or if it rather should
+            get unregistered after this invocation (return False).
+        """
+        pass
+
+
+
+# ------------------------------------------------------------------------------
+#
+class _AttributesBase (object) :
+    """ 
+    This class only exists to host properties -- as object itself does *not* have
+    properties!  This class is not part of the public attribute API.
+    """
+
+
+
+# ------------------------------------------------------------------------------
+#
+class Attributes (_AttributesBase) :
+    """
+    Attribute Interface Class
+
+    The Attributes interface implements the attribute semantics of the SAGA Core
+    API specification (http://ogf.org/documents/GFD.90.pdf).  Additionally, this
+    implementation provides that semantics the python property interface.  Note 
+    that a *single* set of attributes is internally managed, no matter what 
+    interface is used for access.
+
+    A class which uses this interface can internally specify which attributes
+    can be set, and what type they have.  Also, default values can be specified,
+    and the class provides a rudimentary support for converting scalar
+    attributes into vector attributes and back.
+
+    Also, the consumer of this API can register callbacks, which get triggered
+    on changes to specific attribute values.
+
+    Example use case::
+
+
+        # --------------------------------------------------------------------------------
+        class Transliterator ( pilot.Attributes ) :
+            
+            def __init__ (self, *args, **kwargs) :
+                # setting attribs to non-extensible will cause the cal to init below to
+                # complain if attributes are specified.  Default is extensible.
+              # self._attributes_extensible (False)
+        
+                # pass args to base class init (requires 'extensible')
+                super (Transliterator, self).__init__ (*args, **kwargs)
+        
+                # setup class attribs
+                self._attributes_register   ('apple', 'Appel', URL,    SCALAR, WRITEABLE)
+                self._attributes_register   ('plum',  'Pruim', STRING, SCALAR, READONLY)
+        
+                # setting attribs to non-extensible at *this* point will have allowed
+                # custom user attribs on __init__ time (via args), but will then forbid
+                # any additional custom attributes.
+              # self._attributes_extensible (False)
+        
+        
+        # --------------------------------------------------------------------------------
+        if __name__ == "__main__":
+        
+            # define a callback method.  This callback can get registered for
+            # attribute changes later.
+        
+            # ----------------------------------------------------------------------------
+            def cb (key, val, obj) :
+                # the callback gets information about what attribute was changed
+                # on what object:
+                print "called: %s - %s - %s"  %  (key, str(val), type (obj))
+
+                # returning True will keep the callback registered for further
+                # attribute changes.
+                return True
+            # ----------------------------------------------------------------------------
+        
+            # create a class instance and add a 'cherry' attribute/value on
+            # creation.  
+            trans = Transliterator (cherry='Kersche')
+        
+            # use the property interface to mess with the pre-defined
+            # 'apple' attribute
+            print "\\n -- apple"
+            print trans.apple 
+            trans.apple = 'Abbel'
+            print trans.apple 
+        
+            # add our callback to the apple attribute, and trigger some changes.
+            # Note that the callback is also triggered when the attribute's
+            # value changes w/o user control, e.g. by some internal state
+            # changes.
+            trans.add_callback ('apple', cb)
+            trans.apple = 'Apfel'
+        
+            # Setting an attribute final is actually an internal method, used by
+            # the implementation to signal that no further changes on that
+            # attribute are expected.  We use that here for demonstrating the
+            # concept though.  Callback is invoked on set_final().
+            trans._attributes_set_final ('apple')
+            trans.apple = 'Abbel'
+            print trans.apple 
+        
+            # mess around with the 'plum' attribute, which was marked as
+            # ReadOnly on registration time.
+            print "\\n -- plum"
+            print trans.plum
+          # trans.plum    = 'Pflaume'  # raises readonly exception
+          # trans['plum'] = 'Pflaume'  # raises readonly exception
+            print trans.plum
+        
+            # check if the 'cherry' attribute exists, which got created on
+            # instantiation time.
+            print "\\n -- cherry"
+            print trans.cherry
+        
+            # as we have 'extensible' set, we can add a attribute on the fly,
+            # via either the property interface, or via the GFD.90 API of 
+            # course.
+            print "\\n -- peach"
+            print trans.peach
+            trans.peach = 'Birne'
+            print trans.peach
+
+
+    This example will result in::
+
+        -- apple
+        Appel
+        Appel
+        Abbel
+        called: apple - Abbel Appel  - <class '__main__.Transliterator'>
+        called: apple - Apfel - <class '__main__.Transliterator'>
+        called: apple - Apfel - <class '__main__.Transliterator'>
+        Apfel
+        
+        -- plum
+        Pruim
+        Pruim
+        
+        -- cherry
+        Kersche
+        
+        -- peach
+        Berne
+        Birne
+
+
+    """
+
+    # internally used constants to distinguish API from adaptor calls
+    _UP    = '_up'
+    _DOWN  = '_down'
+
+    # two regexes for converting CamelCase into under_score_casing, as static
+    # class vars to avoid frequent recompilation
+    _camel_case_regex_1 = re.compile('(.)([A-Z][a-z]+)')
+    _camel_case_regex_2 = re.compile('([a-z0-9])([A-Z])')
+
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    # the GFD.90 attribute interface
+    #
+    # The GFD.90 interface supports CamelCasing, and thus converts all keys to
+    # underscore before using them.
+    # 
+    def set_attribute (self, key, val, _flow=_DOWN) :
+        """
+        set_attribute(key, val)
+
+        This method sets the value of the specified attribute.  If that
+        attribute does not exist, DoesNotExist is raised -- unless the attribute
+        set is marked 'extensible' or 'private'.  In that case, the attribute is
+        created and set on the fly (defaulting to mode=writeable, flavor=Scalar,
+        type=ANY, default=None).  A value of 'None' may reset the attribute to
+        its default value, if such one exists (see documentation).
+
+        Note that this method is performing a number of checks and conversions,
+        to match the value type to the attribute properties (type, mode, flavor).
+        Those conversions are not guaranteed to yield the expected result -- for
+        example, the conversion from 'scalar' to 'vector' is, for complex types,
+        ambiguous at best, and somewhat stupid.  The consumer of the API SHOULD
+        ensure correct attribute values.  The conversions are intended to
+        support the most trivial and simple use cases (int to string etc).
+        Failed conversions will result in an BadParameter exception.
+
+        Attempts to set a 'final' attribute are silently ignored.  Attempts to
+        set a 'readonly' attribute will result in an IncorrectState exception
+        being raised.
+
+        Note that set_attribute() will trigger callbacks, if a new value
+        (different from the old value) is given.  
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return   self._attributes_i_set        (us_key, val, flow=_flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_attribute (self, key, _flow=_DOWN) :
+        """
+        get_attribute(key)
+
+        This method returns the value of the specified attribute.  If that
+        attribute does not exist, an DoesNotExist is raised.  It is not an
+        error to query an existing, but unset attribute though -- that will
+        result in 'None' to be returned (or the default value, if available).
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return   self._attributes_i_get        (us_key, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def set_vector_attribute (self, key, val, _flow=_DOWN) :
+        """
+        set_vector_attribute (key, val)
+
+        See also: :func:`saga.Attributes.set_attribute` (key, val).
+
+        As python can handle scalar and vector types transparently, this method
+        is in fact not very useful.  For that reason, it maps internally to the
+        set_attribute method.
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return   self._attributes_i_set        (us_key, val, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_vector_attribute (self, key, _flow=_DOWN) :
+        """
+        get_vector_attribute (key)
+
+        See also: :func:`saga.Attributes.get_attribute` (key).
+
+        As python can handle scalar and vector types transparently, this method
+        is in fact not very useful.  For that reason, it maps internally to the
+        get_attribute method.
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return   self._attributes_i_get        (us_key, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def remove_attribute (self, key, _flow=_DOWN) :
+        """
+        remove_attribute (key)
+
+        Removing an attribute is actually different from unsetting it, or from
+        setting it to 'None'.  On remove, all traces of the attribute are
+        purged, and the key will not be listed on 
+        :func:`saga.Attributes.list_attributes` () anymore.
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return   self._attributes_remove       (us_key, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def list_attributes (self, _flow=_DOWN) :
+        """
+        list_attributes ()
+
+        List all attributes which have been explicitly set. 
+        """
+
+        return self._attributes_i_list (_flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def find_attributes (self, pattern, _flow=_DOWN) :
+        """
+        find_attributes (pattern)
+
+        Similar to list(), but also grep for a given attribute pattern.  That
+        pattern is of the form 'key=val', where both 'key' and 'val' can contain
+        POSIX shell wildcards.  For non-string typed attributes, the pattern is
+        applied to a string serialization of the typed value, if that exists.
+        """
+
+        return self._attributes_i_find (pattern, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def attribute_exists (self, key, _flow=_DOWN) :
+        """
+        attribute_exist (key)
+
+        This method will check if the given key is known and was set explicitly.
+        The call will also return 'True' if the value for that key is 'None'.
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return self._attributes_i_exists (us_key, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def attribute_is_readonly (self, key, _flow=_DOWN) :
+        """
+        attribute_is_readonly (key)
+
+        This method will check if the given key is readonly, i.e. cannot be
+        'set'.  The call will also return 'True' if the attribute is final
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return self._attributes_i_is_readonly (us_key, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def attribute_is_writeable (self, key, _flow=_DOWN) :
+        """
+        attribute_is_writeable (key)
+
+        This method will check if the given key is writeable - i.e. not readonly.
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return self._attributes_i_is_writeable (us_key, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def attribute_is_removable (self, key, _flow=_DOWN) :
+        """
+        attribute_is_writeable (key)
+
+        This method will check if the given key can be removed.
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return self._attributes_i_is_removable (us_key, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def attribute_is_vector (self, key, _flow=_DOWN) :
+        """
+        attribute_is_vector (key)
+
+        This method will check if the given attribute has a vector value type.
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return self._attributes_i_is_vector (us_key, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    # fold the GFD.90 monitoring API into the attributes API
+    #
+    def add_callback (self, key, cb, _flow=_DOWN) :
+        """
+        add_callback (key, cb)
+
+        For any attribute change, the API will check if any callbacks are
+        registered for that attribute.  If so, those callbacks will be called
+        in order of registration.  This registration function will return an
+        id (cookie) identifying the callback -- that id can be used to
+        remove the callback.
+
+        A callback is any callable python construct, and MUST accept three
+        arguments::
+
+            - STRING key: the name of the attribute which changed
+            - ANY    val: the new value of the attribute
+            - ANY    obj: the object on which this attribute interface was called
+
+        The 'obj' can be any python object type, but is guaranteed to expose
+        this attribute interface.
+
+        The callback SHOULD return 'True' or 'False' -- on 'True', the callback
+        will remain registered, and will thus be called again on the next
+        attribute change.  On returning 'False', the callback will be
+        unregistered, and will thus not be called again.  Returning nothing is
+        interpreted as 'False', other return values lead to undefined behavior.
+
+        Note that callbacks will not be called on 'Final' attributes (they will
+        be called once as that attribute enters finality).
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return self._attributes_i_add_cb (us_key, cb, _flow)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def remove_callback (self, key, id, _flow=_DOWN) :
+        """
+        remove_callback (key, id)
+
+        This method allows to unregister a previously registered callback, by
+        providing its id.  It is not an error to remove a non-existing cb, but
+        a valid ID MUST be provided -- otherwise, a BadParameter is raised.
+
+        If no ID is provided (id == None), all callbacks are removed for this
+        attribute.
+        """
+
+        key    = self._attributes_t_keycheck   (key)
+        us_key = self._attributes_t_underscore (key)
+        return self._attributes_i_del_cb (us_key, id, _flow)
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    # Python property interface
+    #
+    # we assume that properties are always used in under_score notation.
+    #
+    def __getattr__(self, key):
+        """ see L{get_attribute} (key) for details. """
+
+    def __setattr__(self, key, val):
+        """ see L{set_attribute} (key, val) for details. """
+
+    def __delattr__(self, key):
+        """ see L{remove_attribute} (key) for details. """
+
+    def __str__(self):
+        """ return a string representation of all set attributes """
+
+    def as_dict(self):
+        """ return a dict representation of all set attributes """
