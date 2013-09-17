@@ -206,27 +206,24 @@ class UnitDescription(dict):
 # ------------------------------------------------------------------------------
 # 
 class ComputeUnitDescription(UnitDescription):
-    """Task description to instantiate a ComputeUnit.
+    """Task description to instantiate a Compute Unit.
     
-    The ComputeUnitDescription is a job/task/call description based on
-    SAGA Job Description.
-
-    It offers the application to describe a ComputeUnit in an abstract
-    way that is dealt with by the Pilot-Manager.
+    The ComputeUnitDescription is a job/task description loosely based on SAGA
+    Job Description.
 
     Class members:
 
         # Action description
-        'name',                 # 
+        'name',                 # Non-unique name/label of CU.
         'executable',           # The "action" to execute
         'arguments',            # Arguments to the "action"
         'cleanup',              # cleanup after the CU has finished
         'environment',          # "environment" settings for the "action"
-        'start_time',
-        'working_directory',
+        'start_time',           # When should the CU start
+        'working_directory',    # Where to start the CU
 
         # I/O
-        'input',                # stdin
+        'input',                # MS: Can be removed?
         'error',                # stderr
         'output',               # stdout
         'file_transfer',        # file transfer, duh!
@@ -234,19 +231,21 @@ class ComputeUnitDescription(UnitDescription):
         'output_data',          # DataUnits for output.
 
         # Parallelism
-        'slots',                # Total number of slots
-        'spmd_variation',       # Type and startup mechanism
+        'spmd_variation',       # Type and startup mechanism.
+        'slots',                # Number of job slots for spmd variations that
+                                # support it.
 
+        # Host requirements
+        'cpu_architecture',     # Specific requirement for binary
+        'operating_system_type',# Specific OS version required?
+        'total_physical_memory',# May not be physical, but in sync with saga.
+        'wall_time_limit',      # CU will not run longer then this.
 
-        # Requirements
-        'cpu_architecture',
-        'operating_system_type',
-        'total_physical_memory', # AM: stupid name...
-        'wall_time_limit',
+        # Startup ordering dependencies
+        # (Are only considered within scope of bulk submission.)
+        'start_after',          # Names of CUs that need to finish first.
+        'start_concurrent_with' # Names of CUs that need to be run concurrently.
 
-        # AM: we also need simple dependencies, and the ability to mark
-        # multiple CUs as 'Concurrent', etc.
-        # MS: Yes, we need to discuss the details of this.
     """
 
 
