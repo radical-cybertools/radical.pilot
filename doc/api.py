@@ -846,6 +846,7 @@ class PilotService():
         """
         pass
 
+
     def submit_pilot(self, pilot_description, context=None):
         """Instantiate and return ComputePilot object.
 
@@ -1007,6 +1008,7 @@ class DataPilotDescription(dict):
         pass
 
 
+
 # ------------------------------------------------------------------------------
 #
 class DataPilot():
@@ -1015,11 +1017,11 @@ class DataPilot():
     MS: capacity?
 
     # Class members
-    #    'id',           # Reference to this PJ
-    #    'description',  # Description of PilotStore
+    #    'id',           # Reference to this PD
+    #    'description',  # Description of PD
     #    'context',      # SAGA context
     #    'resource_url', # Resource  URL
-    #    'state',        # State of the PilotStore
+    #    'state',        # State of the PD
 
     """
 
@@ -1039,6 +1041,12 @@ class DataPilot():
 
         """
         pass
+        """
+        # make sure we have a replica backend, and can start navigating the
+        # replica name space
+        self.backend = saga.replica.dir ("irods://irods.host.osg/")
+        """
+
 
     def submit_unit(self, dud):
         """Add a Data Unit to this Data Pilot.
@@ -1058,6 +1066,19 @@ class DataPilot():
 
         """
         pass
+        """
+        # for each file in the data pilot, create a lfn in the ldir and
+        # register the original copy
+        self.ldir = pilot_service.backend.open_dir ("/data_pilots/%s" \
+                                                 % dud.name)
+        self.units[du_id].dud  = dud
+        self.units[du_id].lfns = {}
+        for pfn in dud.files :
+            name = pfn.name
+            self.units[du_id].lfns[name] = self.self.rdir.open (name, CREATE)
+            self.units[du_id].lfns[name].add_location (pfn)   # or use upload?
+        """
+
 
     def cancel_unit(self, du_id):
         """Remove a Data Unit from this Data Pilot.
@@ -1075,6 +1096,16 @@ class DataPilot():
 
         """
         pass
+        """
+        # for each file in the data pilot, remove the lfn and all (non_original)
+        # copies
+        for lfn in self.units[du_id].lfns
+            for pfn in lfn.list_locations () :
+                if  not pfn in self.units[du_id].dud.files :
+                    lfn.remove_location (pfn, PURGE)
+        self.units[du_id] = None
+        """
+
 
     def list_units(self):
         """List Data Units in this Data Pilot.
@@ -1092,6 +1123,11 @@ class DataPilot():
 
         """
         pass
+        """
+        # list submitted DUs
+        return self.units[du_id].keys ()
+        """
+
 
     def wait(self):
         """Wait for pending data transfers.
@@ -1117,6 +1153,12 @@ class DataPilot():
 
         """
         pass
+        """
+        # wait for all DUs to become 'RUNNING'
+        for du in self.units.keys () :
+            du.wait ()
+        """
+
 
     def cancel(self):
         """Cancel DataPilot
@@ -1135,6 +1177,11 @@ class DataPilot():
 
         """
         pass
+        """
+        # cancel all DUs
+        for du in self.units.keys () :
+            du.cancel ()
+        """
 
     def get_state(self):
         """Return the state of the DataPilot.
@@ -1151,6 +1198,10 @@ class DataPilot():
 
         """
         pass
+        """
+        This doesn't really have a state :/
+        return RUNNING
+        """
 
     def split_unit(self, unit_id, num_of_chunks=None, size_of_chunks=None):
         """Split the DU unit in a set of DUs based on the number of chunks
@@ -1170,6 +1221,20 @@ class DataPilot():
 
         """
         pass
+        """
+        chunks = []
+        for i, lfn in enumerate (self.units[du_id].lfns) :
+            chunk_id = i%n_chunks
+            if not chunk_id in chunks :
+                new_dus[chunk_id] = []
+            chunks[chunk_id].append (lfn)
+
+        new_dus = []
+        for chunk in chunks
+            new_dus.append (DataUnit (chunk)
+
+        return new_dus
+        """
 
     def merge_units(self, input_ids):
         """Merge DU units into one DU.
@@ -1184,6 +1249,13 @@ class DataPilot():
 
         """
         pass
+        """
+        combined = []
+        for du_id in input_ids :
+            du = DataUnit (du_id)
+            compined.append (du.files)
+        return DataUnit (combined)
+        """
 
     # MS: BigJob has a get_url() to get a "persistent" uri of a DP
 
