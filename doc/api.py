@@ -90,6 +90,50 @@ Unit States
 
 
 
+Exceptions
+----------
+
+As SAGA-Pilot is obviously based on SAGA, the exceptions are derived from
+SAGA's exception model, and can be extended where we see fit.
+
+
+* NotImplemented
+  SAGA-Pilot does not implement this method or class.
+
+* IncorrectURL
+  The given URL could not be interpreted, for example due to an incorrect
+  / unknown schema. 
+
+* BadParameter
+  A given parameter is out of bound or ill formatted.
+
+* AlreadyExists
+  The entity to be created already exists.
+
+* DoesNotExist
+  An operation tried to access a non-existing entity.
+
+* IncorrectState
+  The operation is not allowed on the entity in its current state.
+
+* PermissionDenied
+  The used identity is not permitted to perform the requested operation.
+
+* AuthorizationFailed
+  The backend could not establish a valid identity.
+ 
+* AuthenticationFailed
+  The backend could not establish a valid identity.
+
+* Timeout
+  The interaction with the backend times out.
+
+* NoSuccess
+  Some other error occurred.
+
+
+
+
 Glossary
 --------
 
