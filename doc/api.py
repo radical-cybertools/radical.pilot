@@ -460,10 +460,7 @@ class DataUnit():
         structure needs to be populated.
 
         AM: so, static negates early binding, right?
-
         AM: What is the use case for static?
-
-
 
         Keyword argument(s)::
 
@@ -477,6 +474,12 @@ class DataUnit():
 
         """
         pass
+        """
+        self.tc = saga.task.Container ()
+        if not static :
+            for lfn in self.ldir :
+                tc.add (lfn.replicate ('some resource name???', ASYNC))
+        """
 
     def wait(self, state='RUNNING'):
         """Wait for Data Unit to become 'RUNNING'.
@@ -491,6 +494,10 @@ class DataUnit():
 
         """
         pass
+        """
+        return self.tc.wait (state)
+        """
+            
 
     def list_items(self):
         """List the content of the Data Unit.
@@ -508,6 +515,9 @@ class DataUnit():
 
         """
         pass
+        """
+        return self.ldir.list ()
+        """
 
     def get_state(self):
         """Return the state of the Data Unit.
@@ -524,6 +534,9 @@ class DataUnit():
 
         """
         pass
+        """
+        return self.tc.state
+        """
 
     def add_file(self, file):
         """Add file to the Data Unit.
@@ -538,6 +551,13 @@ class DataUnit():
 
         """
         pass
+        """
+        if file.name in self.ldir.list () :
+            raise AlreadyExists
+        lfn = self.ldir.open (file.name, CREATE)
+        lfn.add_location (file)
+        self.tc.add (lfn.replicate ('some resource name???', ASYNC))
+        """
 
     def remove_file(self, filename):
         """Remove file from the Data Unit.
@@ -552,6 +572,14 @@ class DataUnit():
 
         """
         pass
+        """
+        if not file.name in self.ldir.list () :
+            raise DoesNotExist
+        lfn = self.ldir.open (file.name)
+        for pfn in lfn.list_replicas :
+            lfn.remove_location (pfn, PURGE)
+        lfn.remove ()
+        """
 
     def export(self, dest_uri):
         """Export the data of this Data Unit to the specified destination
@@ -567,6 +595,10 @@ class DataUnit():
 
         """
         pass
+        """
+        for lfn in self.ldir.list () :
+            lfn.download (dest_uri + '/' + lfn.name)
+        """
 
     # AM: needs most/all methods from ComputeUnit, right?
 
