@@ -10,9 +10,13 @@ Discussion
     AM: need means to expose bulk ops.
     MS: Agree, let's discuss a mechanism. Probably also needs ties to the
     "concurrent execution" property.
+    AGREEMENT: overload by scalar and list arguments.  Exception leaves oject
+    states undefined.
 
-    AM: async op model needs to be applied (borrow from saga-python?
+    AM: async op model needs to be applied (borrow from saga-python?)
     MS: I think that model will do.
+    AGREEMENT: add ttype parameters to calls, add sync enums, add task object
+    from SAGA.  Only SYNC and ASYNC flags, no TASK.  Default SYNC obviously.
 
     MS: Make errors / exceptions explicit.
 
@@ -56,8 +60,8 @@ Pilot States
 
 
 
-Unit States
------------
+Compute Unit States
+-------------------
 
 * Unknown
   No state information could be obtained for that unit.
@@ -67,7 +71,7 @@ Unit States
   is waiting to be assigned to and enacted by a Pilot.
   This state corresponds to the BES state Pending. This state is initial.
 
-* Running     
+* Running
   The unit has successfully assigned to a pilot and is being executed by that
   pilot -- i.e., it consumes resources.
   This state corresponds to the BES state Running.
@@ -90,6 +94,30 @@ Unit States
 
 
 
+Unit States
+-----------
+
+* Unknown
+  No state information could be obtained for that unit.
+
+* Pending
+  Data are not yet available, but are scheduled for transfer, or transfer is in
+  progress.
+
+* Running
+  Data is available.
+
+* Done
+  ?
+
+* Canceled    
+  The data is scheduled for removal and cannot be used anymore.
+
+* Failed  
+  The data could not be transferred, and will not become available in the
+  future.
+
+
 Exceptions
 ----------
 
@@ -97,20 +125,12 @@ As SAGA-Pilot is obviously based on SAGA, the exceptions are derived from
 SAGA's exception model, and can be extended where we see fit.
 
 
-* NotImplemented
-  SAGA-Pilot does not implement this method or class.
-  AM: why would we need this one? :)
-
 * IncorrectURL
   The given URL could not be interpreted, for example due to an incorrect
   / unknown schema. 
 
 * BadParameter
   A given parameter is out of bound or ill formatted.
-
-* AlreadyExists
-  The entity to be created already exists.
-  AM: I don't think we need this one either (we don't
 
 * DoesNotExist
   An operation tried to access a non-existing entity.
@@ -199,32 +219,8 @@ class ComputeUnitDescription(UnitDescription):
         # Action description
         'executable',           # The "action" to execute
         'arguments',            # Arguments to the "action"
-        'cleanup',              # AM: does not make sense for pilot systems,
-                                #     IMHO
-                                # MS: It would instruct the agent to actively
-                                # cleanup after the CU has finished?
+        'cleanup',              # cleanup after the CU has finished
         'environment',          # "environment" settings for the "action"
-        'interactive',          # AM: does not make sense for CUs, IMHO
-                                # MS: Makes as much sense for CUs as it did
-                                # /does for "jobs", doesn't it?
-        'contact',              # AM: is this ever used, really?  We have
-                                #     monitoring...
-                                # MS: You don't want email? :-) (Context,
-                                # this is just a 1-2-1 copy of the SAGA JD.
-                                # I'm happy to drop fields like this,
-                                # but it won't hurt much either to keep it.
-                                # AM: If it is here, it needs to be supported.  
-                                # But it is redundant with the monitoring
-                                # facilities we will have -- we can easily add
-                                # an email monitoring consumer to that
-                                # service...
-                                #
-        'project',              # AM: does that make sense?  There is no
-                                #     accounting on pilot level...  What is
-                                #     the error mode (as that can only be
-                                #     evaluated at runtime, if at all).
-                                # MS: I probably on this.
-                                # AM: this statement no verb ;)
         'start_time',
         'working_directory',
 
@@ -232,29 +228,20 @@ class ComputeUnitDescription(UnitDescription):
         'input',                # stdin
         'error',                # stderr
         'output',               # stdout
-        'file_transfer',        # AM: how do those things tie into DUs?
-                                # MS: They don't I think, complimentary
-                                # AM: do we need / want two different handles on
-                                # data?
+        'file_transfer',        # file transfer, duh!
         'input_data',           # DUs for input.
         'output_data',          # DUs for output.
 
         # Parallelism
-        'number_of_processes',  # Total number of processes to start
-        'processes_per_host',   # Nr of processes per host
-        'threads_per_process',  # Nr of threads to start per process
-        'total_core_count',     # Total number of cores requested
+        'slots',                # Total number of slots
         'spmd_variation',       # Type and startup mechanism
 
 
         # Requirements
-        'candidate_hosts',
         'cpu_architecture',
-        'total_physical_memory',
         'operating_system_type',
-        'total_cpu_time',
+        'total_physical_memory', # AM: stupid name...
         'wall_time_limit',
-        'queue'
 
         # AM: we also need simple dependencies, and the ability to mark
         # multiple CUs as 'Concurrent', etc.
@@ -812,11 +799,11 @@ class ComputePilot():
         pass
 
     def cancel_unit(self, ids):
-        """Cancel a CU belonging to this CP.
+        """
+        Cancel a units belonging to this pilot.
 
         Keyword argument::
-            id:  string or list of strings, 
-                 ID(s)  of CU(s) to cancel.
+            id:  string or list of strings, ID(s)  of unit(s) to cancel.
 
         Return::
             None
@@ -830,8 +817,6 @@ class ComputePilot():
                             units a noop to avoid races?
             NoSuccess     : The backend could not cancel the unit.
                             AM: how to return errors on bulk ops? :/
-
-
         """
 
 
