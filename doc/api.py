@@ -14,6 +14,8 @@ Discussion
     AM: async op model needs to be applied (borrow from saga-python?
     MS: I think that model will do.
 
+    MS: Make errors / exceptions explicit.
+
 
 SAGA-Pilot API spec
 ===================
