@@ -197,6 +197,7 @@ class ComputeUnitDescription(UnitDescription):
     Class members:
 
         # Action description
+        'name',                 # 
         'executable',           # The "action" to execute
         'arguments',            # Arguments to the "action"
         'cleanup',              # AM: does not make sense for pilot systems,
@@ -236,8 +237,8 @@ class ComputeUnitDescription(UnitDescription):
                                 # MS: They don't I think, complimentary
                                 # AM: do we need / want two different handles on
                                 # data?
-        'input_data',           # DUs for input.
-        'output_data',          # DUs for output.
+        'input_data',           # DataUnits for input.
+        'output_data',          # DataUnits for output.
 
         # Parallelism
         'number_of_processes',  # Total number of processes to start
