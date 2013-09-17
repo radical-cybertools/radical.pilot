@@ -725,18 +725,26 @@ class ComputePilot():
         """
         pass
 
-    def submit_unit(self, ud):
+    def submit_unit(self, unit_desc):
         """Submit a CUD and returns a CU.
 
         Keyword argument(s)::
 
-            name(type): description
+            unit_desc(ComputeUnitDescription): The CUD.
+            or
+            unit_desc(DataUnitDescription): The DUD.
+            or
+            unit_desc([ComputeUnitDescription]): The list of CUDs.
+            or
+            unit_desc([DataUnitDescription]): The list of DUDs.
 
         Return::
 
-            name(type): description
+            unit_id(ID): The ID of the Unit submitted.
             or
-            None
+            unit_id([ID]): The list of IDs of the Units submitted.
+
+
 
         """
         pass
@@ -747,12 +755,12 @@ class ComputePilot():
 
         Keyword argument::
 
-            unit_id(id): description
+            unit_id(id): ID of CU to cancel.
+            or
+            unit_id([id]): List of IDs from CUs to cancel.
 
         Return::
 
-            name(type): description
-            or
             None
 
         """
