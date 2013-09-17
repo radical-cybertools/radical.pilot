@@ -159,11 +159,17 @@ Signature Template:
 
     Keyword argument(s)::
 
-        name(type): description
+        name(type): description.
 
     Return::
 
-        name(type): description
+        name(type): description.
+        or
+        None
+
+    Raises::
+
+        name: reason.
         or
         None
 
@@ -272,6 +278,10 @@ class ComputeUnit():
 
             name(type): description
             or
+            None
+
+        Raises::
+
             None
 
         """
@@ -808,6 +818,12 @@ class ComputePilot():
         Return::
 
             None
+
+        Raises::
+            
+            DoesNotExist: No unit with that ID under this pilot. 
+            IncorrectState: Unit is already in final state.
+
 
         """
 
