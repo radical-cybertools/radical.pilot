@@ -102,11 +102,11 @@ Data Unit States
   Data are not yet available, but are scheduled for transfer, or transfer is in
   progress.
 
-* Running
-  Data is available.
+* Available
+  Data is available, but is not in use. Can be splitted, merged or canceled.
 
-* Done
-  ?
+* Busy
+  Data is available, but is in use. Can not be splitted, merged or canceled.
 
 * Canceled    
   The data is scheduled for removal and cannot be used anymore.
