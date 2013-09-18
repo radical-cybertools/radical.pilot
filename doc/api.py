@@ -195,7 +195,7 @@ Signature Template:
 # ------------------------------------------------------------------------------
 # 
 class UnitDescription(dict):
-  pass
+    pass
 
 
 # ------------------------------------------------------------------------------
@@ -249,6 +249,14 @@ class ComputeUnitDescription(UnitDescription):
 class ComputeUnit():
     """ComputeUnit object that allows for direct operations on CUs.
 
+    Class members:
+
+        id              # Unique ID
+        description     # The DUD used to instantiate
+        state           # The state of the DU
+
+
+
     """
 
     def __init__(self, cu_id=None):
@@ -272,25 +280,6 @@ class ComputeUnit():
         Raises::
 
             None
-
-        """
-        pass
-
-    def get_state(self):
-        """Return the state of this Compute Unit.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            state(State): State of CU.
-
-        Raises::
-
-            None
-
 
         """
         pass
@@ -350,38 +339,6 @@ class ComputeUnit():
         """
         pass
 
-    def get_description(self):
-        """Returns a ComputeUnitDescription for this instance.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-
-        """
-        pass
-
-    def get_id(self):
-        """Returns an ID (string) for this CU instance.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            cu_id(ID): The ID of this CU.
-            
-
-        """
-        pass
-
     def wait(self, timeout=1.0, state='FINAL'):
         """Returns when the unit reaches the specified state, or after timeout
         seconds, whichever comes first.
@@ -409,14 +366,14 @@ class DataUnitDescription(UnitDescription):
 
     Class members:
 
-        'name',         # A non-unique label.
-        'file_urls',    # Dict of logical and physical filesnames, e.g.:
+        name         # A non-unique label.
+        file_urls    # Dict of logical and physical filesnames, e.g.:
                         # { 'NAME1' : [ 'google://.../name1.txt',
                         #               'srm://grid/name1.txt'],
                         #   'NAME2' : [ 'file://.../name2.txt' ] }
-        'lifetime',     # Needs to stay available for at least ...
-        'cleanup',      # Can be removed when cancelled
-        'size',         # Estimated size of DU (in bytes)
+        lifetime     # Needs to stay available for at least ...
+        cleanup      # Can be removed when cancelled
+        size         # Estimated size of DU (in bytes)
 
 
     AM: I am still confused about the symmetry aspects to ComputeUnits.  Why
@@ -438,8 +395,9 @@ class DataUnit():
 
     Class members:
 
-        'description',  # The DUD used to instantiate
-        'state',        # The state of the DU
+        id                  # Unique ID
+        description         # The DUD used to instantiate
+        state               # The state of the DU
 
     """
 
@@ -639,6 +597,12 @@ class ComputePilotDescription(dict):
 class ComputePilot():
     """Object representing a physical computing resource.
 
+    Class members::
+
+        id              # Unique ID of this CP
+        description     # The description used to instantiate
+        state           # The state of this CP
+        url             # Persistent URL
 
     """
 
@@ -658,22 +622,6 @@ class ComputePilot():
         """
         pass
 
-    def get_state(self):
-        """Return state of PC.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
     def cancel(self):
         """Cancel the CP.
 
@@ -688,40 +636,6 @@ class ComputePilot():
             name(type): description
             or
             None
-        """
-        pass
-
-    def get_id(self):
-        """Returns an ID (string) for this instance.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    # MS: BigJob has a get_url() to get a "persistent" uri of a CP
-
-    def get_description(self):
-        """Returns a ComputePilotDescription for this instance.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
         """
         pass
 
@@ -946,8 +860,8 @@ class DataPilotDescription(dict):
 
     Class members::
 
-        'service_url',      #: "ssh://localhost/tmp/pilotstore/",
-        'size'              #:100,
+        resource_url        # The URL of the service endpoint
+        size                # Storage size of DP (in bytes)
 
 
     # AM: why don't we have those labels on the CP?  We need to check
@@ -961,22 +875,17 @@ class DataPilotDescription(dict):
 
     """
 
-
-
-
 # ------------------------------------------------------------------------------
 #
 class DataPilot():
     """Object representing a physical storage resource.
 
-    MS: capacity?
+    Class members::
 
-    # Class members
-    #    'id',           # Reference to this PD
-    #    'description',  # Description of PD
-    #    'context',      # SAGA context
-    #    'resource_url', # Resource  URL
-    #    'state',        # State of the PD
+        id              # Reference to this DP
+        description     # Description of DP
+        context         # SAGA context
+        state           # State of the DP
 
     """
 
@@ -1136,26 +1045,6 @@ class DataPilot():
         # cancel all DUs
         for du in self.units.keys () :
             du.cancel ()
-        """
-
-    def get_state(self):
-        """Return the state of the DataPilot.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-        """
-        This doesn't really have a state :/
-        return RUNNING
         """
 
     def split_unit(self, unit_id, num_of_chunks=None, size_of_chunks=None):
