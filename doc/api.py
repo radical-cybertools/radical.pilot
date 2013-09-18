@@ -103,10 +103,7 @@ Data Unit States
   progress.
 
 * Available
-  Data is available and is not in use. Can be accessed, split and merged.
-
-* Busy
-  Data is available, but is in use. Can be accessed, but not split or merged.
+  All DU content is available on at least one DataPilot.
 
 * Canceled    
   The data is scheduled for removal and cannot be used anymore.
