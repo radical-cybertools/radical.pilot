@@ -498,6 +498,41 @@ class DataUnit():
 
         """
 
+    def split(self, num_of_chunks=None, size_of_chunks=None):
+        """Split the DU unit in a set of DUs based on the number of chunks
+        and chunk size.
+
+        The split method is on the DU because it splits the DU into new
+        DUs that will reside on the same DP as the original DU.
+
+        Keyword arguments::
+
+            num_of_chunks(int): the number of chunks to create.
+            size_of_chunks(int): the size of chunks.
+
+            Only one of the two arguments should be specified.
+
+        Return::
+
+            chunks[DU id]: a list of DU id's that were created.
+
+        """
+        pass
+        """
+        chunks = []
+        for i, lfn in enumerate (self.units[du_id].lfns) :
+            chunk_id = i%n_chunks
+            if not chunk_id in chunks :
+                new_dus[chunk_id] = []
+            chunks[chunk_id].append (lfn)
+
+        new_dus = []
+        for chunk in chunks
+            new_dus.append (DataUnit (chunk)
+
+        return new_dus
+        """
+
 
 # ------------------------------------------------------------------------------
 #
@@ -1047,41 +1082,10 @@ class DataPilot():
             du.cancel ()
         """
 
-    def split_unit(self, unit_id, num_of_chunks=None, size_of_chunks=None):
-        """Split the DU unit in a set of DUs based on the number of chunks
-        and chunk size.
-
-        Keyword arguments::
-
-            unit_id(DU id): the DU to split.
-            num_of_chunks(int): the number of chunks to create.
-            size_of_chunks(int): the size of chunks.
-
-            Only one of the two arguments should be specified.
-
-        Return::
-
-            chunks[DU id]: a list of DU id's that were created.
-
-        """
-        pass
-        """
-        chunks = []
-        for i, lfn in enumerate (self.units[du_id].lfns) :
-            chunk_id = i%n_chunks
-            if not chunk_id in chunks :
-                new_dus[chunk_id] = []
-            chunks[chunk_id].append (lfn)
-
-        new_dus = []
-        for chunk in chunks
-            new_dus.append (DataUnit (chunk)
-
-        return new_dus
-        """
-
     def merge_units(self, input_ids):
         """Merge DU units into one DU.
+
+        The merge method is on the DP because it creates a new DU under this DP.
 
         Keyword arguments::
 
@@ -1100,6 +1104,7 @@ class DataPilot():
             compined.append (du.files)
         return DataUnit (combined)
         """
+
 
     # MS: BigJob has a get_url() to get a "persistent" uri of a DP
 
