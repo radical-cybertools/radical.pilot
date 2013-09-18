@@ -921,6 +921,7 @@ class DataPilot():
         description     # Description of DP
         context         # SAGA context
         state           # State of the DP
+        url             # Persistent URL to this DP
 
     """
 
@@ -945,7 +946,6 @@ class DataPilot():
         # replica name space
         self.backend = saga.replica.dir ("irods://irods.host.osg/")
         """
-
 
     def submit_unit(self, dud):
         """Add a Data Unit to this Data Pilot.
@@ -978,7 +978,6 @@ class DataPilot():
             self.units[du_id].lfns[name].add_location (pfn)   # or use upload?
         """
 
-
     def cancel_unit(self, du_id):
         """Remove a Data Unit from this Data Pilot.
 
@@ -1005,7 +1004,6 @@ class DataPilot():
         self.units[du_id] = None
         """
 
-
     def list_units(self):
         """List Data Units in this Data Pilot.
 
@@ -1026,7 +1024,6 @@ class DataPilot():
         # list submitted DUs
         return self.units[du_id].keys ()
         """
-
 
     def wait(self):
         """Wait for pending data transfers.
@@ -1057,7 +1054,6 @@ class DataPilot():
         for du in self.units.keys () :
             du.wait ()
         """
-
 
     def cancel(self):
         """Cancel DataPilot
@@ -1095,6 +1091,10 @@ class DataPilot():
 
             output_id(DU id): the merged unit.
 
+        Raises::
+
+            NoSuccess: Not enough space to replicate all DUs on this DP.
+
         """
         pass
         """
@@ -1104,11 +1104,6 @@ class DataPilot():
             compined.append (du.files)
         return DataUnit (combined)
         """
-
-
-    # MS: BigJob has a get_url() to get a "persistent" uri of a DP
-
-    # AM: should be fully symmetric to PS
 
 
 # ------------------------------------------------------------------------------
