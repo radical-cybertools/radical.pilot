@@ -13,7 +13,7 @@ cud_1 = {
 dud_1 = {
     name        : du_1
     file_urls   : { RADICAL : [google://.../radical.txt]
-                    OGF     : [google://.../ogf.txt    ] }
+                    OGF     : [file://.../ogf.txt    ] }
 }
 
 
