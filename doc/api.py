@@ -711,6 +711,8 @@ class ComputePilot():
         seconds, whichever comes first.  Calls with timeout<0.0 will wait
         forever.
 
+        We keep this wait function, because it is input to the decision to cancel or not.
+
         Keyword argument(s)::
 
             name(type): description
@@ -723,50 +725,6 @@ class ComputePilot():
 
         """
         pass
-
-    def submit_unit(self, unit_desc):
-        """
-        Submit a unit description and return a unit.
-
-        Keyword argument(s)::
-            unit_desc: `UnitDescription` or list of `UnitDescription`s to be
-                       submitted.
-
-        Return::
-            id(ID):    string or list of strings, the ID(s) of the submitted
-                       unit(s).
-
-        Raises::
-            AM: consider AA exceptions for all calls?
-            BadParameter  : The given `UnitDescriptions`(s) were ill formatted,
-                            incomplete or of incorrect type.
-            NoSuccess     : The backend could not submit the unit.
-                            AM: how to return errors on bulk ops? :/
-
-
-        """
-        pass
-
-    def cancel_unit(self, unit_id):
-        """
-        Cancel a units belonging to this pilot.
-
-        Keyword argument::
-            unit_id:  string or list of strings, ID(s)  of unit(s) to cancel.
-
-        Return::
-            None
-
-        Raises::
-            DoesNotExist  : No unit with that ID under this pilot. 
-            BadParameter  : The given ID(s) were ill formatted or of incorrect
-                            type.
-            IncorrectState: Unit is already in final state.
-                            AM: we may want to make cancel on FINAL 
-                            units a noop to avoid races?
-            NoSuccess     : The backend could not cancel the unit.
-                            AM: how to return errors on bulk ops? :/
-        """
 
 
 # ------------------------------------------------------------------------------
@@ -861,22 +819,6 @@ class PilotService():
         """
         pass
 
-    def list_pilots(self):
-        """Return a list of ComputePilot IDs managed by this PS.
-
-        Keyword argument::
-
-            None
-
-        Return::
-
-            pilots([Compute Pilot IDs]): List of IDs of CPs.
-            or
-            None
-
-        """
-        pass
-
     def get_pilot(self, pilot_id):
         """Get (a) Pilot instance(s) based on ID.
 
@@ -896,25 +838,6 @@ class PilotService():
             pilot(ComputePilot): A ComputePilot object.
             or
             pilots([ComputePilot]): A list of ComputePilot objects.
-
-        """
-        pass
-
-    def wait(self, state):
-        """Wait for all U's under this PS to reach a certain state.
-
-        ComputePilot: State = 'FINAL': all CUs are done.
-        DataPilot: state='RUNNING': all DUs have finished transfers.
-
-        Keyword argument(s)::
-
-            state(STATE): The state to wait for.
-
-        Return::
-
-            name(type): description
-            or
-            None
 
         """
         pass
@@ -977,84 +900,6 @@ class DataPilot():
         # make sure we have a replica backend, and can start navigating the
         # replica name space
         self.backend = saga.replica.dir ("irods://irods.host.osg/")
-        """
-
-    def submit_unit(self, dud):
-        """Add a Data Unit to this Data Pilot.
-
-        AM: What does that do exactly?  When are data staged (if at all)?
-            What state needs the DU to be in?  Can that fail?
-
-        This brings
-
-        Keyword argument(s)::
-
-            dud(DataUnit Desc): description
-
-        Return::
-
-            None
-
-        """
-        pass
-        """
-        # for each file in the data pilot, create a lfn in the ldir and
-        # register the original copy
-        self.ldir = pilot_service.backend.open_dir ("/data_pilots/%s" \
-                                                 % dud.name)
-        self.units[du_id].dud  = dud
-        self.units[du_id].lfns = {}
-        for pfn in dud.files :
-            name = pfn.name
-            self.units[du_id].lfns[name] = self.self.rdir.open (name, CREATE)
-            self.units[du_id].lfns[name].add_location (pfn)   # or use upload?
-        """
-
-    def cancel_unit(self, du_id):
-        """Remove a Data Unit from this Data Pilot.
-
-        MS: What should the (optional) semantics of this call be?
-
-
-        Keyword argument(s)::
-
-            du_id(DataUnit): description
-
-        Return::
-
-            None
-
-        """
-        pass
-        """
-        # for each file in the data pilot, remove the lfn and all (non_original)
-        # copies
-        for lfn in self.units[du_id].lfns
-            for pfn in lfn.list_locations () :
-                if  not pfn in self.units[du_id].dud.files :
-                    lfn.remove_location (pfn, PURGE)
-        self.units[du_id] = None
-        """
-
-    def list_units(self):
-        """List Data Units in this Data Pilot.
-
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            units([DU IDs]): List of DUs in this DP.
-            or
-            None
-
-        """
-        pass
-        """
-        # list submitted DUs
-        return self.units[du_id].keys ()
         """
 
     def wait(self):
@@ -1265,24 +1110,6 @@ class UnitService():
 
          Return::
 
-            None
-
-        """
-        pass
-
-    def list_units(self, compute=True, data=True):
-        """List the Units handled by this UnitService.
-
-
-        Keyword argument(s)::
-
-            compute(bool): Enable the listing of Compute Units (default=True)
-            data(bool): Enable the listing Data Units (default=True)
-
-        Return::
-
-            name(type): description
-            or
             None
 
         """
