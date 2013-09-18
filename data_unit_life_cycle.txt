@@ -1,0 +1,27 @@
+
+cud_1 = {
+    name       : cu_1
+    exe        : cat
+    args       : [$du_1[RADICAL], $du_1[OGF]]
+    input_data : du_1
+}
+
+dud_1 = {
+    name       : du_1
+    file_urls  : { RADICAL : [google://.../radical.txt]
+                   OGF     : [google://.../ogf.txt    ] }
+}
+
+us: 
+  -> submit (cpd (kraken)
+  -> submit (dpd (kraken)
+  -> submit (cud_1)
+  -> submit (dud_1)
+
+  -> du_1    : replicate (kraken)
+     file_urls  : { RADICAL : [google://.../radical.txt, kraken://.../radical.txt]
+                    OGF     : [google://.../ogf.txt    , kraken://.../ogf.txt    ] }
+
+  -> cu_1    : 
+     cat /.../radical.txt /.../ogf.txt
+
