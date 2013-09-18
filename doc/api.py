@@ -410,12 +410,14 @@ class ComputeUnit():
 class DataUnitDescription(UnitDescription):
     """DataUnitDescription.
 
-    {
-        'file_urls': [file1, file2, file3]
-    }
-        
-    Currently, no directories supported.
 
+    Class members:
+
+        'file_urls': List of filenames relative to a physical resource.
+
+
+
+    
     AM: I am still confused about the symmetry aspects to ComputeUnits.  Why
         is here no CandidateHosts, for example?  Project?  Contact?
         LifeTime?  Without those properties, there is not much resource
@@ -423,21 +425,6 @@ class DataUnitDescription(UnitDescription):
         / caching...
 
     """
-
-    def __init__(self):
-        """
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
 
 
 # ------------------------------------------------------------------------------
@@ -447,20 +434,10 @@ class DataUnit():
     refering to its location.
 
 
-    MS: Need to think about copying & replication, i.e. at what level
-    do we expose that functionality.
-
     """
 
-    def __init__(self, data_unit_description=None, static=False):
+    def __init__(self, data_unit_description=None):
         """ Data Unit constructor.
-
-        If static is True, the data is already located on the Data Pilot
-        location. Therefore no transfer is required and only the data
-        structure needs to be populated.
-
-        AM: so, static negates early binding, right?
-        AM: What is the use case for static?
 
         Keyword argument(s)::
 
@@ -475,18 +452,18 @@ class DataUnit():
         """
         pass
         """
-        self.tc = saga.task.Container ()
-        if not static :
-            for lfn in self.ldir :
-                tc.add (lfn.replicate ('some resource name???', ASYNC))
+        self.tc = saga.task.Container()
+        if not static:
+            for lfn in self.ldir:
+                tc.add(lfn.replicate('some resource name???', ASYNC))
         """
 
-    def wait(self, state='RUNNING'):
-        """Wait for Data Unit to become 'RUNNING'.
+    def wait(self, state='AVAILABLE | BUSY'):
+        """Wait for Data Unit to become available..
 
         Keyword arguments::
 
-            state(STATE): The state to wait for.
+            state(DU STATE): The state to wait for.
 
         Return::
 
@@ -495,7 +472,7 @@ class DataUnit():
         """
         pass
         """
-        return self.tc.wait (state)
+        return self.tc.wait(state)
         """
             
 
@@ -516,7 +493,7 @@ class DataUnit():
         """
         pass
         """
-        return self.ldir.list ()
+        return self.ldir.list()
         """
 
     def get_state(self):
@@ -699,9 +676,8 @@ class ComputePilotDescription(dict):
 # ------------------------------------------------------------------------------
 #
 class ComputePilot():
-    """This represents instances of ComputePilots.
+    """Object representing a physical computing resource.
 
-        MS: capacity?
 
     """
 
@@ -1005,17 +981,13 @@ class PilotService():
 # ------------------------------------------------------------------------------
 #
 class DataPilotDescription(dict):
-    """DataPilotDescription.
-    {
-        'service_url': "ssh://localhost/tmp/pilotstore/",
-        'size':100,
+    """Description to instantiate a data pilot on a physical resource.
 
-        # Affinity
-        # pilot stores sharing the same label are located in the same datacenter
-        'affinity_datacenter_label',
-        # pilot stores sharing the same label are located on the same machine
-        'affinity_machine_label',
-    }
+    Class members::
+
+        'service_url',      #: "ssh://localhost/tmp/pilotstore/",
+        'size'              #:100,
+
 
     # AM: why don't we have those labels on the CP?  We need to check
     # with Melissa if that is required / sufficient for expressing pilot
@@ -1028,21 +1000,6 @@ class DataPilotDescription(dict):
 
     """
 
-    def __init__(self):
-        """DPD constructor.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
 
 
 
