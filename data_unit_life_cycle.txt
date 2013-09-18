@@ -1,4 +1,5 @@
 
+
 cud_1 = {
     name       : cu_1
     exe        : cat
@@ -6,11 +7,13 @@ cud_1 = {
     input_data : du_1
 }
 
+
 dud_1 = {
     name       : du_1
     file_urls  : { RADICAL : [google://.../radical.txt]
                    OGF     : [google://.../ogf.txt    ] }
 }
+
 
 us: 
   -> submit (cpd (kraken)
@@ -18,10 +21,50 @@ us:
   -> submit (cud_1)
   -> submit (dud_1)
 
-  -> du_1    : replicate (kraken)
+  -> du_1       : replicate (kraken)
      file_urls  : { RADICAL : [google://.../radical.txt, kraken://.../radical.txt]
                     OGF     : [google://.../ogf.txt    , kraken://.../ogf.txt    ] }
 
-  -> cu_1    : 
-     cat /.../radical.txt /.../ogf.txt
+  -> cu_1       : cat /.../radical.txt /.../ogf.txt
+
+
+[du_2, du_3] = du_1.split (2)
+
+  -> du_2 
+     file_urls  : { RADICAL : [google://.../radical.txt, kraken://.../radical.txt] }
+
+  -> du_3 
+     file_urls  : { OGF     : [google://.../ogf.txt    , kraken://.../ogf.txt    ] }
+
+
+cud_2 = {
+    name        : cu_2
+    exe         : wc
+    args        : [$du_2[RADICAL]]
+    input_data  : du_2
+}
+
+
+cud_3 = {
+    name        : cu_3
+    exe         : wc
+    args        : [$du_3[RADICAL]]
+    input_data  : du_3
+}
+
+cud_4 = {
+    name        : cu_4
+    exe         : wc
+    args        : [-l $du_1[RADICAL] $du_1[OGF]]
+    input_data  : du_1
+}
+
+
+us: 
+  -> submit (cud_2)
+  -> cu_2       : wc /.../radical.txt
+  -> submit (cud_3)
+  -> cu_3       : wc /.../ogf.txt
+  -> submit (cud_4)
+  -> cu_4       : wc -l /.../radical.txt /.../ogf.txt
 
