@@ -234,7 +234,7 @@ class ComputeUnitDescription(UnitDescription):
         'cpu_architecture',     # Specific requirement for binary
         'operating_system_type',# Specific OS version required?
         'total_physical_memory',# May not be physical, but in sync with saga.
-        'wall_time_limit',      # CU will not run longer then this.
+        'wall_time_limit',      # CU will not run longer than this.
 
         # Startup ordering dependencies
         # (Are only considered within scope of bulk submission.)
@@ -405,21 +405,26 @@ class ComputeUnit():
 # ------------------------------------------------------------------------------
 # 
 class DataUnitDescription(UnitDescription):
-    """DataUnitDescription.
-
+    """Describe a DU used for input or output of a CU.
 
     Class members:
 
-        'file_urls': List of filenames relative to a physical resource.
+        'name',         # A non-unique label.
+        'file_urls',    # Dict of logical and physical filesnames, e.g.:
+                        # { 'NAME1' : [ 'google://.../name1.txt',
+                        #               'srm://grid/name1.txt'],
+                        #   'NAME2' : [ 'file://.../name2.txt' ] }
+        'lifetime',     # Needs to stay available for at least ...
+        'cleanup',      # Can be removed when cancelled
+        'size',         # Estimated size of DU (in bytes)
 
 
-
-    
     AM: I am still confused about the symmetry aspects to ComputeUnits.  Why
         is here no CandidateHosts, for example?  Project?  Contact?
         LifeTime?  Without those properties, there is not much resource
         management the data-pilot can do, beyond clever data staging
         / caching...
+    MS: Clever data staging is not a minor thing, is it? Im tempted to say I addressed this comment.
 
     """
 
@@ -434,7 +439,7 @@ class DataUnit():
     """
 
     def __init__(self, data_unit_description=None):
-        """ Data Unit constructor.
+        """ Data Unit constructor to reconnect to an existing DU.
 
         Keyword argument(s)::
 
@@ -455,7 +460,7 @@ class DataUnit():
                 tc.add(lfn.replicate('some resource name???', ASYNC))
         """
 
-    def wait(self, state='AVAILABLE | BUSY'):
+    def wait(self, state='AVAILABLE'):
         """Wait for Data Unit to become available..
 
         Keyword arguments::
@@ -512,33 +517,12 @@ class DataUnit():
         return self.tc.state
         """
 
-    def add_file(self, file):
-        """Add file to the Data Unit.
+    def remove(self):
+        """Remove all replicas of all contents in Data Unit.
 
         Keyword argument::
-
-            file(uri): the location of the file to copy to the DU.
-
-        Return::
 
             None
-
-        """
-        pass
-        """
-        if file.name in self.ldir.list () :
-            raise AlreadyExists
-        lfn = self.ldir.open (file.name, CREATE)
-        lfn.add_location (file)
-        self.tc.add (lfn.replicate ('some resource name???', ASYNC))
-        """
-
-    def remove_file(self, filename):
-        """Remove file from the Data Unit.
-
-        Keyword argument::
-
-            filename(string): the name of the file to remove from the DU.
 
         Return::
 
@@ -574,11 +558,26 @@ class DataUnit():
             lfn.download (dest_uri + '/' + lfn.name)
         """
 
-    # AM: needs most/all methods from ComputeUnit, right?
+    def cancel(self):
+        """Stops all services from dealing with this DU. Does not remove the data.
+
+        Keyword argument::
+
+            None
+
+        Return::
+
+            None
+
+        Raises::
+
+            None
+
+        """
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 class ComputePilotDescription(dict):
     """Description used to instantiate a ComputePilot.
 
