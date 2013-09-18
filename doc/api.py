@@ -103,10 +103,10 @@ Data Unit States
   progress.
 
 * Available
-  Data is available and is not in use. Can be accessed, splitted and merged.
+  Data is available and is not in use. Can be accessed, split and merged.
 
 * Busy
-  Data is available, but is in use. Can be accessed, but not splitted and merged.
+  Data is available, but is in use. Can be accessed, but not split or merged.
 
 * Canceled    
   The data is scheduled for removal and cannot be used anymore.
