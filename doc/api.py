@@ -439,7 +439,7 @@ class DataUnit():
         """
         return self.tc.wait(state)
         """
-            
+
     def remove(self):
         """Remove all replicas of all contents in Data Unit.
 
@@ -531,6 +531,38 @@ class DataUnit():
             new_dus.append (DataUnit (chunk)
 
         return new_dus
+        """
+
+    def merge(self, input_ids, data_pilot=None, replicate_to_all=False):
+        """Merge DU units into one DU.
+
+        The merge method is on the DU (and not DP or US) because a DU is not necessarily
+        associated to A DP or US.
+
+        Keyword arguments::
+
+            input_ids([DU ids]): the DU(s) to merge.
+            data_pilot(DP id): DP to replicate to.
+            or
+            data_pilot([DP ids]): DPs to replicate to.
+            replicate_to_all(bool): Replicate to all DPs that are among the DUs to merge.
+
+        Return::
+
+            output_id(DU id): the merged unit.
+
+        Raises::
+
+            NoSuccess: Not enough space to replicate all DUs on this DP.
+
+        """
+        pass
+        """
+        combined = []
+        for du_id in input_ids :
+            du = DataUnit (du_id)
+            compined.append (du.files)
+        return DataUnit (combined)
         """
 
 
@@ -1078,32 +1110,6 @@ class DataPilot():
             du.cancel ()
         """
 
-    def merge_units(self, input_ids):
-        """Merge DU units into one DU.
-
-        The merge method is on the DP because it creates a new DU under this DP.
-
-        Keyword arguments::
-
-            input_ids([DU ids]): the DUs to merge.
-
-        Return::
-
-            output_id(DU id): the merged unit.
-
-        Raises::
-
-            NoSuccess: Not enough space to replicate all DUs on this DP.
-
-        """
-        pass
-        """
-        combined = []
-        for du_id in input_ids :
-            du = DataUnit (du_id)
-            compined.append (du.files)
-        return DataUnit (combined)
-        """
 
 
 # ------------------------------------------------------------------------------
