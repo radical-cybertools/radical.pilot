@@ -436,6 +436,11 @@ class DataUnit():
     refering to its location.
 
 
+    Class members:
+
+        'description',  # The DUD used to instantiate
+        'state',        # The state of the DU
+
     """
 
     def __init__(self, data_unit_description=None):
@@ -477,46 +482,6 @@ class DataUnit():
         return self.tc.wait(state)
         """
             
-
-    def list_items(self):
-        """List the content of the Data Unit.
-
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-        """
-        return self.ldir.list()
-        """
-
-    def get_state(self):
-        """Return the state of the Data Unit.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-        """
-        return self.tc.state
-        """
-
     def remove(self):
         """Remove all replicas of all contents in Data Unit.
 
