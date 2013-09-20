@@ -195,7 +195,7 @@ Signature Template:
 # ------------------------------------------------------------------------------
 # 
 class UnitDescription(dict):
-  pass
+    pass
 
 
 # ------------------------------------------------------------------------------
@@ -234,7 +234,7 @@ class ComputeUnitDescription(UnitDescription):
         'cpu_architecture',     # Specific requirement for binary
         'operating_system_type',# Specific OS version required?
         'total_physical_memory',# May not be physical, but in sync with saga.
-        'wall_time_limit',      # CU will not run longer then this.
+        'wall_time_limit',      # CU will not run longer than this.
 
         # Startup ordering dependencies
         # (Are only considered within scope of bulk submission.)
@@ -248,6 +248,14 @@ class ComputeUnitDescription(UnitDescription):
 #
 class ComputeUnit():
     """ComputeUnit object that allows for direct operations on CUs.
+
+    Class members:
+
+        id              # Unique ID
+        description     # The DUD used to instantiate
+        state           # The state of the DU
+
+
 
     """
 
@@ -272,25 +280,6 @@ class ComputeUnit():
         Raises::
 
             None
-
-        """
-        pass
-
-    def get_state(self):
-        """Return the state of this Compute Unit.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            state(State): State of CU.
-
-        Raises::
-
-            None
-
 
         """
         pass
@@ -350,38 +339,6 @@ class ComputeUnit():
         """
         pass
 
-    def get_description(self):
-        """Returns a ComputeUnitDescription for this instance.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-
-        """
-        pass
-
-    def get_id(self):
-        """Returns an ID (string) for this CU instance.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            cu_id(ID): The ID of this CU.
-            
-
-        """
-        pass
-
     def wait(self, timeout=1.0, state='FINAL'):
         """Returns when the unit reaches the specified state, or after timeout
         seconds, whichever comes first.
@@ -405,21 +362,26 @@ class ComputeUnit():
 # ------------------------------------------------------------------------------
 # 
 class DataUnitDescription(UnitDescription):
-    """DataUnitDescription.
-
+    """Describe a DU used for input or output of a CU.
 
     Class members:
 
-        'file_urls': List of filenames relative to a physical resource.
+        name         # A non-unique label.
+        file_urls    # Dict of logical and physical filesnames, e.g.:
+                        # { 'NAME1' : [ 'google://.../name1.txt',
+                        #               'srm://grid/name1.txt'],
+                        #   'NAME2' : [ 'file://.../name2.txt' ] }
+        lifetime     # Needs to stay available for at least ...
+        cleanup      # Can be removed when cancelled
+        size         # Estimated size of DU (in bytes)
 
 
-
-    
     AM: I am still confused about the symmetry aspects to ComputeUnits.  Why
         is here no CandidateHosts, for example?  Project?  Contact?
         LifeTime?  Without those properties, there is not much resource
         management the data-pilot can do, beyond clever data staging
         / caching...
+    MS: Clever data staging is not a minor thing, is it? Im tempted to say I addressed this comment.
 
     """
 
@@ -431,10 +393,16 @@ class DataUnit():
     refering to its location.
 
 
+    Class members:
+
+        id                  # Unique ID
+        description         # The DUD used to instantiate
+        state               # The state of the DU
+
     """
 
     def __init__(self, data_unit_description=None):
-        """ Data Unit constructor.
+        """ Data Unit constructor to reconnect to an existing DU.
 
         Keyword argument(s)::
 
@@ -455,7 +423,7 @@ class DataUnit():
                 tc.add(lfn.replicate('some resource name???', ASYNC))
         """
 
-    def wait(self, state='AVAILABLE | BUSY'):
+    def wait(self, state='AVAILABLE'):
         """Wait for Data Unit to become available..
 
         Keyword arguments::
@@ -471,74 +439,13 @@ class DataUnit():
         """
         return self.tc.wait(state)
         """
-            
 
-    def list_items(self):
-        """List the content of the Data Unit.
-
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-        """
-        return self.ldir.list()
-        """
-
-    def get_state(self):
-        """Return the state of the Data Unit.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-        """
-        return self.tc.state
-        """
-
-    def add_file(self, file):
-        """Add file to the Data Unit.
+    def remove(self):
+        """Remove all replicas of all contents in Data Unit.
 
         Keyword argument::
 
-            file(uri): the location of the file to copy to the DU.
-
-        Return::
-
             None
-
-        """
-        pass
-        """
-        if file.name in self.ldir.list () :
-            raise AlreadyExists
-        lfn = self.ldir.open (file.name, CREATE)
-        lfn.add_location (file)
-        self.tc.add (lfn.replicate ('some resource name???', ASYNC))
-        """
-
-    def remove_file(self, filename):
-        """Remove file from the Data Unit.
-
-        Keyword argument::
-
-            filename(string): the name of the file to remove from the DU.
 
         Return::
 
@@ -574,11 +481,93 @@ class DataUnit():
             lfn.download (dest_uri + '/' + lfn.name)
         """
 
-    # AM: needs most/all methods from ComputeUnit, right?
+    def cancel(self):
+        """Stops all services from dealing with this DU. Does not remove the data.
+
+        Keyword argument::
+
+            None
+
+        Return::
+
+            None
+
+        Raises::
+
+            None
+
+        """
+
+    def split(self, num_of_chunks=None, size_of_chunks=None):
+        """Split the DU unit in a set of DUs based on the number of chunks
+        and chunk size.
+
+        The split method is on the DU because it splits the DU into new
+        DUs that will reside on the same DP as the original DU.
+
+        Keyword arguments::
+
+            num_of_chunks(int): the number of chunks to create.
+            size_of_chunks(int): the size of chunks.
+
+            Only one of the two arguments should be specified.
+
+        Return::
+
+            chunks[DU id]: a list of DU id's that were created.
+
+        """
+        pass
+        """
+        chunks = []
+        for i, lfn in enumerate (self.units[du_id].lfns) :
+            chunk_id = i%n_chunks
+            if not chunk_id in chunks :
+                new_dus[chunk_id] = []
+            chunks[chunk_id].append (lfn)
+
+        new_dus = []
+        for chunk in chunks
+            new_dus.append (DataUnit (chunk)
+
+        return new_dus
+        """
+
+    def merge(self, input_ids, data_pilot=None, replicate_to_all=False):
+        """Merge DU units into one DU.
+
+        The merge method is on the DU (and not DP or US) because a DU is not necessarily
+        associated to A DP or US.
+
+        Keyword arguments::
+
+            input_ids([DU ids]): the DU(s) to merge.
+            data_pilot(DP id): DP to replicate to.
+            or
+            data_pilot([DP ids]): DPs to replicate to.
+            replicate_to_all(bool): Replicate to all DPs that are among the DUs to merge.
+
+        Return::
+
+            output_id(DU id): the merged unit.
+
+        Raises::
+
+            NoSuccess: Not enough space to replicate all DUs on this DP.
+
+        """
+        pass
+        """
+        combined = []
+        for du_id in input_ids :
+            du = DataUnit (du_id)
+            compined.append (du.files)
+        return DataUnit (combined)
+        """
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 class ComputePilotDescription(dict):
     """Description used to instantiate a ComputePilot.
 
@@ -675,6 +664,12 @@ class ComputePilotDescription(dict):
 class ComputePilot():
     """Object representing a physical computing resource.
 
+    Class members::
+
+        id              # Unique ID of this CP
+        description     # The description used to instantiate
+        state           # The state of this CP
+        url             # Persistent URL
 
     """
 
@@ -690,22 +685,6 @@ class ComputePilot():
         Return::
             cp(ComputePilot): the ComputePilot object
 
-
-        """
-        pass
-
-    def get_state(self):
-        """Return state of PC.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
 
         """
         pass
@@ -727,45 +706,13 @@ class ComputePilot():
         """
         pass
 
-    def get_id(self):
-        """Returns an ID (string) for this instance.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
-    # MS: BigJob has a get_url() to get a "persistent" uri of a CP
-
-    def get_description(self):
-        """Returns a ComputePilotDescription for this instance.
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
     def wait(self, timeout=-1.0, state='RUNNING'):
         """Returns when the pilot reaches the specified state, or after timeout
         seconds, whichever comes first.  Calls with timeout<0.0 will wait
         forever.
 
+        We keep this wait function, because it is input to the decision to cancel or not.
+
         Keyword argument(s)::
 
             name(type): description
@@ -778,50 +725,6 @@ class ComputePilot():
 
         """
         pass
-
-    def submit_unit(self, unit_desc):
-        """
-        Submit a unit description and return a unit.
-
-        Keyword argument(s)::
-            unit_desc: `UnitDescription` or list of `UnitDescription`s to be
-                       submitted.
-
-        Return::
-            id(ID):    string or list of strings, the ID(s) of the submitted
-                       unit(s).
-
-        Raises::
-            AM: consider AA exceptions for all calls?
-            BadParameter  : The given `UnitDescriptions`(s) were ill formatted,
-                            incomplete or of incorrect type.
-            NoSuccess     : The backend could not submit the unit.
-                            AM: how to return errors on bulk ops? :/
-
-
-        """
-        pass
-
-    def cancel_unit(self, unit_id):
-        """
-        Cancel a units belonging to this pilot.
-
-        Keyword argument::
-            unit_id:  string or list of strings, ID(s)  of unit(s) to cancel.
-
-        Return::
-            None
-
-        Raises::
-            DoesNotExist  : No unit with that ID under this pilot. 
-            BadParameter  : The given ID(s) were ill formatted or of incorrect
-                            type.
-            IncorrectState: Unit is already in final state.
-                            AM: we may want to make cancel on FINAL 
-                            units a noop to avoid races?
-            NoSuccess     : The backend could not cancel the unit.
-                            AM: how to return errors on bulk ops? :/
-        """
 
 
 # ------------------------------------------------------------------------------
@@ -916,22 +819,6 @@ class PilotService():
         """
         pass
 
-    def list_pilots(self):
-        """Return a list of ComputePilot IDs managed by this PS.
-
-        Keyword argument::
-
-            None
-
-        Return::
-
-            pilots([Compute Pilot IDs]): List of IDs of CPs.
-            or
-            None
-
-        """
-        pass
-
     def get_pilot(self, pilot_id):
         """Get (a) Pilot instance(s) based on ID.
 
@@ -955,25 +842,6 @@ class PilotService():
         """
         pass
 
-    def wait(self, state):
-        """Wait for all U's under this PS to reach a certain state.
-
-        ComputePilot: State = 'FINAL': all CUs are done.
-        DataPilot: state='RUNNING': all DUs have finished transfers.
-
-        Keyword argument(s)::
-
-            state(STATE): The state to wait for.
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-
 
 # ------------------------------------------------------------------------------
 #
@@ -982,8 +850,8 @@ class DataPilotDescription(dict):
 
     Class members::
 
-        'service_url',      #: "ssh://localhost/tmp/pilotstore/",
-        'size'              #:100,
+        resource_url        # The URL of the service endpoint
+        size                # Storage size of DP (in bytes)
 
 
     # AM: why don't we have those labels on the CP?  We need to check
@@ -997,22 +865,18 @@ class DataPilotDescription(dict):
 
     """
 
-
-
-
 # ------------------------------------------------------------------------------
 #
 class DataPilot():
     """Object representing a physical storage resource.
 
-    MS: capacity?
+    Class members::
 
-    # Class members
-    #    'id',           # Reference to this PD
-    #    'description',  # Description of PD
-    #    'context',      # SAGA context
-    #    'resource_url', # Resource  URL
-    #    'state',        # State of the PD
+        id              # Reference to this DP
+        description     # Description of DP
+        context         # SAGA context
+        state           # State of the DP
+        url             # Persistent URL to this DP
 
     """
 
@@ -1037,88 +901,6 @@ class DataPilot():
         # replica name space
         self.backend = saga.replica.dir ("irods://irods.host.osg/")
         """
-
-
-    def submit_unit(self, dud):
-        """Add a Data Unit to this Data Pilot.
-
-        AM: What does that do exactly?  When are data staged (if at all)?
-            What state needs the DU to be in?  Can that fail?
-
-        This brings
-
-        Keyword argument(s)::
-
-            dud(DataUnit Desc): description
-
-        Return::
-
-            None
-
-        """
-        pass
-        """
-        # for each file in the data pilot, create a lfn in the ldir and
-        # register the original copy
-        self.ldir = pilot_service.backend.open_dir ("/data_pilots/%s" \
-                                                 % dud.name)
-        self.units[du_id].dud  = dud
-        self.units[du_id].lfns = {}
-        for pfn in dud.files :
-            name = pfn.name
-            self.units[du_id].lfns[name] = self.self.rdir.open (name, CREATE)
-            self.units[du_id].lfns[name].add_location (pfn)   # or use upload?
-        """
-
-
-    def cancel_unit(self, du_id):
-        """Remove a Data Unit from this Data Pilot.
-
-        MS: What should the (optional) semantics of this call be?
-
-
-        Keyword argument(s)::
-
-            du_id(DataUnit): description
-
-        Return::
-
-            None
-
-        """
-        pass
-        """
-        # for each file in the data pilot, remove the lfn and all (non_original)
-        # copies
-        for lfn in self.units[du_id].lfns
-            for pfn in lfn.list_locations () :
-                if  not pfn in self.units[du_id].dud.files :
-                    lfn.remove_location (pfn, PURGE)
-        self.units[du_id] = None
-        """
-
-
-    def list_units(self):
-        """List Data Units in this Data Pilot.
-
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            units([DU IDs]): List of DUs in this DP.
-            or
-            None
-
-        """
-        pass
-        """
-        # list submitted DUs
-        return self.units[du_id].keys ()
-        """
-
 
     def wait(self):
         """Wait for pending data transfers.
@@ -1150,7 +932,6 @@ class DataPilot():
             du.wait ()
         """
 
-
     def cancel(self):
         """Cancel DataPilot
 
@@ -1174,83 +955,6 @@ class DataPilot():
             du.cancel ()
         """
 
-    def get_state(self):
-        """Return the state of the DataPilot.
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """
-        pass
-        """
-        This doesn't really have a state :/
-        return RUNNING
-        """
-
-    def split_unit(self, unit_id, num_of_chunks=None, size_of_chunks=None):
-        """Split the DU unit in a set of DUs based on the number of chunks
-        and chunk size.
-
-        Keyword arguments::
-
-            unit_id(DU id): the DU to split.
-            num_of_chunks(int): the number of chunks to create.
-            size_of_chunks(int): the size of chunks.
-
-            Only one of the two arguments should be specified.
-
-        Return::
-
-            chunks[DU id]: a list of DU id's that were created.
-
-        """
-        pass
-        """
-        chunks = []
-        for i, lfn in enumerate (self.units[du_id].lfns) :
-            chunk_id = i%n_chunks
-            if not chunk_id in chunks :
-                new_dus[chunk_id] = []
-            chunks[chunk_id].append (lfn)
-
-        new_dus = []
-        for chunk in chunks
-            new_dus.append (DataUnit (chunk)
-
-        return new_dus
-        """
-
-    def merge_units(self, input_ids):
-        """Merge DU units into one DU.
-
-        Keyword arguments::
-
-            input_ids([DU ids]): the DUs to merge.
-
-        Return::
-
-            output_id(DU id): the merged unit.
-
-        """
-        pass
-        """
-        combined = []
-        for du_id in input_ids :
-            du = DataUnit (du_id)
-            compined.append (du.files)
-        return DataUnit (combined)
-        """
-
-    # MS: BigJob has a get_url() to get a "persistent" uri of a DP
-
-    # AM: should be fully symmetric to PS
 
 
 # ------------------------------------------------------------------------------
@@ -1406,24 +1110,6 @@ class UnitService():
 
          Return::
 
-            None
-
-        """
-        pass
-
-    def list_units(self, compute=True, data=True):
-        """List the Units handled by this UnitService.
-
-
-        Keyword argument(s)::
-
-            compute(bool): Enable the listing of Compute Units (default=True)
-            data(bool): Enable the listing Data Units (default=True)
-
-        Return::
-
-            name(type): description
-            or
             None
 
         """
