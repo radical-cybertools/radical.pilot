@@ -25,41 +25,58 @@ SAGA-Pilot API spec
 
 Pilot States
 ------------
+"""
 
-* Unknown
-  No state information could be obtained for that pilot.
+UNKNOWN = 'Unknown'
+"""
+No state information could be obtained for that pilot.
+"""
 
-* Pending
-  This state identifies a newly constructed pilot which is not yet Running, but
-  is waiting to acquire control over the target resource.
-  This state corresponds to the BES state Pending.  This state is initial.
+PENDING = 'Pending'
 
-* Running     
-  The pilot has successfully acquired control over the target resource,  and can
-  serve unit requests.
-  This state corresponds to the BES state Running.
+""" 
+This state identifies a newly constructed pilot which is not yet Running, but is
+waiting to acquire control over the target resource.  
+This state corresponds to the BES state Pending.  This state is initial.
+"""
 
-* Done    
-  The pilot has finished, and does not utilize any resources on the target
-  resource anymore.  It finished due to 'natural causes' -- for example, it
-  might have reached the end of its designated lifetime.
-  This state corresponds to the BES state Finished. This state is final.
+RUNNING = 'Running'
+"""
+The pilot has successfully acquired control over the target resource,  and can
+serve unit requests.  
+This state corresponds to the BES state Running.
+"""
 
-* Canceled    
-  The pilot has been canceled, i.e. cancel() has been called on
-  the job instance. 
-  This state corresponds to the BES state Canceled. This state is final.
+DONE = 'Done'
+"""
+The pilot has finished, and does not utilize any resources on the target
+resource anymore.  It finished due to 'natural causes' -- for example, it might
+have reached the end of its designated lifetime.
+This state corresponds to the BES state Finished. This state is final.
+"""
 
-* Failed  
-  The pilot has abnormally finished -- it either met an internal error condition
-  which caused it to abort, or it has been unexpectedly killed by the resource
-  manager.
-  This state corresponds to the BES state Failed. This state is final.
+CANCELED = 'Canceled'
+"""
+The pilot has been canceled, i.e. cancel() has been called on the job instance. 
+This state corresponds to the BES state Canceled. This state is final.
+"""
+
+FAILED = 'Failed' 
+"""
+The pilot has abnormally finished -- it either met an internal error condition
+which caused it to abort, or it has been unexpectedly killed by the resource
+manager.
+This state corresponds to the BES state Failed. This state is final.
+"""
 
 
-
+"""
 Compute Unit States
 -------------------
+
+These states are exactly the same as for the pilot, see above -- the
+documentation below clarifies the specific meaning of the states for Compute
+Units.
 
 * Unknown
   No state information could be obtained for that unit.
@@ -89,11 +106,20 @@ Compute Unit States
   which caused it to abort, or it has been unexpectedly killed by the pilot or
   unit manager.
   This state corresponds to the BES state Failed. This state is final.
+"""
 
 
-
+"""
 Data Unit States
 ----------------
+
+Data Unit states differ slightly from the Compute Unit states: DUs don't have
+a DONE state (as DUs don't have a lifetime), and the CU state 'RUNNING'
+corresponds to the DU state 'Avalable'.
+
+The documentation below again documents the exact meaning of the states for DUs.
+
+AM: we could consider to rename RUNNING and AVAILABLE to ACTIVE, for uniformity
 
 * Unknown
   No state information could be obtained for that unit.
@@ -101,55 +127,89 @@ Data Unit States
 * Pending
   Data are not yet available, but are scheduled for transfer, or transfer is in
   progress.
+"""
 
-* Available
-  All DU content is available on at least one DataPilot.
+AVAILABLE = 'Available'
+"""
+All DU content is available on at least one DataPilot.
+"""
 
+"""
 * Canceled    
   The data is scheduled for removal and cannot be used anymore.
 
 * Failed  
   The data could not be transferred, and will not become available in the
   future.
+"""
 
-
+"""
 Exceptions
 ----------
 
 As SAGA-Pilot is obviously based on SAGA, the exceptions are derived from
 SAGA's exception model, and can be extended where we see fit.
+"""
 
+import saga.exceptions as se
 
-* IncorrectURL
+class IncorrectURL (se.IncorrectUrl) :
+  """
   The given URL could not be interpreted, for example due to an incorrect
   / unknown schema. 
+  """
+  pass
 
-* BadParameter
+class BadParameter (se.BadParameter) :
+  """
   A given parameter is out of bound or ill formatted.
+  """
+  pass
 
-* DoesNotExist
+class DoesNotExist (se.DoesNotExist) :
+  """
   An operation tried to access a non-existing entity.
+  """
+  pass
 
-* IncorrectState
+class IncorrectState (se.IncorrectState) :
+  """
   The operation is not allowed on the entity in its current state.
+  """
+  pass
 
-* PermissionDenied
+class PermissionDenied (se.PermissionDenied) :
+  """
   The used identity is not permitted to perform the requested operation.
+  """
+  pass
 
-* AuthorizationFailed
+class AuthorizationFailed (se.AuthorizationFailed) :
+  """
   The backend could not establish a valid identity.
- 
-* AuthenticationFailed
-  The backend could not establish a valid identity.
+  """
+  pass
 
-* Timeout
+class AuthenticationFailed (se.AuthenticationFailed) :
+  """
+  The backend could not establish a valid identity.
+  """
+  pass
+
+class Timeout (se.Timeout) :
+  """
   The interaction with the backend times out.
+  """
+  pass
 
-* NoSuccess
+class NoSuccess (se.NoSuccess) :
+  """
   Some other error occurred.
+  """
+  pass
 
 
-
+"""
 Glossary
 --------
 
@@ -195,6 +255,10 @@ Signature Template:
 # ------------------------------------------------------------------------------
 # 
 class UnitDescription(dict):
+    """ 
+    Base class for ComputeUnitDescription and DataUnitDescription, to cleanly
+    specify the signatures for methods which handle both types.
+    """
     pass
 
 
@@ -259,27 +323,30 @@ class ComputeUnit():
 
     """
 
-    def __init__(self, cu_id=None):
-        """Compute Unit constructor.
+    def __init__(self, cu_id):
+        """
+        Compute Unit constructor.
+
+        Use the 'get_unit()' call on the US for bulk and async CU construction.
 
         MS: If we just have textual IDs, then we can't construct CUs using
         the ID only, as we would have no idea which US to talk too.
         Which is fine, but then we get rid of the cu_id argument here and
         "just" use the get_unit() call in the SU.
+        AM: This depends on how we format the IDs (See saga job IDs.)
 
         Keyword argument(s)::
-
-            name(type): description
+            id(string):  ID referencing the unit to be referenced by the created
+                         object instance..
 
         Return::
-
-            name(type): description
-            or
-            None
+            ComputeUnit: class instance representing the referenced CU.
 
         Raises::
-
-            None
+            DoesNotExist
+            AuthorizationDenied
+            AuthenticationFailed
+            NoSuccess
 
         """
         pass
@@ -1306,161 +1373,12 @@ class Callback () :
         pass
 
 
-
 # ------------------------------------------------------------------------------
 #
-class _AttributesBase (object) :
-    """ 
-    This class only exists to host properties -- as object itself does *not* have
-    properties!  This class is not part of the public attribute API.
+class Attributes (_object) :
     """
-
-
-
-# ------------------------------------------------------------------------------
-#
-class Attributes (_AttributesBase) :
+    For documentation, see the SAGA Attributes interface documentation.
     """
-    Attribute Interface Class
-
-    The Attributes interface implements the attribute semantics of the SAGA Core
-    API specification (http://ogf.org/documents/GFD.90.pdf).  Additionally, this
-    implementation provides that semantics the python property interface.  Note 
-    that a *single* set of attributes is internally managed, no matter what 
-    interface is used for access.
-
-    A class which uses this interface can internally specify which attributes
-    can be set, and what type they have.  Also, default values can be specified,
-    and the class provides a rudimentary support for converting scalar
-    attributes into vector attributes and back.
-
-    Also, the consumer of this API can register callbacks, which get triggered
-    on changes to specific attribute values.
-
-    Example use case::
-
-
-        # --------------------------------------------------------------------------------
-        class Transliterator ( pilot.Attributes ) :
-            
-            def __init__ (self, *args, **kwargs) :
-                # setting attribs to non-extensible will cause the cal to init below to
-                # complain if attributes are specified.  Default is extensible.
-              # self._attributes_extensible (False)
-        
-                # pass args to base class init (requires 'extensible')
-                super (Transliterator, self).__init__ (*args, **kwargs)
-        
-                # setup class attribs
-                self._attributes_register   ('apple', 'Appel', URL,    SCALAR, WRITEABLE)
-                self._attributes_register   ('plum',  'Pruim', STRING, SCALAR, READONLY)
-        
-                # setting attribs to non-extensible at *this* point will have allowed
-                # custom user attribs on __init__ time (via args), but will then forbid
-                # any additional custom attributes.
-              # self._attributes_extensible (False)
-        
-        
-        # --------------------------------------------------------------------------------
-        if __name__ == "__main__":
-        
-            # define a callback method.  This callback can get registered for
-            # attribute changes later.
-        
-            # ----------------------------------------------------------------------------
-            def cb (key, val, obj) :
-                # the callback gets information about what attribute was changed
-                # on what object:
-                print "called: %s - %s - %s"  %  (key, str(val), type (obj))
-
-                # returning True will keep the callback registered for further
-                # attribute changes.
-                return True
-            # ----------------------------------------------------------------------------
-        
-            # create a class instance and add a 'cherry' attribute/value on
-            # creation.  
-            trans = Transliterator (cherry='Kersche')
-        
-            # use the property interface to mess with the pre-defined
-            # 'apple' attribute
-            print "\\n -- apple"
-            print trans.apple 
-            trans.apple = 'Abbel'
-            print trans.apple 
-        
-            # add our callback to the apple attribute, and trigger some changes.
-            # Note that the callback is also triggered when the attribute's
-            # value changes w/o user control, e.g. by some internal state
-            # changes.
-            trans.add_callback ('apple', cb)
-            trans.apple = 'Apfel'
-        
-            # Setting an attribute final is actually an internal method, used by
-            # the implementation to signal that no further changes on that
-            # attribute are expected.  We use that here for demonstrating the
-            # concept though.  Callback is invoked on set_final().
-            trans._attributes_set_final ('apple')
-            trans.apple = 'Abbel'
-            print trans.apple 
-        
-            # mess around with the 'plum' attribute, which was marked as
-            # ReadOnly on registration time.
-            print "\\n -- plum"
-            print trans.plum
-          # trans.plum    = 'Pflaume'  # raises readonly exception
-          # trans['plum'] = 'Pflaume'  # raises readonly exception
-            print trans.plum
-        
-            # check if the 'cherry' attribute exists, which got created on
-            # instantiation time.
-            print "\\n -- cherry"
-            print trans.cherry
-        
-            # as we have 'extensible' set, we can add a attribute on the fly,
-            # via either the property interface, or via the GFD.90 API of 
-            # course.
-            print "\\n -- peach"
-            print trans.peach
-            trans.peach = 'Birne'
-            print trans.peach
-
-
-    This example will result in::
-
-        -- apple
-        Appel
-        Appel
-        Abbel
-        called: apple - Abbel Appel  - <class '__main__.Transliterator'>
-        called: apple - Apfel - <class '__main__.Transliterator'>
-        called: apple - Apfel - <class '__main__.Transliterator'>
-        Apfel
-        
-        -- plum
-        Pruim
-        Pruim
-        
-        -- cherry
-        Kersche
-        
-        -- peach
-        Berne
-        Birne
-
-
-    """
-
-    # internally used constants to distinguish API from adaptor calls
-    _UP    = '_up'
-    _DOWN  = '_down'
-
-    # two regexes for converting CamelCase into under_score_casing, as static
-    # class vars to avoid frequent recompilation
-    _camel_case_regex_1 = re.compile('(.)([A-Z][a-z]+)')
-    _camel_case_regex_2 = re.compile('([a-z0-9])([A-Z])')
-
-
 
 
     # --------------------------------------------------------------------------
@@ -1470,7 +1388,7 @@ class Attributes (_AttributesBase) :
     # The GFD.90 interface supports CamelCasing, and thus converts all keys to
     # underscore before using them.
     # 
-    def set_attribute (self, key, val, _flow=_DOWN) :
+    def set_attribute (self, key, val) :
         """
         set_attribute(key, val)
 
@@ -1500,12 +1418,12 @@ class Attributes (_AttributesBase) :
 
         key    = self._attributes_t_keycheck   (key)
         us_key = self._attributes_t_underscore (key)
-        return   self._attributes_i_set        (us_key, val, flow=_flow)
+        return   self._attributes_i_set        (us_key, val)
 
 
     # --------------------------------------------------------------------------
     #
-    def get_attribute (self, key, _flow=_DOWN) :
+    def get_attribute (self, key) :
         """
         get_attribute(key)
 
@@ -1517,92 +1435,24 @@ class Attributes (_AttributesBase) :
 
         key    = self._attributes_t_keycheck   (key)
         us_key = self._attributes_t_underscore (key)
-        return   self._attributes_i_get        (us_key, _flow)
+        return   self._attributes_i_get        (us_key)
 
 
     # --------------------------------------------------------------------------
     #
-    def set_vector_attribute (self, key, val, _flow=_DOWN) :
-        """
-        set_vector_attribute (key, val)
-
-        See also: :func:`saga.Attributes.set_attribute` (key, val).
-
-        As python can handle scalar and vector types transparently, this method
-        is in fact not very useful.  For that reason, it maps internally to the
-        set_attribute method.
-        """
-
-        key    = self._attributes_t_keycheck   (key)
-        us_key = self._attributes_t_underscore (key)
-        return   self._attributes_i_set        (us_key, val, _flow)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_vector_attribute (self, key, _flow=_DOWN) :
-        """
-        get_vector_attribute (key)
-
-        See also: :func:`saga.Attributes.get_attribute` (key).
-
-        As python can handle scalar and vector types transparently, this method
-        is in fact not very useful.  For that reason, it maps internally to the
-        get_attribute method.
-        """
-
-        key    = self._attributes_t_keycheck   (key)
-        us_key = self._attributes_t_underscore (key)
-        return   self._attributes_i_get        (us_key, _flow)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def remove_attribute (self, key, _flow=_DOWN) :
-        """
-        remove_attribute (key)
-
-        Removing an attribute is actually different from unsetting it, or from
-        setting it to 'None'.  On remove, all traces of the attribute are
-        purged, and the key will not be listed on 
-        :func:`saga.Attributes.list_attributes` () anymore.
-        """
-
-        key    = self._attributes_t_keycheck   (key)
-        us_key = self._attributes_t_underscore (key)
-        return   self._attributes_remove       (us_key, _flow)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def list_attributes (self, _flow=_DOWN) :
+    def list_attributes (self) :
         """
         list_attributes ()
 
         List all attributes which have been explicitly set. 
         """
 
-        return self._attributes_i_list (_flow)
+        return self._attributes_i_list ()
 
 
     # --------------------------------------------------------------------------
     #
-    def find_attributes (self, pattern, _flow=_DOWN) :
-        """
-        find_attributes (pattern)
-
-        Similar to list(), but also grep for a given attribute pattern.  That
-        pattern is of the form 'key=val', where both 'key' and 'val' can contain
-        POSIX shell wildcards.  For non-string typed attributes, the pattern is
-        applied to a string serialization of the typed value, if that exists.
-        """
-
-        return self._attributes_i_find (pattern, _flow)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def attribute_exists (self, key, _flow=_DOWN) :
+    def attribute_exists (self, key) :
         """
         attribute_exist (key)
 
@@ -1612,71 +1462,14 @@ class Attributes (_AttributesBase) :
 
         key    = self._attributes_t_keycheck   (key)
         us_key = self._attributes_t_underscore (key)
-        return self._attributes_i_exists (us_key, _flow)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def attribute_is_readonly (self, key, _flow=_DOWN) :
-        """
-        attribute_is_readonly (key)
-
-        This method will check if the given key is readonly, i.e. cannot be
-        'set'.  The call will also return 'True' if the attribute is final
-        """
-
-        key    = self._attributes_t_keycheck   (key)
-        us_key = self._attributes_t_underscore (key)
-        return self._attributes_i_is_readonly (us_key, _flow)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def attribute_is_writeable (self, key, _flow=_DOWN) :
-        """
-        attribute_is_writeable (key)
-
-        This method will check if the given key is writeable - i.e. not readonly.
-        """
-
-        key    = self._attributes_t_keycheck   (key)
-        us_key = self._attributes_t_underscore (key)
-        return self._attributes_i_is_writeable (us_key, _flow)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def attribute_is_removable (self, key, _flow=_DOWN) :
-        """
-        attribute_is_writeable (key)
-
-        This method will check if the given key can be removed.
-        """
-
-        key    = self._attributes_t_keycheck   (key)
-        us_key = self._attributes_t_underscore (key)
-        return self._attributes_i_is_removable (us_key, _flow)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def attribute_is_vector (self, key, _flow=_DOWN) :
-        """
-        attribute_is_vector (key)
-
-        This method will check if the given attribute has a vector value type.
-        """
-
-        key    = self._attributes_t_keycheck   (key)
-        us_key = self._attributes_t_underscore (key)
-        return self._attributes_i_is_vector (us_key, _flow)
+        return self._attributes_i_exists (us_key)
 
 
     # --------------------------------------------------------------------------
     #
     # fold the GFD.90 monitoring API into the attributes API
     #
-    def add_callback (self, key, cb, _flow=_DOWN) :
+    def add_callback (self, key, cb) :
         """
         add_callback (key, cb)
 
@@ -1708,12 +1501,12 @@ class Attributes (_AttributesBase) :
 
         key    = self._attributes_t_keycheck   (key)
         us_key = self._attributes_t_underscore (key)
-        return self._attributes_i_add_cb (us_key, cb, _flow)
+        return self._attributes_i_add_cb (us_key, cb)
 
 
     # --------------------------------------------------------------------------
     #
-    def remove_callback (self, key, id, _flow=_DOWN) :
+    def remove_callback (self, key, id) :
         """
         remove_callback (key, id)
 
@@ -1727,7 +1520,7 @@ class Attributes (_AttributesBase) :
 
         key    = self._attributes_t_keycheck   (key)
         us_key = self._attributes_t_underscore (key)
-        return self._attributes_i_del_cb (us_key, id, _flow)
+        return self._attributes_i_del_cb (us_key, id)
 
 
 
@@ -1751,3 +1544,4 @@ class Attributes (_AttributesBase) :
 
     def as_dict(self):
         """ return a dict representation of all set attributes """
+
