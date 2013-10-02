@@ -302,8 +302,11 @@ class ComputeUnitDescription(UnitDescription):
 
         # Startup ordering dependencies
         # (Are only considered within scope of bulk submission.)
-        'start_after',          # Names of CUs that need to finish first.
-        'start_concurrent_with' # Names of CUs that need to be run concurrently.
+        'run_after',            # Names of CUs that need to have finished first.
+        'run_before',           # ...
+        'start_after',          # Names of CUs that need to have started first.
+        'start_before',         # ...
+        'concurrent_with'       # Names of CUs that need to be run concurrently.
 
     """
 
@@ -1544,4 +1547,6 @@ class Attributes (_object) :
 
     def as_dict(self):
         """ return a dict representation of all set attributes """
+
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 

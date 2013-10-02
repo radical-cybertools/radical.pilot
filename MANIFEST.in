@@ -1,0 +1,6 @@
+
+recursive-include saga-pilot *
+recursive-include tests      *
+
+include MANIFEST.in 
+
