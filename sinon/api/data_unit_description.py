@@ -1,6 +1,8 @@
 
 
-from description import Description
+from   description import Description
+from   attributes  import *
+from   constants   import *
 
 
 # ------------------------------------------------------------------------------
@@ -21,14 +23,14 @@ class DataUnitDescription (Description) :
     #
     def __init__ (self, vals={}) : 
 
-        sa.Description.__init__ (self, vals)
+        Description.__init__ (self, vals)
 
         # register properties with the attribute interface
-        self._attributes_register  (NAME,              None, sa.STRING, sa.SCALAR, sa.WRITEABLE)
-        self._attributes_register  (FILE_URLS,         None, sa.DICT,   sa.SCALAR, sa.WRITEABLE)
-        self._attributes_register  (LIFETIME,          None, sa.STRING, sa.SCALAR, sa.WRITEABLE)
-        self._attributes_register  (CLEANUP,           None, sa.BOOL,   sa.SCALAR, sa.WRITEABLE)
-        self._attributes_register  (SIZE,              None, sa.INT,    sa.SCALAR, sa.WRITEABLE)
+        self._attributes_register  (NAME,              None, STRING, SCALAR, WRITEABLE)
+        self._attributes_register  (FILE_URLS,         None, DICT,   SCALAR, WRITEABLE)
+        self._attributes_register  (LIFETIME,          None, STRING, SCALAR, WRITEABLE)
+        self._attributes_register  (CLEANUP,           None, BOOL,   SCALAR, WRITEABLE)
+        self._attributes_register  (SIZE,              None, INT,    SCALAR, WRITEABLE)
 
 
 # ------------------------------------------------------------------------------

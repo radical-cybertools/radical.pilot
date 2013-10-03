@@ -1,14 +1,14 @@
 
 
-from constants import *
 from pilot     import Pilot
+from constants import *
 
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilot (Pilot) :
+class DataPilot (Pilot) :
     """ 
-    ComputePilot.  Duh!
+    DataPilot.  Duh!
     """
 
     # --------------------------------------------------------------------------

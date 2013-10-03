@@ -1,13 +1,12 @@
 
 
-import saga.attributes as sa
-
-from constants import *
+from   attributes  import *
+from   constants   import *
 
 
 # ------------------------------------------------------------------------------
 #
-class Pilot (sa.Attributes) :
+class Pilot (Attributes) :
     """ 
     Base class for DataPilot and ComputePilot.
 
@@ -21,22 +20,21 @@ class Pilot (sa.Attributes) :
     #
     def __init__ (self, pid) : 
 
-        sa.Attributes.__init__ (self)
+        Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register  (PID,           None, sa.STRING, sa.SCALAR, sa.READONLY)
-        self._attributes_register  (DESCRIPTION,   None, sa.ANY,    sa.SCALAR, sa.READONLY)
-        self._attributes_register  (MANAGER,       None, sa.ANY,    sa.SCALAR, sa.READONLY)
-        self._attributes_register  (STATE,         None, sa.STRING, sa.SCALAR, sa.READONLY)
-        self._attributes_register  (STATE_DETAIL,  None, sa.STRING, sa.SCALAR, sa.READONLY)
+        self._attributes_register  (PID,           None, STRING, SCALAR, READONLY)
+        self._attributes_register  (DESCRIPTION,   None, ANY,    SCALAR, READONLY)
+        self._attributes_register  (STATE,         None, STRING, SCALAR, READONLY)
+        self._attributes_register  (STATE_DETAIL,  None, STRING, SCALAR, READONLY)
 
         # deep inspection
-        self._attributes_register  (UNITS,         None, sa.STRING, sa.VECTOR, sa.READONLY)
-        self._attributes_register  (UNIT_MANAGERS, None, sa.STRING, sa.VECTOR, sa.READONLY)
-        self._attributes_register  (PILOT_MANAGER, None, sa.STRING, sa.SCALAR, sa.READONLY)
+        self._attributes_register  (UNITS,         None, STRING, VECTOR, READONLY)
+        self._attributes_register  (UNIT_MANAGERS, None, STRING, VECTOR, READONLY)
+        self._attributes_register  (PILOT_MANAGER, None, STRING, SCALAR, READONLY)
         # ...
 
     # --------------------------------------------------------------------------

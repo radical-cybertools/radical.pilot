@@ -1,20 +1,21 @@
 
 
-from unit import Unit
+from pilot     import Pilot
+from constants import *
 
 
 # ------------------------------------------------------------------------------
 #
-class DataUnit (Unit) :
+class ComputePilot (Pilot) :
     """ 
-    DataUnit class.
+    ComputePilot.  Duh!
     """
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, uid=None) : 
+    def __init__ (self, pid) : 
 
-        Unit.__init__ (self, uid)
+        Pilot.__init__ (self, pid)
 
 
 # ------------------------------------------------------------------------------

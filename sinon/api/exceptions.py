@@ -1,11 +1,12 @@
 
 
 import saga.exceptions as se
+from   constants import *
 
 
 # ------------------------------------------------------------------------------
 #
-class SAGAPilotException (se.SAGAException) :
+class SinonException (se.SagaException) :
     """
     The given URL could not be interpreted, for example due to an incorrect
     / unknown schema. 
@@ -15,7 +16,7 @@ class SAGAPilotException (se.SAGAException) :
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectURL (SAGAPilotException, se.IncorrectUrl) :
+class IncorrectURL (SinonException, se.IncorrectURL) :
     """
     The given URL could not be interpreted, for example due to an incorrect
     / unknown schema. 
@@ -25,7 +26,7 @@ class IncorrectURL (SAGAPilotException, se.IncorrectUrl) :
 
 # ------------------------------------------------------------------------------
 #
-class BadParameter (SAGAPilotException, se.BadParameter) :
+class BadParameter (SinonException, se.BadParameter) :
     """
     A given parameter is out of bound or ill formatted.
     """
@@ -34,7 +35,7 @@ class BadParameter (SAGAPilotException, se.BadParameter) :
 
 # ------------------------------------------------------------------------------
 #
-class DoesNotExist (SAGAPilotException, se.DoesNotExist) :
+class DoesNotExist (SinonException, se.DoesNotExist) :
     """
     An operation tried to access a non-existing entity.
     """
@@ -43,7 +44,7 @@ class DoesNotExist (SAGAPilotException, se.DoesNotExist) :
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectState (SAGAPilotException, se.IncorrectState) :
+class IncorrectState (SinonException, se.IncorrectState) :
     """
     The operation is not allowed on the entity in its current state.
     """
@@ -52,7 +53,7 @@ class IncorrectState (SAGAPilotException, se.IncorrectState) :
 
 # ------------------------------------------------------------------------------
 #
-class PermissionDenied (SAGAPilotException, se.PermissionDenied) :
+class PermissionDenied (SinonException, se.PermissionDenied) :
     """
     The used identity is not permitted to perform the requested operation.
     """
@@ -61,7 +62,7 @@ class PermissionDenied (SAGAPilotException, se.PermissionDenied) :
 
 # ------------------------------------------------------------------------------
 #
-class AuthorizationFailed (SAGAPilotException, se.AuthorizationFailed) :
+class AuthorizationFailed (SinonException, se.AuthorizationFailed) :
     """
     The backend could not establish a valid identity.
     """
@@ -70,7 +71,7 @@ class AuthorizationFailed (SAGAPilotException, se.AuthorizationFailed) :
 
 # ------------------------------------------------------------------------------
 #
-class AuthenticationFailed (SAGAPilotException, se.AuthenticationFailed) :
+class AuthenticationFailed (SinonException, se.AuthenticationFailed) :
     """
     The backend could not establish a valid identity.
     """
@@ -79,7 +80,7 @@ class AuthenticationFailed (SAGAPilotException, se.AuthenticationFailed) :
 
 # ------------------------------------------------------------------------------
 #
-class Timeout (SAGAPilotException, se.Timeout) :
+class Timeout (SinonException, se.Timeout) :
     """
     The interaction with the backend times out.
     """
@@ -88,7 +89,7 @@ class Timeout (SAGAPilotException, se.Timeout) :
 
 # ------------------------------------------------------------------------------
 #
-class NoSuccess (SAGAPilotException, se.NoSuccess) :
+class NoSuccess (SinonException, se.NoSuccess) :
     """
     Some other error occurred.
     """

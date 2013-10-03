@@ -1,26 +1,32 @@
 
 
-from constants import *
+from attributes import *
+from constants  import *
 
 
 # ------------------------------------------------------------------------------
 #
-class UnitManager (object) :
+class UnitManager (Attributes) :
     """ 
     UnitManager class -- manages a pool 
-
-    Notes:
-      - cancel() not needed if PM is not a service, i.e. does not have state
     """
 
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, url=None, scheduler='default', session=None) :
-        # URL      not needed for module based arch
-        # cancel() not needed for module based arch
-        # FIXME
-        pass
+
+        Attributes.__init__ (self)
+
+        # set attribute interface properties
+        self._attributes_extensible  (False)
+        self._attributes_camelcasing (True)
+
+        # deep inspection
+        self._attributes_register  (SCHEDULER, None, STRING, SCALAR, READONLY)
+        self._attributes_register  (PILOTS,    None, STRING, VECTOR, READONLY)
+        self._attributes_register  (UNITS,     None, STRING, VECTOR, READONLY)
+        # ...
 
 
     # --------------------------------------------------------------------------
@@ -86,14 +92,14 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_units (uids, state=FINAL, timeout=-1.0, ttype=SYNC) :
+    def wait_units (self, uids, state=FINAL, timeout=-1.0, ttype=SYNC) :
         """
         Cancel given unit(s)
         """
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units (uids, ttype=SYNC) :
+    def cancel_units (self, uids, ttype=SYNC) :
         """
         Cancel (set of) given unit(s)
         """

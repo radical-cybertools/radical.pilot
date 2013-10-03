@@ -1,6 +1,7 @@
 
 
-from unit import Unit
+from unit      import Unit
+from constants import *
 
 
 # ------------------------------------------------------------------------------

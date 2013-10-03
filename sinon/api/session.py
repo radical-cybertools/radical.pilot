@@ -1,12 +1,12 @@
 
 
-
 import saga
+from   constants import *
 
 
 # ------------------------------------------------------------------------------
 #
-class Url (saga.Url) : 
+class Session (saga.Session) :
     pass
 
 

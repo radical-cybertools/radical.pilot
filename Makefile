@@ -12,7 +12,7 @@ test:
 copyright:
 
 pylint:
-	@for f in `find saga-pilot -name \*.py`; do \
+	@for f in `find sinon -name \*.py`; do \
 	  res=`pylint -r n -f text $$f 2>&1 | grep -e '^[FE]'` ;\
 		test -z "$$res" || ( \
 		     echo '----------------------------------------------------------------------' ;\
@@ -25,24 +25,12 @@ pylint:
 	test "`cat pylint.out | wc -c`" = 0 || false && true
 
 viz:
-	gource -s 0.1 -i 0 --title saga-pilot --max-files 99999 --max-file-lag -1 --user-friction 0.3 --user-scale 0.5 --camera-mode overview --highlight-users --hide progress,filenames -r 25 -viewport 1024x1024
+	gource -s 0.1 -i 0 --title sinon --max-files 99999 --max-file-lag -1 --user-friction 0.3 --user-scale 0.5 --camera-mode overview --highlight-users --hide progress,filenames -r 25 -viewport 1024x1024
 
 clean:
 	-rm -rf build/ saga.egg-info/ temp/ MANIFEST dist/ saga_pilot.egg-info
 	make -C doc clean
 	find . -name \*.pyc -exec rm -f {} \;
-
-andre:
-	source     ~/.virtualenv/saga-pilot/bin/activate ; \
-	    rm -rf ~.virtualenv/saga-pilot/lib/python*/site-packages/saga-1.0-py2.6.egg/  ; \
-	    easy_install . ; \
-	    python test/test_engine.py  ; \
-	    python examples/jobs/localjobcontainer.py
-
-mark:
-	source     ~/.virtualenv/saga-pilot/bin/activate ; \
-	    rm -rf ~.virtualenv/saga-pilot/lib/python*/site-packages/saga-1.0-py2.6.egg/  ; \
-	    easy_install . ; \
 
 # pages: gh-pages
 # 

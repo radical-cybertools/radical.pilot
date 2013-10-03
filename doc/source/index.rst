@@ -1,17 +1,17 @@
 
 ##################################
-SAGA-Pilot |version| documentation
+Sinon |version| documentation
 ##################################
 
-SAGA-Pilot is a ...
+Sinon is a ...
 
 **Get involved or contact us:**
 
-+-------+------------------------------+----------------------------------------------------------+
-| |Git| | **SAGA-Pilot on GitHub:**    | https://github.com/saga-project/saga-pilot/              |
-+-------+------------------------------+----------------------------------------------------------+
-| |Goo| | **SAGA-Pilot Mailing List:** | https://groups.google.com/forum/#!forum/saga-pilot-users |
-+-------+------------------------------+----------------------------------------------------------+
++-------+-------------------------+-----------------------------------------------------+
+| |Git| | **Sinon on GitHub:**    | https://github.com/saga-project/saga-pilot/         |
++-------+-------------------------+-----------------------------------------------------+
+| |Goo| | **Sinon Mailing List:** | https://groups.google.com/forum/#!forum/sinon-users |
++-------+-------------------------+-----------------------------------------------------+
 
 .. |Git| image:: images/github.jpg
 .. |Goo| image:: images/google.png

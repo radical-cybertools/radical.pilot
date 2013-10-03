@@ -5,7 +5,7 @@ import saga
 
 # ------------------------------------------------------------------------------
 #
-class Callback (saga.Callback) : 
+class Url (saga.Url) : 
     pass
 
 

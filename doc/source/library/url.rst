@@ -2,8 +2,9 @@ URLs
 ****
 
 
-Url -- :class:`saga-pilot.Url`
-------------------------------
+Url -- :class:`sinon.Url`
+-------------------------
 
-.. autoclass:: saga-pilot.Url
+.. autoclass:: sinon.Url
    :members:
+

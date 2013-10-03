@@ -14,7 +14,7 @@ def update_version():
 
     try:
         cwd = os.path.dirname(os.path.abspath(__file__))
-        fn = os.path.join(cwd, 'saga-pilot/VERSION')
+        fn = os.path.join(cwd, 'sinon/VERSION')
         version = open(fn).read().strip()
     except IOError:
         from subprocess import Popen, PIPE, STDOUT
@@ -39,7 +39,7 @@ def update_version():
 #-----------------------------------------------------------------------------
 # check python version. we need > 2.5
 if sys.hexversion < 0x02050000:
-    raise RuntimeError("saga-pilot requires Python 2.5 or higher")
+    raise RuntimeError("sinon requires Python 2.5 or higher")
 
 #-----------------------------------------------------------------------------
 # 
@@ -52,8 +52,8 @@ class our_install_data(install_data):
 
     def run(self):
         install_data.run(self)
-        # ensure there's a saga-pilot/VERSION file
-        fn = os.path.join(self.install_dir, 'saga-pilot', 'VERSION')
+        # ensure there's a sinon/VERSION file
+        fn = os.path.join(self.install_dir, 'sinon', 'VERSION')
         open(fn, 'w').write(update_version())
         self.outfiles.append(fn)
 
@@ -64,7 +64,7 @@ class our_sdist(sdist):
     def make_release_tree(self, base_dir, files):
         sdist.make_release_tree(self, base_dir, files)
 
-        fn = os.path.join(base_dir, 'saga-pilot', 'VERSION')
+        fn = os.path.join(base_dir, 'sinon', 'VERSION')
         open(fn, 'w').write(update_version())
 
 
@@ -87,7 +87,7 @@ class our_test(Command):
 
 
 setup_args = {
-    'name': "saga-pilot",
+    'name': "sinon",
     'version': update_version(),
     'description': "SAGA based Pilot Framework",
     'long_description': "SAGA based Pilot Framework",
@@ -95,7 +95,7 @@ setup_args = {
     'author_email': "radical@rutgers.edu",
     'maintainer': "RADICAL",
     'maintainer_email': "radical@rutgers.edu",
-    'url': "http://saga-project.github.com/saga-pilot/",
+    'url': "http://saga-project.github.com/sinon/",
     'license': "LGPL3",
     'classifiers': [
         'Development Status :: 5 - Production/Stable',
@@ -123,15 +123,15 @@ setup_args = {
         'Operating System :: Unix'
     ],
     'packages': [
-        "saga-pilot",
-        "saga-pilot.api",
+        "sinon",
+        "sinon.api",
     ],
     'package_data': {'': ['*.sh']},
     'zip_safe': False,
     'scripts': [],
     # mention data_files, even if empty, so install_data is called and
     # VERSION gets copied
-    'data_files': [("saga-pilot", [])],
+    'data_files': [("sinon", [])],
     'cmdclass': {
         'install_data': our_install_data,
         'sdist': our_sdist,

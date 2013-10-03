@@ -3,10 +3,10 @@
 Descriptions
 ************
 
-Description Base Class -- :mod:`saga-pilot.description`
--------------------------------------------------------
+Description Base Class -- :mod:`sinon.description`
+--------------------------------------------------
 
-.. automodule:: saga-pilot.description
+.. automodule:: sinon.description
    :show-inheritance:
    :members: Description
 

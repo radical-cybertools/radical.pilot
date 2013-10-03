@@ -1,11 +1,12 @@
 
 
 import saga
+from   constants import *
 
 
 # ------------------------------------------------------------------------------
 #
-class Session (saga.Session) :
+class Callback (saga.Callback) : 
     pass
 
 

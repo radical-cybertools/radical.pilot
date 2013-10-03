@@ -1,7 +1,8 @@
 
 
-from constants   import *
-from description import Description
+from   description import Description
+from   attributes  import *
+from   constants   import *
 
 
 # ------------------------------------------------------------------------------
@@ -16,11 +17,11 @@ class DataPilotDescription (Description) :
     """
     def __init__ (self, vals={}) : 
 
-        sa.Description.__init__ (self, vals)
+        Description.__init__ (self, vals)
 
         # register properties with the attribute interface
-        self._attributes_register  (URL,       None, sa.STRING, sa.SCALAR, sa.WRITEABLE)
-        self._attributes_register  (RUN_TIME,  None, sa.BOOL,   sa.SCALAR, sa.WRITEABLE)
+        self._attributes_register  (URL,       None, STRING, SCALAR, WRITEABLE)
+        self._attributes_register  (RUN_TIME,  None, BOOL,   SCALAR, WRITEABLE)
 
 
 # ------------------------------------------------------------------------------

@@ -1,13 +1,12 @@
 
 
-import saga.attributes as sa
-
-from constants import *
+from attributes import *
+from constants  import *
 
 
 # ------------------------------------------------------------------------------
 #
-class Description (sa.Attributes) :
+class Description (Attributes) :
     """ 
     Base class for ComputeUnitDescription, DataUnitDescription,
     ComputePilotDescription and DataPilotDescription.
@@ -28,7 +27,7 @@ class Description (sa.Attributes) :
         :raises    :  BadParameter (on invalid initialization)
         """
 
-        sa.Attributes.__init__ (self, vals)
+        Attributes.__init__ (self, vals)
 
         # set attribute interface properties
         self._attributes_extensible  (False)

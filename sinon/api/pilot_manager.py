@@ -1,11 +1,12 @@
 
 
-from constants import *
+from attributes import *
+from constants  import *
 
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager (object) :
+class PilotManager (Attributes) :
     """ 
     PilotManager class.
 
@@ -17,10 +18,17 @@ class PilotManager (object) :
     # --------------------------------------------------------------------------
     #
     def __init__ (self, url=None, session=None) : 
-        # URL      not needed for modular arch
-        # cancel() not needed for module based arch
-        # FIXME
-        pass
+
+        Attributes.__init__ (self)
+
+        # set attribute interface properties
+        self._attributes_extensible  (False)
+        self._attributes_camelcasing (True)
+
+        # deep inspection
+        self._attributes_register  (PILOTS,    None, STRING, VECTOR, READONLY)
+        # ...
+
 
 
     # --------------------------------------------------------------------------
