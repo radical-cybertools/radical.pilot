@@ -3,21 +3,6 @@
 Discussion
 ----------
 
-    AM: Inspection on all entities is largely missing.
-    MS: I probably agree, we need to discuss the specifics of that.
-    AGREEMENT: We'll introduce the attribute interface on: pilot, *unit, 
-
-    AM: need means to expose bulk ops.
-    MS: Agree, let's discuss a mechanism. Probably also needs ties to the
-    "concurrent execution" property.
-    AGREEMENT: overload by scalar and list arguments.  Exception leaves oject
-    states undefined.
-
-    AM: async op model needs to be applied (borrow from saga-python?)
-    MS: I think that model will do.
-    AGREEMENT: add ttype parameters to calls, add sync enums, add task object
-    from SAGA.  Only SYNC and ASYNC flags, no TASK.  Default SYNC obviously.
-
 
 SAGA-Pilot API spec
 ===================
@@ -119,23 +104,16 @@ corresponds to the DU state 'Avalable'.
 
 The documentation below again documents the exact meaning of the states for DUs.
 
-AM: we could consider to rename RUNNING and AVAILABLE to ACTIVE, for uniformity
-AGREEMENT: yes, either ACTIVE or RUNNING
-
 * Unknown
   No state information could be obtained for that unit.
 
 * Pending
   Data are not yet available, but are scheduled for transfer, or transfer is in
   progress.
-"""
 
-AVAILABLE = 'Available'
-"""
-All DU content is available on at least one DataPilot.
-"""
+* Running
+  All DU content is available on at least one DataPilot.
 
-"""
 * Canceled    
   The data is scheduled for removal and cannot be used anymore.
 
@@ -304,9 +282,7 @@ class ComputeUnitDescription(UnitDescription):
         # Startup ordering dependencies
         # (Are only considered within scope of bulk submission.)
         'run_after',            # Names of CUs that need to have finished first.
-        'run_before',           # ...
         'start_after',          # Names of CUs that need to have started first.
-        'start_before',         # ...
         'concurrent_with'       # Names of CUs that need to be run concurrently.
 
     """
@@ -332,13 +308,6 @@ class ComputeUnit():
         Compute Unit constructor.
 
         Use the 'get_unit()' call on the US for bulk and async CU construction.
-
-        MS: If we just have textual IDs, then we can't construct CUs using
-        the ID only, as we would have no idea which US to talk too.
-        Which is fine, but then we get rid of the cu_id argument here and
-        "just" use the get_unit() call in the SU.
-        AM: This depends on how we format the IDs (See saga job IDs.)
-        AGREEMENT: use rich textual IDs as in SAGA
 
         Keyword argument(s)::
             id(string):  ID referencing the unit to be referenced by the created
@@ -443,15 +412,6 @@ class DataUnitDescription(UnitDescription):
         lifetime     # Needs to stay available for at least ...
         cleanup      # Can be removed when cancelled
         size         # Estimated size of DU (in bytes)
-
-
-    AM: I am still confused about the symmetry aspects to ComputeUnits.  Why
-        is here no CandidateHosts, for example?  Project?  Contact?
-        LifeTime?  Without those properties, there is not much resource
-        management the data-pilot can do, beyond clever data staging
-        / caching...
-    MS: Clever data staging is not a minor thing, is it? Im tempted to say I addressed this comment.
-    ADRESSED
 
     """
 
@@ -650,90 +610,29 @@ class ComputePilotDescription(dict):
     Class members:
 
         # Action description
+        'start_time',               # pilot is not needed before X
+        'run_time',                 # pilot is not needed after  X
         'cleanup',
-        'environment',          # "environment" settings for the "action"
-
-        AM: how is environment specified?  The env for the pilot should be
-        up to the framework -- the user does not know how env is
-        interpreted.  So, is that env for future  CUs/DUs?  That overlaps
-        with env specified there.  What happens on conflicts?  cross refs?
-        early/late binding?  Should be left out...
-        MS: Didn't think too much about it, but I could think that it would
-        pass something so that the agent runs "nicer". Also here the question is
-        about how much the pilot-layer knows about the resource specifics.
-        I agree that this is not for the CU's.
-        REMOVE
-
-        'contact',    # REMOVE
         'project',
-        'start_time',
-        'working_directory',
-
-        AM: how is working_directory relevant?  Shouldn't that be left to
-        the discretion of the pilot system?  Not sure if that notion of
-        a pwd will exist for a pilot (it should exist for a CU)...
-        MS: I'm tempted to say that the "thing" that calls saga-pilot, knows
-        possibly a bit more about the resource than saga-pilot. So it might
-        specify that the working directory should be different than the default?
-        AGREEMENT: leave it for out/err, but possibly reconsider
 
         # I/O
-        'input',                # stdin                # AGREEMENT: REMOVE
-        'error',                # stderr
-        'output',               # stdout
-        'file_transfer',        # out/err staging
+        # reconsider for SP2
+        'working_directory',
+        'error',                    # stderr
+        'output',                   # stdout
+        'file_transfer',            # out/err staging
 
-        AM: what does file_transfer mean?  Are those files presented to
-        the CUs/DUs?  That overlaps with DUs, really?  Should be left
-        out.
-        MS: In the case of not using PilotData, this would be a way to make sure
-        every pilot has some piece of data available. (See discussion about
-        file_transfer vs pilot-data somewhere else)
-        AGREEMENT: revisit pwd, out, err, transfer for SP2
+        # Parallelism 
+        # reconsider for SP2
+        'slots'                     # total number of cores
+        'spmd_variation',           # expected startup mechanism for CUs (def. None)
 
-        # Parallelism
-        'slots'                 # total number of cores
-        'spmd_variation',       # expected startup mechanism for CUs (def. None)
-      # 'number_of_processes',  # Total number of processes to start
-      # 'processes_per_host',   # Nr of processes per host
-      # 'threads_per_process',  # Nr of threads to start per process
-      # 'total_core_count',     # Total number of cores requested
-
-        AM: Also, shouldn't we just specify a number of cores, and leave actual
-        layout to the pilot system?  This would otherwise make automated pilot
-        placement very hard...
-        MS: No, I would say that we want to offer TROY the possibility of
-        launching more than 1 pilot into a resource slice. These saga derived
-        notions might not be what we want though, I'm happy to diverge from that.
-        AGREEMENT: see above, revisit after some experience
-
-        # Requirements
+        # resource requirements
         'candidate_hosts',          # List of specific hostnames to run on.
         'cpu_architecture',         # Specify specific arch required.
         'total_physical_memory',    # mem for CU usage
-
-        AM: how is total memory specified?  Is that memory usable for CUs?
-        individually / concurrently?
-        MS: This is a very good question that I dont have a direct answer on.
-        My hunch is that this should be related to the layout of the
-        cores/processes/hosts, etc., but that might become messy.
-        We need to be able to express memory requirements for the pilot in some
-        way though.
-        REMOVE COMMENT
-
-        'operating_system_type',  # Specify specific OS required.
-        'wall_time_limit',        # Pilot is not needed longer than X.
-        'queue'                   # Specify queue name of backend system.
-
-        AM: I think pilot description should be fully reduced to
-        a description of the resource slice to be managed by the pilot,
-        w/o any details on the actual pilot startup etc.
-        MS: I dont think I agree, I feel you are confusing TROY and Sinon again,
-        somebody needs to instruct Sinon about resource specifics. Note that we
-        already did get rid of some of the members and some more candidates are
-        left.
-        REMOVE COMMENT
-
+        'operating_system_type',    # Specify specific OS required.
+        'queue'                     # Specify queue name of backend system.
     """
 
 
@@ -758,7 +657,6 @@ class ComputePilot():
 
             id(string): if specified, don't create a new ComputePilot but
             instantiate it based on the id.
-            # MS: Similar to the discussion of the constructor in the CU.
 
         Return::
             cp(ComputePilot): the ComputePilot object
@@ -769,9 +667,6 @@ class ComputePilot():
 
     def cancel(self):
         """Cancel the CP.
-
-        AM: do we need 'drain' on cancel?  See SAGA resource API...
-        AGREMMENT: no
 
         Keyword argument(s)::
 
@@ -877,30 +772,6 @@ class PilotService():
         pass
 
 
-    # AM: as discussed, this should not have state, but should have an ID for
-    #     reconnect [I see a case for state, TBD]
-
-    def cancel(self):
-        """Cancel the PS (self).
-
-        This also cancels the ...
-
-        AM: We should also be able to cancel the PS w/o canceling the
-            pilots! [I agree]
-        AGREEMENT: remove
-
-        Keyword argument(s)::
-
-            None
-
-        Return::
-
-            None
-
-        """
-        pass
-
-
     def get_pilot(self, pilot_id):
         """Get (a) Pilot instance(s) based on ID.
 
@@ -936,14 +807,6 @@ class DataPilotDescription(dict):
         size                # Storage size of DP (in bytes)
 
 
-    # AM: why don't we have those labels on the CP?  We need to check
-    # with Melissa if that is required / sufficient for expressing pilot
-    # affinities (I expect they need more detail).
-
-    # AM: also, what about affinities on CU / DU level, where are those
-    # expressed?
-
-    # AM: lifetime, resource information, etc.
     # AGREEMENT: AM to move things over from CPD
 
     """
@@ -987,16 +850,7 @@ class DataPilot():
 
     def wait(self, state=RUNNING, timeout=-1.0):
         """
-        Wait for pending data transfers.
-
-        AM: Which transfers?  Assume I have a DU which is transfered, then
-        I call wait, before DU1 is finished, a DU2 gets added and needs
-        transfer -- will wait return?  Isn't it better to wait on the DU
-        (which is the thing which has state in the first place)?  Will it
-        return or fail on failed staging?
-
-        AM: needs a timeout for consistency
-
+        Wait for pilot to become active
 
         Keyword argument(s)::
 
@@ -1008,18 +862,6 @@ class DataPilot():
             or
             None
 
-        """
-        pass
-        """
-        # wait for all DUs to become 'RUNNING'
-        for du in self.units.keys () :
-            du.wait ()
-        """
-
-    def wait_units (self, ids, unit_types=ANY, state=ACTIVE) : 
-        """
-        target state: ACTIVE for DUs, FINAL for CUs
-        TODO: clarify semantics
         """
         pass
 
@@ -1047,19 +889,16 @@ class DataPilot():
             du.cancel ()
         """
 
-    def cancel_units (self, ids) : 
-
 
 # ------------------------------------------------------------------------------
 #
 class UnitService():
     """Service that brings the ComputePilot's and DataPilot's together.
-
-    AM: and adds some scheduling, and enacts DU/CU dependencies.
+       and adds some scheduling, and enacts DU/CU dependencies.
 
     """
 
-    def __init__(self, id=None, scheduler='default'):
+    def __init__(self, url=None, scheduler='default'):
         """ UnitService constructor.
 
         The instantiation of the Unit Service object could possibly be
@@ -1068,7 +907,7 @@ class UnitService():
 
         Keyword argument::
 
-            id:        reconnect to an existing UnitService
+            url:       reconnect to an existing UnitService
             scheduler: use the given scheduler.  Only applicabvle if id==None,
                        i.e. if a new UnitService is requested.
 
@@ -1084,24 +923,8 @@ class UnitService():
         """
         pass
 
-    def cancel(self):
-        """Cancel this Unit Service.
 
-        TODO: Would this cancel assigned Units too?
-        AGREEMENT: don't use
-
-        Keyword argument::
-
-            None
-
-        Return::
-
-            None
-
-        """
-        pass
-
-    def add_pilot(self, pilot):
+    def add_pilot(self, pilots):
         """Bring a Pilot (and the resources its represents) into the scope of
         the US.
 
@@ -1126,7 +949,7 @@ class UnitService():
         """
         pass
 
-    def remove_pilot(self, pilot_id):
+    def remove_pilot(self, pids):
         """Remove a Pilot (and the resources its represents) from the scope of
         the US.
 
@@ -1143,95 +966,8 @@ class UnitService():
         """
         pass
 
-    def submit_unit(self, unit_desc):
-        """Accepts a CUD or DUD and returns a CU or DU.
 
-        Keyword argument(s)::
-
-            unit_desc(ComputeUnitDescription): The CUD.
-            or
-            unit_desc(DataUnitDescription): The DUD.
-            or
-            unit_desc([ComputeUnitDescription]): The list of CUDs.
-            or
-            unit_desc([DataUnitDescription]): The list of DUDs.
-
-        Return::
-
-            unit_id(ID): The ID of the Unit submitted.
-            or
-            unit_id([ID]): The list of IDs of the Units submitted.
-
-        """
-        pass
-
-    def wait(self):
-        """Wait for all the CUs and DUs handled by this UnitService.
-
-        # AM: what does 'handled' mean?  All assigned to a pilot?  All
-        # submitted to pilots? All DONE?  All in final state?  What happens
-        # if new CUs are submitted while waiting?  What happens if  CUs
-        # exist but no pilots have been added / pilots died?
-        #
-        # As before, I would prefer to wait on the things which have state
-        # in the first place.  This wait seems convenient on a first glance,
-        # but will be hard to specify/implement, and if all is done and said
-        # will will only be able to cover a limited set of cases (i.e. just
-        # one of the above)...
-
-
-        Keyword argument(s)::
-
-            name(type): description
-
-        Return::
-
-            name(type): description
-            or
-            None
-
-        """ 
-        pass
-
-    def cancel_unit(self, unit_id):
-        """Cancel the specified Compute Unit or Data Unit by its ID.
-
-        Keyword argument(s)::
-
-            unit_id(ID): The Unit to cancel.
-            or
-            unit_id([ID]): The list of Units to cancel.
-
-         Return::
-
-            None
-
-        """
-        pass
-
-    def get_unit(self, unit_id):
-        """Get a DU or CU based on its id.
-
-        Keyword argument::
-
-            id(ID): The ID of the unit we want to acquire an instance of.
-            or
-            id([ID]): The list of IDs of the units we want to acquire instances of.
-
-        Return::
-
-            unit(ComputeUnit): A ComputeUnit object.
-            or
-            unit(DataUnit): A DataUnit object.
-            or
-            unit([ComputeUnit]): A list of ComputeUnit objects.
-            or
-            unit([DataUnit]): A list of DataUnit objects.
-
-        """
-        pass
-
-    def list_pilots(self, compute=True, data=True):
+    def list_pilot (self, compute=True, data=True):
         """Return a list Pilot IDs of specified type of Pilots that are
         assigned to this UnitService.
 
@@ -1249,7 +985,7 @@ class UnitService():
         """
         pass
 
-    def get_pilot(self, pilot_id):
+    def get_pilot (self, pids):
         """Get a DP or CP instance based on its ID.
 
         This method is required as based on the ID only we don't know which
@@ -1272,6 +1008,74 @@ class UnitService():
             pilot([ComputePilot]): A list of ComputePilot objects.
             or
             pilot([DataPilot]): A list of DataPilot objects.
+
+        """
+        pass
+
+    def submit_unit(self, uds):
+        """Accepts a CUD or DUD and returns a CU or DU.
+
+        Keyword argument(s)::
+
+            uds(ComputeUnitDescription): The CUD.
+            or
+            uds(DataUnitDescription): The DUD.
+            or
+            uds([ComputeUnitDescription]): The list of CUDs.
+            or
+            uds([DataUnitDescription]): The list of DUDs.
+
+        Return::
+
+            unit_id(ID): The ID of the Unit submitted.
+            or
+            unit_id([ID]): The list of IDs of the Units submitted.
+
+        """
+        pass
+
+
+    def wait_unit (self, uids, state=FINAL, timeout=-1.0):
+        """
+        Wait for all the CUs and DUs handled by this UnitService.
+        """ 
+        pass
+
+
+    def cancel_unit (self, uids):
+        """Cancel the specified Compute Unit or Data Unit by its ID.
+
+        Keyword argument(s)::
+
+            unit_id(ID): The Unit to cancel.
+            or
+            unit_id([ID]): The list of Units to cancel.
+
+         Return::
+
+            None
+
+        """
+        pass
+
+    def get_unit (self, uids):
+        """Get a DU or CU based on its id.
+
+        Keyword argument::
+
+            id(ID): The ID of the unit we want to acquire an instance of.
+            or
+            id([ID]): The list of IDs of the units we want to acquire instances of.
+
+        Return::
+
+            unit(ComputeUnit): A ComputeUnit object.
+            or
+            unit(DataUnit): A DataUnit object.
+            or
+            unit([ComputeUnit]): A list of ComputeUnit objects.
+            or
+            unit([DataUnit]): A list of DataUnit objects.
 
         """
         pass
