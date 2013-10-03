@@ -120,6 +120,7 @@ corresponds to the DU state 'Avalable'.
 The documentation below again documents the exact meaning of the states for DUs.
 
 AM: we could consider to rename RUNNING and AVAILABLE to ACTIVE, for uniformity
+AGREEMENT: yes, either ACTIVE or RUNNING
 
 * Unknown
   No state information could be obtained for that unit.
@@ -282,7 +283,7 @@ class ComputeUnitDescription(UnitDescription):
         'working_directory',    # Where to start the CU
 
         # I/O
-        'input',                # MS: Can be removed?
+        'input',                # stdin
         'error',                # stderr
         'output',               # stdout
         'file_transfer',        # file transfer, duh!
@@ -337,6 +338,7 @@ class ComputeUnit():
         Which is fine, but then we get rid of the cu_id argument here and
         "just" use the get_unit() call in the SU.
         AM: This depends on how we format the IDs (See saga job IDs.)
+        AGREEMENT: use rich textual IDs as in SAGA
 
         Keyword argument(s)::
             id(string):  ID referencing the unit to be referenced by the created
@@ -393,9 +395,6 @@ class ComputeUnit():
         """Return the value for the specified metric.
 
 
-        AM: callback registration is missing.
-
-
         Keyword argument(s)::
 
             name(type): description
@@ -438,9 +437,9 @@ class DataUnitDescription(UnitDescription):
 
         name         # A non-unique label.
         file_urls    # Dict of logical and physical filesnames, e.g.:
-                        # { 'NAME1' : [ 'google://.../name1.txt',
-                        #               'srm://grid/name1.txt'],
-                        #   'NAME2' : [ 'file://.../name2.txt' ] }
+                       # { 'NAME1' : [ 'google://.../name1.txt',
+                       #               'srm://grid/name1.txt' ],
+                       #   'NAME2' : [ 'file://.../name2.txt' ] }
         lifetime     # Needs to stay available for at least ...
         cleanup      # Can be removed when cancelled
         size         # Estimated size of DU (in bytes)
@@ -452,6 +451,7 @@ class DataUnitDescription(UnitDescription):
         management the data-pilot can do, beyond clever data staging
         / caching...
     MS: Clever data staging is not a minor thing, is it? Im tempted to say I addressed this comment.
+    ADRESSED
 
     """
 
@@ -662,8 +662,9 @@ class ComputePilotDescription(dict):
         pass something so that the agent runs "nicer". Also here the question is
         about how much the pilot-layer knows about the resource specifics.
         I agree that this is not for the CU's.
+        REMOVE
 
-        'contact',
+        'contact',    # REMOVE
         'project',
         'start_time',
         'working_directory',
@@ -674,12 +675,13 @@ class ComputePilotDescription(dict):
         MS: I'm tempted to say that the "thing" that calls saga-pilot, knows
         possibly a bit more about the resource than saga-pilot. So it might
         specify that the working directory should be different than the default?
+        AGREEMENT: leave it for out/err, but possibly reconsider
 
         # I/O
-        'input',                # stdin # MS: Candidate for axing?
+        'input',                # stdin                # AGREEMENT: REMOVE
         'error',                # stderr
         'output',               # stdout
-        'file_transfer',        # File in/out staging
+        'file_transfer',        # out/err staging
 
         AM: what does file_transfer mean?  Are those files presented to
         the CUs/DUs?  That overlaps with DUs, really?  Should be left
@@ -687,12 +689,15 @@ class ComputePilotDescription(dict):
         MS: In the case of not using PilotData, this would be a way to make sure
         every pilot has some piece of data available. (See discussion about
         file_transfer vs pilot-data somewhere else)
+        AGREEMENT: revisit pwd, out, err, transfer for SP2
 
         # Parallelism
-        'number_of_processes',  # Total number of processes to start
-        'processes_per_host',   # Nr of processes per host
-        'threads_per_process',  # Nr of threads to start per process
-        'total_core_count',     # Total number of cores requested
+        'slots'                 # total number of cores
+        'spmd_variation',       # expected startup mechanism for CUs (def. None)
+      # 'number_of_processes',  # Total number of processes to start
+      # 'processes_per_host',   # Nr of processes per host
+      # 'threads_per_process',  # Nr of threads to start per process
+      # 'total_core_count',     # Total number of cores requested
 
         AM: Also, shouldn't we just specify a number of cores, and leave actual
         layout to the pilot system?  This would otherwise make automated pilot
@@ -700,11 +705,12 @@ class ComputePilotDescription(dict):
         MS: No, I would say that we want to offer TROY the possibility of
         launching more than 1 pilot into a resource slice. These saga derived
         notions might not be what we want though, I'm happy to diverge from that.
+        AGREEMENT: see above, revisit after some experience
 
         # Requirements
         'candidate_hosts',          # List of specific hostnames to run on.
         'cpu_architecture',         # Specify specific arch required.
-        'total_physical_memory',
+        'total_physical_memory',    # mem for CU usage
 
         AM: how is total memory specified?  Is that memory usable for CUs?
         individually / concurrently?
@@ -712,7 +718,8 @@ class ComputePilotDescription(dict):
         My hunch is that this should be related to the layout of the
         cores/processes/hosts, etc., but that might become messy.
         We need to be able to express memory requirements for the pilot in some
-        way though!
+        way though.
+        REMOVE COMMENT
 
         'operating_system_type',  # Specify specific OS required.
         'wall_time_limit',        # Pilot is not needed longer than X.
@@ -725,6 +732,7 @@ class ComputePilotDescription(dict):
         somebody needs to instruct Sinon about resource specifics. Note that we
         already did get rid of some of the members and some more candidates are
         left.
+        REMOVE COMMENT
 
     """
 
@@ -763,6 +771,7 @@ class ComputePilot():
         """Cancel the CP.
 
         AM: do we need 'drain' on cancel?  See SAGA resource API...
+        AGREMMENT: no
 
         Keyword argument(s)::
 
@@ -805,14 +814,14 @@ class PilotService():
         Factory for ComputePilot and DataPilot instances.
     """
     
-    def __init__(self):
+    def __init__ (self, url=None):
         """Constructor for the PilotService.
         
         This could take arguments to reconnect to an existing PS.
 
         Keyword argument(s)::
 
-            name(type): description
+            url(type): reconnection point
 
         Return::
 
@@ -867,6 +876,7 @@ class PilotService():
         """
         pass
 
+
     # AM: as discussed, this should not have state, but should have an ID for
     #     reconnect [I see a case for state, TBD]
 
@@ -877,6 +887,7 @@ class PilotService():
 
         AM: We should also be able to cancel the PS w/o canceling the
             pilots! [I agree]
+        AGREEMENT: remove
 
         Keyword argument(s)::
 
@@ -888,6 +899,7 @@ class PilotService():
 
         """
         pass
+
 
     def get_pilot(self, pilot_id):
         """Get (a) Pilot instance(s) based on ID.
@@ -932,6 +944,7 @@ class DataPilotDescription(dict):
     # expressed?
 
     # AM: lifetime, resource information, etc.
+    # AGREEMENT: AM to move things over from CPD
 
     """
 
@@ -972,8 +985,9 @@ class DataPilot():
         self.backend = saga.replica.dir ("irods://irods.host.osg/")
         """
 
-    def wait(self):
-        """Wait for pending data transfers.
+    def wait(self, state=RUNNING, timeout=-1.0):
+        """
+        Wait for pending data transfers.
 
         AM: Which transfers?  Assume I have a DU which is transfered, then
         I call wait, before DU1 is finished, a DU2 gets added and needs
@@ -1002,6 +1016,14 @@ class DataPilot():
             du.wait ()
         """
 
+    def wait_units (self, ids, unit_types=ANY, state=ACTIVE) : 
+        """
+        target state: ACTIVE for DUs, FINAL for CUs
+        TODO: clarify semantics
+        """
+        pass
+
+
     def cancel(self):
         """Cancel DataPilot
 
@@ -1025,6 +1047,7 @@ class DataPilot():
             du.cancel ()
         """
 
+    def cancel_units (self, ids) : 
 
 
 # ------------------------------------------------------------------------------
@@ -1065,6 +1088,7 @@ class UnitService():
         """Cancel this Unit Service.
 
         TODO: Would this cancel assigned Units too?
+        AGREEMENT: don't use
 
         Keyword argument::
 
