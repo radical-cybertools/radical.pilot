@@ -13,7 +13,7 @@ class DataUnit (Unit) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, uid=None) : 
+    def __init__ (self, uid) : 
 
         Unit.__init__ (self, uid)
 
@@ -27,8 +27,8 @@ class DataUnit (Unit) :
 
         FIXME: what happens if we already have PFNs?
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.import_data() is not implemented" % self.__class__.__name__)
 
 
     # --------------------------------------------------------------------------
@@ -37,8 +37,8 @@ class DataUnit (Unit) :
         """
         Copy any of the data_unit's PFNs to the tgt URL.
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.export_data() is not implemented" % self.__class__.__name__)
 
 
     # --------------------------------------------------------------------------
@@ -47,8 +47,8 @@ class DataUnit (Unit) :
         """
         Removes the data.  Implies cancel ()
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.remove_data() is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------

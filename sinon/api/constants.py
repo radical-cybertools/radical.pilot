@@ -1,4 +1,5 @@
 
+
 # Async call types
 SYNC              = 'Sync';         """The call will be synchronous."""
 ASYNC             = 'Async'
@@ -9,13 +10,12 @@ COMPUTE           = 2
 ANY               = DATA | COMPUTE
 
 # States
-UNKNOWN           =  0
-PENDING           =  1
-ACTIVE            =  2
-DONE              =  4
-CANCELED          =  8
-FAILED            = 16
-FINAL             = DONE | CANCELED | FAILED
+UNKNOWN           = 'Unknown'
+PENDING           = 'Pending'
+ACTIVE            = 'Active'
+DONE              = 'Done'
+CANCELED          = 'Canceled'
+FAILED            = 'Failed' 
 
 # State Metrics
 STATE             = 'State'
@@ -29,7 +29,7 @@ END_TIME          = 'EndTime'
 DESCRIPTION       = 'Description'
 SCHEDULER         = 'Scheduler'
 
-UID               = 'PID'
+UID               = 'UID'
 UNITS             = 'Units'
 UNIT_MANAGER      = 'UnitManager'
 UNIT_MANAGERS     = 'UnitManagers'

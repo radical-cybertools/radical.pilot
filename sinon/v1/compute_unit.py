@@ -1,16 +1,22 @@
 
 
+import sinon.api     as sa
+import unit          as u
+from   constants import *
+
+
 # ------------------------------------------------------------------------------
 #
-class Attributes (object) :
-
-    # FIXME: add method sigs
+class ComputeUnit (u.Unit, sa.ComputeUnit) :
+    """ 
+    Base class for DataUnit and ComputeUnit.
+    """
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, vals={}) :
+    def __init__ (self, uid) : 
 
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        u.Unit.__init__ (self, uid)
 
 
 # ------------------------------------------------------------------------------

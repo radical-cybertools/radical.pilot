@@ -1,12 +1,16 @@
 
 
+import sinon.api       as sa
+import saga.session    as ss
+
+
 # ------------------------------------------------------------------------------
 #
-class Url (object) : 
+class Session (ss.Session, sa.Session) :
 
-    # FIXME: sigs
-    
-    pass
+    def __init__ (self, default=True) :
+
+        ss.Session.__init__ (self, default)
 
 
 # ------------------------------------------------------------------------------

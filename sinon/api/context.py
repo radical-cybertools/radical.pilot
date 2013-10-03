@@ -1,12 +1,11 @@
 
 
-import saga
-from   constants import *
-
-
 # ------------------------------------------------------------------------------
 #
-class Context (saga.Context) : 
+class Context (object) : 
+
+    # FIXME: sigs
+    
     pass
 
 

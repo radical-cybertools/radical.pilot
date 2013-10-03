@@ -1,12 +1,11 @@
 
 
-import saga
-from   constants import *
-
-
 # ------------------------------------------------------------------------------
 #
-class Callback (saga.Callback) : 
+class Callback (object) : 
+
+    # FIXME: sigs
+    
     pass
 
 

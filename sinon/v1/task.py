@@ -1,12 +1,16 @@
 
 
+import sinon.api       as sa
+import saga.task       as st
+
+
 # ------------------------------------------------------------------------------
 #
-class Url (object) : 
+class Task (st.Task, sa.Task) :
 
-    # FIXME: sigs
-    
-    pass
+    def __init__ (self) :
+
+        st.Task.__init__ (self)
 
 
 # ------------------------------------------------------------------------------

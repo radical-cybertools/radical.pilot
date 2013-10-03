@@ -1,12 +1,16 @@
 
 
+import sinon.api       as sa
+import saga.context    as sc
+
+
 # ------------------------------------------------------------------------------
 #
-class Url (object) : 
+class Context (sc.Context, sa.Context) : 
 
-    # FIXME: sigs
-    
-    pass
+    def __init__ (self, ctype) :
+
+        sc.Context.__init__ (self, ctype)
 
 
 # ------------------------------------------------------------------------------

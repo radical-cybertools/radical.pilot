@@ -1,7 +1,6 @@
 
 
 from attributes import *
-from constants  import *
 
 
 # ------------------------------------------------------------------------------
@@ -11,7 +10,7 @@ class Description (Attributes) :
     Base class for ComputeUnitDescription, DataUnitDescription,
     ComputePilotDescription and DataPilotDescription.
     """
-    
+
     # --------------------------------------------------------------------------
     #
     def __init__ (self, vals=None) :
@@ -28,10 +27,6 @@ class Description (Attributes) :
         """
 
         Attributes.__init__ (self, vals)
-
-        # set attribute interface properties
-        self._attributes_extensible  (False)
-        self._attributes_camelcasing (True)
 
 
 # ------------------------------------------------------------------------------

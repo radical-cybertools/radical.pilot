@@ -18,16 +18,6 @@ class UnitManager (Attributes) :
 
         Attributes.__init__ (self)
 
-        # set attribute interface properties
-        self._attributes_extensible  (False)
-        self._attributes_camelcasing (True)
-
-        # deep inspection
-        self._attributes_register  (SCHEDULER, None, STRING, SCALAR, READONLY)
-        self._attributes_register  (PILOTS,    None, STRING, VECTOR, READONLY)
-        self._attributes_register  (UNITS,     None, STRING, VECTOR, READONLY)
-        # ...
-
 
     # --------------------------------------------------------------------------
     #
@@ -35,8 +25,8 @@ class UnitManager (Attributes) :
         """
         add (Compute or Data)-Pilot(s) to the pool
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.add_pilot() is not implemented" % self.__class__.__name__)
 
 
     # --------------------------------------------------------------------------
@@ -45,8 +35,8 @@ class UnitManager (Attributes) :
         """
         List IDs of data and/or compute pilots
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.list_pilots() is not implemented" % self.__class__.__name__)
 
 
     # --------------------------------------------------------------------------
@@ -56,8 +46,8 @@ class UnitManager (Attributes) :
         Remove pilot(s) (does not cancel the pilot(s), but removes all units
         from the pilot(s).
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.remove_pilot() is not implemented" % self.__class__.__name__)
 
 
     # --------------------------------------------------------------------------
@@ -66,8 +56,8 @@ class UnitManager (Attributes) :
         """
         Instantiate and return (Compute or Data)-Unit object(s)
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.submit_unit() is not implemented" % self.__class__.__name__)
 
 
     # --------------------------------------------------------------------------
@@ -76,8 +66,8 @@ class UnitManager (Attributes) :
         """
         List IDs of data and/or compute units
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.list_units() is not implemented" % self.__class__.__name__)
 
 
     # --------------------------------------------------------------------------
@@ -86,23 +76,29 @@ class UnitManager (Attributes) :
         """
         Reconnect to and return (Compute or Data)-Unit object(s)
         """
-        # FIXME
-        pass
+
+        raise Exception ("%s.get_unit() is not implemented" % self.__class__.__name__)
 
 
     # --------------------------------------------------------------------------
     #
-    def wait_units (self, uids, state=FINAL, timeout=-1.0, ttype=SYNC) :
+    def wait_unit (self, uids, state=[DONE, FAILED, CANCELED], timeout=-1.0, ttype=SYNC) :
         """
-        Cancel given unit(s)
+        Wait for given unit(s) to enter given state
         """
+
+        raise Exception ("%s.wait_unit() is not implemented" % self.__class__.__name__)
+
 
     # --------------------------------------------------------------------------
     #
     def cancel_units (self, uids, ttype=SYNC) :
         """
-        Cancel (set of) given unit(s)
+        Cancel given unit(s)
         """
+
+        raise Exception ("%s.cancel_unit() is not implemented" % self.__class__.__name__)
+
 
 # ------------------------------------------------------------------------------
 #

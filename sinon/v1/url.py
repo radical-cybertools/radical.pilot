@@ -1,12 +1,16 @@
 
 
+import sinon.api       as sa
+import saga.url        as su
+
+
 # ------------------------------------------------------------------------------
 #
-class Url (object) : 
+class Url (su.Url, sa.Url) : 
 
-    # FIXME: sigs
-    
-    pass
+    def __init__ (self, url_string='') :
+
+        su.Url.__init__ (self, url_string)
 
 
 # ------------------------------------------------------------------------------

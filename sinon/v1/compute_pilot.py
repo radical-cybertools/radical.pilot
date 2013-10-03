@@ -1,16 +1,18 @@
 
 
+import sinon.api       as sa
+from   pilot       import Pilot
+
+
 # ------------------------------------------------------------------------------
 #
-class Attributes (object) :
-
-    # FIXME: add method sigs
+class ComputePilot (Pilot, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, vals={}) :
+    def __init__ (self, pid) : 
 
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        Pilot.__init__ (self, pid)
 
 
 # ------------------------------------------------------------------------------

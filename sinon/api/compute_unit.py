@@ -1,7 +1,6 @@
 
 
 from unit      import Unit
-from constants import *
 
 
 # ------------------------------------------------------------------------------
@@ -13,7 +12,7 @@ class ComputeUnit (Unit) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, uid=None) : 
+    def __init__ (self, uid) : 
 
         Unit.__init__ (self, uid)
 

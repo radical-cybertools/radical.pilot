@@ -1,11 +1,11 @@
 
 
-import saga
-
-
 # ------------------------------------------------------------------------------
 #
-class Task (saga.Task) :
+class Task (object) :
+
+    # FIXME: sigs
+    
     pass
 
 

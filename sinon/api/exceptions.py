@@ -1,99 +1,108 @@
 
 
-import saga.exceptions as se
 from   constants import *
 
 
 # ------------------------------------------------------------------------------
 #
-class SinonException (se.SagaException) :
+class SinonException (Exception) :
     """
     The given URL could not be interpreted, for example due to an incorrect
     / unknown schema. 
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectURL (SinonException, se.IncorrectURL) :
+class IncorrectURL (Exception) :
     """
     The given URL could not be interpreted, for example due to an incorrect
     / unknown schema. 
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class BadParameter (SinonException, se.BadParameter) :
+class BadParameter (Exception) :
     """
     A given parameter is out of bound or ill formatted.
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class DoesNotExist (SinonException, se.DoesNotExist) :
+class DoesNotExist (Exception) :
     """
     An operation tried to access a non-existing entity.
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectState (SinonException, se.IncorrectState) :
+class IncorrectState (Exception) :
     """
     The operation is not allowed on the entity in its current state.
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class PermissionDenied (SinonException, se.PermissionDenied) :
+class PermissionDenied (Exception) :
     """
     The used identity is not permitted to perform the requested operation.
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class AuthorizationFailed (SinonException, se.AuthorizationFailed) :
+class AuthorizationFailed (Exception) :
     """
     The backend could not establish a valid identity.
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class AuthenticationFailed (SinonException, se.AuthenticationFailed) :
+class AuthenticationFailed (Exception) :
     """
     The backend could not establish a valid identity.
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class Timeout (SinonException, se.Timeout) :
+class Timeout (Exception) :
     """
     The interaction with the backend times out.
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------
 #
-class NoSuccess (SinonException, se.NoSuccess) :
+class NoSuccess (Exception) :
     """
     Some other error occurred.
     """
-    pass
+    def __init__ (self) :
+        raise Exception ("%s is not implemented" % self.__class__.__name__)
 
 
 # ------------------------------------------------------------------------------

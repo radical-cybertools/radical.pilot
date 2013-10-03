@@ -1,11 +1,13 @@
 
 
+import sinon.api       as sa
+import saga.attributes as satt
+
+
 # ------------------------------------------------------------------------------
 #
-class Url (object) : 
+class Callback (satt.Callback, sa.Callback) : 
 
-    # FIXME: sigs
-    
     pass
 
 
