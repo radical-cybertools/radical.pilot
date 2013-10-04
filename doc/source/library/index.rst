@@ -10,7 +10,6 @@ Intro library reference...
 .. toctree::
    :numbered:
 
-   constants.rst
    exceptions.rst
    attributes.rst
    url.rst

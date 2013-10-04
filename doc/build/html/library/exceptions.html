@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
 
-    <title>2. Exception Handling &mdash; SAGA 0.1-a971acc documentation</title>
+    <title>1. Exception Handling &mdash; SAGA 0.1-7fffb5f documentation</title>
 
 <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
 
@@ -20,7 +20,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1-a971acc',
+        VERSION:     '0.1-7fffb5f',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -31,10 +31,10 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../../_static/searchtools.js"></script>
-    <link rel="top" title="SAGA 0.1-a971acc documentation" href="../index.html" />
+    <link rel="top" title="SAGA 0.1-7fffb5f documentation" href="../index.html" />
     <link rel="up" title="2. Library Reference" href="index.html" />
-    <link rel="next" title="3. Attribute Handling and Notifications" href="attributes.html" />
-    <link rel="prev" title="1. Sinon Module Constants" href="constants.html" /> 
+    <link rel="next" title="2. Attribute Handling and Notifications" href="attributes.html" />
+    <link rel="prev" title="2. Library Reference" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -47,12 +47,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="attributes.html" title="3. Attribute Handling and Notifications"
+          <a href="attributes.html" title="2. Attribute Handling and Notifications"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="constants.html" title="1. Sinon Module Constants"
+          <a href="index.html" title="2. Library Reference"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-a971acc documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-7fffb5f documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -63,83 +63,22 @@
           <div class="body">
             
   <div class="section" id="exception-handling">
-<h1>2. Exception Handling<a class="headerlink" href="#exception-handling" title="Permalink to this headline">¶</a></h1>
+<h1>1. Exception Handling<a class="headerlink" href="#exception-handling" title="Permalink to this headline">¶</a></h1>
 <div class="admonition-todo admonition" id="index-0">
 <p class="first admonition-title">Todo</p>
 <p class="last">Intro to Sinon exception handling.</p>
 </div>
-<div class="section" id="module-sinon.api.exceptions">
-<span id="exceptions-sinon-exceptions"></span><h2>2.1. Exceptions &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.exceptions</span></tt><a class="headerlink" href="#module-sinon.api.exceptions" title="Permalink to this headline">¶</a></h2>
-<dl class="exception">
-<dt id="sinon.api.exceptions.SinonException">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">SinonException</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#SinonException"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.SinonException" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
-<p>The given URL could not be interpreted, for example due to an incorrect
-/ unknown schema.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.IncorrectURL">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">IncorrectURL</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#IncorrectURL"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.IncorrectURL" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>The given URL could not be interpreted, for example due to an incorrect
-/ unknown schema.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.BadParameter">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">BadParameter</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#BadParameter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.BadParameter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>A given parameter is out of bound or ill formatted.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.DoesNotExist">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">DoesNotExist</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#DoesNotExist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.DoesNotExist" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>An operation tried to access a non-existing entity.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.IncorrectState">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">IncorrectState</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#IncorrectState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.IncorrectState" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>The operation is not allowed on the entity in its current state.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.PermissionDenied">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">PermissionDenied</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#PermissionDenied"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.PermissionDenied" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>The used identity is not permitted to perform the requested operation.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.AuthorizationFailed">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">AuthorizationFailed</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#AuthorizationFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.AuthorizationFailed" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>The backend could not establish a valid identity.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.AuthenticationFailed">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">AuthenticationFailed</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#AuthenticationFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.AuthenticationFailed" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>The backend could not establish a valid identity.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.Timeout">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">Timeout</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#Timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.Timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>The interaction with the backend times out.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="sinon.api.exceptions.NoSuccess">
-<em class="property">exception </em><tt class="descclassname">sinon.api.exceptions.</tt><tt class="descname">NoSuccess</tt><a class="reference internal" href="../_modules/sinon/api/exceptions.html#NoSuccess"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.exceptions.NoSuccess" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sinon.api.exceptions.SinonException" title="sinon.api.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.exceptions.SinonException</span></tt></a></p>
-<p>Some other error occurred.</p>
+<div class="section" id="module-sinon">
+<span id="exceptions-sinon-exceptions"></span><h2>1.1. Exceptions &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.exceptions</span></tt><a class="headerlink" href="#module-sinon" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="sinon.initialize">
+<tt class="descclassname">sinon.</tt><tt class="descname">initialize</tt><big>(</big><em>session_id=None</em><big>)</big><a class="reference internal" href="../_modules/sinon.html#initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize this instance of the Sinon framework with a session ID.</p>
+<p>If a session ID is given, then it will be used for all subsequent calls.  
+If none is given, Sinon will attempt to pick it up from the process
+environment (<cite>SINON_SESSION_ID</cite>).  If that also fails, a new (random and
+unique) session ID will be automatically formed and used.  Any Sinon call
+will first make sure that a valid session ID exists.</p>
 </dd></dl>
 
 </div>
@@ -153,18 +92,18 @@
         <div class="sphinxsidebarwrapper">
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">2. Exception Handling</a><ul>
-<li><a class="reference internal" href="#module-sinon.api.exceptions">2.1. Exceptions &#8211; <tt class="docutils literal"><span class="pre">sinon.exceptions</span></tt></a></li>
+<li><a class="reference internal" href="#">1. Exception Handling</a><ul>
+<li><a class="reference internal" href="#module-sinon">1.1. Exceptions &#8211; <tt class="docutils literal"><span class="pre">sinon.exceptions</span></tt></a></li>
 </ul>
 </li>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="constants.html"
-                        title="previous chapter">1. Sinon Module Constants</a></p>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">2. Library Reference</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="attributes.html"
-                        title="next chapter">3. Attribute Handling and Notifications</a></p>
+                        title="next chapter">2. Attribute Handling and Notifications</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../_sources/library/exceptions.txt"
@@ -197,12 +136,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="attributes.html" title="3. Attribute Handling and Notifications"
+          <a href="attributes.html" title="2. Attribute Handling and Notifications"
              >next</a> |</li>
         <li class="right" >
-          <a href="constants.html" title="1. Sinon Module Constants"
+          <a href="index.html" title="2. Library Reference"
              >previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-a971acc documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-7fffb5f documentation</a> &raquo;</li>
           <li><a href="index.html" >2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>

@@ -4,7 +4,14 @@
 all: doc
 
 doc:
+	test -d sinon.bak && echo "sinon.bak/ exists"
+	test -d sinon.bak && false
+	mv sinon sinon.bak
+	mkdir sinon
+	cp sinon.bak/api/*.py sinon/
 	make -C doc html
+	rm -rf sinon
+	mv sinon.bak sinon
 
 test:
 	nosetests tests.restapi --config=tests/nose.cfg

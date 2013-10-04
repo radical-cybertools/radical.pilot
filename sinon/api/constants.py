@@ -1,7 +1,7 @@
 
 
 # Async call types
-SYNC              = 'Sync';         """The call will be synchronous."""
+SYNC              = 'Sync'
 ASYNC             = 'Async'
 
 # Unit and Pilot types
@@ -74,7 +74,7 @@ START_BEFORE      = 'StartBefore'
 CONCURRENT_WITH   = 'ConcurrentWith'
 
 # DataUnitDescription keys
-# NAME            = 'Name'       # duplicate
+NAME              = 'Name'
 FILE_URLS         = 'FileURLs'
 LIFETIME          = 'Lifetime'
 CLEANUP           = 'Cleanup'

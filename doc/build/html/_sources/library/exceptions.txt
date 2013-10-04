@@ -7,8 +7,9 @@ Exception Handling
 Exceptions -- :mod:`sinon.exceptions`
 -------------------------------------
 
-.. automodule:: sinon.api.exceptions
+.. automodule:: sinon
    :show-inheritance:
+   :undoc-members:
    :members: SinonException, NotImplemented, IncorrectURL, BadParameter,
              AlreadyExists, DoesNotExist, IncorrectState, PermissionDenied,
              AuthorizationFailed, AuthenticationFailed, Timeout, NoSuccess

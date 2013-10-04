@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
 
-    <title>6. Security Contexts &mdash; SAGA 0.1-a971acc documentation</title>
+    <title>5. Security Contexts &mdash; SAGA 0.1-7fffb5f documentation</title>
 
 <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
 
@@ -20,7 +20,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1-a971acc',
+        VERSION:     '0.1-7fffb5f',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -31,10 +31,10 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../../_static/searchtools.js"></script>
-    <link rel="top" title="SAGA 0.1-a971acc documentation" href="../index.html" />
+    <link rel="top" title="SAGA 0.1-7fffb5f documentation" href="../index.html" />
     <link rel="up" title="2. Library Reference" href="index.html" />
-    <link rel="next" title="7. Sessions" href="session.html" />
-    <link rel="prev" title="5. Tasks" href="task.html" /> 
+    <link rel="next" title="6. Sessions" href="session.html" />
+    <link rel="prev" title="4. Tasks" href="task.html" /> 
   </head>
   <body>
     <div class="related">
@@ -47,12 +47,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="session.html" title="7. Sessions"
+          <a href="session.html" title="6. Sessions"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="task.html" title="5. Tasks"
+          <a href="task.html" title="4. Tasks"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-a971acc documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-7fffb5f documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -63,9 +63,9 @@
           <div class="body">
             
   <div class="section" id="security-contexts">
-<span id="id1"></span><h1>6. Security Contexts<a class="headerlink" href="#security-contexts" title="Permalink to this headline">¶</a></h1>
+<span id="id1"></span><h1>5. Security Contexts<a class="headerlink" href="#security-contexts" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="module-sinon.api.context">
-<span id="context-class-sinon-context"></span><h2>6.1. Context Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.context</span></tt><a class="headerlink" href="#module-sinon.api.context" title="Permalink to this headline">¶</a></h2>
+<span id="context-class-sinon-context"></span><h2>5.1. Context Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.context</span></tt><a class="headerlink" href="#module-sinon.api.context" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="sinon.api.context.Context">
 <em class="property">class </em><tt class="descclassname">sinon.api.context.</tt><tt class="descname">Context</tt><a class="reference internal" href="../_modules/sinon/api/context.html#Context"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.context.Context" title="Permalink to this definition">¶</a></dt>
@@ -74,7 +74,7 @@
 
 </div>
 <div class="section" id="userpass-context">
-<h2>6.2. UserPass Context<a class="headerlink" href="#userpass-context" title="Permalink to this headline">¶</a></h2>
+<h2>5.2. UserPass Context<a class="headerlink" href="#userpass-context" title="Permalink to this headline">¶</a></h2>
 <p>This context stores a user id and password, to be used for backend connections.
 This context can be used for SSH connections if it is preferred over
 public-/private-key authentication.</p>
@@ -117,7 +117,7 @@ i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;ssh&quo
 </div>
 </div>
 <div class="section" id="ssh-context">
-<h2>6.3. SSH Context<a class="headerlink" href="#ssh-context" title="Permalink to this headline">¶</a></h2>
+<h2>5.3. SSH Context<a class="headerlink" href="#ssh-context" title="Permalink to this headline">¶</a></h2>
 <p>This SSH :context points to a ssh public/private key-pair and user id to
 be used for any ssh-based backend connections, e.g., <tt class="docutils literal"><span class="pre">ssh://</span></tt>, <tt class="docutils literal"><span class="pre">pbs+ssh://</span></tt> and so on.</p>
 <p>The following context attributes are supported:</p>
@@ -167,7 +167,7 @@ if an SSH key-pair other than the default one (in $HOME/.ssh/) is required to es
 </div>
 </div>
 <div class="section" id="x-509-context">
-<h2>6.4. X.509 Context<a class="headerlink" href="#x-509-context" title="Permalink to this headline">¶</a></h2>
+<h2>5.4. X.509 Context<a class="headerlink" href="#x-509-context" title="Permalink to this headline">¶</a></h2>
 <p>The X.509 context points to an existing, local X509 proxy.</p>
 <p>The following context attributes are supported:</p>
 <dl class="data">
@@ -198,7 +198,7 @@ if a proxy file other than the default one (in /tmp/x509_u&lt;uid&gt;) is requir
 </div>
 </div>
 <div class="section" id="myproxy-context">
-<h2>6.5. MyProxy Context<a class="headerlink" href="#myproxy-context" title="Permalink to this headline">¶</a></h2>
+<h2>5.5. MyProxy Context<a class="headerlink" href="#myproxy-context" title="Permalink to this headline">¶</a></h2>
 <p>The MyProxy context fetches a delegated X.509 proxy from a (Globus) myproxy server.</p>
 <p>The following context attributes are supported:</p>
 <dl class="data">
@@ -255,7 +255,7 @@ This is equivalent to <tt class="docutils literal"><span class="pre">myproxy-log
 </div>
 </div>
 <div class="section" id="ec2-context">
-<h2>6.6. EC2 Context<a class="headerlink" href="#ec2-context" title="Permalink to this headline">¶</a></h2>
+<h2>5.6. EC2 Context<a class="headerlink" href="#ec2-context" title="Permalink to this headline">¶</a></h2>
 <p>The EC2 context can be used to authenticate against the Amazon EC2 service.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -310,7 +310,7 @@ i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;EC2&quo
 </div>
 </div>
 <div class="section" id="ec2-keypair-context">
-<h2>6.7. EC2_KEYPAIR Context<a class="headerlink" href="#ec2-keypair-context" title="Permalink to this headline">¶</a></h2>
+<h2>5.7. EC2_KEYPAIR Context<a class="headerlink" href="#ec2-keypair-context" title="Permalink to this headline">¶</a></h2>
 <p>This context refers to an SSH key-pair and is very similar to the <tt class="docutils literal"><span class="pre">SSH</span> <span class="pre">Context</span></tt>
 described above. It is used to inject a key-pair into an Amazon EC2 VM and
 is used injunction with an <tt class="docutils literal"><span class="pre">EC2</span> <span class="pre">Context</span></tt>. See above for an example.</p>
@@ -358,24 +358,24 @@ if an SSH key-pair other than the default one (in $HOME/.ssh/) is required to es
         <div class="sphinxsidebarwrapper">
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">6. Security Contexts</a><ul>
-<li><a class="reference internal" href="#module-sinon.api.context">6.1. Context Class &#8211; <tt class="docutils literal"><span class="pre">sinon.context</span></tt></a></li>
-<li><a class="reference internal" href="#userpass-context">6.2. UserPass Context</a></li>
-<li><a class="reference internal" href="#ssh-context">6.3. SSH Context</a></li>
-<li><a class="reference internal" href="#x-509-context">6.4. X.509 Context</a></li>
-<li><a class="reference internal" href="#myproxy-context">6.5. MyProxy Context</a></li>
-<li><a class="reference internal" href="#ec2-context">6.6. EC2 Context</a></li>
-<li><a class="reference internal" href="#ec2-keypair-context">6.7. EC2_KEYPAIR Context</a></li>
+<li><a class="reference internal" href="#">5. Security Contexts</a><ul>
+<li><a class="reference internal" href="#module-sinon.api.context">5.1. Context Class &#8211; <tt class="docutils literal"><span class="pre">sinon.context</span></tt></a></li>
+<li><a class="reference internal" href="#userpass-context">5.2. UserPass Context</a></li>
+<li><a class="reference internal" href="#ssh-context">5.3. SSH Context</a></li>
+<li><a class="reference internal" href="#x-509-context">5.4. X.509 Context</a></li>
+<li><a class="reference internal" href="#myproxy-context">5.5. MyProxy Context</a></li>
+<li><a class="reference internal" href="#ec2-context">5.6. EC2 Context</a></li>
+<li><a class="reference internal" href="#ec2-keypair-context">5.7. EC2_KEYPAIR Context</a></li>
 </ul>
 </li>
 </ul>
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="task.html"
-                        title="previous chapter">5. Tasks</a></p>
+                        title="previous chapter">4. Tasks</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="session.html"
-                        title="next chapter">7. Sessions</a></p>
+                        title="next chapter">6. Sessions</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../_sources/library/context.txt"
@@ -408,12 +408,12 @@ if an SSH key-pair other than the default one (in $HOME/.ssh/) is required to es
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="session.html" title="7. Sessions"
+          <a href="session.html" title="6. Sessions"
              >next</a> |</li>
         <li class="right" >
-          <a href="task.html" title="5. Tasks"
+          <a href="task.html" title="4. Tasks"
              >previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-a971acc documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-7fffb5f documentation</a> &raquo;</li>
           <li><a href="index.html" >2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>
