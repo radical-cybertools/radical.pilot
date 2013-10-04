@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
 
-    <title>1. Part 1: Introduction &mdash; SAGA 0.1-1dcfe74 documentation</title>
+    <title>1. Part 1: Introduction &mdash; SAGA 0.1-edf4c70 documentation</title>
 
 <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
 
@@ -20,7 +20,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1-1dcfe74',
+        VERSION:     '0.1-edf4c70',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -31,9 +31,9 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../../_static/searchtools.js"></script>
-    <link rel="top" title="SAGA 0.1-1dcfe74 documentation" href="../index.html" />
+    <link rel="top" title="SAGA 0.1-edf4c70 documentation" href="../index.html" />
     <link rel="up" title="3. Tutorial" href="index.html" />
-    <link rel="next" title="2. Part 2: Local Job Submission" href="part2.html" />
+    <link rel="next" title="2. Part 2: Local Pilot Usage" href="part2.html" />
     <link rel="prev" title="3. Tutorial" href="index.html" /> 
   </head>
   <body>
@@ -47,12 +47,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="part2.html" title="2. Part 2: Local Job Submission"
+          <a href="part2.html" title="2. Part 2: Local Pilot Usage"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="3. Tutorial"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-1dcfe74 documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-edf4c70 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">3. Tutorial</a> &raquo;</li> 
       </ul>
     </div>  
@@ -64,26 +64,14 @@
             
   <div class="section" id="part-1-introduction">
 <h1>1. Part 1: Introduction<a class="headerlink" href="#part-1-introduction" title="Permalink to this headline">¶</a></h1>
-<p>The SAGA Python module provides an object-oriented programming interface for job
-submission and management, resource allocation, file handling and coordination
-and communication - functionality that is required in the majority of
-distributed applications, frameworks and tool.</p>
-<p>SAGA encapsulates the complexity and heterogeneity of different distributed
-computing systems and &#8216;cyberinfrastructures&#8217; by providing a single, coherent API
-to the application developer. The so-called adaptor-mechanism that is
-transparent to the application translates the API calls to the different
-middleware interfaces.  A list of available adaptors can be found in
-<em class="xref std std-ref">chapter_adaptors</em>.</p>
-<p>In part 2 of this tutorial, we will start with using the local (fork) job
-adaptor. In part 3, we use the ssh job adaptor to submit a job to a remote
-host. In part 4, we use one of the HPC adaptors (sge, slurm, pbs) to submit a
-job to an HPC cluster. Additionally, we introduce the sftp file adaptor  to
-implement input and output file staging.</p>
+<p>Sinon provides ...</p>
+<p>In part 2 of this tutorial, we will ...
+In part 3, we ...</p>
 <div class="section" id="installation">
 <h2>1.1. Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">SAGA-Python requires <strong>Python &gt;= 2.5</strong>. It won&#8217;t work with an older version of Python.</p>
+<p class="last">Sinon requires <strong>Python &gt;= 2.5</strong>. It won&#8217;t work with an older version of Python.</p>
 </div>
 <div class="section" id="install-virtualenv">
 <h3>1.1.1. Install Virtualenv<a class="headerlink" href="#install-virtualenv" title="Permalink to this headline">¶</a></h3>
@@ -94,34 +82,43 @@ allows you to install additional Python packages without having to be &#8216;roo
 <div class="highlight-bash"><div class="highlight"><pre>virtualenv <span class="nv">$HOME</span>/tutorial
 </pre></div>
 </div>
-<p>If you don&#8217;t have virtualenv installed and you don&#8217;t have root access on your machine, you can use the following script instead:</p>
+<p>If you don&#8217;t have virtualenv installed and you don&#8217;t have root access on your
+machine, you can use the following script instead:</p>
 <div class="highlight-bash"><div class="highlight"><pre>curl --insecure -s https://raw.github.com/pypa/virtualenv/master/virtualenv.py | python - <span class="nv">$HOME</span>/tutorial
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">If you have multiple Python versions installed on your system, you can use the <tt class="docutils literal"><span class="pre">virtualenv</span> <span class="pre">--python=PYTHON_EXE</span></tt> flag to force virtualenv to use a specific version.</p>
+<p class="last">If you have multiple Python versions installed on your system, you can
+use the <tt class="docutils literal"><span class="pre">virtualenv</span> <span class="pre">--python=PYTHON_EXE</span></tt> flag to force virtualenv to use
+a specific version.</p>
 </div>
 <p>Next, you need to activate your Python environment in order to make it work:</p>
 <div class="highlight-bash"><div class="highlight"><pre><span class="nb">source</span> <span class="nv">$HOME</span>/tutorial/bin/activate
 </pre></div>
 </div>
-<p>Activating the virtualenv is very important. If you don&#8217;t activate your virtualenv, the rest of this tutorial will not work. You can usually tell that your environment is activated properly if your bash command-line prompt starts with <tt class="docutils literal"><span class="pre">(tutorial)</span></tt>.</p>
+<p>Activating the virtualenv is very important. If you don&#8217;t activate your
+virtualenv, the rest of this tutorial will not work. You can usually tell that
+your environment is activated properly if your bash command-line prompt starts
+with <tt class="docutils literal"><span class="pre">(tutorial)</span></tt>.</p>
 </div>
-<div class="section" id="install-saga-python">
-<h3>1.1.2. Install SAGA Python<a class="headerlink" href="#install-saga-python" title="Permalink to this headline">¶</a></h3>
-<p>The latest saga-python module is available via the <a class="reference external" href="https://pypi.python.org/pypi/saga-python">Python Package Index</a>  (PyPi). PyPi packages are installed very similar to Linux deb or rpm packages with a tool called <tt class="docutils literal"><span class="pre">pip</span></tt> (which stands for &#8220;pip installs packages&#8221;). Pip is installed by default in your virtualenv, so in order to install SAGA Python, the only thing you have to do is this:</p>
-<div class="highlight-bash"><div class="highlight"><pre>pip install saga-python
+<div class="section" id="install-sinon">
+<h3>1.1.2. Install Sinon<a class="headerlink" href="#install-sinon" title="Permalink to this headline">¶</a></h3>
+<p>The latest sinon module is available via the <a class="reference external" href="https://pypi.python.org/pypi/sinon">Python Package Index</a>  (PyPi). PyPi packages are installed very
+similar to Linux deb or rpm packages with a tool called <tt class="docutils literal"><span class="pre">pip</span></tt> (which stands
+for &#8220;pip installs packages&#8221;). Pip is installed by default in your virtualenv, so
+in order to install Sinon, the only thing you have to do is this:</p>
+<div class="highlight-bash"><div class="highlight"><pre>pip install sinon
 </pre></div>
 </div>
 <p>You will see some downloading and unpacking action and if everything worked ok, the last two lines should look like this:</p>
-<div class="highlight-none"><div class="highlight"><pre>Finished processing dependencies for saga-python==0.9.3
+<div class="highlight-none"><div class="highlight"><pre>Finished processing dependencies for sinon==0.9.3
 </pre></div>
 </div>
 <p>To make sure that your installation works, run the following command to check if
-the saga-python module can be imported by the interpreter (the output of the
-command below should be version number of the saga-python module):</p>
-<div class="highlight-bash"><div class="highlight"><pre>python -c <span class="s2">&quot;import saga; print saga.version&quot;</span>
+the sinon module can be imported by the interpreter (the output of the command
+below should be version number of the sinon module):</p>
+<div class="highlight-bash"><div class="highlight"><pre>python -c <span class="s2">&quot;import sinon; print sinon.version&quot;</span>
 </pre></div>
 </div>
 </div>
@@ -139,7 +136,7 @@ command below should be version number of the saga-python module):</p>
 <li><a class="reference internal" href="#">1. Part 1: Introduction</a><ul>
 <li><a class="reference internal" href="#installation">1.1. Installation</a><ul>
 <li><a class="reference internal" href="#install-virtualenv">1.1.1. Install Virtualenv</a></li>
-<li><a class="reference internal" href="#install-saga-python">1.1.2. Install SAGA Python</a></li>
+<li><a class="reference internal" href="#install-sinon">1.1.2. Install Sinon</a></li>
 </ul>
 </li>
 </ul>
@@ -151,7 +148,7 @@ command below should be version number of the saga-python module):</p>
                         title="previous chapter">3. Tutorial</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="part2.html"
-                        title="next chapter">2. Part 2: Local Job Submission</a></p>
+                        title="next chapter">2. Part 2: Local Pilot Usage</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../_sources/tutorial/part1.txt"
@@ -184,12 +181,12 @@ command below should be version number of the saga-python module):</p>
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="part2.html" title="2. Part 2: Local Job Submission"
+          <a href="part2.html" title="2. Part 2: Local Pilot Usage"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="3. Tutorial"
              >previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-1dcfe74 documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-edf4c70 documentation</a> &raquo;</li>
           <li><a href="index.html" >3. Tutorial</a> &raquo;</li> 
       </ul>
     </div>

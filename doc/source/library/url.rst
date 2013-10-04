@@ -1,3 +1,4 @@
+
 URLs
 ****
 
@@ -5,6 +6,7 @@ URLs
 Url -- :class:`sinon.Url`
 -------------------------
 
-.. autoclass:: sinon.Url
-   :members:
+.. automodule:: sinon.api.url
+   :show-inheritance:
+   :members: Url
 

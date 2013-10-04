@@ -1,13 +1,15 @@
+
 Exception Handling
 ******************
 
-.. todo:: Intro to SAGA exception handling.
+.. todo:: Intro to Sinon exception handling.
 
-Exceptions -- :mod:`saga.exceptions`
-------------------------------------
+Exceptions -- :mod:`sinon.exceptions`
+-------------------------------------
 
-.. automodule:: saga.exceptions
+.. automodule:: sinon.api.exceptions
    :show-inheritance:
-   :members: SagaException, NotImplemented, IncorrectURL, BadParameter,
+   :members: SinonException, NotImplemented, IncorrectURL, BadParameter,
              AlreadyExists, DoesNotExist, IncorrectState, PermissionDenied,
              AuthorizationFailed, AuthenticationFailed, Timeout, NoSuccess
+

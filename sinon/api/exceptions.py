@@ -16,7 +16,7 @@ class SinonException (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectURL (Exception) :
+class IncorrectURL (SinonException) :
     """
     The given URL could not be interpreted, for example due to an incorrect
     / unknown schema. 
@@ -27,7 +27,7 @@ class IncorrectURL (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class BadParameter (Exception) :
+class BadParameter (SinonException) :
     """
     A given parameter is out of bound or ill formatted.
     """
@@ -37,7 +37,7 @@ class BadParameter (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class DoesNotExist (Exception) :
+class DoesNotExist (SinonException) :
     """
     An operation tried to access a non-existing entity.
     """
@@ -47,7 +47,7 @@ class DoesNotExist (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectState (Exception) :
+class IncorrectState (SinonException) :
     """
     The operation is not allowed on the entity in its current state.
     """
@@ -57,7 +57,7 @@ class IncorrectState (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class PermissionDenied (Exception) :
+class PermissionDenied (SinonException) :
     """
     The used identity is not permitted to perform the requested operation.
     """
@@ -67,7 +67,7 @@ class PermissionDenied (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class AuthorizationFailed (Exception) :
+class AuthorizationFailed (SinonException) :
     """
     The backend could not establish a valid identity.
     """
@@ -77,7 +77,7 @@ class AuthorizationFailed (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class AuthenticationFailed (Exception) :
+class AuthenticationFailed (SinonException) :
     """
     The backend could not establish a valid identity.
     """
@@ -87,7 +87,7 @@ class AuthenticationFailed (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class Timeout (Exception) :
+class Timeout (SinonException) :
     """
     The interaction with the backend times out.
     """
@@ -97,7 +97,7 @@ class Timeout (Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class NoSuccess (Exception) :
+class NoSuccess (SinonException) :
     """
     Some other error occurred.
     """

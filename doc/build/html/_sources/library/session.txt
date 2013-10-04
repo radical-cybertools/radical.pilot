@@ -1,12 +1,13 @@
+
 Sessions
 ********
 
-.. todo:: Intro to SAGA Session
+.. todo:: Intro to Sinon Session
 
-Session -- :mod:`saga.session`
+Session -- :mod:`sinon.session`
 ------------------------------
 
-.. automodule:: saga.session
+.. automodule:: sinon.api.session
    :show-inheritance:
    :members: Session
 

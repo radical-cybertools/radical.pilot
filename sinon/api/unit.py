@@ -24,9 +24,9 @@ class Unit (Attributes) :
         """
         :param state:  the state to wait for
         :type  state:  enum `state` (PENDING, ACTIVE, DONE, FAILED, CANCELED, UNKNOWN)
-        :returns   :  Nothing, or a Task on ASYNC calls
-        :rtype     :  None or Task
-        :raises    :  BadParameter (on invalid initialization)
+        :returns:      Nothing, or a Task on ASYNC calls
+        :rtype:        None or Task
+        :raises:       BadParameter (on invalid initialization)
 
         Block until the unit reaches the specified state, or timeout, whichever
         comes first.  Negative timeout block forever, zero/None timeout never

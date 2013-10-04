@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
 
-    <title>1. Descriptions &mdash; SAGA 0.1-1dcfe74 documentation</title>
+    <title>9. Descriptions &mdash; SAGA 0.1-edf4c70 documentation</title>
 
 <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
 
@@ -20,7 +20,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1-1dcfe74',
+        VERSION:     '0.1-edf4c70',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -31,10 +31,10 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../../_static/searchtools.js"></script>
-    <link rel="top" title="SAGA 0.1-1dcfe74 documentation" href="../index.html" />
+    <link rel="top" title="SAGA 0.1-edf4c70 documentation" href="../index.html" />
     <link rel="up" title="2. Library Reference" href="index.html" />
-    <link rel="next" title="2. URLs" href="url.html" />
-    <link rel="prev" title="2. Library Reference" href="index.html" /> 
+    <link rel="next" title="10. ComputeUnit Descriptions" href="compute_unit_description.html" />
+    <link rel="prev" title="8. Callbacks" href="callback.html" /> 
   </head>
   <body>
     <div class="related">
@@ -47,12 +47,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="url.html" title="2. URLs"
+          <a href="compute_unit_description.html" title="10. ComputeUnit Descriptions"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="2. Library Reference"
+          <a href="callback.html" title="8. Callbacks"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-1dcfe74 documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-edf4c70 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -63,23 +63,17 @@
           <div class="body">
             
   <div class="section" id="descriptions">
-<span id="security-contexts"></span><h1>1. Descriptions<a class="headerlink" href="#descriptions" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="description-base-class-sinon-description">
-<h2>1.1. Description Base Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.description</span></tt><a class="headerlink" href="#description-base-class-sinon-description" title="Permalink to this headline">¶</a></h2>
-<p><strong>Example</strong>:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">ctx</span> <span class="o">=</span> <span class="n">saga</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="s">&quot;SSH&quot;</span><span class="p">)</span>
+<span id="description"></span><h1>9. Descriptions<a class="headerlink" href="#descriptions" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-sinon.api.description">
+<span id="description-base-class-sinon-description"></span><h2>9.1. Description Base Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.description</span></tt><a class="headerlink" href="#module-sinon.api.description" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sinon.api.description.Description">
+<em class="property">class </em><tt class="descclassname">sinon.api.description.</tt><tt class="descname">Description</tt><big>(</big><em>vals=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/description.html#Description"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.description.Description" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="attributes.html#sinon.api.attributes.Attributes" title="sinon.api.attributes.Attributes"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.attributes.Attributes</span></tt></a></p>
+<p>Base class for ComputeUnitDescription, DataUnitDescription,
+ComputePilotDescription and DataPilotDescription.</p>
+</dd></dl>
 
-<span class="n">ctx</span><span class="o">.</span><span class="n">user_id</span>   <span class="o">=</span> <span class="s">&quot;johndoe&quot;</span>
-<span class="n">ctx</span><span class="o">.</span><span class="n">user_key</span>  <span class="o">=</span> <span class="s">&quot;/home/johndoe/.ssh/key_for_machine_x&quot;</span>
-<span class="n">ctx</span><span class="o">.</span><span class="n">user_pass</span> <span class="o">=</span> <span class="s">&quot;XXXX&quot;</span>  <span class="c"># password to decrypt &#39;user_key&#39; (if required)</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">saga</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">add_context</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
-
-<span class="n">js</span> <span class="o">=</span> <span class="n">saga</span><span class="o">.</span><span class="n">job</span><span class="o">.</span><span class="n">Service</span><span class="p">(</span><span class="s">&quot;ssh://machine_x.futuregrid.org&quot;</span><span class="p">,</span>
-                      <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
-</pre></div>
-</div>
 </div>
 </div>
 
@@ -91,18 +85,18 @@
         <div class="sphinxsidebarwrapper">
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">1. Descriptions</a><ul>
-<li><a class="reference internal" href="#description-base-class-sinon-description">1.1. Description Base Class &#8211; <tt class="docutils literal"><span class="pre">sinon.description</span></tt></a></li>
+<li><a class="reference internal" href="#">9. Descriptions</a><ul>
+<li><a class="reference internal" href="#module-sinon.api.description">9.1. Description Base Class &#8211; <tt class="docutils literal"><span class="pre">sinon.description</span></tt></a></li>
 </ul>
 </li>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="index.html"
-                        title="previous chapter">2. Library Reference</a></p>
+  <p class="topless"><a href="callback.html"
+                        title="previous chapter">8. Callbacks</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="url.html"
-                        title="next chapter">2. URLs</a></p>
+  <p class="topless"><a href="compute_unit_description.html"
+                        title="next chapter">10. ComputeUnit Descriptions</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../_sources/library/description.txt"
@@ -135,12 +129,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="url.html" title="2. URLs"
+          <a href="compute_unit_description.html" title="10. ComputeUnit Descriptions"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="2. Library Reference"
+          <a href="callback.html" title="8. Callbacks"
              >previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-1dcfe74 documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-edf4c70 documentation</a> &raquo;</li>
           <li><a href="index.html" >2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>

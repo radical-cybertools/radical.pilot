@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
 
-    <title>5. Part 5: A More Complex Example: Mandelbrot &mdash; SAGA 0.1-1dcfe74 documentation</title>
+    <title>5. Part 5: A More Complex Example: Mandelbrot &mdash; SAGA 0.1-edf4c70 documentation</title>
 
 <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
 
@@ -20,7 +20,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1-1dcfe74',
+        VERSION:     '0.1-edf4c70',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -31,7 +31,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../../_static/searchtools.js"></script>
-    <link rel="top" title="SAGA 0.1-1dcfe74 documentation" href="../index.html" />
+    <link rel="top" title="SAGA 0.1-edf4c70 documentation" href="../index.html" />
     <link rel="up" title="3. Tutorial" href="index.html" />
     <link rel="prev" title="4. Part 4: Adding File Transfer" href="part4.html" /> 
   </head>
@@ -48,7 +48,7 @@
         <li class="right" >
           <a href="part4.html" title="4. Part 4: Adding File Transfer"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-1dcfe74 documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-edf4c70 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">3. Tutorial</a> &raquo;</li> 
       </ul>
     </div>  
@@ -62,12 +62,12 @@
 <h1>5. Part 5: A More Complex Example: Mandelbrot<a class="headerlink" href="#part-5-a-more-complex-example-mandelbrot" title="Permalink to this headline">¶</a></h1>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">If you want to run the Mandelbrot example on OSG with Condor, please refer to the OSG-specific instructions: <a class="reference internal" href="part5_osg.html#tutorial-mandelbrot-osg"><em>Part 5: A More Complex Example: Mandelbrot (OSG VERSION)</em></a>.</p>
+<p class="last">If you want to run the Mandelbrot example on OSG with Condor, please refer to the OSG-specific instructions: <em class="xref std std-ref">tutorial_mandelbrot_osg</em>.</p>
 </div>
 <p>In this example, we split up the calculation of a Mandelbrot set into several
-tiles, submit a job for each tile using the SAGA Job API, retrieve the tiles
-using the SAGA File API and stitch together the final image from the individual
-tiles. This example shows how SAGA can be used to create more complex
+tiles, submit a job for each tile using the SINON Job API, retrieve the tiles
+using the SINON File API and stitch together the final image from the individual
+tiles. This example shows how SINON can be used to create more complex
 application workflows that involve multiple aspects of the API.</p>
 <div class="section" id="hands-on-distributed-mandelbrot-fractals">
 <h2>5.1. Hands-On: Distributed Mandelbrot Fractals<a class="headerlink" href="#hands-on-distributed-mandelbrot-fractals" title="Permalink to this headline">¶</a></h2>
@@ -80,8 +80,8 @@ module, the Python Image Library (PIL). This is done via pip:</p>
 shell wrapper scrip. It is really just a very simple python script that, if
 invoked on the command line, outputs a full or part of a Mandelbrot fractal as a
 PNG image. Download the scripts into your $HOME directory:</p>
-<div class="highlight-bash"><div class="highlight"><pre>curl --insecure -Os https://raw.github.com/saga-project/saga-python/devel/examples/tutorial/mandelbrot/mandelbrot.py
-curl --insecure -Os https://raw.github.com/saga-project/saga-python/devel/examples/tutorial/mandelbrot/mandelbrot.sh
+<div class="highlight-bash"><div class="highlight"><pre>curl --insecure -Os https://raw.github.com/saga-project/sinon/devel/examples/tutorial/mandelbrot/mandelbrot.py
+curl --insecure -Os https://raw.github.com/saga-project/sinon/devel/examples/tutorial/mandelbrot/mandelbrot.sh
 </pre></div>
 </div>
 <p>You can give mandelbrot.py a test-drive locally by calculating a single-tiled
@@ -89,11 +89,11 @@ curl --insecure -Os https://raw.github.com/saga-project/saga-python/devel/exampl
 <div class="highlight-bash"><div class="highlight"><pre>python mandelbrot.py 1024 1024 0 1024 0 1024 frac.gif
 </pre></div>
 </div>
-<p>In your <tt class="docutils literal"><span class="pre">$HOME</span></tt> directory, open a new file saga_mandelbrot.py with your
+<p>In your <tt class="docutils literal"><span class="pre">$HOME</span></tt> directory, open a new file sinon_mandelbrot.py with your
 favorite editor and paste the following content:</p>
 <p>Look at the code and change the constants at the very top accordingly. Then
 run it. The output should look something like this:</p>
-<div class="highlight-bash"><div class="highlight"><pre>python saga_mandelbrot.py
+<div class="highlight-bash"><div class="highlight"><pre>python sinon_mandelbrot.py
 
 * Submitted <span class="o">[</span>ssh://india.futuregrid.org<span class="o">]</span>-<span class="o">[</span>4073<span class="o">]</span>. Output will be written to: tile_x0_y0.gif
 * Submitted <span class="o">[</span>ssh://india.futuregrid.org<span class="o">]</span>-<span class="o">[</span>4094<span class="o">]</span>. Output will be written to: tile_x0_y1.gif
@@ -182,7 +182,7 @@ The different tile*.gif files (open them if you want) were computed on &#8216;RE
         <li class="right" >
           <a href="part4.html" title="4. Part 4: Adding File Transfer"
              >previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-1dcfe74 documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-edf4c70 documentation</a> &raquo;</li>
           <li><a href="index.html" >3. Tutorial</a> &raquo;</li> 
       </ul>
     </div>
