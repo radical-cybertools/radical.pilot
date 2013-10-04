@@ -126,6 +126,7 @@ setup_args = {
         "sinon",
         "sinon.api",
         "sinon.v1",
+        "sinon.utils",
     ],
     'package_data': {'': ['*.sh']},
     'zip_safe': False,

@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
 
-    <title>2. Logging System &mdash; SAGA 0.1-edf4c70 documentation</title>
+    <title>2. Logging System &mdash; SAGA 0.1-a971acc documentation</title>
 
 <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
 
@@ -20,7 +20,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1-edf4c70',
+        VERSION:     '0.1-a971acc',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -31,7 +31,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../../_static/searchtools.js"></script>
-    <link rel="top" title="SAGA 0.1-edf4c70 documentation" href="../index.html" />
+    <link rel="top" title="SAGA 0.1-a971acc documentation" href="../index.html" />
     <link rel="up" title="1. Installation and Usage" href="index.html" />
     <link rel="next" title="2. Library Reference" href="../library/index.html" />
     <link rel="prev" title="1. Installation" href="install.html" /> 
@@ -52,7 +52,7 @@
         <li class="right" >
           <a href="install.html" title="1. Installation"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-edf4c70 documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-a971acc documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">1. Installation and Usage</a> &raquo;</li> 
       </ul>
     </div>  
@@ -167,11 +167,11 @@ environment variables:</p>
 <span id="log-api"></span><h2>2.2. Application Level Logging<a class="headerlink" href="#application-level-logging" title="Permalink to this headline">¶</a></h2>
 <p>The Sinon logging utilities are a thin wrapper around Python&#8217;s logging
 facilities.  To support the seamless integration of application level logging
-needs, the <tt class="xref py py-func docutils literal"><span class="pre">sinon.utils.logger.getLogger()</span></tt> allows to produce additional
-logger facilities, which are again native Python <a class="reference external" href="http://docs.python.org/library/logging.html#logging.Logger" title="(in Python v2.7)"><tt class="xref py py-class docutils literal"><span class="pre">logging.Logger</span></tt></a>
-instances, but preconfigured according to the Sinon logging configuration.
-Those instances can then be further customized as needed:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">sinon.utils.logger</span> <span class="kn">import</span> <span class="n">getLogger</span><span class="p">,</span> <span class="n">INFO</span>
+needs, the <tt class="xref py py-func docutils literal"><span class="pre">sinon.utils.getLogger()</span></tt> allows to produce additional logger
+facilities, which are again native Python <a class="reference external" href="http://docs.python.org/library/logging.html#logging.Logger" title="(in Python v2.7)"><tt class="xref py py-class docutils literal"><span class="pre">logging.Logger</span></tt></a> instances, but
+preconfigured according to the Sinon logging configuration.  Those instances can
+then be further customized as needed:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">sinon.utils</span> <span class="kn">import</span> <span class="n">getLogger</span><span class="p">,</span> <span class="n">INFO</span>
 
 <span class="n">app_logger</span>       <span class="o">=</span> <span class="n">getLogger</span> <span class="p">(</span><span class="s">&#39;application.test&#39;</span><span class="p">)</span>
 <span class="n">app_logger</span><span class="o">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">INFO</span>
@@ -179,7 +179,7 @@ Those instances can then be further customized as needed:</p>
 <span class="n">app_logger</span><span class="o">.</span><span class="n">info</span> <span class="p">(</span><span class="s">&#39;application level log message on INFO level&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
+<span class="target" id="module-sinon.utils"></span></div>
 </div>
 
 
@@ -240,7 +240,7 @@ Those instances can then be further customized as needed:</p>
         <li class="right" >
           <a href="install.html" title="1. Installation"
              >previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-edf4c70 documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA 0.1-a971acc documentation</a> &raquo;</li>
           <li><a href="index.html" >1. Installation and Usage</a> &raquo;</li> 
       </ul>
     </div>

@@ -96,12 +96,12 @@ Application Level Logging
 
 The Sinon logging utilities are a thin wrapper around Python's logging
 facilities.  To support the seamless integration of application level logging
-needs, the :func:`sinon.utils.logger.getLogger` allows to produce additional
-logger facilities, which are again native Python :class:`logging.Logger`
-instances, but preconfigured according to the Sinon logging configuration.
-Those instances can then be further customized as needed::
+needs, the :func:`sinon.utils.getLogger` allows to produce additional logger
+facilities, which are again native Python :class:`logging.Logger` instances, but
+preconfigured according to the Sinon logging configuration.  Those instances can
+then be further customized as needed::
 
-   from sinon.utils.logger import getLogger, INFO
+   from sinon.utils import getLogger, INFO
 
    app_logger       = getLogger ('application.test')
    app_logger.level = INFO
@@ -109,7 +109,7 @@ Those instances can then be further customized as needed::
    app_logger.info ('application level log message on INFO level')
 
 
-.. automodule:: sinon.utils.logger
-   :members:
+.. automodule:: sinon.utils
+   :members: getLogger
 
 

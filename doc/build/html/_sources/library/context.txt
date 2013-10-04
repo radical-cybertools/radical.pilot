@@ -5,7 +5,7 @@ Security Contexts
 *****************
 
 Context Class -- :mod:`sinon.context`
-------------------------------------
+-------------------------------------
 
 .. automodule:: sinon.api.context
    :show-inheritance:
