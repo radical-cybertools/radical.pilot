@@ -8,7 +8,8 @@ doc:
 	test ! -d sinon.bak
 	mv sinon sinon.bak
 	mkdir sinon
-	cp sinon.bak/api/*.py sinon/
+	cp    sinon.bak/api/*.py sinon/
+	cp -R sinon.bak/utils/   sinon/
 	make -C doc html
 	rm -rf sinon
 	mv sinon.bak sinon

@@ -44,6 +44,9 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="pilot_manager.html" title="19. Pilot Manager Class"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -61,8 +64,30 @@
             
   <div class="section" id="data-pilot-class">
 <span id="data-pilot"></span><h1>18. Data Pilot Class<a class="headerlink" href="#data-pilot-class" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="data-pilot-class-sinon-data-pilot">
-<h2>18.1. Data Pilot Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.data_pilot</span></tt><a class="headerlink" href="#data-pilot-class-sinon-data-pilot" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-sinon.data_pilot">
+<span id="data-pilot-class-sinon-data-pilot"></span><h2>18.1. Data Pilot Class &#8211; <a class="reference internal" href="#module-sinon.data_pilot" title="sinon.data_pilot"><tt class="xref py py-mod docutils literal"><span class="pre">sinon.data_pilot</span></tt></a><a class="headerlink" href="#module-sinon.data_pilot" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sinon.data_pilot.DataPilot">
+<em class="property">class </em><tt class="descclassname">sinon.data_pilot.</tt><tt class="descname">DataPilot</tt><big>(</big><em>pid</em><big>)</big><a class="reference internal" href="../_modules/sinon/data_pilot.html#DataPilot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.data_pilot.DataPilot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="pilot.html#sinon.pilot.Pilot" title="sinon.pilot.Pilot"><tt class="xref py py-class docutils literal"><span class="pre">sinon.pilot.Pilot</span></tt></a></p>
+<p>DataPilot.  Duh!</p>
+<dl class="method">
+<dt id="sinon.data_pilot.DataPilot.cancel">
+<tt class="descname">cancel</tt><big>(</big><em>ttype='Sync'</em><big>)</big><a class="headerlink" href="#sinon.data_pilot.DataPilot.cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>move the pilot into Canceled state &#8211; unless it it was in a final state,
+then state is not changed.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sinon.data_pilot.DataPilot.wait">
+<tt class="descname">wait</tt><big>(</big><em>state=['Done', 'Failed', 'Canceled'], timeout=None, ttype='Sync'</em><big>)</big><a class="headerlink" href="#sinon.data_pilot.DataPilot.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>block until the pilot reaches the specified state, or timeout, whichever
+comes first.  Negative timeout block forever, zero/None timeout never
+block.</p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 </div>
 
@@ -75,7 +100,7 @@
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">18. Data Pilot Class</a><ul>
-<li><a class="reference internal" href="#data-pilot-class-sinon-data-pilot">18.1. Data Pilot Class &#8211; <tt class="docutils literal"><span class="pre">sinon.data_pilot</span></tt></a></li>
+<li><a class="reference internal" href="#module-sinon.data_pilot">18.1. Data Pilot Class &#8211; <tt class="docutils literal"><span class="pre">sinon.data_pilot</span></tt></a></li>
 </ul>
 </li>
 </ul>
@@ -114,6 +139,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="pilot_manager.html" title="19. Pilot Manager Class"
              >next</a> |</li>

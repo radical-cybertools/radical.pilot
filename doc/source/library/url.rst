@@ -6,7 +6,8 @@ URLs
 Url -- :class:`sinon.Url`
 -------------------------
 
-.. automodule:: sinon.api.url
+.. automodule:: sinon.url
    :show-inheritance:
+   :inherited-members:
    :members: Url
 

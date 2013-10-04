@@ -44,6 +44,9 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="compute_pilot.html" title="17. Compute Pilot Class"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -61,8 +64,38 @@
             
   <div class="section" id="pilot-base-class">
 <span id="pilot"></span><h1>16. Pilot Base Class<a class="headerlink" href="#pilot-base-class" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="pilot-base-class-sinon-pilot">
-<h2>16.1. Pilot Base Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.pilot</span></tt><a class="headerlink" href="#pilot-base-class-sinon-pilot" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-sinon.pilot">
+<span id="pilot-base-class-sinon-pilot"></span><h2>16.1. Pilot Base Class &#8211; <a class="reference internal" href="#module-sinon.pilot" title="sinon.pilot"><tt class="xref py py-mod docutils literal"><span class="pre">sinon.pilot</span></tt></a><a class="headerlink" href="#module-sinon.pilot" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sinon.pilot.Pilot">
+<em class="property">class </em><tt class="descclassname">sinon.pilot.</tt><tt class="descname">Pilot</tt><big>(</big><em>pid</em><big>)</big><a class="reference internal" href="../_modules/sinon/pilot.html#Pilot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.pilot.Pilot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="attributes.html#sinon.attributes.Attributes" title="sinon.attributes.Attributes"><tt class="xref py py-class docutils literal"><span class="pre">sinon.attributes.Attributes</span></tt></a></p>
+<p>Base class for DataPilot and ComputePilot.</p>
+<dl class="docutils">
+<dt>Notes:</dt>
+<dd><ul class="first last simple">
+<li>no direct submission, as that is equivalent to a UnitService with just
+one pilot.</li>
+</ul>
+</dd>
+</dl>
+<dl class="method">
+<dt id="sinon.pilot.Pilot.wait">
+<tt class="descname">wait</tt><big>(</big><em>state=['Done', 'Failed', 'Canceled'], timeout=None, ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/pilot.html#Pilot.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.pilot.Pilot.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>block until the pilot reaches the specified state, or timeout, whichever
+comes first.  Negative timeout block forever, zero/None timeout never
+block.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sinon.pilot.Pilot.cancel">
+<tt class="descname">cancel</tt><big>(</big><em>ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/pilot.html#Pilot.cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.pilot.Pilot.cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>move the pilot into Canceled state &#8211; unless it it was in a final state,
+then state is not changed.</p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 </div>
 
@@ -75,7 +108,7 @@
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">16. Pilot Base Class</a><ul>
-<li><a class="reference internal" href="#pilot-base-class-sinon-pilot">16.1. Pilot Base Class &#8211; <tt class="docutils literal"><span class="pre">sinon.pilot</span></tt></a></li>
+<li><a class="reference internal" href="#module-sinon.pilot">16.1. Pilot Base Class &#8211; <tt class="docutils literal"><span class="pre">sinon.pilot</span></tt></a></li>
 </ul>
 </li>
 </ul>
@@ -114,6 +147,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="compute_pilot.html" title="17. Compute Pilot Class"
              >next</a> |</li>

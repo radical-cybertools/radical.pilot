@@ -7,7 +7,8 @@ Attribute Handling and Notifications
 Exceptions -- :mod:`sinon.attributes`
 -------------------------------------
 
-.. automodule:: sinon.api.attributes
+.. automodule:: sinon.attributes
    :show-inheritance:
+   :inherited-members:
    :members: Attributes
 

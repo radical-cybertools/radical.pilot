@@ -7,7 +7,8 @@ Sessions
 Session -- :mod:`sinon.session`
 -------------------------------
 
-.. automodule:: sinon.api.session
+.. automodule:: sinon.session
    :show-inheritance:
+   :inherited-members:
    :members: Session
 

@@ -7,8 +7,9 @@ Compute Unit Class
 Compute Unit Class -- :mod:`sinon.compute_unit`
 -----------------------------------------------
 
-.. automodule:: sinon.api.compute_unit
+.. automodule:: sinon.compute_unit
    :show-inheritance:
+   :inherited-members:
    :members: ComputeUnit
 
 

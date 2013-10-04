@@ -44,6 +44,9 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="attributes.html" title="2. Attribute Handling and Notifications"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -65,8 +68,211 @@
 <p class="first admonition-title">Todo</p>
 <p class="last">Intro to Sinon exception handling.</p>
 </div>
-<div class="section" id="exceptions-sinon-exceptions">
-<h2>1.1. Exceptions &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.exceptions</span></tt><a class="headerlink" href="#exceptions-sinon-exceptions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-sinon.exceptions">
+<span id="exceptions-sinon-exceptions"></span><h2>1.1. Exceptions &#8211; <a class="reference internal" href="#module-sinon.exceptions" title="sinon.exceptions"><tt class="xref py py-mod docutils literal"><span class="pre">sinon.exceptions</span></tt></a><a class="headerlink" href="#module-sinon.exceptions" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="sinon.exceptions.SinonException">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">SinonException</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#SinonException"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.SinonException" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</li>
+<li><strong>obj</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#object" title="(in Python v2.7)"><em>object</em></a>) &#8211; Sinon object on whose activity the exception was raised.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">&#8211;</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The base class for all  Sinon Exception classes &#8211; this exception type is
+never raised directly, but can be used to catch all Sinon exceptions within
+a single <cite>except</cite> clause.</p>
+<p>The exception message and originating object are also accessable as class
+attributes (<tt class="xref py py-func docutils literal"><span class="pre">e.object()</span></tt> and <tt class="xref py py-func docutils literal"><span class="pre">e.message()</span></tt>).  The <tt class="xref py py-func docutils literal"><span class="pre">__str__()</span></tt>
+operator redirects to <a class="reference internal" href="#sinon.exceptions.SinonException.get_message" title="sinon.exceptions.SinonException.get_message"><tt class="xref py py-func docutils literal"><span class="pre">get_message()</span></tt></a>.</p>
+<dl class="method">
+<dt id="sinon.exceptions.SinonException.get_object">
+<tt class="descname">get_object</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#SinonException.get_object"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.SinonException.get_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the object instance on whose activity the exception was raised.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sinon.exceptions.SinonException.get_message">
+<tt class="descname">get_message</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#SinonException.get_message"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.SinonException.get_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the error message associated with the exception</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.IncorrectURL">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">IncorrectURL</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#IncorrectURL"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.IncorrectURL" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>The given URL could not be interpreted, for example due to an incorrect
+/ unknown schema.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.BadParameter">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">BadParameter</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#BadParameter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.BadParameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>A given parameter is out of bound or ill formatted.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.DoesNotExist">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">DoesNotExist</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#DoesNotExist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.DoesNotExist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>An operation tried to access a non-existing entity.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.IncorrectState">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">IncorrectState</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#IncorrectState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.IncorrectState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>The operation is not allowed on the entity in its current state.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.PermissionDenied">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">PermissionDenied</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#PermissionDenied"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.PermissionDenied" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>The used identity is not permitted to perform the requested operation.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.AuthorizationFailed">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">AuthorizationFailed</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#AuthorizationFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.AuthorizationFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>The backend could not accept the given identity.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.AuthenticationFailed">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">AuthenticationFailed</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#AuthenticationFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.AuthenticationFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>The backend could not establish a valid identity.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.Timeout">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">Timeout</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#Timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.Timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>The interaction with the backend timed out.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="sinon.exceptions.NoSuccess">
+<em class="property">exception </em><tt class="descclassname">sinon.exceptions.</tt><tt class="descname">NoSuccess</tt><big>(</big><em>msg</em>, <em>obj=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/exceptions.html#NoSuccess"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.exceptions.NoSuccess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sinon.exceptions.SinonException" title="sinon.exceptions.SinonException"><tt class="xref py py-class docutils literal"><span class="pre">sinon.exceptions.SinonException</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>msg</strong> (<a class="reference external" href="http://docs.python.org/library/string.html#string" title="(in Python v2.7)"><em>string</em></a>) &#8211; Error message, indicating the cause for the exception
+being raised.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">&#8211;</td>
+</tr>
+</tbody>
+</table>
+<p>Some unsopecified error occurred.</p>
+</dd></dl>
+
 </div>
 </div>
 
@@ -79,7 +285,7 @@
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">1. Exception Handling</a><ul>
-<li><a class="reference internal" href="#exceptions-sinon-exceptions">1.1. Exceptions &#8211; <tt class="docutils literal"><span class="pre">sinon.exceptions</span></tt></a></li>
+<li><a class="reference internal" href="#module-sinon.exceptions">1.1. Exceptions &#8211; <tt class="docutils literal"><span class="pre">sinon.exceptions</span></tt></a></li>
 </ul>
 </li>
 </ul>
@@ -118,6 +324,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="attributes.html" title="2. Attribute Handling and Notifications"
              >next</a> |</li>

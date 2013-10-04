@@ -1,0 +1,308 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>sinon.exceptions &mdash; SAGA unknown documentation</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'unknown',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../../_static/searchtools.js"></script>
+    <link rel="top" title="SAGA unknown documentation" href="../../index.html" />
+    <link rel="up" title="sinon" href="../sinon.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">SAGA unknown documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../sinon.html" accesskey="U">sinon</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for sinon.exceptions</h1><div class="highlight"><pre>
+<span class="kn">from</span>   <span class="nn">constants</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">SinonException</span> <span class="p">(</span><span class="ne">Exception</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SinonException"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.SinonException">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :param obj: Sinon object on whose activity the exception was raised.</span>
+<span class="sd">    :type  obj: object</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    The base class for all  Sinon Exception classes -- this exception type is</span>
+<span class="sd">    never raised directly, but can be used to catch all Sinon exceptions within</span>
+<span class="sd">    a single `except` clause.</span>
+
+<span class="sd">    The exception message and originating object are also accessable as class</span>
+<span class="sd">    attributes (:func:`e.object` and :func:`e.message`).  The :func:`__str__`</span>
+<span class="sd">    operator redirects to :func:`get_message()`.  </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        some more info</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">get_object</span> <span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SinonException.get_object"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.SinonException.get_object">[docs]</a><span class="sd">        Return the object instance on whose activity the exception was raised.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.get_object() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">get_message</span> <span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="SinonException.get_message"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.SinonException.get_message">[docs]</a><span class="sd">        Return the error message associated with the exception</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.get_message() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">__str__</span> <span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<span class="sd">        an alias for `get_message()`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.__str__() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">IncorrectURL</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="IncorrectURL"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.IncorrectURL">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    The given URL could not be interpreted, for example due to an incorrect</span>
+<span class="sd">    / unknown schema. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">BadParameter</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="BadParameter"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.BadParameter">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    A given parameter is out of bound or ill formatted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">DoesNotExist</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="DoesNotExist"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.DoesNotExist">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    An operation tried to access a non-existing entity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">IncorrectState</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="IncorrectState"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.IncorrectState">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    The operation is not allowed on the entity in its current state.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">PermissionDenied</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="PermissionDenied"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.PermissionDenied">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    The used identity is not permitted to perform the requested operation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">AuthorizationFailed</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="AuthorizationFailed"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.AuthorizationFailed">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    The backend could not accept the given identity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">AuthenticationFailed</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="AuthenticationFailed"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.AuthenticationFailed">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    The backend could not establish a valid identity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">Timeout</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="Timeout"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.Timeout">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    The interaction with the backend timed out.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">NoSuccess</span> <span class="p">(</span><span class="n">SinonException</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="NoSuccess"><a class="viewcode-back" href="../../library/exceptions.html#sinon.exceptions.NoSuccess">[docs]</a><span class="sd">    :param msg: Error message, indicating the cause for the exception</span>
+<span class="sd">                being raised.</span>
+<span class="sd">    :type  msg: string</span>
+<span class="sd">    :raises:    --</span>
+
+<span class="sd">    Some unsopecified error occurred.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="c"># vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">SAGA unknown documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../sinon.html" >sinon</a> &raquo;</li> 
+      </ul>
+    </div>
+<div class="footer">
+    &copy; Copyright 2012, The SAGA Project.
+  Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+  <br />Theme based on <a href="http://readthedocs.org/">Read The Docs</a>
+
+</div>
+
+
+
+
+
+  </body>
+</html>

@@ -6,7 +6,8 @@ Tasks
 Task -- :class:`sinon.Task`
 ---------------------------
 
-.. automodule:: sinon.api.task
+.. automodule:: sinon.task
    :show-inheritance:
+   :inherited-members:
    :members: Task
 

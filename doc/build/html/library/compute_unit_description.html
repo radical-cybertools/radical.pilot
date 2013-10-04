@@ -44,6 +44,9 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="data_unit_description.html" title="10. DataUnit Descriptions"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -61,8 +64,44 @@
             
   <div class="section" id="computeunit-descriptions">
 <span id="compute-unit-description"></span><h1>9. ComputeUnit Descriptions<a class="headerlink" href="#computeunit-descriptions" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="computeunit-description-class-sinon-compute-unit-description">
-<h2>9.1. ComputeUnit Description Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.compute_unit_description</span></tt><a class="headerlink" href="#computeunit-description-class-sinon-compute-unit-description" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-sinon.compute_unit_description">
+<span id="computeunit-description-class-sinon-compute-unit-description"></span><h2>9.1. ComputeUnit Description Class &#8211; <a class="reference internal" href="#module-sinon.compute_unit_description" title="sinon.compute_unit_description"><tt class="xref py py-mod docutils literal"><span class="pre">sinon.compute_unit_description</span></tt></a><a class="headerlink" href="#module-sinon.compute_unit_description" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sinon.compute_unit_description.ComputeUnitDescription">
+<em class="property">class </em><tt class="descclassname">sinon.compute_unit_description.</tt><tt class="descname">ComputeUnitDescription</tt><big>(</big><em>vals={}</em><big>)</big><a class="reference internal" href="../_modules/sinon/compute_unit_description.html#ComputeUnitDescription"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.compute_unit_description.ComputeUnitDescription" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="description.html#sinon.description.Description" title="sinon.description.Description"><tt class="xref py py-class docutils literal"><span class="pre">sinon.description.Description</span></tt></a></p>
+<p># Action description
+&#8216;name&#8217;,                 # Non-unique name/label of CU.
+&#8216;executable&#8217;,           # The &#8220;action&#8221; to execute
+&#8216;arguments&#8217;,            # Arguments to the &#8220;action&#8221;
+&#8216;environment&#8217;,          # &#8220;environment&#8221; settings for the &#8220;action&#8221;
+&#8216;cleanup&#8217;,              # cleanup after the CU has finished
+&#8216;start_time&#8217;,           # When should the CU start
+&#8216;run_time&#8217;,             # When is the CU expected to finish</p>
+<p># I/O
+&#8216;working_directory&#8217;,    # Where to start the CU
+&#8216;input&#8217;,                # stdin
+&#8216;error&#8217;,                # stderr
+&#8216;output&#8217;,               # stdout
+&#8216;file_transfer&#8217;,        # file transfer, duh!
+&#8216;input_data&#8217;,           # DataUnits for input.
+&#8216;output_data&#8217;,          # DataUnits for output.</p>
+<p># Parallelism
+&#8216;spmd_variation&#8217;,       # Type and startup mechanism.
+&#8216;slots&#8217;,                # Number of job slots for spmd variations that</p>
+<blockquote>
+<div># support it.</div></blockquote>
+<p># resource requirements
+&#8216;cpu_architecture&#8217;,     # Specific requirement for binary
+&#8216;operating_system_type&#8217;,# Specific OS version required?
+&#8216;total_physical_memory&#8217;,# May not be physical, but in sync with saga.</p>
+<p># Startup ordering dependencies
+# (Are only considered within scope of bulk submission.)
+&#8216;run_after&#8217;,            # Names of CUs that need to finish first.
+&#8216;start_after&#8217;,          # Names of CUs that need to start  first.
+&#8216;start_concurrent_with&#8217; # Names of CUs that need to run concurrently.</p>
+</dd></dl>
+
 </div>
 </div>
 
@@ -75,7 +114,7 @@
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">9. ComputeUnit Descriptions</a><ul>
-<li><a class="reference internal" href="#computeunit-description-class-sinon-compute-unit-description">9.1. ComputeUnit Description Class &#8211; <tt class="docutils literal"><span class="pre">sinon.compute_unit_description</span></tt></a></li>
+<li><a class="reference internal" href="#module-sinon.compute_unit_description">9.1. ComputeUnit Description Class &#8211; <tt class="docutils literal"><span class="pre">sinon.compute_unit_description</span></tt></a></li>
 </ul>
 </li>
 </ul>
@@ -114,6 +153,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="data_unit_description.html" title="10. DataUnit Descriptions"
              >next</a> |</li>

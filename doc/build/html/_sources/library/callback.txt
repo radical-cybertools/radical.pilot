@@ -7,7 +7,8 @@ Callbacks
 Session -- :mod:`sinon.callback`
 --------------------------------
 
-.. automodule:: sinon.api.callback
+.. automodule:: sinon.callback
    :show-inheritance:
+   :inherited-members:
    :members: Callback
 

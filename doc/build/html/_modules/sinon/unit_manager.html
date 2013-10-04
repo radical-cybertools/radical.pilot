@@ -1,0 +1,212 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>sinon.unit_manager &mdash; SAGA unknown documentation</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     'unknown',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../../_static/searchtools.js"></script>
+    <link rel="top" title="SAGA unknown documentation" href="../../index.html" />
+    <link rel="up" title="sinon" href="../sinon.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">SAGA unknown documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../sinon.html" accesskey="U">sinon</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for sinon.unit_manager</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">attributes</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">constants</span>  <span class="kn">import</span> <span class="o">*</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">UnitManager</span> <span class="p">(</span><span class="n">Attributes</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<div class="viewcode-block" id="UnitManager"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager">[docs]</a><span class="sd">    UnitManager class -- manages a pool </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">scheduler</span><span class="o">=</span><span class="s">&#39;default&#39;</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="p">:</span>
+
+        <span class="n">Attributes</span><span class="o">.</span><span class="n">__init__</span> <span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">add_pilot</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">ttype</span><span class="o">=</span><span class="n">SYNC</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="UnitManager.add_pilot"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager.add_pilot">[docs]</a><span class="sd">        add (Compute or Data)-Pilot(s) to the pool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.add_pilot() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">list_pilots</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ptype</span><span class="o">=</span><span class="n">ANY</span><span class="p">,</span> <span class="n">ttype</span><span class="o">=</span><span class="n">SYNC</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="UnitManager.list_pilots"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager.list_pilots">[docs]</a><span class="sd">        List IDs of data and/or compute pilots</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.list_pilots() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">remove_pilot</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">drain</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">ttype</span><span class="o">=</span><span class="n">SYNC</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="UnitManager.remove_pilot"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager.remove_pilot">[docs]</a><span class="sd">        Remove pilot(s) (does not cancel the pilot(s), but removes all units</span>
+<span class="sd">        from the pilot(s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.remove_pilot() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">submit_unit</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">ttype</span><span class="o">=</span><span class="n">SYNC</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="UnitManager.submit_unit"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager.submit_unit">[docs]</a><span class="sd">        Instantiate and return (Compute or Data)-Unit object(s)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.submit_unit() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">list_units</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">utype</span><span class="o">=</span><span class="n">ANY</span><span class="p">,</span> <span class="n">ttype</span><span class="o">=</span><span class="n">SYNC</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="UnitManager.list_units"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager.list_units">[docs]</a><span class="sd">        List IDs of data and/or compute units</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.list_units() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">get_unit</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uids</span><span class="p">,</span> <span class="n">ttype</span><span class="o">=</span><span class="n">SYNC</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="UnitManager.get_unit"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager.get_unit">[docs]</a><span class="sd">        Reconnect to and return (Compute or Data)-Unit object(s)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.get_unit() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">wait_unit</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uids</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="p">[</span><span class="n">DONE</span><span class="p">,</span> <span class="n">FAILED</span><span class="p">,</span> <span class="n">CANCELED</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">ttype</span><span class="o">=</span><span class="n">SYNC</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="UnitManager.wait_unit"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager.wait_unit">[docs]</a><span class="sd">        Wait for given unit(s) to enter given state</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.wait_unit() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+    <span class="c"># --------------------------------------------------------------------------</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">cancel_units</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uids</span><span class="p">,</span> <span class="n">ttype</span><span class="o">=</span><span class="n">SYNC</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="UnitManager.cancel_units"><a class="viewcode-back" href="../../library/unit_manager.html#sinon.unit_manager.UnitManager.cancel_units">[docs]</a><span class="sd">        Cancel given unit(s)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">Exception</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">.cancel_unit() is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="c"># ------------------------------------------------------------------------------</span>
+<span class="c">#</span>
+<span class="c"># vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">SAGA unknown documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../sinon.html" >sinon</a> &raquo;</li> 
+      </ul>
+    </div>
+<div class="footer">
+    &copy; Copyright 2012, The SAGA Project.
+  Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+  <br />Theme based on <a href="http://readthedocs.org/">Read The Docs</a>
+
+</div>
+
+
+
+
+
+  </body>
+</html>

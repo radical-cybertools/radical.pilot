@@ -43,7 +43,7 @@ version = "unknown"
 
 try :
     cwd     = os.path.dirname (os.path.abspath (__file__))
-    fn      = os.path.join    (cwd, 'VERSION')
+    fn      = os.path.join    (cwd, '../VERSION')
     version = open (fn).read ().strip ()
 
     p   = sp.Popen (['git', 'describe', '--tags', '--always'],

@@ -44,6 +44,9 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="compute_pilot_description.html" title="11. ComputePilot Descriptions"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -61,8 +64,23 @@
             
   <div class="section" id="dataunit-descriptions">
 <span id="data-unit-description"></span><h1>10. DataUnit Descriptions<a class="headerlink" href="#dataunit-descriptions" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="dataunit-description-class-sinon-data-unit-description">
-<h2>10.1. DataUnit Description Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.data_unit_description</span></tt><a class="headerlink" href="#dataunit-description-class-sinon-data-unit-description" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-sinon.data_unit_description">
+<span id="dataunit-description-class-sinon-data-unit-description"></span><h2>10.1. DataUnit Description Class &#8211; <a class="reference internal" href="#module-sinon.data_unit_description" title="sinon.data_unit_description"><tt class="xref py py-mod docutils literal"><span class="pre">sinon.data_unit_description</span></tt></a><a class="headerlink" href="#module-sinon.data_unit_description" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sinon.data_unit_description.DataUnitDescription">
+<em class="property">class </em><tt class="descclassname">sinon.data_unit_description.</tt><tt class="descname">DataUnitDescription</tt><big>(</big><em>vals={}</em><big>)</big><a class="reference internal" href="../_modules/sinon/data_unit_description.html#DataUnitDescription"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.data_unit_description.DataUnitDescription" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="description.html#sinon.description.Description" title="sinon.description.Description"><tt class="xref py py-class docutils literal"><span class="pre">sinon.description.Description</span></tt></a></p>
+<p>name         # A non-unique label.
+file_urls    # Dict of logical and physical filesnames, e.g.:</p>
+<blockquote>
+<div># { &#8216;NAME1&#8217; : [ &#8216;google://.../name1.txt&#8217;,
+#               &#8216;srm://grid/name1.txt&#8217;],
+#   &#8216;NAME2&#8217; : [ &#8216;file://.../name2.txt&#8217; ] }</div></blockquote>
+<p>lifetime     # Needs to stay available for at least ...
+cleanup      # Can be removed when cancelled
+size         # Estimated size of DU (in bytes)</p>
+</dd></dl>
+
 </div>
 </div>
 
@@ -75,7 +93,7 @@
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">10. DataUnit Descriptions</a><ul>
-<li><a class="reference internal" href="#dataunit-description-class-sinon-data-unit-description">10.1. DataUnit Description Class &#8211; <tt class="docutils literal"><span class="pre">sinon.data_unit_description</span></tt></a></li>
+<li><a class="reference internal" href="#module-sinon.data_unit_description">10.1. DataUnit Description Class &#8211; <tt class="docutils literal"><span class="pre">sinon.data_unit_description</span></tt></a></li>
 </ul>
 </li>
 </ul>
@@ -114,6 +132,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="compute_pilot_description.html" title="11. ComputePilot Descriptions"
              >next</a> |</li>
