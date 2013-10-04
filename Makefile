@@ -4,8 +4,8 @@
 all: doc
 
 doc:
-	test -d sinon.bak && echo "sinon.bak/ exists"
-	test -d sinon.bak && false
+	-test -d sinon.bak && echo "sinon.bak/ exists"
+	test ! -d sinon.bak
 	mv sinon sinon.bak
 	mkdir sinon
 	cp sinon.bak/api/*.py sinon/

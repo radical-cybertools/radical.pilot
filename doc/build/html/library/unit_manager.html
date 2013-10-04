@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
 
-    <title>20. Unit Manager Class &mdash; SAGA 0.1-7fffb5f documentation</title>
+    <title>20. Unit Manager Class &mdash; SAGA unknown documentation</title>
 
 <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
 
@@ -20,7 +20,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1-7fffb5f',
+        VERSION:     'unknown',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -31,7 +31,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../../_static/searchtools.js"></script>
-    <link rel="top" title="SAGA 0.1-7fffb5f documentation" href="../index.html" />
+    <link rel="top" title="SAGA unknown documentation" href="../index.html" />
     <link rel="up" title="2. Library Reference" href="index.html" />
     <link rel="next" title="3. Tutorial" href="../tutorial/index.html" />
     <link rel="prev" title="19. Pilot Manager Class" href="pilot_manager.html" /> 
@@ -44,15 +44,12 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="../tutorial/index.html" title="3. Tutorial"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="pilot_manager.html" title="19. Pilot Manager Class"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-7fffb5f documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA unknown documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -64,64 +61,8 @@
             
   <div class="section" id="unit-manager-class">
 <span id="unit-manager"></span><h1>20. Unit Manager Class<a class="headerlink" href="#unit-manager-class" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-sinon.api.unit_manager">
-<span id="unit-manager-class-sinon-unit-manager"></span><h2>20.1. Unit Manager Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.unit_manager</span></tt><a class="headerlink" href="#module-sinon.api.unit_manager" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="sinon.api.unit_manager.UnitManager">
-<em class="property">class </em><tt class="descclassname">sinon.api.unit_manager.</tt><tt class="descname">UnitManager</tt><big>(</big><em>url=None</em>, <em>scheduler='default'</em>, <em>session=None</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="attributes.html#sinon.api.attributes.Attributes" title="sinon.api.attributes.Attributes"><tt class="xref py py-class docutils literal"><span class="pre">sinon.api.attributes.Attributes</span></tt></a></p>
-<p>UnitManager class &#8211; manages a pool</p>
-<dl class="method">
-<dt id="sinon.api.unit_manager.UnitManager.add_pilot">
-<tt class="descname">add_pilot</tt><big>(</big><em>pid</em>, <em>ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager.add_pilot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager.add_pilot" title="Permalink to this definition">¶</a></dt>
-<dd><p>add (Compute or Data)-Pilot(s) to the pool</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="sinon.api.unit_manager.UnitManager.list_pilots">
-<tt class="descname">list_pilots</tt><big>(</big><em>ptype=3</em>, <em>ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager.list_pilots"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager.list_pilots" title="Permalink to this definition">¶</a></dt>
-<dd><p>List IDs of data and/or compute pilots</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="sinon.api.unit_manager.UnitManager.remove_pilot">
-<tt class="descname">remove_pilot</tt><big>(</big><em>pid</em>, <em>drain=True</em>, <em>ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager.remove_pilot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager.remove_pilot" title="Permalink to this definition">¶</a></dt>
-<dd><p>Remove pilot(s) (does not cancel the pilot(s), but removes all units
-from the pilot(s).</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="sinon.api.unit_manager.UnitManager.submit_unit">
-<tt class="descname">submit_unit</tt><big>(</big><em>description</em>, <em>ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager.submit_unit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager.submit_unit" title="Permalink to this definition">¶</a></dt>
-<dd><p>Instantiate and return (Compute or Data)-Unit object(s)</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="sinon.api.unit_manager.UnitManager.list_units">
-<tt class="descname">list_units</tt><big>(</big><em>utype=3</em>, <em>ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager.list_units"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager.list_units" title="Permalink to this definition">¶</a></dt>
-<dd><p>List IDs of data and/or compute units</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="sinon.api.unit_manager.UnitManager.get_unit">
-<tt class="descname">get_unit</tt><big>(</big><em>uids</em>, <em>ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager.get_unit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager.get_unit" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reconnect to and return (Compute or Data)-Unit object(s)</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="sinon.api.unit_manager.UnitManager.wait_unit">
-<tt class="descname">wait_unit</tt><big>(</big><em>uids, state=['Done', 'Failed', 'Canceled'], timeout=-1.0, ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager.wait_unit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager.wait_unit" title="Permalink to this definition">¶</a></dt>
-<dd><p>Wait for given unit(s) to enter given state</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="sinon.api.unit_manager.UnitManager.cancel_units">
-<tt class="descname">cancel_units</tt><big>(</big><em>uids</em>, <em>ttype='Sync'</em><big>)</big><a class="reference internal" href="../_modules/sinon/api/unit_manager.html#UnitManager.cancel_units"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.unit_manager.UnitManager.cancel_units" title="Permalink to this definition">¶</a></dt>
-<dd><p>Cancel given unit(s)</p>
-</dd></dl>
-
-</dd></dl>
-
+<div class="section" id="unit-manager-class-sinon-unit-manager">
+<h2>20.1. Unit Manager Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.unit_manager</span></tt><a class="headerlink" href="#unit-manager-class-sinon-unit-manager" title="Permalink to this headline">¶</a></h2>
 </div>
 </div>
 
@@ -134,7 +75,7 @@ from the pilot(s).</p>
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">20. Unit Manager Class</a><ul>
-<li><a class="reference internal" href="#module-sinon.api.unit_manager">20.1. Unit Manager Class &#8211; <tt class="docutils literal"><span class="pre">sinon.unit_manager</span></tt></a></li>
+<li><a class="reference internal" href="#unit-manager-class-sinon-unit-manager">20.1. Unit Manager Class &#8211; <tt class="docutils literal"><span class="pre">sinon.unit_manager</span></tt></a></li>
 </ul>
 </li>
 </ul>
@@ -174,15 +115,12 @@ from the pilot(s).</p>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="../tutorial/index.html" title="3. Tutorial"
              >next</a> |</li>
         <li class="right" >
           <a href="pilot_manager.html" title="19. Pilot Manager Class"
              >previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-7fffb5f documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA unknown documentation</a> &raquo;</li>
           <li><a href="index.html" >2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>

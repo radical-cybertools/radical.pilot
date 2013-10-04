@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
 
-    <title>5. Security Contexts &mdash; SAGA 0.1-7fffb5f documentation</title>
+    <title>5. Security Contexts &mdash; SAGA unknown documentation</title>
 
 <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
 
@@ -20,7 +20,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1-7fffb5f',
+        VERSION:     'unknown',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -31,7 +31,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../../_static/searchtools.js"></script>
-    <link rel="top" title="SAGA 0.1-7fffb5f documentation" href="../index.html" />
+    <link rel="top" title="SAGA unknown documentation" href="../index.html" />
     <link rel="up" title="2. Library Reference" href="index.html" />
     <link rel="next" title="6. Sessions" href="session.html" />
     <link rel="prev" title="4. Tasks" href="task.html" /> 
@@ -44,15 +44,12 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="session.html" title="6. Sessions"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="task.html" title="4. Tasks"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-7fffb5f documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA unknown documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -64,14 +61,8 @@
             
   <div class="section" id="security-contexts">
 <span id="id1"></span><h1>5. Security Contexts<a class="headerlink" href="#security-contexts" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-sinon.api.context">
-<span id="context-class-sinon-context"></span><h2>5.1. Context Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.context</span></tt><a class="headerlink" href="#module-sinon.api.context" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="sinon.api.context.Context">
-<em class="property">class </em><tt class="descclassname">sinon.api.context.</tt><tt class="descname">Context</tt><a class="reference internal" href="../_modules/sinon/api/context.html#Context"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sinon.api.context.Context" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-</dd></dl>
-
+<div class="section" id="context-class-sinon-context">
+<h2>5.1. Context Class &#8211; <tt class="xref py py-mod docutils literal"><span class="pre">sinon.context</span></tt><a class="headerlink" href="#context-class-sinon-context" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="userpass-context">
 <h2>5.2. UserPass Context<a class="headerlink" href="#userpass-context" title="Permalink to this headline">¶</a></h2>
@@ -80,21 +71,21 @@ This context can be used for SSH connections if it is preferred over
 public-/private-key authentication.</p>
 <p>The following context attributes are supported:</p>
 <dl class="data">
-<dt id="sinon.api.context.Contex">
-<tt class="descclassname">sinon.api.context.</tt><tt class="descname">Contex</tt><big>(</big><em>&quot;UserPass&quot;</em><big>)</big><a class="headerlink" href="#sinon.api.context.Contex" title="Permalink to this definition">¶</a></dt>
+<dt id="Contex">
+<tt class="descname">Contex</tt><big>(</big><em>&quot;UserPass&quot;</em><big>)</big><a class="headerlink" href="#Contex" title="Permalink to this definition">¶</a></dt>
 <dd><p>The type for this context has to be set to &#8220;UserPass&#8221; in the constructor,
 i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;ssh&quot;)</span></tt>.</p>
 </dd></dl>
 
 <dl class="data">
-<dt id="sinon.api.context.sinon.context.user_id">
-<tt class="descclassname">sinon.context.</tt><tt class="descname">user_id</tt><a class="headerlink" href="#sinon.api.context.sinon.context.user_id" title="Permalink to this definition">¶</a></dt>
+<dt id="sinon.context.user_id">
+<tt class="descclassname">sinon.context.</tt><tt class="descname">user_id</tt><a class="headerlink" href="#sinon.context.user_id" title="Permalink to this definition">¶</a></dt>
 <dd><p>The username on the target resource.</p>
 </dd></dl>
 
 <dl class="data">
-<dt id="sinon.api.context.sinon.context.user_pass">
-<tt class="descclassname">sinon.context.</tt><tt class="descname">user_pass</tt><a class="headerlink" href="#sinon.api.context.sinon.context.user_pass" title="Permalink to this definition">¶</a></dt>
+<dt id="sinon.context.user_pass">
+<tt class="descclassname">sinon.context.</tt><tt class="descname">user_pass</tt><a class="headerlink" href="#sinon.context.user_pass" title="Permalink to this definition">¶</a></dt>
 <dd><p>The pass-phrase to use.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
@@ -123,7 +114,7 @@ be used for any ssh-based backend connections, e.g., <tt class="docutils literal
 <p>The following context attributes are supported:</p>
 <dl class="data">
 <dt>
-<tt class="descclassname">sinon.api.context.</tt><tt class="descname">Contex</tt><big>(</big><em>&quot;SSH&quot;</em><big>)</big></dt>
+<tt class="descname">Contex</tt><big>(</big><em>&quot;SSH&quot;</em><big>)</big></dt>
 <dd><p>The type for this context has to be set to &#8220;SSH&#8221; in the constructor,
 i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;SSH&quot;)</span></tt>.</p>
 </dd></dl>
@@ -135,8 +126,8 @@ i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;SSH&quo
 </dd></dl>
 
 <dl class="data">
-<dt id="sinon.api.context.sinon.context.user_key">
-<tt class="descclassname">sinon.context.</tt><tt class="descname">user_key</tt><a class="headerlink" href="#sinon.api.context.sinon.context.user_key" title="Permalink to this definition">¶</a></dt>
+<dt id="sinon.context.user_key">
+<tt class="descclassname">sinon.context.</tt><tt class="descname">user_key</tt><a class="headerlink" href="#sinon.context.user_key" title="Permalink to this definition">¶</a></dt>
 <dd><p>The public ssh key file to use for the connection. This attribute is useful
 if an SSH key-pair other than the default one (in $HOME/.ssh/) is required to establish a connection.</p>
 </dd></dl>
@@ -172,14 +163,14 @@ if an SSH key-pair other than the default one (in $HOME/.ssh/) is required to es
 <p>The following context attributes are supported:</p>
 <dl class="data">
 <dt>
-<tt class="descclassname">sinon.api.context.</tt><tt class="descname">Contex</tt><big>(</big><em>&quot;X509&quot;</em><big>)</big></dt>
+<tt class="descname">Contex</tt><big>(</big><em>&quot;X509&quot;</em><big>)</big></dt>
 <dd><p>The type for this context has to be set to &#8220;X509&#8221; in the constructor,
 i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;X509&quot;)</span></tt>.</p>
 </dd></dl>
 
 <dl class="data">
-<dt id="sinon.api.context.sinon.context.user_proxy">
-<tt class="descclassname">sinon.context.</tt><tt class="descname">user_proxy</tt><a class="headerlink" href="#sinon.api.context.sinon.context.user_proxy" title="Permalink to this definition">¶</a></dt>
+<dt id="sinon.context.user_proxy">
+<tt class="descclassname">sinon.context.</tt><tt class="descname">user_proxy</tt><a class="headerlink" href="#sinon.context.user_proxy" title="Permalink to this definition">¶</a></dt>
 <dd><p>The X509 user proxy file to use for the connection. This attribute is useful
 if a proxy file other than the default one (in /tmp/x509_u&lt;uid&gt;) is required to establish a connection.</p>
 </dd></dl>
@@ -203,14 +194,14 @@ if a proxy file other than the default one (in /tmp/x509_u&lt;uid&gt;) is requir
 <p>The following context attributes are supported:</p>
 <dl class="data">
 <dt>
-<tt class="descclassname">sinon.api.context.</tt><tt class="descname">Contex</tt><big>(</big><em>&quot;MyProxy&quot;</em><big>)</big></dt>
+<tt class="descname">Contex</tt><big>(</big><em>&quot;MyProxy&quot;</em><big>)</big></dt>
 <dd><p>The type for this context has to be set to &#8220;MyProxy&#8221; in the constructor,
 i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;MyProxy&quot;)</span></tt>.</p>
 </dd></dl>
 
 <dl class="data">
-<dt id="sinon.api.context.sinon.context.server">
-<tt class="descclassname">sinon.context.</tt><tt class="descname">server</tt><a class="headerlink" href="#sinon.api.context.sinon.context.server" title="Permalink to this definition">¶</a></dt>
+<dt id="sinon.context.server">
+<tt class="descclassname">sinon.context.</tt><tt class="descname">server</tt><a class="headerlink" href="#sinon.context.server" title="Permalink to this definition">¶</a></dt>
 <dd><p>The hostname of the myproxy server.
 This is equivalent to <tt class="docutils literal"><span class="pre">myproxy-logon</span> <span class="pre">--pshost</span></tt>.</p>
 </dd></dl>
@@ -223,8 +214,8 @@ This is equivalent to <tt class="docutils literal"><span class="pre">myproxy-log
 </dd></dl>
 
 <dl class="data">
-<dt id="sinon.api.context.sinon.context.life_time">
-<tt class="descclassname">sinon.context.</tt><tt class="descname">life_time</tt><a class="headerlink" href="#sinon.api.context.sinon.context.life_time" title="Permalink to this definition">¶</a></dt>
+<dt id="sinon.context.life_time">
+<tt class="descclassname">sinon.context.</tt><tt class="descname">life_time</tt><a class="headerlink" href="#sinon.context.life_time" title="Permalink to this definition">¶</a></dt>
 <dd><p>The lifetime of the delegated proxy.
 This is equivalent to <tt class="docutils literal"><span class="pre">myproxy-logon</span> <span class="pre">--proxy_lifetime</span></tt> (default is 12h).</p>
 </dd></dl>
@@ -265,7 +256,7 @@ and an <tt class="docutils literal"><span class="pre">SSH</span> <span class="pr
 <p>The following context attributes are supported:</p>
 <dl class="data">
 <dt>
-<tt class="descclassname">sinon.api.context.</tt><tt class="descname">Contex</tt><big>(</big><em>&quot;MyProxy&quot;</em><big>)</big></dt>
+<tt class="descname">Contex</tt><big>(</big><em>&quot;MyProxy&quot;</em><big>)</big></dt>
 <dd><p>The type for this context has to be set to &#8220;EC2&#8221; in the constructor,
 i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;EC2&quot;)</span></tt>.</p>
 </dd></dl>
@@ -317,7 +308,7 @@ is used injunction with an <tt class="docutils literal"><span class="pre">EC2</s
 <p>The following context attributes are supported:</p>
 <dl class="data">
 <dt>
-<tt class="descclassname">sinon.api.context.</tt><tt class="descname">Contex</tt><big>(</big><em>&quot;EC2_KEYPAIR&quot;</em><big>)</big></dt>
+<tt class="descname">Contex</tt><big>(</big><em>&quot;EC2_KEYPAIR&quot;</em><big>)</big></dt>
 <dd><p>The type for this context has to be set to &#8220;EC2_KEYPAIR&#8221; in the constructor,
 i.e., <tt class="docutils literal"><span class="pre">sinon.Context(&quot;EC2_KEYPAIR&quot;)</span></tt>.</p>
 </dd></dl>
@@ -342,8 +333,8 @@ if an SSH key-pair other than the default one (in $HOME/.ssh/) is required to es
 </dd></dl>
 
 <dl class="data">
-<dt id="sinon.api.context.sinon.context.token">
-<tt class="descclassname">sinon.context.</tt><tt class="descname">token</tt><a class="headerlink" href="#sinon.api.context.sinon.context.token" title="Permalink to this definition">¶</a></dt>
+<dt id="sinon.context.token">
+<tt class="descclassname">sinon.context.</tt><tt class="descname">token</tt><a class="headerlink" href="#sinon.context.token" title="Permalink to this definition">¶</a></dt>
 <dd><p>The Amazon EC2 identifier for this key-pair.</p>
 </dd></dl>
 
@@ -359,7 +350,7 @@ if an SSH key-pair other than the default one (in $HOME/.ssh/) is required to es
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">5. Security Contexts</a><ul>
-<li><a class="reference internal" href="#module-sinon.api.context">5.1. Context Class &#8211; <tt class="docutils literal"><span class="pre">sinon.context</span></tt></a></li>
+<li><a class="reference internal" href="#context-class-sinon-context">5.1. Context Class &#8211; <tt class="docutils literal"><span class="pre">sinon.context</span></tt></a></li>
 <li><a class="reference internal" href="#userpass-context">5.2. UserPass Context</a></li>
 <li><a class="reference internal" href="#ssh-context">5.3. SSH Context</a></li>
 <li><a class="reference internal" href="#x-509-context">5.4. X.509 Context</a></li>
@@ -405,15 +396,12 @@ if an SSH key-pair other than the default one (in $HOME/.ssh/) is required to es
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="session.html" title="6. Sessions"
              >next</a> |</li>
         <li class="right" >
           <a href="task.html" title="4. Tasks"
              >previous</a> |</li>
-        <li><a href="../index.html">SAGA 0.1-7fffb5f documentation</a> &raquo;</li>
+        <li><a href="../index.html">SAGA unknown documentation</a> &raquo;</li>
           <li><a href="index.html" >2. Library Reference</a> &raquo;</li> 
       </ul>
     </div>
