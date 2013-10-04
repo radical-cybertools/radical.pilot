@@ -41,10 +41,16 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def remove_pilot (self, pid, drain=True, ttype=SYNC) :
+    def remove_pilot (self, pid, drain=False, ttype=SYNC) :
         """
         Remove pilot(s) (does not cancel the pilot(s), but removes all units
         from the pilot(s).
+
+        `drain` determines what happens to the units which are managed by the
+        removed pilot(s).  If `True`, the pilot removal is delayed until all
+        units reach a final state.  If `False` (the default), then `RUNNING`
+        units will be canceled, and `PENDING` units will be re-assinged to the
+        unit managers for re-scheduling to other pilots.
         """
 
         raise Exception ("%s.remove_pilot() is not implemented" % self.__class__.__name__)
