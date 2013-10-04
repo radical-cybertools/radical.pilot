@@ -43,7 +43,7 @@ class Pilot (Attributes, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel (self, ttype=SYNC) :
+    def cancel (self, drain=False, ttype=SYNC) :
 
         # FIXME
         pass

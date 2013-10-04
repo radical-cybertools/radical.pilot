@@ -1,4 +1,5 @@
 
+VERSION = 'v1'
 
 from v1 import *
 
@@ -45,23 +46,44 @@ with _sinon_rlock :
 #
 with _sinon_rlock :
 
-    sid = None
+    sid          = None
+    base_url     = None
+    _initialized = False
 
 
-def initialize (session_id=None) :
+def initialize (session_id=None, base_url=None) :
     """
-    Initialize this instance of the Sinon framework with a session ID.  
+    Initialize this instance of the Sinon framework with a session ID, and
+    a base coordination URL. 
 
     If a session ID is given, then it will be used for all subsequent calls.  
     If none is given, Sinon will attempt to pick it up from the process
     environment (`SINON_SESSION_ID`).  If that also fails, a new (random and
     unique) session ID will be automatically formed and used.  Any Sinon call
     will first make sure that a valid session ID exists.
+
+    The base coordination url will be formed according to the Sinon data model
+    (see v1/README.md)::
+
+      redis://gw68.quarry.iu.teragrid.org/sinon/v1/users/<username>/<sid>/
+
+    where `<username>` is the local system user id, and `<sid>` is the session
+    ID from above.  
+
     """
 
     with _sinon_rlock :
 
         global sid
+        global _initialized
+
+
+        # initialize only once
+        if  _initialized :
+            return
+
+       
+        # create (or pick-up) unique session ID
         if  sid :
             sid = session_id
 
@@ -70,6 +92,34 @@ def initialize (session_id=None) :
 
         else :
             sid = sui.generate_session_id ()
+
+        print "Sinon session ID : %s" % sid
+
+
+        # create (or pick-up) base url
+        if  base_url :
+            base_url = Url (base_url)
+
+        elif 'SINON_BASE_URL' in os.environ :
+            base_url = Url (os.environ['SINON_BASE_URL'])
+
+        else :
+            advert_url = 'redis://gw68.quarry.iu.teragrid.org'
+            user_id    = os.getuid ()
+
+            if  'USER'     in os.environ : user_id = os.environ['USER']
+            if  'USERNAME' in os.environ : user_id = os.environ['USERNAME']
+
+            base_url = Url ("%s/sinon/%s/users/%s/%s/" \
+                         % (advert_url, VERSION, user_id, sid))
+
+        print "Sinon session URL: %s" % base_url
+
+
+
+
+        # we will not need to initialize ever again
+        _initialized = True
 
 
 # ------------------------------------------------------------------------------
