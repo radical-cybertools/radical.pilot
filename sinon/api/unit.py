@@ -20,7 +20,7 @@ class Unit (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, ttype=SYNC) :
+    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, async=False) :
         """
         :param state:  the state to wait for
         :type  state:  enum `state` (PENDING, ACTIVE, DONE, FAILED, CANCELED, UNKNOWN)
@@ -38,12 +38,12 @@ class Unit (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel (self, ttype=SYNC) :
+    def cancel (self, async=False) :
         """
         :param state:  the state to wait for
         :type  state:  enum `state` (PENDING, ACTIVE, DONE, FAILED, CANCELED, UNKNOWN)
-        :param ttype:  method type
-        :type  ttype:  enum `ttype` (SYNC, ASYNC)
+        :param async:  flag for asynchronous method invocation
+        :type  async:  bool
         :returns   :  Nothing, or a Task on ASYNC calls
         :rtype     :  None or Task
         :raises    :  BadParameter (on invalid initialization)

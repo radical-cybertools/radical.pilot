@@ -20,7 +20,7 @@ class DataUnit (Unit) :
 
     # --------------------------------------------------------------------------
     #
-    def import_data (self, src, ttype=SYNC) :
+    def import_data (self, src, async=False) :
         """
         For a data unit which does not point to PFNs yet, create a first PFN as
         copy from the given src URL.
@@ -33,7 +33,7 @@ class DataUnit (Unit) :
 
     # --------------------------------------------------------------------------
     #
-    def export_data (self, tgt, ttype=SYNC) :
+    def export_data (self, tgt, async=False) :
         """
         Copy any of the data_unit's PFNs to the tgt URL.
         """
@@ -43,7 +43,7 @@ class DataUnit (Unit) :
 
     # --------------------------------------------------------------------------
     #
-    def remove_data (self, ttype=SYNC) :
+    def remove_data (self, async=False) :
         """
         Removes the data.  Implies cancel ()
         """

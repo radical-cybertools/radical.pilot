@@ -1,9 +1,5 @@
 
 
-# Async call types
-SYNC              = 'Sync'
-ASYNC             = 'Async'
-
 # Unit and Pilot types
 DATA              = 1
 COMPUTE           = 2

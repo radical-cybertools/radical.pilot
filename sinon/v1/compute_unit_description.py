@@ -1,6 +1,7 @@
 
 
 import sinon.api       as sa
+import sinon
 from   description import Description
 from   attributes  import *
 from   constants   import *
@@ -13,6 +14,8 @@ class ComputeUnitDescription (Description, sa.ComputeUnitDescription) :
     def __init__ (self, vals={}) : 
 
         Description.__init__ (self, vals)
+
+        self._attributes_i_set  ('dtype', sinon.COMPUTE, self._DOWN)
 
         # register properties with the attribute interface
         # action description

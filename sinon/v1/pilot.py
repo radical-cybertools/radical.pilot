@@ -13,6 +13,10 @@ class Pilot (Attributes, sa.Pilot) :
     #
     def __init__ (self, pid) : 
 
+        # initialize session
+        self._sid, self._base = sinon.initialize ()
+
+        # initialize attributes
         Attributes.__init__ (self)
 
         # set attribute interface properties
@@ -32,7 +36,7 @@ class Pilot (Attributes, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, ttype=SYNC) :
+    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, async=False) :
 
         if  not isinstance (state, list) :
             state = [state]
@@ -43,7 +47,7 @@ class Pilot (Attributes, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel (self, drain=False, ttype=SYNC) :
+    def cancel (self, drain=False, async=False) :
 
         # FIXME
         pass

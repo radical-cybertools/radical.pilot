@@ -1,6 +1,7 @@
 
 
 import sinon.api       as sa
+import sinon
 from   attributes  import *
 
 
@@ -18,6 +19,10 @@ class Description (Attributes, sa.Description) :
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
+        self._attributes_register    ('dtype', sinon.UNKNOWN, ENUM, SCALAR, READONLY)
+        self._attributes_set_enums   ('dtype', [sinon.UNKNOWN, 
+                                                sinon.COMPUTE,
+                                                sinon.DATA])
 
 # ------------------------------------------------------------------------------
 #

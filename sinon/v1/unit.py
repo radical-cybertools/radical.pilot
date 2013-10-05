@@ -2,8 +2,9 @@
 
 import sinon.api           as sa
 import sinon.utils         as su
-from   attributes   import *
-from   constants    import *
+import sinon
+from   attributes      import *
+from   constants       import *
 
 
 # ------------------------------------------------------------------------------
@@ -15,16 +16,16 @@ class Unit (Attributes, sa.Unit) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, uid) : 
+    def __init__ (self, uid, _description=None, _manager=None) : 
+
+        # initialize session
+        self._sid, self._base = sinon.initialize ()
 
         # FIXME: check if unit is valid
         print 'checking uid validity'
 
         # FIXME: reconnect to unit
         print 'reconnect to unit'
-
-        if  not uid :
-            uid = su.generate_unit_id ()
 
         # initialize attributes
         Attributes.__init__ (self)
@@ -46,9 +47,21 @@ class Unit (Attributes, sa.Unit) :
         self._attributes_register  (END_TIME,     None, TIME,   SCALAR, READONLY)
 
 
+
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, ttype=SYNC) :
+    @classmethod
+    def create (cls, description, manager) :
+        """
+        """
+
+        uid = su.generate_unit_id ()
+
+        return cls (uid, _description=description, _manager=manager)
+    
+    # --------------------------------------------------------------------------
+    #
+    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, async=False) :
 
         if  not isinstance (state, list) :
             state = [state]
@@ -63,7 +76,7 @@ class Unit (Attributes, sa.Unit) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel (self, ttype=SYNC) :
+    def cancel (self, async=False) :
         """
         :param state:  the state to wait for
         :type  state:  enum `state` (PENDING, ACTIVE, DONE, FAILED, CANCELED, UNKNOWN)

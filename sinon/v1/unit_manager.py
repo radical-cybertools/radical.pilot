@@ -1,6 +1,7 @@
 
 
 import sinon.api       as sa
+import sinon
 from   attributes import *
 from   constants  import *
 
@@ -13,6 +14,10 @@ class UnitManager (Attributes, sa.UnitManager) :
     #
     def __init__ (self, url=None, scheduler='default', session=None) :
 
+        # initialize session
+        self._sid, self._base = sinon.initialize ()
+
+        # initialize attributes
         Attributes.__init__ (self)
 
         # set attribute interface properties
@@ -28,7 +33,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def add_pilot (self, pid, ttype=SYNC) :
+    def add_pilot (self, pid, async=False) :
 
         # FIXME
         pass
@@ -36,7 +41,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self, ptype=ANY, ttype=SYNC) :
+    def list_pilots (self, ptype=ANY, async=False) :
 
         # FIXME
         pass
@@ -44,7 +49,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def remove_pilot (self, pid, drain=True, ttype=SYNC) :
+    def remove_pilot (self, pid, drain=True, async=False) :
 
         # FIXME
         pass
@@ -52,7 +57,26 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_unit (self, description, ttype=SYNC) :
+    def submit_unit (self, descr, async=False) :
+
+        # FIXME: async, bulk
+
+        if  not descr.attribute_exists ('dtype') :
+            raise sinon.BadParameter ("Invalid description (no type)")
+
+        print " descr.dtype %s == %s sinon.COMPUTE ?" % (descr.dtype, sinon.COMPUTE)
+        if  descr.dtype == sinon.COMPUTE :
+            return sinon.ComputeUnit.create (descr, self)
+
+        if  descr.dtype == sinon.DATA :
+            return sinon.DataUnit.create (descr, self)
+
+        raise sinon.BadParameter ("Unknown description type %s" % descr.dtype)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def list_units (self, utype=ANY, async=False) :
 
         # FIXME
         pass
@@ -60,7 +84,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=ANY, ttype=SYNC) :
+    def get_unit (self, uids, async=False) :
 
         # FIXME
         pass
@@ -68,15 +92,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def get_unit (self, uids, ttype=SYNC) :
-
-        # FIXME
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def wait_units (self, uids, state=[DONE, FAILED, CANCELED], timeout=-1.0, ttype=SYNC) :
+    def wait_units (self, uids, state=[DONE, FAILED, CANCELED], timeout=-1.0, async=False) :
 
         if  not isinstance (state, list) :
             state = [state]
@@ -87,7 +103,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units (self, uids, ttype=SYNC) :
+    def cancel_units (self, uids, async=False) :
 
         # FIXME
         pass

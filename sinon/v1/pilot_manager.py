@@ -1,6 +1,7 @@
 
 
 import sinon.api       as sa
+import sinon
 from   attributes import *
 from   constants  import *
 
@@ -13,6 +14,10 @@ class PilotManager (Attributes, sa.PilotManager) :
     #
     def __init__ (self, url=None, session=None) : 
 
+        # initialize session
+        self._sid, self._base = sinon.initialize ()
+
+        # initialize attributes
         Attributes.__init__ (self)
 
         # set attribute interface properties
@@ -27,7 +32,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_pilot (self, description, ttype=SYNC) :
+    def submit_pilot (self, description, async=False) :
 
         # FIXME
         pass
@@ -35,7 +40,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self, ttype=SYNC) :
+    def list_pilots (self, async=False) :
 
         # FIXME
         pass
@@ -43,7 +48,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def get_pilot (self, pids, ttype=SYNC) :
+    def get_pilot (self, pids, async=False) :
 
         # FIXME
         pass
@@ -51,7 +56,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0, ttype=SYNC) :
+    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0, async=False) :
 
         if  not isinstance (state, list) :
             state = [state]
@@ -62,7 +67,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilot (self, pids, ttype=SYNC) :
+    def cancel_pilot (self, pids, async=False) :
 
         # FIXME
         pass

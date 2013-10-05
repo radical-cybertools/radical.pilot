@@ -11,14 +11,14 @@ class DataUnit (u.Unit, sa.DataUnit) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, uid) : 
+    def __init__ (self, uid, _description=None, _manager=None) : 
 
-        u.Unit.__init__ (self, uid)
+        u.Unit.__init__ (self, uid, _description, _manager)
 
 
     # --------------------------------------------------------------------------
     #
-    def import_data (self, src, ttype=SYNC) :
+    def import_data (self, src, async=False) :
 
         # FIXME
         pass
@@ -26,7 +26,7 @@ class DataUnit (u.Unit, sa.DataUnit) :
 
     # --------------------------------------------------------------------------
     #
-    def export_data (self, tgt, ttype=SYNC) :
+    def export_data (self, tgt, async=False) :
 
         # FIXME
         pass
@@ -34,7 +34,7 @@ class DataUnit (u.Unit, sa.DataUnit) :
 
     # --------------------------------------------------------------------------
     #
-    def remove_data (self, ttype=SYNC) :
+    def remove_data (self, async=False) :
 
         # FIXME
         pass

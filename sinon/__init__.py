@@ -6,6 +6,7 @@ from v1 import *
 import saga.advert     as sa
 
 import os
+import datetime
 import threading
 import subprocess      as sp
 
@@ -117,7 +118,7 @@ def initialize (session_id=None, base_url=None) :
 
         # make sure the sesison URL is valid
         base_dir = sa.Directory (str(base_url), sa.CREATE_PARENTS)
-        base_dir.set_attribute  ('key', 'val')
+        base_dir.set_attribute  ('created', str(datetime.datetime.utcnow ()))
 
 
         # we will not need to initialize ever again

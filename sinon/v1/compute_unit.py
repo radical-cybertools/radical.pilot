@@ -14,9 +14,9 @@ class ComputeUnit (u.Unit, sa.ComputeUnit) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, uid) : 
+    def __init__ (self, uid, _description=None, _manager=None) : 
 
-        u.Unit.__init__ (self, uid)
+        u.Unit.__init__ (self, uid, _description, _manager)
 
 
 # ------------------------------------------------------------------------------
