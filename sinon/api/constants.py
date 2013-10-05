@@ -12,7 +12,8 @@ ANY               = DATA | COMPUTE
 # States
 UNKNOWN           = 'Unknown'
 PENDING           = 'Pending'
-ACTIVE            = 'Active'
+RUNNING           = 'Running'
+ACTIVE            =  RUNNING
 DONE              = 'Done'
 CANCELED          = 'Canceled'
 FAILED            = 'Failed' 

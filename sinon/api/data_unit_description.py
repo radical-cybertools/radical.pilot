@@ -2,6 +2,7 @@
 
 from   description import Description
 
+
 # ------------------------------------------------------------------------------
 #
 class DataUnitDescription (Description) :

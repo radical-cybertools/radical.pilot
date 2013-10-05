@@ -3,12 +3,11 @@ VERSION = 'v1'
 
 from v1 import *
 
+import saga.advert     as sa
 
-import re
 import os
-import sys
 import threading
-import subprocess as sp
+import subprocess      as sp
 
 import sinon.utils.ids as sui
 
@@ -80,7 +79,7 @@ def initialize (session_id=None, base_url=None) :
 
         # initialize only once
         if  _initialized :
-            return
+            return (sid, base_url)
 
        
         # create (or pick-up) unique session ID
@@ -104,22 +103,27 @@ def initialize (session_id=None, base_url=None) :
             base_url = Url (os.environ['SINON_BASE_URL'])
 
         else :
-            advert_url = 'redis://gw68.quarry.iu.teragrid.org'
-            user_id    = os.getuid ()
+            redis_url = 'redis://gw68.quarry.iu.teragrid.org'
+            user_id   = os.getuid ()
 
-            if  'USER'     in os.environ : user_id = os.environ['USER']
-            if  'USERNAME' in os.environ : user_id = os.environ['USERNAME']
+            if 'REDIS_URL' in os.environ : redis_url = os.environ['REDIS_URL']
+            if 'USER'      in os.environ : user_id   = os.environ['USER']
+            if 'USERNAME'  in os.environ : user_id   = os.environ['USERNAME']
 
             base_url = Url ("%s/sinon/%s/users/%s/%s/" \
-                         % (advert_url, VERSION, user_id, sid))
+                         % (redis_url, VERSION, user_id, sid))
 
         print "Sinon session URL: %s" % base_url
 
-
+        # make sure the sesison URL is valid
+        base_dir = sa.Directory (str(base_url), sa.CREATE_PARENTS)
+        base_dir.set_attribute  ('key', 'val')
 
 
         # we will not need to initialize ever again
         _initialized = True
+
+        return (sid, base_url)
 
 
 # ------------------------------------------------------------------------------
