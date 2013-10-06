@@ -91,10 +91,12 @@ def initialize (session_id=None, root_url=None) :
 
         print "Sinon session ID : %s" % sid
 
-        if  'USER'           in os.environ : user_id    = os.environ['USER']
+        if   'SINON_USER_ID' in os.environ : user_id    = os.environ['SINON_USER_ID']
+        elif 'USER'          in os.environ : user_id    = os.environ['USER']
         elif 'USERNAME'      in os.environ : user_id    = os.environ['USERNAME']
-        elif 'SINON_USER_ID' in os.environ : user_id    = os.environ['SINON_USER_ID']
         else                               : user_id    = os.getuid ()
+
+        print "Sinon user    ID : %s" % user_id
 
         if 'REDIS_URL' in os.environ       : redis_url  = os.environ['REDIS_URL']
         else                               : redis_url  = 'redis://gw68.quarry.iu.teragrid.org'

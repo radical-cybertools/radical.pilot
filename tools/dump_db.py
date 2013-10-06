@@ -3,11 +3,12 @@
 import sinon
 import saga
 
-_, base_url = sinon.initialize ()
+print "-----------------------------------------"
+_, root_dir = sinon.initialize ()
 
 # base_url points to the session dir.  We want to go up for two levels (session
 # dir, user dir).
-root_dir = saga.advert.Directory (str(base_url)+ '/../..')
+root_dir = saga.advert.Directory (str(root_dir.url)+ '/../..')
 print "sinon root: %s" % root_dir.url
 
 entries = root_dir.list (flags=saga.advert.RECURSIVE)
@@ -15,15 +16,18 @@ entries = root_dir.list (flags=saga.advert.RECURSIVE)
 if  entries :
     entries.sort ()
 
+print "-----------------------------------------\n"
 for entry in entries :
     
     print entry
 
-    ad_url      = base_url
+    ad_url      = root_dir.url
     ad_url.path = entry
     ad          = root_dir.open (str(ad_url))
     data        = ad.as_dict ()
 
     for key in data.keys () :
-        print "  %-10s : %s" % (key, data[key])
+        print "    %-10s : %s" % (key, data[key])
+
+print "\n-----------------------------------------\n"
 
