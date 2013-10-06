@@ -14,7 +14,7 @@ class Pilot (Attributes, sa.Pilot) :
     def __init__ (self, pid) : 
 
         # initialize session
-        self._sid, self._base = sinon.initialize ()
+        self._sid, self._root = sinon.initialize ()
 
         # initialize attributes
         Attributes.__init__ (self)

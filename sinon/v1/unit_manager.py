@@ -15,7 +15,7 @@ class UnitManager (Attributes, sa.UnitManager) :
     def __init__ (self, url=None, scheduler='default', session=None) :
 
         # initialize session
-        self._sid, self._base = sinon.initialize ()
+        self._sid, self._root = sinon.initialize ()
 
         # initialize attributes
         Attributes.__init__ (self)

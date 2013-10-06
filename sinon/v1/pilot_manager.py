@@ -1,6 +1,10 @@
 
 
+import saga
+import datetime
+
 import sinon.api       as sa
+import sinon.utils     as su
 import sinon
 from   attributes import *
 from   constants  import *
@@ -12,10 +16,16 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, url=None, session=None) : 
+    def __init__ (self, pmid=None, session=None) : 
 
         # initialize session
-        self._sid, self._base = sinon.initialize ()
+        self._sid, self._root = sinon.initialize ()
+
+        # get a unique ID if none was given -- otherwise we reconnect
+        if  not pmid :
+            self.pmid = su.generate_pilot_manager_id ()
+        else :
+            self.pmid = str(pmid)
 
         # initialize attributes
         Attributes.__init__ (self)
@@ -25,8 +35,20 @@ class PilotManager (Attributes, sa.PilotManager) :
         self._attributes_camelcasing (True)
 
         # deep inspection
-        self._attributes_register  (PILOTS, [], STRING, VECTOR, READONLY)
+        self._attributes_register  ('pmid', self.pmid, STRING, SCALAR, READONLY)
+        self._attributes_register  (PILOTS,   [], STRING, VECTOR, READONLY)
         # ...
+
+
+        print 'self.pmid'
+        print self.pmid
+        print self._root
+        print self._root.open_dir
+
+        # register state
+        self._base         = self._root.open_dir (self.pmid, flags=saga.advert.CREATE_PARENTS)
+        self._base.set_attribute ('created',  str(datetime.datetime.utcnow ()))
+        self._base.set_attribute ('pilots', [])
 
 
 

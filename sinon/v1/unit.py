@@ -19,7 +19,7 @@ class Unit (Attributes, sa.Unit) :
     def __init__ (self, uid, _description=None, _manager=None) : 
 
         # initialize session
-        self._sid, self._base = sinon.initialize ()
+        self._sid, self._root = sinon.initialize ()
 
         # FIXME: check if unit is valid
         print 'checking uid validity'

@@ -15,12 +15,12 @@ import sinon.utils.ids as sui
 
 # ------------------------------------------------------------------------------
 #
-_sinon_rlock = threading.RLock ()
+_rlock = threading.RLock ()
 
 
 # ------------------------------------------------------------------------------
 #
-with _sinon_rlock :
+with _rlock :
 
     version = "unknown"
     
@@ -44,17 +44,17 @@ with _sinon_rlock :
 
 # ------------------------------------------------------------------------------
 #
-with _sinon_rlock :
+with _rlock :
 
     sid          = None
-    base_url     = None
+    root_dir     = None
     _initialized = False
 
 
-def initialize (session_id=None, base_url=None) :
+def initialize (session_id=None, root_url=None) :
     """
     Initialize this instance of the Sinon framework with a session ID, and
-    a base coordination URL. 
+    a root coordination URL. 
 
     If a session ID is given, then it will be used for all subsequent calls.  
     If none is given, Sinon will attempt to pick it up from the process
@@ -62,7 +62,7 @@ def initialize (session_id=None, base_url=None) :
     unique) session ID will be automatically formed and used.  Any Sinon call
     will first make sure that a valid session ID exists.
 
-    The base coordination url will be formed according to the Sinon data model
+    The root coordination url will be formed according to the Sinon data model
     (see v1/README.md)::
 
       redis://gw68.quarry.iu.teragrid.org/sinon/v1/users/<username>/<sid>/
@@ -72,59 +72,50 @@ def initialize (session_id=None, base_url=None) :
 
     """
 
-    with _sinon_rlock :
+    with _rlock :
 
         global sid
+        global root_dir
         global _initialized
 
 
         # initialize only once
         if  _initialized :
-            return (sid, base_url)
+            return (sid, root_dir)
 
        
         # create (or pick-up) unique session ID
-        if  sid :
-            sid = session_id
-
-        elif 'SINON_SESSION_ID' in os.environ :
-            sid = os.environ['SINON_SESSION_ID']
-
-        else :
-            sid = sui.generate_session_id ()
+        if  session_id                        : sid = session_id
+        elif 'SINON_SESSION_ID' in os.environ : sid = os.environ['SINON_SESSION_ID']
+        else                                  : sid = sui.generate_session_id ()
 
         print "Sinon session ID : %s" % sid
 
+        if  'USER'           in os.environ : user_id = os.environ['USER']
+        elif 'USERNAME'      in os.environ : user_id = os.environ['USERNAME']
+        elif 'SINON_USER_ID' in os.environ : user_id = os.environ['SINON_USER_ID']
+        else                               : user_id = os.getuid ()
 
-        # create (or pick-up) base url
-        if  base_url :
-            base_url = Url (base_url)
+        if 'REDIS_URL' in os.environ : redis_url = os.environ['REDIS_URL']
+        else                         : redis_url = 'redis://gw68.quarry.iu.teragrid.org'
 
-        elif 'SINON_BASE_URL' in os.environ :
-            base_url = Url (os.environ['SINON_BASE_URL'])
+        # create (or pick-up) root url
+        if   root_url                       : root_url = Url (root_url)
+        elif 'SINON_ROOT_URL' in os.environ : root_url = Url (os.environ['SINON_ROOT_URL'])
+        else                                : root_url = Url ("%s/sinon/%s/users/%s/%s/" \
+                                                       % (redis_url, VERSION, user_id, sid))
 
-        else :
-            redis_url = 'redis://gw68.quarry.iu.teragrid.org'
-            user_id   = os.getuid ()
-
-            if 'REDIS_URL' in os.environ : redis_url = os.environ['REDIS_URL']
-            if 'USER'      in os.environ : user_id   = os.environ['USER']
-            if 'USERNAME'  in os.environ : user_id   = os.environ['USERNAME']
-
-            base_url = Url ("%s/sinon/%s/users/%s/%s/" \
-                         % (redis_url, VERSION, user_id, sid))
-
-        print "Sinon session URL: %s" % base_url
+        print "Sinon session URL: %s" % root_url
 
         # make sure the sesison URL is valid
-        base_dir = sa.Directory (str(base_url), sa.CREATE_PARENTS)
-        base_dir.set_attribute  ('created', str(datetime.datetime.utcnow ()))
-
+        root_dir = sa.Directory (str(root_url), sa.CREATE_PARENTS)
+        root_dir.set_attribute  ('created', str(datetime.datetime.utcnow ()))
 
         # we will not need to initialize ever again
         _initialized = True
 
-        return (sid, base_url)
+        
+        return (sid, root_dir)
 
 
 # ------------------------------------------------------------------------------
