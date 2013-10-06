@@ -38,8 +38,6 @@ def _generate_xid (idtype) :
         else :
             xid = "%s.%s"       % (idtype,                     xid_seq)
 
-        print 'xid'
-        print xid
         return str(xid)
 
 

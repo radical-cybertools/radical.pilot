@@ -27,6 +27,14 @@ class Unit (Attributes, sa.Unit) :
         # FIXME: reconnect to unit
         print 'reconnect to unit'
 
+        umid = None
+        if  _manager :
+            umid = _manager.umid
+ 
+        descr = None
+        if  _description :
+            descr = _description
+ 
         # initialize attributes
         Attributes.__init__ (self)
 
@@ -35,16 +43,17 @@ class Unit (Attributes, sa.Unit) :
         self._attributes_camelcasing (True)
 
         # set basic state attributes
-        self._attributes_register  (UID,          uid,  STRING, SCALAR, READONLY)
-        self._attributes_register  (STATE,        None, STRING, SCALAR, READONLY)
-        self._attributes_register  (STATE_DETAIL, None, STRING, SCALAR, READONLY)
+        self._attributes_register  (UID,          uid,   STRING, SCALAR, READONLY)
+        self._attributes_register  (STATE,        None,  STRING, SCALAR, READONLY)
+        self._attributes_register  (STATE_DETAIL, None,  STRING, SCALAR, READONLY)
 
         # set inspection attributes
-        self._attributes_register  (UNIT_MANAGER, None, STRING, SCALAR, READONLY)
-        self._attributes_register  (PILOT,        None, STRING, SCALAR, READONLY)
-        self._attributes_register  (SUBMIT_TIME,  None, TIME,   SCALAR, READONLY)
-        self._attributes_register  (START_TIME,   None, TIME,   SCALAR, READONLY)
-        self._attributes_register  (END_TIME,     None, TIME,   SCALAR, READONLY)
+        self._attributes_register  (UNIT_MANAGER, umid,  STRING, SCALAR, READONLY)
+        self._attributes_register  (DESCRIPTION,  descr, STRING, SCALAR, READONLY)
+        self._attributes_register  (PILOT,        None,  STRING, SCALAR, READONLY)
+        self._attributes_register  (SUBMIT_TIME,  None,  TIME,   SCALAR, READONLY)
+        self._attributes_register  (START_TIME,   None,  TIME,   SCALAR, READONLY)
+        self._attributes_register  (END_TIME,     None,  TIME,   SCALAR, READONLY)
 
 
 

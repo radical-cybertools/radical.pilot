@@ -91,25 +91,26 @@ def initialize (session_id=None, root_url=None) :
 
         print "Sinon session ID : %s" % sid
 
-        if  'USER'           in os.environ : user_id = os.environ['USER']
-        elif 'USERNAME'      in os.environ : user_id = os.environ['USERNAME']
-        elif 'SINON_USER_ID' in os.environ : user_id = os.environ['SINON_USER_ID']
-        else                               : user_id = os.getuid ()
+        if  'USER'           in os.environ : user_id    = os.environ['USER']
+        elif 'USERNAME'      in os.environ : user_id    = os.environ['USERNAME']
+        elif 'SINON_USER_ID' in os.environ : user_id    = os.environ['SINON_USER_ID']
+        else                               : user_id    = os.getuid ()
 
-        if 'REDIS_URL' in os.environ : redis_url = os.environ['REDIS_URL']
-        else                         : redis_url = 'redis://gw68.quarry.iu.teragrid.org'
+        if 'REDIS_URL' in os.environ       : redis_url  = os.environ['REDIS_URL']
+        else                               : redis_url  = 'redis://gw68.quarry.iu.teragrid.org'
+        if  not redis_url.endswith ('/')   : redis_url += '/'
 
         # create (or pick-up) root url
         if   root_url                       : root_url = Url (root_url)
         elif 'SINON_ROOT_URL' in os.environ : root_url = Url (os.environ['SINON_ROOT_URL'])
-        else                                : root_url = Url ("%s/sinon/%s/users/%s/%s/" \
+        else                                : root_url = Url ("%ssinon/%s/users/%s/%s/" \
                                                        % (redis_url, VERSION, user_id, sid))
 
-        print "Sinon session URL: %s" % root_url
+        print "Sinon session URL: %s" % str(root_url)
 
         # make sure the sesison URL is valid
         root_dir = sa.Directory (str(root_url), sa.CREATE_PARENTS)
-        root_dir.set_attribute  ('created', str(datetime.datetime.utcnow ()))
+      # root_dir.set_attribute  ('created', str(datetime.datetime.utcnow ()))
 
         # we will not need to initialize ever again
         _initialized = True

@@ -40,11 +40,6 @@ class PilotManager (Attributes, sa.PilotManager) :
         # ...
 
 
-        print 'self.pmid'
-        print self.pmid
-        print self._root
-        print self._root.open_dir
-
         # register state
         self._base         = self._root.open_dir (self.pmid, flags=saga.advert.CREATE_PARENTS)
         self._base.set_attribute ('created',  str(datetime.datetime.utcnow ()))
@@ -56,7 +51,15 @@ class PilotManager (Attributes, sa.PilotManager) :
     #
     def submit_pilot (self, description, async=False) :
 
-        # FIXME
+        # FIXME: bulk, async
+
+        pilot = sinon.Pilot.create (description, self)
+        
+        pilots = self._base.get_attribute ('pilots')
+        print 'pilots: %s (%s)' % (pilots, type (pilots))
+
+        self._base.set_attribute ('pilots', [pilot.pid])
+
         pass
 
 
