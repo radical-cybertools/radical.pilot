@@ -17,6 +17,11 @@ class Pilot (Attributes, sa.Pilot) :
     #
     def __init__ (self, pid, _description=None, _manager=None) : 
 
+
+        self.pid = pid
+        if  not self.pid :
+            raise sinon.BadParameter ("pilot c'tor requires 'pid' parameter)")
+
         # initialize session
         self._sid, self._root = sinon.initialize ()
 
@@ -28,6 +33,7 @@ class Pilot (Attributes, sa.Pilot) :
         if  _description :
             descr = _description
 
+
         # initialize attributes
         Attributes.__init__ (self)
 
@@ -35,7 +41,7 @@ class Pilot (Attributes, sa.Pilot) :
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register  (PID,           None,  STRING, SCALAR, READONLY)
+        self._attributes_register  (PID,           pid,   STRING, SCALAR, READONLY)
         self._attributes_register  (DESCRIPTION,   descr, 'any',  SCALAR, READONLY)
         self._attributes_register  ('manager',     pmid,  STRING,  SCALAR, READONLY)
         self._attributes_register  (STATE,         None,  STRING, SCALAR, READONLY)
@@ -49,8 +55,7 @@ class Pilot (Attributes, sa.Pilot) :
 
         # register state
         pdir = "%s/%s" % (self.manager, self.pid)
-        self._base         = self._root.open_dir (pdir, flags=saga.advert.CREATE_PARENTS)
-      # self._base.set_attribute ('created',  str(datetime.datetime.utcnow ()))
+        self._base = self._root.open_dir (pdir, flags=saga.advert.CREATE_PARENTS)
         self._base.set_attribute ('manager', self.manager)
 
 

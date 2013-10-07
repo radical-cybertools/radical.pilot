@@ -64,7 +64,6 @@ class UnitManager (Attributes, sa.UnitManager) :
         if  not descr.attribute_exists ('dtype') :
             raise sinon.BadParameter ("Invalid description (no type)")
 
-        print " descr.dtype %s == %s sinon.COMPUTE ?" % (descr.dtype, sinon.COMPUTE)
         if  descr.dtype == sinon.COMPUTE :
             return sinon.ComputeUnit.create (descr, self)
 

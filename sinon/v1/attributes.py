@@ -36,6 +36,9 @@ class Attributes (satt.Attributes, sa.Attributes) :
 
         satt.Attributes.__init__ (self, *args, **kwargs)
 
+    def __str__ (self) :
+        return str (self.as_dict ())
+
 
 # ------------------------------------------------------------------------------
 #

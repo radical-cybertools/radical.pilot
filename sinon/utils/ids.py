@@ -33,10 +33,12 @@ def _generate_xid (idtype) :
         xid_seq  = "%04d"         % (_id_cnts[idtype])
 
         # session IDs need to be somewhat unique
-        if  idtype == 'sid' : 
+        if  idtype == 's' : 
             xid = "%s.%s.%s.%s" % (idtype, xid_date, xid_time, xid_seq)
         else :
             xid = "%s.%s"       % (idtype,                     xid_seq)
+
+        print 'xid: %s' % xid
 
         return str(xid)
 
