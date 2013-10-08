@@ -75,7 +75,7 @@ class Unit (Attributes, sa.Unit) :
 
 
         # register state
-        pdir = "%s/%s/%s" % (self.unit_manager, self.uid, _pid)
+        pdir = "%s/%s/%s" % (self.unit_manager, _pid, self.uid)
         self._base = self._root.open_dir (pdir, flags=saga.advert.CREATE_PARENTS)
         self._base.set_attribute (UNIT_MANAGER,  self.unit_manager)
         self._base.set_attribute (DESCRIPTION,   self.description)

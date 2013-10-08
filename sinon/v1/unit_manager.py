@@ -32,9 +32,9 @@ class UnitManager (Attributes, sa.UnitManager) :
             self._scheduler = None
 
         else :
-            self._supm      = su.plugin_manager ('sinon', 'unit_scheduler')
-            self._scheduler = self._supm.load   (scheduler)
-            self._scheduler.init (self)
+            self._supm      = su.PluginManager ('unit_scheduler')
+            self._scheduler = self._supm.load  (name=scheduler)
+            self._scheduler.init (manager=self)
 
         # initialize attributes
         Attributes.__init__ (self)
@@ -55,11 +55,15 @@ class UnitManager (Attributes, sa.UnitManager) :
         self._base.set_attribute ('pilots', [])
         self._base.set_attribute ('units',  [])
 
+
     # --------------------------------------------------------------------------
     #
-    def add_pilot (self, pid, async=False) :
+    def add_pilot (self, pilot, async=False) :
 
-        # FIXME
+        print pilot.pid
+        print self.umid
+        self.pilots.append (pilot.pid)
+        self._base = self._root.open_dir (self.umid + '/' + pilot.pid, flags=saga.advert.CREATE_PARENTS)
         pass
 
 
@@ -113,13 +117,13 @@ class UnitManager (Attributes, sa.UnitManager) :
 
         else :
             # hurray, we can use the scheduler!
-            pid = self._scheduler.run (descr)
+            pid = self._scheduler.schedule (descr)
 
 
         if  descr.dtype == sinon.COMPUTE :
-            unit = sinon.ComputeUnit._create (descr, self, None)
+            unit = sinon.ComputeUnit._create (descr, self, pid)
         else :
-            unit = sinon.DataUnit._create (descr, self, None)
+            unit = sinon.DataUnit._create (descr, self, pid)
 
 
         return unit

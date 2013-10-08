@@ -24,7 +24,7 @@ def _generate_xid (idtype) :
         now = datetime.datetime.utcnow ()
 
         if  not idtype in _id_cnts :
-            _id_cnts[idtype] =  0
+            _id_cnts[idtype] =  1
         else :
             _id_cnts[idtype] += 1
 

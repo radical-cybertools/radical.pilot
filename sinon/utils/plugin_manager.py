@@ -51,7 +51,7 @@ class PluginManager (su.PluginManager) :
         """
         ptype: type of plugins to manage
         """
-        su.PluginManager.__init__ (self, ptype)
+        su.PluginManager.__init__ (self, 'sinon', ptype)
 
 
 # ------------------------------------------------------------------------------

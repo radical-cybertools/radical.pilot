@@ -58,7 +58,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
         self._base.set_attribute ('pilots', [pilot.pid])
 
-        pass
+        return pilot
 
 
     # --------------------------------------------------------------------------
