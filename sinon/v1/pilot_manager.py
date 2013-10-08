@@ -1,7 +1,6 @@
 
 
 import saga
-import datetime
 
 import sinon.api       as sa
 import sinon.utils     as su
@@ -41,7 +40,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
 
         # register state
-        self._base         = self._root.open_dir (self.pmid, flags=saga.advert.CREATE_PARENTS)
+        self._base = self._root.open_dir (self.pmid, flags=saga.advert.CREATE_PARENTS)
         self._base.set_attribute ('pilots', [])
 
 
@@ -52,8 +51,8 @@ class PilotManager (Attributes, sa.PilotManager) :
 
         # FIXME: bulk, async
 
-        pilot = sinon.Pilot.create (description, self)
-        
+        pilot  = sinon.Pilot._create (description, self)
+
         pilots = self._base.get_attribute ('pilots')
         print 'pilots: %s (%s)' % (pilots, type (pilots))
 

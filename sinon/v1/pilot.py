@@ -62,7 +62,7 @@ class Pilot (Attributes, sa.Pilot) :
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create (cls, description, manager) :
+    def _create (cls, description, manager) :
         """
         """
 

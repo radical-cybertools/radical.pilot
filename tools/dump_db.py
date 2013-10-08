@@ -27,7 +27,7 @@ for entry in entries :
     data        = ad.as_dict ()
 
     for key in data.keys () :
-        print "    %-10s : %s" % (key, data[key])
+        print "    %-15s : %s" % (key, data[key])
 
 print "\n-----------------------------------------\n"
 

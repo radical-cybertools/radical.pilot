@@ -1,6 +1,10 @@
 
 
+import saga
+import random
+
 import sinon.api       as sa
+import sinon.utils     as su
 import sinon
 from   attributes import *
 from   constants  import *
@@ -12,10 +16,25 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, url=None, scheduler='default', session=None) :
+    def __init__ (self, umid=None, scheduler=None, session=None) :
 
         # initialize session
         self._sid, self._root = sinon.initialize ()
+
+        # get a unique ID if none was given -- otherwise we reconnect
+        if  not umid :
+            self.umid = su.generate_unit_manager_id ()
+        else :
+            self.umid = str(umid)
+
+        # load and initialize the given scheduler
+        if  scheduler == None :
+            self._scheduler = None
+
+        else :
+            self._supm      = su.plugin_manager ('sinon', 'unit_scheduler')
+            self._scheduler = self._supm.load   (scheduler)
+            self._scheduler.init (self)
 
         # initialize attributes
         Attributes.__init__ (self)
@@ -25,11 +44,16 @@ class UnitManager (Attributes, sa.UnitManager) :
         self._attributes_camelcasing (True)
 
         # deep inspection
+        self._attributes_register  ('umid',    umid,      STRING, SCALAR, READONLY)
         self._attributes_register  (SCHEDULER, scheduler, STRING, SCALAR, READONLY)
         self._attributes_register  (PILOTS,    [],        STRING, VECTOR, READONLY)
         self._attributes_register  (UNITS,     [],        STRING, VECTOR, READONLY)
         # ...
 
+        # register state
+        self._base = self._root.open_dir (self.umid, flags=saga.advert.CREATE_PARENTS)
+        self._base.set_attribute ('pilots', [])
+        self._base.set_attribute ('units',  [])
 
     # --------------------------------------------------------------------------
     #
@@ -64,13 +88,41 @@ class UnitManager (Attributes, sa.UnitManager) :
         if  not descr.attribute_exists ('dtype') :
             raise sinon.BadParameter ("Invalid description (no type)")
 
+        if  not descr.dtype in [ sinon.COMPUTE, sinon.DATA ] :
+            raise sinon.BadParameter ("Unknown description type %s" % descr.dtype)
+
+        pid = None
+
+        # try to schedule the unit on a pilot
+        if  len (self.pilots)  == 0 :
+            # nothing to schedule on...
+            pid = None
+
+        elif len (self.pilots) == 1 :
+            # if we have only one pilot, there is not much to 
+            # scheduler (i.e., direct submission)
+            pid = self.pilots[0]
+
+        elif not self._scheduler :
+            # if we don't have a scheduler, we do random assignments
+            # FIXME: we might allow user hints, you know, for 'research'?
+            print self.pilots
+            print type(self.pilots)
+            print len(self.pilots)
+            pid = random.choice (self.pilots)
+
+        else :
+            # hurray, we can use the scheduler!
+            pid = self._scheduler.run (descr)
+
+
         if  descr.dtype == sinon.COMPUTE :
-            return sinon.ComputeUnit.create (descr, self)
+            unit = sinon.ComputeUnit._create (descr, self, None)
+        else :
+            unit = sinon.DataUnit._create (descr, self, None)
 
-        if  descr.dtype == sinon.DATA :
-            return sinon.DataUnit.create (descr, self)
 
-        raise sinon.BadParameter ("Unknown description type %s" % descr.dtype)
+        return unit
 
 
     # --------------------------------------------------------------------------
