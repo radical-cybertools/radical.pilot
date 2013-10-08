@@ -110,9 +110,6 @@ class UnitManager (Attributes, sa.UnitManager) :
         elif not self._scheduler :
             # if we don't have a scheduler, we do random assignments
             # FIXME: we might allow user hints, you know, for 'research'?
-            print self.pilots
-            print type(self.pilots)
-            print len(self.pilots)
             pid = random.choice (self.pilots)
 
         else :
