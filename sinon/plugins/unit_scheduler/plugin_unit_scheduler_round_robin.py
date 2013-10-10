@@ -66,6 +66,12 @@ class PLUGIN_CLASS (object) :
         return pilots[self._last_pilot]
 
 
+    # --------------------------------------------------------------------------
+    #
+    def schedule_bulk (self, unit_descriptions) :
+        pass
+
+
 # ------------------------------------------------------------------------------
 #
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

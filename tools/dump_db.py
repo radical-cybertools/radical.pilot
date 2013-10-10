@@ -26,8 +26,8 @@ for entry in entries :
     ad          = root_dir.open (str(ad_url))
     data        = ad.as_dict ()
 
-    for key in data.keys () :
-        print "    %-15s : %s" % (key, data[key])
+  # for key in data.keys () :
+  #     print "    %-15s : %s" % (key, data[key])
 
 print "\n-----------------------------------------\n"
 
