@@ -98,14 +98,13 @@ class Unit (Attributes, sa.Unit) :
     
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, async=False) :
+    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None) :
 
         if  not isinstance (state, list) :
             state = [state]
 
         # FIXME: be a little more intelligent
         # FIXME: use timeouts
-        # FIXME: async call...
         import time
         while self.state not in state :
             time.sleep (1)
@@ -113,14 +112,12 @@ class Unit (Attributes, sa.Unit) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel (self, async=False) :
+    def cancel (self) :
         """
         :param state:  the state to wait for
         :type  state:  enum `state` (PENDING, ACTIVE, DONE, FAILED, CANCELED, UNKNOWN)
-        :param ttype:  method type
-        :type  ttype:  enum `ttype` (SYNC, ASYNC)
-        :returns   :  Nothing, or a Task on ASYNC calls
-        :rtype     :  None or Task
+        :returns   :  Nothing
+        :rtype     :  None
         :raises    :  BadParameter (on invalid initialization)
 
         Move the unit into Canceled state -- unless it it was in a final state,

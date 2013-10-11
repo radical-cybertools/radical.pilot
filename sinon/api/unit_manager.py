@@ -21,7 +21,7 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def add_pilot (self, pid, async=False) :
+    def add_pilot (self, pid) :
         """
         add (Compute or Data)-Pilot(s) to the pool
         """
@@ -31,7 +31,7 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self, ptype=ANY, async=False) :
+    def list_pilots (self, ptype=ANY) :
         """
         List IDs of data and/or compute pilots
         """
@@ -41,7 +41,7 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def remove_pilot (self, pid, drain=False, async=False) :
+    def remove_pilot (self, pid, drain=False) :
         """
         Remove pilot(s) (does not cancel the pilot(s), but removes all units
         from the pilot(s).
@@ -58,7 +58,7 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_unit (self, description, async=False) :
+    def submit_unit (self, description) :
         """
         Instantiate and return (Compute or Data)-Unit object(s)
         """
@@ -68,7 +68,7 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=ANY, async=False) :
+    def list_units (self, utype=ANY) :
         """
         List IDs of data and/or compute units
         """
@@ -78,7 +78,7 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def get_unit (self, uids, async=False) :
+    def get_unit (self, uids) :
         """
         Reconnect to and return (Compute or Data)-Unit object(s)
         """
@@ -88,7 +88,7 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_unit (self, uids, state=[DONE, FAILED, CANCELED], timeout=-1.0, async=False) :
+    def wait_unit (self, uids, state=[DONE, FAILED, CANCELED], timeout=-1.0) :
         """
         Wait for given unit(s) to enter given state
         """
@@ -98,7 +98,7 @@ class UnitManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units (self, uids, async=False) :
+    def cancel_units (self, uids) :
         """
         Cancel given unit(s)
         """

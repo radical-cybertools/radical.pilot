@@ -48,9 +48,9 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_pilot (self, description, async=False) :
+    def submit_pilot (self, description) :
 
-        # FIXME: bulk, async
+        # FIXME: bulk
 
         pilot  = sinon.Pilot._create (description, self)
 
@@ -64,7 +64,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self, async=False) :
+    def list_pilots (self) :
 
         # FIXME
         pass
@@ -72,7 +72,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def get_pilot (self, pids, async=False) :
+    def get_pilot (self, pids) :
 
         # FIXME
         pass
@@ -80,7 +80,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0, async=False) :
+    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0) :
 
         if  not isinstance (state, list) :
             state = [state]
@@ -91,7 +91,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilot (self, pids, async=False) :
+    def cancel_pilot (self, pids) :
 
         # FIXME
         pass

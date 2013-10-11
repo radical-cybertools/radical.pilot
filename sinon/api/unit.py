@@ -20,12 +20,12 @@ class Unit (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, async=False) :
+    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None) :
         """
         :param state:  the state to wait for
         :type  state:  enum `state` (PENDING, ACTIVE, DONE, FAILED, CANCELED, UNKNOWN)
-        :returns:      Nothing, or a Task on ASYNC calls
-        :rtype:        None or Task
+        :returns:      Nothing
+        :rtype:        None
         :raises:       BadParameter (on invalid initialization)
 
         Block until the unit reaches the specified state, or timeout, whichever
@@ -38,14 +38,12 @@ class Unit (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel (self, async=False) :
+    def cancel (self) :
         """
         :param state:  the state to wait for
         :type  state:  enum `state` (PENDING, ACTIVE, DONE, FAILED, CANCELED, UNKNOWN)
-        :param async:  flag for asynchronous method invocation
-        :type  async:  bool
-        :returns   :  Nothing, or a Task on ASYNC calls
-        :rtype     :  None or Task
+        :returns   :  Nothing
+        :rtype     :  None
         :raises    :  BadParameter (on invalid initialization)
 
         Move the unit into Canceled state -- unless it it was in a final state,

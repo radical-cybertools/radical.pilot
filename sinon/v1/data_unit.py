@@ -18,7 +18,7 @@ class DataUnit (u.Unit, sa.DataUnit) :
 
     # --------------------------------------------------------------------------
     #
-    def import_data (self, src, async=False) :
+    def import_data (self, src) :
 
         # FIXME
         pass
@@ -26,7 +26,7 @@ class DataUnit (u.Unit, sa.DataUnit) :
 
     # --------------------------------------------------------------------------
     #
-    def export_data (self, tgt, async=False) :
+    def export_data (self, tgt) :
 
         # FIXME
         pass
@@ -34,7 +34,7 @@ class DataUnit (u.Unit, sa.DataUnit) :
 
     # --------------------------------------------------------------------------
     #
-    def remove_data (self, async=False) :
+    def remove_data (self) :
 
         # FIXME
         pass

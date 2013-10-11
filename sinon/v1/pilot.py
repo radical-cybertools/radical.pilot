@@ -73,7 +73,7 @@ class Pilot (Attributes, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, async=False) :
+    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None) :
 
         if  not isinstance (state, list) :
             state = [state]
@@ -84,7 +84,7 @@ class Pilot (Attributes, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel (self, drain=False, async=False) :
+    def cancel (self, drain=False) :
 
         # FIXME
         pass

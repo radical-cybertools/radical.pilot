@@ -24,7 +24,7 @@ class PilotManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_pilot (self, description, async=False) :
+    def submit_pilot (self, description) :
         """
         Instantiate and return (Compute or Data)-Pilot object
         """
@@ -34,7 +34,7 @@ class PilotManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self, async=False) :
+    def list_pilots (self) :
         """
         Returns pids of known pilots.
         """
@@ -44,7 +44,7 @@ class PilotManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def get_pilot (self, pids, async=False) :
+    def get_pilot (self, pids) :
         """
         Reconnect to and return (Compute or Data)-Pilot object(s)
         """
@@ -54,7 +54,7 @@ class PilotManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0, async=False) :
+    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0) :
         """
         Wait for given pilot(s).
         """
@@ -64,7 +64,7 @@ class PilotManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilot (self, pids, async=False) :
+    def cancel_pilot (self, pids) :
         """
         Cancel given pilot(s).
         """

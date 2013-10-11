@@ -25,7 +25,7 @@ class Pilot (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None, async=False) :
+    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None) :
         """
         block until the pilot reaches the specified state, or timeout, whichever
         comes first.  Negative timeout block forever, zero/None timeout never
@@ -37,7 +37,7 @@ class Pilot (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel (self, drain=False, async=False) :
+    def cancel (self, drain=False) :
         """
         Move the pilot into Canceled state -- unless it it was in a final state,
         then state is not changed.

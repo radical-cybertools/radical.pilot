@@ -59,7 +59,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def add_pilot (self, pilot, async=False) :
+    def add_pilot (self, pilot) :
 
         print pilot.pid
         print self.umid
@@ -70,7 +70,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self, ptype=ANY, async=False) :
+    def list_pilots (self, ptype=ANY) :
 
         # FIXME
         pass
@@ -78,7 +78,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def remove_pilot (self, pid, drain=True, async=False) :
+    def remove_pilot (self, pid, drain=True) :
 
         # FIXME
         pass
@@ -86,9 +86,9 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_unit (self, descr, async=False) :
+    def submit_unit (self, descr) :
 
-        # FIXME: async, bulk
+        # FIXME: bulk
 
         if  not descr.attribute_exists ('dtype') :
             raise sinon.BadParameter ("Invalid description (no type)")
@@ -129,7 +129,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=ANY, async=False) :
+    def list_units (self, utype=ANY) :
 
         # FIXME
         pass
@@ -137,7 +137,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def get_unit (self, uids, async=False) :
+    def get_unit (self, uids) :
 
         # FIXME
         pass
@@ -145,7 +145,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_units (self, uids, state=[DONE, FAILED, CANCELED], timeout=-1.0, async=False) :
+    def wait_units (self, uids, state=[DONE, FAILED, CANCELED], timeout=-1.0) :
 
         if  not isinstance (state, list) :
             state = [state]
@@ -156,7 +156,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units (self, uids, async=False) :
+    def cancel_units (self, uids) :
 
         # FIXME
         pass

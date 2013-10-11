@@ -5,7 +5,6 @@ from exceptions                    import *
 from session                       import Session
 from context                       import Context
 from url                           import Url
-from task                          import Task
 from callback                      import Callback
 from attributes                    import Attributes
 from description                   import Description
