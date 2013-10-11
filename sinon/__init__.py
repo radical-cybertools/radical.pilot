@@ -3,14 +3,15 @@ VERSION = 'v1'
 
 from v1 import *
 
-import saga.advert     as sa
-
 import os
 import datetime
 import threading
-import subprocess      as sp
+import subprocess
 
-import sinon.utils.ids as sui
+import radical.utils as ru
+import saga.advert   as sa
+
+
 
 
 # ------------------------------------------------------------------------------
@@ -29,8 +30,8 @@ with _rlock :
         fn      = os.path.join    (cwd, 'VERSION')
         version = open (fn).read ().strip ()
     
-        p   = sp.Popen (['git', 'describe', '--tags', '--always'],
-                        stdout=sp.PIPE)
+        p   = subprocess.Popen (['git', 'describe', '--tags', '--always'],
+                        stdout=subprocess.PIPE)
         out = p.communicate()[0]
     
         # ignore pylint error on p.returncode -- false positive
@@ -87,7 +88,7 @@ def initialize (session_id=None, root_url=None) :
         # create (or pick-up) unique session ID
         if  session_id                        : sid = session_id
         elif 'SINON_SESSION_ID' in os.environ : sid = os.environ['SINON_SESSION_ID']
-        else                                  : sid = sui.generate_session_id ()
+        else                                  : sid = ru.generate_id ('s.')
 
         print "Sinon session ID : %s" % sid
 

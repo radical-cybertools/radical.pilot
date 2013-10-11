@@ -3,8 +3,9 @@
 import saga
 import random
 
+import radical.utils   as ru
+
 import sinon.api       as sa
-import sinon.utils     as su
 import sinon
 from   attributes import *
 from   constants  import *
@@ -23,7 +24,7 @@ class UnitManager (Attributes, sa.UnitManager) :
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not umid :
-            self.umid = su.generate_unit_manager_id ()
+            self.umid = ru.generate_id ('um.')
         else :
             self.umid = str(umid)
 
@@ -32,7 +33,7 @@ class UnitManager (Attributes, sa.UnitManager) :
             self._scheduler = None
 
         else :
-            self._supm      = su.PluginManager ('unit_scheduler')
+            self._supm      = ru.PluginManager ('sinon', 'unit_scheduler')
             self._scheduler = self._supm.load  (name=scheduler)
             self._scheduler.init (manager=self)
 

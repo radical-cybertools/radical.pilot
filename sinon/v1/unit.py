@@ -2,8 +2,9 @@
 
 import saga
 
+import radical.utils       as ru
+
 import sinon.api           as sa
-import sinon.utils         as su
 import sinon
 from   attributes      import *
 from   constants       import *
@@ -90,7 +91,7 @@ class Unit (Attributes, sa.Unit) :
         """
         """
 
-        uid = su.generate_unit_id ()
+        uid = ru.generate_id ('u.')
 
         return cls (uid, _description=description, _manager=manager, _pid=pid)
 

@@ -1,9 +1,9 @@
 
 
 import saga
+import radical.utils   as ru
 
 import sinon.api       as sa
-import sinon.utils     as su
 import sinon
 from   attributes  import *
 from   constants   import *
@@ -66,7 +66,7 @@ class Pilot (Attributes, sa.Pilot) :
         """
         """
 
-        pid = su.generate_pilot_id ()
+        pid = ru.generate_id ('p.')
 
         return cls (pid, _description=description, _manager=manager)
 

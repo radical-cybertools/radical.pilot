@@ -2,8 +2,9 @@
 
 import saga
 
+import radical.utils   as ru
+
 import sinon.api       as sa
-import sinon.utils     as su
 import sinon
 from   attributes import *
 from   constants  import *
@@ -22,7 +23,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not pmid :
-            self.pmid = su.generate_pilot_manager_id ()
+            self.pmid = ru.generate_id ('pm.')
         else :
             self.pmid = str(pmid)
 
