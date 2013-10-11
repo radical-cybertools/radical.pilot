@@ -140,7 +140,7 @@ setup_args = {
         'test': our_test
     },
     'install_requires': [],
-    'tests_require': ['setuptools', 'nose']
+    'tests_require': ['setuptools', 'nose', 'radical.utils']
 }
 
 setup(**setup_args)
