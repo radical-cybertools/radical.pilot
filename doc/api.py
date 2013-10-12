@@ -1,5 +1,8 @@
 """
 
+DEPRECATED!!!
+GO INTO THE REAL CODE (API/SP1)
+
 Discussion
 ----------
 
