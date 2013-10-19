@@ -5,8 +5,9 @@ import os
 import tempfile
 import unittest
 
-#from sinon.database import *
+from sinon.db import Session
 
+DBURL = 'mongodb://mongohost:27017/'
 
 #-----------------------------------------------------------------------------
 #
@@ -31,7 +32,28 @@ class Test_Database(unittest.TestCase):
 
     #-------------------------------------------------------------------------
     #
-    def test__connection(self):
-        """ Test if we can establish a connection to the database backend.
+    def test__new_session(self):
+        """ Test if Session.new() behaves as expected.
         """
-        assert True
+        try:
+            # this should fail
+            s = Session.new(db_url="unknownhost", sid="new_session")
+            assert False, "Prev. call should have failed."
+        except Exception, ex:
+            assert True
+
+        s = Session.new(db_url=DBURL, sid="new_session")
+        s.delete()
+
+    #-------------------------------------------------------------------------
+    #
+    def test__delete_session(self):
+        """ Test if session.delete() behaves as expceted.
+        """
+        try:
+            s = Session.new(db_url=DBURL, sid="new_session")
+            s.delete()
+            assert False, "Prev. call should have failed."
+        except Exception, ex:
+            assert True
+
