@@ -121,7 +121,7 @@ setup(name='sinon',
                         'saga-python',
                         'radical.utils'],
       test_suite = 'sinon.tests',
-      package_data = {'': ['*.sh', 'radical/utils/VERSION']},
+      package_data = {'': ['*.sh', 'src/sinon/VERSION']},
       include_package_data = True,
       zip_safe = False,
       cmdclass = {

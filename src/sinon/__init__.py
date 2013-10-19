@@ -23,7 +23,7 @@ _rlock = threading.RLock ()
 #
 with _rlock :
 
-    version = 'latest'
+    version = 'unknown'
 
     try:
         cwd = os.path.dirname(os.path.abspath(__file__))
