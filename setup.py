@@ -126,6 +126,8 @@ setup_args = {
         "sinon",
         "sinon.api",
         "sinon.v1",
+        "sinon.bj",
+        "sinon.bj.bj_dummy",
         "sinon.utils",
     ],
     'package_data': {'': ['*.sh']},
