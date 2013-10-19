@@ -1,5 +1,5 @@
 
 recursive-include src/sinon *
 
-include MANIFEST.in 
+include MANIFEST.in README.md CHANGES.md LICENSE.md
 

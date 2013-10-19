@@ -37,7 +37,6 @@ def update_version():
                 v = VERSION_MATCH.search(out)
                 if v:
                     version = v.group()
-                    print "HERE"
         except OSError:
             pass
 
@@ -122,7 +121,7 @@ setup(name='sinon',
                         'saga-python',
                         'radical.utils'],
       test_suite = 'sinon.tests',
-      package_data = {'': ['*.sh']},
+      package_data = {'': ['*.sh', 'radical/utils/VERSION']},
       include_package_data = True,
       zip_safe = False,
       cmdclass = {
