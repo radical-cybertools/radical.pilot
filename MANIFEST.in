@@ -1,6 +1,7 @@
 
-recursive-include sinon *
-recursive-include tests *
+recursive-include src/sinon *
+recursive-include src/sinon/tests *
 
-include MANIFEST.in 
+include src/sinon/VERSION
+include MANIFEST.in README.md CHANGES.md LICENSE.md
 
