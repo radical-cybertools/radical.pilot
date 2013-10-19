@@ -1,7 +1,7 @@
 
 VERSION = 'v1'
 
-from v1 import *
+from   bj import *
 
 import os
 import datetime
