@@ -1,6 +1,6 @@
 Results for mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017: 
-
 ======================================================================
+
 ```
 Average time to create a collection: 0.136305 sec.
 Average time to add documents in bulks of 1: 0.137909 sec.
