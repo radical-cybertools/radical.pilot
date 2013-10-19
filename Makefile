@@ -41,7 +41,7 @@ viz:
 	gource -s 0.1 -i 0 --title sinon --max-files 99999 --max-file-lag -1 --user-friction 0.3 --user-scale 0.5 --camera-mode overview --highlight-users --hide progress,filenames -r 25 -viewport 1024x1024
 
 clean:
-	-rm -rf build/ sinon.egg-info/ temp/ MANIFEST dist/ pylint.out
+	-rm -rf build/ src/sinon.egg-info/ temp/ MANIFEST dist/ src/sinon/VERSION pylint.out
 	make -C doc clean
 	find . -name \*.pyc -exec rm -f {} \;
 
