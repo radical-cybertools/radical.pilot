@@ -10,7 +10,7 @@ class DataUnit(Unit):
     """ 
     A DataUnit represents a self-contained, related set of data.
     A DataUnit is defined as an immutable container for a logical group of
-    “affine” data files, e. g. data that is often accessed together
+    "affine" data files, e. g. data that is often accessed together
     e.g. by multiple ComputeUnits.
 
     This simplifies distributed data management tasks, such as data placement,
