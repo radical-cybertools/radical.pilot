@@ -76,5 +76,6 @@ class Test_Database(unittest.TestCase):
 
         s1 = Session.new(db_url=DBURL, sid="my_new_session")
         s2 = Session.reconnect(db_url=DBURL, sid="my_new_session")
-        #assert s1, s2
+        assert s1.session_id == s2.session_id
+        s2.delete()
 
