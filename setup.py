@@ -39,6 +39,7 @@ def update_version():
                 v = VERSION_MATCH.search(out)
                 if v:
                     version = v.group()
+                    print "HERE"
         except OSError:
             pass
 
