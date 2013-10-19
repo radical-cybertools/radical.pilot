@@ -23,7 +23,7 @@ class Pilot (Attributes, sa.Pilot) :
             raise sinon.BadParameter ("pilot c'tor requires 'pid' parameter)")
 
         # initialize session
-        self._sid, self._root = sinon.initialize ()
+        self._sid = sinon.initialize ()
 
         pmid = None
         if  _manager :
@@ -52,11 +52,6 @@ class Pilot (Attributes, sa.Pilot) :
         self._attributes_register  (UNIT_MANAGERS, None,  STRING, VECTOR, READONLY)
         self._attributes_register  (PILOT_MANAGER, None,  STRING, SCALAR, READONLY)
         # ...
-
-        # register state
-        pdir = "%s/%s" % (self.manager, self.pid)
-        self._base = self._root.open_dir (pdir, flags=saga.advert.CREATE_PARENTS)
-        self._base.set_attribute ('manager', self.manager)
 
 
     # --------------------------------------------------------------------------

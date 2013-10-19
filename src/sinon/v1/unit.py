@@ -32,7 +32,7 @@ class Unit (Attributes, sa.Unit) :
             raise sinon.BadParameter ("unit c'tor requires 'uid' parameter)")
 
         # initialize session
-        self._sid, self._root = sinon.initialize ()
+        self._sid = sinon.initialize ()
 
         umid = None
         if  _manager :
@@ -73,15 +73,6 @@ class Unit (Attributes, sa.Unit) :
         self._attributes_register  (SUBMIT_TIME,  None,  TIME,   SCALAR, READONLY)
         self._attributes_register  (START_TIME,   None,  TIME,   SCALAR, READONLY)
         self._attributes_register  (END_TIME,     None,  TIME,   SCALAR, READONLY)
-
-
-        # register state
-        pdir = "%s/%s/%s" % (self.unit_manager, _pid, self.uid)
-        self._base = self._root.open_dir (pdir, flags=saga.advert.CREATE_PARENTS)
-        self._base.set_attribute (UNIT_MANAGER,  self.unit_manager)
-        self._base.set_attribute (DESCRIPTION,   self.description)
-        self._base.set_attribute (PILOT,         self.pilot)
-
 
 
     # --------------------------------------------------------------------------

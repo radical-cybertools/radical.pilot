@@ -2,9 +2,9 @@
 import sinon
 import sys
 
-print sinon.version
-
 print 0
+
+print sinon.version
 
 print 1
 
