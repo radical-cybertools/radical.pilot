@@ -2,17 +2,10 @@
 import sinon
 import sys
 
-print -1
-
-sinon.initialize ()
-
 print sinon.version
-print sinon.sid
 
 print 0
 
-sinon.initialize ()
- 
 print 1
 
 pd       = sinon.ComputePilotDescription ()
