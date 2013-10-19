@@ -33,8 +33,6 @@ def update_version():
                       stdout=PIPE, stderr=STDOUT)
             out = p.communicate()[0]
 
-            print "XXXXXXXX: %s" % out
-
             if (not p.returncode) and out:
                 v = VERSION_MATCH.search(out)
                 if v:
