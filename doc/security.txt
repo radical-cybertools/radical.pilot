@@ -1,0 +1,168 @@
+
+
+Create/Bootstrap a new service
+------------------------------
+
+  - registry presumably exists
+  - the spawner has the private and public fabric keys
+  - spawner creates a random one-time-password
+  - spawner creates a new service instance via saga-python, passing one-time-passwd in env
+  - new service uses one-time-pass to fetch fabric keys from spawner
+    - if that fails (connectivity issues etc), job fails with specific exit
+      code, spawner will discard one-time-pass
+  - spawner contacts new service with private key, ensuring that
+    setup worked, and configures service for the intended purpose
+    - create virtualenv
+    - fetch SAGA-Python, Sinon modules
+    - spawn real service, which can be
+      - communication bridge
+      - agent
+      - pilot manager
+      - queue service
+      - pub/sub server
+    - register service instance in service registry (which in itself
+      is a presumably fail safe, persistent fabric component)
+    - each service accepts request on a management port to create
+      new services, allowing to expand the fabric.
+      - desktop -> gateway -> head node -> compute node
+      - all management requests will need to be signed by the fabric's
+        private key (we could make this a req for all requests)
+    - each service accepts requests on management port to
+      register/de-register session IDs.
+
+
+
+Reconnect to fabric after application fail-over
+-----------------------------------------------
+
+  - fabric keys (and relevant session IDs) need to be retrieved from
+    persistent storage, or from the user.
+  - registry endpoint needs to be retrieved similarly
+  - connection is made to registry, using the fabric keys
+  - service endpoints are retrieved from registry
+  - relevant services are contacted with a CONNECT request
+
+  - note that this mechanism also works for attaching new clients /
+    apps to an existing fabric!
+
+
+
+Reconnect a service within a fabric after fail-over
+---------------------------------------------------
+
+  - service failure needs to be communicated / detected, e.g. by
+    - registry watching state (heartbeat pings?)
+    - a failing contact updates state in registry
+    - a dying service updates state in regiistry
+
+  - a failing service interaction needs to query registry for service
+    state -- if service is dead, an attempt to restart the service is
+    made from the calling entity (as presumably we know that the
+    communication route is functional).  
+  - the restart sequence is identical to the startup/bootstrap above,
+    but the service gets its old ID assigned (via env or parameters),
+    so that it can re-register as alive
+  - if the service can not pickup old state, it will exit as FAILED,
+    and it will be considered lost, along with all its state.  An
+    attempt can be made to start a new, fresh service instance of the
+    same type -- depending on the service type this may make sense or
+    not.  If not, that failure needs to travel up to the application.
+
+
+
+Dealing with different connectivity issues
+------------------------------------------
+
+  - service startup can happen in three different modi -- depending on
+    connectivity setup.  
+
+    1: no firewall
+    
+       new service will actively ping back to the spawning service,
+       using the one time pass.
+
+       spawner: listen
+       spawnee: connect
+
+
+    2: firewall *to* service
+
+       as 1
+
+
+    3: firewall *from* service
+    
+       spawner will actively ping the spawning service, after that has
+       entered RUNNING state -- some timeout will be needed after
+       which we kill the spawnee.
+
+       spawner: connect
+       spawnee: listen
+
+
+    3: firewall *to and from* service
+    
+       we will need to use TCP splicing (1) to establish the
+       connection.  This will require a 3rd party for information
+       exchange -- the service registry should be able to play that
+       role, as we assume that this is always alive and reachable
+       (possibly via a bridge service -- then the splicing would
+       actually happen between bridge and target host).
+
+       This will require a similar timeout mechanism as (3).
+
+       spawner: connect
+       spawnee: connect
+
+
+    - it seems prudent to first implement (1) and (2), and to leave
+      (3) and (4) for later -- but the respective modes should be
+      documented and planned for, in particular when designing the
+      communication bridges.
+
+
+
+(1) TCP Slicing:
+
+    TCP allows a connection to be established if both sides
+    simultaneously send eachother a SYN packet. This method requires a
+    little NAT cooperation, but only a little. Here's how it could
+    work:
+
+      1: Side1 Binds their TCP socket to a particular port.
+      2: Side1 Tries to connect to Broker on an agreed upon port.
+      3: Broker Replies with an RST when it recieves the expected SYN.
+         Records source IP and source port.
+      4: Side2 Binds their TCP socket to a particular port.
+      5: Side2 Tries to connect to Broker on an agreed upon port.
+      6: Broker Replies with an RST when it recieves the expected SYN.
+         Records source IP and source port.
+      7: Broker Informs Side1 of Side2's source port and source IP.
+      8: Broker Informs Side2 of Side1's source port and source IP.
+      9: Source1 Uses same socket originally bound to connect to
+         Source2's IP and port.
+     10: Source2 Uses same socket originally bound to connect to
+         Source1's IP and port.
+     11: Walah! They connect via exchange of simultaneous SYNs.
+
+   This requires cooperation between the sources and their NATs.
+   Specifically, it requires these three things from a NAT:
+
+      1: The NAT should keep the same outgoing port for the same TCP
+         port on a client for a period of time. This is very similar
+         to how a NAT handles UDP.  
+      2: A NAT must not reply to SYNs it recieves on a bound TCP port
+         that don't originate from the connected to IP.  Normally it
+         would reply with an RST.  
+      3: A NAT must change the IP it's expecting TCP packets from if
+         the client sends out a new SYN to a different IP and port
+         combo.  
+    
+    There is one non-problem I expect people to bring up. There seems
+    to be an apparent race condition in step 11. This isn't really a
+    race condition because of requirement 2 for NATs. Basically, the
+    two sources can SYN eachother all day, and it won't matter until
+    both NATs have performed the step required by requirement 3, at
+    which point it will appear to both sources as if the SYNs were
+    simultaneous.
+

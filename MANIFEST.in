@@ -1,0 +1,5 @@
+
+recursive-include src/sinon *
+
+include MANIFEST.in 
+
