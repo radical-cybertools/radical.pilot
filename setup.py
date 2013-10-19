@@ -33,6 +33,8 @@ def update_version():
                       stdout=PIPE, stderr=STDOUT)
             out = p.communicate()[0]
 
+            print "XXXXXXXX: %s" % out
+
             if (not p.returncode) and out:
                 v = VERSION_MATCH.search(out)
                 if v:
@@ -115,7 +117,7 @@ setup(name='sinon',
       url='https://github.com/saga-project/sinon',
       packages=find_packages('src'),
       package_dir = {'': 'src'},
-      namespace_packages=['sinon'],
+      #namespace_packages=['sinon'],
       scripts=['bin/sinon-version'],
       install_requires=['setuptools',
                         'saga-python',

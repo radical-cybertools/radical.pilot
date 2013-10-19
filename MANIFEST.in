@@ -1,6 +1,5 @@
 
 recursive-include src/sinon *
-recursive-include tests *
 
 include MANIFEST.in 
 
