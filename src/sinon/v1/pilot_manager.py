@@ -19,7 +19,7 @@ class PilotManager (Attributes, sa.PilotManager) :
     def __init__ (self, pmid=None, session=None) : 
 
         # initialize session
-        self._sid, self._root = sinon.initialize ()
+        self._sid = sinon.initialize ()
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not pmid :
@@ -38,12 +38,6 @@ class PilotManager (Attributes, sa.PilotManager) :
         self._attributes_register  ('pmid', self.pmid, STRING, SCALAR, READONLY)
         self._attributes_register  (PILOTS,   [], STRING, VECTOR, READONLY)
         # ...
-
-
-        # register state
-        self._base = self._root.open_dir (self.pmid, flags=saga.advert.CREATE_PARENTS)
-        self._base.set_attribute ('pilots', [])
-
 
 
     # --------------------------------------------------------------------------

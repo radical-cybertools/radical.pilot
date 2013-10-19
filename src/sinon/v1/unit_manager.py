@@ -20,7 +20,7 @@ class UnitManager (Attributes, sa.UnitManager) :
     def __init__ (self, umid=None, scheduler=None, session=None) :
 
         # initialize session
-        self._sid, self._root = sinon.initialize ()
+        self._sid = sinon.initialize ()
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not umid :
@@ -51,11 +51,6 @@ class UnitManager (Attributes, sa.UnitManager) :
         self._attributes_register  (UNITS,     [],        STRING, VECTOR, READONLY)
         # ...
 
-        # register state
-        self._base = self._root.open_dir (self.umid, flags=saga.advert.CREATE_PARENTS)
-        self._base.set_attribute ('pilots', [])
-        self._base.set_attribute ('units',  [])
-
 
     # --------------------------------------------------------------------------
     #
@@ -64,8 +59,6 @@ class UnitManager (Attributes, sa.UnitManager) :
         print pilot.pid
         print self.umid
         self.pilots.append (pilot.pid)
-        self._base = self._root.open_dir (self.umid + '/' + pilot.pid, flags=saga.advert.CREATE_PARENTS)
-        pass
 
 
     # --------------------------------------------------------------------------
