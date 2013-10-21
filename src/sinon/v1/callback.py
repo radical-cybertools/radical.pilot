@@ -1,7 +1,7 @@
 
 
+import saga.attributes  as satt
 import sinon._api      as sa
-import saga.attributes as satt
 
 
 # ------------------------------------------------------------------------------

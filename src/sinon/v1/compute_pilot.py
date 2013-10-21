@@ -1,7 +1,7 @@
 
 
-import sinon._api  as sa
 import pilot       as p
+import sinon._api  as sa
 
 
 # ------------------------------------------------------------------------------
