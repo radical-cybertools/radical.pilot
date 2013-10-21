@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import os
-import tempfile
+"""Database conncetion layer tests
+"""
+
 import unittest
 
 from sinon.db import Session
