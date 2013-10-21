@@ -4,7 +4,7 @@
 # here implemented classes.  That way we import the complete (but not
 # implemented) API, and only overload what actually exists here in v1:
 
-from sinon.api import *
+from sinon._api import *
 
 
 # now the overloading for the actual v1 implementation:
@@ -17,6 +17,7 @@ from session                             import Session
 from context                             import Context
 from url                                 import Url
 from callback                            import Callback
+from description                         import Description
 
 from compute_unit_description            import ComputeUnitDescription
 from data_unit_description               import DataUnitDescription

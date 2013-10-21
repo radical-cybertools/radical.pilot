@@ -1,25 +1,25 @@
 
 
-import saga
+import os
 
 import radical.utils   as ru
 
-import sinon.api       as sa
-import sinon
-from   attributes import *
-from   constants  import *
+import pilot           as p
+import session         as s
+import attributes      as att
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager (Attributes, sa.PilotManager) :
+class PilotManager (att.Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, pmid=None, session=None) : 
 
         # initialize session
-        self._sid, self._root = sinon.initialize ()
+        self._sid = s.initialize ()
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not pmid :
@@ -28,22 +28,22 @@ class PilotManager (Attributes, sa.PilotManager) :
             self.pmid = str(pmid)
 
         # initialize attributes
-        Attributes.__init__ (self)
+        att.Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
         # deep inspection
-        self._attributes_register  ('pmid', self.pmid, STRING, SCALAR, READONLY)
-        self._attributes_register  (PILOTS,   [], STRING, VECTOR, READONLY)
+        self._attributes_register  ('pmid',    self.pmid, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOTS, [],        att.STRING, att.VECTOR, att.READONLY)
         # ...
 
-
-        # register state
-        self._base = self._root.open_dir (self.pmid, flags=saga.advert.CREATE_PARENTS)
-        self._base.set_attribute ('pilots', [])
-
+        # when starting pilots, we need to map the given RESOURCE keys to
+        # endpoint compatible URLs.  That mapping is done via a json config
+        # file -- which we read here
+        cfg_location = os.path.dirname (__file__) + '/resource.cfg'
+        self._resource_cfg = ru.read_json (cfg_location)
 
 
     # --------------------------------------------------------------------------
@@ -52,12 +52,21 @@ class PilotManager (Attributes, sa.PilotManager) :
 
         # FIXME: bulk
 
-        pilot  = sinon.Pilot._create (description, self)
+        if  not sa.RESOURCE in description :
+            raise ValueError ("no RESOURCE specified in pilot description")
 
-        pilots = self._base.get_attribute ('pilots')
-        print 'pilots: %s (%s)' % (pilots, type (pilots))
+        # replace resource with more complete spec, if so configured 
+        if  description[sa.RESOURCE] in self._resource_cfg :
+            description[sa.RESOURCE] = self._resource_cfg[description[sa.RESOURCE]]
 
-        self._base.set_attribute ('pilots', [pilot.pid])
+        print description
+
+
+        # hand off pilot creation to the pilot class
+        pilot  = p.Pilot._create (description, self)
+
+        # keep pilot around for inspection
+        self.pilots.append (pilot.pid)
 
         return pilot
 
@@ -66,36 +75,76 @@ class PilotManager (Attributes, sa.PilotManager) :
     #
     def list_pilots (self) :
 
-        # FIXME
-        pass
+        return self.pilots
 
 
     # --------------------------------------------------------------------------
     #
     def get_pilot (self, pids) :
 
-        # FIXME
-        pass
+        if  not isinstance (pids, list) :
+            if  not pids in self.pilots :
+                raise LookupError ("pilot '%s' not found" % pids)
+
+            # FIXME: switch by type
+            return troy.ComputePilot (pids)
+
+        # handle bulk
+        else :
+            ret = []
+
+            for pid in pids :
+                if  not pid in self.pilots :
+                    raise LookupError ("pilot '%s' not found" % pid)
+
+                # FIXME: switch by type
+                ret.append (troy.ComputePilot (pid))
+
+            return ret
+
 
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0) :
+    def wait_pilot (self, pids, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=-1.0) :
 
         if  not isinstance (state, list) :
             state = [state]
 
-        # FIXME
-        pass
+
+        if  not isinstance (pids, list) :
+            if  not pids in self.pilots :
+                raise LookupError ("pilot '%s' not found" % pids)
+
+            troy.Pilot (pids).wait (state, timeout)
+
+        # handle bulk
+        else :
+            # FIXME: better timeout handling
+            for pid in pids :
+                if  not pid in self.pilots :
+                    raise LookupError ("pilot '%s' not found" % pid)
+
+                troy.Pilot (pid).wait (state, timeout)
 
 
     # --------------------------------------------------------------------------
     #
     def cancel_pilot (self, pids) :
 
-        # FIXME
-        pass
+        if  not isinstance (pids, list) :
+            if  not pids in self.pilots :
+                raise LookupError ("pilot '%s' not found" % pids)
 
+            troy.Pilot (pids).cancel ()
+
+        # handle bulk
+        else :
+            for pid in pids :
+                if  not pid in self.pilots :
+                    raise LookupError ("pilot '%s' not found" % pid)
+
+                troy.Pilot (pid).cancel ()
 
 
 # ------------------------------------------------------------------------------

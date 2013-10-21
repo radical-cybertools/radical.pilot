@@ -1,23 +1,22 @@
 
 
-import sinon.api       as sa
-from   description import Description
-from   attributes  import *
-from   constants   import *
+import description as descr
+import attributes  as att
+import sinon._api   as sa
 
 
 # ------------------------------------------------------------------------------
 #
 
-class DataPilotDescription (Description, sa.DataPilotDescription) :
+class DataPilotDescription (descr.Description, sa.DataPilotDescription) :
 
     def __init__ (self, vals={}) : 
 
-        Description.__init__ (self, vals)
+        descr.Description.__init__ (self, vals)
 
         # register properties with the attribute interface
-        self._attributes_register  (URL,       None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (RUN_TIME,  None, BOOL,   SCALAR, WRITEABLE)
+        self._attributes_register  (sa.URL,       None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.RUN_TIME,  None, att.BOOL,   att.SCALAR, att.WRITEABLE)
 
 
 # ------------------------------------------------------------------------------

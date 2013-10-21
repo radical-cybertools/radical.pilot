@@ -10,7 +10,7 @@ import numpy
 from copy import deepcopy
 from pymongo import MongoClient
 
-DBURL = 'mongodb://mongohost:27017/'
+DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com/'
 
 wu = {
         "_UnitManagerID": "manager.objectID()",
@@ -48,6 +48,9 @@ client = MongoClient(DBURL)
 # operations on the MongoDB server. Collections and databases are created when
 # the first document is inserted into them.
 #
+print "\nResults for %s: " % DBURL
+print "======================================================================"
+
 create_coll_timings = list()
 db = client.perftest
 for c in range(0, 1024):
@@ -57,19 +60,19 @@ for c in range(0, 1024):
     td = time.time() - t1
     collection.drop()
     create_coll_timings.append(td)
+print " Average time to create a collection: %f sec." % numpy.mean(create_coll_timings)
 
 ################################################################################
 # Benchmark how fast we can create new documents.
 #
 # Documents can be work units submitted to a pilot manager for example.
 #
-create_doc_timings = dict()
 db = client.perftest
 collection = db.test.workunits
 
 
 for i in [1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384]:
-    create_doc_timings[i] = list()
+    create_doc_timings = list()
     for d in range(0, 10):
         # create a list that contains 'i' entries
         insert = list()
@@ -80,15 +83,10 @@ for i in [1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384]:
         t1 = time.time()
         collection.insert(insert)
         td = time.time() -t1
-        create_doc_timings[i].append(td)
+        create_doc_timings.append(td)
     collection.drop()
+    print "Average time to add documents in bulks of %i: %f sec." % (i, numpy.mean(create_doc_timings))
 
-
-print "\nResults for %s: " % DBURL
-print "======================================================================"
-print " Average time to create a collection: %f sec." % numpy.mean(create_coll_timings)
-for key, val in sorted(create_doc_timings.items()):
-    print "Average time to add documents in bulks of %i: %f sec." % (key, numpy.mean(val))
 print ""
 
 

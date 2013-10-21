@@ -1,27 +1,26 @@
 
 
-import sinon.api       as sa
-from   description import Description
-from   attributes  import *
-from   constants   import *
+import description  as descr
+import attributes   as att
+import sinon._api  as sa
 
 
 # ------------------------------------------------------------------------------
 #
-class DataUnitDescription (Description, sa.DataUnitDescription) :
+class DataUnitDescription (descr.Description, sa.DataUnitDescription) :
     
     # --------------------------------------------------------------------------
     #
     def __init__ (self, vals={}) : 
 
-        Description.__init__ (self, vals)
+        descr.Description.__init__ (self, vals)
 
         # register properties with the attribute interface
-        self._attributes_register  (NAME,              None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (FILE_URLS,         None, DICT,   SCALAR, WRITEABLE)
-        self._attributes_register  (LIFETIME,          None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (CLEANUP,           None, BOOL,   SCALAR, WRITEABLE)
-        self._attributes_register  (SIZE,              None, INT,    SCALAR, WRITEABLE)
+        self._attributes_register  (sa.NAME,       None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.FILE_URLS,  None, att.DICT,   att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.LIFETIME,   None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.CLEANUP,    None, att.BOOL,   att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.SIZE,       None, att.INT,    att.SCALAR, att.WRITEABLE)
 
 
 # ------------------------------------------------------------------------------

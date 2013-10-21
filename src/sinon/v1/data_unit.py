@@ -1,8 +1,7 @@
 
 
-import sinon.api     as sa
-import unit          as u
-from   constants import *
+import unit        as u
+import sinon._api    as sa
 
 
 # ------------------------------------------------------------------------------

@@ -1,26 +1,29 @@
 
 
-import saga
 import random
+import threading
 
-import radical.utils   as ru
+import radical.utils  as ru
 
-import sinon.api       as sa
-import sinon
-from   attributes import *
-from   constants  import *
+import session        as s
+import attributes     as att
+import exceptions     as e
+import compute_unit   as cu
+import data_unit      as du
 
+import sinon._api     as sa
 
 # ------------------------------------------------------------------------------
 #
-class UnitManager (Attributes, sa.UnitManager) :
+class UnitManager (att.Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, umid=None, scheduler=None, session=None) :
 
-        # initialize session
-        self._sid, self._root = sinon.initialize ()
+        # initialize 
+        self._rlock       = threading.RLock ()
+        self._sid         = s.initialize ()
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not umid :
@@ -33,68 +36,93 @@ class UnitManager (Attributes, sa.UnitManager) :
             self._scheduler = None
 
         else :
-            self._supm      = ru.PluginManager ('sinon', 'unit_scheduler')
-            self._scheduler = self._supm.load  (name=scheduler)
+            self._supm      = ru.PluginManager ('sinon')
+            self._scheduler = self._supm.load  (ptype='unit_scheduler', pname=scheduler)
             self._scheduler.init (manager=self)
 
         # initialize attributes
-        Attributes.__init__ (self)
+        att.Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
         # deep inspection
-        self._attributes_register  ('umid',    umid,      STRING, SCALAR, READONLY)
-        self._attributes_register  (SCHEDULER, scheduler, STRING, SCALAR, READONLY)
-        self._attributes_register  (PILOTS,    [],        STRING, VECTOR, READONLY)
-        self._attributes_register  (UNITS,     [],        STRING, VECTOR, READONLY)
+        self._attributes_register  ('umid',       umid,      att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.SCHEDULER, scheduler, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOTS,    [],        att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register  (sa.UNITS,     [],        att.STRING, att.VECTOR, att.READONLY)
         # ...
 
-        # register state
-        self._base = self._root.open_dir (self.umid, flags=saga.advert.CREATE_PARENTS)
-        self._base.set_attribute ('pilots', [])
-        self._base.set_attribute ('units',  [])
+        # private attributes
+        self._attributes_register  ('_pilots',      {},        att.ANY,    att.VECTOR, att.WRITEABLE)
+        self._attributes_register  ('_unscheduled', [],        att.ANY,    att.VECTOR, att.WRITEABLE)
 
 
     # --------------------------------------------------------------------------
     #
     def add_pilot (self, pilot) :
 
-        print pilot.pid
-        print self.umid
+        with self._rlock :
+
+            if  pilot.pid in self.pilots :
+                raise e.BadParameter ("Pilot '%s' is already used" % pilot)
+
         self.pilots.append (pilot.pid)
-        self._base = self._root.open_dir (self.umid + '/' + pilot.pid, flags=saga.advert.CREATE_PARENTS)
-        pass
+            self._pilots[pilot.pid] = pilot
+
+            # any units pending?
+            if  len(self._unscheduled) :
+                for unit in self._unscheduled :
+                    print "scheduled to %s" % pilot.pid
+                    unit._submit (pilot)
+                    # FIXME: check for success
+
+                self._unscheduled = []
 
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self, ptype=ANY) :
+    def list_pilots (self, ptype=sa.ANY) :
 
-        # FIXME
-        pass
+        with self._rlock :
+
+            # FIXME: interpret ptype
+
+            return list(self.pilots)
 
 
     # --------------------------------------------------------------------------
     #
     def remove_pilot (self, pid, drain=True) :
 
-        # FIXME
-        pass
+        with self._rlock :
+
+            if  not pid in self.pilots :
+                raise e.DoesNotExist ("unknown pilot '%s'" % pid)
+            
+            self.pilots.remove  (pid)
+            self._pilots.remove (pid)
 
 
     # --------------------------------------------------------------------------
     #
     def submit_unit (self, descr) :
 
+        with self._rlock :
+
         # FIXME: bulk
 
         if  not descr.attribute_exists ('dtype') :
-            raise sinon.BadParameter ("Invalid description (no type)")
+            raise e.BadParameter ("Invalid description (no type)")
 
-        if  not descr.dtype in [ sinon.COMPUTE, sinon.DATA ] :
-            raise sinon.BadParameter ("Unknown description type %s" % descr.dtype)
+        if  not descr.dtype in [ sa.COMPUTE, sa.DATA ] :
+            raise e.BadParameter ("Unknown description type %s" % descr.dtype)
+
+            if  not descr.dtype in [ sa.COMPUTE ] :
+                raise e.BadParameter ("only compute units are supported")
+
+            unit = cu.ComputeUnit._register (descr, manager=self)
 
         pid = None
 
@@ -117,19 +145,25 @@ class UnitManager (Attributes, sa.UnitManager) :
             # hurray, we can use the scheduler!
             pid = self._scheduler.schedule (descr)
 
+            if  None == pid :
+                # no eligible pilot, yet
+                self._unscheduled.append (unit)
 
-        if  descr.dtype == sinon.COMPUTE :
-            unit = sinon.ComputeUnit._create (descr, self, pid)
         else :
-            unit = sinon.DataUnit._create (descr, self, pid)
 
+                if  not pid in self._pilots :
+                    raise e.NoSuccess ("Internal error - invalid scheduler reply")
+
+                unit._submit (self._pilots[pid])
 
         return unit
 
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=ANY) :
+    def list_units (self, utype=sa.ANY) :
+
+        with self._rlock :
 
         # FIXME
         pass
@@ -139,13 +173,17 @@ class UnitManager (Attributes, sa.UnitManager) :
     #
     def get_unit (self, uids) :
 
+        with self._rlock :
+
         # FIXME
         pass
 
 
     # --------------------------------------------------------------------------
     #
-    def wait_units (self, uids, state=[DONE, FAILED, CANCELED], timeout=-1.0) :
+    def wait_units (self, uids, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=-1.0) :
+
+        with self._rlock :
 
         if  not isinstance (state, list) :
             state = [state]
@@ -157,6 +195,8 @@ class UnitManager (Attributes, sa.UnitManager) :
     # --------------------------------------------------------------------------
     #
     def cancel_units (self, uids) :
+
+        with self._rlock :
 
         # FIXME
         pass
