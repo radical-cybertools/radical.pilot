@@ -13,7 +13,6 @@ class ComputePilot (p.Pilot, sa.Pilot) :
     #
     def __init__ (self, pid) : 
 
-
         if  pid :
             # reconnect
             self._pilot = bj.PilotCompute (pilot_url=pid)
