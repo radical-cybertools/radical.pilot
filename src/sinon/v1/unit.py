@@ -4,9 +4,10 @@ import saga
 
 import radical.utils  as ru
 
-import sinon._api     as sa
-import attributes     as att
+import session
 import exceptions     as e
+import attributes     as att
+import sinon._api     as sa
 
 
 # ------------------------------------------------------------------------------
@@ -31,7 +32,7 @@ class Unit (att.Attributes, sa.Unit) :
             raise e.BadParameter ("unit c'tor requires 'uid' parameter)")
 
         # initialize session
-        self._sid = sinon.initialize ()
+        self._sid = session.initialize ()
 
         umid = None
         if  _manager :
@@ -61,8 +62,8 @@ class Unit (att.Attributes, sa.Unit) :
         self._attributes_camelcasing (True)
 
         # set basic state attributes
-        self._attributes_register  (sa.UID,          uid,   att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.STATE,        None,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.UID,          self.uid,   att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.STATE,        sa.UNKNOWN, att.STRING, att.SCALAR, att.READONLY)
         self._attributes_register  (sa.STATE_DETAIL, None,  att.STRING, att.SCALAR, att.READONLY)
 
         # set inspection attributes
@@ -73,6 +74,7 @@ class Unit (att.Attributes, sa.Unit) :
         self._attributes_register  (sa.START_TIME,   None,  att.TIME,   att.SCALAR, att.READONLY)
         self._attributes_register  (sa.END_TIME,     None,  att.TIME,   att.SCALAR, att.READONLY)
 
+        self._attributes_set_getter (sa.STATE,       self._get_state)
 
     # --------------------------------------------------------------------------
     #
@@ -88,17 +90,22 @@ class Unit (att.Attributes, sa.Unit) :
     
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None) :
+    def wait (self, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=None) :
 
         if  not isinstance (state, list) :
             state = [state]
 
-        # FIXME: be a little more intelligent
-        # FIXME: use timeouts
-        import time
+        start_wait = time.time ()
         while self.state not in state :
+            print "%s waiting for %s (%s)" % (self.uid, state, self.state)
             time.sleep (1)
 
+            if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
+                print "wait timeout"
+                break
+
+        # done waiting
+        return
 
     # --------------------------------------------------------------------------
     #

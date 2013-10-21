@@ -1,12 +1,13 @@
 
 
-import saga
+import os
 
 import radical.utils   as ru
 
-import sinon._api      as sa
-import attributes      as att
 import pilot           as p
+import session         as s
+import attributes      as att
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------
@@ -18,7 +19,7 @@ class PilotManager (att.Attributes, sa.PilotManager) :
     def __init__ (self, pmid=None, session=None) : 
 
         # initialize session
-        self._sid = sinon.initialize ()
+        self._sid = s.initialize ()
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not pmid :
@@ -38,6 +39,12 @@ class PilotManager (att.Attributes, sa.PilotManager) :
         self._attributes_register  (sa.PILOTS, [],        att.STRING, att.VECTOR, att.READONLY)
         # ...
 
+        # when starting pilots, we need to map the given RESOURCE keys to
+        # endpoint compatible URLs.  That mapping is done via a json config
+        # file -- which we read here
+        cfg_location = os.path.dirname (__file__) + '/resource.cfg'
+        self._resource_cfg = ru.read_json (cfg_location)
+
 
     # --------------------------------------------------------------------------
     #
@@ -45,13 +52,21 @@ class PilotManager (att.Attributes, sa.PilotManager) :
 
         # FIXME: bulk
 
+        if  not sa.RESOURCE in description :
+            raise ValueError ("no RESOURCE specified in pilot description")
+
+        # replace resource with more complete spec, if so configured 
+        if  description[sa.RESOURCE] in self._resource_cfg :
+            description[sa.RESOURCE] = self._resource_cfg[description[sa.RESOURCE]]
+
+        print description
+
+
+        # hand off pilot creation to the pilot class
         pilot  = p.Pilot._create (description, self)
 
-        pilots = self.pilots
-        print 'pilots: %s (%s)' % (pilots, type (pilots))
-
-        # FIXME: append
-        self._base.set_attribute ('pilots', [pilot.pid])
+        # keep pilot around for inspection
+        self.pilots.append (pilot.pid)
 
         return pilot
 
@@ -60,16 +75,33 @@ class PilotManager (att.Attributes, sa.PilotManager) :
     #
     def list_pilots (self) :
 
-        # FIXME
-        pass
+        return self.pilots
 
 
     # --------------------------------------------------------------------------
     #
     def get_pilot (self, pids) :
 
-        # FIXME
-        pass
+        if  not isinstance (pids, list) :
+            if  not pids in self.pilots :
+                raise LookupError ("pilot '%s' not found" % pids)
+
+            # FIXME: switch by type
+            return troy.ComputePilot (pids)
+
+        # handle bulk
+        else :
+            ret = []
+
+            for pid in pids :
+                if  not pid in self.pilots :
+                    raise LookupError ("pilot '%s' not found" % pid)
+
+                # FIXME: switch by type
+                ret.append (troy.ComputePilot (pid))
+
+            return ret
+
 
 
     # --------------------------------------------------------------------------
@@ -79,17 +111,40 @@ class PilotManager (att.Attributes, sa.PilotManager) :
         if  not isinstance (state, list) :
             state = [state]
 
-        # FIXME
-        pass
+
+        if  not isinstance (pids, list) :
+            if  not pids in self.pilots :
+                raise LookupError ("pilot '%s' not found" % pids)
+
+            troy.Pilot (pids).wait (state, timeout)
+
+        # handle bulk
+        else :
+            # FIXME: better timeout handling
+            for pid in pids :
+                if  not pid in self.pilots :
+                    raise LookupError ("pilot '%s' not found" % pid)
+
+                troy.Pilot (pid).wait (state, timeout)
 
 
     # --------------------------------------------------------------------------
     #
     def cancel_pilot (self, pids) :
 
-        # FIXME
-        pass
+        if  not isinstance (pids, list) :
+            if  not pids in self.pilots :
+                raise LookupError ("pilot '%s' not found" % pids)
 
+            troy.Pilot (pids).cancel ()
+
+        # handle bulk
+        else :
+            for pid in pids :
+                if  not pid in self.pilots :
+                    raise LookupError ("pilot '%s' not found" % pid)
+
+                troy.Pilot (pid).cancel ()
 
 
 # ------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 
 
+import unit        as u
 import sinon._api    as sa
-import unit          as u
 
 
 # ------------------------------------------------------------------------------

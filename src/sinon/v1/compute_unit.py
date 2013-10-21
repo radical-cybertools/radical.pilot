@@ -1,7 +1,9 @@
 
 
+import radical.utils  as ru
+
+import unit        as u
 import sinon._api    as sa
-import unit          as u
 
 
 # ------------------------------------------------------------------------------
@@ -16,6 +18,24 @@ class ComputeUnit (u.Unit, sa.ComputeUnit) :
     def __init__ (self, uid, _description=None, _manager=None, _pid=None) : 
 
         u.Unit.__init__ (self, uid, _description, _manager, _pid)
+
+  
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _register (cls, description, manager) :
+
+        uid = ru.generate_id ('u.')
+
+        return cls (uid, _description=description, _manager=manager)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _submit (self, pilot) :
+
+        # FIXME
+        pass
 
 
 # ------------------------------------------------------------------------------
