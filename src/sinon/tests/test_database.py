@@ -8,7 +8,7 @@ import unittest
 from sinon.db import Session
 
 from pymongo import MongoClient
-DBURL = 'mongodb://mongohost:27017/'
+DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 
 #-----------------------------------------------------------------------------
 #

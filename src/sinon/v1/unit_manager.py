@@ -123,6 +123,7 @@ class UnitManager (att.Attributes, sa.UnitManager) :
                 raise e.BadParameter ("Only compute units are supported")
 
             unit = cu.ComputeUnit._register (descr, manager=self)
+            pid  = None
 
             pid = None
 
@@ -145,6 +146,8 @@ class UnitManager (att.Attributes, sa.UnitManager) :
                 # hurray, we can use the scheduler!
                 pid = self._scheduler.schedule (descr)
 
+            
+            # have a target pilot?  If so, schedule -- if not, keep around
             if  None == pid :
                 # no eligible pilot, yet
                 self._unscheduled.append (unit)
