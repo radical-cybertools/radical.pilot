@@ -10,7 +10,7 @@ import exceptions     as e
 import compute_unit   as scu
 import data_unit      as sdu
 
-import sinon.api      as sa
+import sinon._api      as sa
 
 # ------------------------------------------------------------------------------
 #

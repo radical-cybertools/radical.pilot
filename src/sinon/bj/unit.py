@@ -5,7 +5,7 @@ import radical.utils  as ru
 import session
 import exceptions     as e
 import attributes     as att
-import sinon.api      as sa
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------

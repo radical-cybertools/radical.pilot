@@ -1,7 +1,7 @@
 
 
 import attributes as att
-import sinon.api  as sa
+import sinon._api  as sa
 
 
 # ------------------------------------------------------------------------------
