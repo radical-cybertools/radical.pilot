@@ -78,6 +78,8 @@ LIFETIME          = 'Lifetime'
 CLEANUP           = 'Cleanup'
 SIZE              = 'Size'
 
+# ComputePilotDescription keys
+RESOURCE          = 'Resource'
 
 # ------------------------------------------------------------------------------
 #

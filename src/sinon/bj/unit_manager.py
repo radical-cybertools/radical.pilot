@@ -48,16 +48,19 @@ class UnitManager (att.Attributes, sa.UnitManager) :
         self._attributes_camelcasing (True)
 
         # deep inspection
-        self._attributes_register  ('umid',       umid,      att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.SCHEDULER, scheduler, att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.PILOTS,    [],        att.STRING, att.VECTOR, att.READONLY)
-        self._attributes_register  (sa.UNITS,     [],        att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register  ('umid',         umid,      att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.SCHEDULER,   scheduler, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOTS,      [],        att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register  (sa.UNITS,       [],        att.STRING, att.VECTOR, att.READONLY)
         # ...
 
         # private attributes
         self._attributes_register  ('_pilots',      {},        att.ANY,    att.VECTOR, att.WRITEABLE)
         self._attributes_register  ('_unscheduled', [],        att.ANY,    att.VECTOR, att.WRITEABLE)
 
+        print " 1 ===================================== "
+        print self._unscheduled
+        print " ======================================= "
 
     # --------------------------------------------------------------------------
     #
@@ -111,7 +114,7 @@ class UnitManager (att.Attributes, sa.UnitManager) :
 
         with self._rlock :
 
-        # FIXME: bulk
+            # FIXME: bulk
 
             if  not descr.attribute_exists ('dtype') :
                 raise e.BadParameter ("Invalid description (no type)")
@@ -120,10 +123,9 @@ class UnitManager (att.Attributes, sa.UnitManager) :
                 raise e.BadParameter ("Unknown description type %s" % descr.dtype)
 
             if  not descr.dtype in [ sa.COMPUTE ] :
-                raise e.BadParameter ("Only compute units are supported")
+                raise e.BadParameter ("only compute units are supported")
 
             unit = cu.ComputeUnit._register (descr, manager=self)
-            pid  = None
 
             pid = None
 
@@ -146,20 +148,23 @@ class UnitManager (att.Attributes, sa.UnitManager) :
                 # hurray, we can use the scheduler!
                 pid = self._scheduler.schedule (descr)
 
-            
-            # have a target pilot?  If so, schedule -- if not, keep around
             if  None == pid :
                 # no eligible pilot, yet
+                print 'unschedule unit'
                 self._unscheduled.append (unit)
+                print " 2 ===================================== "
+                print self._unscheduled
+                print " ======================================= "
 
             else :
 
                 if  not pid in self._pilots :
                     raise e.NoSuccess ("Internal error - invalid scheduler reply")
 
+                print "scheduled to %s" % pid
                 unit._submit (self._pilots[pid])
 
-
+            print unit
             return unit
 
 
