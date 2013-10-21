@@ -4,7 +4,7 @@
 # here implemented classes.  That way we import the complete (but not
 # implemented) API, and only overload what actually exists here in v1:
 
-from sinon.api import *
+from sinon._api import *
 
 
 # now the overloading for the actual v1 implementation:
