@@ -1,9 +1,7 @@
 
-VERSION = 'bj'
-
-from   bj import *
 
 import os
+import sys
 import threading
 import subprocess
 
@@ -11,6 +9,29 @@ import subprocess
 # ------------------------------------------------------------------------------
 #
 _rlock = threading.RLock ()
+
+
+# ------------------------------------------------------------------------------
+#
+# load the right backend (default: v1)
+#
+with _rlock :
+
+    _sinon_backend = 'v1'
+    
+    if  'SINON_BACKEND' in os.environ :
+        _sinon_backend = os.environ['SINON_BACKEND']
+    
+    if  _sinon_backend == 'v1' :
+        print 'sinon: using v1 backend'
+        from   v1 import *
+    elif  _sinon_backend == 'bj' :
+        print 'sinon: using bj backend'
+        from   bj import *
+    else :
+        print "sinon: unknown backend '%s'" % _sinon_backend
+        sys.exit (0)
+
 
 
 # ------------------------------------------------------------------------------
@@ -40,6 +61,7 @@ with _rlock :
                     version = v.group()
         except OSError:
             pass
+
 
 # ------------------------------------------------------------------------------
 #
