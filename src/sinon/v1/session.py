@@ -1,6 +1,6 @@
 
 
-import sinon.api       as sa
+import sinon._api      as sa
 import saga.session    as ss
 
 

@@ -4,15 +4,14 @@ import saga
 
 import radical.utils   as ru
 
-import sinon.api       as sa
-import sinon
-from   attributes import *
-from   constants  import *
+import sinon._api      as sa
+import attributes      as att
+import pilot           as p
 
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager (Attributes, sa.PilotManager) :
+class PilotManager (att.Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
@@ -28,15 +27,15 @@ class PilotManager (Attributes, sa.PilotManager) :
             self.pmid = str(pmid)
 
         # initialize attributes
-        Attributes.__init__ (self)
+        att.Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
         # deep inspection
-        self._attributes_register  ('pmid', self.pmid, STRING, SCALAR, READONLY)
-        self._attributes_register  (PILOTS,   [], STRING, VECTOR, READONLY)
+        self._attributes_register  ('pmid',    self.pmid, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOTS, [],        att.STRING, att.VECTOR, att.READONLY)
         # ...
 
 
@@ -46,11 +45,12 @@ class PilotManager (Attributes, sa.PilotManager) :
 
         # FIXME: bulk
 
-        pilot  = sinon.Pilot._create (description, self)
+        pilot  = p.Pilot._create (description, self)
 
-        pilots = self._base.get_attribute ('pilots')
+        pilots = self.pilots
         print 'pilots: %s (%s)' % (pilots, type (pilots))
 
+        # FIXME: append
         self._base.set_attribute ('pilots', [pilot.pid])
 
         return pilot
@@ -74,7 +74,7 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0) :
+    def wait_pilot (self, pids, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=-1.0) :
 
         if  not isinstance (state, list) :
             state = [state]

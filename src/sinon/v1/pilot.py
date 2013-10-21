@@ -3,15 +3,14 @@
 import saga
 import radical.utils   as ru
 
-import sinon.api       as sa
-import sinon
-from   attributes  import *
-from   constants   import *
+import sinon._api      as sa
+import exceptions      as e
+import attributes      as att
 
 
 # ------------------------------------------------------------------------------
 #
-class Pilot (Attributes, sa.Pilot) :
+class Pilot (att.Attributes, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
@@ -20,7 +19,7 @@ class Pilot (Attributes, sa.Pilot) :
 
         self.pid = pid
         if  not self.pid :
-            raise sinon.BadParameter ("pilot c'tor requires 'pid' parameter)")
+            raise e.BadParameter ("pilot c'tor requires 'pid' parameter)")
 
         # initialize session
         self._sid = sinon.initialize ()
@@ -35,22 +34,22 @@ class Pilot (Attributes, sa.Pilot) :
 
 
         # initialize attributes
-        Attributes.__init__ (self)
+        att.Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register  (PID,           pid,   STRING, SCALAR, READONLY)
-        self._attributes_register  (DESCRIPTION,   descr, 'any',  SCALAR, READONLY)
-        self._attributes_register  ('manager',     pmid,  STRING,  SCALAR, READONLY)
-        self._attributes_register  (STATE,         None,  STRING, SCALAR, READONLY)
-        self._attributes_register  (STATE_DETAIL,  None,  STRING, SCALAR, READONLY)
+        self._attributes_register  (sa.PID,           pid,   att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.DESCRIPTION,   descr, 'any',      att.SCALAR, att.READONLY)
+        self._attributes_register  ('manager',        pmid,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.STATE,         None,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.STATE_DETAIL,  None,  att.STRING, att.SCALAR, att.READONLY)
 
         # deep inspection
-        self._attributes_register  (UNITS,         None,  STRING, VECTOR, READONLY)
-        self._attributes_register  (UNIT_MANAGERS, None,  STRING, VECTOR, READONLY)
-        self._attributes_register  (PILOT_MANAGER, None,  STRING, SCALAR, READONLY)
+        self._attributes_register  (sa.UNITS,         None,  att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register  (sa.UNIT_MANAGERS, None,  att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register  (sa.PILOT_MANAGER, None,  att.STRING, att.SCALAR, att.READONLY)
         # ...
 
 

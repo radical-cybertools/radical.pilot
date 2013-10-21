@@ -5,15 +5,16 @@ import random
 
 import radical.utils   as ru
 
-import sinon.api       as sa
-import sinon
-from   attributes import *
-from   constants  import *
+import sinon._api      as sa
+import attributes      as att
+import compute_unit    as cu
+import data_unit       as du
+import exceptions      as e
 
 
 # ------------------------------------------------------------------------------
 #
-class UnitManager (Attributes, sa.UnitManager) :
+class UnitManager (att.Attributes, sa.UnitManager) :
 
     # --------------------------------------------------------------------------
     #
@@ -38,17 +39,17 @@ class UnitManager (Attributes, sa.UnitManager) :
             self._scheduler.init (manager=self)
 
         # initialize attributes
-        Attributes.__init__ (self)
+        att.Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
         # deep inspection
-        self._attributes_register  ('umid',    umid,      STRING, SCALAR, READONLY)
-        self._attributes_register  (SCHEDULER, scheduler, STRING, SCALAR, READONLY)
-        self._attributes_register  (PILOTS,    [],        STRING, VECTOR, READONLY)
-        self._attributes_register  (UNITS,     [],        STRING, VECTOR, READONLY)
+        self._attributes_register  ('umid',       umid,      att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.SCHEDULER, scheduler, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOTS,    [],        att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register  (sa.UNITS,     [],        att.STRING, att.VECTOR, att.READONLY)
         # ...
 
 
@@ -84,10 +85,10 @@ class UnitManager (Attributes, sa.UnitManager) :
         # FIXME: bulk
 
         if  not descr.attribute_exists ('dtype') :
-            raise sinon.BadParameter ("Invalid description (no type)")
+            raise e.BadParameter ("Invalid description (no type)")
 
-        if  not descr.dtype in [ sinon.COMPUTE, sinon.DATA ] :
-            raise sinon.BadParameter ("Unknown description type %s" % descr.dtype)
+        if  not descr.dtype in [ sa.COMPUTE, sa.DATA ] :
+            raise e.BadParameter ("Unknown description type %s" % descr.dtype)
 
         pid = None
 
@@ -111,10 +112,10 @@ class UnitManager (Attributes, sa.UnitManager) :
             pid = self._scheduler.schedule (descr)
 
 
-        if  descr.dtype == sinon.COMPUTE :
-            unit = sinon.ComputeUnit._create (descr, self, pid)
+        if  descr.dtype == sa.COMPUTE :
+            unit = cu.ComputeUnit._create (descr, self, pid)
         else :
-            unit = sinon.DataUnit._create (descr, self, pid)
+            unit = du.DataUnit._create (descr, self, pid)
 
 
         return unit
