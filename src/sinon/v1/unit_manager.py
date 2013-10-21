@@ -119,8 +119,8 @@ class UnitManager (att.Attributes, sa.UnitManager) :
             if  not descr.dtype in [ sa.COMPUTE, sa.DATA ] :
                 raise e.BadParameter ("Unknown description type %s" % descr.dtype)
 
-                if  not descr.dtype in [ sa.COMPUTE ] :
-                    raise e.BadParameter ("only compute units are supported")
+            if  not descr.dtype in [ sa.COMPUTE ] :
+                raise e.BadParameter ("Only compute units are supported")
 
                 unit = cu.ComputeUnit._register (descr, manager=self)
 
@@ -145,16 +145,17 @@ class UnitManager (att.Attributes, sa.UnitManager) :
                 # hurray, we can use the scheduler!
                 pid = self._scheduler.schedule (descr)
 
-                if  None == pid :
-                    # no eligible pilot, yet
-                    self._unscheduled.append (unit)
 
-                else :
+            if  None == pid :
+                # no eligible pilot, yet
+                self._unscheduled.append (unit)
 
-                    if  not pid in self._pilots :
-                        raise e.NoSuccess ("Internal error - invalid scheduler reply")
+            else :
 
-                    unit._submit (self._pilots[pid])
+                if  not pid in self._pilots :
+                    raise e.NoSuccess ("Internal error - invalid scheduler reply")
+
+                unit._submit (self._pilots[pid])
 
             return unit
 

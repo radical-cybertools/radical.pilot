@@ -21,7 +21,7 @@ copyright:
 
 pylint:
 	@rm -f pylint.out ;\
-	for f in `find sinon -name \*.py`; do \
+	for f in `find src -name \*.py`; do \
 		echo "checking $$f"; \
 		( \
 	    res=`pylint -r n -f text $$f 2>&1 | grep -e '^[FE]'` ;\

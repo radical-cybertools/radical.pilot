@@ -4,11 +4,11 @@ import threading
 import saga
 import radical.utils   as ru
 
-import session              as s
+import session         as s
 import exceptions      as e
 import attributes      as att
-import pilot_manager        as pm
-import sinon._api           as sa
+import pilot_manager   as pm
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------
