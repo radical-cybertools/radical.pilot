@@ -11,6 +11,7 @@ print 1
 
 pd       = sinon.ComputePilotDescription ()
 pd.slots = 10
+pd.resource = 'local'
 
 print 2
 
