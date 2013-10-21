@@ -1,18 +1,18 @@
 
 
-import sinon.api       as sa
-from   pilot       import Pilot
+import pilot
+import sinon.api  as sa
 
 
 # ------------------------------------------------------------------------------
 #
-class DataPilot (Pilot, sa.Pilot) :
+class DataPilot (pilot.Pilot, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, pid) : 
 
-        Pilot.__init__ (self, pid)
+        pilot.Pilot.__init__ (self, pid)
 
 
 # ------------------------------------------------------------------------------

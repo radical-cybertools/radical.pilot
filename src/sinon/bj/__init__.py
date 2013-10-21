@@ -2,7 +2,7 @@
 
 # we first completely load the API definition classes, and then overload the
 # here implemented classes.  That way we import the complete (but not
-# implemented) API, and only overload what actually exists here in v1:
+# implemented) API, and only overload what actually exists here in bj/:
 
 from sinon.api import *
 
@@ -17,6 +17,7 @@ from session                             import Session
 from context                             import Context
 from url                                 import Url
 from callback                            import Callback
+from description                         import Description
 
 from compute_unit_description            import ComputeUnitDescription
 from data_unit_description               import DataUnitDescription

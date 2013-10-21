@@ -2,17 +2,17 @@
 
 import os
 
-import radical.utils   as ru
+import radical.utils  as ru
 
-import sinon.api       as sa
-import sinon
-from   attributes import *
-from   constants  import *
+import pilot          as p
+import session        as s
+import attributes     as att
+import sinon.api      as sa
 
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager (Attributes, sa.PilotManager) :
+class PilotManager (att.Attributes, sa.PilotManager) :
     # BigJob has a notion of pilot service, but it has different semantics than
     # in out API -- we need to keep one bigjob pilot service around for every
     # pilot we create.  We thus don't have any BJ entity representing our
@@ -33,7 +33,7 @@ class PilotManager (Attributes, sa.PilotManager) :
         self.coord = os.environ['COORDINATION_URL']
 
         # initialize session
-        self._sid = sinon.initialize ()
+        self._sid = s.initialize ()
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not pmid :
@@ -42,15 +42,15 @@ class PilotManager (Attributes, sa.PilotManager) :
             self.pmid = str(pmid)
 
         # initialize attributes
-        Attributes.__init__ (self)
+        att.Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
         # deep inspection
-        self._attributes_register  ('pmid', self.pmid, STRING, SCALAR, READONLY)
-        self._attributes_register  (PILOTS,   [], STRING, VECTOR, READONLY)
+        self._attributes_register  ('pmid', self.pmid, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOTS,     [], att.STRING, att.VECTOR, att.READONLY)
         # ...
 
         # when starting pilots, we need to map the given RESOURCE keys to bigjob
@@ -68,20 +68,19 @@ class PilotManager (Attributes, sa.PilotManager) :
     #
     def submit_pilot (self, description) :
 
-        print description
-        print type(description)
-        print dir(description)
-        print description._attributes_dump ()
-        if  not RESOURCE in description :
+        if  not sa.RESOURCE in description :
             raise ValueError ("no RESOURCE specified in pilot description")
 
         # replace resource with more complete spec, if so configured 
-        if  description[RESOURCE] in self._resource_cfg :
-            description[RESOURCE] = self._resource_cfg[description[RESOURCE]]
+        if  description[sa.RESOURCE] in self._resource_cfg :
+            description[sa.RESOURCE] = self._resource_cfg[description[sa.RESOURCE]]
+
+        print description
+
 
         # hand off pilot creation to the pilot class -- which will create
         # a dedicated BJ pilot service for doing so
-        pilot = sinon.Pilot._create (description, self)
+        pilot = p.Pilot._create (description, self)
 
         # keep pilot around for inspection
         self.pilots.append (pilot.id)
@@ -124,7 +123,8 @@ class PilotManager (Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[DONE, FAILED, CANCELED], timeout=-1.0) :
+    def wait_pilot (self, pids, state=[sa.DONE, sa.FAILED, sa.CANCELED], 
+                    timeout=-1.0) :
 
         if  not isinstance (state, list) :
             state = [state]

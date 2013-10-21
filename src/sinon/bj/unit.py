@@ -1,18 +1,16 @@
 
 
-import saga
+import radical.utils  as ru
 
-import radical.utils       as ru
-
-import sinon.api           as sa
-import sinon
-from   attributes      import *
-from   constants       import *
+import session
+import exceptions     as e
+import attributes     as att
+import sinon.api      as sa
 
 
 # ------------------------------------------------------------------------------
 #
-class Unit (Attributes, sa.Unit) :
+class Unit (att.Attributes, sa.Unit) :
     """ 
     Base class for DataUnit and ComputeUnit.
     """
@@ -29,10 +27,10 @@ class Unit (Attributes, sa.Unit) :
 
         self.uid = uid
         if  not self.uid :
-            raise sinon.BadParameter ("unit c'tor requires 'uid' parameter)")
+            raise e.BadParameter ("unit c'tor requires 'uid' parameter)")
 
         # initialize session
-        self._sid = sinon.initialize ()
+        self._sid = session.initialize ()
 
         umid = None
         if  _manager :
@@ -55,24 +53,24 @@ class Unit (Attributes, sa.Unit) :
 
 
         # initialize attributes
-        Attributes.__init__ (self)
+        att.Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
         # set basic state attributes
-        self._attributes_register  (UID,          uid,   STRING, SCALAR, READONLY)
-        self._attributes_register  (STATE,        None,  STRING, SCALAR, READONLY)
-        self._attributes_register  (STATE_DETAIL, None,  STRING, SCALAR, READONLY)
+        self._attributes_register  (sa.UID,          uid,   att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.STATE,        None,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.STATE_DETAIL, None,  att.STRING, att.SCALAR, att.READONLY)
 
         # set inspection attributes
-        self._attributes_register  (UNIT_MANAGER, umid,  STRING, SCALAR, READONLY)
-        self._attributes_register  (DESCRIPTION,  descr, STRING, SCALAR, READONLY)
-        self._attributes_register  (PILOT,        _pid,  STRING, SCALAR, READONLY)
-        self._attributes_register  (SUBMIT_TIME,  None,  TIME,   SCALAR, READONLY)
-        self._attributes_register  (START_TIME,   None,  TIME,   SCALAR, READONLY)
-        self._attributes_register  (END_TIME,     None,  TIME,   SCALAR, READONLY)
+        self._attributes_register  (sa.UNIT_MANAGER, umid,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.DESCRIPTION,  descr, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOT,        _pid,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.SUBMIT_TIME,  None,  att.TIME,   att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.START_TIME,   None,  att.TIME,   att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.END_TIME,     None,  att.TIME,   att.SCALAR, att.READONLY)
 
 
     # --------------------------------------------------------------------------
@@ -89,7 +87,7 @@ class Unit (Attributes, sa.Unit) :
     
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None) :
+    def wait (self, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=None) :
 
         if  not isinstance (state, list) :
             state = [state]

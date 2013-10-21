@@ -1,13 +1,12 @@
 
 
-import sinon.api     as sa
-import unit          as u
-from   constants import *
+import unit
+import sinon.api  as sa
 
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnit (u.Unit, sa.ComputeUnit) :
+class ComputeUnit (unit.Unit, sa.ComputeUnit) :
     """ 
     Base class for DataUnit and ComputeUnit.
     """
@@ -16,7 +15,7 @@ class ComputeUnit (u.Unit, sa.ComputeUnit) :
     #
     def __init__ (self, uid, _description=None, _manager=None, _pid=None) : 
 
-        u.Unit.__init__ (self, uid, _description, _manager, _pid)
+        unit.Unit.__init__ (self, uid, _description, _manager, _pid)
 
 
 # ------------------------------------------------------------------------------

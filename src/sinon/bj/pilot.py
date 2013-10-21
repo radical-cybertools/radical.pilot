@@ -1,19 +1,19 @@
 
 
 import saga
-import radical.utils   as ru
+import radical.utils        as ru
 
-import sinon.api       as sa
-import sinon
-from   attributes  import *
-from   constants   import *
+import session              as s
+import exceptions           as e
+import attributes           as att
+import sinon.api            as sa
 
-import bj_dummy        as bj
+import bj_dummy             as bj
 
 
 # ------------------------------------------------------------------------------
 #
-class Pilot (Attributes, sa.Pilot) :
+class Pilot (att.Attributes, sa.Pilot) :
 
     # dict to map pid's to bigjob pilot URLs, pilot descriptions and manager instances
     #
@@ -30,38 +30,38 @@ class Pilot (Attributes, sa.Pilot) :
     def __init__ (self, pid) : 
 
         # initialize session
-        self._sid = sinon.initialize ()
+        self._sid = s.initialize ()
 
         if  not pid :
-            raise sinon.BadParameter ("pilot c'tor requires 'pid' parameter)")
+            raise e.BadParameter ("pilot c'tor requires 'pid' parameter)")
 
         if  not pid in self._pilots :
-            raise sinon.BadParameter ("no such pilot '%s'" % pid)
+            raise e.BadParameter ("no such pilot '%s'" % pid)
 
         pmid  = self._pilots[pid]['pmid']
         descr = self._pilots[pid]['descr']
 
 
         # initialize attributes
-        Attributes.__init__ (self)
+        att.Attributes.__init__ (self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register  (PID,           pid,   STRING, SCALAR, READONLY)
-        self._attributes_register  (DESCRIPTION,   descr, 'any',  SCALAR, READONLY)
-        self._attributes_register  (STATE,         None,  STRING, SCALAR, READONLY)
-        self._attributes_register  (STATE_DETAIL,  None,  STRING, SCALAR, READONLY)
+        self._attributes_register   (sa.PID,           pid,   att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.DESCRIPTION,   descr,     dict(), att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.STATE,         None,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.STATE_DETAIL,  None,  att.STRING, att.SCALAR, att.READONLY)
 
         # deep inspection
-        self._attributes_register  (UNITS,         None,  STRING, VECTOR, READONLY)
-        self._attributes_register  (UNIT_MANAGERS, None,  STRING, VECTOR, READONLY)
-        self._attributes_register  (PILOT_MANAGER, pmid,  STRING, SCALAR, READONLY)
+        self._attributes_register   (sa.UNITS,         None,  att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register   (sa.UNIT_MANAGERS, None,  att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register   (sa.PILOT_MANAGER, pmid,  att.STRING, att.SCALAR, att.READONLY)
         # ...
 
-        self._attributes_set_getter (STATE,         self._get_state)
-        self._attributes_set_getter (PILOT_MANAGER, self._get_pilot_manager)
+        self._attributes_set_getter (sa.STATE,         self._get_state)
+        self._attributes_set_getter (sa.PILOT_MANAGER, self._get_pilot_manager)
 
 
     # --------------------------------------------------------------------------
@@ -72,6 +72,8 @@ class Pilot (Attributes, sa.Pilot) :
         """
 
         pid = ru.generate_id ('p.')
+
+        bjp = bj.get_bj_pilot_api ()
 
         # create a BJ pilot service, then from it create the pilot.  We will
         # always keep the tuple around.
@@ -102,7 +104,7 @@ class Pilot (Attributes, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None) :
+    def wait (self, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=None) :
 
         state = self._get_state ()
 
@@ -127,17 +129,17 @@ class Pilot (Attributes, sa.Pilot) :
     def _get_state (self) :
 
         if  not self._pilot :
-            return UNKNOWN
+            return sa.UNKNOWN
 
         state = self._pilot.get_state ()
 
-        if state == bj.state.Running : return RUNNING
-        if state == bj.state.New     : return NEW
-        if state == bj.state.Staging : return STAGING
-        if state == bj.state.Failed  : return FAILED
-        if state == bj.state.Done    : return DONE
-        if state == bj.state.Unknown : return UNKNOWN
-        if state == None             : return UNKNOWN
+        if state == bj.state.Running : return sa.RUNNING
+        if state == bj.state.New     : return sa.NEW
+        if state == bj.state.Staging : return sa.STAGING
+        if state == bj.state.Failed  : return sa.FAILED
+        if state == bj.state.Done    : return sa.DONE
+        if state == bj.state.Unknown : return sa.UNKNOWN
+        if state == None             : return sa.UNKNOWN
 
         raise ValueError ('could not get pilot state from BigJob')
 

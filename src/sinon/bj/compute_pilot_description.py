@@ -1,42 +1,41 @@
 
 
-import sinon.api       as sa
-from   description import Description
-from   attributes  import *
-from   constants   import *
+import description as descr
+import attributes  as att
+import sinon.api   as sa
 
 
 # ------------------------------------------------------------------------------
 #
 
-class ComputePilotDescription (Description, sa.ComputePilotDescription) :
+class ComputePilotDescription (descr.Description, sa.ComputePilotDescription) :
 
     def __init__ (self, vals={}) : 
 
-        Description.__init__ (self, vals)
+        descr.Description.__init__ (self, vals)
 
         # register properties with the attribute interface
         # runtime properties
-        self._attributes_register  (START_TIME,        None, TIME,   SCALAR, WRITEABLE)
-        self._attributes_register  (RUN_TIME,          None, TIME,   SCALAR, WRITEABLE)
-        self._attributes_register  (CLEANUP,           None, BOOL,   SCALAR, WRITEABLE)
-        self._attributes_register  (PROJECT,           None, STRING, SCALAR, WRITEABLE)
+        self._attributes_register  (sa.START_TIME,        None, att.TIME,   att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.RUN_TIME,          None, att.TIME,   att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.CLEANUP,           None, att.BOOL,   att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.PROJECT,           None, att.STRING, att.SCALAR, att.WRITEABLE)
 
         # i/o
-        self._attributes_register  (WORKING_DIRECTORY, None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (OUTPUT,            None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (ERROR,             None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (FILE_TRANSFER,     None, STRING, VECTOR, WRITEABLE)
+        self._attributes_register  (sa.WORKING_DIRECTORY, None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.OUTPUT,            None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.ERROR,             None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.FILE_TRANSFER,     None, att.STRING, att.VECTOR, att.WRITEABLE)
 
         # resource requirements
-        self._attributes_register  (RESOURCE,          None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (SLOTS,             None, INT,    SCALAR, WRITEABLE)
-        self._attributes_register  (SPMD_VARIATION,    None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (CANDIDATE_HOSTS,   None, INT,    VECTOR, WRITEABLE)
-        self._attributes_register  (CPU_ARCHITECTURE,  None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (OPERATING_SYSTEM,  None, STRING, SCALAR, WRITEABLE)
-        self._attributes_register  (MEMORY,            None, INT,    SCALAR, WRITEABLE)
-        self._attributes_register  (QUEUE,             None, STRING, SCALAR, WRITEABLE)
+        self._attributes_register  (sa.RESOURCE,          None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.SLOTS,             None, att.INT,    att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.SPMD_VARIATION,    None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.CANDIDATE_HOSTS,   None, att.INT,    att.VECTOR, att.WRITEABLE)
+        self._attributes_register  (sa.CPU_ARCHITECTURE,  None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.OPERATING_SYSTEM,  None, att.STRING, att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.MEMORY,            None, att.INT,    att.SCALAR, att.WRITEABLE)
+        self._attributes_register  (sa.QUEUE,             None, att.STRING, att.SCALAR, att.WRITEABLE)
 
 
 # ------------------------------------------------------------------------------

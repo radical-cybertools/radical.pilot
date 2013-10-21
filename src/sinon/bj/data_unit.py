@@ -1,19 +1,18 @@
 
 
-import sinon.api     as sa
-import unit          as u
-from   constants import *
+import unit
+import sinon.api  as sa
 
 
 # ------------------------------------------------------------------------------
 #
-class DataUnit (u.Unit, sa.DataUnit) :
+class DataUnit (unit.Unit, sa.DataUnit) :
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, uid, _description=None, _manager=None) : 
 
-        u.Unit.__init__ (self, uid, _description, _manager)
+        unit.Unit.__init__ (self, uid, _description, _manager)
 
 
     # --------------------------------------------------------------------------
