@@ -6,7 +6,8 @@ import radical.utils        as ru
 import session              as s
 import exceptions           as e
 import attributes           as att
-import sinon._api            as sa
+import pilot_manager        as pm
+import sinon._api           as sa
 
 import bj_dummy             as bj
 
@@ -50,7 +51,7 @@ class Pilot (att.Attributes, sa.Pilot) :
         self._attributes_camelcasing (True)
 
         self._attributes_register   (sa.PID,           pid,   att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register   (sa.DESCRIPTION,   descr,     dict(), att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.DESCRIPTION,   descr, att.ANY,    att.SCALAR, att.READONLY)
         self._attributes_register   (sa.STATE,         None,  att.STRING, att.SCALAR, att.READONLY)
         self._attributes_register   (sa.STATE_DETAIL,  None,  att.STRING, att.SCALAR, att.READONLY)
 
@@ -75,17 +76,33 @@ class Pilot (att.Attributes, sa.Pilot) :
 
         bjp = bj.get_bj_pilot_api ()
 
+        print description
+
+        bj_description = {}
+        if  sa.RESOURCE in description :
+            bj_description['service_url'] = description[sa.RESOURCE]
+        else :
+            raise e.BadParameter ("need %s in pilot description" % sa.RESOURCE)
+
+        if  sa.SLOTS in description :
+            bj_description['number_of_processes'] = description[sa.SLOTS]
+        else :
+            bj_description['number_of_processes'] = 1
+
         # create a BJ pilot service, then from it create the pilot.  We will
         # always keep the tuple around.
         bj_pilot_service = bj.PilotComputeService (coordination_url=manager.coord)
-        bj_pilot         = bj_pilot_service.create_pilot (description)
+        bj_pilot         = bj_pilot_service.create_pilot (bj_description)
 
-        self._pilots[pid] = {}
-        self._pilots[pid]['pmid']             = manager.id
-        self._pilots[pid]['descr']            = description
-        self._pilots[pid]['url']              = pilot.get_url ()
-        self._pilots[pid]['bj_pilot']         = bj_pilot
-        self._pilots[pid]['bj_pilot_service'] = bj_pilot_service
+        cls._pilots[pid] = {}
+        cls._pilots[pid]['pmid']             = manager.pmid
+        cls._pilots[pid]['descr']            = description
+        cls._pilots[pid]['url']              = bj_pilot.get_url ()
+        cls._pilots[pid]['bj_pilot_service'] = bj_pilot_service
+        cls._pilots[pid]['bj_pilot']         = bj_pilot
+
+        import pprint
+        pprint.pprint (cls._pilots)
 
         return cls (pid)
 
@@ -142,6 +159,13 @@ class Pilot (att.Attributes, sa.Pilot) :
         if state == None             : return sa.UNKNOWN
 
         raise ValueError ('could not get pilot state from BigJob')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_pilot_manager (self) :
+
+        return pm.PilotManager (self.pilot_manager)
 
 
 # ------------------------------------------------------------------------------

@@ -96,6 +96,7 @@ class Unit (att.Attributes, sa.Unit) :
         # FIXME: use timeouts
         import time
         while self.state not in state :
+            print self.state
             time.sleep (1)
 
 

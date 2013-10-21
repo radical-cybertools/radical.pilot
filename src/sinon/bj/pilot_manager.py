@@ -83,7 +83,7 @@ class PilotManager (att.Attributes, sa.PilotManager) :
         pilot = p.Pilot._create (description, self)
 
         # keep pilot around for inspection
-        self.pilots.append (pilot.id)
+        self.pilots.append (pilot.pid)
 
         return pilot
 

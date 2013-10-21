@@ -18,10 +18,13 @@ um       = sinon.UnitManager (scheduler='round_robin')
 
 print 3
 
-ud       = sinon.ComputeUnitDescription ({'executable' :'/bin/sleep', 
-                                          'arguments'  : ['10']})
+ud       = sinon.ComputeUnitDescription ({'executable' :'/usr/bin/touch', 
+                                          'arguments'  : ['/tmp/sinon_bj_touch']})
 u1       = um.submit_unit (ud)
 uid1     = u1.uid
+u1.wait ()
+
+sys.exit (0)
 
 print 4
 
