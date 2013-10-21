@@ -6,7 +6,7 @@ Constants are imported directly from the API module.
 
 Classes all inherit from their respective API couterparts -- the classes there
 will always raise NotImplemented, which will thus be the default for any
-class/method whhich is not implemented in v1.
+class/method which is not implemented in v1.
 
 There are several cases where multiple inheritance is required, for example:
 

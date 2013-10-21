@@ -1,7 +1,7 @@
 
 VERSION = 'bj'
 
-from   sinon.bj import *
+from   bj import *
 
 import os
 import threading
