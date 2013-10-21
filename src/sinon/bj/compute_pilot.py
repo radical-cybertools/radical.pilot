@@ -1,13 +1,13 @@
 
 
-import pilot
+import pilot       as p
 import sinon._api  as sa
 
 import bj_dummy    as bj
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilot (pilot.Pilot, sa.Pilot) :
+class ComputePilot (p.Pilot, sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #

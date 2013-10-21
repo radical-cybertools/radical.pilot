@@ -40,7 +40,6 @@ class Attributes (satt.Attributes, sa.Attributes) :
         return str (self.as_dict ())
 
 
-print 'have Attributes'
 # ------------------------------------------------------------------------------
 #
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

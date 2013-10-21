@@ -68,6 +68,8 @@ class PilotManager (att.Attributes, sa.PilotManager) :
     #
     def submit_pilot (self, description) :
 
+        # FIXME: bulk
+
         if  not sa.RESOURCE in description :
             raise ValueError ("no RESOURCE specified in pilot description")
 
@@ -123,8 +125,7 @@ class PilotManager (att.Attributes, sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[sa.DONE, sa.FAILED, sa.CANCELED], 
-                    timeout=-1.0) :
+    def wait_pilot (self, pids, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=-1.0) :
 
         if  not isinstance (state, list) :
             state = [state]
