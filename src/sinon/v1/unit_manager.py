@@ -68,7 +68,7 @@ class UnitManager (att.Attributes, sa.UnitManager) :
             if  pilot.pid in self.pilots :
                 raise e.BadParameter ("Pilot '%s' is already used" % pilot)
 
-        self.pilots.append (pilot.pid)
+            self.pilots.append (pilot.pid)
             self._pilots[pilot.pid] = pilot
 
             # any units pending?
@@ -113,50 +113,51 @@ class UnitManager (att.Attributes, sa.UnitManager) :
 
         # FIXME: bulk
 
-        if  not descr.attribute_exists ('dtype') :
-            raise e.BadParameter ("Invalid description (no type)")
+            if  not descr.attribute_exists ('dtype') :
+                raise e.BadParameter ("Invalid description (no type)")
 
-        if  not descr.dtype in [ sa.COMPUTE, sa.DATA ] :
-            raise e.BadParameter ("Unknown description type %s" % descr.dtype)
+            if  not descr.dtype in [ sa.COMPUTE, sa.DATA ] :
+                raise e.BadParameter ("Unknown description type %s" % descr.dtype)
 
             if  not descr.dtype in [ sa.COMPUTE ] :
-                raise e.BadParameter ("only compute units are supported")
+                raise e.BadParameter ("Only compute units are supported")
 
             unit = cu.ComputeUnit._register (descr, manager=self)
 
-        pid = None
-
-        # try to schedule the unit on a pilot
-        if  len (self.pilots)  == 0 :
-            # nothing to schedule on...
             pid = None
 
-        elif len (self.pilots) == 1 :
-            # if we have only one pilot, there is not much to 
-            # scheduler (i.e., direct submission)
-            pid = self.pilots[0]
+            # try to schedule the unit on a pilot
+            if  len (self.pilots)  == 0 :
+                # nothing to schedule on...
+                pid = None
 
-        elif not self._scheduler :
-            # if we don't have a scheduler, we do random assignments
-            # FIXME: we might allow user hints, you know, for 'research'?
-            pid = random.choice (self.pilots)
+            elif len (self.pilots) == 1 :
+                # if we have only one pilot, there is not much to 
+                # scheduler (i.e., direct submission)
+                pid = self.pilots[0]
 
-        else :
-            # hurray, we can use the scheduler!
-            pid = self._scheduler.schedule (descr)
+            elif not self._scheduler :
+                # if we don't have a scheduler, we do random assignments
+                # FIXME: we might allow user hints, you know, for 'research'?
+                pid = random.choice (self.pilots)
+
+            else :
+                # hurray, we can use the scheduler!
+                pid = self._scheduler.schedule (descr)
 
             if  None == pid :
                 # no eligible pilot, yet
                 self._unscheduled.append (unit)
 
-        else :
+            else :
 
                 if  not pid in self._pilots :
                     raise e.NoSuccess ("Internal error - invalid scheduler reply")
 
                 unit._submit (self._pilots[pid])
 
-        return unit
+
+            return unit
 
 
     # --------------------------------------------------------------------------
@@ -165,8 +166,8 @@ class UnitManager (att.Attributes, sa.UnitManager) :
 
         with self._rlock :
 
-        # FIXME
-        pass
+            # FIXME
+            pass
 
 
     # --------------------------------------------------------------------------
@@ -175,8 +176,8 @@ class UnitManager (att.Attributes, sa.UnitManager) :
 
         with self._rlock :
 
-        # FIXME
-        pass
+            # FIXME
+            pass
 
 
     # --------------------------------------------------------------------------
@@ -185,11 +186,11 @@ class UnitManager (att.Attributes, sa.UnitManager) :
 
         with self._rlock :
 
-        if  not isinstance (state, list) :
-            state = [state]
+            if  not isinstance (state, list) :
+                state = [state]
 
-        # FIXME
-        pass
+            # FIXME
+            pass
 
 
     # --------------------------------------------------------------------------
@@ -198,8 +199,8 @@ class UnitManager (att.Attributes, sa.UnitManager) :
 
         with self._rlock :
 
-        # FIXME
-        pass
+            # FIXME
+            pass
 
 
 # ------------------------------------------------------------------------------

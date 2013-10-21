@@ -4,11 +4,11 @@ import threading
 import saga
 import radical.utils   as ru
 
-import session              as s
+import session         as s
 import exceptions      as e
 import attributes      as att
-import pilot_manager        as pm
-import sinon._api           as sa
+import pilot_manager   as pm
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------
@@ -46,18 +46,17 @@ class Pilot (att.Attributes, sa.Pilot) :
         self._attributes_camelcasing (True)
 
         self._attributes_register  (sa.PID,           pid,   att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register   (sa.DESCRIPTION,   descr,  att.ANY,    att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.DESCRIPTION,   descr, att.ANY,    att.SCALAR, att.READONLY)
         self._attributes_register  (sa.STATE,         None,  att.STRING, att.SCALAR, att.READONLY)
         self._attributes_register  (sa.STATE_DETAIL,  None,  att.STRING, att.SCALAR, att.READONLY)
 
         # deep inspection
         self._attributes_register  (sa.UNITS,         None,  att.STRING, att.VECTOR, att.READONLY)
         self._attributes_register  (sa.UNIT_MANAGERS, None,  att.STRING, att.VECTOR, att.READONLY)
-        self._attributes_register   (sa.PILOT_MANAGER, pmid,   att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOT_MANAGER, pmid,  att.STRING, att.SCALAR, att.READONLY)
         # ...
 
         self._attributes_set_getter (sa.STATE,         self._get_state)
-        self._attributes_set_getter (sa.PILOT_MANAGER, self._get_pilot_manager)
 
 
     # --------------------------------------------------------------------------
@@ -92,9 +91,9 @@ class Pilot (att.Attributes, sa.Pilot) :
 
         with self._rlock :
 
-        pid = ru.generate_id ('p.')
+            pid = ru.generate_id ('p.')
 
-        return cls (pid, _description=description, _manager=manager)
+            return cls (pid, _description=description, _manager=manager)
 
 
     # --------------------------------------------------------------------------
@@ -103,8 +102,8 @@ class Pilot (att.Attributes, sa.Pilot) :
 
         with self._rlock :
 
-        if  not isinstance (state, list) :
-            state = [state]
+            if  not isinstance (state, list) :
+                state = [state]
 
             start_wait = time.time ()
             while self.state not in state :
@@ -136,6 +135,13 @@ class Pilot (att.Attributes, sa.Pilot) :
 
             # FIXME
     
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_state (self) :
+
+        return sa.UNKNOWN
+
 
 # ------------------------------------------------------------------------------
 #

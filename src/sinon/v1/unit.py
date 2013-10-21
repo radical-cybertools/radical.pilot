@@ -124,6 +124,14 @@ class Unit (att.Attributes, sa.Unit) :
         pass
 
 
+    # --------------------------------------------------------------------------
+    #
+    def _get_state (self) :
+
+        return sa.UNKNOWN
+
+
+
 # ------------------------------------------------------------------------------
 #
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

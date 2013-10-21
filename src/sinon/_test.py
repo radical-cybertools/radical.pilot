@@ -8,7 +8,7 @@ print sinon.version
 
 print 1
 
-pd       = sinon.ComputePilotDescription ()
+pd          = sinon.ComputePilotDescription ()
 pd.resource = 'local'
 pd.slots    = 10
 
