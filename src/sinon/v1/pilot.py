@@ -92,9 +92,9 @@ class Pilot (att.Attributes, sa.Pilot) :
 
         with self._rlock :
 
-        pid = ru.generate_id ('p.')
+            pid = ru.generate_id ('p.')
 
-        return cls (pid, _description=description, _manager=manager)
+            return cls (pid, _description=description, _manager=manager)
 
 
     # --------------------------------------------------------------------------
@@ -103,20 +103,20 @@ class Pilot (att.Attributes, sa.Pilot) :
 
         with self._rlock :
 
-        if  not isinstance (state, list) :
-            state = [state]
+            if  not isinstance (state, list) :
+                state = [state]
 
-            start_wait = time.time ()
-            while self.state not in state :
-                print "%s waiting for %s (%s)" % (self.pid, state, self.state)
-                time.sleep (1)
+                start_wait = time.time ()
+                while self.state not in state :
+                    print "%s waiting for %s (%s)" % (self.pid, state, self.state)
+                    time.sleep (1)
 
-                if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
-                    print "wait timeout"
-                    break
+                    if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
+                        print "wait timeout"
+                        break
 
-            # done waiting
-            return
+                # done waiting
+                return
 
 
     # --------------------------------------------------------------------------
