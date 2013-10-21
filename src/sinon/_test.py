@@ -37,6 +37,8 @@ print 5
 print p1
 print p2
 
+p1.wait (state=sinon.RUNNING, timeout=10.0)
+
 um.add_pilot (p1)
 um.add_pilot (p2)
 u2       = um.submit_unit (ud)

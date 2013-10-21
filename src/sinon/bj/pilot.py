@@ -1,6 +1,7 @@
 
 
 import threading
+import time
 import saga
 import radical.utils        as ru
 
@@ -91,9 +92,6 @@ class Pilot (att.Attributes, sa.Pilot) :
                 bj_description['number_of_processes'] = description[sa.SLOTS]
             else :
                 bj_description['number_of_processes'] = 1
-
-            print bj_description
-            sys.exit (0)
 
             # create a BJ pilot service, then from it create the pilot.  We will
             # always keep the tuple around.
