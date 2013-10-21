@@ -122,9 +122,9 @@ class UnitManager (att.Attributes, sa.UnitManager) :
             if  not descr.dtype in [ sa.COMPUTE ] :
                 raise e.BadParameter ("Only compute units are supported")
 
-                unit = cu.ComputeUnit._register (descr, manager=self)
 
-            pid = None
+            unit = cu.ComputeUnit._register (descr, manager=self)
+            pid  = None
 
             # try to schedule the unit on a pilot
             if  len (self.pilots)  == 0 :
