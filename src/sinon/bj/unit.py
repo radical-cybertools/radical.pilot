@@ -1,12 +1,13 @@
 
 
-import radical.utils  as ru
+import time
 
 import session
 import exceptions     as e
 import attributes     as att
-import sinon._api      as sa
+import sinon._api     as sa
 
+import bj_dummy       as bj
 
 # ------------------------------------------------------------------------------
 #
@@ -60,31 +61,24 @@ class Unit (att.Attributes, sa.Unit) :
         self._attributes_camelcasing (True)
 
         # set basic state attributes
-        self._attributes_register  (sa.UID,          uid,   att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.STATE,        None,  att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.STATE_DETAIL, None,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.UID,          self.uid,   att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.STATE,        sa.UNKNOWN, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.STATE_DETAIL, None,       att.STRING, att.SCALAR, att.READONLY)
 
         # set inspection attributes
-        self._attributes_register  (sa.UNIT_MANAGER, umid,  att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.DESCRIPTION,  descr, att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.PILOT,        _pid,  att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.SUBMIT_TIME,  None,  att.TIME,   att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.START_TIME,   None,  att.TIME,   att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.END_TIME,     None,  att.TIME,   att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.UNIT_MANAGER, umid,       att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.DESCRIPTION,  descr,      att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOT,        _pid,       att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.SUBMIT_TIME,  None,       att.TIME,   att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.START_TIME,   None,       att.TIME,   att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.END_TIME,     None,       att.TIME,   att.SCALAR, att.READONLY)
+
+        self._attributes_set_getter (sa.STATE,       self._get_state)
+
+        # private attributes
+        self._attributes_register   ('_bj_unit',      None,      att.ANY, att.SCALAR, att.WRITEABLE)
 
 
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def _create (cls, description, manager, pid=None) :
-        """
-        """
-
-        uid = ru.generate_id ('u.')
-
-        return cls (uid, _description=description, _manager=manager, _pid=pid)
-
-    
     # --------------------------------------------------------------------------
     #
     def wait (self, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=None) :
@@ -92,13 +86,17 @@ class Unit (att.Attributes, sa.Unit) :
         if  not isinstance (state, list) :
             state = [state]
 
-        # FIXME: be a little more intelligent
-        # FIXME: use timeouts
-        import time
+        start_wait = time.time ()
         while self.state not in state :
-            print self.state
+            print "%s waiting for %s (%s)" % (self.uid, state, self.state)
             time.sleep (1)
 
+            if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
+                print "wait timeout"
+                break
+
+        # done waiting
+        return
 
     # --------------------------------------------------------------------------
     #
@@ -115,6 +113,31 @@ class Unit (att.Attributes, sa.Unit) :
         """
         # FIXME
         pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_state (self) :
+
+      # FIXME
+      # with self._rlock :
+        if True :
+
+            if  not self._bj_unit :
+                return sa.UNKNOWN
+
+            state = self._bj_unit.get_state ()
+
+            if state == bj.state.Running : return sa.RUNNING
+            if state == bj.state.New     : return sa.PENDING
+            if state == bj.state.Staging : return sa.STAGING
+            if state == bj.state.Failed  : return sa.FAILED
+            if state == bj.state.Done    : return sa.DONE
+            if state == bj.state.Unknown : return sa.UNKNOWN
+            if state == None             : return sa.UNKNOWN
+
+            raise ValueError ('could not get pilot state from BigJob')
+
 
 
 # ------------------------------------------------------------------------------

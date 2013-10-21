@@ -1,7 +1,7 @@
 
 
 import saga.context    as sc
-import sinon._api       as sa
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------

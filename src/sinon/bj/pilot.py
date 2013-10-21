@@ -1,5 +1,6 @@
 
 
+import threading
 import saga
 import radical.utils        as ru
 
@@ -20,18 +21,14 @@ class Pilot (att.Attributes, sa.Pilot) :
     #
     _pilots = {}
 
-    # we also keep a dict of bj backend entities around, for both pilots and
-    # pilot services
-    _bj_pilots         = {}
-    _bj_pilot_services = {}
-
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, pid) : 
 
-        # initialize session
-        self._sid = s.initialize ()
+        # initialize
+        self._rlock = threading.RLock ()
+        self._sid   = s.initialize ()
 
         if  not pid :
             raise e.BadParameter ("pilot c'tor requires 'pid' parameter)")
@@ -39,8 +36,9 @@ class Pilot (att.Attributes, sa.Pilot) :
         if  not pid in self._pilots :
             raise e.BadParameter ("no such pilot '%s'" % pid)
 
-        pmid  = self._pilots[pid]['pmid']
-        descr = self._pilots[pid]['descr']
+        pmid     = self._pilots[pid]['pmid']
+        descr    = self._pilots[pid]['descr']
+        bj_pilot = self._pilots[pid]['bj_pilot']
 
 
         # initialize attributes
@@ -50,19 +48,22 @@ class Pilot (att.Attributes, sa.Pilot) :
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register   (sa.PID,           pid,   att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register   (sa.DESCRIPTION,   descr, att.ANY,    att.SCALAR, att.READONLY)
-        self._attributes_register   (sa.STATE,         None,  att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register   (sa.STATE_DETAIL,  None,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.PID,           pid,    att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.DESCRIPTION,   descr,  att.ANY,    att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.STATE,         None,   att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.STATE_DETAIL,  None,   att.STRING, att.SCALAR, att.READONLY)
 
         # deep inspection
-        self._attributes_register   (sa.UNITS,         None,  att.STRING, att.VECTOR, att.READONLY)
-        self._attributes_register   (sa.UNIT_MANAGERS, None,  att.STRING, att.VECTOR, att.READONLY)
-        self._attributes_register   (sa.PILOT_MANAGER, pmid,  att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register   (sa.UNITS,         None,   att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register   (sa.UNIT_MANAGERS, None,   att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register   (sa.PILOT_MANAGER, pmid,   att.STRING, att.SCALAR, att.READONLY)
         # ...
 
         self._attributes_set_getter (sa.STATE,         self._get_state)
         self._attributes_set_getter (sa.PILOT_MANAGER, self._get_pilot_manager)
+
+        # private attributes
+        self._attributes_register   ('_bj_pilot',      bj_pilot, att.ANY, att.SCALAR, att.WRITEABLE)
 
 
     # --------------------------------------------------------------------------
@@ -72,39 +73,46 @@ class Pilot (att.Attributes, sa.Pilot) :
         """
         """
 
-        pid = ru.generate_id ('p.')
+      # FIXME
+      # with self._rlock :
+        if True :
 
-        bjp = bj.get_bj_pilot_api ()
+            pid = ru.generate_id ('p.')
 
-        print description
+            print description
 
-        bj_description = {}
-        if  sa.RESOURCE in description :
-            bj_description['service_url'] = description[sa.RESOURCE]
-        else :
-            raise e.BadParameter ("need %s in pilot description" % sa.RESOURCE)
+            bj_description = {}
+            if  sa.RESOURCE in description :
+                bj_description['service_url'] = description[sa.RESOURCE]
+            else :
+                raise e.BadParameter ("need %s in pilot description" % sa.RESOURCE)
 
-        if  sa.SLOTS in description :
-            bj_description['number_of_processes'] = description[sa.SLOTS]
-        else :
-            bj_description['number_of_processes'] = 1
+            if  sa.SLOTS in description :
+                bj_description['number_of_processes'] = description[sa.SLOTS]
+            else :
+                bj_description['number_of_processes'] = 1
 
-        # create a BJ pilot service, then from it create the pilot.  We will
-        # always keep the tuple around.
-        bj_pilot_service = bj.PilotComputeService (coordination_url=manager.coord)
-        bj_pilot         = bj_pilot_service.create_pilot (bj_description)
+            # create a BJ pilot service, then from it create the pilot.  We will
+            # always keep the tuple around.
+            bj_pilot_service = bj.PilotComputeService (coordination_url=manager.coord)
+            bj_pilot         = bj_pilot_service.create_pilot (bj_description)
 
-        cls._pilots[pid] = {}
-        cls._pilots[pid]['pmid']             = manager.pmid
-        cls._pilots[pid]['descr']            = description
-        cls._pilots[pid]['url']              = bj_pilot.get_url ()
-        cls._pilots[pid]['bj_pilot_service'] = bj_pilot_service
-        cls._pilots[pid]['bj_pilot']         = bj_pilot
+            print " 1 @@@@@@@@@@@@@@@@@@@@@@@@ "
+            print type(bj_pilot)
+            print bj_pilot
+            print " 1 @@@@@@@@@@@@@@@@@@@@@@@@ "
 
-        import pprint
-        pprint.pprint (cls._pilots)
+            cls._pilots[pid] = {}
+            cls._pilots[pid]['pmid']             = manager.pmid
+            cls._pilots[pid]['descr']            = description
+            cls._pilots[pid]['url']              = bj_pilot.get_url ()
+            cls._pilots[pid]['bj_pilot_service'] = bj_pilot_service
+            cls._pilots[pid]['bj_pilot']         = bj_pilot
 
-        return cls (pid)
+            import pprint
+            pprint.pprint (cls._pilots)
+
+            return cls (pid)
 
 
     # --------------------------------------------------------------------------
@@ -114,58 +122,85 @@ class Pilot (att.Attributes, sa.Pilot) :
         """
         """
 
-        pid = ru.generate_id ('p.')
+        with self._rlock :
 
-        return cls (pid, _description=description, _manager=manager)
+            pid = ru.generate_id ('p.')
+
+            return cls (pid, _description=description, _manager=manager)
 
 
     # --------------------------------------------------------------------------
     #
     def wait (self, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=None) :
 
-        state = self._get_state ()
+        # we could call self.bj_pilot.wait (), but tat doesn't support our 
+        # semantics.  So we don't.
 
-        if  not isinstance (state, list) :
-            state = [state]
+        with self._rlock :
 
-        # FIXME
-        pass
+            if  not isinstance (state, list) :
+                state = [state]
 
-    
+            start_wait = time.time ()
+            while self.state not in state :
+                print "%s waiting for %s (%s)" % (self.pid, state, self.state)
+                time.sleep (1)
+
+                if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
+                    print "wait timeout"
+                    break
+
+            # done waiting
+            return
+
 
     # --------------------------------------------------------------------------
     #
     def cancel (self, drain=False) :
 
-        # FIXME
-        pass
+        with self._rlock :
+
+            # FIXME drain
+
+            if  self.state in [sa.DONE, sa.FAILED, sa.CANCELED] :
+                # nothing to do
+                return
+
+            if  self.state in [sa.UNKNOWN] :
+                raise e.IncorrectState ("Pilot state is UNKNOWN, cannot cancel")
+
+            self.bj_pilot.cancel ()
     
 
     # --------------------------------------------------------------------------
     #
     def _get_state (self) :
 
-        if  not self._pilot :
-            return sa.UNKNOWN
+        with self._rlock :
 
-        state = self._pilot.get_state ()
+            if  not self._bj_pilot :
+                return sa.UNKNOWN
 
-        if state == bj.state.Running : return sa.RUNNING
-        if state == bj.state.New     : return sa.NEW
-        if state == bj.state.Staging : return sa.STAGING
-        if state == bj.state.Failed  : return sa.FAILED
-        if state == bj.state.Done    : return sa.DONE
-        if state == bj.state.Unknown : return sa.UNKNOWN
-        if state == None             : return sa.UNKNOWN
+            state = self._bj_pilot.get_state ()
 
-        raise ValueError ('could not get pilot state from BigJob')
+            if state == bj.state.Running : return sa.RUNNING
+            if state == bj.state.New     : return sa.PENDING
+            if state == bj.state.Staging : return sa.STAGING
+            if state == bj.state.Failed  : return sa.FAILED
+            if state == bj.state.Done    : return sa.DONE
+            if state == bj.state.Unknown : return sa.UNKNOWN
+            if state == None             : return sa.UNKNOWN
+
+            raise ValueError ('could not get pilot state from BigJob')
 
 
     # --------------------------------------------------------------------------
     #
     def _get_pilot_manager (self) :
 
-        return pm.PilotManager (self.pilot_manager)
+        with self._rlock :
+
+            return pm.PilotManager (self.pilot_manager)
 
 
 # ------------------------------------------------------------------------------

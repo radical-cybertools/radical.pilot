@@ -18,13 +18,14 @@ um       = sinon.UnitManager (scheduler='round_robin')
 
 print 3
 
-ud       = sinon.ComputeUnitDescription ({'executable' :'/usr/bin/touch', 
-                                          'arguments'  : ['/tmp/sinon_bj_touch']})
+ud       = sinon.ComputeUnitDescription ({'executable'    :'/usr/bin/touch', 
+                                          'arguments'     : ['/tmp/sinon_bj_touch'],
+                                          "number_of_processes" : 1,            
+                                          "spmd_variation":"single",
+                                          "output"        : "/tmp/bjstdout.txt",
+                                          "error"         : "/tmp/bjstderr.txt"})
 u1       = um.submit_unit (ud)
 uid1     = u1.uid
-u1.wait ()
-
-sys.exit (0)
 
 print 4
 
@@ -45,8 +46,6 @@ u5       = um.submit_unit (ud)
 u6       = um.submit_unit (ud)
 
 print str(u1)
-sys.exit (0)
-# ------------------------------------------------------------------------------
 
 print 6
 

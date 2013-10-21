@@ -1,16 +1,17 @@
 
 
 import random
+import threading
 
 import radical.utils  as ru
 
 import session        as s
 import attributes     as att
 import exceptions     as e
-import compute_unit   as scu
-import data_unit      as sdu
+import compute_unit   as cu
+import data_unit      as du
 
-import sinon._api      as sa
+import sinon._api     as sa
 
 # ------------------------------------------------------------------------------
 #
@@ -20,8 +21,9 @@ class UnitManager (att.Attributes, sa.UnitManager) :
     #
     def __init__ (self, umid=None, scheduler=None, session=None) :
 
-        # initialize session
-        self._sid = s.initialize ()
+        # initialize 
+        self._rlock       = threading.RLock ()
+        self._sid         = s.initialize ()
 
         # get a unique ID if none was given -- otherwise we reconnect
         if  not umid :
@@ -46,115 +48,167 @@ class UnitManager (att.Attributes, sa.UnitManager) :
         self._attributes_camelcasing (True)
 
         # deep inspection
-        self._attributes_register  ('umid',       umid,      att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.SCHEDULER, scheduler, att.STRING, att.SCALAR, att.READONLY)
-        self._attributes_register  (sa.PILOTS,    [],        att.STRING, att.VECTOR, att.READONLY)
-        self._attributes_register  (sa.UNITS,     [],        att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register  ('umid',         umid,      att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.SCHEDULER,   scheduler, att.STRING, att.SCALAR, att.READONLY)
+        self._attributes_register  (sa.PILOTS,      [],        att.STRING, att.VECTOR, att.READONLY)
+        self._attributes_register  (sa.UNITS,       [],        att.STRING, att.VECTOR, att.READONLY)
         # ...
 
+        # private attributes
+        self._attributes_register  ('_pilots',      {},        att.ANY,    att.VECTOR, att.WRITEABLE)
+        self._attributes_register  ('_unscheduled', [],        att.ANY,    att.VECTOR, att.WRITEABLE)
+
+        print " 1 ===================================== "
+        print self._unscheduled
+        print " ======================================= "
 
     # --------------------------------------------------------------------------
     #
     def add_pilot (self, pilot) :
 
-        print pilot.pid
-        print self.umid
-        self.pilots.append (pilot.pid)
-        pass
+        with self._rlock :
+
+            if  pilot.pid in self.pilots :
+                raise e.BadParameter ("Pilot '%s' is already used" % pilot)
+
+            self.pilots.append (pilot.pid)
+            self._pilots[pilot.pid] = pilot
+
+            # any units pending?
+            if  len(self._unscheduled) :
+                for unit in self._unscheduled :
+                    print "scheduled to %s" % pilot.pid
+                    unit._submit (pilot)
+                    # FIXME: check for success
+
+                self._unscheduled = []
 
 
     # --------------------------------------------------------------------------
     #
     def list_pilots (self, ptype=sa.ANY) :
 
-        # FIXME
-        pass
+        with self._rlock :
+
+            # FIXME: interpret ptype
+
+            return list(self.pilots)
 
 
     # --------------------------------------------------------------------------
     #
     def remove_pilot (self, pid, drain=True) :
 
-        # FIXME
-        pass
+        with self._rlock :
+
+            if  not pid in self.pilots :
+                raise e.DoesNotExist ("unknown pilot '%s'" % pid)
+            
+            self.pilots.remove  (pid)
+            self._pilots.remove (pid)
 
 
     # --------------------------------------------------------------------------
     #
     def submit_unit (self, descr) :
 
-        # FIXME: bulk
+        with self._rlock :
 
-        if  not descr.attribute_exists ('dtype') :
-            raise sinon.BadParameter ("Invalid description (no type)")
+            # FIXME: bulk
 
-        if  not descr.dtype in [ sa.COMPUTE, sa.DATA ] :
-            raise sinon.BadParameter ("Unknown description type %s" % descr.dtype)
+            if  not descr.attribute_exists ('dtype') :
+                raise e.BadParameter ("Invalid description (no type)")
 
-        pid = None
+            if  not descr.dtype in [ sa.COMPUTE, sa.DATA ] :
+                raise e.BadParameter ("Unknown description type %s" % descr.dtype)
 
-        # try to schedule the unit on a pilot
-        if  len (self.pilots)  == 0 :
-            # nothing to schedule on...
+            if  not descr.dtype in [ sa.COMPUTE ] :
+                raise e.BadParameter ("only compute units are supported")
+
+            unit = cu.ComputeUnit._register (descr, manager=self)
+
             pid = None
 
-        elif len (self.pilots) == 1 :
-            # if we have only one pilot, there is not much to 
-            # scheduler (i.e., direct submission)
-            pid = self.pilots[0]
+            # try to schedule the unit on a pilot
+            if  len (self.pilots)  == 0 :
+                # nothing to schedule on...
+                pid = None
 
-        elif not self._scheduler :
-            # if we don't have a scheduler, we do random assignments
-            # FIXME: we might allow user hints, you know, for 'research'?
-            pid = random.choice (self.pilots)
+            elif len (self.pilots) == 1 :
+                # if we have only one pilot, there is not much to 
+                # scheduler (i.e., direct submission)
+                pid = self.pilots[0]
 
-        else :
-            # hurray, we can use the scheduler!
-            pid = self._scheduler.schedule (descr)
+            elif not self._scheduler :
+                # if we don't have a scheduler, we do random assignments
+                # FIXME: we might allow user hints, you know, for 'research'?
+                pid = random.choice (self.pilots)
 
+            else :
+                # hurray, we can use the scheduler!
+                pid = self._scheduler.schedule (descr)
 
-        if  descr.dtype == sa.COMPUTE :
-            unit = scu.ComputeUnit._create (descr, self, pid)
-        else :
-            unit = sdu.DataUnit._create (descr, self, pid)
+            if  None == pid :
+                # no eligible pilot, yet
+                print 'unschedule unit'
+                self._unscheduled.append (unit)
+                print " 2 ===================================== "
+                print self._unscheduled
+                print " ======================================= "
 
+            else :
 
-        return unit
+                if  not pid in self._pilots :
+                    raise e.NoSuccess ("Internal error - invalid scheduler reply")
+
+                print "scheduled to %s" % pid
+                unit._submit (self._pilots[pid])
+
+            print unit
+            return unit
 
 
     # --------------------------------------------------------------------------
     #
     def list_units (self, utype=sa.ANY) :
 
-        # FIXME
-        pass
+        with self._rlock :
+
+            # FIXME
+            pass
 
 
     # --------------------------------------------------------------------------
     #
     def get_unit (self, uids) :
 
-        # FIXME
-        pass
+        with self._rlock :
+
+            # FIXME
+            pass
 
 
     # --------------------------------------------------------------------------
     #
     def wait_units (self, uids, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=-1.0) :
 
-        if  not isinstance (state, list) :
-            state = [state]
+        with self._rlock :
 
-        # FIXME
-        pass
+            if  not isinstance (state, list) :
+                state = [state]
+
+            # FIXME
+            pass
 
 
     # --------------------------------------------------------------------------
     #
     def cancel_units (self, uids) :
 
-        # FIXME
-        pass
+        with self._rlock :
+
+            # FIXME
+            pass
 
 
 # ------------------------------------------------------------------------------

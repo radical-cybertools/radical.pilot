@@ -1,7 +1,7 @@
 
 
-import description as descr
-import attributes  as att
+import description  as descr
+import attributes   as att
 import sinon._api   as sa
 
 

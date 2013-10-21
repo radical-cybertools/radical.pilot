@@ -1,7 +1,7 @@
 
 
 import saga.exceptions as se
-import sinon._api       as sa
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------

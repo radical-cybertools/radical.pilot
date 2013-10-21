@@ -1,18 +1,18 @@
 
 
-import unit
+import unit        as u
 import sinon._api  as sa
 
 
 # ------------------------------------------------------------------------------
 #
-class DataUnit (unit.Unit, sa.DataUnit) :
+class DataUnit (u.Unit, sa.DataUnit) :
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, uid, _description=None, _manager=None) : 
 
-        unit.Unit.__init__ (self, uid, _description, _manager)
+        u.Unit.__init__ (self, uid, _description, _manager)
 
 
     # --------------------------------------------------------------------------

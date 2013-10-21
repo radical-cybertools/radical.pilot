@@ -7,7 +7,7 @@ import radical.utils  as ru
 import pilot          as p
 import session        as s
 import attributes     as att
-import sinon._api      as sa
+import sinon._api     as sa
 
 
 # ------------------------------------------------------------------------------
@@ -108,7 +108,7 @@ class PilotManager (att.Attributes, sa.PilotManager) :
 
         # handle bulk
         else :
-            ret = list()
+            ret = []
 
             for pid in pids :
                 if  not pid in self.pilots :

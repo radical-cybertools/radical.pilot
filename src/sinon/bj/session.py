@@ -6,8 +6,8 @@ import threading
 
 import radical.utils   as ru
 
-import sinon._api       as sa
 import saga.session    as ss
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------

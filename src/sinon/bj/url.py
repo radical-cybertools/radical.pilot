@@ -1,7 +1,7 @@
 
 
-import sinon._api       as sa
-import saga.url        as su
+import saga.url    as su
+import sinon._api  as sa
 
 
 # ------------------------------------------------------------------------------
