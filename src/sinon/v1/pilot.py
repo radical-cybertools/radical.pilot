@@ -4,11 +4,11 @@ import threading
 import saga
 import radical.utils   as ru
 
-import session              as s
+import session         as s
 import exceptions      as e
 import attributes      as att
-import pilot_manager        as pm
-import sinon._api           as sa
+import pilot_manager   as pm
+import sinon._api      as sa
 
 
 # ------------------------------------------------------------------------------
@@ -92,9 +92,9 @@ class Pilot (att.Attributes, sa.Pilot) :
 
         with self._rlock :
 
-        pid = ru.generate_id ('p.')
+            pid = ru.generate_id ('p.')
 
-        return cls (pid, _description=description, _manager=manager)
+            return cls (pid, _description=description, _manager=manager)
 
 
     # --------------------------------------------------------------------------
@@ -103,8 +103,8 @@ class Pilot (att.Attributes, sa.Pilot) :
 
         with self._rlock :
 
-        if  not isinstance (state, list) :
-            state = [state]
+            if  not isinstance (state, list) :
+                state = [state]
 
             start_wait = time.time ()
             while self.state not in state :

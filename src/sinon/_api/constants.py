@@ -38,6 +38,7 @@ PILOT_MANAGER     = 'PilotManager'
 # ...
 
 # ComputeUnitDescription keys
+RESOURCE          = 'Resource'
 NAME              = 'Name'
 EXECUTABLE        = 'Executable'
 ARGUMENTS         = 'Arguments'
