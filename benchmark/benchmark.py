@@ -10,7 +10,8 @@ import numpy
 from copy import deepcopy
 from pymongo import MongoClient
 
-DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com/'
+DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017'
+#DBURL = 'mongodb://mongohost:27017/'
 
 wu = {
         "_UnitManagerID": "manager.objectID()",
