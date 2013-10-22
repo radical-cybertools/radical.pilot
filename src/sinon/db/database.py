@@ -47,6 +47,8 @@ class Session():
             raise Exception("No active session.")
         self._collection.drop()
 
+    # ------------------------------------------------------------
+    # Pilots 
     def add_pilots(self, pilot_entries):
         """ Add one or more pilot entries to the session.
 
@@ -57,10 +59,7 @@ class Session():
                 "name"       : "descriptive name"
                 "description : {
 
-                },
-                "info"       : {
-
-                } 
+                }
             }
         """
         pass
@@ -70,6 +69,82 @@ class Session():
         """
         pass
 
+    def get_pilots(self, pilot_ids=None):
+        """ Get one or more pilot entries. If pilot_ids is None, all
+            pilots are returned.
+
+            The returned pilot entry dict has the following format:
+
+            {
+                "pilot_id"   : "unique string",
+                "name"       : "descriptive name"
+                "description : {
+
+                },
+                "info"       : {
+                    "state:       : "STATE",
+                    "started"     : "date",
+                    "terminated"  : "date",
+                    "working_dir" : "local wd"
+                } 
+            }
+        """
+        pass
+
+    def get_pilot_infos(self, pilot_ids=None):
+        """ Get the 'info' dict for one or more pilot entries. If 
+            pilot_ids is None, infos for all pilots are returned.
+
+            'info' is the part of a pilot entry that can change 
+            after it has been added to the database. For example, 
+            info.state can change from 'running' to 'finished'. 
+
+            The returned pilot info dict has the following format:
+
+            {
+                "pilot_id"    : "id of the pilot to modify",
+                "state:       : "STATE",
+                "started"     : "date",
+                "terminated"  : "date",
+                "working_dir" : "local wd"
+            }
+
+            An 'info' dict can be modified via the modify_pilot_infos method. 
+        """
+        pass
+
+    def modify_pilot_infos(self, info_entries):
+        """ Modify the 'info' dict of one or more pilot entries. 
+
+            An info entry has the following format:
+
+            {
+                "pilot_id"    : "id of the pilot to modify",
+                "state:       : "STATE",
+                "started"     : "date",
+                "terminated"  : "date",
+                "working_dir" : "local wd"
+            }
+
+            If a field is ommited it won't get modified. 
+        """
+        pass
+
+    def send_command_to_pilot(self, commands):
+        """ 'Send' a command to a pilot, i.e., write the command to 
+            a pilot entry's command field. 
+
+            A command has the following format:
+
+            {
+                "pilot_id"  : "id of the pilot to control",
+                "command:   : "COMMAND"
+            }
+        """
+        pass
+
+    # ------------------------------------------------------------
+    # Queues 
     def add_queues(self, queue_entries):
         """ Add one or more queue entries to the database.
 
@@ -89,6 +164,14 @@ class Session():
         """ Remove one or more queue entries from the database.
         """
         pass
+
+    def get_queues(self, queue_ids=None):
+        """ Get one or more queue entries. If pilot_ids is None, all
+            pilots are returned. 
+        """
+        pass
+
+    def 
 
     def _reconnect(self, sid):
         """ Reconnect to an existing session (private).
