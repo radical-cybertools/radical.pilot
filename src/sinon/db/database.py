@@ -53,8 +53,6 @@ class Session():
         self._collection = self._db["%s" % sid]
         self._session_id = sid
 
-
-
     @property
     def session_id(self):
         """ Return the session id.
@@ -67,6 +65,8 @@ class Session():
         if self._collection is None:
             raise Exception("No active session.")
         self._collection.drop()
+        self._wu_collection.drop()
+        self._pilot_collection.drop()
 
     # ------------------------------------------------------------
     # ------------------------------------------------------------
