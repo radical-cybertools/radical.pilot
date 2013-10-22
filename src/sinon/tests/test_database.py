@@ -6,9 +6,10 @@
 
 import unittest
 
+from copy import deepcopy
 from sinon.db import Session
-
 from pymongo import MongoClient
+
 DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 
 #-----------------------------------------------------------------------------
@@ -20,7 +21,7 @@ class Test_Database(unittest.TestCase):
         # clean up fragments from previous tests
         client     = MongoClient(DBURL)
         db         = client.sinon
-        for collection in ['new_session', 'non-existing-session', 'my_new_session']:
+        for collection in ['new_session', 'non-existing-session', 'my_new_session', 'my_new_session.p', 'my_new_session.w']:
             collection = db[collection]
             collection.drop()
 
@@ -79,4 +80,35 @@ class Test_Database(unittest.TestCase):
         s2 = Session.reconnect(db_url=DBURL, sid="my_new_session")
         assert s1.session_id == s2.session_id
         s2.delete()
+
+    #-------------------------------------------------------------------------
+    #
+    def test__add_remove_work_units(self):
+        """ Test if work_units_add(), work_units_update() and 
+            work_units_get() behave as expected.
+        """
+        s = Session.new(db_url=DBURL, sid="my_new_session")
+
+        wus = s.work_units_get()
+        assert len(wus) == 0, "There shouldn't be any workunits in the collection."
+
+        wu = {
+            "work_unit_id"  : "unique work unit ID",
+            "description"   : {
+                "x" : "y"
+            },
+            "assignment"    : { 
+                "queue" : "queue id",
+                "pilot" : "pilot id"
+            }
+        }
+
+        inserts = []
+        for x in range(0,128):
+            inserts.append(deepcopy(wu))
+        ids = s.work_units_add(inserts)
+        assert len(ids) == 128, "Wrong number of workunits added."
+
+
+
 

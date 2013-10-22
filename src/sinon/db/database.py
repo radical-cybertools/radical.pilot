@@ -26,6 +26,17 @@ class Session():
         s._create(sid)
         return s
 
+    def _create(self, sid):
+        """ Create a new session (private).
+        """
+        if sid in self._db.collection_names():
+            raise Exception("Session ID '%s' already exists in DB." % sid)
+        self._collection = self._db["%s" % sid]
+        self._collection.insert({'created': True})
+        self._wu_collection = self._db["%s.w" % sid]
+        self._pilot_collection = self._db["%s.p" % sid]
+        self._session_id = sid
+
     @staticmethod
     def reconnect(db_url, sid):
         """ Reconnect to an existing session.
@@ -33,6 +44,16 @@ class Session():
         s = Session(db_url)
         s._reconnect(sid)
         return s
+
+    def _reconnect(self, sid):
+        """ Reconnect to an existing session (private).
+        """
+        if sid not in self._db.collection_names():
+            raise Exception("Session ID '%s' doesn't exists in DB." % sid)
+        self._collection = self._db["%s" % sid]
+        self._session_id = sid
+
+
 
     @property
     def session_id(self):
@@ -159,19 +180,33 @@ class Session():
         pass
 
 
-    def work_units_add(self, work_unit_descriptions):
-        """ Adds one or more work units to the database
-        """
-        pass
+    # --------------------------------------------------------------------------
+    # WorkUnits 
+    #
+    def work_units_add(self, work_units):
+        """ Add one or more work unit entries to the database.
 
+            A work_unit has the following format:
 
-    def work_units_get(self, work_unit_ids): 
-        """ Returns one or more work units.
+            {
+                "work_unit_id"  : "unique work unit ID",
+                "description"   : {
+                    ...
+                },
+                "assignment"    : { 
+                    "queue" : "queue id",
+                    "pilot" : "pilot id"
+                }
+            }
         """
-        pass
+        # (1) Add work unit to work unit collection
+        # (2) Add work unit id to pilot identified by 'pilot_id'
+        ids = self._wu_collection.insert(work_units)
+        return ids
+
 
     def work_units_update(self, work_unit_updates):
-        """ Updates one or more work units.
+        """ Updates the state of one or more work units.
 
             A work_unit_update dict has the following format:
 
@@ -179,7 +214,34 @@ class Session():
                 "work_unit_id"    : "ID",
                 "state"           : "X"  
             }
+        """
+        # (1) Update the work units in work unit collection
+        pass
 
+    def work_units_get(self, work_unit_ids=None): 
+        """ Returns one or more work units.
+
+            The returned work units have the following format:
+
+            {
+                "work_unit_id"  : "unique work unit ID",
+                "description"   : {
+                    ...
+                },
+                "assignment"    : { 
+                    "queue" : "queue id",
+                    "pilot" : "pilot id"
+                }
+                "info"          : {
+                    "state" : "STATE"
+                    ...
+                }
+            }
+        """
+        wus = []
+        for obj in self._wu_collection.find():
+            wus.append(obj)
+        return wus
 
     # ------------------------------------------------------------
     # ------------------------------------------------------------
@@ -227,44 +289,6 @@ class Session():
         """
         pass
 
-    # ------------------------------------------------------------
-    # ------------------------------------------------------------
-    # WorkUnits 
-    def add_work_units(self, work_units):
-        """ Add one or more work unit entries to the database.
-
-            A work_unit entry has the following format:
-
-            {
-                "work_unit_id"  : "unique work unit ID",
-                "description"   : {
-
-                },
-                "assignment"    : { 
-                    "queue" : "queue id",
-                    "pilot" : "pilot id"
-                }
-
-            }
-        """
-        pass
 
 
-
-    def _reconnect(self, sid):
-        """ Reconnect to an existing session (private).
-        """
-        if sid not in self._db.collection_names():
-            raise Exception("Session ID '%s' doesn't exists in DB." % sid)
-        self._collection = self._db["%s" % sid]
-        self._session_id = sid
-
-    def _create(self, sid):
-        """ Create a new session (private).
-        """
-        if sid in self._db.collection_names():
-            raise Exception("Session ID '%s' already exists in DB." % sid)
-        self._collection = self._db["%s" % sid]
-        self._collection.insert({'created': True})
-        self._session_id = sid
         
