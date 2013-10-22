@@ -48,6 +48,7 @@ class Session():
         self._collection.drop()
 
     # ------------------------------------------------------------
+    # ------------------------------------------------------------
     # Pilots 
     def add_pilots(self, pilot_entries):
         """ Add one or more pilot entries to the session.
@@ -130,9 +131,9 @@ class Session():
         """
         pass
 
-    def send_command_to_pilot(self, commands):
-        """ 'Send' a command to a pilot, i.e., write the command to 
-            a pilot entry's command field. 
+    def pilot_command_push(self, commands):
+        """ Sends a command to a pilot, i.e., pushes a command 
+            to a pilot entry's command field. 
 
             A command has the following format:
 
@@ -143,6 +144,44 @@ class Session():
         """
         pass
 
+    def pilot_wu_queue_push(self, pilot_id, pilot_ids):
+        """ Adds one or more work units to a pilot queue.
+        """
+        pass
+        # (1) put pilot_ids into pilot work queue
+        # (2) change 'queue' in work_unit document to pilot_id
+
+    def pilot_wu_queue_pop(self, pilot_id, count):
+        """ Returns and removes up to 'count' work units from 
+            a pilot queue. 
+        """
+        # (1) remove pilot_ids from pilot work queue
+        pass
+
+
+    def work_units_add(self, work_unit_descriptions):
+        """ Adds one or more work units to the database
+        """
+        pass
+
+
+    def work_units_get(self, work_unit_ids): 
+        """ Returns one or more work units.
+        """
+        pass
+
+    def work_units_update(self, work_unit_updates):
+        """ Updates one or more work units.
+
+            A work_unit_update dict has the following format:
+
+            {
+                "work_unit_id"    : "ID",
+                "state"           : "X"  
+            }
+
+
+    # ------------------------------------------------------------
     # ------------------------------------------------------------
     # Queues 
     def add_queues(self, queue_entries):
@@ -171,7 +210,46 @@ class Session():
         """
         pass
 
-    def 
+    def attach_pilots_to_queue(self, pilot_queue_pairs):
+        """ Attach one or more pilots to one or more queues.
+
+            A pilot_queue_pair has the following format:
+
+            {
+                "queue_id"  : "queue ID",
+                "pilots"    : ["pilot_id 1", "pilot_id 2", "..."]
+            }
+        """
+        pass
+
+    def detach_pilots_from_queue(self, pilot_queue_pairs):
+        """ Detach one or more pilots from one or more queues.
+        """
+        pass
+
+    # ------------------------------------------------------------
+    # ------------------------------------------------------------
+    # WorkUnits 
+    def add_work_units(self, work_units):
+        """ Add one or more work unit entries to the database.
+
+            A work_unit entry has the following format:
+
+            {
+                "work_unit_id"  : "unique work unit ID",
+                "description"   : {
+
+                },
+                "assignment"    : { 
+                    "queue" : "queue id",
+                    "pilot" : "pilot id"
+                }
+
+            }
+        """
+        pass
+
+
 
     def _reconnect(self, sid):
         """ Reconnect to an existing session (private).
