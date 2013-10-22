@@ -37,18 +37,7 @@ class ComputeUnit (u.Unit, sa.ComputeUnit) :
     #
     def _submit (self, pilot) :
 
-        print " @@@@@@@@@@@@@@@@@@ "
-        print pilot._bj_pilot
-        print type(pilot._bj_pilot)
-        print " @@@@@@@@@@@@@@@@@@ "
-
         self._bj_unit = pilot._bj_pilot.submit_compute_unit (self.description.as_dict ())
-
-        print " $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
-        print type(self._bj_unit)
-        print self._bj_unit
-        print " $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
-
 
 
 # ------------------------------------------------------------------------------
