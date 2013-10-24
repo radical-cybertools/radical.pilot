@@ -7,42 +7,55 @@
 import sys
 import time
 import numpy
+import uuid
 from copy import deepcopy
 from sinon.db import Session
+from pymongo import MongoClient
 
-DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
+DBURL  = 'mongodb://mongohost:27017/'
+DBNAME = 'sinon_benchmark'
 
 SAMPLE_WU = {
-    "work_unit_id"  : "unique work unit ID",
-    "description"   : {
-        "x" : "y"
-    },
-    "assignment"    : { 
-        "queue" : "queue id",
-        "pilot" : "pilot id"
-    }
+    "description"  : {"A": "foo", "B": "bar" },
+    "queue_id"     : "none"
+}
+
+SAMPLE_PILOT = {
+    "X": "foo",
+    "Y": "bar"
 }
 
 # --------------------------------------------------------------------------
 #
-def benchmark__add_workunits(session):
+def benchmark__add_workunits():
 
-    session.delete()
+    # new session
+    sid = str(uuid.uuid4())
+    s = Session.new(sid=sid, db_url=DBURL, db_name=DBNAME)
 
-    for i in [1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384]:
+    # new pilot
+    pilot = {"X": "foo",
+             "Y": "bar"
+    }
+    p_ids = s.insert_pilots([pilot])
+
+
+    for i in [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]:
         create_doc_timings = list()
-        for d in range(0, 10):
+        for _ in range(0, 5):
             # create a list that contains 'i' entries
             insert = list()
-            for x in range(0, i):
+            for _ in range(0, i):
                 insert.append(deepcopy(SAMPLE_WU))
-            t1 = time.time()
-            s.work_units_add(insert)
-            td = time.time() -t1
-            create_doc_timings.append(td)
+            t_1 = time.time()
+            ##########################
+            s.insert_workunits(p_ids[0], insert)
+            ##########################
+            t_d = time.time() -t_1
+            create_doc_timings.append(t_d)
         print "Average time to add work units in bulks of %i: %f sec." % (i, numpy.mean(create_doc_timings))
     print "\n"
-    session.delete()
+    s.delete()
 
 # --------------------------------------------------------------------------
 #
@@ -72,16 +85,19 @@ def benchmark__get_workunits(session):
 # --------------------------------------------------------------------------
 #
 if __name__ == '__main__':
+    # remove existing DB in case it exists
+    print "Dropping %s" %DBNAME 
+    client = MongoClient(DBURL)
+    client.drop_database(DBNAME)
+
     print "\nResults for %s: " % DBURL
     print "----------------------------------------------------------------------"
-
-    s = Session.new(db_url=DBURL, sid="benchmark")
-    s.delete()
-
     #benchmark__add_workunits(session=s)
-    benchmark__get_workunits(session=s)
+    benchmark__add_workunits()
 
-
-    s.delete()
+    # remove existing DB in case it exists
+    print "Dropping %s" %DBNAME 
+    client = MongoClient(DBURL)
+    client.drop_database(DBNAME)
 
     sys.exit(0)

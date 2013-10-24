@@ -167,18 +167,18 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def insert_workunits(self, workunits):
+    def insert_workunits(self, pilot_id, workunits):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
 
             {
                 "description": sinon.wu_description,  # work_unit description
-                "pilot_id"   : <pilot_id>,            # the assigned pilot
                 "queue_id"   : <queue_id>,            # the assigned queue
             }
 
-            Inserting any number of work units costs two round-trips: 
+            Inserting any number of work units costs 
+            1 * (number of different pilots) round-trips: 
 
                 (1) Inserting work units into the work unit collection
                 (2) Add work unit id's to the pilot's queue.
@@ -192,7 +192,7 @@ class Session():
             workunit = {
                 "description"   : wu["description"],
                 "assignment"    : {
-                    "pilot"     : wu["pilot_id"],
+                    "pilot"     : pilot_id,
                     "queue"     : wu["queue_id"]
                 },
                 "info"          : {
@@ -206,7 +206,7 @@ class Session():
         wu_ids = self._w.insert(workunit_docs)
 
         # Add the ids to the pilot's queue
-        self._p.update({"_id": wu['pilot_id']}, 
+        self._p.update({"_id": pilot_id}, 
                        {"$pushAll": {"wu_queue" : wu_ids}})
         return wu_ids
 

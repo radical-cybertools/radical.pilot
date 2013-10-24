@@ -135,7 +135,6 @@ class Test_Database(unittest.TestCase):
             assert pilots[i]["info"]["state"] == "UNKNOWN", "Missing / wrong key."
             assert pilots[i]["wu_queue"] == [], "Missing / wrong key."
 
-
     #-------------------------------------------------------------------------
     #
     def test__insert_workunits_single(self):
@@ -152,11 +151,10 @@ class Test_Database(unittest.TestCase):
 
         wu = {
             "description"  : {"A": "foo", "B": "bar" },
-            "pilot_id"     : p_ids[0],
             "queue_id"     : "TODO"
         }
 
-        wu_ids = s.insert_workunits([wu])
+        wu_ids = s.insert_workunits(p_ids[0], [wu])
 
         workunits = s.get_raw_workunits()
         assert len(workunits) == 1, "Wrong number of workunits"
@@ -167,7 +165,6 @@ class Test_Database(unittest.TestCase):
         # make sure that the work units have been appended to the pilot's queue
         p = s.get_raw_pilots(p_ids)
         assert len(p[0]["wu_queue"]) == 1
-
 
     #-------------------------------------------------------------------------
     #
@@ -183,17 +180,15 @@ class Test_Database(unittest.TestCase):
         }
         p_ids = s.insert_pilots([pilot])
 
-
         wus = []
         for i in range(0, 128):
             wu = {
                 "description"  : {"A": "foo", "B": "bar" },
-                "pilot_id"     : p_ids[0],
                 "queue_id"     : "TODO"
             }
             wus.append(wu)
 
-        wu_ids = s.insert_workunits(wus)
+        wu_ids = s.insert_workunits(p_ids[0], wus)
         assert len(wu_ids) == 128, "Wrong number of workunits"
 
         workunits = s.get_raw_workunits()
