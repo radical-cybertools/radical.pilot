@@ -40,6 +40,8 @@ def initialize (session_id=None, coord_url=None) :
     a valid session ID exists.
     """
 
+    print "init"
+
     with _rlock :
 
         global sid
@@ -50,18 +52,18 @@ def initialize (session_id=None, coord_url=None) :
         if  not _initialized :
      
             # create (or pick-up) unique session ID
-            if  session_id                        : sid = session_id
-            elif 'SINON_SESSION_ID' in os.environ : sid = os.environ['SINON_SESSION_ID']
-            else                                  : sid = ru.generate_id ('s.')
+            # if  session_id                        : sid = session_id
+            # elif 'SINON_SESSION_ID' in os.environ : sid = os.environ['SINON_SESSION_ID']
+            # else                                  : sid = ru.generate_id ('s.')
 
-            print "Sinon session ID : %s" % sid
+            # print "Sinon session ID : %s" % sid
 
-            if   'SINON_USER_ID' in os.environ : user_id    = os.environ['SINON_USER_ID']
-            elif 'USER'          in os.environ : user_id    = os.environ['USER']
-            elif 'USERNAME'      in os.environ : user_id    = os.environ['USERNAME']
-            else                               : user_id    = os.getuid ()
+            # if   'SINON_USER_ID' in os.environ : user_id    = os.environ['SINON_USER_ID']
+            # elif 'USER'          in os.environ : user_id    = os.environ['USER']
+            # elif 'USERNAME'      in os.environ : user_id    = os.environ['USERNAME']
+            # else                               : user_id    = os.getuid ()
 
-            print "Sinon user    ID : %s" % user_id
+            # print "Sinon user    ID : %s" % user_id
 
 
             # we will not need to initialize ever again

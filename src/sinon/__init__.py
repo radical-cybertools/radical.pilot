@@ -5,7 +5,7 @@ import sys
 import threading
 import subprocess
 
-from   sinon.v1  import *
+from sinon.v2  import *
 
 if  'SINON_BACKEND' in os.environ :
     from sinon.sinon_backend import *
