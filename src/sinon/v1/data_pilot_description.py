@@ -21,5 +21,5 @@ class DataPilotDescription (descr.Description, sa.DataPilotDescription) :
 
 # ------------------------------------------------------------------------------
 #
-# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
 

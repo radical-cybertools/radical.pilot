@@ -15,5 +15,5 @@ class Context (sc.Context, sa.Context) :
 
 # ------------------------------------------------------------------------------
 #
-# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
 
