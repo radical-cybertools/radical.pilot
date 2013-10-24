@@ -7,6 +7,10 @@ import subprocess
 
 from   sinon.v1  import *
 
+if  'SINON_BACKEND' in os.environ :
+    from sinon.sinon_backend import *
+
+
 # ------------------------------------------------------------------------------
 #
 _rlock = threading.RLock ()
