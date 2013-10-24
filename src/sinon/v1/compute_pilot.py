@@ -17,5 +17,5 @@ class ComputePilot (p.Pilot, sa.Pilot) :
 
 # ------------------------------------------------------------------------------
 #
-# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
 

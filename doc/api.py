@@ -1379,5 +1379,5 @@ class Attributes (_object) :
     def as_dict(self):
         """ return a dict representation of all set attributes """
 
-# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
 

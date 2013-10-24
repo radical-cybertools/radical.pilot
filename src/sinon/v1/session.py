@@ -73,5 +73,5 @@ def initialize (session_id=None, coord_url=None) :
 
 # ------------------------------------------------------------------------------
 #
-# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
 
