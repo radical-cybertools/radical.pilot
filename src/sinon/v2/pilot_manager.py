@@ -7,6 +7,11 @@ import sinon.v1.session         as s
 import sinon.v1.attributes      as att
 import sinon._api      as sa
 
+import uuid
+import sinon._api as sa
+from sinon.db import Session as dbSession
+
+
 
 # ------------------------------------------------------------------------------
 #
@@ -16,8 +21,14 @@ class PilotManager (att.Attributes, sa.PilotManager) :
     #
     def __init__ (self, pmid=None, session=None) : 
 
-        # initialize session
-        self._sid = s.initialize ()
+        if pmid is None:
+            # if session_id is 'None' we create a new session
+            pmid = str(uuid.uuid4())
+            #self._dbs = dbSession.new(sid=session_id, db_url=database_url, db_name=database_name)
+        #else:
+            # otherwise, we reconnect to an exissting session
+            #self._dbs = dbSession.reconnect(sid=session_id, db_url=database_url, db_name=database_name)
+
 
         # get a unique ID if none was given -- otherwise we reconnect
         #if  not pmid :
