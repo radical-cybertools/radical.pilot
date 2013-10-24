@@ -5,10 +5,26 @@ import sys
 import threading
 import subprocess
 
-from sinon.v2  import *
+# ------------------------------------------------------------------------------
+#
 
-if  'SINON_BACKEND' in os.environ :
-    from sinon.sinon_backend import *
+# import API classes as basis
+from _api import *
+
+
+# then load the selected backend -- which will overwrite as many api classes as
+# it wants to
+_sinon_backend = os.environ.get ('SINON_BACKEND', 'v2')
+
+if  _sinon_backend == 'v1' :
+    print 'sinon: using v1 backend'
+    from   v1 import *
+if  _sinon_backend == 'v2' :
+    print 'sinon: using v2 backend'
+    from   v1 import *
+if  _sinon_backend == 'bj' :
+    print 'sinon: using bj backend'
+    from   bj import *
 
 
 # ------------------------------------------------------------------------------
