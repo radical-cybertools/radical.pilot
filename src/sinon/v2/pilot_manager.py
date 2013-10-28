@@ -15,44 +15,27 @@ from sinon.db import Session as dbSession
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager (att.Attributes, sa.PilotManager) :
+class PilotManager (sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, pmid=None, session=None) : 
 
         if pmid is None:
-            # if session_id is 'None' we create a new session
-            pmid = str(uuid.uuid4())
-            #self._dbs = dbSession.new(sid=session_id, db_url=database_url, db_name=database_name)
-        #else:
-            # otherwise, we reconnect to an exissting session
-            #self._dbs = dbSession.reconnect(sid=session_id, db_url=database_url, db_name=database_name)
+            # Create a new pilot manager.
+            self._pmid = str(uuid.uuid4())
+            session._dbs.insert_pilot_manager(self._pmid)
+        else:
+            # reconnect to an existing PM
+            self._pmid = pmid
 
-
-        # get a unique ID if none was given -- otherwise we reconnect
-        #if  not pmid :
-        #    self.pmid = ru.generate_id ('pm.')
-        #else :
-        #    self.pmid = str(pmid)
-
-        # initialize attributes
-        att.Attributes.__init__ (self)
-
-        # set attribute interface properties
-        #self._attributes_extensible  (False)
-        #self._attributes_camelcasing (True)
-
-        # deep inspection
-        #self._attributes_register  ('pmid',    self.pmid, att.STRING, att.SCALAR, att.READONLY)
-        #self._attributes_register  (sa.PILOTS, [],        att.STRING, att.VECTOR, att.READONLY)
-        # ...
-
-        # when starting pilots, we need to map the given RESOURCE keys to
-        # endpoint compatible URLs.  That mapping is done via a json config
-        # file -- which we read here
-        #cfg_location = os.path.dirname (__file__) + '/resource.cfg'
-        #self._resource_cfg = ru.read_json (cfg_location)
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def pmid(self):
+        """ Returns the pilot manager id.
+        """
+        return self._pmid
 
 
     # --------------------------------------------------------------------------

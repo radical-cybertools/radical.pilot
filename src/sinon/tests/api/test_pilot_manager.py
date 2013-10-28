@@ -44,3 +44,14 @@ class Test_PilotManager(unittest.TestCase):
 
         pm = sinon.PilotManager(session=session)
 
+    #-------------------------------------------------------------------------
+    #
+    def test__pilotmanager_reconnect(self):
+        """ Test if pilot manager re-connect works as expected.
+        """
+        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+
+        pm = sinon.PilotManager(session=session)
+        pm_r = sinon.PilotManager(pmid=pm.pmid, session=session)
+
+        assert pm.pmid == pm_r.pmid, "IDs not matching!"

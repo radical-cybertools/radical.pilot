@@ -59,7 +59,7 @@ class Session():
         self._session_id = sid
 
         self._s = self._db["%s" % sid]
-        self._s.insert({'created': 'DATE'})
+        self._s.insert({"_id" : "BOOKKEEPING", "pilotmanagers": ["X", "Y"]})
 
         self._w = self._db["%s.w" % sid]
         self._p = self._db["%s.p" % sid]
@@ -118,7 +118,21 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def insert_pilots(self, pilots):
+    def insert_pilot_manager(self, pilotmanager_id):
+        """ Adds a pilot managers to the list of pilot managers.
+
+            Pilot manager IDs are just kept for book-keeping. 
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._s.update({"_id": "BOOKKEEPING"},
+                       {"$push": {"pilotmanagers" : pilotmanager_id}})
+
+
+    #---------------------------------------------------------------------------
+    #
+    def insert_pilots(self, pilotmanager_id, pilots):
         """ Adds one or more pilots to the database.
 
             Input is a list of sinon pilot descriptions.
@@ -141,7 +155,8 @@ class Session():
                     "started"   : None,
                     "finished"  : None,
                     "state"     : "UNKNOWN"
-                }
+                },
+                "pilotmanager"  : pilotmanager_id
             } 
             pilot_docs.append(pilot)
         pilot_ids = self._p.insert(pilot_docs)
