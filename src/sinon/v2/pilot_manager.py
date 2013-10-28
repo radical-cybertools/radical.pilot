@@ -29,6 +29,8 @@ class PilotManager (sa.PilotManager) :
             # reconnect to an existing PM
             self._pmid = pmid
 
+        self._session = session
+
     #---------------------------------------------------------------------------
     #
     @property
@@ -44,21 +46,22 @@ class PilotManager (sa.PilotManager) :
 
         # FIXME: bulk
 
-        if  not sa.RESOURCE in description :
-            raise ValueError ("no RESOURCE specified in pilot description")
+        #if  not sa.RESOURCE in description :
+        #    raise ValueError ("no RESOURCE specified in pilot description")
 
         # replace resource with more complete spec, if so configured 
-        if  description[sa.RESOURCE] in self._resource_cfg :
-            description[sa.RESOURCE] = self._resource_cfg[description[sa.RESOURCE]]
+        #if  description[sa.RESOURCE] in self._resource_cfg :
+        #    description[sa.RESOURCE] = self._resource_cfg[description[sa.RESOURCE]]
 
-        print description
+        #print description
 
 
         # hand off pilot creation to the pilot class
         pilot  = p.Pilot._create (description, self)
 
         # keep pilot around for inspection
-        self.pilots.append (pilot.pid)
+        #self.pilots.append (pilot.pid)
+        self._session._dbs.insert_pilots(self._pmid, [description])
 
         return pilot
 
@@ -66,8 +69,7 @@ class PilotManager (sa.PilotManager) :
     # --------------------------------------------------------------------------
     #
     def list_pilots (self) :
-
-        return self.pilots
+        return self._session._dbs.list_pilots(self._pmid)
 
 
     # --------------------------------------------------------------------------

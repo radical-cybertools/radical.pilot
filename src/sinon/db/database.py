@@ -132,6 +132,23 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
+    def list_pilots(self, pilotmanager_id):
+        """ Lists all pilots for a pilot manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        pilots = []
+        cursor = self._p.find({"pilotmanager": pilotmanager_id})
+        
+        # cursor -> dict
+        for obj in cursor:
+            pilots.append(obj)
+        return pilots
+
+
+    #---------------------------------------------------------------------------
+    #
     def insert_pilots(self, pilotmanager_id, pilots):
         """ Adds one or more pilots to the database.
 

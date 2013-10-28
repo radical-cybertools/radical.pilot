@@ -43,6 +43,13 @@ class Test_PilotManager(unittest.TestCase):
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         pm = sinon.PilotManager(session=session)
+        assert len(pm.list_pilots()) == 0, "Wrong number of pilots returned."
+
+        p = pm.submit_pilot({'pilot': 'description'})
+        assert len(pm.list_pilots()) == 1, "Wrong number of pilots returned."
+
+        print pm.list_pilots()
+
 
     #-------------------------------------------------------------------------
     #
