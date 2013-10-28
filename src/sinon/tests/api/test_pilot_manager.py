@@ -42,13 +42,13 @@ class Test_PilotManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
+        assert session.list_pilot_managers() == [], "Wrong number of pilot managers"
+
         pm = sinon.PilotManager(session=session)
-        assert len(pm.list_pilots()) == 0, "Wrong number of pilots returned."
+        assert session.list_pilot_managers() == [pm.pmid], "Wrong list of pilot managers"
 
-        p = pm.submit_pilot({'pilot': 'description'})
-        assert len(pm.list_pilots()) == 1, "Wrong number of pilots returned."
-
-        print pm.list_pilots()
+        pm = sinon.PilotManager(session=session)
+        assert len(session.list_pilot_managers()) == 2, "Wrong number of pilot managers"
 
 
     #-------------------------------------------------------------------------
@@ -59,6 +59,51 @@ class Test_PilotManager(unittest.TestCase):
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         pm = sinon.PilotManager(session=session)
-        pm_r = sinon.PilotManager(pmid=pm.pmid, session=session)
+        assert session.list_pilot_managers() == [pm.pmid], "Wrong list of pilot managers"
 
-        assert pm.pmid == pm_r.pmid, "IDs not matching!"
+        pm_r = sinon.PilotManager(pilot_manager_id=pm.pmid, session=session)
+        assert session.list_pilot_managers() == [pm_r.pmid], "Wrong list of pilot managers"
+
+        assert pm.pmid == pm_r.pmid, "Pilot Manager IDs not matching!"
+
+    #-------------------------------------------------------------------------
+    #
+    def test__pilotmanager_list_pilots(self):
+        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+
+        pm1 = sinon.PilotManager(session=session)
+        assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
+
+        pm2 = sinon.PilotManager(session=session)
+        assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
+
+        for i in range(0,10):
+            pm1.submit_pilot(pilot_description={})
+            pm2.submit_pilot(pilot_description={})
+
+        assert len(pm1.list_pilots()) == 10, "Wrong number of pilots returned."
+        assert len(pm2.list_pilots()) == 10, "Wrong number of pilots returned."
+
+    #-------------------------------------------------------------------------
+    #
+    def test__pilotmanager_list_pilots_after_reconnect(self):
+        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+
+        pm1 = sinon.PilotManager(session=session)
+        assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
+
+        pm2 = sinon.PilotManager(session=session)
+        assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
+
+        for i in range(0,10):
+            pm1.submit_pilot(pilot_description={})
+            pm2.submit_pilot(pilot_description={})
+
+        pm1_r = sinon.PilotManager(session=session, pilot_manager_id=pm1.pmid)
+        pm2_r = sinon.PilotManager(session=session, pilot_manager_id=pm2.pmid)
+
+        assert len(pm1.list_pilots()) == 10, "Wrong number of pilots returned."
+        assert len(pm2.list_pilots()) == 10, "Wrong number of pilots returned."
+
+
+

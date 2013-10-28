@@ -2,8 +2,8 @@
 
 import os
 
-import sinon.v1.pilot           as p
-import sinon.v1.session         as s
+#import sinon.v2.pilot           as p
+#import sinon.v2.session         as s
 import sinon.v1.attributes      as att
 import sinon._api      as sa
 
@@ -19,16 +19,18 @@ class PilotManager (sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, pmid=None, session=None) : 
+    def __init__ (self, pilot_manager_id=None, session=None) : 
 
-        if pmid is None:
+        if pilot_manager_id is None:
             # Create a new pilot manager.
-            self._pmid = str(uuid.uuid4())
-            session._dbs.insert_pilot_manager(self._pmid)
+            self._pmid = session._dbs.insert_pilot_manager(pilot_manager_data={})
         else:
             # reconnect to an existing PM
-            self._pmid = pmid
+            if pilot_manager_id not in session._dbs.list_pilot_manager_ids():
+                raise LookupError ("Pilot Manager '%s' not in database." % pilot_manager_id)
+            self._pmid = pilot_manager_id
 
+        # The session hold the DB handle.
         self._session = session
 
     #---------------------------------------------------------------------------
@@ -39,38 +41,24 @@ class PilotManager (sa.PilotManager) :
         """
         return self._pmid
 
-
     # --------------------------------------------------------------------------
     #
-    def submit_pilot (self, description) :
+    def submit_pilot (self, pilot_description) :
 
-        # FIXME: bulk
-
-        #if  not sa.RESOURCE in description :
-        #    raise ValueError ("no RESOURCE specified in pilot description")
-
-        # replace resource with more complete spec, if so configured 
-        #if  description[sa.RESOURCE] in self._resource_cfg :
-        #    description[sa.RESOURCE] = self._resource_cfg[description[sa.RESOURCE]]
-
-        #print description
-
-
+ 
         # hand off pilot creation to the pilot class
-        pilot  = p.Pilot._create (description, self)
+        #pilot = p.Pilot._create (description, self)
 
         # keep pilot around for inspection
         #self.pilots.append (pilot.pid)
-        self._session._dbs.insert_pilots(self._pmid, [description])
+        self._session._dbs.insert_pilot(self._pmid, pilot_description)
 
-        return pilot
-
+        #return pilot
 
     # --------------------------------------------------------------------------
     #
     def list_pilots (self) :
-        return self._session._dbs.list_pilots(self._pmid)
-
+        return self._session._dbs.list_pilot_ids(self._pmid)
 
     # --------------------------------------------------------------------------
     #
@@ -95,7 +83,6 @@ class PilotManager (sa.PilotManager) :
                 ret.append (troy.ComputePilot (pid))
 
             return ret
-
 
 
     # --------------------------------------------------------------------------

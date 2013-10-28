@@ -39,6 +39,11 @@ class Session(sa.Session):
         """
         self._dbs.delete()
 
+    def list_pilot_managers(self):
+        """ Lists all pilot managers registered with this session.
+        """
+        return self._dbs.list_pilot_manager_ids()
+
     #---------------------------------------------------------------------------
     #
     @property
