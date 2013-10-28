@@ -21,7 +21,7 @@ if  _sinon_backend == 'v1' :
     from   v1 import *
 if  _sinon_backend == 'v2' :
     print 'sinon: using v2 backend'
-    from   v1 import *
+    from   v2 import *
 if  _sinon_backend == 'bj' :
     print 'sinon: using bj backend'
     from   bj import *
