@@ -39,7 +39,7 @@ class TestUnitManager(unittest.TestCase):
     #-------------------------------------------------------------------------
     #
     def test__unitmanager_create(self):
-        """ Test if pilot manager creation works as expected.
+        """ Test if unit manager creation works as expected.
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
@@ -50,3 +50,59 @@ class TestUnitManager(unittest.TestCase):
 
         um2 = sinon.UnitManager(session=session)
         assert len(session.list_unit_managers()) == 2, "Wrong number of unit managers"
+
+
+    #-------------------------------------------------------------------------
+    #
+    def test__unitmanager_reconnect(self):
+        """ Test if unit manager reconnection works as expected.
+        """
+        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+
+        um = sinon.UnitManager(session=session)
+        assert session.list_unit_managers() == [um.umid], "Wrong list of unit managers"
+
+        um_r = sinon.UnitManager(unit_manager_id=um.umid, session=session)
+        assert session.list_unit_managers() == [um_r.umid], "Wrong list of unit managers"
+
+        assert um.umid == um_r.umid, "Unit Manager IDs not matching!"
+
+    #-------------------------------------------------------------------------
+    #
+    def test__unitmanager_pilot_assoc(self):
+        """ Test if unit manager <-> pilot association works as expected. 
+        """
+        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+
+        pm = sinon.PilotManager(session=session)
+        p1 = pm.submit_pilot(pilot_description={"foo": "pm1"})
+
+        um = sinon.UnitManager(session=session)
+        assert um.list_pilots() == [], "Wrong list of pilots"
+
+        um.add_pilot(p1)
+        assert um.list_pilots() == [p1.id], "Wrong list of pilots"
+
+        # adding the same pilot twice should be ignored
+        um.add_pilot(p1)
+        assert um.list_pilots() == [p1.id], "Wrong list of pilots"
+
+        um.remove_pilot(p1.id)
+        assert um.list_pilots() == [], "Wrong list of pilots"
+
+        pilot_list = []
+        for x in range(0, 10):
+            p = pm.submit_pilot(pilot_description={"foo": "pm1"})
+            um.add_pilot(p)
+            pilot_list.append(p)
+
+        pl = um.list_pilots()
+        assert len(pl) == 10, "Wrong number of associated pilots"
+        for l in pilot_list:
+            assert l in pilot_list, "Unknown pilot in list"
+            um.remove_pilot(l.id)
+
+        assert um.list_pilots() == [], "Wrong list of pilots"
+
+
+

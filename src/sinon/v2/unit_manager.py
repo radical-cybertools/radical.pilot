@@ -40,23 +40,22 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def add_pilot (self, pilot) :
-
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def list_pilots (self, ptype=interface.ANY) :
-
-        pass
+    def add_pilot (self, pilot):
+        self._DB.unit_manager_add_pilot(unit_manager_id=self.umid,
+                                        pilot_id=pilot.id)
 
 
     # --------------------------------------------------------------------------
     #
-    def remove_pilot (self, pid, drain=True) :
+    def list_pilots (self) :
+        return self._DB.unit_manager_list_pilots(unit_manager_id=self.umid)
 
-        pass
+
+    # --------------------------------------------------------------------------
+    #
+    def remove_pilot (self, pilot_id, drain=True):
+        self._DB.unit_manager_remove_pilot(unit_manager_id=self.umid,
+                                           pilot_id=pilot_id)
 
 
     # --------------------------------------------------------------------------

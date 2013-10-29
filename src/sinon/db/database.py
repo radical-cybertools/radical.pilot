@@ -181,7 +181,8 @@ class Session():
                 "state"     : "UNKNOWN"
             },
             "links" : {
-                "pilotmanager"  : pilot_manager_id
+                "pilotmanager"  : pilot_manager_id,
+                "unitmanager"   : None
             }
         } 
             
@@ -266,6 +267,45 @@ class Session():
             unit_manager_ids.append(str(obj['_id']))
         return unit_manager_ids
 
+    #---------------------------------------------------------------------------
+    #
+    def unit_manager_add_pilot(self, unit_manager_id, pilot_id):
+        """ Adds a pilot from a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        # Add the ids to the pilot's queue
+        self._p.update({"_id": ObjectId(pilot_id)}, 
+                       {"$set": {"links.unitmanager" : unit_manager_id}})
+
+    #---------------------------------------------------------------------------
+    #
+    def unit_manager_remove_pilot(self, unit_manager_id, pilot_id):
+        """ Removes a pilot from a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+       # Add the ids to the pilot's queue
+        self._p.update({"_id": ObjectId(pilot_id)}, 
+                       {"$set": {"links.unitmanager" : None}})
+
+    #---------------------------------------------------------------------------
+    #
+    def unit_manager_list_pilots(self, unit_manager_id):
+        """ Lists all pilots associated with a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._p.find({"links.unitmanager": unit_manager_id})
+        
+        # cursor -> dict
+        pilot_ids = []
+        for obj in cursor:
+            pilot_ids.append(str(obj['_id']))
+        return pilot_ids
 
     #---------------------------------------------------------------------------
     #
