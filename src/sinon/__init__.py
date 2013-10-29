@@ -19,10 +19,10 @@ _sinon_backend = os.environ.get ('SINON_BACKEND', 'v2')
 if  _sinon_backend == 'v1' :
     print 'sinon: using v1 backend'
     from   v1 import *
-if  _sinon_backend == 'v2' :
+elif  _sinon_backend == 'v2' :
     print 'sinon: using v2 backend'
-    from   v1 import *
-if  _sinon_backend == 'bj' :
+    from   v2 import *
+elif  _sinon_backend == 'bj' :
     print 'sinon: using bj backend'
     from   bj import *
 

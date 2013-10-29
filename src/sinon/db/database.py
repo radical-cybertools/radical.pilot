@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-from pymongo import MongoClient
+from pymongo import *
+from bson.objectid import ObjectId
 
 #-----------------------------------------------------------------------------
 #
@@ -19,10 +20,13 @@ class Session():
 
         self._session_id = None
 
-        self._s = None
-        self._w = None
-        self._p = None
-        self._q = None
+        self._s  = None
+
+        self._w  = None
+        self._wm = None
+
+        self._p  = None
+        self._pm = None
 
     #---------------------------------------------------------------------------
     #
@@ -42,10 +46,11 @@ class Session():
             A session is a distinct collection with three sub-collections 
             in MongoDB: 
 
-            sinon.<sid>    | Base collection. Holds some metadata. | self._s
-            sinon.<sid>.w  | Collection holding all work units.    | self._w
-            sinon.<sid>.p  | Collection holding all pilots.        | self._p
-            sinon.<sid>.q  | Collection holding all queues.        | self._q
+            sinon.<sid>    | Base collection. Holds some metadata.   | self._s
+            sinon.<sid>.w  | Collection holding all work units.      | self._w
+            sinon.<sid>.wm | Collection holding all unit managers.   | self._wm
+            sinon.<sid>.p  | Collection holding all pilots.          | self._p
+            sinon.<sid>.pm | Collection holding all pilot managers.  | self._pm
 
             All collections are created with a new session. Since MongoDB 
             uses lazy-create, they only appear in the database after the 
@@ -59,11 +64,13 @@ class Session():
         self._session_id = sid
 
         self._s = self._db["%s" % sid]
-        self._s.insert({'created': 'DATE'})
+        self._s.insert({"CREATED": "<DATE>"})
 
-        self._w = self._db["%s.w" % sid]
-        self._p = self._db["%s.p" % sid]
-        self._q = self._db["%s.q" % sid] 
+        self._w  = self._db["%s.w"  % sid]
+        self._wm = self._db["%s.wm" % sid] 
+
+        self._p  = self._db["%s.p"  % sid]
+        self._pm = self._db["%s.pm" % sid] 
 
     #---------------------------------------------------------------------------
     #
@@ -92,9 +99,11 @@ class Session():
         self._s = self._db["%s" % sid]
         self._s.insert({'reconnected': 'DATE'})
 
-        self._w = self._db["%s.w" % sid]
-        self._p = self._db["%s.p" % sid]
-        self._q = self._db["%s.q" % sid] 
+        self._w  = self._db["%s.w"  % sid]
+        self._wm = self._db["%s.wm" % sid]
+
+        self._p  = self._db["%s.p"  % sid]
+        self._pm = self._db["%s.pm" % sid] 
 
     #---------------------------------------------------------------------------
     #
@@ -112,13 +121,45 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        for collection in [self._s, self._w, self._p, self._q]:
+        for collection in [self._s, self._w, self._wm, self._p, self._pm]:
             collection.drop()
             collection = None
 
     #---------------------------------------------------------------------------
     #
-    def insert_pilots(self, pilots):
+    def insert_pilot_manager(self, pilot_manager_data):
+        """ Adds a pilot managers to the list of pilot managers.
+
+            Pilot manager IDs are just kept for book-keeping. 
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        pilot_manager_json = {"data" : pilot_manager_data}
+        result = self._pm.insert(pilot_manager_json)
+
+        # return the object id as a string
+        return str(result)
+
+    #---------------------------------------------------------------------------
+    #
+    def list_pilot_manager_ids(self):
+        """ Lists all pilot managers.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        pilot_manager_ids = []
+        cursor = self._pm.find()
+        
+        # cursor -> dict
+        for obj in cursor:
+            pilot_manager_ids.append(str(obj['_id']))
+        return pilot_manager_ids
+
+    #---------------------------------------------------------------------------
+    #
+    def insert_pilot(self, pilot_manager_id, pilot_description):
         """ Adds one or more pilots to the database.
 
             Input is a list of sinon pilot descriptions.
@@ -130,22 +171,68 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        # Construct and insert workunit documents
-        pilot_docs = []
-        for p_desc in pilots:
-            pilot = {
-                "description"   : p_desc,
-                "wu_queue"      : [],
-                "info"          : {
-                    "submitted" : "<DATE>",
-                    "started"   : None,
-                    "finished"  : None,
-                    "state"     : "UNKNOWN"
-                }
-            } 
-            pilot_docs.append(pilot)
-        pilot_ids = self._p.insert(pilot_docs)
+        pilot_json = {
+            "description"   : pilot_description,
+            "wu_queue"      : [],
+            "info"          : {
+                "submitted" : "<DATE>",
+                "started"   : None,
+                "finished"  : None,
+                "state"     : "UNKNOWN"
+            },
+            "links" : {
+                "pilotmanager"  : pilot_manager_id
+            }
+        } 
+            
+        result = self._p.insert(pilot_json)
+
+        # return the object id as a string
+        return str(result)
+
+    #---------------------------------------------------------------------------
+    #
+    def list_pilot_ids(self, pilot_manager_id=None):
+        """ Lists all pilots for a pilot manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        pilot_ids = []
+
+        if pilot_manager_id is not None:
+            cursor = self._p.find({"links.pilotmanager": pilot_manager_id})
+        else:
+            cursor = self._p.find()
+        
+        # cursor -> dict
+        for obj in cursor:
+            pilot_ids.append(str(obj['_id']))
         return pilot_ids
+
+    #---------------------------------------------------------------------------
+    #
+    def get_pilot(self, pilot_manager_id, pilot_id):
+        """ Get a pilot
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        pilots_json = []
+
+        cursor = self._p.find({"_id": ObjectId(pilot_id),
+                               "links.pilotmanager": pilot_manager_id,})
+
+        # cursor -> dict
+        for obj in cursor:
+            pilots_json.append(obj)
+
+        return pilots_json
+
+
+
+
+
 
     #---------------------------------------------------------------------------
     #
@@ -164,6 +251,10 @@ class Session():
         for obj in cursor:
             pilots.append(obj)
         return pilots
+
+
+
+
 
     #---------------------------------------------------------------------------
     #

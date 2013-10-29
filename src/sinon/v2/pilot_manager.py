@@ -1,110 +1,72 @@
 
 
-import os
+import sinon._api as interface
 
-import sinon.v1.pilot           as p
-import sinon.v1.session         as s
-import sinon.v1.attributes      as att
-import sinon._api      as sa
+from session      import Session
+from pilot        import Pilot
+
+import uuid
+from sinon.db import Session as dbSession
+
 
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager (att.Attributes, sa.PilotManager) :
+class PilotManager (interface.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, pmid=None, session=None) : 
+    def __init__ (self, pilot_manager_id=None, session=None) : 
 
-        # initialize session
-        self._sid = s.initialize ()
+        if pilot_manager_id is None:
+            # Create a new pilot manager.
+            self._pmid = session._dbs.insert_pilot_manager(pilot_manager_data={})
+        else:
+            # reconnect to an existing PM
+            if pilot_manager_id not in session._dbs.list_pilot_manager_ids():
+                raise LookupError ("Pilot Manager '%s' not in database." % pilot_manager_id)
+            self._pmid = pilot_manager_id
 
-        # get a unique ID if none was given -- otherwise we reconnect
-        #if  not pmid :
-        #    self.pmid = ru.generate_id ('pm.')
-        #else :
-        #    self.pmid = str(pmid)
+        # The session hold the DB handle.
+        self._session = session
 
-        # initialize attributes
-        att.Attributes.__init__ (self)
-
-        # set attribute interface properties
-        #self._attributes_extensible  (False)
-        #self._attributes_camelcasing (True)
-
-        # deep inspection
-        #self._attributes_register  ('pmid',    self.pmid, att.STRING, att.SCALAR, att.READONLY)
-        #self._attributes_register  (sa.PILOTS, [],        att.STRING, att.VECTOR, att.READONLY)
-        # ...
-
-        # when starting pilots, we need to map the given RESOURCE keys to
-        # endpoint compatible URLs.  That mapping is done via a json config
-        # file -- which we read here
-        #cfg_location = os.path.dirname (__file__) + '/resource.cfg'
-        #self._resource_cfg = ru.read_json (cfg_location)
-
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def pmid(self):
+        """ Returns the pilot manager id.
+        """
+        return self._pmid
 
     # --------------------------------------------------------------------------
     #
-    def submit_pilot (self, description) :
-
-        # FIXME: bulk
-
-        if  not sa.RESOURCE in description :
-            raise ValueError ("no RESOURCE specified in pilot description")
-
-        # replace resource with more complete spec, if so configured 
-        if  description[sa.RESOURCE] in self._resource_cfg :
-            description[sa.RESOURCE] = self._resource_cfg[description[sa.RESOURCE]]
-
-        print description
-
-
+    def submit_pilot(self, pilot_description):
+        """ Implementation of interface.PilotManager.submit_pilot().
+        """
         # hand off pilot creation to the pilot class
-        pilot  = p.Pilot._create (description, self)
-
-        # keep pilot around for inspection
-        self.pilots.append (pilot.pid)
-
+        pilot = Pilot._create(pilot_description=pilot_description, 
+                              pilot_manager_obj=self)
         return pilot
 
+    # --------------------------------------------------------------------------
+    #
+    def list_pilots(self):
+        """ Implementation of interface.PilotManager.list_pilots().
+        """
+        return self._session._dbs.list_pilot_ids(self._pmid)
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self) :
-
-        return self.pilots
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_pilot (self, pids) :
-
-        if  not isinstance (pids, list) :
-            if  not pids in self.pilots :
-                raise LookupError ("pilot '%s' not found" % pids)
-
-            # FIXME: switch by type
-            return troy.ComputePilot (pids)
-
-        # handle bulk
-        else :
-            ret = []
-
-            for pid in pids :
-                if  not pid in self.pilots :
-                    raise LookupError ("pilot '%s' not found" % pid)
-
-                # FIXME: switch by type
-                ret.append (troy.ComputePilot (pid))
-
-            return ret
-
-
+    def get_pilot(self, pilot_id):
+        """ Implementation of interface.PilotManager.get_pilot().
+        """
+        pilot = Pilot._get(pilot_id=pilot_id,
+                           pilot_manager_obj=self)
+        return pilot
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=-1.0) :
+    def wait_pilot (self, pids, state=[interface.DONE, interface.FAILED, interface.CANCELED], timeout=-1.0) :
 
         if  not isinstance (state, list) :
             state = [state]
