@@ -1,4 +1,5 @@
-
+__copyright__ = "Copyright 2013, RADICAL Group @ Rutgers"
+__license__   = "MIT"
 
 import threading
 import time
@@ -66,25 +67,23 @@ class Pilot (sa.Pilot) :
     # --------------------------------------------------------------------------
     #
     @staticmethod 
-    def _get (pilot_manager_obj, pilot_id) :
+    def _get (pilot_manager_obj, pilot_ids) :
         """ Get a pilot via its ID.
         """
         # create database entry
-        pilot_json = pilot_manager_obj._session._dbs.get_pilot(pilot_manager_id=pilot_manager_obj.pmid, 
-                                                               pilot_id=pilot_id)
-        # check if we have a result
-        if len(pilot_json) < 1:
-            raise Exception("Pilot with ID %s doesn't exist: %s" % (pilot_id, pilot_json))
-        pilot_json = pilot_json[0]
+        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_id=pilot_manager_obj.pmid, 
+                                                                 pilot_ids=pilot_ids)
+        # create and return pilot objects
+        pilots = []
 
-        # create and return pilot object
-        pilot = Pilot()
-        pilot._pid = pilot_id
+        for p in pilots_json:
+            pilot = Pilot()
+            pilot._pid = str(p['_id'])
+            pilot._description = p['description']
+            pilot._manager = pilot_manager_obj
+            pilots.append(pilot)
 
-        pilot._description = pilot_json['description']
-        pilot._manager     = pilot_manager_obj
-
-        return pilot
+        return pilots
 
     # --------------------------------------------------------------------------
     #

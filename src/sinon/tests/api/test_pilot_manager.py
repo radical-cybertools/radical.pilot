@@ -1,4 +1,4 @@
-"""Database conncetion layer tests
+"""Pilot Manager tests
 """
 
 import sinon
@@ -130,11 +130,15 @@ class Test_PilotManager(unittest.TestCase):
             pm2_pilot_ids.append(pilot_pm2.id)
 
         for i in pm1.list_pilots():
-            pilot = pm1.get_pilot(i)
-            assert pilot.id in pm1_pilot_ids, "Wrong pilot ID %s" % pilot.id
-            assert pilot.description['foo'] == "pm1"
+            pilot = pm1.get_pilots(i)
+            assert pilot[0].id in pm1_pilot_ids, "Wrong pilot ID %s" % pilot[0].id
+            assert pilot[0].description['foo'] == "pm1"
+
+        assert len(pm1.get_pilots()) == 10, "Wrong number of pilots."
 
         for i in pm2.list_pilots():
-            pilot = pm2.get_pilot(i)
-            assert pilot.id in pm2_pilot_ids, "Wrong pilot ID %s" % pilot.id
-            assert pilot.description['foo'] == "pm2"
+            pilot = pm2.get_pilots(i)
+            assert pilot[0].id in pm2_pilot_ids, "Wrong pilot ID %s" % pilot[0].id
+            assert pilot[0].description['foo'] == "pm2"
+
+        assert len(pm2.get_pilots()) == 10, "Wrong number of pilots."

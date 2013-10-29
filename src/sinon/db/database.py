@@ -23,7 +23,7 @@ class Session():
         self._s  = None
 
         self._w  = None
-        self._wm = None
+        self._um = None
 
         self._p  = None
         self._pm = None
@@ -48,7 +48,7 @@ class Session():
 
             sinon.<sid>    | Base collection. Holds some metadata.   | self._s
             sinon.<sid>.w  | Collection holding all work units.      | self._w
-            sinon.<sid>.wm | Collection holding all unit managers.   | self._wm
+            sinon.<sid>.wm | Collection holding all unit managers.   | self._um
             sinon.<sid>.p  | Collection holding all pilots.          | self._p
             sinon.<sid>.pm | Collection holding all pilot managers.  | self._pm
 
@@ -67,7 +67,7 @@ class Session():
         self._s.insert({"CREATED": "<DATE>"})
 
         self._w  = self._db["%s.w"  % sid]
-        self._wm = self._db["%s.wm" % sid] 
+        self._um = self._db["%s.wm" % sid] 
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
@@ -100,7 +100,7 @@ class Session():
         self._s.insert({'reconnected': 'DATE'})
 
         self._w  = self._db["%s.w"  % sid]
-        self._wm = self._db["%s.wm" % sid]
+        self._um = self._db["%s.wm" % sid]
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
@@ -121,7 +121,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        for collection in [self._s, self._w, self._wm, self._p, self._pm]:
+        for collection in [self._s, self._w, self._um, self._p, self._pm]:
             collection.drop()
             collection = None
 
@@ -212,26 +212,59 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def get_pilot(self, pilot_manager_id, pilot_id):
+    def get_pilots(self, pilot_manager_id, pilot_ids=None):
         """ Get a pilot
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        pilots_json = []
-
-        cursor = self._p.find({"_id": ObjectId(pilot_id),
-                               "links.pilotmanager": pilot_manager_id,})
-
+        if pilot_ids == None:
+            cursor = self._p.find({"links.pilotmanager": pilot_manager_id})
+        else:
+            # convert ids to object ids
+            pilot_oid = []
+            for pid in pilot_ids:
+                pilot_oid.append(ObjectId(pid))
+            cursor = self._p.find({"_id": {"$in": pilot_oid},
+                                   "links.pilotmanager": pilot_manager_id})
         # cursor -> dict
+        pilots_json = []
         for obj in cursor:
             pilots_json.append(obj)
 
         return pilots_json
 
+    #---------------------------------------------------------------------------
+    #
+    def insert_unit_manager(self, unit_manager_data):
+        """ Adds a unit managers to the list of unit managers.
 
+            Unit manager IDs are just kept for book-keeping. 
+        """
+        if self._s is None:
+            raise Exception("No active session.")
 
+        unit_manager_json = {"data" : unit_manager_data}
+        result = self._um.insert(unit_manager_json)
 
+        # return the object id as a string
+        return str(result)
+
+    #---------------------------------------------------------------------------
+    #
+    def list_unit_manager_ids(self):
+        """ Lists all pilot managers.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        unit_manager_ids = []
+        cursor = self._um.find()
+        
+        # cursor -> dict
+        for obj in cursor:
+            unit_manager_ids.append(str(obj['_id']))
+        return unit_manager_ids
 
 
     #---------------------------------------------------------------------------

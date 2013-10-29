@@ -1,34 +1,37 @@
-
+__copyright__ = "Copyright 2013, RADICAL Group @ Rutgers"
+__license__   = "MIT"
 
 import sinon._api as interface
 
 from session      import Session
 from pilot        import Pilot
 
-import uuid
 from sinon.db import Session as dbSession
-
 
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager (interface.PilotManager) :
+class PilotManager(object):
+    """ Docstring
+    """
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, pilot_manager_id=None, session=None) : 
+    def __init__ (self, pilot_manager_id=None, session=None): 
+        """ Le constructeur.
+        """
+        self._DB = session._dbs
+        self._session = session
 
         if pilot_manager_id is None:
             # Create a new pilot manager.
-            self._pmid = session._dbs.insert_pilot_manager(pilot_manager_data={})
+            self._pmid = self._DB.insert_pilot_manager(pilot_manager_data={})
         else:
             # reconnect to an existing PM
-            if pilot_manager_id not in session._dbs.list_pilot_manager_ids():
-                raise LookupError ("Pilot Manager '%s' not in database." % pilot_manager_id)
+            if pilot_manager_id not in self._DB.list_pilot_manager_ids():
+                raise LookupError ("Pilot Manager '%s' not in database." \
+                    % pilot_manager_id)
             self._pmid = pilot_manager_id
-
-        # The session hold the DB handle.
-        self._session = session
 
     #---------------------------------------------------------------------------
     #
@@ -57,57 +60,31 @@ class PilotManager (interface.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def get_pilot(self, pilot_id):
+    def get_pilots(self, pilot_ids=None):
         """ Implementation of interface.PilotManager.get_pilot().
         """
-        pilot = Pilot._get(pilot_id=pilot_id,
-                           pilot_manager_obj=self)
-        return pilot
+        # implicit list conversion
+        if (pilot_ids is not None) and (type(pilot_ids) is not list):
+            pilot_id_list = list()
+            pilot_id_list.append(pilot_ids)
+        else:
+            pilot_id_list = pilot_ids
+
+        pilots = Pilot._get(pilot_ids=pilot_id_list, pilot_manager_obj=self)
+        return pilots
 
     # --------------------------------------------------------------------------
     #
     def wait_pilot (self, pids, state=[interface.DONE, interface.FAILED, interface.CANCELED], timeout=-1.0) :
-
-        if  not isinstance (state, list) :
-            state = [state]
-
-
-        if  not isinstance (pids, list) :
-            if  not pids in self.pilots :
-                raise LookupError ("pilot '%s' not found" % pids)
-
-            troy.Pilot (pids).wait (state, timeout)
-
-        # handle bulk
-        else :
-            # FIXME: better timeout handling
-            for pid in pids :
-                if  not pid in self.pilots :
-                    raise LookupError ("pilot '%s' not found" % pid)
-
-                troy.Pilot (pid).wait (state, timeout)
-
+        """ Docstring 
+        """
+        pass
 
     # --------------------------------------------------------------------------
     #
     def cancel_pilot (self, pids) :
-
-        if  not isinstance (pids, list) :
-            if  not pids in self.pilots :
-                raise LookupError ("pilot '%s' not found" % pids)
-
-            troy.Pilot (pids).cancel ()
-
-        # handle bulk
-        else :
-            for pid in pids :
-                if  not pid in self.pilots :
-                    raise LookupError ("pilot '%s' not found" % pid)
-
-                troy.Pilot (pid).cancel ()
-
-
-# ------------------------------------------------------------------------------
-#
+        """ Docstring
+        """
+        pass
 
 

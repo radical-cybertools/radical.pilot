@@ -49,6 +49,13 @@ class Session(sa.Session):
 
     #---------------------------------------------------------------------------
     #
+    def list_unit_managers(self):
+        """ Lists all unit managers registered with this session.
+        """
+        return self._dbs.list_unit_manager_ids()
+
+    #---------------------------------------------------------------------------
+    #
     @property
     def sid(self):
         """ Returns the session id.
