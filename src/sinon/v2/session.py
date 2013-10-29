@@ -1,5 +1,6 @@
 import uuid
 import sinon._api as sa
+
 from sinon.db import Session as dbSession
 
 # ------------------------------------------------------------------------------
@@ -39,6 +40,8 @@ class Session(sa.Session):
         """
         self._dbs.delete()
 
+    #---------------------------------------------------------------------------
+    #
     def list_pilot_managers(self):
         """ Lists all pilot managers registered with this session.
         """

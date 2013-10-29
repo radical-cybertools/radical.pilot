@@ -8,7 +8,7 @@ from sinon._api import *
 
 
 from sinon.v2.session       import Session
-#from sinon.v2.pilot         import Pilot
+from sinon.v2.pilot         import Pilot
 from sinon.v2.pilot_manager import PilotManager
 
 

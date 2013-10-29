@@ -1,21 +1,18 @@
 
 
-import os
+import sinon._api as interface
 
-#import sinon.v2.pilot           as p
-#import sinon.v2.session         as s
-import sinon.v1.attributes      as att
-import sinon._api      as sa
+from session      import Session
+from pilot        import Pilot
 
 import uuid
-import sinon._api as sa
 from sinon.db import Session as dbSession
 
 
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager (sa.PilotManager) :
+class PilotManager (interface.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
@@ -43,51 +40,33 @@ class PilotManager (sa.PilotManager) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_pilot (self, pilot_description) :
-
- 
+    def submit_pilot(self, pilot_description):
+        """ Implementation of interface.PilotManager.submit_pilot().
+        """
         # hand off pilot creation to the pilot class
-        #pilot = p.Pilot._create (description, self)
-
-        # keep pilot around for inspection
-        #self.pilots.append (pilot.pid)
-        self._session._dbs.insert_pilot(self._pmid, pilot_description)
-
-        #return pilot
+        pilot = Pilot._create(pilot_description=pilot_description, 
+                              pilot_manager_obj=self)
+        return pilot
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self) :
+    def list_pilots(self):
+        """ Implementation of interface.PilotManager.list_pilots().
+        """
         return self._session._dbs.list_pilot_ids(self._pmid)
 
     # --------------------------------------------------------------------------
     #
-    def get_pilot (self, pids) :
-
-        if  not isinstance (pids, list) :
-            if  not pids in self.pilots :
-                raise LookupError ("pilot '%s' not found" % pids)
-
-            # FIXME: switch by type
-            return troy.ComputePilot (pids)
-
-        # handle bulk
-        else :
-            ret = []
-
-            for pid in pids :
-                if  not pid in self.pilots :
-                    raise LookupError ("pilot '%s' not found" % pid)
-
-                # FIXME: switch by type
-                ret.append (troy.ComputePilot (pid))
-
-            return ret
-
+    def get_pilot(self, pilot_id):
+        """ Implementation of interface.PilotManager.get_pilot().
+        """
+        pilot = Pilot._get(pilot_id=pilot_id,
+                           pilot_manager_obj=self)
+        return pilot
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilot (self, pids, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=-1.0) :
+    def wait_pilot (self, pids, state=[interface.DONE, interface.FAILED, interface.CANCELED], timeout=-1.0) :
 
         if  not isinstance (state, list) :
             state = [state]

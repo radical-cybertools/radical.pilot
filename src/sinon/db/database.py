@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-from pymongo import MongoClient
+from pymongo import *
+from bson.objectid import ObjectId
 
 #-----------------------------------------------------------------------------
 #
@@ -209,12 +210,24 @@ class Session():
             pilot_ids.append(str(obj['_id']))
         return pilot_ids
 
+    #---------------------------------------------------------------------------
+    #
+    def get_pilot(self, pilot_manager_id, pilot_id):
+        """ Get a pilot
+        """
+        if self._s is None:
+            raise Exception("No active session.")
 
+        pilots_json = []
 
+        cursor = self._p.find({"_id": ObjectId(pilot_id),
+                               "links.pilotmanager": pilot_manager_id,})
 
+        # cursor -> dict
+        for obj in cursor:
+            pilots_json.append(obj)
 
-
-
+        return pilots_json
 
 
 
@@ -238,6 +251,10 @@ class Session():
         for obj in cursor:
             pilots.append(obj)
         return pilots
+
+
+
+
 
     #---------------------------------------------------------------------------
     #

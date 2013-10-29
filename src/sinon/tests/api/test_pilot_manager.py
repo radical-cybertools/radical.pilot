@@ -69,6 +69,8 @@ class Test_PilotManager(unittest.TestCase):
     #-------------------------------------------------------------------------
     #
     def test__pilotmanager_list_pilots(self):
+        """ Test if listing pilots works as expected.
+        """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         pm1 = sinon.PilotManager(session=session)
@@ -87,6 +89,8 @@ class Test_PilotManager(unittest.TestCase):
     #-------------------------------------------------------------------------
     #
     def test__pilotmanager_list_pilots_after_reconnect(self):
+        """ Test if listing pilots after a reconnect works as expected.
+        """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         pm1 = sinon.PilotManager(session=session)
@@ -96,14 +100,39 @@ class Test_PilotManager(unittest.TestCase):
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0,10):
-            pm1.submit_pilot(pilot_description={})
-            pm2.submit_pilot(pilot_description={})
+            pm1.submit_pilot(pilot_description={"foo": "pm1"})
+            pm2.submit_pilot(pilot_description={"foo": "pm2"})
 
         pm1_r = sinon.PilotManager(session=session, pilot_manager_id=pm1.pmid)
         pm2_r = sinon.PilotManager(session=session, pilot_manager_id=pm2.pmid)
 
         assert len(pm1.list_pilots()) == 10, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 10, "Wrong number of pilots returned."
+
+    #-------------------------------------------------------------------------
+    #
+    def test__pilotmanager_get_pilots(self):
+        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+
+        pm1 = sinon.PilotManager(session=session)
+        assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
+
+        pm2 = sinon.PilotManager(session=session)
+        assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
+
+        pm1_pilot_ids = []
+        pm2_pilot_ids = []
+
+        for i in range(0,10):
+            pilot_pm1 = pm1.submit_pilot(pilot_description={"foo": "pm1"})
+            pm1_pilot_ids.append(pilot_pm1.id)
+            pilot_pm2 = pm2.submit_pilot(pilot_description={"foo": "pm2"})
+            pm1_pilot_ids.append(pilot_pm2.id)
+
+        for i in pm1.list_pilots():
+            pilot_id = pm1.get_pilot(i).id
+            assert pilot_id in pm1_pilot_ids, "Wrong pilot ID %s" % pilot_id
+
 
 
 
