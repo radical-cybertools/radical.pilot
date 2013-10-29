@@ -1,79 +1,56 @@
+import uuid
+import sinon._api as sa
 
-
-import os
-import datetime
-import threading
-
-import radical.utils   as ru
-
-import saga.session    as ss
-import sinon._api      as sa
-
+from sinon.db import Session as dbSession
 
 # ------------------------------------------------------------------------------
 #
-class Session (ss.Session, sa.Session) :
+class Session(sa.Session):
 
-    def __init__ (self, default=True) :
+    #---------------------------------------------------------------------------
+    #
+    def __init__ (self, database_url, session_id=None, database_name="sinon"):
+        
+        if session_id is None:
+            # if session_id is 'None' we create a new session
+            session_id = str(uuid.uuid4())
+            self._dbs = dbSession.new(sid=session_id, db_url=database_url, db_name=database_name)
+        else:
+            # otherwise, we reconnect to an exissting session
+            self._dbs = dbSession.reconnect(sid=session_id, db_url=database_url, db_name=database_name)
 
-        ss.Session.__init__ (self, default)
+        self._database_url = database_url
+        self._session_id = session_id
 
+    #---------------------------------------------------------------------------
+    #
+    def __repr__(self):
+        return {"database_url": self._database_url,
+                "session_id"  : self._session_id}
 
-# ------------------------------------------------------------------------------
-#
-_rlock = threading.RLock ()
-with _rlock :
+    #---------------------------------------------------------------------------
+    #
+    def __str__(self):
+        return str(self.__repr__())
 
-    sid          = None
-    _initialized = False
+    #---------------------------------------------------------------------------
+    #
+    def destroy(self):
+        """ Terminates the session and removed it from the database.
+        """
+        self._dbs.delete()
 
+    #---------------------------------------------------------------------------
+    #
+    def list_pilot_managers(self):
+        """ Lists all pilot managers registered with this session.
+        """
+        return self._dbs.list_pilot_manager_ids()
 
-def initialize (session_id=None, coord_url=None) :
-    """
-    Initialize this instance of the Sinon framework with a session ID, and
-    a coordination URL. 
-
-    If a session ID is given, then it will be used for all subsequent calls.  If
-    none is given, Sinon will attempt to pick it up from the process environment
-    (`SINON_SESSION_ID`).  If that also fails, a new (unique) session ID will be
-    automatically formed and used.  Any Sinon call will first make sure that
-    a valid session ID exists.
-    """
-
-    print "init"
-
-    with _rlock :
-
-        global sid
-        global _initialized
-
-
-        # initialize only once
-        if  not _initialized :
-     
-            # create (or pick-up) unique session ID
-            # if  session_id                        : sid = session_id
-            # elif 'SINON_SESSION_ID' in os.environ : sid = os.environ['SINON_SESSION_ID']
-            # else                                  : sid = ru.generate_id ('s.')
-
-            # print "Sinon session ID : %s" % sid
-
-            # if   'SINON_USER_ID' in os.environ : user_id    = os.environ['SINON_USER_ID']
-            # elif 'USER'          in os.environ : user_id    = os.environ['USER']
-            # elif 'USERNAME'      in os.environ : user_id    = os.environ['USERNAME']
-            # else                               : user_id    = os.getuid ()
-
-            # print "Sinon user    ID : %s" % user_id
-
-
-            # we will not need to initialize ever again
-            _initialized = True
-
-      
-        return sid
-
-
-# ------------------------------------------------------------------------------
-#
-
-
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def sid(self):
+        """ Returns the session id.
+        """
+        return self._session_id
