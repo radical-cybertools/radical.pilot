@@ -127,11 +127,17 @@ class Test_PilotManager(unittest.TestCase):
             pilot_pm1 = pm1.submit_pilot(pilot_description={"foo": "pm1"})
             pm1_pilot_ids.append(pilot_pm1.id)
             pilot_pm2 = pm2.submit_pilot(pilot_description={"foo": "pm2"})
-            pm1_pilot_ids.append(pilot_pm2.id)
+            pm2_pilot_ids.append(pilot_pm2.id)
 
         for i in pm1.list_pilots():
-            pilot_id = pm1.get_pilot(i).id
-            assert pilot_id in pm1_pilot_ids, "Wrong pilot ID %s" % pilot_id
+            pilot = pm1.get_pilot(i)
+            assert pilot.id in pm1_pilot_ids, "Wrong pilot ID %s" % pilot.id
+            assert pilot.description['foo'] == "pm1"
+
+        for i in pm2.list_pilots():
+            pilot = pm2.get_pilot(i)
+            assert pilot.id in pm2_pilot_ids, "Wrong pilot ID %s" % pilot.id
+            assert pilot.description['foo'] == "pm2"
 
 
 
