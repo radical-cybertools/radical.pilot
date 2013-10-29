@@ -138,7 +138,3 @@ class Test_PilotManager(unittest.TestCase):
             pilot = pm2.get_pilot(i)
             assert pilot.id in pm2_pilot_ids, "Wrong pilot ID %s" % pilot.id
             assert pilot.description['foo'] == "pm2"
-
-
-
-
