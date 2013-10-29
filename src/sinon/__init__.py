@@ -14,14 +14,11 @@ from _api import *
 
 # then load the selected backend -- which will overwrite as many api classes as
 # it wants to
-_sinon_backend = os.environ.get ('SINON_BACKEND', 'v2')
+_sinon_backend = os.environ.get ('SINON_BACKEND', 'v1')
 
 if  _sinon_backend == 'v1' :
     print 'sinon: using v1 backend'
     from   v1 import *
-elif  _sinon_backend == 'v2' :
-    print 'sinon: using v2 backend'
-    from   v2 import *
 elif  _sinon_backend == 'bj' :
     print 'sinon: using bj backend'
     from   bj import *
