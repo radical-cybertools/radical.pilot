@@ -51,7 +51,6 @@ class TestUnitManager(unittest.TestCase):
         um2 = sinon.UnitManager(session=session)
         assert len(session.list_unit_managers()) == 2, "Wrong number of unit managers"
 
-
     #-------------------------------------------------------------------------
     #
     def test__unitmanager_reconnect(self):

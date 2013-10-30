@@ -54,7 +54,7 @@ class Pilot (sa.Pilot) :
         """
         # create database entry
         pilot_id = pilot_manager_obj._session._dbs.insert_pilot(pilot_manager_id=pilot_manager_obj.pmid, 
-                                                                pilot_description=pilot_description)
+                                                                pilot_description=pilot_description.as_dict())
         # create and return pilot object
         pilot = Pilot()
         pilot._pid = pilot_id

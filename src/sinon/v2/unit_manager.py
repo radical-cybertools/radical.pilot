@@ -60,7 +60,7 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_unit (self, descr) :
+    def submit_units (self, descr) :
         pass
         # with self._rlock :
 
