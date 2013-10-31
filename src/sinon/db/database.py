@@ -309,6 +309,22 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
+    def unit_manager_list_work_units(self, unit_manager_id):
+        """ Lists all work units associated with a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._w.find({"links.unitmanager": unit_manager_id})
+        
+        # cursor -> dict
+        unit_ids = []
+        for obj in cursor:
+            unit_ids.append(str(obj['_id']))
+        return unit_ids
+
+    #---------------------------------------------------------------------------
+    #
     def get_raw_pilots(self, pilot_ids=None):
         """ Returns the raw pilot documents.
 
@@ -328,7 +344,7 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def insert_workunits(self, pilot_id, unit_descriptions):
+    def insert_workunits(self, pilot_id, unit_manager_id, unit_descriptions):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
@@ -352,8 +368,9 @@ class Session():
         for wu_desc in unit_descriptions:
             workunit = {
                 "description"   : wu_desc.as_dict(),
-                "assignment"    : {
-                    "pilot"     : pilot_id,
+                "links"    : {
+                    "unitmanager" : unit_manager_id, 
+                    "pilot"       : pilot_id,
                 },
                 "info"          : {
                     "submitted" : "<DATE>",
@@ -364,7 +381,6 @@ class Session():
             } 
             workunit_docs.append(workunit)
         wu_ids = self._w.insert(workunit_docs)
-        print wu_ids
 
         # Add the ids to the pilot's queue
         self._p.update({"_id": ObjectId(pilot_id)}, 

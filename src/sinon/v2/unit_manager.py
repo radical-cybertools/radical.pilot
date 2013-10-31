@@ -53,6 +53,12 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
+    def list_units (self, utype=interface.ANY) :
+        return self._DB.unit_manager_list_work_units(unit_manager_id=self.umid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def remove_pilot (self, pilot_id, drain=True):
         self._DB.unit_manager_remove_pilot(unit_manager_id=self.umid,
                                            pilot_id=pilot_id)
@@ -63,7 +69,9 @@ class UnitManager (object) :
     def submit_units (self, unit_descriptions) :
         
         pilot_id = self.list_pilots()[0]
-        self._DB.insert_workunits(pilot_id=pilot_id, unit_descriptions=unit_descriptions)
+        self._DB.insert_workunits(pilot_id=pilot_id, 
+            unit_manager_id=self.umid,
+            unit_descriptions=unit_descriptions)
 
         return None
 
@@ -121,14 +129,7 @@ class UnitManager (object) :
         #     return unit
 
 
-    # --------------------------------------------------------------------------
-    #
-    def list_units (self, utype=interface.ANY) :
 
-        with self._rlock :
-
-            # FIXME
-            pass
 
 
     # --------------------------------------------------------------------------

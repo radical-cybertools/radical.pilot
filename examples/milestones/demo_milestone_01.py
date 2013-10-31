@@ -66,6 +66,7 @@ def demo_milestone_01_2(session_id):
             print "   * Found Unit Manager with ID %s" % um.umid
             for pilot_ids in um.list_pilots():
                 print "      * Associated with Pilot [%s]" % pilot_ids
+                print "      * Work units: %s" % um.list_units()
             #for cu_ids in um.list_units():
             #    print "      * Owns ComputeUnit [%s]" % cu_ids
 
