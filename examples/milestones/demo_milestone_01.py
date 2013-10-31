@@ -6,7 +6,7 @@ import sinon
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 
-#----------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #
 def demo_milestone_01_1():
     """Demo part 01: Create a new Session with a PilotManager and UnitManager.
@@ -45,7 +45,7 @@ def demo_milestone_01_1():
     except sinon.SinonException, ex:
         print "Error: %s" % ex
 
-#----------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #
 def demo_milestone_01_2(session_id):
     """Demo part 02: Re-connect to the previously created session.
@@ -67,13 +67,11 @@ def demo_milestone_01_2(session_id):
             for pilot_ids in um.list_pilots():
                 print "      * Associated with Pilot [%s]" % pilot_ids
                 print "      * Work units: %s" % um.list_units()
-            #for cu_ids in um.list_units():
-            #    print "      * Owns ComputeUnit [%s]" % cu_ids
 
     except sinon.SinonException, ex:
         print "Error: %s" % ex
 
-#----------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #
 def demo_milestone_01_3(session_id):
     """Demo part 03: Delete and remove session from the database.
@@ -86,9 +84,10 @@ def demo_milestone_01_3(session_id):
     except sinon.SinonException, ex:
         print "Error: %s" % ex
 
-#----------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
+
     # Create a new session
     print "\n%s" % demo_milestone_01_1.__doc__.rstrip()
     sid = demo_milestone_01_1()
