@@ -49,12 +49,9 @@ class Pilot (sa.Pilot) :
     # --------------------------------------------------------------------------
     #
     @staticmethod 
-    def _create (pilot_manager_obj, pilot_description) :
+    def _create (pilot_manager_obj, pilot_id, pilot_description) :
         """ Create a new pilot.
         """
-        # create database entry
-        pilot_id = pilot_manager_obj._session._dbs.insert_pilot(pilot_manager_id=pilot_manager_obj.pmid, 
-                                                                pilot_description=pilot_description.as_dict())
         # create and return pilot object
         pilot = Pilot()
         pilot._pid = pilot_id
@@ -71,7 +68,7 @@ class Pilot (sa.Pilot) :
         """ Get a pilot via its ID.
         """
         # create database entry
-        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_id=pilot_manager_obj.pmid, 
+        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_id=pilot_manager_obj.uid, 
                                                                  pilot_ids=pilot_ids)
         # create and return pilot objects
         pilots = []

@@ -159,7 +159,7 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def insert_pilot(self, pilot_manager_id, pilot_description):
+    def insert_pilots(self, pilot_manager_id, pilot_descriptions):
         """ Adds one or more pilots to the database.
 
             Input is a list of sinon pilot descriptions.
@@ -171,25 +171,31 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_json = {
-            "description"   : pilot_description,
-            "wu_queue"      : [],
-            "info"          : {
-                "submitted" : "<DATE>",
-                "started"   : None,
-                "finished"  : None,
-                "state"     : "UNKNOWN"
-            },
-            "links" : {
-                "pilotmanager"  : pilot_manager_id,
-                "unitmanager"   : None
+        pilot_docs = []
+        for pilot_desc in pilot_descriptions:
+            pilot_json = {
+                "description"   : pilot_desc.as_dict(),
+                "wu_queue"      : [],
+                "info"          : {
+                    "submitted" : "<DATE>",
+                    "started"   : None,
+                    "finished"  : None,
+                    "state"     : "UNKNOWN"
+                },
+                "links" : {
+                    "pilotmanager"  : pilot_manager_id,
+                    "unitmanager"   : None
+                }
             }
-        } 
+            pilot_docs.append(pilot_json)
             
-        result = self._p.insert(pilot_json)
+        pilot_ids = self._p.insert(pilot_docs)
 
         # return the object id as a string
-        return str(result)
+        pilot_id_strings = []
+        for pilot_id in pilot_ids:
+            pilot_id_strings.append(str(pilot_id))
+        return pilot_id_strings
 
     #---------------------------------------------------------------------------
     #

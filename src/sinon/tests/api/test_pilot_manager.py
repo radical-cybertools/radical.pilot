@@ -45,7 +45,7 @@ class Test_PilotManager(unittest.TestCase):
         assert session.list_pilot_managers() == [], "Wrong number of pilot managers"
 
         pm = sinon.PilotManager(session=session)
-        assert session.list_pilot_managers() == [pm.pmid], "Wrong list of pilot managers"
+        assert session.list_pilot_managers() == [pm.uid], "Wrong list of pilot managers"
 
         pm = sinon.PilotManager(session=session)
         assert len(session.list_pilot_managers()) == 2, "Wrong number of pilot managers"
@@ -59,12 +59,12 @@ class Test_PilotManager(unittest.TestCase):
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         pm = sinon.PilotManager(session=session)
-        assert session.list_pilot_managers() == [pm.pmid], "Wrong list of pilot managers"
+        assert session.list_pilot_managers() == [pm.uid], "Wrong list of pilot managers"
 
-        pm_r = sinon.PilotManager(pilot_manager_id=pm.pmid, session=session)
-        assert session.list_pilot_managers() == [pm_r.pmid], "Wrong list of pilot managers"
+        pm_r = sinon.PilotManager(pilot_manager_id=pm.uid, session=session)
+        assert session.list_pilot_managers() == [pm_r.uid], "Wrong list of pilot managers"
 
-        assert pm.pmid == pm_r.pmid, "Pilot Manager IDs not matching!"
+        assert pm.uid == pm_r.uid, "Pilot Manager IDs not matching!"
 
     #-------------------------------------------------------------------------
     #
@@ -80,8 +80,8 @@ class Test_PilotManager(unittest.TestCase):
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0,10):
-            pm1.submit_pilot(pilot_description=sinon.ComputePilotDescription())
-            pm2.submit_pilot(pilot_description=sinon.ComputePilotDescription())
+            pm1.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+            pm2.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
 
         assert len(pm1.list_pilots()) == 10, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 10, "Wrong number of pilots returned."
@@ -100,11 +100,11 @@ class Test_PilotManager(unittest.TestCase):
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0,10):
-            pm1.submit_pilot(pilot_description=sinon.ComputePilotDescription())
-            pm2.submit_pilot(pilot_description=sinon.ComputePilotDescription())
+            pm1.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+            pm2.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
 
-        pm1_r = sinon.PilotManager(session=session, pilot_manager_id=pm1.pmid)
-        pm2_r = sinon.PilotManager(session=session, pilot_manager_id=pm2.pmid)
+        pm1_r = sinon.PilotManager(session=session, pilot_manager_id=pm1.uid)
+        pm2_r = sinon.PilotManager(session=session, pilot_manager_id=pm2.uid)
 
         assert len(pm1.list_pilots()) == 10, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 10, "Wrong number of pilots returned."
@@ -124,14 +124,15 @@ class Test_PilotManager(unittest.TestCase):
         pm2_pilot_ids = []
 
         for i in range(0,10):
-            pilot_pm1 = pm1.submit_pilot(pilot_description=sinon.ComputePilotDescription())
+            pilot_pm1 = pm1.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+
             pm1_pilot_ids.append(pilot_pm1.id)
-            pilot_pm2 = pm2.submit_pilot(pilot_description=sinon.ComputePilotDescription())
+            pilot_pm2 = pm2.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
             pm2_pilot_ids.append(pilot_pm2.id)
 
         for i in pm1.list_pilots():
             pilot = pm1.get_pilots(i)
-            assert pilot[0].id in pm1_pilot_ids, "Wrong pilot ID %s" % pilot[0].id
+            assert pilot[0].id in pm1_pilot_ids, "Wrong pilot ID %s (not in %s)" % (pilot[0].id, pm1_pilot_ids)
             #assert pilot[0].description['foo'] == "pm1"
 
         assert len(pm1.get_pilots()) == 10, "Wrong number of pilots."

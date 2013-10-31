@@ -21,7 +21,7 @@ def demo_milestone_01_1():
 
         pd = sinon.ComputePilotDescription()
         pd.resource = "ALAMO"
-        p1 = pm.submit_pilot(pd)
+        p1 = pm.submit_pilots(pd)
 
         # Add a Unit Manager to the session and add the newly created 
         # pilot to it.
@@ -35,7 +35,7 @@ def demo_milestone_01_1():
             cu.executable = "/bin/hostname"
             compute_units.append(cu)
 
-        # ... and add them to the manager. Note that t his happens in bulk!
+        # ... and add them to the manager. Note that this happens in bulk!
         um.submit_units(compute_units)
 
         # Print and return the session id so we can re-connect to it later.
@@ -57,7 +57,7 @@ def demo_milestone_01_2(session_id):
 
         for pm_id in session.list_pilot_managers():
             pm = sinon.PilotManager(session=session, pilot_manager_id=pm_id)
-            print "   * Found Pilot Manager with ID %s" % pm.pmid
+            print "   * Found Pilot Manager with ID %s" % pm.uid
             for pilot_ids in pm.list_pilots():
                 print "      * Owns Pilot [%s]" % pilot_ids
 
