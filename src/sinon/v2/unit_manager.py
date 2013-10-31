@@ -60,8 +60,13 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def submit_units (self, descr) :
-        pass
+    def submit_units (self, unit_descriptions) :
+        
+        pilot_id = self.list_pilots()[0]
+        self._DB.insert_workunits(pilot_id=pilot_id, unit_descriptions=unit_descriptions)
+
+        return None
+
         # with self._rlock :
 
         # # FIXME: bulk

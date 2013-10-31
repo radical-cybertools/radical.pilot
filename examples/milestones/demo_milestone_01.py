@@ -33,6 +33,7 @@ def demo_milestone_01_1():
         for unit_count in range(0, 16):
             cu = sinon.ComputeUnitDescription()
             cu.executable = "/bin/hostname"
+            compute_units.append(cu)
 
         # ... and add them to the manager. Note that t his happens in bulk!
         um.submit_units(compute_units)

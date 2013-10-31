@@ -326,12 +326,9 @@ class Session():
         return pilots
 
 
-
-
-
     #---------------------------------------------------------------------------
     #
-    def insert_workunits(self, pilot_id, workunits):
+    def insert_workunits(self, pilot_id, unit_descriptions):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
@@ -352,12 +349,11 @@ class Session():
 
         # Construct and insert workunit documents
         workunit_docs = []
-        for wu in workunits:
+        for wu_desc in unit_descriptions:
             workunit = {
-                "description"   : wu["description"],
+                "description"   : wu_desc.as_dict(),
                 "assignment"    : {
                     "pilot"     : pilot_id,
-                    "queue"     : wu["queue_id"]
                 },
                 "info"          : {
                     "submitted" : "<DATE>",
@@ -368,9 +364,10 @@ class Session():
             } 
             workunit_docs.append(workunit)
         wu_ids = self._w.insert(workunit_docs)
+        print wu_ids
 
         # Add the ids to the pilot's queue
-        self._p.update({"_id": pilot_id}, 
+        self._p.update({"_id": ObjectId(pilot_id)}, 
                        {"$pushAll": {"wu_queue" : wu_ids}})
         return wu_ids
 
