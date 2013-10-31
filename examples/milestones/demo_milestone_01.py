@@ -91,6 +91,8 @@ if __name__ == "__main__":
     print "\n%s" % demo_milestone_01_1.__doc__.rstrip()
     sid = demo_milestone_01_1()
 
+    raw_input("\nPress Enter to reconnect to session...")
+
     # Reconnect to that session
     print "\n%s" % demo_milestone_01_2.__doc__.rstrip()
     demo_milestone_01_2(session_id=sid)
