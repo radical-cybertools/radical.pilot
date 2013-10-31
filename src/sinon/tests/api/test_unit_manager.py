@@ -74,7 +74,7 @@ class TestUnitManager(unittest.TestCase):
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         pm = sinon.PilotManager(session=session)
-        p1 = pm.submit_pilot(pilot_description={"foo": "pm1"})
+        p1 = pm.submit_pilot(pilot_description=sinon.ComputePilotDescription())
 
         um = sinon.UnitManager(session=session)
         assert um.list_pilots() == [], "Wrong list of pilots"
@@ -91,7 +91,7 @@ class TestUnitManager(unittest.TestCase):
 
         pilot_list = []
         for x in range(0, 10):
-            p = pm.submit_pilot(pilot_description={"foo": "pm1"})
+            p = pm.submit_pilot(pilot_description=sinon.ComputePilotDescription())
             um.add_pilot(p)
             pilot_list.append(p)
 
