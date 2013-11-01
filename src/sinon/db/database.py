@@ -143,7 +143,7 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def list_pilot_manager_ids(self):
+    def list_pilot_manager_uids(self):
         """ Lists all pilot managers.
         """
         if self._s is None:
@@ -259,7 +259,7 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def list_unit_manager_ids(self):
+    def list_unit_manager_uids(self):
         """ Lists all pilot managers.
         """
         if self._s is None:

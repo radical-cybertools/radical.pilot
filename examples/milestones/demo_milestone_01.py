@@ -39,8 +39,8 @@ def demo_milestone_01_1():
         um.submit_units(compute_units)
 
         # Print and return the session id so we can re-connect to it later.
-        print "* Session created with session ID %s" % session.sid
-        return session.sid
+        print "* Session created with session ID %s" % session.uid
+        return session.uid
 
     except sinon.SinonException, ex:
         print "Error: %s" % ex
@@ -53,7 +53,7 @@ def demo_milestone_01_2(session_id):
     try:
         # Re-connect to the previously created session via its ID.
         session = sinon.Session(session_id=session_id, database_url=DBURL)
-        print "* Reconnected to session with session ID %s" % session.sid
+        print "* Reconnected to session with session ID %s" % session.uid
 
         for pm_id in session.list_pilot_managers():
             pm = sinon.PilotManager(session=session, pilot_manager_id=pm_id)
@@ -90,17 +90,17 @@ if __name__ == "__main__":
 
     # Create a new session
     print "\n%s" % demo_milestone_01_1.__doc__.rstrip()
-    sid = demo_milestone_01_1()
+    session_uid = demo_milestone_01_1()
 
     raw_input("\nPress Enter to reconnect to session...")
 
     # Reconnect to that session
     print "\n%s" % demo_milestone_01_2.__doc__.rstrip()
-    demo_milestone_01_2(session_id=sid)
+    demo_milestone_01_2(session_id=session_uid)
 
     raw_input("\nPress Enter to delete session...")
 
     # Finally, we delete the session
     print "\n%s\n" % demo_milestone_01_3.__doc__.rstrip()
-    demo_milestone_01_3(session_id=sid)
+    demo_milestone_01_3(session_id=session_uid)
 
