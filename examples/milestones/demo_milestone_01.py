@@ -47,22 +47,22 @@ def demo_milestone_01_1():
 
 #-------------------------------------------------------------------------------
 #
-def demo_milestone_01_2(session_id):
+def demo_milestone_01_2(session_uid):
     """Demo part 02: Re-connect to the previously created session.
     """
     try:
         # Re-connect to the previously created session via its ID.
-        session = sinon.Session(session_id=session_id, database_url=DBURL)
+        session = sinon.Session(session_uid=session_uid, database_url=DBURL)
         print "* Reconnected to session with session ID %s" % session.uid
 
-        for pm_id in session.list_pilot_managers():
-            pm = sinon.PilotManager(session=session, pilot_manager_id=pm_id)
+        for pm_uid in session.list_pilot_managers():
+            pm = sinon.PilotManager(session=session, pilot_manager_uid=pm_uid)
             print "   * Found Pilot Manager with ID %s" % pm.uid
             for pilot_ids in pm.list_pilots():
                 print "      * Owns Pilot [%s]" % pilot_ids
 
-        for um_id in session.list_unit_managers():
-            um = sinon.UnitManager(session=session, unit_manager_id=um_id)
+        for um_uid in session.list_unit_managers():
+            um = sinon.UnitManager(session=session, unit_manager_uid=um_uid)
             print "   * Found Unit Manager with ID %s" % um.umid
             for pilot_ids in um.list_pilots():
                 print "      * Associated with Pilot [%s]" % pilot_ids
@@ -73,12 +73,12 @@ def demo_milestone_01_2(session_id):
 
 #-------------------------------------------------------------------------------
 #
-def demo_milestone_01_3(session_id):
+def demo_milestone_01_3(session_uid):
     """Demo part 03: Delete and remove session from the database.
     """
     try:
         # Re-connect to the previously created session via its ID.
-        session = sinon.Session(session_id=session_id, database_url=DBURL)
+        session = sinon.Session(session_uid=session_uid, database_url=DBURL)
         session.destroy()
 
     except sinon.SinonException, ex:
@@ -96,11 +96,11 @@ if __name__ == "__main__":
 
     # Reconnect to that session
     print "\n%s" % demo_milestone_01_2.__doc__.rstrip()
-    demo_milestone_01_2(session_id=session_uid)
+    demo_milestone_01_2(session_uid=session_uid)
 
     raw_input("\nPress Enter to delete session...")
 
     # Finally, we delete the session
     print "\n%s\n" % demo_milestone_01_3.__doc__.rstrip()
-    demo_milestone_01_3(session_id=session_uid)
+    demo_milestone_01_3(session_uid=session_uid)
 
