@@ -149,17 +149,17 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_manager_ids = []
+        pilot_manager_uids = []
         cursor = self._pm.find()
         
         # cursor -> dict
         for obj in cursor:
-            pilot_manager_ids.append(str(obj['_id']))
-        return pilot_manager_ids
+            pilot_manager_uids.append(str(obj['_id']))
+        return pilot_manager_uids
 
     #---------------------------------------------------------------------------
     #
-    def insert_pilots(self, pilot_manager_id, pilot_descriptions):
+    def insert_pilots(self, pilot_manager_uid, pilot_descriptions):
         """ Adds one or more pilots to the database.
 
             Input is a list of sinon pilot descriptions.
@@ -183,7 +183,7 @@ class Session():
                     "state"     : "UNKNOWN"
                 },
                 "links" : {
-                    "pilotmanager"  : pilot_manager_id,
+                    "pilotmanager"  : pilot_manager_uid,
                     "unitmanager"   : None
                 }
             }
@@ -199,7 +199,7 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def list_pilot_ids(self, pilot_manager_id=None):
+    def list_pilot_uids(self, pilot_manager_uid=None):
         """ Lists all pilots for a pilot manager.
         """
         if self._s is None:
@@ -207,8 +207,8 @@ class Session():
 
         pilot_ids = []
 
-        if pilot_manager_id is not None:
-            cursor = self._p.find({"links.pilotmanager": pilot_manager_id})
+        if pilot_manager_uid is not None:
+            cursor = self._p.find({"links.pilotmanager": pilot_manager_uid})
         else:
             cursor = self._p.find()
         
@@ -219,21 +219,21 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def get_pilots(self, pilot_manager_id, pilot_ids=None):
+    def get_pilots(self, pilot_manager_uid, pilot_uids=None):
         """ Get a pilot
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        if pilot_ids == None:
-            cursor = self._p.find({"links.pilotmanager": pilot_manager_id})
+        if pilot_uids == None:
+            cursor = self._p.find({"links.pilotmanager": pilot_manager_uid})
         else:
             # convert ids to object ids
             pilot_oid = []
-            for pid in pilot_ids:
+            for pid in pilot_uids:
                 pilot_oid.append(ObjectId(pid))
             cursor = self._p.find({"_id": {"$in": pilot_oid},
-                                   "links.pilotmanager": pilot_manager_id})
+                                   "links.pilotmanager": pilot_manager_uid})
         # cursor -> dict
         pilots_json = []
         for obj in cursor:
@@ -265,17 +265,17 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        unit_manager_ids = []
+        unit_manager_uids = []
         cursor = self._um.find()
         
         # cursor -> dict
         for obj in cursor:
-            unit_manager_ids.append(str(obj['_id']))
-        return unit_manager_ids
+            unit_manager_uids.append(str(obj['_id']))
+        return unit_manager_uids
 
     #---------------------------------------------------------------------------
     #
-    def unit_manager_add_pilot(self, unit_manager_id, pilot_id):
+    def unit_manager_add_pilot(self, unit_manager_uid, pilot_id):
         """ Adds a pilot from a unit manager.
         """
         if self._s is None:
@@ -283,11 +283,11 @@ class Session():
 
         # Add the ids to the pilot's queue
         self._p.update({"_id": ObjectId(pilot_id)}, 
-                       {"$set": {"links.unitmanager" : unit_manager_id}})
+                       {"$set": {"links.unitmanager" : unit_manager_uid}})
 
     #---------------------------------------------------------------------------
     #
-    def unit_manager_remove_pilot(self, unit_manager_id, pilot_id):
+    def unit_manager_remove_pilot(self, unit_manager_uid, pilot_id):
         """ Removes a pilot from a unit manager.
         """
         if self._s is None:
@@ -299,13 +299,13 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def unit_manager_list_pilots(self, unit_manager_id):
+    def unit_manager_list_pilots(self, unit_manager_uid):
         """ Lists all pilots associated with a unit manager.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._p.find({"links.unitmanager": unit_manager_id})
+        cursor = self._p.find({"links.unitmanager": unit_manager_uid})
         
         # cursor -> dict
         pilot_ids = []
@@ -315,13 +315,13 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def unit_manager_list_work_units(self, unit_manager_id):
+    def unit_manager_list_work_units(self, unit_manager_uid):
         """ Lists all work units associated with a unit manager.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._w.find({"links.unitmanager": unit_manager_id})
+        cursor = self._w.find({"links.unitmanager": unit_manager_uid})
         
         # cursor -> dict
         unit_ids = []
@@ -350,7 +350,7 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def insert_workunits(self, pilot_id, unit_manager_id, unit_descriptions):
+    def insert_workunits(self, pilot_id, unit_manager_uid, unit_descriptions):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
@@ -375,7 +375,7 @@ class Session():
             workunit = {
                 "description"   : wu_desc.as_dict(),
                 "links"    : {
-                    "unitmanager" : unit_manager_id, 
+                    "unitmanager" : unit_manager_uid, 
                     "pilot"       : pilot_id,
                 },
                 "info"          : {

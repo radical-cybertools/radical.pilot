@@ -7,8 +7,6 @@ import radical.utils   as ru
 
 import session         as s
 import exceptions      as e
-#import attributes      as att
-#import pilot_manager   as pm
 import sinon._api      as sa
 
 
@@ -21,7 +19,7 @@ class Pilot (sa.Pilot) :
     def __init__ (self):
         """ Le constructeur. Not meant to be called directly.
         """
-        self._pid = None
+        self._uid = None
 
         self._description = None
         self._manager     = None
@@ -29,12 +27,19 @@ class Pilot (sa.Pilot) :
     # --------------------------------------------------------------------------
     #
     @property 
-    def id(self):
-        """ Implements the interface.Pilot.id property.
+    def uid(self):
+        """Returns the Pilot's unique identifier.
+
+        The uid identifies the Pilot within the :class:`PilotManager` and 
+        can be used to retrieve an existing Pilot.
+
+        **Returns:**
+            * A unique identifier (string).
         """
-        if not self._pid:
-            raise Exception("ARGH")
-        return self._pid
+        if not self._uid:
+            raise sinon.SinonException("Invalid Pilot instance.")
+
+        return self._uid
 
     # --------------------------------------------------------------------------
     #
@@ -42,19 +47,20 @@ class Pilot (sa.Pilot) :
     def description(self):
         """ Implements the interface.Pilot.description property.
         """
-        if not self._pid:
-            raise Exception("ARGH")
+        if not self._uid:
+            raise sinon.SinonException("Invalid Pilot instance.")
+
         return self._description
 
     # --------------------------------------------------------------------------
     #
     @staticmethod 
-    def _create (pilot_manager_obj, pilot_id, pilot_description) :
+    def _create (pilot_manager_obj, pilot_uid, pilot_description) :
         """ Create a new pilot.
         """
         # create and return pilot object
         pilot = Pilot()
-        pilot._pid = pilot_id
+        pilot._uid = pilot_uid
 
         pilot._description = pilot_description
         pilot._manager     = pilot_manager_obj
@@ -64,18 +70,18 @@ class Pilot (sa.Pilot) :
     # --------------------------------------------------------------------------
     #
     @staticmethod 
-    def _get (pilot_manager_obj, pilot_ids) :
+    def _get (pilot_manager_obj, pilot_uids) :
         """ Get a pilot via its ID.
         """
         # create database entry
-        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_id=pilot_manager_obj.uid, 
-                                                                 pilot_ids=pilot_ids)
+        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_uid=pilot_manager_obj.uid, 
+                                                                 pilot_uids=pilot_uids)
         # create and return pilot objects
         pilots = []
 
         for p in pilots_json:
             pilot = Pilot()
-            pilot._pid = str(p['_id'])
+            pilot._uid = str(p['_id'])
             pilot._description = p['description']
             pilot._manager = pilot_manager_obj
             pilots.append(pilot)
@@ -100,9 +106,8 @@ class Pilot (sa.Pilot) :
     def wait (self, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=None):
         """
         """
-        if not self._pid:
-            raise Exception("ARGH")
-
+        if not self._uid:
+            raise sinon.SinonException("Invalid Pilot instance.")
 
         with self._rlock :
 
@@ -125,6 +130,8 @@ class Pilot (sa.Pilot) :
     # --------------------------------------------------------------------------
     #
     def cancel (self, drain=False) :
+        if not self._uid:
+            raise sinon.SinonException("Invalid Pilot instance.")
 
         with self._rlock :
 

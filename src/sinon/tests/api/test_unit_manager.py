@@ -61,7 +61,7 @@ class TestUnitManager(unittest.TestCase):
         um = sinon.UnitManager(session=session)
         assert session.list_unit_managers() == [um.umid], "Wrong list of unit managers"
 
-        um_r = sinon.UnitManager(unit_manager_id=um.umid, session=session)
+        um_r = sinon.UnitManager(unit_manager_uid=um.umid, session=session)
         assert session.list_unit_managers() == [um_r.umid], "Wrong list of unit managers"
 
         assert um.umid == um_r.umid, "Unit Manager IDs not matching!"
@@ -80,13 +80,13 @@ class TestUnitManager(unittest.TestCase):
         assert um.list_pilots() == [], "Wrong list of pilots"
 
         um.add_pilot(p1)
-        assert um.list_pilots() == [p1.id], "Wrong list of pilots"
+        assert um.list_pilots() == [p1.uid], "Wrong list of pilots"
 
         # adding the same pilot twice should be ignored
         um.add_pilot(p1)
-        assert um.list_pilots() == [p1.id], "Wrong list of pilots"
+        assert um.list_pilots() == [p1.uid], "Wrong list of pilots"
 
-        um.remove_pilot(p1.id)
+        um.remove_pilot(p1.uid)
         assert um.list_pilots() == [], "Wrong list of pilots"
 
         pilot_list = []
@@ -99,7 +99,7 @@ class TestUnitManager(unittest.TestCase):
         assert len(pl) == 10, "Wrong number of associated pilots"
         for l in pilot_list:
             assert l in pilot_list, "Unknown pilot in list"
-            um.remove_pilot(l.id)
+            um.remove_pilot(l.uid)
 
         assert um.list_pilots() == [], "Wrong list of pilots"
 

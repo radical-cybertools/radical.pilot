@@ -14,21 +14,38 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, unit_manager_id=None, scheduler=None, session=None) :
-        """ Le constructeur.
+    def __init__ (self, session, unit_manager_uid=None, scheduler=None, ) :
+        """Creates a new or reconnects to an exising UnitManager.
+
+        If called without a unit_manager_uid, a new UnitManager object is 
+        created and attached to the session. If unit_manager_uid is set, an 
+        existing UnitManager instance is retrieved from the session. 
+
+        **Args:**
+
+            * session (str): The session instance to use.
+
+            * unit_manager_uid (str): If pilot_manager_uid is set, we try 
+              re-connect to an existing PilotManager instead of creating a 
+              new one.
+
+            * scheduler (str): The name of the scheduler plug-in to use.
+
+        **Raises:**
+            * SinonException
         """
         self._DB = session._dbs
         self._session = session
 
-        if unit_manager_id is None:
+        if unit_manager_uid is None:
             # Create a new unit manager.
             self._umid = self._DB.insert_unit_manager(unit_manager_data={})
         else:
             # reconnect to an existing PM
-            if unit_manager_id not in self._DB.list_unit_manager_ids():
+            if unit_manager_uid not in self._DB.list_unit_manager_uids():
                 raise LookupError ("Unit Manager '%s' not in database." \
-                    % unit_manager_id)
-            self._umid = unit_manager_id
+                    % unit_manager_uid)
+            self._umid = unit_manager_uid
 
     #---------------------------------------------------------------------------
     #
@@ -41,26 +58,26 @@ class UnitManager (object) :
     # --------------------------------------------------------------------------
     #
     def add_pilot (self, pilot):
-        self._DB.unit_manager_add_pilot(unit_manager_id=self.umid,
-                                        pilot_id=pilot.id)
+        self._DB.unit_manager_add_pilot(unit_manager_uid=self.umid,
+                                        pilot_id=pilot.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def list_pilots (self) :
-        return self._DB.unit_manager_list_pilots(unit_manager_id=self.umid)
+        return self._DB.unit_manager_list_pilots(unit_manager_uid=self.umid)
 
 
     # --------------------------------------------------------------------------
     #
     def list_units (self, utype=interface.ANY) :
-        return self._DB.unit_manager_list_work_units(unit_manager_id=self.umid)
+        return self._DB.unit_manager_list_work_units(unit_manager_uid=self.umid)
 
 
     # --------------------------------------------------------------------------
     #
     def remove_pilot (self, pilot_id, drain=True):
-        self._DB.unit_manager_remove_pilot(unit_manager_id=self.umid,
+        self._DB.unit_manager_remove_pilot(unit_manager_uid=self.umid,
                                            pilot_id=pilot_id)
 
 
@@ -70,7 +87,7 @@ class UnitManager (object) :
         
         pilot_id = self.list_pilots()[0]
         self._DB.insert_workunits(pilot_id=pilot_id, 
-            unit_manager_id=self.umid,
+            unit_manager_uid=self.umid,
             unit_descriptions=unit_descriptions)
 
         return None

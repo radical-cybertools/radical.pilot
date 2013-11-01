@@ -60,7 +60,7 @@ class Test_Session(unittest.TestCase):
             session_ids.append(session.uid)
 
         for sid in session_ids:
-            session_r = sinon.Session(database_url=DBURL, session_id=sid, database_name=DBNAME)
+            session_r = sinon.Session(database_url=DBURL, session_uid=sid, database_name=DBNAME)
             assert session_r.uid == sid, "Session IDs don't match"
 
         session.destroy()
