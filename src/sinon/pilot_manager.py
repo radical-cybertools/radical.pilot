@@ -58,7 +58,7 @@ class PilotManager(object):
               new one.
 
         **Raises:**
-            * SinonException
+            * :class:`sinon.SinonException`
         """
         self._DB = session._dbs
         self._session = session
@@ -79,7 +79,7 @@ class PilotManager(object):
     def uid(self):
         """Returns the PilotManagers's unique identifier.
 
-        The uid identifies the PilotManager within the :class:`Session` and 
+        The uid identifies the PilotManager within the :class:`sinon.Session` and 
         can be used to retrieve an existing PilotManager. 
 
         **Returns:**
@@ -90,7 +90,13 @@ class PilotManager(object):
     # --------------------------------------------------------------------------
     #
     def submit_pilots(self, pilot_descriptions):
-        """Submits a new :class:`Pilot` to a resource. 
+        """Submits a new :class:`sinon.Pilot` to a resource. 
+
+        **Returns:**
+            * A list of :class:`sinon.Pilot` instances.
+
+        **Raises:**
+            * :class:`sinon.SinonException`
         """
         # implicit list conversion
         if type(pilot_descriptions) is not list:
@@ -122,33 +128,33 @@ class PilotManager(object):
     # --------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """Lists the unique identifiers of all :class:`Pilot` instances 
+        """Lists the unique identifiers of all :class:`sinon.Pilot` instances 
         associated with this PilotManager
 
         **Returns:**
-            * A list of :class:`Pilot` uids (strings).
+            * A list of :class:`sinon.Pilot` uids (strings).
 
         **Raises:**
-            * SinonException
+            * :class:`sinon.SinonException`
         """
         return self._session._dbs.list_pilot_uids(self._uid)
 
     # --------------------------------------------------------------------------
     #
     def get_pilots(self, pilot_uids=None):
-        """Returns one or more :class:`Pilot` instances.
+        """Returns one or more :class:`sinon.Pilot` instances.
 
         **Args:**
 
-            pilot_uids (list of str): If pilot_uids is set, only the Pilots with 
-            the specified uids are returned. If pilot_uids is None, all 
-            Pilots are returned.
+            pilot_uids (list of strings): If pilot_uids is set, only the
+            Pilots with  the specified uids are returned. If pilot_uids is
+            None, all Pilots are returned.
 
         **Returns:**
-            * A list of :class:`Pilot` objects (:class:`Pilot`).
+            * A list of :class:`sinon.Pilot` objects (:class:`sinon.Pilot`).
 
         **Raises:**
-            * SinonException
+            * :class:`sinon.SinonException`
         """
         # implicit list conversion
         if (pilot_uids is not None) and (type(pilot_uids) is not list):

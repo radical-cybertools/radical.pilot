@@ -19,11 +19,12 @@ class Session(sa.Session):
     """A Session encapsulates a SAGA-Pilot instance and is the *root* object
     for all other SAGA-Pilot objects. 
 
-    A Session holds :class:`PilotManger` and :class:`UnitManager` instances
-    which in turn hold  :class:`Pilot` and :class:`ComputeUnit` instances.
+    A Session holds :class:`sinon.PilotManager` and :class:`sinon.UnitManager`
+    instances which in turn hold  :class:`sinon.Pilot` and
+    :class:`sinon.ComputeUnit` instances.
 
-    Each Session has a unique identifier :data:`uid` that can be used
-    to re-connect to a SAGA-Pilot instance in the database. 
+    Each Session has a unique identifier :data:`sinon.Session.uid` that can be
+    used to re-connect to a SAGA-Pilot instance in the database.
 
     **Example**::
 
@@ -38,9 +39,9 @@ class Session(sa.Session):
     #---------------------------------------------------------------------------
     #
     def __init__ (self, database_url, session_uid=None, database_name="sinon"):
-        """Creates a new or reconnects to an exising Session.
+        """Creates a new or reconnects to an exising session.
 
-        If called without a session_uid, a new Session object is created and 
+        If called without a session_uid, a new Session instance is created and 
         stored in the database. If session_uid is set, an existing session is 
         retrieved from the database. 
 
@@ -54,7 +55,7 @@ class Session(sa.Session):
               existing session instead of creating a new one.
 
         **Raises:**
-            * SinonException
+            * :class:`sinon.SinonException`
         """
         if session_uid is None:
             # if session_uid is 'None' we create a new session
@@ -124,7 +125,7 @@ class Session(sa.Session):
             * A list of PilotManager uids (strings).
 
         **Raises:**
-            * SinonException
+            * :class:`sinon.SinonException`
         """
         return self._dbs.list_pilot_manager_uids()
 
@@ -144,7 +145,7 @@ class Session(sa.Session):
             * A list of UnitManagers uids (strings).
 
         **Raises:**
-            * SinonException
+            * :class:`sinon.SinonException`
         """
         return self._dbs.list_unit_manager_uids()
 

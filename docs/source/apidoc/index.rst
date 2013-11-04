@@ -21,3 +21,9 @@ PilotManagers
 .. autoclass:: sinon.PilotManager
    :members: PilotManager
    :special-members: __init__
+
+Error Handling
+--------------
+
+.. autoclass:: sinon.SinonException
+   :members: SinonException
