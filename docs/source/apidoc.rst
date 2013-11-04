@@ -22,6 +22,13 @@ PilotManagers
    :members: PilotManager
    :special-members: __init__
 
+(Work-)Unit Managers
+--------------------
+
+.. autoclass:: sinon.UnitManager
+   :members: UnitManager
+   :special-members: __init__
+
 Error Handling
 --------------
 

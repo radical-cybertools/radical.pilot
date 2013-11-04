@@ -26,8 +26,9 @@ class PilotManager(object):
     factory for Pilots which are created via the :meth:`submit_pilots`
     call.
 
-    Each PilotManager has a unique identifier :data:`uid` that can be used
-    to re-connect to previoulsy created PilotManager in a given :class:`Session`.
+    Each PilotManager has a unique identifier :data:`sinon.PilotManager.uid`
+    that can be used to re-connect to previoulsy created PilotManager in a
+    given :class:`sinon.Session`.
 
     **Example**::
 

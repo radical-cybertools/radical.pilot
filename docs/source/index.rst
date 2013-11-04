@@ -1,6 +1,6 @@
 
 ##################################
-Sinon |version| documentation
+SAGA-Pilot |version| documentation
 ##################################
 
 #########
@@ -11,6 +11,7 @@ Contents:
    :numbered:
    :maxdepth: 3
 
-   apidoc/index.rst
-
+   apidoc.rst
+   schedulers.rst
+   machconf.rst
 

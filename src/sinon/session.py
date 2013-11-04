@@ -112,8 +112,8 @@ class Session(sa.Session):
     #---------------------------------------------------------------------------
     #
     def list_pilot_managers(self):
-        """Lists the unique identifiers of all :class:`PilotManager` instances 
-        associated with this session.
+        """Lists the unique identifiers of all :class:`sinon.PilotManager` 
+        instances associated with this session.
 
         **Example**::
 
@@ -122,7 +122,7 @@ class Session(sa.Session):
                 pm = sinon.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of PilotManager uids (strings).
+            * A list of :class:`sinon.PilotManager` uids (strings).
 
         **Raises:**
             * :class:`sinon.SinonException`
@@ -132,8 +132,8 @@ class Session(sa.Session):
     #---------------------------------------------------------------------------
     #
     def list_unit_managers(self):
-        """Lists the unique identifiers of all :class:`UnitManagers` instances 
-        associated with this session.
+        """Lists the unique identifiers of all :class:`sinon.UnitManager` 
+        instances associated with this session.
 
         **Example**::
 
@@ -142,7 +142,7 @@ class Session(sa.Session):
                 pm = sinon.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of UnitManagers uids (strings).
+            * A list of :class:`sinon.UnitManager` uids (strings).
 
         **Raises:**
             * :class:`sinon.SinonException`

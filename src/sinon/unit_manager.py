@@ -11,6 +11,43 @@ from sinon.db import Session as dbSession
 # ------------------------------------------------------------------------------
 #
 class UnitManager (object) :
+    """A UnitManager manages :class:`sinon.ComputeUnit` instances which 
+    represent the **executable** workload in SAGA-Pilot. A UnitManager connects 
+    the ComputeUnits with one or more :class:`Pilot` instances (which represent
+    the workload **executors** in SAGA-Pilot) and a **scheduler** which 
+    determines which :class:`ComputeUnit` gets executed on which :class:`Pilot`.
+
+    Each UnitManager has a unique identifier :data:`sinon.UnitManager.uid`
+    that can be used to re-connect to previoulsy created UnitManager in a
+    given :class:`sinon.Session`.
+
+    **Example**::
+
+        s = sinon.Session(database_url=DBURL)
+        
+        pm = sinon.PilotManager(session=s)
+
+        pd = sinon.ComputePilotDescription()
+        pd.resource = "futuregrid.alamo"
+        pd.cores = 16
+
+        p1 = pm.submit_pilots(pd) # create first pilot with 16 cores
+        p2 = pm.submit_pilots(pd) # create second pilot with 16 cores
+
+        # Create a workload of 128 '/bin/sleep' compute units
+        compute_units = []
+        for unit_count in range(0, 128):
+            cu = sinon.ComputeUnitDescription()
+            cu.executable = "/bin/sleep"
+            cu.arguments = ['60']
+            compute_units.append(cu)
+
+        # Combine the two pilots, the workload and a scheduler via 
+        # a UnitManager.
+        um = sinon.UnitManager(session=session, scheduler="ROUNDROBIN")
+        um.add_pilot(p1)
+        um.submit_units(compute_units)
+    """
 
     # --------------------------------------------------------------------------
     #
@@ -32,7 +69,7 @@ class UnitManager (object) :
             * scheduler (str): The name of the scheduler plug-in to use.
 
         **Raises:**
-            * SinonException
+            * :class:`sinon.SinonException`
         """
         self._DB = session._dbs
         self._session = session
