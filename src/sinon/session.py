@@ -45,13 +45,13 @@ class Session(sa.Session):
         stored in the database. If session_uid is set, an existing session is 
         retrieved from the database. 
 
-        **Args:**
-            * database_url (str): The URL of the MongoDB back-end database. 
+        **Arguments:**
+            * **database_url** (`string`): The URL of the MongoDB back-end database. 
 
-            * database_name (str): An alternative root database name 
+            * **database_name** (`string`): An alternative root database name 
               (default: 'sinon').
 
-            * session_uid (str): If session_uid is set, we try re-connect to an
+            * **session_uid** (`string`): If session_uid is set, we try re-connect to an
               existing session instead of creating a new one.
 
         **Raises:**
@@ -93,7 +93,7 @@ class Session(sa.Session):
        re-connect to an existing session. 
 
         **Returns:**
-            * A unique identifier (strings).
+            * A unique identifier (`string`).
 
         """
         return self._session_uid
@@ -122,7 +122,7 @@ class Session(sa.Session):
                 pm = sinon.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of :class:`sinon.PilotManager` uids (strings).
+            * A list of :class:`sinon.PilotManager` uids (`list` oif strings`).
 
         **Raises:**
             * :class:`sinon.SinonException`
@@ -142,7 +142,7 @@ class Session(sa.Session):
                 pm = sinon.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of :class:`sinon.UnitManager` uids (strings).
+            * A list of :class:`sinon.UnitManager` uids (`list` of `strings`).
 
         **Raises:**
             * :class:`sinon.SinonException`

@@ -9,9 +9,10 @@
 __copyright__ = "Copyright 2013, RADICAL Group @ Rutgers"
 __license__   = "MIT"
 
-import sinon._api as interface
+import _api as interface
 
 from session      import Session
+from exceptions   import SinonException
 from pilot        import Pilot
 
 from sinon.db import Session as dbSession
@@ -20,11 +21,12 @@ from sinon.db import Session as dbSession
 # ------------------------------------------------------------------------------
 #
 class PilotManager(object):
-    """A PilotManager hold one or more :class:`Pilot` instances. 
-
-    In its current incarnation a PilotManager is little more than just a 
-    factory for Pilots which are created via the :meth:`submit_pilots`
-    call.
+    """A PilotManager holds :class:`sinon.Pilot` instances that are 
+    submitted via the :meth:`sinon.PilotManager.submit_pilots` method.
+    
+    It is possible to attach one or more :ref:`chapter_machconf` 
+    to a PilotManager to outsource machine specific configuration 
+    parameters to an external configuration file. 
 
     Each PilotManager has a unique identifier :data:`sinon.PilotManager.uid`
     that can be used to re-connect to previoulsy created PilotManager in a
@@ -43,20 +45,36 @@ class PilotManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, session, pilot_manager_uid=None): 
+    def __init__ (self, session, machine_config_files=None, pilot_manager_uid=None): 
         """Creates a new or reconnects to an exising PilotManager.
 
         If called without a pilot_manager_uid, a new PilotManager object is 
         created and attached to the session. If pilot_manager_uid is set, an 
         existing PilotManager instance is retrieved from the session. 
 
-        **Args:**
+        **Arguments:**
 
-            * session (str): The session instance to use.
+            * **session** (:class:`sinon.Session`): The session instance to use.
 
-            * pilot_manager_uid (str): If pilot_manager_uid is set, we try 
+            * **pilot_manager_uid** (`string`): If pilot_manager_uid is set, we try 
               re-connect to an existing PilotManager instead of creating a 
               new one.
+
+            * **machine_config_files** (`string` or `list` of `strings`): A list of URLs pointing to 
+              :ref:`chapter_machconf`. Currently `file://`, `http://` and `https://`
+              URLs are supported.
+              
+              If one or more machine_config_files are provided, Pilots submitted 
+              via this PilotManager can access the configuration entries in the 
+              files via the :class:`ComputePilotDescription`. For example::
+
+                  pm = sinon.PilotManager(session=s, machine_config_files="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+
+                  pd = sinon.ComputePilotDescription()
+                  pd.resource = "futuregrid.INDIA"
+                  pd.cores = 16
+
+                  pm.submit_pilots(pd)
 
         **Raises:**
             * :class:`sinon.SinonException`
@@ -65,8 +83,9 @@ class PilotManager(object):
         self._session = session
 
         if pilot_manager_uid is None:
-            # Create a new pilot manager.
+            # Create a new pilot manager. We need at least one configuration file for that:
             self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
+            self._mcf = machine_config_files
         else:
             # reconnect to an existing PM
             if pilot_manager_uid not in self._DB.list_pilot_manager_uids():
@@ -84,7 +103,7 @@ class PilotManager(object):
         can be used to retrieve an existing PilotManager. 
 
         **Returns:**
-            * A unique identifier (strings).
+            * A unique identifier (`string`).
         """
         return self._uid
 
@@ -94,7 +113,7 @@ class PilotManager(object):
         """Submits a new :class:`sinon.Pilot` to a resource. 
 
         **Returns:**
-            * A list of :class:`sinon.Pilot` instances.
+            * One or more :class:`sinon.Pilot` instances (`list` of :class:`sinon.Pilot`).
 
         **Raises:**
             * :class:`sinon.SinonException`
@@ -133,7 +152,7 @@ class PilotManager(object):
         associated with this PilotManager
 
         **Returns:**
-            * A list of :class:`sinon.Pilot` uids (strings).
+            * A list of :class:`sinon.Pilot` uids (`string`).
 
         **Raises:**
             * :class:`sinon.SinonException`
@@ -145,14 +164,14 @@ class PilotManager(object):
     def get_pilots(self, pilot_uids=None):
         """Returns one or more :class:`sinon.Pilot` instances.
 
-        **Args:**
+        **Arguments:**
 
-            pilot_uids (list of strings): If pilot_uids is set, only the
+            **pilot_uids** (list of strings): If pilot_uids is set, only the
             Pilots with  the specified uids are returned. If pilot_uids is
             None, all Pilots are returned.
 
         **Returns:**
-            * A list of :class:`sinon.Pilot` objects (:class:`sinon.Pilot`).
+            * A list of :class:`sinon.Pilot` objects (`list` of :class:`sinon.Pilot`).
 
         **Raises:**
             * :class:`sinon.SinonException`
