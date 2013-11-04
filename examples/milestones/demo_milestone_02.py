@@ -21,6 +21,12 @@ def demo_milestone_02():
         # Add a Pilot Manager with a machine configuration file for FutureGrid
         pm = sinon.PilotManager(session=session, machine_configurations=FGCONF)
 
+        # Submit a 16-core pilot to sierra.futuregrid.org
+        pd = sinon.ComputePilotDescription()
+        pd.resource = "futuregrid.SIERRA"
+        pd.cores = 16
+        sierra_pilot = pm.submit_pilots(pd)
+
     except sinon.SinonException, ex:
         print "Error: %s" % ex
 
