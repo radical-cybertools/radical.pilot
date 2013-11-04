@@ -45,7 +45,7 @@ class PilotManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, session, machine_config_files=None, pilot_manager_uid=None): 
+    def __init__ (self, session, machine_configurations=None, pilot_manager_uid=None): 
         """Creates a new or reconnects to an exising PilotManager.
 
         If called without a pilot_manager_uid, a new PilotManager object is 
@@ -60,15 +60,15 @@ class PilotManager(object):
               re-connect to an existing PilotManager instead of creating a 
               new one.
 
-            * **machine_config_files** (`string` or `list` of `strings`): A list of URLs pointing to 
+            * **machine_configurations** (`string` or `list` of `strings`): A list of URLs pointing to 
               :ref:`chapter_machconf`. Currently `file://`, `http://` and `https://`
               URLs are supported.
               
-              If one or more machine_config_files are provided, Pilots submitted 
+              If one or more machine_configurations are provided, Pilots submitted 
               via this PilotManager can access the configuration entries in the 
               files via the :class:`ComputePilotDescription`. For example::
 
-                  pm = sinon.PilotManager(session=s, machine_config_files="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+                  pm = sinon.PilotManager(session=s, machine_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
                   pd = sinon.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"
@@ -85,7 +85,7 @@ class PilotManager(object):
         if pilot_manager_uid is None:
             # Create a new pilot manager. We need at least one configuration file for that:
             self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
-            self._mcf = machine_config_files
+            self._mcfgs = machine_configurations
         else:
             # reconnect to an existing PM
             if pilot_manager_uid not in self._DB.list_pilot_manager_uids():
