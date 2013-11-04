@@ -1,0 +1,9 @@
+{
+    "futuregrid.INDIA": {
+        "URL": "pbs+ssh://india.futuregrid.org"
+    },
+
+    "futuregrid.SIERRA": {
+        "URL": "pbs+ssh://sierra.futuregrid.org"
+    }
+}
