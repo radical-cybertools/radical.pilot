@@ -206,7 +206,7 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_units (self, uids, state=[interface.DONE, interface.FAILED, interface.CANCELED], timeout=-1.0) :
+    def wait_units (self, uids=None, state=[interface.DONE, interface.FAILED, interface.CANCELED], timeout=-1.0) :
 
         with self._rlock :
 

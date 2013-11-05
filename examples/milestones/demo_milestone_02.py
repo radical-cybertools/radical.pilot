@@ -11,7 +11,7 @@ FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregr
 #
 def demo_milestone_02():
     """Demo for Milestone 2: Submit a single pilot to FutureGrid an execute 
-    O(10) work units. 
+    O(10) work units. Document performance.
     """
     try:
         # Create a new session. A session is a set of Pilot Managers
@@ -27,12 +27,28 @@ def demo_milestone_02():
         pd.slots = 16
         sierra_pilot = pm.submit_pilots(pd)
 
+        # Create a workload of 64 '/bin/sleep' compute units
+        compute_units = []
+        for unit_count in range(0, 64):
+            cu = sinon.ComputeUnitDescription()
+            cu.executable = "/bin/sleep"
+            cu.arguments = ['60']
+            compute_units.append(cu)
+
+        # Combine the pilot, the workload and a scheduler via 
+        # a UnitManager.
+        um = sinon.UnitManager(session=session, scheduler="ROUNDROBIN")
+        um.add_pilot(sierra_pilot)
+        um.submit_units(compute_units)
+
+        # Wait for all compute units to finish.
+        um.wait()
+
         return 0
 
     except sinon.SinonException, ex:
         print "Error: %s" % ex
         return -1
-
 
 #-------------------------------------------------------------------------------
 #

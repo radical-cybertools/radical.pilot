@@ -8,9 +8,11 @@ API Reference
 .. toctree::
    :numbered:
 
-Sessions
-========
+Sessions and Security Contexts
+==============================
 
+Sessions
+--------
 .. autoclass:: sinon.Session
    :members: Session
    :special-members: __init__
@@ -28,8 +30,6 @@ ComputePilotDescription
 -----------------------
 .. autoclass:: sinon.ComputePilotDescription
    :members: ComputePilotDescription
-
-
 
 WorkUnits and UnitManagers
 ==========================
