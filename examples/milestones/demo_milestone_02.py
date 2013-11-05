@@ -19,7 +19,7 @@ def demo_milestone_02():
         session = sinon.Session(database_url=DBURL)
 
         # Add a Pilot Manager with a machine configuration file for FutureGrid
-        pm = sinon.PilotManager(session=session, machine_configurations=FGCONF)
+        pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         # Submit a 16-core pilot to sierra.futuregrid.org
         pd = sinon.ComputePilotDescription()

@@ -59,22 +59,14 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, session, unit_manager_uid=None, scheduler=None, ) :
-        """Creates a new or reconnects to an exising UnitManager.
-
-        If called without a unit_manager_uid, a new UnitManager object is 
-        created and attached to the session. If unit_manager_uid is set, an 
-        existing UnitManager instance is retrieved from the session. 
+    def __init__ (self, session, scheduler=None) :
+        """Creates a new UnitManager and attaches it to the session. 
 
         **Args:**
 
-            * session (str): The session instance to use.
+            * session (`string`): The session instance to use.
 
-            * unit_manager_uid (str): If pilot_manager_uid is set, we try 
-              re-connect to an existing PilotManager instead of creating a 
-              new one.
-
-            * scheduler (str): The name of the scheduler plug-in to use.
+            * scheduler (`string`): The name of the scheduler plug-in to use.
 
         **Raises:**
             * :class:`sinon.SinonException`
@@ -82,15 +74,38 @@ class UnitManager (object) :
         self._DB = session._dbs
         self._session = session
 
-        if unit_manager_uid is None:
-            # Create a new unit manager.
-            self._umid = self._DB.insert_unit_manager(unit_manager_data={})
+        if scheduler == "~RECON~":
+            # When we get the "~RECON~" keyword as scheduler, we were called 
+            # from the 'get()' class method
+            pass
         else:
-            # reconnect to an existing PM
-            if unit_manager_uid not in self._DB.list_unit_manager_uids():
-                raise LookupError ("Unit Manager '%s' not in database." \
-                    % unit_manager_uid)
-            self._umid = unit_manager_uid
+            self._umid = self._DB.insert_unit_manager(unit_manager_data={})
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod 
+    def get(cls, session, unit_manager_uid) :
+        """ Re-connects to an existing UnitManager via its uid.
+
+        **Arguments:**
+
+            * **session** (:class:`sinon.Session`): The session instance to use.
+
+            * **unit_manager_uid** (`string`): The unique identifier of the 
+              UnitManager we want to re-connect to.
+
+        **Raises:**
+            * :class:`sinon.SinonException` if a UnitManager with 
+              `unit_manager_uid` doesn't exist in the database.
+        """
+        if unit_manager_uid not in session._dbs.list_unit_manager_uids():
+            raise LookupError ("UnitManager '%s' not in database." \
+                % pilot_manager_uid)
+
+        obj = cls(session=session, scheduler="~RECON~")
+        obj._umid = unit_manager_uid
+
+        return obj
 
     #---------------------------------------------------------------------------
     #

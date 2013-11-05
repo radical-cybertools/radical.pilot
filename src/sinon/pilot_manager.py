@@ -37,7 +37,8 @@ class PilotManager(object):
         s = sinon.Session(database_url=DBURL)
         
         pm1 = sinon.PilotManager(session=s, resource_configurations=RESCONF)
-        pm2 = sinon.PilotManager(session=s, pilot_manager_uid=pm1.uid)
+        # Re-connect via the 'get()' method.
+        pm2 = sinon.PilotManager.get(session=s, pilot_manager_uid=pm1.uid)
 
         # pm1 and pm2 are pointing to the same PilotManager
         assert pm1.uid == pm2.uid
@@ -45,12 +46,8 @@ class PilotManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, session, resource_configurations, pilot_manager_uid=None): 
-        """Creates a new or reconnects to an exising PilotManager.
-
-        If called without a pilot_manager_uid, a new PilotManager object is 
-        created and attached to the session. If pilot_manager_uid is set, an 
-        existing PilotManager instance is retrieved from the session.
+    def __init__ (self, session, resource_configurations): 
+        """Creates a new PilotManager and attaches is to the session. 
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
                   parameter is currently mandatory for creating a new PilotManager
@@ -60,13 +57,9 @@ class PilotManager(object):
 
             * **session** (:class:`sinon.Session`): The session instance to use.
 
-            * **pilot_manager_uid** (`string`): If pilot_manager_uid is set, we try 
-              re-connect to an existing PilotManager instead of creating a 
-              new one.
-
-            * **resource_configurations** (`string` or `list` of `strings`): A list of URLs pointing to 
-              :ref:`chapter_machconf`. Currently `file://`, `http://` and `https://`
-              URLs are supported.
+            * **resource_configurations** (`string` or `list` of `strings`): 
+              A list of URLs pointing to :ref:`chapter_machconf`. Currently 
+              `file://`, `http://` and `https://` URLs are supported.
               
               If one or more resource_configurations are provided, Pilots submitted 
               via this PilotManager can access the configuration entries in the 
@@ -86,16 +79,40 @@ class PilotManager(object):
         self._DB = session._dbs
         self._session = session
 
-        if pilot_manager_uid is None:
+        if resource_configurations == "~RECON~":
+            # When we get the "~RECON~" keyword as resource_configurations, we were called 
+            # from the 'get()' class method
+            pass
+        else:
             # Create a new pilot manager. We need at least one configuration file for that:
             self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
             self._mcfgs = resource_configurations
-        else:
-            # reconnect to an existing PM
-            if pilot_manager_uid not in self._DB.list_pilot_manager_uids():
-                raise LookupError ("Pilot Manager '%s' not in database." \
-                    % pilot_manager_uid)
-            self._uid = pilot_manager_uid
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod 
+    def get(cls, session, pilot_manager_uid) :
+        """ Re-connects to an existing PilotManager via its uid.
+
+        **Arguments:**
+
+            * **session** (:class:`sinon.Session`): The session instance to use.
+
+            * **pilot_manager_uid** (`string`): The unique identifier of the 
+              PilotManager we want to re-connect to.
+
+        **Raises:**
+            * :class:`sinon.SinonException` if a PilotManager with 
+              `pilot_manager_uid` doesn't exist in the database.
+        """
+        if pilot_manager_uid not in session._dbs.list_pilot_manager_uids():
+            raise LookupError ("PilotManager '%s' not in database." \
+                % pilot_manager_uid)
+
+        obj = cls(session=session, resource_configurations="~RECON~")
+        obj._uid = pilot_manager_uid
+
+        return obj
 
     #---------------------------------------------------------------------------
     #

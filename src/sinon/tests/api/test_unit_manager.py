@@ -10,6 +10,7 @@ from sinon.db import Session
 from pymongo import MongoClient
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
+RESCFG = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
 DBNAME = 'sinon_test'
 
 #-----------------------------------------------------------------------------
@@ -61,7 +62,7 @@ class TestUnitManager(unittest.TestCase):
         um = sinon.UnitManager(session=session)
         assert session.list_unit_managers() == [um.umid], "Wrong list of unit managers"
 
-        um_r = sinon.UnitManager(unit_manager_uid=um.umid, session=session)
+        um_r = sinon.UnitManager.get(session=session, unit_manager_uid=um.umid)
         assert session.list_unit_managers() == [um_r.umid], "Wrong list of unit managers"
 
         assert um.umid == um_r.umid, "Unit Manager IDs not matching!"
@@ -73,7 +74,7 @@ class TestUnitManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sinon.PilotManager(session=session)
+        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         p1 = pm.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
 
         um = sinon.UnitManager(session=session)

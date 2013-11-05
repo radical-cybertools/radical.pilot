@@ -10,6 +10,7 @@ from sinon.db import Session
 from pymongo import MongoClient
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
+RESCFG = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
 DBNAME = 'sinon_test'
 
 #-----------------------------------------------------------------------------
@@ -44,10 +45,10 @@ class Test_PilotManager(unittest.TestCase):
 
         assert session.list_pilot_managers() == [], "Wrong number of pilot managers"
 
-        pm = sinon.PilotManager(session=session)
+        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert session.list_pilot_managers() == [pm.uid], "Wrong list of pilot managers"
 
-        pm = sinon.PilotManager(session=session)
+        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(session.list_pilot_managers()) == 2, "Wrong number of pilot managers"
 
 
@@ -58,10 +59,11 @@ class Test_PilotManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sinon.PilotManager(session=session)
+        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert session.list_pilot_managers() == [pm.uid], "Wrong list of pilot managers"
 
-        pm_r = sinon.PilotManager(pilot_manager_uid=pm.uid, session=session)
+        pm_r = sinon.PilotManager.get(session=session, pilot_manager_uid=pm.uid)
+
         assert session.list_pilot_managers() == [pm_r.uid], "Wrong list of pilot managers"
 
         assert pm.uid == pm_r.uid, "Pilot Manager IDs not matching!"
@@ -73,10 +75,10 @@ class Test_PilotManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm1 = sinon.PilotManager(session=session)
+        pm1 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
 
-        pm2 = sinon.PilotManager(session=session)
+        pm2 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0,10):
@@ -93,18 +95,18 @@ class Test_PilotManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm1 = sinon.PilotManager(session=session)
+        pm1 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
 
-        pm2 = sinon.PilotManager(session=session)
+        pm2 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0,10):
             pm1.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
             pm2.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
 
-        pm1_r = sinon.PilotManager(session=session, pilot_manager_uid=pm1.uid)
-        pm2_r = sinon.PilotManager(session=session, pilot_manager_uid=pm2.uid)
+        pm1_r = sinon.PilotManager.get(session=session, pilot_manager_uid=pm1.uid)
+        pm2_r = sinon.PilotManager.get(session=session, pilot_manager_uid=pm2.uid)
 
         assert len(pm1.list_pilots()) == 10, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 10, "Wrong number of pilots returned."
@@ -114,10 +116,10 @@ class Test_PilotManager(unittest.TestCase):
     def test__pilotmanager_get_pilots(self):
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm1 = sinon.PilotManager(session=session)
+        pm1 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
 
-        pm2 = sinon.PilotManager(session=session)
+        pm2 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         pm1_pilot_uids = []
