@@ -79,13 +79,24 @@ class UnitManager (object) :
             # from the 'get()' class method
             pass
         else:
-            self._umid = self._DB.insert_unit_manager(unit_manager_data={})
+            self._uid = self._DB.insert_unit_manager(unit_manager_data={})
 
     # --------------------------------------------------------------------------
     #
     @classmethod 
     def get(cls, session, unit_manager_uid) :
         """ Re-connects to an existing UnitManager via its uid.
+
+        **Example**::
+
+            s = sinon.Session(database_url=DBURL)
+            
+            um1 = sinon.UnitManager(session=s)
+            # Re-connect via the 'get()' method.
+            um2 = sinon.UnitManager.get(session=s, unit_manager_uid=um1.uid)
+
+            # pm1 and pm2 are pointing to the same UnitManager
+            assert um1.uid == um2.uid
 
         **Arguments:**
 
@@ -103,41 +114,41 @@ class UnitManager (object) :
                 % pilot_manager_uid)
 
         obj = cls(session=session, scheduler="~RECON~")
-        obj._umid = unit_manager_uid
+        obj._uid = unit_manager_uid
 
         return obj
 
     #---------------------------------------------------------------------------
     #
     @property
-    def umid(self):
+    def uid(self):
         """ Returns the unit manager id.
         """
-        return self._umid
+        return self._uid
 
     # --------------------------------------------------------------------------
     #
     def add_pilot (self, pilot):
-        self._DB.unit_manager_add_pilot(unit_manager_uid=self.umid,
+        self._DB.unit_manager_add_pilot(unit_manager_uid=self.uid,
                                         pilot_id=pilot.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def list_pilots (self) :
-        return self._DB.unit_manager_list_pilots(unit_manager_uid=self.umid)
+        return self._DB.unit_manager_list_pilots(unit_manager_uid=self.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def list_units (self, utype=interface.ANY) :
-        return self._DB.unit_manager_list_work_units(unit_manager_uid=self.umid)
+        return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def remove_pilot (self, pilot_id, drain=True):
-        self._DB.unit_manager_remove_pilot(unit_manager_uid=self.umid,
+        self._DB.unit_manager_remove_pilot(unit_manager_uid=self.uid,
                                            pilot_id=pilot_id)
 
 
@@ -148,7 +159,7 @@ class UnitManager (object) :
         """
         pilot_id = self.list_pilots()[0]
         self._DB.insert_workunits(pilot_id=pilot_id, 
-            unit_manager_uid=self.umid,
+            unit_manager_uid=self.uid,
             unit_descriptions=unit_descriptions)
 
         return None

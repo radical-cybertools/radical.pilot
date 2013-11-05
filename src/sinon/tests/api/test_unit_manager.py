@@ -47,7 +47,7 @@ class TestUnitManager(unittest.TestCase):
         assert session.list_unit_managers() == [], "Wrong number of unit managers"
 
         um1 = sinon.UnitManager(session=session)
-        assert session.list_unit_managers() == [um1.umid], "Wrong list of unit managers"
+        assert session.list_unit_managers() == [um1.uid], "Wrong list of unit managers"
 
         um2 = sinon.UnitManager(session=session)
         assert len(session.list_unit_managers()) == 2, "Wrong number of unit managers"
@@ -60,12 +60,12 @@ class TestUnitManager(unittest.TestCase):
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         um = sinon.UnitManager(session=session)
-        assert session.list_unit_managers() == [um.umid], "Wrong list of unit managers"
+        assert session.list_unit_managers() == [um.uid], "Wrong list of unit managers"
 
-        um_r = sinon.UnitManager.get(session=session, unit_manager_uid=um.umid)
-        assert session.list_unit_managers() == [um_r.umid], "Wrong list of unit managers"
+        um_r = sinon.UnitManager.get(session=session, unit_manager_uid=um.uid)
+        assert session.list_unit_managers() == [um_r.uid], "Wrong list of unit managers"
 
-        assert um.umid == um_r.umid, "Unit Manager IDs not matching!"
+        assert um.uid == um_r.uid, "Unit Manager IDs not matching!"
 
     #-------------------------------------------------------------------------
     #
