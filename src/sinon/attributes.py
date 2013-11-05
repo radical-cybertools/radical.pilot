@@ -1,8 +1,15 @@
+"""
+.. module:: sinon.attributes
+   :platform: Unix
+   :synopsis: Implementation of the attribute interface and constants.
 
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
+__license__   = "MIT"
 
 import saga.attributes  as satt
-import sinon._api      as sa
-
 
 # ------------------------------------------------------------------------------
 #
@@ -30,7 +37,7 @@ VECTOR      = satt.VECTOR
 
 # ------------------------------------------------------------------------------
 #
-class Attributes (satt.Attributes, sa.Attributes) :
+class Attributes (satt.Attributes) :
 
     def __init__ (self, *args, **kwargs) :
 
@@ -38,9 +45,3 @@ class Attributes (satt.Attributes, sa.Attributes) :
 
     def __str__ (self) :
         return str (self.as_dict ())
-
-
-# ------------------------------------------------------------------------------
-#
-
-

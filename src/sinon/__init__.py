@@ -19,4 +19,3 @@ from sinon.pilot_manager               import PilotManager
 from sinon.unit_manager                import UnitManager
 from sinon.compute_unit_description    import ComputeUnitDescription
 from sinon.compute_pilot_description   import ComputePilotDescription
-

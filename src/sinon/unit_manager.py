@@ -1,3 +1,11 @@
+"""
+.. module:: sinon.unit_manager
+   :platform: Unix
+   :synopsis: Implementation of the UnitManager class.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
 __copyright__ = "Copyright 2013, The RADICAL Group at Rutgers University"
 __license__   = "MIT"
 

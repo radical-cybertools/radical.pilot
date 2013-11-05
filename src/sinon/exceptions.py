@@ -1,7 +1,15 @@
+"""
+.. module:: sinon.exceptions
+   :platform: Unix
+   :synopsis: Implementation of the Exception class(es).
 
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
+__license__   = "MIT"
 
 import saga.exceptions as se
-
 
 # ------------------------------------------------------------------------------
 #

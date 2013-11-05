@@ -1,21 +1,20 @@
 """
-.. module:: session
+.. module:: sinon.session
    :platform: Unix
-   :synopsis: SAGA-Pilot Session class implementation.
+   :synopsis: Implementation of the Session class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, RADICAL Group @ Rutgers"
+__copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
 __license__   = "MIT"
 
 import uuid
-import sinon._api as sa
 from sinon.db import Session as dbSession
 
 # ------------------------------------------------------------------------------
 #
-class Session(sa.Session):
+class Session(object):
     """A Session encapsulates a SAGA-Pilot instance and is the *root* object
     for all other SAGA-Pilot objects. 
 

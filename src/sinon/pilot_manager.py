@@ -1,12 +1,12 @@
 """
-.. module:: pilot_manager
+.. module:: sinon.pilot_manager
    :platform: Unix
-   :synopsis: SAGA-Pilot PilotManager class implementation.
+   :synopsis: Implementation of the PilotManager class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, RADICAL Group @ Rutgers"
+__copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
 __license__   = "MIT"
 
 import _api as interface
@@ -71,10 +71,10 @@ class PilotManager(object):
                   pm = sinon.PilotManager(session=s, machine_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
                   pd = sinon.ComputePilotDescription()
-                  pd.resource = "futuregrid.INDIA"
+                  pd.resource = "futuregrid.INDIA"  # Key defined in futuregrid.json
                   pd.cores = 16
 
-                  pm.submit_pilots(pd)
+                  pilot_india = pm.submit_pilots(pd)
 
         **Raises:**
             * :class:`sinon.SinonException`

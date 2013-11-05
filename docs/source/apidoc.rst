@@ -9,28 +9,41 @@ API Reference
    :numbered:
 
 Sessions
---------
+========
 
 .. autoclass:: sinon.Session
    :members: Session
    :special-members: __init__
 
+Pilots and PilotManagers
+========================
+
 PilotManagers
 -------------
-
 .. autoclass:: sinon.PilotManager
    :members: PilotManager
    :special-members: __init__
 
-(Work-)Unit Managers
---------------------
+ComputePilotDescription
+-----------------------
+.. autoclass:: sinon.ComputePilotDescription
+   :members: ComputePilotDescription
 
+
+
+WorkUnits and UnitManagers
+==========================
+
+UnitManager
+-----------
 .. autoclass:: sinon.UnitManager
    :members: UnitManager
    :special-members: __init__
 
-Error Handling
---------------
+Miscellanea 
+===========
 
+Exceptions
+----------
 .. autoclass:: sinon.SinonException
    :members: SinonException

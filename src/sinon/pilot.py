@@ -1,4 +1,12 @@
-__copyright__ = "Copyright 2013, RADICAL Group @ Rutgers"
+"""
+.. module:: sinon.pilot
+   :platform: Unix
+   :synopsis: Implementation of the Pilot class.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
 __license__   = "MIT"
 
 import threading
@@ -7,12 +15,12 @@ import radical.utils   as ru
 
 import session         as s
 import exceptions      as e
-import sinon._api      as sa
 
+import constants
 
 # ------------------------------------------------------------------------------
 #
-class Pilot (sa.Pilot) :
+class Pilot (object) :
 
     # --------------------------------------------------------------------------
     #
@@ -103,7 +111,7 @@ class Pilot (sa.Pilot) :
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[sa.DONE, sa.FAILED, sa.CANCELED], timeout=None):
+    def wait (self, state=[constants.DONE, constants.FAILED, constants.CANCELED], timeout=None):
         """
         """
         if not self._uid:
@@ -137,11 +145,11 @@ class Pilot (sa.Pilot) :
 
             # FIXME drain
 
-            if  self.state in [sa.DONE, sa.FAILED, sa.CANCELED] :
+            if  self.state in [constants.DONE, constants.FAILED, constants.CANCELED] :
                 # nothing to do
                 return
 
-            if  self.state in [sa.UNKNOWN] :
+            if  self.state in [constants.UNKNOWN] :
                 raise e.IncorrectState ("Pilot state is UNKNOWN, cannot cancel")
 
             # FIXME
@@ -151,7 +159,7 @@ class Pilot (sa.Pilot) :
     #
     def _get_state (self) :
 
-        return sa.UNKNOWN
+        return constants.UNKNOWN
 
 
 # ------------------------------------------------------------------------------
