@@ -36,7 +36,7 @@ class PilotManager(object):
 
         s = sinon.Session(database_url=DBURL)
         
-        pm1 = sinon.PilotManager(session=s)
+        pm1 = sinon.PilotManager(session=s, resource_configurations=RESCONF)
         pm2 = sinon.PilotManager(session=s, pilot_manager_uid=pm1.uid)
 
         # pm1 and pm2 are pointing to the same PilotManager
@@ -45,12 +45,16 @@ class PilotManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, session, machine_configurations=None, pilot_manager_uid=None): 
+    def __init__ (self, session, resource_configurations, pilot_manager_uid=None): 
         """Creates a new or reconnects to an exising PilotManager.
 
         If called without a pilot_manager_uid, a new PilotManager object is 
         created and attached to the session. If pilot_manager_uid is set, an 
-        existing PilotManager instance is retrieved from the session. 
+        existing PilotManager instance is retrieved from the session.
+
+        .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
+                  parameter is currently mandatory for creating a new PilotManager
+                  instance. 
 
         **Arguments:**
 
@@ -60,15 +64,15 @@ class PilotManager(object):
               re-connect to an existing PilotManager instead of creating a 
               new one.
 
-            * **machine_configurations** (`string` or `list` of `strings`): A list of URLs pointing to 
+            * **resource_configurations** (`string` or `list` of `strings`): A list of URLs pointing to 
               :ref:`chapter_machconf`. Currently `file://`, `http://` and `https://`
               URLs are supported.
               
-              If one or more machine_configurations are provided, Pilots submitted 
+              If one or more resource_configurations are provided, Pilots submitted 
               via this PilotManager can access the configuration entries in the 
               files via the :class:`ComputePilotDescription`. For example::
 
-                  pm = sinon.PilotManager(session=s, machine_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+                  pm = sinon.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
                   pd = sinon.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"  # Key defined in futuregrid.json
@@ -85,7 +89,7 @@ class PilotManager(object):
         if pilot_manager_uid is None:
             # Create a new pilot manager. We need at least one configuration file for that:
             self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
-            self._mcfgs = machine_configurations
+            self._mcfgs = resource_configurations
         else:
             # reconnect to an existing PM
             if pilot_manager_uid not in self._DB.list_pilot_manager_uids():

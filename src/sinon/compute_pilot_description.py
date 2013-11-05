@@ -20,12 +20,13 @@ class ComputePilotDescription (description.Description) :
     properties of a :class:`sinon.Pilot` and is passed as a parameter to
     :meth:`sinon.PilotManager.submit_pilots` to instantiate a new pilot.
 
-    A ComputePilotDescription **must** define at least a :data:`resource` key
-    and number of :data:`cores` to allocate on the target resource.
+    .. note:: A ComputePilotDescription **MUST** define at least 
+              :data:`resource` and the number of :data:`cores` to allocate on 
+              the target resource.
 
     **Example**::
 
-        pm = sinon.PilotManager(session=s, machine_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+        pm = sinon.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
         pd = sinon.ComputePilotDescription()
         pd.resource = "futuregrid.INDIA"  # Key defined in futuregrid.json
@@ -35,33 +36,36 @@ class ComputePilotDescription (description.Description) :
 
     .. data:: resource 
 
-       (`Property`) The key of a :ref:`chapter_machconf` entry.
+       (`Property`) [Type: `string` or `list of strings`] 
+       The key of a :ref:`chapter_machconf` entry.
        If the key exists, the machine-specifc configuration is loaded from the 
        configuration once the ComputePilotDescription is passed to 
        :meth:`sinon.PilotManager.submit_pilots`. If the key doesn't exist, a
        :class:`sinon.SinonException` is thrown.
 
-    .. data:: cores 
+    .. data:: cores
 
-       (`Property`) The number of cores the pilot should allocate 
+       (`Property`) [Type: `int`] The number of cores the pilot should allocate 
        on the target resource.
 
-    .. data:: queue 
+    .. data:: queue
 
-       (`Property`) The name of the job queue the pilot should get submitted to .
-       If `queue` is defined in the machine configuration (:data:`resource`), 
-       setting `queue` explicitly will override it.
+       (`Property`) [Type: `string`] The name of the job queue the pilot should 
+       get submitted to . If `queue` is defined in the resource configuration 
+       (:data:`resource`) defining `queue` will override it explicitly. 
 
     .. data:: allocation 
 
-       (`Property`) The name of the project / allocation to charge for used CPU time.
-       If `allocation` is defined in the machine configuration (:data:`resource`), 
-       setting `allocation` explicitly will override it.
+       (`Property`) [Type: `string`] The name of the project / allocation to 
+       charge for used CPU time. If `allocation` is defined in the machine 
+       configuration (:data:`resource`), defining `allocation` will 
+       override it explicitly.
 
 
-    .. data:: run_time 
+    .. data:: run_time  
 
-       (`Property`) The total run time (wall-clock time) of the pilot.
+       (`Property`) [Type: `int`] The total run time (wall-clock time) in 
+       **minutes** of the pilot.
 
     """
 

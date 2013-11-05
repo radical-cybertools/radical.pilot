@@ -40,6 +40,11 @@ UnitManager
    :members: UnitManager
    :special-members: __init__
 
+ComputeUnitDescription
+-----------------------
+.. autoclass:: sinon.ComputeUnitDescription
+   :members: ComputeUnitDescription
+
 Miscellanea 
 ===========
 

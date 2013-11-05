@@ -129,7 +129,8 @@ class UnitManager (object) :
     # --------------------------------------------------------------------------
     #
     def submit_units(self, unit_descriptions) :
-        
+        """Docstring!
+        """
         pilot_id = self.list_pilots()[0]
         self._DB.insert_workunits(pilot_id=pilot_id, 
             unit_manager_uid=self.umid,
