@@ -57,11 +57,11 @@ class Test_Session(unittest.TestCase):
         session_ids = []
         for _ in range(1, 4):
             session = sinon.Session(database_url=DBURL, database_name=DBNAME)
-            session_ids.append(session.sid)
+            session_ids.append(session.uid)
 
         for sid in session_ids:
-            session_r = sinon.Session(database_url=DBURL, session_id=sid, database_name=DBNAME)
-            assert session_r.sid == sid, "Session IDs don't match"
+            session_r = sinon.Session(database_url=DBURL, session_uid=sid, database_name=DBNAME)
+            assert session_r.uid == sid, "Session IDs don't match"
 
         session.destroy()
 

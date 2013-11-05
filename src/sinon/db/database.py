@@ -23,7 +23,7 @@ class Session():
         self._s  = None
 
         self._w  = None
-        self._wm = None
+        self._um = None
 
         self._p  = None
         self._pm = None
@@ -48,7 +48,7 @@ class Session():
 
             sinon.<sid>    | Base collection. Holds some metadata.   | self._s
             sinon.<sid>.w  | Collection holding all work units.      | self._w
-            sinon.<sid>.wm | Collection holding all unit managers.   | self._wm
+            sinon.<sid>.wm | Collection holding all unit managers.   | self._um
             sinon.<sid>.p  | Collection holding all pilots.          | self._p
             sinon.<sid>.pm | Collection holding all pilot managers.  | self._pm
 
@@ -67,7 +67,7 @@ class Session():
         self._s.insert({"CREATED": "<DATE>"})
 
         self._w  = self._db["%s.w"  % sid]
-        self._wm = self._db["%s.wm" % sid] 
+        self._um = self._db["%s.wm" % sid] 
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
@@ -100,7 +100,7 @@ class Session():
         self._s.insert({'reconnected': 'DATE'})
 
         self._w  = self._db["%s.w"  % sid]
-        self._wm = self._db["%s.wm" % sid]
+        self._um = self._db["%s.wm" % sid]
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
@@ -121,7 +121,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        for collection in [self._s, self._w, self._wm, self._p, self._pm]:
+        for collection in [self._s, self._w, self._um, self._p, self._pm]:
             collection.drop()
             collection = None
 
@@ -143,23 +143,23 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def list_pilot_manager_ids(self):
+    def list_pilot_manager_uids(self):
         """ Lists all pilot managers.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_manager_ids = []
+        pilot_manager_uids = []
         cursor = self._pm.find()
         
         # cursor -> dict
         for obj in cursor:
-            pilot_manager_ids.append(str(obj['_id']))
-        return pilot_manager_ids
+            pilot_manager_uids.append(str(obj['_id']))
+        return pilot_manager_uids
 
     #---------------------------------------------------------------------------
     #
-    def insert_pilot(self, pilot_manager_id, pilot_description):
+    def insert_pilots(self, pilot_manager_uid, pilot_descriptions):
         """ Adds one or more pilots to the database.
 
             Input is a list of sinon pilot descriptions.
@@ -171,28 +171,35 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_json = {
-            "description"   : pilot_description,
-            "wu_queue"      : [],
-            "info"          : {
-                "submitted" : "<DATE>",
-                "started"   : None,
-                "finished"  : None,
-                "state"     : "UNKNOWN"
-            },
-            "links" : {
-                "pilotmanager"  : pilot_manager_id
+        pilot_docs = []
+        for pilot_desc in pilot_descriptions:
+            pilot_json = {
+                "description"   : pilot_desc.as_dict(),
+                "wu_queue"      : [],
+                "info"          : {
+                    "submitted" : "<DATE>",
+                    "started"   : None,
+                    "finished"  : None,
+                    "state"     : "UNKNOWN"
+                },
+                "links" : {
+                    "pilotmanager"  : pilot_manager_uid,
+                    "unitmanager"   : None
+                }
             }
-        } 
+            pilot_docs.append(pilot_json)
             
-        result = self._p.insert(pilot_json)
+        pilot_ids = self._p.insert(pilot_docs)
 
         # return the object id as a string
-        return str(result)
+        pilot_id_strings = []
+        for pilot_id in pilot_ids:
+            pilot_id_strings.append(str(pilot_id))
+        return pilot_id_strings
 
     #---------------------------------------------------------------------------
     #
-    def list_pilot_ids(self, pilot_manager_id=None):
+    def list_pilot_uids(self, pilot_manager_uid=None):
         """ Lists all pilots for a pilot manager.
         """
         if self._s is None:
@@ -200,8 +207,8 @@ class Session():
 
         pilot_ids = []
 
-        if pilot_manager_id is not None:
-            cursor = self._p.find({"links.pilotmanager": pilot_manager_id})
+        if pilot_manager_uid is not None:
+            cursor = self._p.find({"links.pilotmanager": pilot_manager_uid})
         else:
             cursor = self._p.find()
         
@@ -212,27 +219,115 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def get_pilot(self, pilot_manager_id, pilot_id):
+    def get_pilots(self, pilot_manager_uid, pilot_uids=None):
         """ Get a pilot
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        pilots_json = []
-
-        cursor = self._p.find({"_id": ObjectId(pilot_id),
-                               "links.pilotmanager": pilot_manager_id,})
-
+        if pilot_uids == None:
+            cursor = self._p.find({"links.pilotmanager": pilot_manager_uid})
+        else:
+            # convert ids to object ids
+            pilot_oid = []
+            for pid in pilot_uids:
+                pilot_oid.append(ObjectId(pid))
+            cursor = self._p.find({"_id": {"$in": pilot_oid},
+                                   "links.pilotmanager": pilot_manager_uid})
         # cursor -> dict
+        pilots_json = []
         for obj in cursor:
             pilots_json.append(obj)
 
         return pilots_json
 
+    #---------------------------------------------------------------------------
+    #
+    def insert_unit_manager(self, unit_manager_data):
+        """ Adds a unit managers to the list of unit managers.
 
+            Unit manager IDs are just kept for book-keeping. 
+        """
+        if self._s is None:
+            raise Exception("No active session.")
 
+        unit_manager_json = {"data" : unit_manager_data}
+        result = self._um.insert(unit_manager_json)
 
+        # return the object id as a string
+        return str(result)
 
+    #---------------------------------------------------------------------------
+    #
+    def list_unit_manager_uids(self):
+        """ Lists all pilot managers.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        unit_manager_uids = []
+        cursor = self._um.find()
+        
+        # cursor -> dict
+        for obj in cursor:
+            unit_manager_uids.append(str(obj['_id']))
+        return unit_manager_uids
+
+    #---------------------------------------------------------------------------
+    #
+    def unit_manager_add_pilot(self, unit_manager_uid, pilot_id):
+        """ Adds a pilot from a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        # Add the ids to the pilot's queue
+        self._p.update({"_id": ObjectId(pilot_id)}, 
+                       {"$set": {"links.unitmanager" : unit_manager_uid}})
+
+    #---------------------------------------------------------------------------
+    #
+    def unit_manager_remove_pilot(self, unit_manager_uid, pilot_id):
+        """ Removes a pilot from a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+       # Add the ids to the pilot's queue
+        self._p.update({"_id": ObjectId(pilot_id)}, 
+                       {"$set": {"links.unitmanager" : None}})
+
+    #---------------------------------------------------------------------------
+    #
+    def unit_manager_list_pilots(self, unit_manager_uid):
+        """ Lists all pilots associated with a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._p.find({"links.unitmanager": unit_manager_uid})
+        
+        # cursor -> dict
+        pilot_ids = []
+        for obj in cursor:
+            pilot_ids.append(str(obj['_id']))
+        return pilot_ids
+
+    #---------------------------------------------------------------------------
+    #
+    def unit_manager_list_work_units(self, unit_manager_uid):
+        """ Lists all work units associated with a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._w.find({"links.unitmanager": unit_manager_uid})
+        
+        # cursor -> dict
+        unit_ids = []
+        for obj in cursor:
+            unit_ids.append(str(obj['_id']))
+        return unit_ids
 
     #---------------------------------------------------------------------------
     #
@@ -253,12 +348,9 @@ class Session():
         return pilots
 
 
-
-
-
     #---------------------------------------------------------------------------
     #
-    def insert_workunits(self, pilot_id, workunits):
+    def insert_workunits(self, pilot_id, unit_manager_uid, unit_descriptions):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
@@ -279,12 +371,12 @@ class Session():
 
         # Construct and insert workunit documents
         workunit_docs = []
-        for wu in workunits:
+        for wu_desc in unit_descriptions:
             workunit = {
-                "description"   : wu["description"],
-                "assignment"    : {
-                    "pilot"     : pilot_id,
-                    "queue"     : wu["queue_id"]
+                "description"   : wu_desc.as_dict(),
+                "links"    : {
+                    "unitmanager" : unit_manager_uid, 
+                    "pilot"       : pilot_id,
                 },
                 "info"          : {
                     "submitted" : "<DATE>",
@@ -297,7 +389,7 @@ class Session():
         wu_ids = self._w.insert(workunit_docs)
 
         # Add the ids to the pilot's queue
-        self._p.update({"_id": pilot_id}, 
+        self._p.update({"_id": ObjectId(pilot_id)}, 
                        {"$pushAll": {"wu_queue" : wu_ids}})
         return wu_ids
 
@@ -319,199 +411,3 @@ class Session():
             workunits.append(obj)
         return workunits
 
-    # def get_pilots(self, pilot_ids=None):
-    #     """ Get one or more pilot entries. If pilot_ids is None, all
-    #         pilots are returned.
-
-    #         The returned pilot entry dict has the following format:
-
-    #         {
-    #             "pilot_id"   : "unique string",
-    #             "name"       : "descriptive name"
-    #             "description : {
-
-    #             },
-    #             "info"       : {
-    #                 "state:       : "STATE",
-    #                 "started"     : "date",
-    #                 "terminated"  : "date",
-    #                 "working_dir" : "local wd"
-    #             } 
-    #         }
-    #     """
-    #     pass
-
-    # def get_pilot_infos(self, pilot_ids=None):
-    #     """ Get the 'info' dict for one or more pilot entries. If 
-    #         pilot_ids is None, infos for all pilots are returned.
-
-    #         'info' is the part of a pilot entry that can change 
-    #         after it has been added to the database. For example, 
-    #         info.state can change from 'running' to 'finished'. 
-
-    #         The returned pilot info dict has the following format:
-
-    #         {
-    #             "pilot_id"    : "id of the pilot to modify",
-    #             "state:       : "STATE",
-    #             "started"     : "date",
-    #             "terminated"  : "date",
-    #             "working_dir" : "local wd"
-    #         }
-
-    #         An 'info' dict can be modified via the modify_pilot_infos method. 
-    #     """
-    #     pass
-
-    # def pilots_update(self, pilot_updates):
-    #     """ Updates the state of one or more pilots.
-
-    #         A pilot_update dict has the following format:
-
-    #         {
-    #             "pilot_id"    : "ID",
-    #             "state"       : "X"  
-    #         }
-    #     """
-    #     pass
-
-    # def pilots_command_push(self, commands):
-    #     """ Sends a command to one or more pilots, i.e., pushes a 
-    #         command to a pilot entry's command field. 
-
-    #         A command has the following format:
-
-    #         {
-    #             "pilot_id"  : "id of the pilot to control",
-    #             "command:   : "COMMAND"
-    #         }
-    #     """
-    #     pass
-
-    # def pilot_wu_queue_push(self, pilot_id, work_unit_ids):
-    #     """ Adds one or more work units to a pilot queue.
-    #     """
-    #     pass
-    #     # (1) put work_unit_ids into pilot work queue
-    #     # (2) change 'queue' in work_unit document to pilot_id
-
-    # def pilot_wu_queue_pop(self, pilot_id, count):
-    #     """ Returns and removes up to 'count' work units from 
-    #         a pilot queue. 
-    #     """
-    #     # (1) remove pilot_ids from pilot work queue
-    #     pass
-
-
-    # # --------------------------------------------------------------------------
-    # # WorkUnits 
-    # #
-    # def work_units_add(self, work_units):
-    #     """ Add one or more work unit entries to the database.
-
-    #         A work_unit has the following format:
-
-    #         {
-    #             "work_unit_id"  : "unique work unit ID",
-    #             "description"   : {
-    #                 ...
-    #             },
-    #             "assignment"    : { 
-    #                 "queue" : "queue id",
-    #                 "pilot" : "pilot id"
-    #             }
-    #         }
-    #     """
-    #     # (1) Add work unit to work unit collection
-    #     # (2) Add work unit id to pilot identified by 'pilot_id'
-    #     ids = self._wu_collection.insert(work_units)
-    #     return ids
-
-
-    # def work_units_update(self, work_unit_updates):
-    #     """ Updates the state of one or more work units.
-
-    #         A work_unit_update dict has the following format:
-
-    #         {
-    #             "work_unit_id"    : "ID",
-    #             "state"           : "X"  
-    #         }
-    #     """
-    #     # (1) Update the work units in work unit collection
-    #     pass
-
-    # def work_units_get(self, work_unit_ids=None): 
-    #     """ Returns one or more work units.
-
-    #         The returned work units have the following format:
-
-    #         {
-    #             "work_unit_id"  : "unique work unit ID",
-    #             "description"   : {
-    #                 ...
-    #             },
-    #             "assignment"    : { 
-    #                 "queue" : "queue id",
-    #                 "pilot" : "pilot id"
-    #             }
-    #             "info"          : {
-    #                 "state" : "STATE"
-    #                 ...
-    #             }
-    #         }
-    #     """
-    #     wus = []
-    #     for obj in self._wu_collection.find():
-    #         wus.append(obj)
-    #     return wus
-
-    # # ------------------------------------------------------------
-    # # ------------------------------------------------------------
-    # # Queues 
-    # def add_queues(self, queue_entries):
-    #     """ Add one or more queue entries to the database.
-
-    #         A queue entry has the following format:
-
-    #         {
-    #             "queue_id"  : "unique string",
-    #             "name"      : "descriptive name",
-    #             "scheduler" : "scheduler name"
-    #             "pilots"    : ["pilot_id 1", "pilot_id 2", "..."]
-    #         }
-
-    #     """
-    #     pass
-
-    # def remove_queue(self, queue_ids):
-    #     """ Remove one or more queue entries from the database.
-    #     """
-    #     pass
-
-    # def get_queues(self, queue_ids=None):
-    #     """ Get one or more queue entries. If pilot_ids is None, all
-    #         pilots are returned. 
-    #     """
-    #     pass
-
-    # def attach_pilots_to_queue(self, pilot_queue_pairs):
-    #     """ Attach one or more pilots to one or more queues.
-
-    #         A pilot_queue_pair has the following format:
-
-    #         {
-    #             "queue_id"  : "queue ID",
-    #             "pilots"    : ["pilot_id 1", "pilot_id 2", "..."]
-    #         }
-    #     """
-    #     pass
-
-    # def detach_pilots_from_queue(self, pilot_queue_pairs):
-    #     """ Detach one or more pilots from one or more queues.
-    #     """
-    #     pass
-
-
-
-        
