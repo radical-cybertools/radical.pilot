@@ -75,7 +75,10 @@ class TestUnitManager(unittest.TestCase):
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
-        p1 = pm.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+
+        cpd = sinon.ComputePilotDescription()
+        cpd.resource = "futuregrid.INDIA"
+        p1 = pm.submit_pilots(pilot_descriptions=cpd)
 
         um = sinon.UnitManager(session=session)
         assert um.list_pilots() == [], "Wrong list of pilots"
@@ -92,7 +95,9 @@ class TestUnitManager(unittest.TestCase):
 
         pilot_list = []
         for x in range(0, 10):
-            p = pm.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+            cpd = sinon.ComputePilotDescription()
+            cpd.resource = "futuregrid.INDIA"
+            p = pm.submit_pilots(pilot_descriptions=cpd)
             um.add_pilot(p)
             pilot_list.append(p)
 

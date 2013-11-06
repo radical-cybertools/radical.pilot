@@ -18,6 +18,8 @@ import constants
 from sinon.db import Session as dbSession
 from utils import as_list
 
+import json
+import urllib2
 
 # ------------------------------------------------------------------------------
 #
@@ -88,14 +90,36 @@ class PilotManager(object):
 
         if resource_configurations == "~=RECON=~":
             # When we get the "~=RECON=~" keyword as resource_configurations, we
-            # were called  from the 'get()' class method
-            pass
-        else:
-            # Create a new pilot manager. First we parse the configuration file(s)
+            # were called  from the 'get()' class method. In this case object 
+            # instantiation happens there... 
+            return
 
+        ###############################
+        # Create a new pilot manager. #
+        ###############################
 
-            self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
-            self._mcfgs = resource_configurations
+        # Donwload and parse the configuration file(s) and the content to 
+        # our resource dictionary.
+        self._resource_cfgs = {}
+        for rcf in as_list(resource_configurations):
+            try:
+                # download resource configuration file
+                response = urllib2.urlopen(rcf)
+                rcf_content = response.read()
+            except urllib2.URLError, err:
+                raise SinonException("Couln't open/download resource configuration file '%s': %s." % (rcf, str(err)))
+
+            try:
+                # convert JSON string to dictionary and append
+                rcf_dict = json.loads(rcf_content)
+                for key, val in rcf_dict.iteritems():
+                    if key in self._resource_cfgs:
+                        raise SinonException("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
+                    self._resource_cfgs[key] = val
+            except ValueError, err:
+                raise SinonException("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
+
+        self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
 
     # --------------------------------------------------------------------------
     #
@@ -127,6 +151,7 @@ class PilotManager(object):
 
         obj = cls(session=session, resource_configurations="~=RECON=~")
         obj._uid = pilot_manager_uid
+        obj._resource_cfgs = None # TODO: reconnect
 
         return obj
 
@@ -169,10 +194,14 @@ class PilotManager(object):
         # create the pilot objects
         pilots = []
         for i in range(0, len(pilot_description_list)):
-            # check wether pilot description defines the mandatory 
-            # fields 
-            if pilot_description_list[i].resource is not None:
+            # check wether pilot description defines the mandatory fields 
+            resource_key = pilot_description_list[i].resource
+            if resource_key is None:
                 raise SinonException("ComputePilotDescription.resource not defined")
+            # check wether resource key exists
+            if resource_key not in self._resource_cfgs:
+                raise SinonException("ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key)
+
 
 
             pilot = Pilot._create(pilot_uid=pilot_uids[i],

@@ -82,8 +82,11 @@ class Test_PilotManager(unittest.TestCase):
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0,10):
-            pm1.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
-            pm2.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+            cpd = sinon.ComputePilotDescription()
+            cpd.resource = "futuregrid.INDIA"
+
+            pm1.submit_pilots(pilot_descriptions=cpd)
+            pm2.submit_pilots(pilot_descriptions=cpd)
 
         assert len(pm1.list_pilots()) == 10, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 10, "Wrong number of pilots returned."
@@ -102,8 +105,11 @@ class Test_PilotManager(unittest.TestCase):
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0,10):
-            pm1.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
-            pm2.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+            cpd = sinon.ComputePilotDescription()
+            cpd.resource = "futuregrid.INDIA"
+
+            pm1.submit_pilots(pilot_descriptions=cpd)
+            pm2.submit_pilots(pilot_descriptions=cpd)
 
         pm1_r = sinon.PilotManager.get(session=session, pilot_manager_uid=pm1.uid)
         pm2_r = sinon.PilotManager.get(session=session, pilot_manager_uid=pm2.uid)
@@ -126,10 +132,13 @@ class Test_PilotManager(unittest.TestCase):
         pm2_pilot_uids = []
 
         for i in range(0,10):
-            pilot_pm1 = pm1.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+            cpd = sinon.ComputePilotDescription()
+            cpd.resource = "futuregrid.INDIA"
+
+            pilot_pm1 = pm1.submit_pilots(pilot_descriptions=cpd)
 
             pm1_pilot_uids.append(pilot_pm1.uid)
-            pilot_pm2 = pm2.submit_pilots(pilot_descriptions=sinon.ComputePilotDescription())
+            pilot_pm2 = pm2.submit_pilots(pilot_descriptions=cpd)
             pm2_pilot_uids.append(pilot_pm2.uid)
 
         for i in pm1.list_pilots():
@@ -137,6 +146,7 @@ class Test_PilotManager(unittest.TestCase):
             assert pilot[0].uid in pm1_pilot_uids, "Wrong pilot ID %s (not in %s)" % (pilot[0].uid, pm1_pilot_uids)
             #assert pilot[0].description['foo'] == "pm1"
 
+        print pm1.get_pilots()
         assert len(pm1.get_pilots()) == 10, "Wrong number of pilots."
 
         for i in pm2.list_pilots():
