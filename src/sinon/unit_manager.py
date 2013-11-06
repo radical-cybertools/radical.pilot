@@ -9,12 +9,13 @@
 __copyright__ = "Copyright 2013, The RADICAL Group at Rutgers University"
 __license__   = "MIT"
 
-import sinon._api as interface
+import constants
 
 from session      import Session
 from pilot        import Pilot
 
 from sinon.db import Session as dbSession
+from utils import as_list
 
 # ------------------------------------------------------------------------------
 #
@@ -74,7 +75,7 @@ class UnitManager (object) :
         self._DB = session._dbs
         self._session = session
 
-        if scheduler == "~RECON~":
+        if scheduler == "~+=RECON=+~":
             # When we get the "~RECON~" keyword as scheduler, we were called 
             # from the 'get()' class method
             pass
@@ -110,10 +111,9 @@ class UnitManager (object) :
               `unit_manager_uid` doesn't exist in the database.
         """
         if unit_manager_uid not in session._dbs.list_unit_manager_uids():
-            raise LookupError ("UnitManager '%s' not in database." \
-                % pilot_manager_uid)
+            raise LookupError ("UnitManager '%s' not in database." % pilot_manager_uid)
 
-        obj = cls(session=session, scheduler="~RECON~")
+        obj = cls(session=session, scheduler="~+=RECON=+~")
         obj._uid = unit_manager_uid
 
         return obj
@@ -141,7 +141,7 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=interface.ANY) :
+    def list_units (self, utype=constants.ANY) :
         return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
 
 
@@ -233,28 +233,50 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_units (self, uids=None, state=[interface.DONE, interface.FAILED, interface.CANCELED], timeout=-1.0) :
+    def wait_units(self, unit_uids=None, state=[constants.DONE, constants.FAILED, constants.CANCELED], timeout=-1.0):
+        """Returns when one or more :class:`sinon.ComputeUnits` reach a 
+        specific state. 
 
-        with self._rlock :
+        If `unit_uids` is `None`, `wait_units` returns when **all** ComputeUnits
+        reach the state defined in `state`.
 
-            if  not isinstance (state, list) :
-                state = [state]
+        **Example**::
 
-            # FIXME
-            pass
+            # TODO
+
+        **Arguments:**
+
+            * **unit_uids** [`string` or `list of strings`] 
+              If unit_uids is set, only the ComputeUnits with the specified uids 
+              are considered. If unit_uids is `None` (default), all ComputeUnits
+              are considered.
+
+            * **state** [`string`]
+              The state that ComputeUnits have to reach in order for the call
+              to return. 
+
+              By default `wait_units` waits for the ComputeUnits to 
+              reach a terminal state, which can be one of the following:
+
+              * :data:`sinon.DONE`
+              * :data:`sinon.FAILED`
+              * :data:`sinon.CANCELED`
+
+            * **timeout** [`float`]
+              Timeout in seconds before the call returns regardless of Pilot
+              state changes. The default value **-1.0** waits forever.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
+        """
+        pass
 
 
     # --------------------------------------------------------------------------
     #
     def cancel_units (self, uids) :
+        pass
 
-        with self._rlock :
-
-            # FIXME
-            pass
-
-
-# ------------------------------------------------------------------------------
-#
 
 

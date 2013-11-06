@@ -24,7 +24,7 @@ def demo_milestone_02():
         # Submit a 16-core pilot to sierra.futuregrid.org
         pd = sinon.ComputePilotDescription()
         pd.resource = "futuregrid.SIERRA"
-        pd.slots = 16
+        pd.cores = 16
         sierra_pilot = pm.submit_pilots(pd)
 
         # Create a workload of 64 '/bin/sleep' compute units
@@ -42,7 +42,10 @@ def demo_milestone_02():
         um.submit_units(compute_units)
 
         # Wait for all compute units to finish.
-        um.wait()
+        um.wait_units()
+
+        # Cancel all pilots.
+        pm.cancel_pilots()
 
         return 0
 
