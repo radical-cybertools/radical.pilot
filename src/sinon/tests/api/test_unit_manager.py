@@ -77,7 +77,9 @@ class TestUnitManager(unittest.TestCase):
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource = "futuregrid.INDIA"
+        cpd.resource = "localhost"
+        cpd.cores = 1
+        
         p1 = pm.submit_pilots(pilot_descriptions=cpd)
 
         um = sinon.UnitManager(session=session)
@@ -96,7 +98,8 @@ class TestUnitManager(unittest.TestCase):
         pilot_list = []
         for x in range(0, 10):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource = "futuregrid.INDIA"
+            cpd.resource = "localhost"
+            cpd.cores = 1
             p = pm.submit_pilots(pilot_descriptions=cpd)
             um.add_pilot(p)
             pilot_list.append(p)

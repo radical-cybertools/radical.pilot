@@ -1,4 +1,8 @@
 {
+    "localhost": {
+        "URL": "fork://localhost"
+    },
+
     "futuregrid.INDIA": {
         "URL": "pbs+ssh://india.futuregrid.org"
     },

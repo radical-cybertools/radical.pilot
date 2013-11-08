@@ -16,7 +16,8 @@ from pilot        import Pilot
 import constants
 
 from sinon.db import Session as dbSession
-from utils import as_list
+import utils
+import saga
 
 import json
 import urllib2
@@ -101,7 +102,7 @@ class PilotManager(object):
         # Donwload and parse the configuration file(s) and the content to 
         # our resource dictionary.
         self._resource_cfgs = {}
-        for rcf in as_list(resource_configurations):
+        for rcf in utils.as_list(resource_configurations):
             try:
                 # download resource configuration file
                 response = urllib2.urlopen(rcf)
@@ -145,6 +146,11 @@ class PilotManager(object):
             * :class:`sinon.SinonException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
+
+        ###########################################
+        # Reconnect to an existing pilot manager. #
+        ###########################################
+
         if pilot_manager_uid not in session._dbs.list_pilot_manager_uids():
             raise LookupError ("PilotManager '%s' not in database." \
                 % pilot_manager_uid)
@@ -184,35 +190,76 @@ class PilotManager(object):
 
             * :class:`sinon.SinonException`
         """
-        # implicit list conversion
-        pilot_description_list = as_list(pilot_descriptions)
+
+        # Sumbit pilots is always a bulk operation. In bulk submission, it
+        # doesn't make too much sense to throw  exceptions if a pilot fails to
+        # launch, e.g., if you submit 10 pilots, 9 start properly and only one
+        # fails, you don't want submit_pilots to  throw an exception. instead of
+        # throwing exceptions, we rather  set the pilot's state to 'FAILED' and
+        # add the submission errror  which we would have thrown as an exception
+        # otherwise, to the pilot's  log.
+
+        from bson.objectid import ObjectId
+
+        # implicit -> list -> dict conversion
+        pilot_description_dict = {}
+        for pd in utils.as_list(pilot_descriptions):
+            pilot_description_dict[ObjectId()] = pd
 
         # create database entries
         pilot_uids = self._session._dbs.insert_pilots(pilot_manager_uid=self.uid, 
-            pilot_descriptions=pilot_description_list)
+            pilot_descriptions=pilot_description_dict)
 
-        # create the pilot objects
+        # create the pilot objects, launch the actual pilots via saga
+        # and update the status accordingly.
         pilots = []
-        for i in range(0, len(pilot_description_list)):
+        for pilot_id, pilot_description in pilot_description_dict.iteritems():
             # check wether pilot description defines the mandatory fields 
-            resource_key = pilot_description_list[i].resource
+            resource_key = pilot_description.resource
+            number_cores = pilot_description.cores
+
+            #########################
+            # Check job description # 
+            #########################
+
             if resource_key is None:
                 raise SinonException("ComputePilotDescription.resource not defined")
-            # check wether resource key exists
+            # check wether mandatory attribute 'resource' was defined
             if resource_key not in self._resource_cfgs:
                 raise SinonException("ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key)
+            # check wether mandatory attribute 'cores' was defined
+            if number_cores is None:
+                raise SinonException("ComputePilotDescription.cores not defined")
 
+            pilot = Pilot._create(
+                pilot_uid=str(pilot_id),
+                pilot_description=pilot_description, 
+                pilot_manager_obj=self)
 
+            ###############################
+            # Create SAGA Job description #
+            ###############################
+            try:
+                jd = utils.create_saga_job_description(
+                    pilot_desc=pilot_description,
+                    resource_desc=self._resource_cfgs[resource_key])
 
-            pilot = Pilot._create(pilot_uid=pilot_uids[i],
-                                  pilot_description=pilot_description_list[i], 
-                                  pilot_manager_obj=self)
+                job_service_url = self._resource_cfgs[resource_key]['URL']
+                js = saga.job.Service(job_service_url)
+
+                js.close()
+            except saga.SagaException, se: 
+                pass
+
+            ###############################
+            # C #
+            ###############################
+
+            #################################
+            # Submit Pilot and update state #
+            #################################
+
             pilots.append(pilot)
-
-        
-
-        # basic sanity check
-        assert len(pilot_uids) == len(pilot_description_list)
 
         # implicit return value conversion
         if len(pilots) == 1:
@@ -257,7 +304,7 @@ class PilotManager(object):
             * :class:`sinon.SinonException`
         """
         # implicit list conversion
-        pilot_uid_list = as_list(pilot_uids)
+        pilot_uid_list = utils.as_list(pilot_uids)
 
         pilots = Pilot._get(pilot_uids=pilot_uid_list, pilot_manager_obj=self)
         return pilots

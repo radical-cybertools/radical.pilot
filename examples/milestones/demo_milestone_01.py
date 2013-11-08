@@ -21,7 +21,7 @@ def demo_milestone_01_1():
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         pd = sinon.ComputePilotDescription()
-        pd.resource = "futuregrid.ALAMO"
+        pd.resource = "futuregrid.INDIA"
         p1 = pm.submit_pilots(pd)
 
         # Add a Unit Manager to the session and add the newly created 
@@ -64,7 +64,7 @@ def demo_milestone_01_2(session_uid):
 
         for um_uid in session.list_unit_managers():
             um = sinon.UnitManager.get(session=session, unit_manager_uid=um_uid)
-            print "   * Found Unit Manager with ID %s" % um.umid
+            print "   * Found Unit Manager with ID %s" % um.uid
             for pilot_ids in um.list_pilots():
                 print "      * Associated with Pilot [%s]" % pilot_ids
                 print "      * Work units: %s" % um.list_units()
