@@ -12,6 +12,7 @@ from sinon.version import VERSION as version
 
 # ------------------------------------------------------------------------------
 #
+from sinon.constants                   import *
 from sinon.exceptions                  import SinonException
 from sinon.session                     import Session
 from sinon.pilot                       import Pilot

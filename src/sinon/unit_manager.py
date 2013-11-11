@@ -9,12 +9,13 @@
 __copyright__ = "Copyright 2013, The RADICAL Group at Rutgers University"
 __license__   = "MIT"
 
-import sinon._api as interface
+import constants
 
 from session      import Session
 from pilot        import Pilot
 
 from sinon.db import Session as dbSession
+from utils import as_list
 
 # ------------------------------------------------------------------------------
 #
@@ -59,22 +60,14 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, session, unit_manager_uid=None, scheduler=None, ) :
-        """Creates a new or reconnects to an exising UnitManager.
-
-        If called without a unit_manager_uid, a new UnitManager object is 
-        created and attached to the session. If unit_manager_uid is set, an 
-        existing UnitManager instance is retrieved from the session. 
+    def __init__ (self, session, scheduler=None) :
+        """Creates a new UnitManager and attaches it to the session. 
 
         **Args:**
 
-            * session (str): The session instance to use.
+            * session (`string`): The session instance to use.
 
-            * unit_manager_uid (str): If pilot_manager_uid is set, we try 
-              re-connect to an existing PilotManager instead of creating a 
-              new one.
-
-            * scheduler (str): The name of the scheduler plug-in to use.
+            * scheduler (`string`): The name of the scheduler plug-in to use.
 
         **Raises:**
             * :class:`sinon.SinonException`
@@ -82,57 +75,91 @@ class UnitManager (object) :
         self._DB = session._dbs
         self._session = session
 
-        if unit_manager_uid is None:
-            # Create a new unit manager.
-            self._umid = self._DB.insert_unit_manager(unit_manager_data={})
+        if scheduler == "~+=RECON=+~":
+            # When we get the "~RECON~" keyword as scheduler, we were called 
+            # from the 'get()' class method
+            pass
         else:
-            # reconnect to an existing PM
-            if unit_manager_uid not in self._DB.list_unit_manager_uids():
-                raise LookupError ("Unit Manager '%s' not in database." \
-                    % unit_manager_uid)
-            self._umid = unit_manager_uid
+            self._uid = self._DB.insert_unit_manager(unit_manager_data={})
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod 
+    def get(cls, session, unit_manager_uid) :
+        """ Re-connects to an existing UnitManager via its uid.
+
+        **Example**::
+
+            s = sinon.Session(database_url=DBURL)
+            
+            um1 = sinon.UnitManager(session=s)
+            # Re-connect via the 'get()' method.
+            um2 = sinon.UnitManager.get(session=s, unit_manager_uid=um1.uid)
+
+            # pm1 and pm2 are pointing to the same UnitManager
+            assert um1.uid == um2.uid
+
+        **Arguments:**
+
+            * **session** (:class:`sinon.Session`): The session instance to use.
+
+            * **unit_manager_uid** (`string`): The unique identifier of the 
+              UnitManager we want to re-connect to.
+
+        **Raises:**
+            * :class:`sinon.SinonException` if a UnitManager with 
+              `unit_manager_uid` doesn't exist in the database.
+        """
+        if unit_manager_uid not in session._dbs.list_unit_manager_uids():
+            raise LookupError ("UnitManager '%s' not in database." % pilot_manager_uid)
+
+        obj = cls(session=session, scheduler="~+=RECON=+~")
+        obj._uid = unit_manager_uid
+
+        return obj
 
     #---------------------------------------------------------------------------
     #
     @property
-    def umid(self):
+    def uid(self):
         """ Returns the unit manager id.
         """
-        return self._umid
+        return self._uid
 
     # --------------------------------------------------------------------------
     #
     def add_pilot (self, pilot):
-        self._DB.unit_manager_add_pilot(unit_manager_uid=self.umid,
+        self._DB.unit_manager_add_pilot(unit_manager_uid=self.uid,
                                         pilot_id=pilot.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def list_pilots (self) :
-        return self._DB.unit_manager_list_pilots(unit_manager_uid=self.umid)
+        return self._DB.unit_manager_list_pilots(unit_manager_uid=self.uid)
 
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=interface.ANY) :
-        return self._DB.unit_manager_list_work_units(unit_manager_uid=self.umid)
+    def list_units (self, utype=constants.ANY) :
+        return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def remove_pilot (self, pilot_id, drain=True):
-        self._DB.unit_manager_remove_pilot(unit_manager_uid=self.umid,
+        self._DB.unit_manager_remove_pilot(unit_manager_uid=self.uid,
                                            pilot_id=pilot_id)
 
 
     # --------------------------------------------------------------------------
     #
     def submit_units(self, unit_descriptions) :
-        
+        """Docstring!
+        """
         pilot_id = self.list_pilots()[0]
         self._DB.insert_workunits(pilot_id=pilot_id, 
-            unit_manager_uid=self.umid,
+            unit_manager_uid=self.uid,
             unit_descriptions=unit_descriptions)
 
         return None
@@ -206,28 +233,50 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_units (self, uids=None, state=[interface.DONE, interface.FAILED, interface.CANCELED], timeout=-1.0) :
+    def wait_units(self, unit_uids=None, state=[constants.DONE, constants.FAILED, constants.CANCELED], timeout=-1.0):
+        """Returns when one or more :class:`sinon.ComputeUnits` reach a 
+        specific state. 
 
-        with self._rlock :
+        If `unit_uids` is `None`, `wait_units` returns when **all** ComputeUnits
+        reach the state defined in `state`.
 
-            if  not isinstance (state, list) :
-                state = [state]
+        **Example**::
 
-            # FIXME
-            pass
+            # TODO
+
+        **Arguments:**
+
+            * **unit_uids** [`string` or `list of strings`] 
+              If unit_uids is set, only the ComputeUnits with the specified uids 
+              are considered. If unit_uids is `None` (default), all ComputeUnits
+              are considered.
+
+            * **state** [`string`]
+              The state that ComputeUnits have to reach in order for the call
+              to return. 
+
+              By default `wait_units` waits for the ComputeUnits to 
+              reach a terminal state, which can be one of the following:
+
+              * :data:`sinon.DONE`
+              * :data:`sinon.FAILED`
+              * :data:`sinon.CANCELED`
+
+            * **timeout** [`float`]
+              Timeout in seconds before the call returns regardless of Pilot
+              state changes. The default value **-1.0** waits forever.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
+        """
+        pass
 
 
     # --------------------------------------------------------------------------
     #
     def cancel_units (self, uids) :
+        pass
 
-        with self._rlock :
-
-            # FIXME
-            pass
-
-
-# ------------------------------------------------------------------------------
-#
 
 

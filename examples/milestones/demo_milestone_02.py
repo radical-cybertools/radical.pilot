@@ -19,12 +19,12 @@ def demo_milestone_02():
         session = sinon.Session(database_url=DBURL)
 
         # Add a Pilot Manager with a machine configuration file for FutureGrid
-        pm = sinon.PilotManager(session=session, machine_configurations=FGCONF)
+        pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         # Submit a 16-core pilot to sierra.futuregrid.org
         pd = sinon.ComputePilotDescription()
         pd.resource = "futuregrid.SIERRA"
-        pd.slots = 16
+        pd.cores = 16
         sierra_pilot = pm.submit_pilots(pd)
 
         # Create a workload of 64 '/bin/sleep' compute units
@@ -42,7 +42,10 @@ def demo_milestone_02():
         um.submit_units(compute_units)
 
         # Wait for all compute units to finish.
-        um.wait()
+        um.wait_units()
+
+        # Cancel all pilots.
+        pm.cancel_pilots()
 
         return 0
 

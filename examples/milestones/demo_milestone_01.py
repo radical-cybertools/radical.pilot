@@ -5,6 +5,7 @@ import sys
 import sinon
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
+FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
 
 #-------------------------------------------------------------------------------
 #
@@ -17,10 +18,10 @@ def demo_milestone_01_1():
         session = sinon.Session(database_url=DBURL)
 
         # Add a Pilot Manager and a Pilot to the session.
-        pm = sinon.PilotManager(session=session)
+        pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         pd = sinon.ComputePilotDescription()
-        pd.resource = "futuregrid.ALAMO"
+        pd.resource = "futuregrid.INDIA"
         p1 = pm.submit_pilots(pd)
 
         # Add a Unit Manager to the session and add the newly created 
@@ -56,14 +57,14 @@ def demo_milestone_01_2(session_uid):
         print "* Reconnected to session with session ID %s" % session.uid
 
         for pm_uid in session.list_pilot_managers():
-            pm = sinon.PilotManager(session=session, pilot_manager_uid=pm_uid)
+            pm = sinon.PilotManager.get(session=session, pilot_manager_uid=pm_uid)
             print "   * Found Pilot Manager with ID %s" % pm.uid
             for pilot_ids in pm.list_pilots():
                 print "      * Owns Pilot [%s]" % pilot_ids
 
         for um_uid in session.list_unit_managers():
-            um = sinon.UnitManager(session=session, unit_manager_uid=um_uid)
-            print "   * Found Unit Manager with ID %s" % um.umid
+            um = sinon.UnitManager.get(session=session, unit_manager_uid=um_uid)
+            print "   * Found Unit Manager with ID %s" % um.uid
             for pilot_ids in um.list_pilots():
                 print "      * Associated with Pilot [%s]" % pilot_ids
                 print "      * Work units: %s" % um.list_units()

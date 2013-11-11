@@ -172,8 +172,9 @@ class Session():
             raise Exception("No active session.")
 
         pilot_docs = []
-        for pilot_desc in pilot_descriptions:
+        for pilot_id, pilot_desc in pilot_descriptions.iteritems():
             pilot_json = {
+                "_id"           : pilot_id,
                 "description"   : pilot_desc.as_dict(),
                 "wu_queue"      : [],
                 "info"          : {
