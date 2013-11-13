@@ -12,6 +12,6 @@
 
     "futuregrid.SIERRA": {
         "URL": "pbs+ssh://sierra.futuregrid.org",
-        "FS" : "sftp://india.futuregrid.org"
+        "FS" : "sftp://sierra.futuregrid.org"
     }
 }
