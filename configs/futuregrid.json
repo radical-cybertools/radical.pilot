@@ -1,13 +1,17 @@
 {
     "localhost": {
-        "URL": "fork://localhost"
+        "URL": "fork://localhost",
+        "FS" : "file://localhost"
+
     },
 
     "futuregrid.INDIA": {
-        "URL": "pbs+ssh://india.futuregrid.org"
+        "URL": "pbs+ssh://india.futuregrid.org",
+        "FS" : "sftp://india.futuregrid.org"
     },
 
     "futuregrid.SIERRA": {
-        "URL": "pbs+ssh://sierra.futuregrid.org"
+        "URL": "pbs+ssh://sierra.futuregrid.org",
+        "FS" : "sftp://india.futuregrid.org"
     }
 }

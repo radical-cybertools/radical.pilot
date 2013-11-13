@@ -23,6 +23,8 @@ import json
 import urllib2
 import datetime
 
+from radical.utils import which
+
 # ------------------------------------------------------------------------------
 #
 class PilotManager(object):
@@ -238,8 +240,14 @@ class PilotManager(object):
             ########################################################
             try:
                 jd = utils.create_saga_job_description(
+                    pilot_uid=str(pilot_id),
                     pilot_desc=pilot_description['description'],
                     resource_desc=self._resource_cfgs[resource_key])
+
+                # submit the agent bootstrap script
+                agent_bootsrap_script = which('bootsrap-and-run-agent')
+                f = saga.filesystem.File("file://localhost/%s" % agent_bootsrap_script)
+                f.copy("%s/tmp/bootsrap-and-run-agent-%s" % (self._resource_cfgs[resource_key]['FS'], str(pilot_id)))
 
                 job_service_url = self._resource_cfgs[resource_key]['URL']
                 js = saga.job.Service(job_service_url)

@@ -12,13 +12,17 @@ def as_list(obj):
         obj_list = obj
     return obj_list
 
-def create_saga_job_description(pilot_desc, resource_desc):
+def create_saga_job_description(pilot_uid, pilot_desc, resource_desc):
     """Creates a SAGA job descritpion from a PilotDescription
     and from a resource configuration. 
     """
+
     jd = Description()
-    jd.executable = "/bin/sleep"
-    jd.arguments  = ["60"]
+    jd.working_directory = "saga-pilot"
+    jd.executable = "/tmp/bootsrap-and-run-agent-%s" % pilot_uid
+    jd.output = "saga-pilot-agent-%s.out" % pilot_uid
+    jd.error  = "saga-pilot-agent-%s.err" % pilot_uid
+    jd.arguments  = ["-h"]
 
     # First we initialize the job description with whatever 
     # we find in the resource configuration.

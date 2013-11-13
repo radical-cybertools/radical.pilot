@@ -12,7 +12,7 @@
 # global variables
 #
 REMOTE=
-UID=
+AGENTID=
 WORKDIR=`pwd`
 PYTHON=`which python`
 
@@ -99,7 +99,7 @@ do
              REMOTE=$OPTARG
              ;;
          u)
-             UID=$OPTARG
+             AGENTID=$OPTARG
              ;;
          d)
              WORKDIR=$OPTARG
@@ -114,7 +114,7 @@ do
      esac
 done
 
-if [[ -z $REMOTE ]] || [[ -z $UID ]]
+if [[ -z $REMOTE ]] || [[ -z $AGENTID ]]
 then
      usage
      exit 1
