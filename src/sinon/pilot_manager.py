@@ -21,6 +21,7 @@ import saga
 
 import json
 import urllib2
+import datetime
 
 # ------------------------------------------------------------------------------
 #
@@ -204,19 +205,15 @@ class PilotManager(object):
         # implicit -> list -> dict conversion
         pilot_description_dict = {}
         for pd in utils.as_list(pilot_descriptions):
-            pilot_description_dict[ObjectId()] = pd
-
-        # create database entries
-        pilot_uids = self._session._dbs.insert_pilots(pilot_manager_uid=self.uid, 
-            pilot_descriptions=pilot_description_dict)
+            pilot_description_dict[ObjectId()] = {'description': pd, 'info': {}}
 
         # create the pilot objects, launch the actual pilots via saga
         # and update the status accordingly.
         pilots = []
         for pilot_id, pilot_description in pilot_description_dict.iteritems():
             # check wether pilot description defines the mandatory fields 
-            resource_key = pilot_description.resource
-            number_cores = pilot_description.cores
+            resource_key = pilot_description['description'].resource
+            number_cores = pilot_description['description'].cores
 
             #########################
             # Check job description # 
@@ -233,33 +230,48 @@ class PilotManager(object):
 
             pilot = Pilot._create(
                 pilot_uid=str(pilot_id),
-                pilot_description=pilot_description, 
+                pilot_description=pilot_description['description'], 
                 pilot_manager_obj=self)
 
-            ###############################
-            # Create SAGA Job description #
-            ###############################
+            ########################################################
+            # Create SAGA Job description and submit the pilot job #
+            ########################################################
             try:
                 jd = utils.create_saga_job_description(
-                    pilot_desc=pilot_description,
+                    pilot_desc=pilot_description['description'],
                     resource_desc=self._resource_cfgs[resource_key])
 
                 job_service_url = self._resource_cfgs[resource_key]['URL']
                 js = saga.job.Service(job_service_url)
 
+                pilotjob = js.create_job(jd)
+                pilotjob.run()
+
+                pilotjob_id = pilotjob.id
                 js.close()
+
+                # at this point, submission has succeeded. we can update
+                #   * the state to 'PENDING'
+                pilot_description_dict[pilot_id]['info']['state'] = constants.PENDING
+                #   * the submission time
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                #   * the log
+                pilot_description_dict[pilot_id]['info']['log'] = ["Pilot Job successfully submitted with JobID '%s'" % pilotjob_id]
+
             except saga.SagaException, se: 
-                pass
-
-            ###############################
-            # C #
-            ###############################
-
-            #################################
-            # Submit Pilot and update state #
-            #################################
+                # at this point, submission has failed. we can update
+                #   * the state to 'PENDING'
+                pilot_description_dict[pilot_id]['info']['state'] = constants.FAILED
+                #   * the submission time
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                #   * the log
+                pilot_description_dict[pilot_id]['info']['log'] = ["Pilot Job submission failed: '%s'" % str(se)]
 
             pilots.append(pilot)
+
+        # bulk-create database entries
+        self._session._dbs.insert_pilots(pilot_manager_uid=self.uid, 
+            pilot_descriptions=pilot_description_dict)
 
         # implicit return value conversion
         if len(pilots) == 1:

@@ -175,13 +175,14 @@ class Session():
         for pilot_id, pilot_desc in pilot_descriptions.iteritems():
             pilot_json = {
                 "_id"           : pilot_id,
-                "description"   : pilot_desc.as_dict(),
+                "description"   : pilot_desc['description'].as_dict(),
                 "wu_queue"      : [],
                 "info"          : {
-                    "submitted" : "<DATE>",
+                    "submitted" : pilot_desc['info']['submitted'],
                     "started"   : None,
                     "finished"  : None,
-                    "state"     : "UNKNOWN"
+                    "state"     : pilot_desc['info']['state'],
+                    "log"       : pilot_desc['info']['log']
                 },
                 "links" : {
                     "pilotmanager"  : pilot_manager_uid,

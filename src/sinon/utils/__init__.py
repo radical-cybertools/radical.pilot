@@ -17,6 +17,8 @@ def create_saga_job_description(pilot_desc, resource_desc):
     and from a resource configuration. 
     """
     jd = Description()
+    jd.executable = "/bin/sleep"
+    jd.arguments  = ["60"]
 
     # First we initialize the job description with whatever 
     # we find in the resource configuration.
