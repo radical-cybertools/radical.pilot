@@ -247,7 +247,7 @@ class PilotManager(object):
                 # submit the agent bootstrap script
                 agent_bootsrap_script = which('bootsrap-and-run-agent')
                 f = saga.filesystem.File("file://localhost/%s" % agent_bootsrap_script)
-                f.copy("%s/tmp/bootsrap-and-run-agent-%s" % (self._resource_cfgs[resource_key]['FS'], str(pilot_id)))
+                f.copy("%s/N/u/oweidner/saga-pilot/bootsrap-and-run-agent-%s" % (self._resource_cfgs[resource_key]['FS'], str(pilot_id)))
 
                 job_service_url = self._resource_cfgs[resource_key]['URL']
                 js = saga.job.Service(job_service_url)

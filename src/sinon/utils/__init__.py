@@ -18,8 +18,8 @@ def create_saga_job_description(pilot_uid, pilot_desc, resource_desc):
     """
 
     jd = Description()
-    jd.working_directory = "saga-pilot"
-    jd.executable = "/tmp/bootsrap-and-run-agent-%s" % pilot_uid
+    jd.working_directory = "/N/u/oweidner/saga-pilot/"
+    jd.executable = "/N/u/oweidner/saga-pilot/bootsrap-and-run-agent-%s" % pilot_uid
     jd.output = "saga-pilot-agent-%s.out" % pilot_uid
     jd.error  = "saga-pilot-agent-%s.err" % pilot_uid
     jd.arguments  = ["-h"]
