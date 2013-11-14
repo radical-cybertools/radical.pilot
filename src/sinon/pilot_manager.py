@@ -207,7 +207,10 @@ class PilotManager(object):
         # implicit -> list -> dict conversion
         pilot_description_dict = {}
         for pd in utils.as_list(pilot_descriptions):
-            pilot_description_dict[ObjectId()] = {'description': pd, 'info': {}}
+            pilot_description_dict[ObjectId()] = {
+                'description': pd, 
+                'info': {'log': []}
+            }
 
         # create the pilot objects, launch the actual pilots via saga
         # and update the status accordingly.
@@ -253,23 +256,30 @@ class PilotManager(object):
 
                 agent_dir = saga.filesystem.Directory(agent_dir_url, 
                     saga.filesystem.CREATE_PARENTS)
+                pilot_description_dict[pilot_id]['info']['log'].append("Created agent directory '%s'" % str(agent_dir_url))
 
                 bootstrap_script_url = saga.Url("file://localhost/%s" \
                     % (which('bootstrap-and-run-agent')))
 
                 bootstrap_script = saga.filesystem.File(bootstrap_script_url)
                 bootstrap_script.copy(agent_dir_url)
+                pilot_description_dict[pilot_id]['info']['log'].append("Copied launch script '%s' to agent directory" % str(bootstrap_script_url))
+
 
                 # now that the script is in place and we know where it is,
                 # we can launch the agent
                 js = saga.job.Service(resource_cfg['URL'])
 
-                jd = Description()
+                jd = saga.job.Description()
                 jd.working_directory = agent_dir_url.path
-                jd.executable        = "./bootstrap-and-run-agent" % agent_dir_url.path
-                jd.arguments         = ["-r", "host", "-u", "123"]
+                jd.executable        = "./bootstrap-and-run-agent"
+                jd.arguments         = ["--dbconnect=host", 
+                                        "--uid=%s" % str(pilot_id),
+                                        "--task-source=sagapilot://",
+                                        "--task-results=sagapilot://"]
                 jd.output            = "STDOUT"
                 jd.error             = "STDERR"
+                jd.total_cpu_count   = number_cores
 
                 pilotjob = js.create_job(jd)
                 pilotjob.run()
@@ -287,17 +297,16 @@ class PilotManager(object):
                 #   * the log
                 pilot_description_dict[pilot_id]['info']['state'] = constants.PENDING
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
-                pilot_description_dict[pilot_id]['info']['log'] = ["Pilot Job successfully submitted with JobID '%s'" % pilotjob_id]
+                pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job successfully submitted with JobID '%s'" % pilotjob_id)
 
             except saga.SagaException, se: 
-                print "ERRRROORRRR: %s" % se
                 # at this point, submission has failed. we can update
                 #   * the state to 'PENDING'
                 #   * the submission time
                 #   * the log
                 pilot_description_dict[pilot_id]['info']['state'] = constants.FAILED
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
-                pilot_description_dict[pilot_id]['info']['log'] = ["Pilot Job submission failed: '%s'" % str(se)]
+                pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job submission failed: '%s'" % str(se))
 
             pilots.append(pilot)
 
