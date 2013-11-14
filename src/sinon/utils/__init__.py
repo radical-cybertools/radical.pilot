@@ -22,7 +22,7 @@ def create_saga_job_description(pilot_uid, pilot_desc, resource_desc):
     jd.executable = "/N/u/oweidner/saga-pilot/bootsrap-and-run-agent-%s" % pilot_uid
     jd.output = "saga-pilot-agent-%s.out" % pilot_uid
     jd.error  = "saga-pilot-agent-%s.err" % pilot_uid
-    jd.arguments  = ["-h"]
+    jd.arguments  = ["-r", "host", "-u", "123"]
 
     # First we initialize the job description with whatever 
     # we find in the resource configuration.

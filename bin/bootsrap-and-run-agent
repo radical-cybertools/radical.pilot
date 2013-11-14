@@ -72,7 +72,11 @@ echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Bootstraping a fre
 curl --insecure -s https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py | $PYTHON - --python=$PYTHON $R_SYS_DIR
 source $R_SYS_DIR/bin/activate
 echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Installing Python packages: saga-python, requests"
+
+pip install pymongo
+pip install -e git://github.com/apache/libcloud.git@v0.13.2#egg=apache-libcloud
 pip install saga-python
+pip install -e git://github.com/saga-project/radical.agent.git@master#egg=radical.agent 
 }
 
 # -----------------------------------------------------------------------------
@@ -80,7 +84,7 @@ pip install saga-python
 #
 launchagent()
 {
-echo "hello there"
+radical-agent --help
 #python ./radical-agent.py -r $REMOTE -t OTPTOKEN
 }
 
@@ -88,7 +92,7 @@ echo "hello there"
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:t:d:p” OPTION
+while getopts “hr:u:d:p” OPTION
 do
      case $OPTION in
          h)
