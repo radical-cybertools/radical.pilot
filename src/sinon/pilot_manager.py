@@ -241,11 +241,6 @@ class PilotManager(object):
             # Create SAGA Job description and submit the pilot job #
             ########################################################
             try:
-                jd = utils.create_saga_job_description(
-                    pilot_uid=str(pilot_id),
-                    pilot_desc=pilot_description['description'],
-                    resource_cfg=resource_cfg)
-
                 # Create working directory if it doesn't exist and copy
                 # the agent bootstrap script into it. 
                 #
@@ -257,24 +252,34 @@ class PilotManager(object):
                     % (resource_cfg['working_directory'], str(pilot_id)))
 
                 agent_dir = saga.filesystem.Directory(agent_dir_url, 
-                    saga.filesystem.Create)
+                    saga.filesystem.CREATE_PARENTS)
 
                 bootstrap_script_url = saga.Url("file://localhost/%s" \
                     % (which('bootstrap-and-run-agent')))
 
                 bootstrap_script = saga.filesystem.File(bootstrap_script_url)
-                bootstrap_script.copy(agent_dir)
+                bootstrap_script.copy(agent_dir_url)
 
                 # now that the script is in place and we know where it is,
                 # we can launch the agent
-                job_service_url = resource_cfg['URL']
-                js = saga.job.Service(job_service_url)
+                js = saga.job.Service(resource_cfg['URL'])
+
+                jd = Description()
+                jd.working_directory = agent_dir_url.path
+                jd.executable        = "./bootstrap-and-run-agent" % agent_dir_url.path
+                jd.arguments         = ["-r", "host", "-u", "123"]
+                jd.output            = "STDOUT"
+                jd.error             = "STDERR"
 
                 pilotjob = js.create_job(jd)
                 pilotjob.run()
 
                 pilotjob_id = pilotjob.id
+
+                # clean up / close all saga objects
                 js.close()
+                agent_dir.close()
+                bootstrap_script.close()
 
                 # at this point, submission has succeeded. we can update
                 #   * the state to 'PENDING'

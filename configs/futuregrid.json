@@ -7,11 +7,11 @@
 
     "futuregrid.INDIA": {
         "URL": "pbs+ssh://india.futuregrid.org",
-        "working_directory": "sftp://india.futuregrid.org/$HOME/sinon/"
+        "working_directory": "sftp://india.futuregrid.org/N/u/oweidner/sinon/"
     },
 
     "futuregrid.SIERRA": {
         "URL": "pbs+ssh://sierra.futuregrid.org",
-        "working_directory": "sftp://sierra.futuregrid.org/$HOME/sinon/"
+        "working_directory": "sftp://sierra.futuregrid.org/N/u/oweidner/sinon/"
     }
 }
