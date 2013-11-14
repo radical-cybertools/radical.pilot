@@ -230,6 +230,8 @@ class PilotManager(object):
             if number_cores is None:
                 raise SinonException("ComputePilotDescription.cores not defined")
 
+            resource_cfg = self._resource_cfgs[resource_key]
+
             pilot = Pilot._create(
                 pilot_uid=str(pilot_id),
                 pilot_description=pilot_description['description'], 
@@ -242,14 +244,30 @@ class PilotManager(object):
                 jd = utils.create_saga_job_description(
                     pilot_uid=str(pilot_id),
                     pilot_desc=pilot_description['description'],
-                    resource_desc=self._resource_cfgs[resource_key])
+                    resource_cfg=resource_cfg)
 
-                # submit the agent bootstrap script
-                agent_bootsrap_script = which('bootsrap-and-run-agent')
-                f = saga.filesystem.File("file://localhost/%s" % agent_bootsrap_script)
-                f.copy("%s/N/u/oweidner/saga-pilot/bootsrap-and-run-agent-%s" % (self._resource_cfgs[resource_key]['FS'], str(pilot_id)))
+                # Create working directory if it doesn't exist and copy
+                # the agent bootstrap script into it. 
+                #
+                # We create a new sub-driectory for each agent. each 
+                # agent will bootstrap its own virtual environment in this 
+                # directory.
+                #
+                agent_dir_url = saga.Url("%s/pilot-%s/" \
+                    % (resource_cfg['working_directory'], str(pilot_id)))
 
-                job_service_url = self._resource_cfgs[resource_key]['URL']
+                agent_dir = saga.filesystem.Directory(agent_dir_url, 
+                    saga.filesystem.Create)
+
+                bootstrap_script_url = saga.Url("file://localhost/%s" \
+                    % (which('bootstrap-and-run-agent')))
+
+                bootstrap_script = saga.filesystem.File(bootstrap_script_url)
+                bootstrap_script.copy(agent_dir)
+
+                # now that the script is in place and we know where it is,
+                # we can launch the agent
+                job_service_url = resource_cfg['URL']
                 js = saga.job.Service(job_service_url)
 
                 pilotjob = js.create_job(jd)
@@ -260,19 +278,20 @@ class PilotManager(object):
 
                 # at this point, submission has succeeded. we can update
                 #   * the state to 'PENDING'
-                pilot_description_dict[pilot_id]['info']['state'] = constants.PENDING
                 #   * the submission time
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
                 #   * the log
+                pilot_description_dict[pilot_id]['info']['state'] = constants.PENDING
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
                 pilot_description_dict[pilot_id]['info']['log'] = ["Pilot Job successfully submitted with JobID '%s'" % pilotjob_id]
 
             except saga.SagaException, se: 
+                print "ERRRROORRRR: %s" % se
                 # at this point, submission has failed. we can update
                 #   * the state to 'PENDING'
-                pilot_description_dict[pilot_id]['info']['state'] = constants.FAILED
                 #   * the submission time
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
                 #   * the log
+                pilot_description_dict[pilot_id]['info']['state'] = constants.FAILED
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
                 pilot_description_dict[pilot_id]['info']['log'] = ["Pilot Job submission failed: '%s'" % str(se)]
 
             pilots.append(pilot)

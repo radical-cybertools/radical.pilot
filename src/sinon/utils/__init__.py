@@ -12,7 +12,7 @@ def as_list(obj):
         obj_list = obj
     return obj_list
 
-def create_saga_job_description(pilot_uid, pilot_desc, resource_desc):
+def create_saga_job_description(pilot_uid, pilot_desc, resource_cfg):
     """Creates a SAGA job descritpion from a PilotDescription
     and from a resource configuration. 
     """

@@ -1,17 +1,17 @@
 {
     "localhost": {
         "URL": "fork://localhost",
-        "FS" : "file://localhost"
+        "working_directory": "file://localhost/tmp/sinon/"
 
     },
 
     "futuregrid.INDIA": {
         "URL": "pbs+ssh://india.futuregrid.org",
-        "FS" : "sftp://india.futuregrid.org"
+        "working_directory": "sftp://india.futuregrid.org/$HOME/sinon/"
     },
 
     "futuregrid.SIERRA": {
         "URL": "pbs+ssh://sierra.futuregrid.org",
-        "FS" : "sftp://sierra.futuregrid.org"
+        "working_directory": "sftp://sierra.futuregrid.org/$HOME/sinon/"
     }
 }
