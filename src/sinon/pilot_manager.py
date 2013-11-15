@@ -265,6 +265,11 @@ class PilotManager(object):
                 bootstrap_script.copy(agent_dir_url)
                 pilot_description_dict[pilot_id]['info']['log'].append("Copied launch script '%s' to agent directory" % str(bootstrap_script_url))
 
+                # extract the required connection parameters and uids
+                # for the agent:
+                database_url = self._session._database_url 
+                session_uid  = self._session.uid
+                pilot_uid    = self.uid 
 
                 # now that the script is in place and we know where it is,
                 # we can launch the agent
@@ -273,10 +278,7 @@ class PilotManager(object):
                 jd = saga.job.Description()
                 jd.working_directory = agent_dir_url.path
                 jd.executable        = "./bootstrap-and-run-agent"
-                jd.arguments         = ["--dbconnect=host", 
-                                        "--uid=%s" % str(pilot_id),
-                                        "--task-source=sagapilot://",
-                                        "--task-results=sagapilot://"]
+                jd.arguments         = ["-r", database_url, "-u", ]
                 jd.output            = "STDOUT"
                 jd.error             = "STDERR"
                 jd.total_cpu_count   = number_cores
@@ -300,6 +302,7 @@ class PilotManager(object):
                 pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job successfully submitted with JobID '%s'" % pilotjob_id)
 
             except saga.SagaException, se: 
+                print "ERRRROORRRR: %s" % se
                 # at this point, submission has failed. we can update
                 #   * the state to 'PENDING'
                 #   * the submission time
