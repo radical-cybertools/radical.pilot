@@ -68,8 +68,9 @@ class Session(object):
                                             db_url=database_url, 
                                             db_name=database_name)
 
-        self._database_url = database_url
-        self._session_uid = session_uid
+        self._database_url  = database_url
+        self._database_name = database_name 
+        self._session_uid   = session_uid
 
     #---------------------------------------------------------------------------
     #

@@ -267,9 +267,9 @@ class PilotManager(object):
 
                 # extract the required connection parameters and uids
                 # for the agent:
-                database_url = self._session._database_url 
+                database_host = self._session._database_url.split("://")[1]
+                database_name = self._session._database_name
                 session_uid  = self._session.uid
-                pilot_uid    = self.uid 
 
                 # now that the script is in place and we know where it is,
                 # we can launch the agent
@@ -278,7 +278,10 @@ class PilotManager(object):
                 jd = saga.job.Description()
                 jd.working_directory = agent_dir_url.path
                 jd.executable        = "./bootstrap-and-run-agent"
-                jd.arguments         = ["-r", database_url, "-u", ]
+                jd.arguments         = ["-r", database_host,  # database host (+ port)
+                                        "-n", database_name,  # database name
+                                        "-s", session_uid,    # session uid
+                                        "-a", str(pilot_id)]  # agent uid
                 jd.output            = "STDOUT"
                 jd.error             = "STDERR"
                 jd.total_cpu_count   = number_cores
@@ -302,11 +305,8 @@ class PilotManager(object):
                 pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job successfully submitted with JobID '%s'" % pilotjob_id)
 
             except saga.SagaException, se: 
-                print "ERRRROORRRR: %s" % se
-                # at this point, submission has failed. we can update
-                #   * the state to 'PENDING'
-                #   * the submission time
-                #   * the log
+                # at this point, submission has failed. we update the 
+                # agent status accordingly
                 pilot_description_dict[pilot_id]['info']['state'] = constants.FAILED
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
                 pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job submission failed: '%s'" % str(se))
