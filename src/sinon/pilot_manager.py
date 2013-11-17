@@ -281,7 +281,7 @@ class PilotManager(object):
                 jd.arguments         = ["-r", database_host,  # database host (+ port)
                                         "-n", database_name,  # database name
                                         "-s", session_uid,    # session uid
-                                        "-a", str(pilot_id)]  # agent uid
+                                        "-p", str(pilot_id)]  # pilot uid
                 jd.output            = "STDOUT"
                 jd.error             = "STDERR"
                 jd.total_cpu_count   = number_cores
