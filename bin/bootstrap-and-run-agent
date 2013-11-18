@@ -5,7 +5,7 @@
 # Copyright 2013, radical@rutgers.edu
 # License under the MIT License
 #
-# This script launches a radical compute pilot.
+# This script launches a sinon compute pilot.
 #
 
 # -----------------------------------------------------------------------------
@@ -27,7 +27,7 @@ usage()
 cat << EOF
 usage: $0 options
 
-This script launches a radical compute pilot.
+This script launches a sinon compute pilot.
 
 OPTIONS:
    -r      Address and port of the coordination service host (MongoDB)
@@ -75,7 +75,7 @@ pip install -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilo
 #
 launchagent()
 {
-radical-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
+sinon-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
               --task-results=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
               --events=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID
 }
