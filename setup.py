@@ -1,5 +1,13 @@
-"""Setup for SAGA-Pilot package
 """
+.. module:: setup
+   :platform: Unix
+   :synopsis: Setup script for SAGA-Pilot.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, radical.rutgers.edu"
+__license__   = "MIT"
 
 import os, sys
 from distutils.command.install_data import install_data
@@ -120,7 +128,6 @@ setup(name='sinon',
       install_requires=['setuptools',
                         'saga-python',
                         'radical.utils',
-                        'pymongo',
                         'psutil',
                         'motor',
                         'python-hostlist'],
