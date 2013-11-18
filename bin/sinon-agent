@@ -1,0 +1,156 @@
+#!/user/bin/env python
+# -*- coding: utf-8 -*-
+
+__author__    = "Ole Weidner"
+__copyright__ = "Copyright 2013, Ole Weidner"
+__email__     = "ole.weidner@icloud.com"
+__license__   = "MIT"
+
+import sys
+import optparse
+
+from colorama import init, Fore, Back, Style
+from sinon.agent.version import version
+from sinon.agent.application import RhythmosAgent
+
+
+#-----------------------------------------------------------------------------
+#
+def startup_logo():
+    init()
+    logo = Fore.BLUE
+    logo += """         _                
+   _____(_)___  ____  ____ 
+  / ___/ / __ \/ __ \/ __ \\
+ (__  ) / / / / /_/ / / / /
+/____/_/_/ /_/\____/_/ /_/ 
+""" + Fore.YELLOW + """     Agent Version: %s\n""" % version
+    logo += Fore.RESET
+    return logo
+
+#-----------------------------------------------------------------------------
+#
+def parse_commandline():
+
+    parser = optparse.OptionParser()
+
+    parser.add_option('-v', '--version',
+                      dest='show_version',
+                      help='display the program version and exit.',
+                      action='store_true')
+
+    parser.add_option('-t', '--task-source',
+                      metavar='URL',
+                      dest='task_source_url',
+                      help='specifies the location where to pull the tasks from.')
+
+    parser.add_option('-r', '--task-results',
+                      metavar='URL',
+                      dest='task_results_url',
+                      help='Specifies the location where to publish the task results. [default: %default]',
+                      default='file:///dev/stdout')
+
+    parser.add_option('-e', '--events',
+                      metavar='URL',
+                      dest='task_events_url',
+                      help='Specifies the location where to publish events. [default: %default]',
+                      default='file:///dev/stdout')
+
+    parser.add_option('-m', '--task-metrics',
+                      metavar='URL',
+                      dest='task_metrics_url',
+                      help='Specifies the location where to publish task metrics.')
+
+    parser.add_option('-l', '--agent-logs',
+                      metavar='URL',
+                      dest='agent_log_url',
+                      help='Specifies the location where to publish agent log data. [default: %default]',
+                      default='file:///dev/stderr')
+
+    execution_opts = optparse.OptionGroup(
+        parser, 'Execution Options', 'These options control task execution',
+    )
+    execution_opts.add_option('--basedir', 
+                              metavar='DIRECTORY',
+                              dest='agent_workdir',
+                              help='Specifies the base (working) directory for the agent. [default: %default]',
+                              default='.')
+
+    execution_opts.add_option('--processes-per-node', 
+                              metavar='COUNT',
+                              dest='agent_ppn',
+                              help='Maximum number of processes to run concurrently on a node. [default: number of cores per node]')
+
+    execution_opts.add_option('--launch-method', 
+                              metavar='METHOD',
+                              dest='agent_launchmethod',
+                              help='Enforce a specific launch method (AUTO, FORK, SSH, MPIRUN, APRUN). [default: %default]',
+                              default='AUTO')
+
+    execution_opts.add_option('--dedicated-master-node',
+                              dest='dedicated_master_node',
+                              help=Fore.RED+'[NOT IMPL]'+Fore.RESET+' Reserve one node just for task management. This will reduce the number of available cores but speed-up execution for large node counts. [default: disabled]',
+                              action='store_true')
+
+    execution_opts.add_option('--detect-node-failure',
+                              dest='detect_node_failure',
+                              help=Fore.RED+'[NOT IMPL]'+Fore.RESET+' Try to detect erratic node behavior and move tasks away from faulty nodes. [default: disabled]',
+                              action='store_true')
+
+    parser.add_option_group(execution_opts)
+
+
+    logging_opts = optparse.OptionGroup(
+        parser, 'Logging Options', 'These options control logging',
+    )
+    logging_opts.add_option('--dummy_2', action='store_true', default=False,
+                            help='Dummy Option')
+    #parser.add_option_group(logging_opts)
+
+
+    install_opts = optparse.OptionGroup(
+        parser, 'Monitoring Options', 'These options control monitoring',
+    )
+    install_opts.add_option('--dummy_1', action='store_true', default=False,
+                            help='Dummy Option')
+    #parser.add_option_group(install_opts)
+
+    # parse the whole shebang
+    (options, args) = parser.parse_args()
+
+    if options.show_version is True:
+        print version
+        sys.exit(0)
+
+    print startup_logo()
+
+    if options.task_source_url is None:
+        parser.error("Task source URL (-t/--tasksource) must be defined. Try --help for help.")
+    elif options.task_results_url is None:
+        parser.error("Task source URL (-r/--results) must be defined. Try --help for help.")
+
+    if options.agent_launchmethod is not None: 
+        valid_options = ['AUTO', 'FORK', 'SSH', 'MPIRUN', 'APRUN']
+        if options.agent_launchmethod.upper() not in valid_options:
+            parser.error("--launch-method must be one of these: %s" % valid_options)
+
+    return options
+
+#-----------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    options = parse_commandline()
+
+    ra = RhythmosAgent(agent_log=options.agent_log_url,
+                       workdir=options.agent_workdir,
+                       tasks_per_node=options.agent_ppn,
+                       dedicated_master_node=options.dedicated_master_node,
+                       detect_node_failure=options.detect_node_failure,
+                       launch_method=options.agent_launchmethod
+                       )
+
+    sys.exit(ra.run(task_source=options.task_source_url,
+                    task_results=options.task_results_url,
+                    task_events=options.task_events_url,
+                    task_metrics=options.task_metrics_url))

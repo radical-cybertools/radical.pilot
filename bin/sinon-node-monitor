@@ -1,0 +1,86 @@
+#!/user/bin/env python
+# -*- coding: utf-8 -*-
+
+__author__    = "Ole Weidner"
+__copyright__ = "Copyright 2013, Ole Weidner"
+__email__     = "ole.weidner@icloud.com"
+__license__   = "MIT"
+
+import sys
+import signal
+import time
+import optparse
+
+from colorama import init, Fore, Back, Style
+from radical.agent.version import version
+from radical.agent.nodemonitor import NodeMonitor
+
+
+#-----------------------------------------------------------------------------
+#
+def startup_logo():
+    init()
+    logo = Fore.BLUE
+    logo += """
+               _ _           _ 
+              | (_)         | |
+ _ __ __ _  __| |_  ___ __ _| |
+| '__/ _` |/ _` | |/ __/ _` | |
+| | | (_| | (_| | | (_| (_| | |
+|_|  \__,_|\__,_|_|\___\__,_|_| 
+""" + Fore.RED + """NODE MONITOR Version %s""" % version    logo += Fore.RESET
+    return logo
+
+
+#-----------------------------------------------------------------------------
+#
+def parse_commandline():
+
+    parser = optparse.OptionParser()
+
+    parser.add_option('-w', '--workdir',
+                      metavar='DIR',
+                      dest='workdir',
+                      help='Specifies the working directory for the node monitor.')
+
+
+    parser.add_option('-m', '--task-metrics',
+                      metavar='URL',
+                      dest='task_metrics_url',
+                      help='Specifies the location where to publish task metrics.')
+
+    install_opts = optparse.OptionGroup(
+        parser, 'Monitoring Options', 'These options control monitoring',
+    )
+    install_opts.add_option('--dummy_1', action='store_true', default=False,
+                            help='Dummy Option')
+    parser.add_option_group(install_opts)
+
+    # parse the whole shebang
+    (options, args) = parser.parse_args()
+
+    print Fore.BLUE + startup_logo() + Fore.RESET
+
+    if options.workdir is None:
+        parser.error("Working directory URL (-w/--workdir) must be defined. Try --help for help.")
+
+    return options
+
+
+#-----------------------------------------------------------------------------
+#
+def _signal_handler(signum, frame):
+    print 'Signal handler called with signal', signum
+    print 'EXITING'
+    sys.exit(0)
+
+for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
+    signal.signal(sig, _signal_handler)
+
+if __name__ == "__main__":
+
+    options = parse_commandline()
+
+    nm = NodeMonitor(workdir=options.workdir)
+
+    sys.exit(nm.run())
