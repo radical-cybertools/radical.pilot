@@ -280,9 +280,22 @@ class PilotManager(object):
                 jd.working_directory = agent_dir_url.path
                 jd.executable        = "./bootstrap-and-run-agent"
                 jd.arguments         = ["-r", database_host,  # database host (+ port)
-                                        "-n", database_name,  # database name
+                                        "-d", database_name,  # database name
                                         "-s", session_uid,    # session uid
-                                        "-p", str(pilot_id)]  # pilot uid
+                                        "-p", str(pilot_id)]#, # pilot uid
+                                        #"-C",                 # clean up by default
+
+                # if resource config defines 'pre_bootstrap' commands,
+                # we add those to the argument list
+                if 'pre_bootstrap' in resource_cfg:
+                    for command in resource_cfg['pre_bootstrap']:
+                        jd.arguments.append("-e \"%s\"" % resource_cfg['pre_bootstrap'])
+
+                # if resourc configuration defines a custom 'python_interpreter',
+                # we add it to the argument list
+                if 'python_interpreter' in resource_cfg:
+                    jd.arguments.append("-i %s" % resource_cfg['python_interpreter'])
+
                 jd.output            = "STDOUT"
                 jd.error             = "STDERR"
                 jd.total_cpu_count   = number_cores

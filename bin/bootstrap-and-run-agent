@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 # -----------------------------------------------------------------------------
 # Author: Ole Weidner (ole.weidner@rutgers.edu)
@@ -11,7 +11,8 @@
 # -----------------------------------------------------------------------------
 # global variables
 #
-CLEANUP=false
+PREBOOTSTRAP=
+CLEANUP=
 REMOTE=
 DBNAME=
 PILOTID=
@@ -32,19 +33,21 @@ This script launches a sinon compute pilot.
 OPTIONS:
    -r      Address and port of the coordination service host (MongoDB)
 
-   -n      Name of the database
+   -d      The name of the database 
 
    -s      The unique identifier (uid) of the session
 
    -p      The unique identifier (uid) of the pilot
 
-   -d      The working (base) directory of the pilot
+   -w      The working (base) directory of the pilot
            (default is '.')
 
    -i      The Python interpreter to use, e.g., python2.6
            (default is '/usr/bin/python')
 
-   -c      Cleanup - delete virtualenv after execution
+   -e      List of commands to run before botstrapping
+
+   -C      Cleanup - delete virtualenv after execution
 
    -h      Show this message
 
@@ -85,7 +88,7 @@ sinon-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONI
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:n:s:p:d:i:c” OPTION
+while getopts “hr:d:s:p:w:i:e:C” OPTION
 do
      case $OPTION in
          h)
@@ -95,7 +98,7 @@ do
          r)
              REMOTE=$OPTARG
              ;;
-         n)
+         d)
              DBNAME=$OPTARG
              ;;
          s)
@@ -104,14 +107,18 @@ do
          p)
              PILOTID=$OPTARG
              ;;
-         d)
+         w)
              WORKDIR=$OPTARG
              ;;
          i)
              PYTHON=$OPTARG
              ;;
-         c)
-             CLEANUP=$OPTARG
+         e)
+             PREBOOTSTRAP=$OPTARG
+             $PREBOOTSTRAP
+             ;;
+         C)
+             CLEANUP=true
              ;;
          ?)
              usage
@@ -131,5 +138,11 @@ installvenv
 launchagent
 
 # cleanup
-rm -rf $R_SYS_DIR=$WORKDIR/virtualenv
+if [[ $CLEANUP ]]
+then
+    rm -rf $WORKDIR/virtualenv/
+fi
+
+# ... and exit
+exit 0
 

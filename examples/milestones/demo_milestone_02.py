@@ -23,7 +23,7 @@ def demo_milestone_02():
 
         # Submit a 16-core pilot to sierra.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource = "futuregrid.INDIA"
+        pd.resource = "futuregrid.SIERRA"
         pd.cores = 16
         sierra_pilot = pm.submit_pilots(pd)
 
