@@ -11,6 +11,7 @@
 # -----------------------------------------------------------------------------
 # global variables
 #
+CLEANUP=false
 REMOTE=
 DBNAME=
 PILOTID=
@@ -43,6 +44,8 @@ OPTIONS:
    -i      The Python interpreter to use, e.g., python2.6
            (default is '/usr/bin/python')
 
+   -c      Cleanup - delete virtualenv after execution
+
    -h      Show this message
 
 EOF
@@ -60,14 +63,11 @@ then
     echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Removing previous virtualenv: $R_SYS_DIR"
     rm -r $R_SYS_DIR
 fi
+
 # create a fresh virtualenv
-echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Bootstraping a fresh virtualenv from https://raw.github.com/pypa/virtualenv"
 curl --insecure -s https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py | $PYTHON - --python=$PYTHON $R_SYS_DIR
 source $R_SYS_DIR/bin/activate
-echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Installing Python packages: saga-python, requests"
-
-pip install pymongo
-pip install -e git://github.com/saga-project/radical.agent.git@master#egg=radical.agent 
+pip install -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
 }
 
 # -----------------------------------------------------------------------------
@@ -84,7 +84,7 @@ radical-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIO
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:n:s:p:d:i” OPTION
+while getopts “hr:n:s:p:d:i:c” OPTION
 do
      case $OPTION in
          h)
@@ -109,6 +109,9 @@ do
          i)
              PYTHON=$OPTARG
              ;;
+         c)
+             CLEANUP=$OPTARG
+             ;;
          ?)
              usage
              exit
@@ -122,9 +125,10 @@ then
      exit 1
 fi
 
-#echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Starting RHYTHMOS environment setup."
 # bootstrap virtualenv
 installvenv
-#echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Completed RHYTHMOS environment setup. "
 launchagent
+
+# cleanup
+rm -rf R_SYS_DIR=$WORKDIR/virtualenv
 
