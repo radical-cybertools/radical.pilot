@@ -6,11 +6,12 @@
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
+__copyright__ = "Copyright 2013, radical.rutgers.edu"
 __license__   = "MIT"
 
-import attributes
-import constants
+from sinon.constants import * 
+
+import sinon.frontend.attributes as attributes
 
 # ------------------------------------------------------------------------------
 #
@@ -26,5 +27,5 @@ class Description (attributes.Attributes) :
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register    ('dtype',  constants.UNKNOWN, attributes.ENUM, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_enums   ('dtype', [constants.UNKNOWN, constants.COMPUTE, constants.DATA])
+        self._attributes_register    ('dtype',  UNKNOWN, attributes.ENUM, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_enums   ('dtype', [UNKNOWN, COMPUTE, DATA])

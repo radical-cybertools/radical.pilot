@@ -9,21 +9,22 @@
 __copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
 __license__   = "MIT"
 
-from session      import Session
-from exceptions   import SinonException
-from pilot        import Pilot
+from sinon.constants  import *
+from sinon.utils      import as_list
+from sinon.exceptions import SinonException
 
-import constants
+from sinon.frontend.session      import Session
+from sinon.frontend.pilot        import Pilot
 
 from sinon.db import Session as dbSession
-import utils
-import saga
 
+from radical.utils import which
+
+import saga
 import json
 import urllib2
 import datetime
 
-from radical.utils import which
 
 # ------------------------------------------------------------------------------
 #
@@ -105,7 +106,7 @@ class PilotManager(object):
         # Donwload and parse the configuration file(s) and the content to 
         # our resource dictionary.
         self._resource_cfgs = {}
-        for rcf in utils.as_list(resource_configurations):
+        for rcf in as_list(resource_configurations):
             try:
                 # download resource configuration file
                 response = urllib2.urlopen(rcf)
@@ -206,7 +207,7 @@ class PilotManager(object):
 
         # implicit -> list -> dict conversion
         pilot_description_dict = {}
-        for pd in utils.as_list(pilot_descriptions):
+        for pd in as_list(pilot_descriptions):
             pilot_description_dict[ObjectId()] = {
                 'description': pd, 
                 'info': {'log': []}
@@ -300,14 +301,14 @@ class PilotManager(object):
                 #   * the state to 'PENDING'
                 #   * the submission time
                 #   * the log
-                pilot_description_dict[pilot_id]['info']['state'] = constants.PENDING
+                pilot_description_dict[pilot_id]['info']['state'] = PENDING
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
                 pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job successfully submitted with JobID '%s'" % pilotjob_id)
 
             except saga.SagaException, se: 
                 # at this point, submission has failed. we update the 
                 # agent status accordingly
-                pilot_description_dict[pilot_id]['info']['state'] = constants.FAILED
+                pilot_description_dict[pilot_id]['info']['state'] = FAILED
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
                 pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job submission failed: '%s'" % str(se))
 
@@ -360,14 +361,14 @@ class PilotManager(object):
             * :class:`sinon.SinonException`
         """
         # implicit list conversion
-        pilot_uid_list = utils.as_list(pilot_uids)
+        pilot_uid_list = as_list(pilot_uids)
 
         pilots = Pilot._get(pilot_uids=pilot_uid_list, pilot_manager_obj=self)
         return pilots
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilots(self, pilot_uids=None, state=[constants.DONE, constants.FAILED, constants.CANCELED], timeout=-1.0):
+    def wait_pilots(self, pilot_uids=None, state=[DONE, FAILED, CANCELED], timeout=-1.0):
         """Returns when one or more :class:`sinon.Pilots` reach a 
         specific state. 
 

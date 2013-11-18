@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# encoding: utf-8
-
 """Setup for SAGA-Pilot package
 """
 
@@ -76,7 +73,7 @@ class sinon_sdist(sdist):
     def make_release_tree(self, base_dir, files):
         sdist.make_release_tree(self, base_dir, files)
 
-        fn = os.path.join(base_dir, 'radical/utils', 'VERSION')
+        fn = os.path.join(base_dir, 'src/sinon', 'VERSION')
 
         if os.path.exists(fn):
             os.remove(fn)
@@ -93,9 +90,9 @@ def read(*rnames):
 #
 setup(name='sinon',
       version=update_version(),
-      author='RADICAL Group | Rutgers University',
+      author='RADICAL Group at Rutgers University',
       author_email='ole.weidner@rutgers.edu',
-      description="A SAGA-based pilot framework",
+      description="A SAGA-based pilot job framework",
       long_description=(read('README.md') + '\n\n' + read('CHANGES.md')),
       license='MIT',
       keywords="radical pilot job saga",
@@ -115,12 +112,17 @@ setup(name='sinon',
       url='https://github.com/saga-project/sinon',
       packages=find_packages('src'),
       package_dir = {'': 'src'},
-      #namespace_packages=['sinon'],
-      scripts=['bin/sinon-version', 'bin/bootstrap-and-run-agent'],
+      scripts=['bin/sinon-version', 
+               'bin/bootstrap-and-run-agent',
+               'bin/sinon-agent',
+               'bin/sinon-node-monitor',
+               'bin/sinon-process-wrapper'],
       install_requires=['setuptools',
                         'saga-python',
                         'radical.utils',
-                        'pymongo'],
+                        'pymongo',
+                        'psutil',
+                        'python-hostlist'],
       test_suite = 'sinon.tests',
       package_data = {'': ['*.sh', 'src/sinon/VERSION']},
       include_package_data = True,

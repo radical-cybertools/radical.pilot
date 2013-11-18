@@ -10,7 +10,9 @@ __copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
 __license__   = "MIT"
 
 import uuid
+
 from sinon.db import Session as dbSession
+
 
 # ------------------------------------------------------------------------------
 #

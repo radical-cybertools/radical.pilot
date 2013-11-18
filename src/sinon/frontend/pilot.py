@@ -9,14 +9,14 @@
 __copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
 __license__   = "MIT"
 
-import threading
-import time
+import sinon.frontend.session         as s
+import sinon.exceptions      as e
+from sinon.constants import * 
+
 import radical.utils   as ru
 
-import session         as s
-import exceptions      as e
-
-import constants
+import time
+import threading
 
 # ------------------------------------------------------------------------------
 #
@@ -111,7 +111,7 @@ class Pilot (object) :
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[constants.DONE, constants.FAILED, constants.CANCELED], timeout=None):
+    def wait (self, state=[DONE, FAILED, CANCELED], timeout=None):
         """
         """
         if not self._uid:
@@ -145,11 +145,11 @@ class Pilot (object) :
 
             # FIXME drain
 
-            if  self.state in [constants.DONE, constants.FAILED, constants.CANCELED] :
+            if  self.state in [DONE, FAILED, CANCELED] :
                 # nothing to do
                 return
 
-            if  self.state in [constants.UNKNOWN] :
+            if  self.state in [UNKNOWN] :
                 raise e.IncorrectState ("Pilot state is UNKNOWN, cannot cancel")
 
             # FIXME
@@ -159,7 +159,7 @@ class Pilot (object) :
     #
     def _get_state (self) :
 
-        return constants.UNKNOWN
+        return UNKNOWN
 
 
 # ------------------------------------------------------------------------------

@@ -22,6 +22,7 @@ def demo_milestone_01_1():
 
         pd = sinon.ComputePilotDescription()
         pd.resource = "futuregrid.INDIA"
+        pd.cores = 16
         p1 = pm.submit_pilots(pd)
 
         # Add a Unit Manager to the session and add the newly created 

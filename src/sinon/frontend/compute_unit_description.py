@@ -6,12 +6,12 @@
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
+__copyright__ = "Copyright 2013, radical.rutgers.edu"
 __license__   = "MIT"
 
-import constants
-import attributes
-import description
+from sinon.constants import *
+import sinon.frontend.attributes  as attributes
+import sinon.frontend.description as description
 
 # ------------------------------------------------------------------------------
 #
@@ -44,14 +44,14 @@ class ComputeUnitDescription (description.Description) :
 
         description.Description.__init__ (self, vals)
 
-        self._attributes_i_set  ('dtype', constants.COMPUTE, self._DOWN)
+        self._attributes_i_set  ('dtype', COMPUTE, self._DOWN)
 
         # register properties with the attribute interface
         # action description
         #self._attributes_register  (constants.NAME,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (constants.EXECUTABLE,        None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (constants.ARGUMENTS,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register  (constants.ENVIRONMENT,       None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register  (EXECUTABLE,        None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register  (ARGUMENTS,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register  (ENVIRONMENT,       None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         #self._attributes_register  (constants.CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register  (constants.START_TIME,        None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register  (constants.RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
