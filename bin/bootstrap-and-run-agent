@@ -67,6 +67,7 @@ fi
 # create a fresh virtualenv
 curl --insecure -s https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py | $PYTHON - --python=$PYTHON $R_SYS_DIR
 source $R_SYS_DIR/bin/activate
+pip install -e git://github.com/apache/libcloud.git@0.13.x#egg=apache-libcloud
 pip install -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
 }
 
