@@ -1,9 +1,14 @@
-#!/user/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/python
 
-__author__    = "Ole Weidner"
-__copyright__ = "Copyright 2013, Ole Weidner"
-__email__     = "ole.weidner@icloud.com"
+"""
+.. module:: sinon.bin.sinon-node-monitor
+   :platform: Unix
+   :synopsis: Node monitor command line tool.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
@@ -11,26 +16,8 @@ import signal
 import time
 import optparse
 
-from colorama import init, Fore, Back, Style
-from radical.agent.version import version
-from radical.agent.nodemonitor import NodeMonitor
-
-
-#-----------------------------------------------------------------------------
-#
-def startup_logo():
-    init()
-    logo = Fore.BLUE
-    logo += """
-               _ _           _ 
-              | (_)         | |
- _ __ __ _  __| |_  ___ __ _| |
-| '__/ _` |/ _` | |/ __/ _` | |
-| | | (_| | (_| | | (_| (_| | |
-|_|  \__,_|\__,_|_|\___\__,_|_| 
-""" + Fore.RED + """NODE MONITOR Version %s""" % version    logo += Fore.RESET
-    return logo
-
+from sinon.utils.logo import print_startup_logo
+from sinon.agent.nodemonitor import NodeMonitor
 
 #-----------------------------------------------------------------------------
 #
@@ -59,7 +46,7 @@ def parse_commandline():
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
-    print Fore.BLUE + startup_logo() + Fore.RESET
+    print_startup_logo("Node Monitor")
 
     if options.workdir is None:
         parser.error("Working directory URL (-w/--workdir) must be defined. Try --help for help.")

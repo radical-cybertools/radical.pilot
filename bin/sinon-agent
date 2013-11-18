@@ -1,32 +1,24 @@
-#!/user/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/python
 
-__author__    = "Ole Weidner"
-__copyright__ = "Copyright 2013, Ole Weidner"
-__email__     = "ole.weidner@icloud.com"
+"""
+.. module:: sinon.bin.sinon-agent
+   :platform: Unix
+   :synopsis: Agent command line tool.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
 import optparse
+from colorama import Fore
 
-from colorama import init, Fore, Back, Style
-from sinon.agent.version import version
+from sinon.utils.logo import print_startup_logo
+from sinon import version
 from sinon.agent.application import RhythmosAgent
 
-
-#-----------------------------------------------------------------------------
-#
-def startup_logo():
-    init()
-    logo = Fore.BLUE
-    logo += """         _                
-   _____(_)___  ____  ____ 
-  / ___/ / __ \/ __ \/ __ \\
- (__  ) / / / / /_/ / / / /
-/____/_/_/ /_/\____/_/ /_/ 
-""" + Fore.YELLOW + """     Agent Version: %s\n""" % version
-    logo += Fore.RESET
-    return logo
 
 #-----------------------------------------------------------------------------
 #
@@ -122,7 +114,7 @@ def parse_commandline():
         print version
         sys.exit(0)
 
-    print startup_logo()
+    print_startup_logo("Agent")
 
     if options.task_source_url is None:
         parser.error("Task source URL (-t/--tasksource) must be defined. Try --help for help.")
