@@ -79,7 +79,7 @@ class ComputePilotDescription (description.Description) :
         self._attributes_register  (START_TIME,        None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         #self._attributes_register  (RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register  (CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register  (CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register  (ALLOCATION,        None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # i/o

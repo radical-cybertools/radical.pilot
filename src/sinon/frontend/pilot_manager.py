@@ -282,8 +282,8 @@ class PilotManager(object):
                 jd.arguments         = ["-r", database_host,  # database host (+ port)
                                         "-d", database_name,  # database name
                                         "-s", session_uid,    # session uid
-                                        "-p", str(pilot_id)]#, # pilot uid
-                                        #"-C",                 # clean up by default
+                                        "-p", str(pilot_id),  # pilot uid
+                                        "-C"]                 # clean up by default
 
                 # if resource config defines 'pre_bootstrap' commands,
                 # we add those to the argument list

@@ -6,14 +6,13 @@
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, RADICAL Group at Rutgers University"
+__copyright__ = "Copyright 2013, radical.rutgers.edu"
 __license__   = "MIT"
 
-import sinon.frontend.session         as s
-import sinon.exceptions      as e
-from sinon.constants import * 
+from sinon.constants  import *
+from sinon.exceptions import SinonException
 
-import radical.utils   as ru
+from sinon.frontend.attributes import *
 
 import time
 import threading
@@ -27,10 +26,54 @@ class Pilot (object) :
     def __init__ (self):
         """ Le constructeur. Not meant to be called directly.
         """
+        # non-changing members
         self._uid = None
-
         self._description = None
-        self._manager     = None
+        self._manager = None
+
+        # database handle
+        self._db = None
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod 
+    def _create (pilot_manager_obj, pilot_uid, pilot_description) :
+        """ PRIVATE: Create a new pilot.
+        """
+        # create and return pilot object
+        pilot = Pilot()
+
+        pilot._uid = pilot_uid
+        pilot._description = pilot_description
+        pilot._manager     = pilot_manager_obj
+
+        pilot._db = pilot._manager._session._dbs
+
+        return pilot
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod 
+    def _get (pilot_manager_obj, pilot_uids) :
+        """ PRIVATE: Get one or more pilot via their UIDs.
+        """
+        # create database entry
+        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_uid=pilot_manager_obj.uid, 
+                                                                 pilot_uids=pilot_uids)
+        # create and return pilot objects
+        pilots = []
+
+        for p in pilots_json:
+            pilot = Pilot()
+            pilot._uid = str(p['_id'])
+            pilot._description = p['description']
+            pilot._manager = pilot_manager_obj
+
+            pilot._db = pilot._manager._session._dbs
+        
+            pilots.append(pilot)
+
+        return pilots
 
     # --------------------------------------------------------------------------
     #
@@ -44,95 +87,68 @@ class Pilot (object) :
         **Returns:**
             * A unique identifier (string).
         """
+        # Check if this instance is valid
         if not self._uid:
-            raise sinon.SinonException("Invalid Pilot instance.")
+            raise SinonException("Invalid Pilot instance.")
 
+        # uid is static and doesn't change over the lifetime 
+        # of a pilot, hence it can be stored in a member var.
         return self._uid
 
     # --------------------------------------------------------------------------
     #
     @property 
     def description(self):
-        """ Implements the interface.Pilot.description property.
+        """ Returns the pilot description the pilot was started with.
         """
+        # Check if this instance is valid
         if not self._uid:
-            raise sinon.SinonException("Invalid Pilot instance.")
+            raise SinonException("Invalid Pilot instance.")
 
+        # description is static and doesn't change over the lifetime 
+        # of a pilot, hence it can be stored in a member var.
         return self._description
 
     # --------------------------------------------------------------------------
     #
-    @staticmethod 
-    def _create (pilot_manager_obj, pilot_uid, pilot_description) :
-        """ Create a new pilot.
+    @property 
+    def state(self):
+        """ Returns the current state of the pilot.
         """
-        # create and return pilot object
-        pilot = Pilot()
-        pilot._uid = pilot_uid
+        # Check if this instance is valid
+        if not self._uid:
+            raise SinonException("Invalid Pilot instance.")
 
-        pilot._description = pilot_description
-        pilot._manager     = pilot_manager_obj
-
-        return pilot
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod 
-    def _get (pilot_manager_obj, pilot_uids) :
-        """ Get a pilot via its ID.
-        """
-        # create database entry
-        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_uid=pilot_manager_obj.uid, 
-                                                                 pilot_uids=pilot_uids)
-        # create and return pilot objects
-        pilots = []
-
-        for p in pilots_json:
-            pilot = Pilot()
-            pilot._uid = str(p['_id'])
-            pilot._description = p['description']
-            pilot._manager = pilot_manager_obj
-            pilots.append(pilot)
-
-        return pilots
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def _connect (cls, pid, manager) :
-        """
-        """
-        with self._rlock :
-
-            pid = ru.generate_id ('p.')
-
-            return cls (pid, _description=description, _manager=manager)
-
+        # state is oviously dynamic and changes over the 
+        # lifetime of a pilot, hence we need to make a call to the 
+        # database layer (db layer might cache this call).
+        pilots_json = self._db.get_pilots(pilot_manager_uid=self._manager.uid, 
+                                          pilot_uids=[self.uid])
+        return pilots_json[0]['info']['state']
 
     # --------------------------------------------------------------------------
     #
     def wait (self, state=[DONE, FAILED, CANCELED], timeout=None):
         """
         """
+        # Check if this instance is valid
         if not self._uid:
-            raise sinon.SinonException("Invalid Pilot instance.")
+            raise SinonException("Invalid Pilot instance.")
 
-        with self._rlock :
+        if  not isinstance (state, list) :
+            state = [state]
 
-            if  not isinstance (state, list) :
-                state = [state]
+        start_wait = time.time ()
+        while self.state not in state :
+            print "%s waiting for %s (%s)" % (self.uid, state, self.state)
+            time.sleep (1)
 
-                start_wait = time.time ()
-                while self.state not in state :
-                    print "%s waiting for %s (%s)" % (self.pid, state, self.state)
-                    time.sleep (1)
+            if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
+                print "wait timeout"
+                break
 
-                    if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
-                        print "wait timeout"
-                        break
-
-                # done waiting
-                return
+        # done waiting
+        return
 
 
     # --------------------------------------------------------------------------
@@ -154,15 +170,4 @@ class Pilot (object) :
 
             # FIXME
     
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_state (self) :
-
-        return UNKNOWN
-
-
-# ------------------------------------------------------------------------------
-#
-
 

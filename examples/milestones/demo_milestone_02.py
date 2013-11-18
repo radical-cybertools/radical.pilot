@@ -3,6 +3,7 @@ __license__   = "MIT"
 
 import sys
 import sinon
+import time
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
@@ -23,8 +24,9 @@ def demo_milestone_02():
 
         # Submit a 16-core pilot to sierra.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource = "futuregrid.SIERRA"
+        pd.resource = "futuregrid.INDIA"
         pd.cores = 16
+        pd.cleanup = True
         sierra_pilot = pm.submit_pilots(pd)
 
         # Create a workload of 64 '/bin/sleep' compute units
@@ -40,6 +42,8 @@ def demo_milestone_02():
         um = sinon.UnitManager(session=session, scheduler="ROUNDROBIN")
         um.add_pilot(sierra_pilot)
         um.submit_units(compute_units)
+
+        sierra_pilot.wait()
 
         # Wait for all compute units to finish.
         um.wait_units()
