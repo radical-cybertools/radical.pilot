@@ -137,7 +137,7 @@ class _ProcessLauncher(object):
             pass
 
         # launch through radical process wrapper
-        cmdline += " radical-process-wrapper -- "
+        # cmdline += " radical-process-wrapper -- "
 
         # task executable and arguments
         cmdline += " %s " % task.executable
@@ -393,7 +393,7 @@ class _TaskExecutorWorker(multiprocessing.Process):
         # First order of business: we fire up the node monitor. The node
         # monitor gathers resource and process data on the node this
         # executor is responsible for.
-        self.launch_node_monitor()
+        # self.launch_node_monitor()
 
         while True:
             # terminate if no more items are in the queue and

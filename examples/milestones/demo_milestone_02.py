@@ -1,5 +1,6 @@
-__copyright__ = "Copyright 2013, The RADICAL Group at Rutgers University"
+__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
+
 
 import sys
 import sinon
