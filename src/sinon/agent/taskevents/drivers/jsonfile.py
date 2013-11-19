@@ -43,24 +43,7 @@ class JSONFile(object):
 
     #-------------------------------------------------------------------------
     #
-    def put_agent_statechange(self, newstate):
-        # synchronize file access
-        with self._putlock:
-            events_file = open(self.file_path, 'a')
-            # create a JSON dictionary for the task result
-            result = {
-                'type': 'event',
-                'timestamp': str(datetime.datetime.now()),
-                'origin': "SELF",
-                'event': "AGENT_STATECHANGE",
-                'value': newstate
-            }
-            events_file.write(json.dumps(result)+'\n')
-            events_file.close()
-
-    #-------------------------------------------------------------------------
-    #
-    def put(self, origin, event, value):
+    def put(self, origin_type, origin_id, event, value):
         ''' Publish a new task event.
         '''
         # synchronize file access
@@ -70,7 +53,7 @@ class JSONFile(object):
             result = {
                 'type': 'event',
                 'timestamp': str(datetime.datetime.now()),
-                'origin': origin,
+                'origin': "%s:%s" % (origin_type, origin_id),
                 'event': event,
                 'value': value
             }

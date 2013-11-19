@@ -6,7 +6,7 @@
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, radical.rutgers.edu"
+__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 from sinon.constants  import *
@@ -289,7 +289,7 @@ class PilotManager(object):
                 # we add those to the argument list
                 if 'pre_bootstrap' in resource_cfg:
                     for command in resource_cfg['pre_bootstrap']:
-                        jd.arguments.append("-e \"%s\"" % resource_cfg['pre_bootstrap'])
+                        jd.arguments.append("-e \"%s\"" % command)
 
                 # if resourc configuration defines a custom 'python_interpreter',
                 # we add it to the argument list
@@ -383,7 +383,7 @@ class PilotManager(object):
     #
     def wait_pilots(self, pilot_uids=None, state=[DONE, FAILED, CANCELED], timeout=-1.0):
         """Returns when one or more :class:`sinon.Pilots` reach a 
-        specific state. 
+        specific state or when an optional timeout is reached.
 
         If `pilot_uids` is `None`, `wait_pilots` returns when **all** Pilots
         reach the state defined in `state`. 
@@ -395,26 +395,28 @@ class PilotManager(object):
               considered. If pilot_uids is `None` (default), all Pilots are 
               considered.
 
-            * **state** [`string`]
-              The state that Pilots have to reach in order for the call
+            * **state** [`list of strings`]
+              The state(s) that Pilots have to reach in order for the call
               to return. 
 
               By default `wait_pilots` waits for the Pilots to reach 
-              a terminal state, which can be one of the following:
+              a **terminal** state, which can be one of the following:
 
               * :data:`sinon.DONE`
               * :data:`sinon.FAILED`
               * :data:`sinon.CANCELED`
 
             * **timeout** [`float`]
-              Timeout in seconds before the call returns regardless of Pilot
-              state changes. The default value **-1.0** waits forever.
+              Optional timeout in seconds before the call returns regardless 
+              whether the Pilots have reached the desired state or not. 
+              The default value **-1.0** never times out.
 
         **Raises:**
 
             * :class:`sinon.SinonException`
         """
-        pass
+        if not isinstance (state, list):
+            state = [state]
 
     # --------------------------------------------------------------------------
     #

@@ -1,8 +1,12 @@
-#!/usr/bin/env python
-# encoding: utf-8
+"""
+.. module:: sinon.agent.task_queue
+   :platform: Unix
+   :synopsis: Provides the task queue mechanism for sinon agent.
 
-__author__    = "Ole Weidner"
-__copyright__ = "Copyright 2013, Ole Weidner"
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import multiprocessing.queues

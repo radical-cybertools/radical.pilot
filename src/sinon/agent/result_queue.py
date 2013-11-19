@@ -1,8 +1,12 @@
-#!/usr/bin/env python
-# encoding: utf-8
+"""
+.. module:: sinon.agent.result_queue
+   :platform: Unix
+   :synopsis: Provides a result queue for sinon agent.
 
-__author__    = "Ole Weidner"
-__copyright__ = "Copyright 2013, Ole Weidner"
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import multiprocessing.queues

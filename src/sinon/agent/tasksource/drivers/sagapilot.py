@@ -5,9 +5,13 @@ __author__    = "Ole Weidner"
 __copyright__ = "Copyright 2013, Ole Weidner"
 __license__   = "MIT"
 
+from sinon.db import Session
+from sinon.agent import Task
+from radical.utils import Url
+
 import os
 import json
-from sinon.agent import Task
+from cgi import parse_qs
 
 DRIVER = "SASGAPilot"
 
@@ -21,70 +25,51 @@ class SAGAPilot(object):
     def __init__(self, logger, task_source_url):
         """
         """
-        # # extract the file path and open the file
-        # # and read the task data
-        # self._tasks = list()
-        # self.log = logger
+        self.log = logger
 
-        # # try to open the file in the task_source_url
-        # task_file_path =task_source_url.path
+        # extract hostname, session uid and pilot uid from 
+        # the url.
+        url = Url(task_source_url)
 
-        # # read JSON task descriptions line by line
-        # task_count = 0
+        self.db_name     = None
+        self.session_uid = None
+        self.pilot_uid   = None
 
-        # task_file_name = os.path.basename(task_file_path)
-        
-        # json_data=open(task_file_path)
-        # data = json.load(json_data)
+        for key, val in parse_qs(url.query).iteritems():
+            if key == 'session':
+                self.session_uid = val[0]
+            if key == 'pilot':
+                self.pilot_uid = val[0]
+            if key == 'dbname':
+                self.db_name = val[0]
 
-        # # the container type always has to be a list '[]'
-        # if type(data) is not list:
-        #     raise Exception("In file %s: top-level JSON element must be of type list" % task_file_name)
+        if self.session_uid is None or self.pilot_uid is None or self.db_name is None:
+            raise Exception("--event URL doesn't define 'session', 'pilot' or 'dbname'")
 
-        # # entries in a list container can be either of type 'task' or 'taskset'
-        # for entry in data:
-        #     if type(entry) is not dict:
-        #         raise Exception("In file %s: malformed entry: %s" % (task_file_name, entry))
-        #     try:
-        #         entry_type = entry['type']
-        #     except Exception, ex:
-        #         raise Exception("In file %s: entry doesn't define 'type': %s" % (task_file_name, entry))
+        # connect to MongoDB using sinon's DB layer
+        mongodb_url = "mongodb://%s" % url.host
+        if url.port is not None:
+            mongodb_url += ":%s" % url.port
 
-        #     # distinguish between types:
-        #     if entry_type == 'task':
-        #         task_count += 1
+        self._db = Session(db_url=mongodb_url, db_name=self.db_name)
 
-        #         # convert entry into a Task object
-        #         task = Task(uid=entry['id'],
-        #                     executable=entry['executable'],
-        #                     arguments=entry['arguments'],
-        #                     numcores=entry['requirements']['cores'],
-        #                     stdout=None,
-        #                     stderr=None)
+        # get all tasks assigned to this pilot.
+        self._tasks = []
 
-        #         self._tasks.append(task)
+        task_list = self._db.pilot_get_tasks(pilot_uid=self.pilot_uid)
 
-        #     elif entry_type == 'taskset':
-        #         # task set defines multiple tasks via a template and 'instances'
-        #         for i in range(1, int(entry['instances'])+1):
-        #             task_count += 1
-        #             template = entry['template']
-        #             # convert template task into a Task object
-        #             task = Task(uid="%s%s" % (template['id'], str(i)),
-        #                         executable=template['executable'],
-        #                         arguments=template['arguments'],
-        #                         numcores=template['requirements']['cores'],
-        #                         stdout=None,
-        #                         stderr=None)
+        for entry in task_list:
+            task = Task(uid=str(entry['_id']),
+                        executable=entry['description']['executable'],
+                        arguments=entry['description']['arguments'],
+                        numcores='1',
+                        stdout=None,
+                        stderr=None)
 
-        #             self._tasks.append(task)
+            self._tasks.append(task)
 
-        #     else:
-        #         raise Exception("In file %s: unkown 'type': %s" % (task_file_name, entry))
-
-
-        # self.log.info("%s: Successfully opened file '%s'" % (DRIVER, task_file_path))
-        # self.log.info("%s: Loaded %s task descriptions from file into memory" % (DRIVER, task_count))
+        self.log.info("%s: Successfully opened location '%s'" % (DRIVER, task_source_url))
+        self.log.info("%s: Loaded %s task descriptions from MongoDB into memory" % (DRIVER, len(self._tasks)))
 
 
     #-------------------------------------------------------------------------
@@ -98,12 +83,12 @@ class SAGAPilot(object):
     def num_tasks(self):
         """
         """
-        return 0
+        return len(self._tasks)
 
     #-------------------------------------------------------------------------
     #
     def get_tasks(self, start_idx=0, limit=None):
-        return []
+        return self._tasks
 
     #-------------------------------------------------------------------------
     #

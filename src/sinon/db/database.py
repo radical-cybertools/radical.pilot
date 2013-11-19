@@ -159,6 +159,39 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
+    def pilot_set_state(self, pilot_uid, state):
+        """Updates the state of one or more pilots.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._p.update({"_id": ObjectId(pilot_uid)}, 
+            {"$set": {"info.state" : state}})
+
+
+    #---------------------------------------------------------------------------
+    #
+    def pilot_get_tasks(self, pilot_uid):
+        """Get all tasks for the pilot.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        print "PILOT UID: %s" % pilot_uid
+
+        cursor = self._w.find({"links.pilot": pilot_uid})
+
+        print "RESULTS %s" % cursor
+
+        pilots_json = []
+        for obj in cursor:
+            pilots_json.append(obj)
+
+        return pilots_json
+
+
+    #---------------------------------------------------------------------------
+    #
     def insert_pilots(self, pilot_manager_uid, pilot_descriptions):
         """ Adds one or more pilots to the database.
 

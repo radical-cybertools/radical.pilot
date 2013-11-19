@@ -56,15 +56,10 @@ class TaskEvents(object):
 
     #-------------------------------------------------------------------------
     #
-    def put(self, origin, event, value):
+    def put(self, origin_type, origin_id, event, value):
         ''' Publish a new task event.
         '''
-        return self._driver.put(origin, event, value)
-
-    def put_pilot_statechange(self, newstate):
-        """Publish an agent state change event.
-        """
-        return self._driver.put_pilot_statechange(newstate)
+        return self._driver.put(origin_type, origin_id, event, value)
 
     #-------------------------------------------------------------------------
     #

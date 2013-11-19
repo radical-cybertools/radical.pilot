@@ -8,7 +8,10 @@ __license__   = "MIT"
 
 import os
 import uuid
+import signal
 import Queue
+
+import sinon.constants as constants
 
 from sinon.agent import Task, TaskQueue, TaskExecutor, ExecutionEnvironment
 
@@ -111,7 +114,24 @@ class RhythmosAgent(object):
         self.task_events = self._init_task_events(task_events)
 
         # All drivers loaded. Try to set the status to 'RUNNING'.
-        self.task_events.put_pilot_statechange("Running")
+        self.task_events.put(origin_type="AGENT", origin_id=None, 
+                event="STATECHANGE", value=constants.RUNNING)
+        #---------------------------------------------------------------------
+        #
+        global event_h
+        event_h = self.task_events
+
+        def _signal_handler(signum, frame):
+            print 'Signal handler called with signal', signum
+            event_h.put(origin_type="AGENT", origin_id=None, 
+                event="STATECHANGE", value=constants.CANCELED)
+
+        # install a signal handler. in theory, this should get triggered
+        # if we get kicked out by the queueing system, etc.
+        for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
+            signal.signal(sig, _signal_handler)
+        #
+        #---------------------------------------------------------------------
 
         # Discover the execution environment
         ee = ExecutionEnvironment.discover(logger=self.log)
@@ -125,8 +145,9 @@ class RhythmosAgent(object):
             tq.put(task)
 
         # The event_callback forwards events from the executor to the driver
-        def event_callback(task_id, event, value):
-            self.task_events.put(task_id=task_id, event=event, value=value)
+        def event_callback(origin_type, origin_id, event, value):
+            self.task_events.put(origin_type=origin_type, origin_id=origin_id, 
+                event=event, value=value)
 
         # The result_callback forwards results from the executor to the driver
         def result_callback(task_id, cmdline, exit_code, working_directory,
@@ -144,9 +165,10 @@ class RhythmosAgent(object):
                           logger=self.log,
                           launch_method=self._launch_method
                           )
-
         te.start()
         te.join()
 
         # Finally, set the status to 'DONE'.
-        self.task_events.put_pilot_statechange("Done")
+        # All drivers loaded. Try to set the status to 'RUNNING'.
+        self.task_events.put(origin_type="AGENT", origin_id=None, 
+                event="STATECHANGE", value=constants.DONE)

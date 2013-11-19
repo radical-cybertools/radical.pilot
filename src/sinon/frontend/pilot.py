@@ -6,7 +6,7 @@
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, radical.rutgers.edu"
+__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 from sinon.constants  import *
@@ -129,45 +129,66 @@ class Pilot (object) :
     # --------------------------------------------------------------------------
     #
     def wait (self, state=[DONE, FAILED, CANCELED], timeout=None):
-        """
+        """Returns when the pilot reaches a specific state or 
+        when an optional timeout is reached.
+
+        **Arguments:**
+
+            * **state** [`list of strings`]
+              The state(s) that Pilot has to reach in order for the 
+              call to return. 
+
+              By default `wait` waits for the Pilot to reach 
+              a **terminal** state, which can be one of the following:
+
+              * :data:`sinon.DONE`
+              * :data:`sinon.FAILED`
+              * :data:`sinon.CANCELED`
+
+            * **timeout** [`float`]
+              Optional timeout in seconds before the call returns regardless 
+              whether the Pilot has reached the desired state or not. 
+              The default value **-1.0** never times out.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
         """
         # Check if this instance is valid
         if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
-        if  not isinstance (state, list) :
+        if not isinstance (state, list):
             state = [state]
 
         start_wait = time.time ()
-        while self.state not in state :
-            print "%s waiting for %s (%s)" % (self.uid, state, self.state)
+        while self.state not in state:
             time.sleep (1)
 
             if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
-                print "wait timeout"
                 break
-
         # done waiting
         return
 
-
     # --------------------------------------------------------------------------
     #
-    def cancel (self, drain=False) :
+    def cancel (self):
+        """Sends sends a termination request to the pilot.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException
+        """
+        # Check if this instance is valid
         if not self._uid:
-            raise sinon.SinonException("Invalid Pilot instance.")
+            raise SinonException("Invalid Pilot instance.")
 
-        with self._rlock :
+        if self.state in [DONE, FAILED, CANCELED]:
+            # nothing to do
+            return
 
-            # FIXME drain
+        if self.state in [UNKNOWN] :
+            raise SinonException("Pilot state is UNKNOWN, cannot cancel")
 
-            if  self.state in [DONE, FAILED, CANCELED] :
-                # nothing to do
-                return
-
-            if  self.state in [UNKNOWN] :
-                raise e.IncorrectState ("Pilot state is UNKNOWN, cannot cancel")
-
-            # FIXME
-    
-
+        # now we can send a 'cancel' command to the pilot
+        # through the database layer. 

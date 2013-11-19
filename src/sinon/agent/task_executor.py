@@ -1,8 +1,12 @@
-#!/usr/bin/env python
-# encoding: utf-8
+"""
+.. module:: sinon.agent.agent
+   :platform: Unix
+   :synopsis: Provides the task execution mechanism for sinon agent.
 
-__author__    = "Ole Weidner"
-__copyright__ = "Copyright 2013, Ole Weidner"
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
@@ -309,7 +313,8 @@ class _TaskExecutorWorker(multiprocessing.Process):
                         if self.event_callback is not None:
                             # call the event callback for finished task
                             self.event_callback(
-                                task_id=self.slots[slot].task_uid,
+                                origin_type="TASK",
+                                origin_id=self.slots[slot].task_uid,
                                 event='STATECHANGE',
                                 value='FINISHED')
 
@@ -427,11 +432,13 @@ class _TaskExecutorWorker(multiprocessing.Process):
 
 
                         if self.event_callback is not None:
-                            self.event_callback(task_id=task.uid,
+                            self.event_callback(origin_type='TASK',
+                                                origin_id=task.uid,
                                                 event='ASSIGNMENT',
                                                 value='%s' % self.slots[slot].nodename)
 
-                            self.event_callback(task_id=task.uid,
+                            self.event_callback(origin_type='TASK',
+                                                origin_id=task.uid,
                                                 event='STATECHANGE',
                                                 value='RUNNING')
 
@@ -452,7 +459,8 @@ class _TaskExecutorWorker(multiprocessing.Process):
                         runtime = time.mktime(time.strptime(end_time, "%y-%m-%d %X")) - time.mktime(start_time)
 
                         if self.event_callback is not None:
-                            self.event_callback(task_id=self.slots[slot].task_uid,
+                            self.event_callback(origin_type='TASK',
+                                                origin_id=self.slots[slot].task_uid,
                                                 event='STATECHANGE',
                                                 value='FINISHED')
 
@@ -487,6 +495,7 @@ class TaskExecutor(object):
                  launch_method, task_queue, terminate_on_emtpy_queue=False,
                  event_callback=None, result_callback=None, logger=None):
 
+        self._event_callback = event_callback
         self._working_directory = working_directory
         self._execution_environment = execution_environment
         self._task_queue = task_queue
@@ -511,7 +520,7 @@ class TaskExecutor(object):
                 cores=cores,
                 tasks_per_node=tasks_per_node,
                 launch_method=launch_method,
-                event_callback=event_callback,
+                event_callback=self._event_callback,
                 result_callback=result_callback,
                 logger=self.log)
             self._workers.append(worker)

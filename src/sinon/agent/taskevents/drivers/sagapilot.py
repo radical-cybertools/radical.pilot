@@ -10,8 +10,10 @@ import json
 import datetime
 import threading
 
-from pymongo import MongoClient
-from bson.objectid import ObjectId
+#from pymongo import MongoClient
+#from bson.objectid import ObjectId
+
+from sinon.db import Session
 
 from radical.utils import Url
 
@@ -47,16 +49,12 @@ class SAGAPilot(object):
         if self.session_uid is None or self.pilot_uid is None or self.db_name is None:
             raise Exception("--event URL doesn't define 'session', 'pilot' or 'dbname'")
 
-        # connect to MongoDB
+        # connect to MongoDB using sinon's DB layer
         mongodb_url = "mongodb://%s" % url.host
         if url.port is not None:
             mongodb_url += ":%s" % url.port
 
-        self._client = MongoClient(str(mongodb_url))
-        self._db     = self._client[self.db_name]
-
-        # pilot collection
-        self._p  = self._db["%s.p"  % self.session_uid]
+        self._db = Session(db_url=mongodb_url, db_name=self.db_name)
   
     #-------------------------------------------------------------------------
     #
@@ -72,27 +70,15 @@ class SAGAPilot(object):
 
     #-------------------------------------------------------------------------
     #
-    def put_pilot_statechange(self, newstate):
-
-        # Update the status
-        self._p.update({"_id": ObjectId(self.pilot_uid)}, 
-                       {"$set": {"info.state" : newstate}})
-
-    #-------------------------------------------------------------------------
-    #
-    def put(self, origin, event, value):
+    def put(self, origin_type, origin_id, event, value):
         ''' Publish a new task event.
         '''
-        # synchronize file access
-        # with self._putlock:
-        #     events_file = open(self.file_path, 'a')
-        #     # create a JSON dictionary for the task result
-        #     result = {
-        #         'type': 'event',
-        #         'timestamp': str(datetime.datetime.now()),
-        #         'task_id': task_id,
-        #         'event': event,
-        #         'value': value
-        #     }
-        #     events_file.write(json.dumps(result)+'\n')
-        #     events_file.close()
+        if origin_type == "AGENT":
+            # agent-level event
+            if event == "STATECHANGE":
+                self._db.pilot_set_state(pilot_uid=self.pilot_uid, state=value)
+            else:
+                print "unknown event"
+
+        elif origin_type == "TASK":
+            pass
