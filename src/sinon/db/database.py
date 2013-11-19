@@ -408,7 +408,11 @@ class Session():
         workunit_docs = []
         for wu_desc in unit_descriptions:
             workunit = {
-                "description"   : wu_desc.as_dict(),
+                "description"   : {
+                    "Executable" : wu_desc.executable,
+                    "Arguments"  : wu_desc.arguments, 
+                    "Cores"      : wu_desc.cores
+                },
                 "links"    : {
                     "unitmanager" : unit_manager_uid, 
                     "pilot"       : pilot_id,

@@ -287,7 +287,7 @@ class _TaskExecutorWorker(multiprocessing.Process):
     def terminate(self, drain=False, timeout=0.0):
         if drain is True:
             self.drain_slots(timeout)
-            self.quit_node_monitor()
+            #self.quit_node_monitor()
         super(_TaskExecutorWorker, self).terminate()
 
     #-------------------------------------------------------------------------
@@ -402,7 +402,7 @@ class _TaskExecutorWorker(multiprocessing.Process):
                self.terminate_on_emtpy_queue is True:
                 # queue is empty - drain remaining jobs and quit
                 self.drain_slots()
-                self.quit_node_monitor()
+                #self.quit_node_monitor()
                 return
 
             # iterate over slots

@@ -30,12 +30,12 @@ def demo_milestone_02():
         pd.cleanup = True
         sierra_pilot = pm.submit_pilots(pd)
 
-        # Create a workload of 64 '/bin/sleep' compute units
+        # Create a workload of 64 '/bin/date' compute units
         compute_units = []
         for unit_count in range(0, 64):
             cu = sinon.ComputeUnitDescription()
-            cu.executable = "/bin/sleep"
-            cu.arguments = ['60']
+            cu.cores = 1
+            cu.executable = "/bin/date"
             compute_units.append(cu)
 
         # Combine the pilot, the workload and a scheduler via 
@@ -43,8 +43,6 @@ def demo_milestone_02():
         um = sinon.UnitManager(session=session, scheduler="ROUNDROBIN")
         um.add_pilot(sierra_pilot)
         um.submit_units(compute_units)
-
-        sierra_pilot.wait()
 
         # Wait for all compute units to finish.
         um.wait_units()

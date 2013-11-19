@@ -67,7 +67,7 @@ class ComputeUnitDescription (description.Description) :
 
         # parallelism
         #self._attributes_register  (constants.SPMD_VARIATION,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register  (constants.CORES,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register  (CORES,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
         # resource requirements
         #self._attributes_register  (constants.CPU_ARCHITECTURE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
