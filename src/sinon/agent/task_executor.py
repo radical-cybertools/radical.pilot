@@ -141,8 +141,9 @@ class _ProcessLauncher(object):
 
         # task executable and arguments
         cmdline += " %s " % task.executable
-        for arg in task.arguments:
-            cmdline += " %s " % arg
+        if task.arguments is not None:
+            for arg in task.arguments:
+                cmdline += " %s " % arg
 
         proc = _Process(args=cmdline,
                         cwd=workdir,
