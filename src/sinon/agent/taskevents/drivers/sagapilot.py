@@ -54,7 +54,9 @@ class SAGAPilot(object):
         if url.port is not None:
             mongodb_url += ":%s" % url.port
 
-        self._db = Session(db_url=mongodb_url, db_name=self.db_name)
+        self._db = Session.reconnect(sid=self.session_uid, 
+                                     db_url=mongodb_url, 
+                                     db_name=self.db_name)
   
     #-------------------------------------------------------------------------
     #
