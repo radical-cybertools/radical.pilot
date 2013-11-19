@@ -159,7 +159,17 @@ class UnitManager (object) :
     def submit_units(self, unit_descriptions) :
         """Docstring!
         """
+
+        ###################################################
+        # ASHLEY:
+        # 
+        # CURRENTLY THIS SUBMITS TO THE FIRST PILOT ONLY. 
+        # THIS IS OBVIOUSLY WRONG / SIMPLIFIED -- 
+        # THE REAL SCHEDULER CODE IS COMMENTED-OUT BELOW.
+        ####################################################
+
         pilot_id = self.list_pilots()[0]
+
         self._DB.insert_workunits(pilot_id=pilot_id, 
             unit_manager_uid=self.uid,
             unit_descriptions=unit_descriptions)
@@ -226,11 +236,7 @@ class UnitManager (object) :
     # --------------------------------------------------------------------------
     #
     def get_unit (self, uids) :
-
-        with self._rlock :
-
-            # FIXME
-            pass
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -272,8 +278,16 @@ class UnitManager (object) :
 
             * :class:`sinon.SinonException`
         """
-        pass
 
+        all_done = False
+
+        while all_done is not True:
+            for workunit in self._DB.get_workunits(workunit_manager_uid=self.uid):
+                print workunit
+                if workunit['info']['state'] in state:
+                    all_done = True
+                else:
+                    all_done = False
 
     # --------------------------------------------------------------------------
     #

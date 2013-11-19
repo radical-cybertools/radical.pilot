@@ -278,6 +278,30 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
+    def get_workunits(self, workunit_manager_uid, workunit_uids=None):
+        """ Get yerself a bunch of workunit
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        if workunit_uids == None:
+            cursor = self._w.find({"links.unitmanager": workunit_manager_uid})
+        else:
+            # convert ids to object ids
+            workunit_oid = []
+            for wid in workunit_uids:
+                workunit_oid.append(ObjectId(wid))
+            cursor = self._w.find({"_id": {"$in": workunit_oid},
+                                   "links.unitmanager": workunit_manager_uid})
+        # cursor -> dict
+        workunits_json = []
+        for obj in cursor:
+            workunits_json.append(obj)
+
+        return workunits_json
+
+    #---------------------------------------------------------------------------
+    #
     def insert_unit_manager(self, unit_manager_data):
         """ Adds a unit managers to the list of unit managers.
 
