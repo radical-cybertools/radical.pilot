@@ -21,4 +21,5 @@ from sinon.frontend.session                   import Session
 from sinon.frontend.unit_manager              import UnitManager
 from sinon.frontend.compute_unit_description  import ComputeUnitDescription
 from sinon.frontend.pilot_manager             import PilotManager
+from sinon.frontend.pilot                     import Pilot
 from sinon.frontend.compute_pilot_description import ComputePilotDescription

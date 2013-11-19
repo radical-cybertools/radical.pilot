@@ -23,12 +23,12 @@ def demo_milestone_02():
         # Add a Pilot Manager with a machine configuration file for FutureGrid
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
-        # Submit a 16-core pilot to sierra.futuregrid.org
+        # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
         pd.resource = "futuregrid.INDIA"
         pd.cores = 16
         pd.cleanup = True
-        sierra_pilot = pm.submit_pilots(pd)
+        india_pilot = pm.submit_pilots(pd)
 
         # Create a workload of 64 '/bin/date' compute units
         compute_units = []
@@ -41,7 +41,7 @@ def demo_milestone_02():
         # Combine the pilot, the workload and a scheduler via 
         # a UnitManager.
         um = sinon.UnitManager(session=session, scheduler="ROUNDROBIN")
-        um.add_pilot(sierra_pilot)
+        um.add_pilot(india_pilot)
         um.submit_units(compute_units)
 
         # Wait for all compute units to finish.
