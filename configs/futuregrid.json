@@ -7,7 +7,7 @@
 
     "futuregrid.INDIA": {
         "URL": "pbs+ssh://india.futuregrid.org",
-        "working_directory": "sftp://india.futuregrid.org/N/u/oweidner/sinon/",
+        "working_directory": "sftp://india.futuregrid.org/N/u/merzky/sinon/",
         "python_interpreter": "/N/soft/python/2.7/bin/python",
         "pre_bootstrap": ["module load python", "module load openmpi"]
     },
