@@ -67,11 +67,19 @@ then
     rm -r $R_SYS_DIR
 fi
 
-# create a fresh virtualenv
+# create a fresh virtualenv. we use and older 1.9.x version of 
+# virtualenv as this seems to work more reliable than newer versions.
 curl --insecure -s https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py | $PYTHON - --python=$PYTHON $R_SYS_DIR
 source $R_SYS_DIR/bin/activate
+
+# for now we use development version directly from git
+# this blows up the virtualenv (and agent bootstrap time) significantly
+# at some point we will bootstrap everything directly from PyPi.
+# maybe a flag would be good to switch between 'production' and 'deve' ? 
+pip install -e git://github.com/saga-project/saga-python.git@devel#egg=saga-python
 pip install -e git://github.com/apache/libcloud.git@0.13.x#egg=apache-libcloud
-pip install -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
+pip install -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
+
 }
 
 # -----------------------------------------------------------------------------
