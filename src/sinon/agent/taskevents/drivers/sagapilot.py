@@ -80,7 +80,12 @@ class SAGAPilot(object):
             if event == "STATECHANGE":
                 self._db.pilot_set_state(pilot_uid=self.pilot_uid, state=value)
             else:
-                print "unknown event"
-
+                print "unsupported agent-level event: %s" % event
+    
         elif origin_type == "TASK":
-            pass
+            # task-level event
+            if event == "STATECHANGE":
+                self._db.workunit_set_state(workunit_uid=origin_id, state=value)
+            else:
+                print "unsupported task-level event: %s" % event
+
