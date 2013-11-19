@@ -62,8 +62,8 @@ class SAGAPilot(object):
 
         for entry in task_list:
             task = Task(uid=str(entry['_id']),
-                        executable=entry['description']['executable'],
-                        arguments=entry['description']['arguments'],
+                        executable=entry['description']['Executable'],
+                        arguments=entry['description']['Arguments'],
                         numcores='1',
                         stdout=None,
                         stderr=None)
