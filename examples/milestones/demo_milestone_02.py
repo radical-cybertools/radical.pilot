@@ -28,7 +28,11 @@ def demo_milestone_02():
         pd.resource = "futuregrid.INDIA"
         pd.cores = 16
         pd.cleanup = True
+
+        print "* Submitting pilot to '%s'..." % (pd.resource)
         india_pilot = pm.submit_pilots(pd)
+        print "  SUBMITTED (uid: %s)" % india_pilot.uid
+
 
         # Create a workload of 64 '/bin/date' compute units
         compute_units = []
@@ -44,8 +48,13 @@ def demo_milestone_02():
         um.add_pilot(india_pilot)
         um.submit_units(compute_units)
 
+        unit_list = um.list_units()
+        print "* Submitted %s compute units: %s" % (len(unit_list), unit_list)
+
         # Wait for all compute units to finish.
+        print "* Waiting for all compute units to finish..."
         um.wait_units()
+        print "  FINISHED"
 
         # Cancel all pilots.
         pm.cancel_pilots()

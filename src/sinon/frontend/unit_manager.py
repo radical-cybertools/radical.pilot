@@ -300,7 +300,6 @@ class UnitManager (object) :
         all_done = False
         while all_done is not True:
             for workunit in self._DB.get_workunits(workunit_manager_uid=self.uid):
-                print workunit['info']['state']
                 if workunit['info']['state'] in state:
                     all_done = True
                 else:
