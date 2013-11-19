@@ -1,4 +1,4 @@
-__copyright__ = "Copyright 2013, The RADICAL Group at Rutgers University"
+__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
@@ -22,6 +22,7 @@ def demo_milestone_01_1():
 
         pd = sinon.ComputePilotDescription()
         pd.resource = "futuregrid.INDIA"
+        pd.cores = 16
         p1 = pm.submit_pilots(pd)
 
         # Add a Unit Manager to the session and add the newly created 

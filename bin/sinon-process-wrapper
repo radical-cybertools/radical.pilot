@@ -1,0 +1,75 @@
+#!/usr/bin/python
+
+"""
+.. module:: sinon.bin.sinon-process-wrapper
+   :platform: Unix
+   :synopsis: Process wrapper command line tool.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013, radical.rutgers.edu"
+__license__   = "MIT"
+
+import sys
+import signal
+import time
+import optparse
+
+from sinon.utils.logo import print_startup_logo
+from sinon.agent.processwrapper import ProcessWrapper
+
+
+#-----------------------------------------------------------------------------
+#
+def parse_commandline():
+
+    parser = optparse.OptionParser()
+
+    parser.add_option('-i', '--interval',
+                      dest='interval',
+                      help='The interval (in seconds) at which to collect process metrics.',
+                      default=5)
+
+
+    parser.add_option('-o', '--outputfile',
+                      metavar='URL',
+                      dest='outputfile',
+                      help='The name if the output file.',
+                      default='process_metrics.json')
+
+    install_opts = optparse.OptionGroup(
+        parser, 'Monitoring Options', 'These options control monitoring',
+    )
+    install_opts.add_option('--dummy_1', action='store_true', default=False,
+                            help='Dummy Option')
+    parser.add_option_group(install_opts)
+
+    # parse the whole shebang
+    (options, args) = parser.parse_args()
+
+    print_startup_logo("Process Wrapper")
+
+    return (options, args)
+
+
+#-----------------------------------------------------------------------------
+#
+def _signal_handler(signum, frame):
+    print 'Signal handler called with signal', signum
+    print 'EXITING'
+    sys.exit(0)
+
+for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
+    signal.signal(sig, _signal_handler)
+
+
+#-----------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+    options, args = parse_commandline()
+
+    pw = ProcessWrapper(interval=options.interval, 
+                        outputfile=options.outputfile, 
+                        args=args)
+    sys.exit(pw.run())

@@ -159,6 +159,49 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
+    def pilot_set_state(self, pilot_uid, state):
+        """Updates the state of one or more pilots.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._p.update({"_id": ObjectId(pilot_uid)}, 
+            {"$set": {"info.state" : state}})
+
+    #---------------------------------------------------------------------------
+    #
+    def workunit_set_state(self, workunit_uid, state):
+        """Updates the state of one or more pilots.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._w.update({"_id": ObjectId(workunit_uid)}, 
+            {"$set": {"info.state" : state}})
+
+    #---------------------------------------------------------------------------
+    #
+    def pilot_get_tasks(self, pilot_uid):
+        """Get all tasks for the pilot.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        print "PILOT UID: %s" % pilot_uid
+
+        cursor = self._w.find({"links.pilot": pilot_uid})
+
+        print "RESULTS %s" % cursor
+
+        pilots_json = []
+        for obj in cursor:
+            pilots_json.append(obj)
+
+        return pilots_json
+
+
+    #---------------------------------------------------------------------------
+    #
     def insert_pilots(self, pilot_manager_uid, pilot_descriptions):
         """ Adds one or more pilots to the database.
 
@@ -175,13 +218,14 @@ class Session():
         for pilot_id, pilot_desc in pilot_descriptions.iteritems():
             pilot_json = {
                 "_id"           : pilot_id,
-                "description"   : pilot_desc.as_dict(),
+                "description"   : pilot_desc['description'].as_dict(),
                 "wu_queue"      : [],
                 "info"          : {
-                    "submitted" : "<DATE>",
+                    "submitted" : pilot_desc['info']['submitted'],
                     "started"   : None,
                     "finished"  : None,
-                    "state"     : "UNKNOWN"
+                    "state"     : pilot_desc['info']['state'],
+                    "log"       : pilot_desc['info']['log']
                 },
                 "links" : {
                     "pilotmanager"  : pilot_manager_uid,
@@ -241,6 +285,30 @@ class Session():
             pilots_json.append(obj)
 
         return pilots_json
+
+    #---------------------------------------------------------------------------
+    #
+    def get_workunits(self, workunit_manager_uid, workunit_uids=None):
+        """ Get yerself a bunch of workunit
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        if workunit_uids == None:
+            cursor = self._w.find({"links.unitmanager": workunit_manager_uid})
+        else:
+            # convert ids to object ids
+            workunit_oid = []
+            for wid in workunit_uids:
+                workunit_oid.append(ObjectId(wid))
+            cursor = self._w.find({"_id": {"$in": workunit_oid},
+                                   "links.unitmanager": workunit_manager_uid})
+        # cursor -> dict
+        workunits_json = []
+        for obj in cursor:
+            workunits_json.append(obj)
+
+        return workunits_json
 
     #---------------------------------------------------------------------------
     #
@@ -372,18 +440,24 @@ class Session():
 
         # Construct and insert workunit documents
         workunit_docs = []
-        for wu_desc in unit_descriptions:
+        for key, wu_desc in unit_descriptions.iteritems():
             workunit = {
-                "description"   : wu_desc.as_dict(),
+                "_id"           : key,
+                "description"   : {
+                    "Executable" : wu_desc['description'].executable,
+                    "Arguments"  : wu_desc['description'].arguments, 
+                    "Cores"      : wu_desc['description'].cores
+                },
                 "links"    : {
                     "unitmanager" : unit_manager_uid, 
                     "pilot"       : pilot_id,
                 },
                 "info"          : {
-                    "submitted" : "<DATE>",
+                    "submitted" : wu_desc['info']['submitted'],
                     "started"   : None,
                     "finished"  : None,
-                    "state"     : "UNKNOWN"
+                    "state"     : wu_desc['info']['state'],
+                    "log"       : wu_desc['info']['log']
                 }
             } 
             workunit_docs.append(workunit)

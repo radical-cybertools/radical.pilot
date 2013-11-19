@@ -1,0 +1,156 @@
+#!/bin/bash -l
+
+# -----------------------------------------------------------------------------
+# Author: Ole Weidner (ole.weidner@rutgers.edu)
+# Copyright 2013, radical@rutgers.edu
+# License under the MIT License
+#
+# This script launches a sinon compute pilot.
+#
+
+# -----------------------------------------------------------------------------
+# global variables
+#
+PREBOOTSTRAP=
+CLEANUP=
+REMOTE=
+DBNAME=
+PILOTID=
+SESSIONID=
+WORKDIR=`pwd`
+PYTHON=`which python`
+
+# -----------------------------------------------------------------------------
+# print out script usage help
+#
+usage()
+{
+cat << EOF
+usage: $0 options
+
+This script launches a sinon compute pilot.
+
+OPTIONS:
+   -r      Address and port of the coordination service host (MongoDB)
+
+   -d      The name of the database 
+
+   -s      The unique identifier (uid) of the session
+
+   -p      The unique identifier (uid) of the pilot
+
+   -w      The working (base) directory of the pilot
+           (default is '.')
+
+   -i      The Python interpreter to use, e.g., python2.6
+           (default is '/usr/bin/python')
+
+   -e      List of commands to run before botstrapping
+
+   -C      Cleanup - delete virtualenv after execution
+
+   -h      Show this message
+
+EOF
+}
+
+# -----------------------------------------------------------------------------
+# bootstrap virtualenv - we always use the latest version from GitHub
+#
+installvenv()
+{
+R_SYS_DIR=$WORKDIR/virtualenv/
+# remove any old versionsion
+if [ -d $R_SYS_DIR ] 
+then
+    echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Removing previous virtualenv: $R_SYS_DIR"
+    rm -r $R_SYS_DIR
+fi
+
+# create a fresh virtualenv. we use and older 1.9.x version of 
+# virtualenv as this seems to work more reliable than newer versions.
+curl --insecure -s https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py | $PYTHON - --python=$PYTHON $R_SYS_DIR
+source $R_SYS_DIR/bin/activate
+
+# for now we use development version directly from git
+# this blows up the virtualenv (and agent bootstrap time) significantly
+# at some point we will bootstrap everything directly from PyPi.
+# maybe a flag would be good to switch between 'production' and 'deve' ? 
+pip install -e git://github.com/saga-project/saga-python.git@devel#egg=saga-python
+pip install -e git://github.com/apache/libcloud.git@0.13.x#egg=apache-libcloud
+pip install -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
+
+}
+
+# -----------------------------------------------------------------------------
+# launch the radical agent 
+#
+launchagent()
+{
+sinon-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
+              --task-results=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
+              --events=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID
+}
+
+# -----------------------------------------------------------------------------
+# MAIN 
+#
+# parse command line arguments
+while getopts “hr:d:s:p:w:i:e:C” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         r)
+             REMOTE=$OPTARG
+             ;;
+         d)
+             DBNAME=$OPTARG
+             ;;
+         s)
+             SESSIONID=$OPTARG
+             ;;
+         p)
+             PILOTID=$OPTARG
+             ;;
+         w)
+             WORKDIR=$OPTARG
+             ;;
+         i)
+             PYTHON=$OPTARG
+             ;;
+         e)
+             PREBOOTSTRAP=$OPTARG
+             $PREBOOTSTRAP
+             ;;
+         C)
+             CLEANUP=true
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]]
+then
+     usage
+     exit 1
+fi
+
+# bootstrap virtualenv
+installvenv
+launchagent
+
+# cleanup
+if [[ $CLEANUP ]]
+then
+    rm -rf $WORKDIR/virtualenv/
+fi
+
+# ... and exit
+exit 0
+

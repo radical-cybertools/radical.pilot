@@ -31,6 +31,11 @@ ComputePilotDescription
 .. autoclass:: sinon.ComputePilotDescription
    :members: ComputePilotDescription
 
+Pilots
+------
+.. autoclass:: sinon.Pilot
+   :members: Pilot
+
 WorkUnits and UnitManagers
 ==========================
 
