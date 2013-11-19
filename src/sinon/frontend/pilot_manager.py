@@ -210,7 +210,9 @@ class PilotManager(object):
         for pd in as_list(pilot_descriptions):
             pilot_description_dict[ObjectId()] = {
                 'description': pd, 
-                'info': {'log': []}
+                'info': {'state': None, 
+                         'submitted': None,
+                         'log': []}
             }
 
         # create the pilot objects, launch the actual pilots via saga

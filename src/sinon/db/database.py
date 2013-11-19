@@ -168,6 +168,16 @@ class Session():
         self._p.update({"_id": ObjectId(pilot_uid)}, 
             {"$set": {"info.state" : state}})
 
+    #---------------------------------------------------------------------------
+    #
+    def workunit_set_state(self, workunit_uid, state):
+        """Updates the state of one or more pilots.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._w.update({"_id": ObjectId(workunit_uid)}, 
+            {"$set": {"info.state" : state}})
 
     #---------------------------------------------------------------------------
     #
@@ -430,22 +440,24 @@ class Session():
 
         # Construct and insert workunit documents
         workunit_docs = []
-        for wu_desc in unit_descriptions:
+        for key, wu_desc in unit_descriptions.iteritems():
             workunit = {
+                "_id"           : key,
                 "description"   : {
-                    "Executable" : wu_desc.executable,
-                    "Arguments"  : wu_desc.arguments, 
-                    "Cores"      : wu_desc.cores
+                    "Executable" : wu_desc['description'].executable,
+                    "Arguments"  : wu_desc['description'].arguments, 
+                    "Cores"      : wu_desc['description'].cores
                 },
                 "links"    : {
                     "unitmanager" : unit_manager_uid, 
                     "pilot"       : pilot_id,
                 },
                 "info"          : {
-                    "submitted" : "<DATE>",
+                    "submitted" : wu_desc['info']['submitted'],
                     "started"   : None,
                     "finished"  : None,
-                    "state"     : "UNKNOWN"
+                    "state"     : wu_desc['info']['state'],
+                    "log"       : wu_desc['info']['log']
                 }
             } 
             workunit_docs.append(workunit)

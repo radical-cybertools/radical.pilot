@@ -148,7 +148,7 @@ class Pilot (object) :
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless 
               whether the Pilot has reached the desired state or not. 
-              The default value **-1.0** never times out.
+              The default value **None** never times out.
 
         **Raises:**
 

@@ -18,6 +18,8 @@ from sinon.db import Session as dbSession
 from sinon.frontend.session      import Session
 from sinon.frontend.pilot        import Pilot
 
+import time
+import datetime
 
 # ------------------------------------------------------------------------------
 #
@@ -160,6 +162,18 @@ class UnitManager (object) :
         """Docstring!
         """
 
+        from bson.objectid import ObjectId
+
+        # implicit -> list -> dict conversion
+        unit_description_dict = {}
+        for ud in as_list(unit_descriptions):
+            unit_description_dict[ObjectId()] = {
+                'description': ud, 
+                'info': {'state': PENDING, 
+                         'submitted': datetime.datetime.now(),
+                         'log': []}
+            }
+
         ###################################################
         # ASHLEY:
         # 
@@ -172,7 +186,7 @@ class UnitManager (object) :
 
         self._DB.insert_workunits(pilot_id=pilot_id, 
             unit_manager_uid=self.uid,
-            unit_descriptions=unit_descriptions)
+            unit_descriptions=unit_description_dict)
 
         return None
 
@@ -241,7 +255,7 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_units(self, unit_uids=None, state=[DONE, FAILED, CANCELED], timeout=-1.0):
+    def wait_units(self, unit_uids=None, state=[DONE, FAILED, CANCELED], timeout=None):
         """Returns when one or more :class:`sinon.ComputeUnits` reach a 
         specific state. 
 
@@ -272,22 +286,32 @@ class UnitManager (object) :
 
             * **timeout** [`float`]
               Timeout in seconds before the call returns regardless of Pilot
-              state changes. The default value **-1.0** waits forever.
+              state changes. The default value **None** waits forever.
 
         **Raises:**
 
             * :class:`sinon.SinonException`
         """
+        if not isinstance (state, list):
+            state = [state]
+
+        start_wait = time.time ()
 
         all_done = False
-
         while all_done is not True:
             for workunit in self._DB.get_workunits(workunit_manager_uid=self.uid):
-                print workunit
+                print workunit['info']['state']
                 if workunit['info']['state'] in state:
                     all_done = True
                 else:
                     all_done = False
+            if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
+                break
+
+            time.sleep(1)
+
+        # done waiting
+        return
 
     # --------------------------------------------------------------------------
     #
