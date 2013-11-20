@@ -18,7 +18,7 @@ import time
 
 # ------------------------------------------------------------------------------
 # Attribute keys
-PID               = 'PID'
+UID               = 'UID'
 DESCRIPTION       = 'Description'
 STATE             = 'State'
 STATE_DETAILS     = 'StateDetails'
@@ -36,7 +36,7 @@ class ComputePilot (attributes.Attributes) :
         """ Le constructeur. Not meant to be called directly.
         """
         # 'static' members
-        self._pid = None
+        self._uid = None
         self._description = None
         self._manager = None
 
@@ -50,9 +50,9 @@ class ComputePilot (attributes.Attributes) :
         self._attributes_extensible(False)
         self._attributes_camelcasing(True)
 
-        # The PID attributesribute
-        self._attributes_register(PID, self._pid, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(PID, self._get_pid_priv)
+        # The UID attributesribute
+        self._attributes_register(UID, self._uid, attributes.STRING, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_getter(UID, self._get_uid_priv)
 
         # The description attributesribute
         self._attributes_register(DESCRIPTION, self._description, attributes.ANY, attributes.SCALAR, attributes.READONLY)
@@ -87,7 +87,7 @@ class ComputePilot (attributes.Attributes) :
         # create and return pilot object
         pilot = ComputePilot()
 
-        pilot._pid = pilot_id
+        pilot._uid = pilot_id
         pilot._description = pilot_description
         pilot._manager     = pilot_manager_obj
 
@@ -102,14 +102,14 @@ class ComputePilot (attributes.Attributes) :
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
         # create database entry
-        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_pid=pilot_manager_obj.pid, 
-                                                                 pilot_pids=pilot_pids)
+        pilots_json = pilot_manager_obj._session._dbs.get_pilots(pilot_manager_id=pilot_manager_obj.uid, 
+                                                                 pilot_ids=pilot_ids)
         # create and return pilot objects
         pilots = []
 
         for p in pilots_json:
             pilot = ComputePilot()
-            pilot._pid = str(p['_id'])
+            pilot._uid = str(p['_id'])
             pilot._description = p['description']
             pilot._manager = pilot_manager_obj
 
@@ -121,22 +121,22 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_pid_priv(self):
+    def _get_uid_priv(self):
         """PRIVATE: Returns the Pilot's unique identifier.
 
-        The pid identifies the Pilot within the :class:`PilotManager` and 
+        The uid identifies the Pilot within the :class:`PilotManager` and 
         can be used to retrieve an existing Pilot.
 
         **Returns:**
             * A unique identifier (string).
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
-        # pid is static and doesn't change over the lifetime 
+        # uid is static and doesn't change over the lifetime 
         # of a pilot, hence it can be stored in a member var.
-        return self._pid
+        return self._uid
 
     # --------------------------------------------------------------------------
     #
@@ -144,7 +144,7 @@ class ComputePilot (attributes.Attributes) :
         """PRIVATE: Returns the pilot description the pilot was started with.
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
         # description is static and doesn't change over the lifetime 
@@ -157,14 +157,14 @@ class ComputePilot (attributes.Attributes) :
         """PRIVATE: Returns the current state of the pilot.
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
         # state is oviously dynamic and changes over the 
         # lifetime of a pilot, hence we need to make a call to the 
         # database layer (db layer might cache this call).
         pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.pid])
+                                          pilot_ids=[self.uid])
         return pilots_json[0]['info']['state']
 
     # --------------------------------------------------------------------------
@@ -175,14 +175,14 @@ class ComputePilot (attributes.Attributes) :
         This 
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
         # state detail is oviously dynamic and changes over the 
         # lifetime of a pilot, hence we need to make a call to the 
         # database layer (db layer might cache this call).
         pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.pid])
+                                          pilot_ids=[self.uid])
         return pilots_json[0]['info']['log']
 
     # --------------------------------------------------------------------------
@@ -191,7 +191,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the pilot manager object for this pilot.
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
         # description is static and doesn't change over the lifetime 
@@ -204,7 +204,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the pilot manager object for this pilot.
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
         raise SinonException("Not Implemented")
@@ -216,7 +216,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the units scheduled for this pilot.
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
         raise SinonException("Not Implemented")
@@ -226,7 +226,7 @@ class ComputePilot (attributes.Attributes) :
     def as_dict(self):
         """Returns dict/JSON representation of this pilot.
         """
-        return {'type': 'ComputePilot', 'id': self.pid}
+        return {'type': 'ComputePilot', 'id': self.uid}
 
     # --------------------------------------------------------------------------
     #
@@ -264,7 +264,7 @@ class ComputePilot (attributes.Attributes) :
             * :class:`sinon.SinonException`
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
         if not isinstance (state, list):
@@ -289,7 +289,7 @@ class ComputePilot (attributes.Attributes) :
             * :class:`sinon.SinonException
         """
         # Check if this instance is valid
-        if not self._pid:
+        if not self._uid:
             raise SinonException("Invalid Pilot instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:

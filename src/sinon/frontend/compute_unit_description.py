@@ -11,7 +11,6 @@ __license__   = "MIT"
 
 import sinon.frontend.types       as types
 import sinon.frontend.attributes  as attributes
-import sinon.frontend.description as description
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -23,7 +22,7 @@ CORES             = 'Cores'
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnitDescription (description.Description) :
+class ComputeUnitDescription (attributes.Attributes) :
     """A ComputeUnitDescription object describes the requirements and 
     properties of a :class:`sinon.ComputeUnit` and is passed as a parameter to
     :meth:`sinon.UnitManager.submit_units` to instantiate and run a new 
@@ -54,9 +53,12 @@ class ComputeUnitDescription (description.Description) :
     """
     def __init__ (self, vals={}) : 
 
-        description.Description.__init__ (self, vals)
+        # initialize attributes
+        attributes.Attributes.__init__(self)
 
-        self._attributes_i_set  ('dtype', types.COMPUTE, self._DOWN)
+        # set attribute interface properties
+        self._attributes_extensible  (False)
+        self._attributes_camelcasing (True)
 
         # register properties with the attribute interface
         # action description
@@ -97,7 +99,7 @@ class ComputeUnitDescription (description.Description) :
     def as_dict(self):
       """Returns dict/JSON representation.
       """
-      return description.Description.as_dict(self)
+      return attributes.Attributes.as_dict(self)
 
     #------------------------------------------------------------------------------
     #

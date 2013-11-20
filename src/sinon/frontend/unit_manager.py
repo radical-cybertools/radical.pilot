@@ -131,7 +131,7 @@ class UnitManager (object) :
     #
     def add_pilot (self, pilot):
         self._DB.unit_manager_add_pilot(unit_manager_uid=self.uid,
-                                        pilot_id=pilot.pid)
+                                        pilot_id=pilot.uid)
 
 
     # --------------------------------------------------------------------------

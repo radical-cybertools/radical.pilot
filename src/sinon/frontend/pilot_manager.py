@@ -13,10 +13,9 @@ from sinon.utils      import as_list
 from sinon.exceptions import SinonException
 
 import sinon.frontend.states as states
+import sinon.frontend.attributes as attributes
 
 from sinon.frontend.compute_pilot import ComputePilot
-
-from sinon.db import Session as dbSession
 
 from radical.utils import which
 
@@ -25,10 +24,14 @@ import json
 import urllib2
 import datetime
 
+# ------------------------------------------------------------------------------
+# Attribute keys
+UID  = 'UID'
+
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager(object):
+class PilotManager(attributes.Attributes):
     """A PilotManager holds :class:`sinon.ComputePilot` instances that are 
     submitted via the :meth:`sinon.ComputePilotManager.submit_pilots` method.
     
@@ -46,7 +49,7 @@ class PilotManager(object):
         
         pm1 = sinon.ComputePilotManager(session=s, resource_configurations=RESCONF)
         # Re-connect via the 'get()' method.
-        pm2 = sinon.ComputePilotManager.get(session=s, pilot_manager_uid=pm1.uid)
+        pm2 = sinon.ComputePilotManager.get(session=s, pilot_manager_id=pm1.uid)
 
         # pm1 and pm2 are pointing to the same PilotManager
         assert pm1.uid == pm2.uid
@@ -92,6 +95,17 @@ class PilotManager(object):
         """
         self._DB = session._dbs
         self._session = session
+
+        # initialize attributes
+        attributes.Attributes.__init__(self)
+
+        # set attribute interface properties
+        self._attributes_extensible  (False)
+        self._attributes_camelcasing (True)
+
+        # The UID attributes
+        self._attributes_register(UID, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_getter(UID, self._get_uid_priv)
 
         if resource_configurations == "~=RECON=~":
             # When we get the "~=RECON=~" keyword as resource_configurations, we
@@ -167,8 +181,7 @@ class PilotManager(object):
 
     #---------------------------------------------------------------------------
     #
-    @property
-    def uid(self):
+    def _get_uid_priv(self):
         """Returns the PilotManagers's unique identifier.
 
         The uid identifies the PilotManager within the :class:`sinon.Session`
@@ -417,7 +430,7 @@ class PilotManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilots(self, pilot_uids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=-1.0):
+    def wait_pilots(self, pilot_ids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=-1.0):
         """Returns when one or more :class:`sinon.ComputePilots` reach a 
         specific state or when an optional timeout is reached.
 

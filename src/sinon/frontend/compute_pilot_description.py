@@ -10,7 +10,6 @@ __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sinon.frontend.attributes  as attributes
-import sinon.frontend.description as description
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -26,7 +25,7 @@ PROJECT           = 'Project'
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilotDescription (description.Description) :
+class ComputePilotDescription (attributes.Attributes) :
     """A ComputePilotDescription object describes the requirements and 
     properties of a :class:`sinon.Pilot` and is passed as a parameter to
     :meth:`sinon.PilotManager.submit_pilots` to instantiate a new pilot.
@@ -81,8 +80,12 @@ class ComputePilotDescription (description.Description) :
     """
 
     def __init__ (self, vals={}) : 
+        # initialize attributes
+        attributes.Attributes.__init__(self)
 
-        description.Description.__init__ (self, vals)
+        # set attribute interface properties
+        self._attributes_extensible  (False)
+        self._attributes_camelcasing (True)
 
         # register properties with the attribute interface
         # runtime properties
@@ -113,7 +116,7 @@ class ComputePilotDescription (description.Description) :
     def as_dict(self):
       """Returns dict/JSON representation.
       """
-      return description.Description.as_dict(self)
+      return attributes.Attributes.as_dict(self)
 
     # ------------------------------------------------------------------------------
     #
