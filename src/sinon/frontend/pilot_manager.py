@@ -295,8 +295,6 @@ class PilotManager(attributes.Attributes):
                     agent_dir_url = saga.Url("%s/pilot-%s/" \
                         % (wd, str(pilot_id)))
 
-                    print 'COPY TO: %s' % str(agent_dir_url)
-
                     agent_dir = saga.filesystem.Directory(agent_dir_url, 
                         saga.filesystem.CREATE_PARENTS)
                     pilot_description_dict[pilot_id]['info']['log'].append("Created agent directory '%s'" % str(agent_dir_url))
