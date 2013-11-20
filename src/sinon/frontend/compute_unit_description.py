@@ -9,6 +9,7 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import sinon.frontend.types       as types
 import sinon.frontend.attributes  as attributes
 import sinon.frontend.description as description
 
@@ -55,7 +56,7 @@ class ComputeUnitDescription (description.Description) :
 
         description.Description.__init__ (self, vals)
 
-        self._attributes_i_set  ('dtype', COMPUTE, self._DOWN)
+        self._attributes_i_set  ('dtype', types.COMPUTE, self._DOWN)
 
         # register properties with the attribute interface
         # action description

@@ -12,11 +12,6 @@ __license__   = "MIT"
 
 from sinon.utils     import as_list
 
-from sinon.db import Session as dbSession
-
-from sinon.frontend.session       import Session
-from sinon.frontend.compute_pilot import ComputePilot
-
 import sinon.frontend.types as types
 import sinon.frontend.states as states
 
@@ -136,7 +131,7 @@ class UnitManager (object) :
     #
     def add_pilot (self, pilot):
         self._DB.unit_manager_add_pilot(unit_manager_uid=self.uid,
-                                        pilot_id=pilot.uid)
+                                        pilot_id=pilot.pid)
 
 
     # --------------------------------------------------------------------------
@@ -171,7 +166,7 @@ class UnitManager (object) :
         for ud in as_list(unit_descriptions):
             unit_description_dict[ObjectId()] = {
                 'description': ud, 
-                'info': {'state': PENDING, 
+                'info': {'state': states.PENDING, 
                          'submitted': datetime.datetime.now(),
                          'log': []}
             }

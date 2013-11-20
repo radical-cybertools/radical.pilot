@@ -233,7 +233,7 @@ class ComputePilot (attributes.Attributes) :
     def __str__(self):
         """Returns string representation of this pilot.
         """
-        return str(self.__repr__())
+        return str(self.as_dict())
 
     # --------------------------------------------------------------------------
     #

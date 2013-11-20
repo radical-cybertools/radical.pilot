@@ -280,7 +280,9 @@ class PilotManager(object):
                         wd = resource_cfg['working_directory']
 
                     agent_dir_url = saga.Url("%s/pilot-%s/" \
-                        % (resource_cfg['working_directory'], str(pilot_id)))
+                        % (wd, str(pilot_id)))
+
+                    print 'COPY TO: %s' % str(agent_dir_url)
 
                     agent_dir = saga.filesystem.Directory(agent_dir_url, 
                         saga.filesystem.CREATE_PARENTS)
