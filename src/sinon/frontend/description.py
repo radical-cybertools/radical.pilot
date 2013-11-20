@@ -11,6 +11,7 @@ __license__   = "MIT"
 
 from sinon.constants import * 
 
+import sinon.frontend.types as types
 import sinon.frontend.attributes as attributes
 
 # ------------------------------------------------------------------------------
@@ -27,5 +28,5 @@ class Description (attributes.Attributes) :
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register    ('dtype',  UNKNOWN, attributes.ENUM, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_enums   ('dtype', [UNKNOWN, COMPUTE, DATA])
+        self._attributes_register    ('dtype',  types.UNKNOWN, attributes.ENUM, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_enums   ('dtype', [types.UNKNOWN, types.COMPUTE, types.DATA])

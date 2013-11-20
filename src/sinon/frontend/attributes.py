@@ -12,7 +12,7 @@ __license__   = "MIT"
 import saga.attributes  as satt
 
 # ------------------------------------------------------------------------------
-#
+# Attribute types
 ANY         = satt.ANY
 URL         = satt.URL
 INT         = satt.INT
@@ -34,14 +34,17 @@ SCALAR      = satt.SCALAR
 DICT        = satt.DICT
 VECTOR      = satt.VECTOR
 
-
-# ------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #
-class Attributes (satt.Attributes) :
+class Attributes(satt.Attributes):
 
-    def __init__ (self, *args, **kwargs) :
+    #---------------------------------------------------------------------------
+    #
+    def __init__(self, *args, **kwargs) :
 
         satt.Attributes.__init__ (self, *args, **kwargs)
 
+    #---------------------------------------------------------------------------
+    #
     def __str__ (self) :
-        return str (self.as_dict ())
+        return str (self.as_dict())

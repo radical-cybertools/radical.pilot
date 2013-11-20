@@ -25,6 +25,11 @@ def demo_milestone_01_1():
         pd.cores = 16
         p1 = pm.submit_pilots(pd)
 
+        # Error checking
+        if p1.state in [sinon.states.FAILED]:
+            print "* [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
+            sys.exit(-1)
+
         # Add a Unit Manager to the session and add the newly created 
         # pilot to it.
         um = sinon.UnitManager(session=session)

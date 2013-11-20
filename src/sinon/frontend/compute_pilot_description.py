@@ -9,10 +9,20 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from   sinon.constants import *
-
 import sinon.frontend.attributes  as attributes
 import sinon.frontend.description as description
+
+# ------------------------------------------------------------------------------
+# Attribute description keys
+RESOURCE          = 'Resource'
+QUEUE             = 'Queue'
+CORES             = 'Cores'
+WORKING_DIRECTORY = 'WorkingDirectory'
+OUTPUT            = 'Output'
+ERROR             = 'Error'
+RUN_TIME          = 'RunTime'
+CLEANUP           = 'Cleanup'
+PROJECT           = 'Project'
 
 # ------------------------------------------------------------------------------
 #
@@ -76,32 +86,39 @@ class ComputePilotDescription (description.Description) :
 
         # register properties with the attribute interface
         # runtime properties
-        self._attributes_register  (START_TIME,        None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(RUN_TIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
-        #self._attributes_register  (RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (ALLOCATION,        None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register(RUN_TIME,                    None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PROJECT,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # i/o
-        self._attributes_register  (WORKING_DIRECTORY, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (OUTPUT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (ERROR,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (FILE_TRANSFER,     None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(WORKING_DIRECTORY, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(OUTPUT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(ERROR,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register(FILE_TRANSFER,    None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
-        self._attributes_register  (RESOURCE,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (CORES,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register  (SPMD_VARIATION,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register  (CANDIDATE_HOSTS,   None, attributes.INT,    attributes.VECTOR, attributes.WRITEABLE)
-        #self._attributes_register  (CPU_ARCHITECTURE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register  (OPERATING_SYSTEM,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register  (MEMORY,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register  (QUEUE,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(RESOURCE,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CORES,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register(SPMD_VARIATION,   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register(CANDIDATE_HOSTS,  None, attributes.INT,    attributes.VECTOR, attributes.WRITEABLE)
+        #self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register(MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(QUEUE,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
+    #------------------------------------------------------------------------------
+    #
     def as_dict(self):
-        """Returns the object as JSON string.
+      """Returns dict/JSON representation.
+      """
+      return description.Description.as_dict(self)
 
-            **Returns:**
-                * A JSON `string` representing the ComputePilotDescription.
-        """
-        return description.Description.as_dict(self)
+    # ------------------------------------------------------------------------------
+    #
+    def __str__(self):
+      """Returns string representation.
+      """
+      return str(self.as_dict())
+

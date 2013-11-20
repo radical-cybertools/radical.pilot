@@ -10,13 +10,15 @@ __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-from sinon.constants import * 
 from sinon.utils     import as_list
 
 from sinon.db import Session as dbSession
 
-from sinon.frontend.session      import Session
-from sinon.frontend.pilot        import Pilot
+from sinon.frontend.session       import Session
+from sinon.frontend.compute_pilot import ComputePilot
+
+import sinon.frontend.types as types
+import sinon.frontend.states as states
 
 import time
 import datetime
@@ -145,7 +147,7 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=ANY) :
+    def list_units (self, utype=types.ANY) :
         return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
 
 
@@ -255,7 +257,7 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_units(self, unit_uids=None, state=[DONE, FAILED, CANCELED], timeout=None):
+    def wait_units(self, unit_uids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
         """Returns when one or more :class:`sinon.ComputeUnits` reach a 
         specific state. 
 

@@ -31,8 +31,13 @@ def demo_milestone_02():
 
         print "* Submitting pilot to '%s'..." % (pd.resource)
         india_pilot = pm.submit_pilots(pd)
-        print "  SUBMITTED (uid: %s)" % india_pilot.uid
 
+        # Error checking
+        if india_pilot.state in [sinon.states.FAILED]:
+            print "  [ERROR] Pilot %s failed: %s." % (india_pilot, india_pilot.state_details[-1])
+            sys.exit(-1)
+        else:
+            print "  [OK]    Pilot %s submitted successfully: %s." % (india_pilot, india_pilot.state_details[-1])
 
         # Create a workload of 64 '/bin/date' compute units
         compute_units = []

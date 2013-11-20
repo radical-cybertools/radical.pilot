@@ -9,12 +9,12 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.constants  import *
 from sinon.utils      import as_list
 from sinon.exceptions import SinonException
 
-from sinon.frontend.session      import Session
-from sinon.frontend.pilot        import Pilot
+import sinon.frontend.states as states
+
+from sinon.frontend.compute_pilot import ComputePilot
 
 from sinon.db import Session as dbSession
 
@@ -29,14 +29,14 @@ import datetime
 # ------------------------------------------------------------------------------
 #
 class PilotManager(object):
-    """A PilotManager holds :class:`sinon.Pilot` instances that are 
-    submitted via the :meth:`sinon.PilotManager.submit_pilots` method.
+    """A PilotManager holds :class:`sinon.ComputePilot` instances that are 
+    submitted via the :meth:`sinon.ComputePilotManager.submit_pilots` method.
     
     It is possible to attach one or more :ref:`chapter_machconf` 
     to a PilotManager to outsource machine specific configuration 
     parameters to an external configuration file. 
 
-    Each PilotManager has a unique identifier :data:`sinon.PilotManager.uid`
+    Each PilotManager has a unique identifier :data:`sinon.ComputePilotManager.uid`
     that can be used to re-connect to previoulsy created PilotManager in a
     given :class:`sinon.Session`.
 
@@ -44,9 +44,9 @@ class PilotManager(object):
 
         s = sinon.Session(database_url=DBURL)
         
-        pm1 = sinon.PilotManager(session=s, resource_configurations=RESCONF)
+        pm1 = sinon.ComputePilotManager(session=s, resource_configurations=RESCONF)
         # Re-connect via the 'get()' method.
-        pm2 = sinon.PilotManager.get(session=s, pilot_manager_uid=pm1.uid)
+        pm2 = sinon.ComputePilotManager.get(session=s, pilot_manager_uid=pm1.uid)
 
         # pm1 and pm2 are pointing to the same PilotManager
         assert pm1.uid == pm2.uid
@@ -75,7 +75,7 @@ class PilotManager(object):
               entries in the  files via the :class:`ComputePilotDescription`.
               For example::
 
-                  pm = sinon.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+                  pm = sinon.ComputePilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
                   pd = sinon.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
@@ -85,7 +85,7 @@ class PilotManager(object):
 
         **Returns:**
 
-            * A new `PilotManager` object [:class:`sinon.PilotManager`].
+            * A new `PilotManager` object [:class:`sinon.ComputePilotManager`].
 
         **Raises:**
             * :class:`sinon.SinonException`
@@ -143,7 +143,7 @@ class PilotManager(object):
 
         **Returns:**
 
-            * A new `PilotManager` object [:class:`sinon.PilotManager`].
+            * A new `PilotManager` object [:class:`sinon.ComputePilotManager`].
 
         **Raises:**
 
@@ -183,12 +183,12 @@ class PilotManager(object):
     # --------------------------------------------------------------------------
     #
     def submit_pilots(self, pilot_descriptions):
-        """Submits a new :class:`sinon.Pilot` to a resource. 
+        """Submits a new :class:`sinon.ComputePilot` to a resource. 
 
         **Returns:**
 
-            * One or more :class:`sinon.Pilot` instances 
-              [`list of :class:`sinon.Pilot`].
+            * One or more :class:`sinon.ComputePilot` instances 
+              [`list of :class:`sinon.ComputePilot`].
 
         **Raises:**
 
@@ -223,109 +223,141 @@ class PilotManager(object):
             resource_key = pilot_description['description'].resource
             number_cores = pilot_description['description'].cores
 
+            try_submit = True
+
             #########################
             # Check job description # 
             #########################
 
             if resource_key is None:
-                raise SinonException("ComputePilotDescription.resource not defined")
+                error_msg = "ComputePilotDescription.resource not defined."
+                pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
+                pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                try_submit = False
+
             # check wether mandatory attribute 'resource' was defined
             if resource_key not in self._resource_cfgs:
-                raise SinonException("ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key)
+                error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
+                pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
+                pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                try_submit = False
+
             # check wether mandatory attribute 'cores' was defined
             if number_cores is None:
-                raise SinonException("ComputePilotDescription.cores not defined")
+                error_msg = "ComputePilotDescription.cores not defined."
+                pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
+                pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                try_submit = False
 
-            resource_cfg = self._resource_cfgs[resource_key]
+            # check wether the resource key actually exists
+            if resource_key not in self._resource_cfgs:
+                error_msg = "No entry found for resource key '%s' in resource configuration." % resource_key
+                pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
+                pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                try_submit = False
+            else:
+                resource_cfg = self._resource_cfgs[resource_key]
 
-            pilot = Pilot._create(
-                pilot_uid=str(pilot_id),
+            if try_submit is True:
+                ########################################################
+                # Create SAGA Job description and submit the pilot job #
+                ########################################################
+                try:
+                    # Create working directory if it doesn't exist and copy
+                    # the agent bootstrap script into it. 
+                    #
+                    # We create a new sub-driectory for each agent. each 
+                    # agent will bootstrap its own virtual environment in this 
+                    # directory.
+                    #
+                    if pilot_description['description'].working_directory is not None:
+                        wd = pilot_description['description'].working_directory
+                    else:
+                        wd = resource_cfg['working_directory']
+
+                    agent_dir_url = saga.Url("%s/pilot-%s/" \
+                        % (resource_cfg['working_directory'], str(pilot_id)))
+
+                    agent_dir = saga.filesystem.Directory(agent_dir_url, 
+                        saga.filesystem.CREATE_PARENTS)
+                    pilot_description_dict[pilot_id]['info']['log'].append("Created agent directory '%s'" % str(agent_dir_url))
+
+                    bootstrap_script_url = saga.Url("file://localhost/%s" \
+                        % (which('bootstrap-and-run-agent')))
+
+                    bootstrap_script = saga.filesystem.File(bootstrap_script_url)
+                    bootstrap_script.copy(agent_dir_url)
+                    pilot_description_dict[pilot_id]['info']['log'].append("Copied launch script '%s' to agent directory" % str(bootstrap_script_url))
+
+                    # extract the required connection parameters and uids
+                    # for the agent:
+                    database_host = self._session._database_url.split("://")[1]
+                    database_name = self._session._database_name
+                    session_uid  = self._session.uid
+
+                    # now that the script is in place and we know where it is,
+                    # we can launch the agent
+                    js = saga.job.Service(resource_cfg['URL'])
+
+                    jd = saga.job.Description()
+                    jd.working_directory = agent_dir_url.path
+                    jd.executable        = "./bootstrap-and-run-agent"
+                    jd.arguments         = ["-r", database_host,  # database host (+ port)
+                                            "-d", database_name,  # database name
+                                            "-s", session_uid,    # session uid
+                                            "-p", str(pilot_id),  # pilot uid
+                                            "-C"]                 # clean up by default
+
+                    # if resource config defines 'pre_bootstrap' commands,
+                    # we add those to the argument list
+                    if 'pre_bootstrap' in resource_cfg:
+                        for command in resource_cfg['pre_bootstrap']:
+                            jd.arguments.append("-e \"%s\"" % command)
+
+                    # if resourc configuration defines a custom 'python_interpreter',
+                    # we add it to the argument list
+                    if 'python_interpreter' in resource_cfg:
+                        jd.arguments.append("-i %s" % resource_cfg['python_interpreter'])
+
+                    jd.output            = "STDOUT"
+                    jd.error             = "STDERR"
+                    jd.total_cpu_count   = number_cores
+
+                    pilotjob = js.create_job(jd)
+                    pilotjob.run()
+
+                    pilotjob_id = pilotjob.id
+
+                    # clean up / close all saga objects
+                    js.close()
+                    agent_dir.close()
+                    bootstrap_script.close()
+
+                    # at this point, submission has succeeded. we can update
+                    #   * the state to 'PENDING'
+                    #   * the submission time
+                    #   * the log
+                    pilot_description_dict[pilot_id]['info']['state'] = states.PENDING
+                    pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job successfully submitted with JobID '%s'" % pilotjob_id)
+
+                except saga.SagaException, se: 
+                    # at this point, submission has failed. we update the 
+                    # agent status accordingly
+                    pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
+                    pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job submission failed: '%s'" % str(se))
+
+            # Set submission date and reate a pilot object, regardless whether 
+            # submission has failed or not.                 
+            pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+
+            pilot = ComputePilot._create(
+                pilot_id=str(pilot_id),
                 pilot_description=pilot_description['description'], 
                 pilot_manager_obj=self)
-
-            ########################################################
-            # Create SAGA Job description and submit the pilot job #
-            ########################################################
-            try:
-                # Create working directory if it doesn't exist and copy
-                # the agent bootstrap script into it. 
-                #
-                # We create a new sub-driectory for each agent. each 
-                # agent will bootstrap its own virtual environment in this 
-                # directory.
-                #
-                agent_dir_url = saga.Url("%s/pilot-%s/" \
-                    % (resource_cfg['working_directory'], str(pilot_id)))
-
-                agent_dir = saga.filesystem.Directory(agent_dir_url, 
-                    saga.filesystem.CREATE_PARENTS)
-                pilot_description_dict[pilot_id]['info']['log'].append("Created agent directory '%s'" % str(agent_dir_url))
-
-                bootstrap_script_url = saga.Url("file://localhost/%s" \
-                    % (which('bootstrap-and-run-agent')))
-
-                bootstrap_script = saga.filesystem.File(bootstrap_script_url)
-                bootstrap_script.copy(agent_dir_url)
-                pilot_description_dict[pilot_id]['info']['log'].append("Copied launch script '%s' to agent directory" % str(bootstrap_script_url))
-
-                # extract the required connection parameters and uids
-                # for the agent:
-                database_host = self._session._database_url.split("://")[1]
-                database_name = self._session._database_name
-                session_uid  = self._session.uid
-
-                # now that the script is in place and we know where it is,
-                # we can launch the agent
-                js = saga.job.Service(resource_cfg['URL'])
-
-                jd = saga.job.Description()
-                jd.working_directory = agent_dir_url.path
-                jd.executable        = "./bootstrap-and-run-agent"
-                jd.arguments         = ["-r", database_host,  # database host (+ port)
-                                        "-d", database_name,  # database name
-                                        "-s", session_uid,    # session uid
-                                        "-p", str(pilot_id),  # pilot uid
-                                        "-C"]                 # clean up by default
-
-                # if resource config defines 'pre_bootstrap' commands,
-                # we add those to the argument list
-                if 'pre_bootstrap' in resource_cfg:
-                    for command in resource_cfg['pre_bootstrap']:
-                        jd.arguments.append("-e \"%s\"" % command)
-
-                # if resourc configuration defines a custom 'python_interpreter',
-                # we add it to the argument list
-                if 'python_interpreter' in resource_cfg:
-                    jd.arguments.append("-i %s" % resource_cfg['python_interpreter'])
-
-                jd.output            = "STDOUT"
-                jd.error             = "STDERR"
-                jd.total_cpu_count   = number_cores
-
-                pilotjob = js.create_job(jd)
-                pilotjob.run()
-
-                pilotjob_id = pilotjob.id
-
-                # clean up / close all saga objects
-                js.close()
-                agent_dir.close()
-                bootstrap_script.close()
-
-                # at this point, submission has succeeded. we can update
-                #   * the state to 'PENDING'
-                #   * the submission time
-                #   * the log
-                pilot_description_dict[pilot_id]['info']['state'] = PENDING
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
-                pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job successfully submitted with JobID '%s'" % pilotjob_id)
-
-            except saga.SagaException, se: 
-                # at this point, submission has failed. we update the 
-                # agent status accordingly
-                pilot_description_dict[pilot_id]['info']['state'] = FAILED
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
-                pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job submission failed: '%s'" % str(se))
 
             pilots.append(pilot)
 
@@ -342,12 +374,12 @@ class PilotManager(object):
     # --------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """Lists the unique identifiers of all :class:`sinon.Pilot` instances 
+        """Lists the unique identifiers of all :class:`sinon.ComputePilot` instances 
         associated with this PilotManager
 
         **Returns:**
 
-            * A list of :class:`sinon.Pilot` uids [`string`].
+            * A list of :class:`sinon.ComputePilot` uids [`string`].
 
         **Raises:**
 
@@ -357,8 +389,8 @@ class PilotManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_pilots(self, pilot_uids=None):
-        """Returns one or more :class:`sinon.Pilot` instances.
+    def get_pilots(self, pilot_ids=None):
+        """Returns one or more :class:`sinon.ComputePilot` instances.
 
         **Arguments:**
 
@@ -368,23 +400,23 @@ class PilotManager(object):
 
         **Returns:**
 
-            * A list of :class:`sinon.Pilot` objects 
-              [`list of :class:`sinon.Pilot`].
+            * A list of :class:`sinon.ComputePilot` objects 
+              [`list of :class:`sinon.ComputePilot`].
 
         **Raises:**
 
             * :class:`sinon.SinonException`
         """
         # implicit list conversion
-        pilot_uid_list = as_list(pilot_uids)
+        pilot_id_list = as_list(pilot_ids)
 
-        pilots = Pilot._get(pilot_uids=pilot_uid_list, pilot_manager_obj=self)
+        pilots = Pilot._get(pilot_ids=pilot_id_list, pilot_manager_obj=self)
         return pilots
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilots(self, pilot_uids=None, state=[DONE, FAILED, CANCELED], timeout=-1.0):
-        """Returns when one or more :class:`sinon.Pilots` reach a 
+    def wait_pilots(self, pilot_uids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=-1.0):
+        """Returns when one or more :class:`sinon.ComputePilots` reach a 
         specific state or when an optional timeout is reached.
 
         If `pilot_uids` is `None`, `wait_pilots` returns when **all** Pilots
