@@ -12,7 +12,6 @@ __license__   = "MIT"
 # ------------------------------------------------------------------------------
 #
 from sinon.version    import VERSION as version
-from sinon.exceptions import SinonException
 
 # ------------------------------------------------------------------------------
 #
@@ -22,6 +21,8 @@ import sinon.frontend.states as states
 # ------------------------------------------------------------------------------
 #
 from sinon.frontend.session                   import Session 
+from sinon.frontend.exceptions                import SinonException
+
 from sinon.frontend.unit_manager              import UnitManager
 from sinon.frontend.compute_unit_description  import ComputeUnitDescription
 

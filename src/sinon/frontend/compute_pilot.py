@@ -9,10 +9,9 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.exceptions import SinonException
-
 import sinon.frontend.states as states
 import sinon.frontend.attributes as attributes
+import sinon.frontend.exceptions as excpetions
 
 import time
 
@@ -20,11 +19,17 @@ import time
 # Attribute keys
 UID               = 'UID'
 DESCRIPTION       = 'Description'
+
 STATE             = 'State'
 STATE_DETAILS     = 'StateDetails'
+
+SUBMISSION_TIME   = 'SubmissionTime'
+START_TIME        = 'StartTime'
+STOP_TIME         = 'StopTime'
+
 PILOT_MANAGER     = 'PilotManager'
-UNITS             = 'Units'
 UNIT_MANAGERS     = 'UnitManagers'
+UNITS             = 'Units'
 
 # ------------------------------------------------------------------------------
 #
@@ -70,13 +75,25 @@ class ComputePilot (attributes.Attributes) :
         self._attributes_register(UNITS, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
         self._attributes_set_getter(UNITS, self._get_units_priv)
 
-        # The unit managers this pilot is attributesached to
+        # The unit managers this pilot is attached to
         self._attributes_register(UNIT_MANAGERS, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
         self._attributes_set_getter(UNIT_MANAGERS, self._get_unit_managers_priv)
 
-        # The pilot manager this pilot is attributesached to
+        # The pilot manager this pilot is attached to
         self._attributes_register(PILOT_MANAGER, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(PILOT_MANAGER, self._get_pilot_manager_priv)
+
+        # The submission time
+        self._attributes_register(SUBMISSION_TIME, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
+        self._attributes_set_getter(SUBMISSION_TIME, self._get_submission_time_priv)
+
+        # The start time
+        self._attributes_register(START_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_getter(START_TIME, self._get_start_time_priv)
+
+        # The stop time
+        self._attributes_register(STOP_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_getter(STOP_TIME, self._get_stop_time_priv)
 
     # --------------------------------------------------------------------------
     #
@@ -132,7 +149,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
         # uid is static and doesn't change over the lifetime 
         # of a pilot, hence it can be stored in a member var.
@@ -145,7 +162,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
         # description is static and doesn't change over the lifetime 
         # of a pilot, hence it can be stored in a member var.
@@ -158,7 +175,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
         # state is oviously dynamic and changes over the 
         # lifetime of a pilot, hence we need to make a call to the 
@@ -176,7 +193,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
         # state detail is oviously dynamic and changes over the 
         # lifetime of a pilot, hence we need to make a call to the 
@@ -192,7 +209,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
         # description is static and doesn't change over the lifetime 
         # of a pilot, hence it can be stored in a member var.
@@ -205,9 +222,9 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
-        raise SinonException("Not Implemented")
+        raise excpetions.SinonException("Not Implemented")
 
 
     # --------------------------------------------------------------------------
@@ -217,9 +234,45 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
-        raise SinonException("Not Implemented")
+        raise excpetions.SinonException("Not Implemented")
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_submission_time_priv(self):
+        """ Returns the time the pilot was submitted. 
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            raise excpetions.SinonException("Invalid Pilot instance.")
+
+        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
+                                          pilot_ids=[self.uid])
+        return pilots_json[0]['info']['submitted']
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_start_time_priv(self):
+        """ Returns the time the pilot was started on the backend. 
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            raise excpetions.SinonException("Invalid Pilot instance.")
+
+        raise excpetions.SinonException("Not Implemented")
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_stop_time_priv(self):
+        """ Returns the time the pilot was stopped. 
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            raise excpetions.SinonException("Invalid Pilot instance.")
+
+        raise excpetions.SinonException("Not Implemented")
 
     # --------------------------------------------------------------------------
     #
@@ -261,11 +314,11 @@ class ComputePilot (attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sinon.excpetions.SinonException`
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
         if not isinstance (state, list):
             state = [state]
@@ -286,18 +339,18 @@ class ComputePilot (attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.SinonException
+            * :class:`sinon.excpetions.SinonException
         """
         # Check if this instance is valid
         if not self._uid:
-            raise SinonException("Invalid Pilot instance.")
+            raise excpetions.SinonException("Invalid Pilot instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:
             # nothing to do
             return
 
         if self.state in [states.UNKNOWN] :
-            raise SinonException("Pilot state is UNKNOWN, cannot cancel")
+            raise excpetions.SinonException("Pilot state is UNKNOWN, cannot cancel")
 
         # now we can send a 'cancel' command to the pilot
         # through the database layer. 
