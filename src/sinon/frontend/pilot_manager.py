@@ -28,7 +28,6 @@ import datetime
 # Attribute keys
 UID  = 'UID'
 
-
 # ------------------------------------------------------------------------------
 #
 class PilotManager(attributes.Attributes):

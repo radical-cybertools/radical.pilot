@@ -33,7 +33,7 @@ def demo_milestone_01_1():
         # Add a Unit Manager to the session and add the newly created 
         # pilot to it.
         um = sinon.UnitManager(session=session)
-        um.add_pilot(p1)
+        um.add_pilots(p1)
 
         # Now we create a few ComputeUnits ...
         compute_units = []

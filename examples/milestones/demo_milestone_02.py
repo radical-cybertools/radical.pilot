@@ -51,7 +51,7 @@ def demo_milestone_02():
         # Combine the pilot, the workload and a scheduler via 
         # a UnitManager.
         um = sinon.UnitManager(session=session, scheduler="ROUNDROBIN")
-        um.add_pilot(india_pilot)
+        um.add_pilots(india_pilot)
         um.submit_units(compute_units)
 
         unit_list = um.list_units()

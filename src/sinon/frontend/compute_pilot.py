@@ -1,7 +1,7 @@
 """
-.. module:: sinon.pilot
+.. module:: sinon.compute_pilot
    :platform: Unix
-   :synopsis: Implementation of the Pilot class.
+   :synopsis: Implementation of the ComputePilot class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
