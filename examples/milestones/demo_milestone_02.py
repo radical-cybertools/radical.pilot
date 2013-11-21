@@ -25,14 +25,21 @@ def demo_milestone_02():
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource = "futuregrid.INDIA"
-        pd.cores = 16
-        pd.cleanup = True
+        pd.resource          = "futuregrid.INDIA"
+        pd.working_directory = "sftp://india.futuregrid.org/N/u/oweidner/sinon/" # overriding resource config
+        pd.cores             = 16
+        pd.run_time          = 5 # minutes
+        pd.cleanup           = True
 
         print "* Submitting pilot to '%s'..." % (pd.resource)
         india_pilot = pm.submit_pilots(pd)
-        print "  SUBMITTED (uid: %s)" % india_pilot.uid
 
+        # Error checking
+        if india_pilot.state in [sinon.states.FAILED]:
+            print "  [ERROR] Pilot %s failed: %s." % (india_pilot, india_pilot.state_details[-1])
+            sys.exit(-1)
+        else:
+            print "  [OK]    Pilot %s submitted successfully: %s." % (india_pilot, india_pilot.state_details[-1])
 
         # Create a workload of 64 '/bin/date' compute units
         compute_units = []
@@ -45,7 +52,7 @@ def demo_milestone_02():
         # Combine the pilot, the workload and a scheduler via 
         # a UnitManager.
         um = sinon.UnitManager(session=session, scheduler="ROUNDROBIN")
-        um.add_pilot(india_pilot)
+        um.add_pilots(india_pilot)
         um.submit_units(compute_units)
 
         unit_list = um.list_units()

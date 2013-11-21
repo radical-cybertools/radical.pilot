@@ -16,7 +16,8 @@ import Queue
 import subprocess
 import multiprocessing
 
-from sinon.constants import * 
+import sinon.frontend.states as states
+
 from sinon.agent.constants import *
 from sinon.agent import Task
 
@@ -318,7 +319,7 @@ class _TaskExecutorWorker(multiprocessing.Process):
                                 origin_type="TASK",
                                 origin_id=self.slots[slot].task_uid,
                                 event='STATECHANGE',
-                                value=DONE)
+                                value=states.DONE)
 
                         if self.result_callback is not None:
                             # call result callback for finished task
@@ -442,7 +443,7 @@ class _TaskExecutorWorker(multiprocessing.Process):
                             self.event_callback(origin_type='TASK',
                                                 origin_id=task.uid,
                                                 event='STATECHANGE',
-                                                value=RUNNING)
+                                                value=states.RUNNING)
 
                     except Queue.Empty:
                         # do nothing if we don't have any queued tasks
@@ -464,7 +465,7 @@ class _TaskExecutorWorker(multiprocessing.Process):
                             self.event_callback(origin_type='TASK',
                                                 origin_id=self.slots[slot].task_uid,
                                                 event='STATECHANGE',
-                                                value=DONE)
+                                                value=states.DONE)
 
                         if self.result_callback is not None:
                             # call result callback for finished task

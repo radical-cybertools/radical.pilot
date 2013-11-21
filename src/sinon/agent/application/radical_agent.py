@@ -11,7 +11,7 @@ import uuid
 import signal
 import Queue
 
-import sinon.constants as constants
+import sinon.frontend.states as states
 
 from sinon.agent import Task, TaskQueue, TaskExecutor, ExecutionEnvironment
 
@@ -115,7 +115,7 @@ class RhythmosAgent(object):
 
         # All drivers loaded. Try to set the status to 'RUNNING'.
         self.task_events.put(origin_type="AGENT", origin_id=None, 
-                event="STATECHANGE", value=constants.RUNNING)
+                event="STATECHANGE", value=states.RUNNING)
         #---------------------------------------------------------------------
         #
         global event_h
@@ -124,7 +124,7 @@ class RhythmosAgent(object):
         def _signal_handler(signum, frame):
             print 'Signal handler called with signal', signum
             event_h.put(origin_type="AGENT", origin_id=None, 
-                event="STATECHANGE", value=constants.CANCELED)
+                event="STATECHANGE", value=states.CANCELED)
 
         # install a signal handler. in theory, this should get triggered
         # if we get kicked out by the queueing system, etc.
@@ -171,4 +171,4 @@ class RhythmosAgent(object):
         # Finally, set the status to 'DONE'.
         # All drivers loaded. Try to set the status to 'RUNNING'.
         self.task_events.put(origin_type="AGENT", origin_id=None, 
-                event="STATECHANGE", value=constants.DONE)
+                event="STATECHANGE", value=states.DONE)

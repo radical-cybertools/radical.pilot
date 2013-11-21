@@ -10,20 +10,24 @@ __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-from sinon.constants import * 
-from sinon.utils     import as_list
+from sinon.utils import as_list
 
-from sinon.db import Session as dbSession
-
-from sinon.frontend.session      import Session
-from sinon.frontend.pilot        import Pilot
+import sinon.frontend.types as types
+import sinon.frontend.states as states
+import sinon.frontend.attributes as attributes
 
 import time
 import datetime
 
 # ------------------------------------------------------------------------------
+# Attribute keys
+UID               = 'UID'
+SCHEDULER         = 'Scheduler'
+SCHEDULER_DETAILS = 'SchedulerDetails'
+
+# ------------------------------------------------------------------------------
 #
-class UnitManager (object) :
+class UnitManager(attributes.Attributes) :
     """A UnitManager manages :class:`sinon.ComputeUnit` instances which 
     represent the **executable** workload in SAGA-Pilot. A UnitManager connects 
     the ComputeUnits with one or more :class:`Pilot` instances (which represent
@@ -79,6 +83,26 @@ class UnitManager (object) :
         self._DB = session._dbs
         self._session = session
 
+        # initialize attributes
+        attributes.Attributes.__init__(self)
+
+        # set attribute interface properties
+        self._attributes_extensible  (False)
+        self._attributes_camelcasing (True)
+
+        # The UID attribute
+        self._attributes_register(UID, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_getter(UID, self._get_uid_priv)
+
+        # The SCHEDULER attribute
+        self._attributes_register(SCHEDULER, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_getter(SCHEDULER, self._get_scheduler_priv)
+
+        # The SCHEDULER_DETAILS attribute
+        self._attributes_register(SCHEDULER_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
+        self._attributes_set_getter(SCHEDULER_DETAILS, self._get_scheduler_details_priv)
+
+
         if scheduler == "~+=RECON=+~":
             # When we get the "~RECON~" keyword as scheduler, we were called 
             # from the 'get()' class method
@@ -89,7 +113,7 @@ class UnitManager (object) :
     # --------------------------------------------------------------------------
     #
     @classmethod 
-    def get(cls, session, unit_manager_uid) :
+    def get(cls, session, unit_manager_id) :
         """ Re-connects to an existing UnitManager via its uid.
 
         **Example**::
@@ -114,47 +138,123 @@ class UnitManager (object) :
             * :class:`sinon.SinonException` if a UnitManager with 
               `unit_manager_uid` doesn't exist in the database.
         """
-        if unit_manager_uid not in session._dbs.list_unit_manager_uids():
-            raise LookupError ("UnitManager '%s' not in database." % pilot_manager_uid)
+        if unit_manager_id not in session._dbs.list_unit_manager_uids():
+            raise LookupError ("UnitManager '%s' not in database." % unit_manager_id)
 
         obj = cls(session=session, scheduler="~+=RECON=+~")
-        obj._uid = unit_manager_uid
+        obj._uid = unit_manager_id
 
         return obj
 
     #---------------------------------------------------------------------------
     #
-    @property
-    def uid(self):
-        """ Returns the unit manager id.
+    def _get_uid_priv(self):
+        """Returns the unit manager id.
         """
         return self._uid
 
+    #---------------------------------------------------------------------------
+    #
+    def _get_scheduler_priv(self):
+        """Returns the scheduler name. 
+        """
+        raise Exception("Not implemented")
+
+    #---------------------------------------------------------------------------
+    #
+    def _get_scheduler_details_priv(self):
+        """Returns the scheduler details, e.g., the scheduler logs. 
+        """
+        raise Exception("Not implemented")
+
     # --------------------------------------------------------------------------
     #
-    def add_pilot (self, pilot):
-        self._DB.unit_manager_add_pilot(unit_manager_uid=self.uid,
-                                        pilot_id=pilot.uid)
+    def add_pilots(self, pilots):
+        """Associates one or more pilots with the unit manager.
 
+        **Arguments:**
+
+            * **pilots** [:class:`sinon.ComputePilot` or list of 
+              :class:`sinon.ComputePilot`]: The pilot objects that will be 
+              added to the unit manager.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
+        """
+        if not isinstance (pilots, list):
+            pilots = [pilots]
+
+        pids = []
+        for pilot in pilots:
+            pids.append(pilot.uid)
+
+        self._DB.unit_manager_add_pilots(unit_manager_id=self.uid,
+                                         pilot_ids=pids)
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots (self) :
+    def list_pilots(self, type=types.PILOT_ANY):
+        """Lists the UIDs of the pilots currently associated with
+        the unit manager.
+
+        **Arguments:**
+
+            * **type** [`int`]: The type of pilots to list. Possible options are:
+
+              * :data:`sinon.types.PILOT_ANY`
+              * :data:`sinon.types.PILOT_DATA`
+              * :data:`sinon.types.PILOT_COMPUTE`
+
+        **Returns:**
+
+              * A list of :class:`sinon.ComputePilot` UIDs [`string`].
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
+        """
+
         return self._DB.unit_manager_list_pilots(unit_manager_uid=self.uid)
 
+    # --------------------------------------------------------------------------
+    #
+    def remove_pilots(self, pilot_ids, drain=True):
+        """Disassociates one or more pilots from the unit manager. 
+
+        After a pilot has been removed from a unit manager, it won't process
+        any of the unit manager's units anymore. Calling `remove_pilots` doesn't 
+        stop the pilot itself.
+
+        **Arguments:**
+
+            * **drain** [`boolean`]: Drain determines what happens to the units 
+              which are managed by the removed pilot(s). If `True`, all units 
+              currently assigned to the pilot are allowed to finish execution.
+              If `False` (the default), then `RUNNING` units will be canceled.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
+        """
+        if not isinstance (pilot_ids, list):
+            pilot_ids = [pilot_ids]
+
+        self._DB.unit_manager_remove_pilots(unit_manager_id=self.uid,
+                                            pilot_ids=pilot_ids)
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=ANY) :
+    def list_units (self, utype=types.ANY) :
+        """Returns the UIDs of the :class:`sinon.ComputeUnit` managed by this 
+        unit manager.
+
+        **Returns:**
+
+              * A list of :class:`sinon.ComputeUnit` UIDs [`string`].
+
+        """
         return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def remove_pilot (self, pilot_id, drain=True):
-        self._DB.unit_manager_remove_pilot(unit_manager_uid=self.uid,
-                                           pilot_id=pilot_id)
-
 
     # --------------------------------------------------------------------------
     #
@@ -169,7 +269,7 @@ class UnitManager (object) :
         for ud in as_list(unit_descriptions):
             unit_description_dict[ObjectId()] = {
                 'description': ud, 
-                'info': {'state': PENDING, 
+                'info': {'state': states.PENDING, 
                          'submitted': datetime.datetime.now(),
                          'log': []}
             }
@@ -255,7 +355,7 @@ class UnitManager (object) :
 
     # --------------------------------------------------------------------------
     #
-    def wait_units(self, unit_uids=None, state=[DONE, FAILED, CANCELED], timeout=None):
+    def wait_units(self, unit_uids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
         """Returns when one or more :class:`sinon.ComputeUnits` reach a 
         specific state. 
 

@@ -264,21 +264,21 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def get_pilots(self, pilot_manager_uid, pilot_uids=None):
+    def get_pilots(self, pilot_manager_id, pilot_ids=None):
         """ Get a pilot
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        if pilot_uids == None:
-            cursor = self._p.find({"links.pilotmanager": pilot_manager_uid})
+        if pilot_ids == None:
+            cursor = self._p.find({"links.pilotmanager": pilot_manager_id})
         else:
             # convert ids to object ids
             pilot_oid = []
-            for pid in pilot_uids:
+            for pid in pilot_ids:
                 pilot_oid.append(ObjectId(pid))
             cursor = self._p.find({"_id": {"$in": pilot_oid},
-                                   "links.pilotmanager": pilot_manager_uid})
+                                   "links.pilotmanager": pilot_manager_id})
         # cursor -> dict
         pilots_json = []
         for obj in cursor:
@@ -344,27 +344,28 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def unit_manager_add_pilot(self, unit_manager_uid, pilot_id):
+    def unit_manager_add_pilots(self, unit_manager_id, pilot_ids):
         """ Adds a pilot from a unit manager.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        # Add the ids to the pilot's queue
-        self._p.update({"_id": ObjectId(pilot_id)}, 
-                       {"$set": {"links.unitmanager" : unit_manager_uid}})
+        for pilot_id in pilot_ids:
+            self._p.update({"_id": ObjectId(pilot_id)}, 
+                           {"$set": {"links.unitmanager" : unit_manager_id}})
 
     #---------------------------------------------------------------------------
     #
-    def unit_manager_remove_pilot(self, unit_manager_uid, pilot_id):
+    def unit_manager_remove_pilot(self, unit_manager_id, pilot_ids):
         """ Removes a pilot from a unit manager.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-       # Add the ids to the pilot's queue
-        self._p.update({"_id": ObjectId(pilot_id)}, 
-                       {"$set": {"links.unitmanager" : None}})
+        # Add the ids to the pilot's queue
+        for pilot_id in pilot_ids:
+            self._p.update({"_id": ObjectId(pilot_id)}, 
+                           {"$set": {"links.unitmanager" : None}})
 
     #---------------------------------------------------------------------------
     #

@@ -22,13 +22,19 @@ def demo_milestone_01_1():
 
         pd = sinon.ComputePilotDescription()
         pd.resource = "futuregrid.INDIA"
+        pd.working_directory = "sftp://india.futuregrid.org/N/u/oweidner/sinon/" # overriding resource config
         pd.cores = 16
         p1 = pm.submit_pilots(pd)
+
+        # Error checking
+        if p1.state in [sinon.states.FAILED]:
+            print "* [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
+            sys.exit(-1)
 
         # Add a Unit Manager to the session and add the newly created 
         # pilot to it.
         um = sinon.UnitManager(session=session)
-        um.add_pilot(p1)
+        um.add_pilots(p1)
 
         # Now we create a few ComputeUnits ...
         compute_units = []
@@ -58,13 +64,13 @@ def demo_milestone_01_2(session_uid):
         print "* Reconnected to session with session ID %s" % session.uid
 
         for pm_uid in session.list_pilot_managers():
-            pm = sinon.PilotManager.get(session=session, pilot_manager_uid=pm_uid)
+            pm = sinon.PilotManager.get(session=session, pilot_manager_id=pm_uid)
             print "   * Found Pilot Manager with ID %s" % pm.uid
             for pilot_ids in pm.list_pilots():
                 print "      * Owns Pilot [%s]" % pilot_ids
 
         for um_uid in session.list_unit_managers():
-            um = sinon.UnitManager.get(session=session, unit_manager_uid=um_uid)
+            um = sinon.UnitManager.get(session=session, unit_manager_id=um_uid)
             print "   * Found Unit Manager with ID %s" % um.uid
             for pilot_ids in um.list_pilots():
                 print "      * Associated with Pilot [%s]" % pilot_ids
