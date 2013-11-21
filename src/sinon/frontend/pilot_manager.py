@@ -142,7 +142,7 @@ class PilotManager(attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     @classmethod 
-    def get(cls, session, pilot_manager_uid) :
+    def get(cls, session, pilot_manager_id) :
         """ Re-connects to an existing PilotManager via its uid.
 
         **Arguments:**
@@ -168,12 +168,12 @@ class PilotManager(attributes.Attributes):
         # Reconnect to an existing pilot manager. #
         ###########################################
 
-        if pilot_manager_uid not in session._dbs.list_pilot_manager_uids():
+        if pilot_manager_id not in session._dbs.list_pilot_manager_uids():
             raise LookupError ("PilotManager '%s' not in database." \
                 % pilot_manager_uid)
 
         obj = cls(session=session, resource_configurations="~=RECON=~")
-        obj._uid = pilot_manager_uid
+        obj._uid = pilot_manager_id
         obj._resource_cfgs = None # TODO: reconnect
 
         return obj
@@ -234,6 +234,7 @@ class PilotManager(attributes.Attributes):
             # check wether pilot description defines the mandatory fields 
             resource_key = pilot_description['description'].resource
             number_cores = pilot_description['description'].cores
+            run_time     = pilot_description['description'].run_time
 
             try_submit = True
 
@@ -242,7 +243,7 @@ class PilotManager(attributes.Attributes):
             #########################
 
             if resource_key is None:
-                error_msg = "ComputePilotDescription.resource not defined."
+                error_msg = "ComputePilotDescription does not define mandatory attribute 'resource'."
                 pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
@@ -258,7 +259,15 @@ class PilotManager(attributes.Attributes):
 
             # check wether mandatory attribute 'cores' was defined
             if number_cores is None:
-                error_msg = "ComputePilotDescription.cores not defined."
+                error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
+                pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
+                pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                try_submit = False
+
+            # check wether mandatory attribute 'run_time' was defined
+            if run_time is None:
+                error_msg = "ComputePilotDescription does not define mandatory attribute 'run_time'."
                 pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
@@ -274,6 +283,7 @@ class PilotManager(attributes.Attributes):
             else:
                 resource_cfg = self._resource_cfgs[resource_key]
 
+            # only try to submit pilot of all required attributes are in place
             if try_submit is True:
                 ########################################################
                 # Create SAGA Job description and submit the pilot job #
@@ -338,6 +348,7 @@ class PilotManager(attributes.Attributes):
                     jd.output            = "STDOUT"
                     jd.error             = "STDERR"
                     jd.total_cpu_count   = number_cores
+                    jd.wall_time_limit    = run_time
 
                     pilotjob = js.create_job(jd)
                     pilotjob.run()

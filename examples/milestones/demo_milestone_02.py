@@ -25,10 +25,11 @@ def demo_milestone_02():
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource = "futuregrid.INDIA"
+        pd.resource          = "futuregrid.INDIA"
         pd.working_directory = "sftp://india.futuregrid.org/N/u/oweidner/sinon/" # overriding resource config
-        pd.cores = 16
-        pd.cleanup = True
+        pd.cores             = 16
+        pd.run_time          = 5 # minutes
+        pd.cleanup           = True
 
         print "* Submitting pilot to '%s'..." % (pd.resource)
         india_pilot = pm.submit_pilots(pd)

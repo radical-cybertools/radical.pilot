@@ -276,17 +276,10 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def as_dict(self):
-        """Returns dict/JSON representation of this pilot.
-        """
-        return {'type': 'ComputePilot', 'id': self.uid}
-
-    # --------------------------------------------------------------------------
-    #
     def __str__(self):
         """Returns string representation of this pilot.
         """
-        return str(self.as_dict())
+        return str({'type': 'ComputePilot', 'id': self.uid})
 
     # --------------------------------------------------------------------------
     #

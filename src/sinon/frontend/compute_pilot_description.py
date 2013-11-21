@@ -104,7 +104,6 @@ class ComputePilotDescription (attributes.Attributes) :
         # resource requirements
         self._attributes_register(RESOURCE,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CORES,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(SPMD_VARIATION,   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(CANDIDATE_HOSTS,  None, attributes.INT,    attributes.VECTOR, attributes.WRITEABLE)
         #self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
