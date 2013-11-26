@@ -250,6 +250,7 @@ class _TaskExecutorWorker(multiprocessing.Process):
             elif self.exec_environment.launch_method == LAUNCH_METHOD_SSH:
                 self.process_launcher = \
                     _ProcessLauncher.ssh  (nodename=hostname,
+                                           aprun=self.exec_environment.ssh,
                                            event_callback=event_callback,
                                            logger=logger)
 
