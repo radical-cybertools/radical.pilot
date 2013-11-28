@@ -22,8 +22,8 @@ class PLUGIN_CLASS (object) :
     def __init__ (self) :
 
         print "loading the round-robin unit plugin"
-        self._manager    = None
-        self._last_pilot = -1
+        self._manager = None
+        self._idx     = 0
 
 
     # --------------------------------------------------------------------------
@@ -35,35 +35,48 @@ class PLUGIN_CLASS (object) :
 
     # --------------------------------------------------------------------------
     #
-    def schedule (self, unit_descr) :
+    def schedule (self, unit_descriptions) :
 
-        print "round-robin scheduling of %s" % unit_descr
+        # the scheduler will return a dictionary of the form:
+        #   { 
+        #     pilot_id_1  : [ud_1, ud_2, ...], 
+        #     pilot_id_2  : [ud_3, ud_4, ...], 
+        #     ...
+        #   }
+        # The scheduler may not be able to schedule some units -- those will
+        # simply not be listed for any pilot.  The UM needs to make sure
+        # that no UD from the original list is left untreated, eventually.
+
+        print "round-robin scheduling of %s units" % len(unit_descriptions)
 
         if  not self._manager :
             print "WARNING: unit scheduler is not initialized"
             return None
 
-        pilots = self._manager.pilots
+        pilots = self._manager.list_pilots ()
+        ret    = dict()
 
-        print "pilots: %s" % pilots
-        print "len   : %s" % len(pilots)
-        print "last  : %s" % self._last_pilot
-
-        # check if a pilot beyond the last pilot exists -- if so use it, if not,
-        # start afresh
-        if  len (pilots) > (self._last_pilot + 1) :
-            self._last_pilot += 1
-
-        elif len (pilots) :
-            self._last_pilot = 0
-
-        else :
-            # no pilots?  Duh!
+        if not len (pilots) :
             print "WARNING: unit scheduler cannot operate on empty pilot set"
-            return None
-        
-        print "round-robin scheduling of %s" % pilots[self._last_pilot]
-        return pilots[self._last_pilot]
+            return ret
+
+
+        for ud in unit_descriptions :
+            
+            if  self._idx >= len(pilots) : 
+                self._idx = 0
+            
+            pilot = pilots[self._idx]
+
+            if  pilot not in ret :
+                ret[pilot] = []
+
+            ret[pilot].append (ud)
+
+            self._idx += 1
+
+
+        return ret
 
 
     # --------------------------------------------------------------------------

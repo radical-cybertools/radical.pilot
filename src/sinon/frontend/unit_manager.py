@@ -10,7 +10,8 @@ __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-from sinon.utils import as_list
+import radical.utils as ru
+from   sinon.utils import as_list
 
 import sinon.frontend.types as types
 import sinon.frontend.states as states
@@ -61,7 +62,7 @@ class UnitManager(attributes.Attributes) :
 
         # Combine the two pilots, the workload and a scheduler via 
         # a UnitManager.
-        um = sinon.UnitManager(session=session, scheduler="ROUNDROBIN")
+        um = sinon.UnitManager(session=session, scheduler="round_robin")
         um.add_pilot(p1)
         um.submit_units(compute_units)
     """
@@ -109,6 +110,10 @@ class UnitManager(attributes.Attributes) :
             pass
         else:
             self._uid = self._DB.insert_unit_manager(unit_manager_data={})
+
+            pm = ru.PluginManager ('sinon.frontend')
+            self._scheduler = pm.load ('unit_scheduler',  scheduler)
+            self._scheduler.init  (self)
 
     # --------------------------------------------------------------------------
     #
@@ -264,87 +269,120 @@ class UnitManager(attributes.Attributes) :
 
         from bson.objectid import ObjectId
 
-        # implicit -> list -> dict conversion
-        unit_description_dict = {}
-        for ud in as_list(unit_descriptions):
-            unit_description_dict[ObjectId()] = {
-                'description': ud, 
-                'info': {'state': states.PENDING, 
-                         'submitted': datetime.datetime.now(),
-                         'log': []}
-            }
+        ## if  not unit_description_dict.attribute_exists ('dtype') :
+        ##     raise e.BadParameter ("Invalid description (no type)")
 
-        ###################################################
-        # ASHLEY:
-        # 
-        # CURRENTLY THIS SUBMITS TO THE FIRST PILOT ONLY. 
-        # THIS IS OBVIOUSLY WRONG / SIMPLIFIED -- 
-        # THE REAL SCHEDULER CODE IS COMMENTED-OUT BELOW.
-        ####################################################
+        ## if  not unit_description_dict.dtype in [ sa.COMPUTE, sa.DATA ] :
+        ##     raise e.BadParameter ("Unknown description type %s" % unit_description_dict.dtype)
 
-        pilot_id = self.list_pilots()[0]
+        ## if  not unit_description_dict.dtype in [ sa.COMPUTE ] :
+        ##     raise e.BadParameter ("Only compute units are supported")
 
-        self._DB.insert_workunits(pilot_id=pilot_id, 
-            unit_manager_uid=self.uid,
-            unit_descriptions=unit_description_dict)
-
-        return None
-
-        # with self._rlock :
-
-        # # FIXME: bulk
-
-        #     if  not descr.attribute_exists ('dtype') :
-        #         raise e.BadParameter ("Invalid description (no type)")
-
-        #     if  not descr.dtype in [ sa.COMPUTE, sa.DATA ] :
-        #         raise e.BadParameter ("Unknown description type %s" % descr.dtype)
-
-        #     if  not descr.dtype in [ sa.COMPUTE ] :
-        #         raise e.BadParameter ("Only compute units are supported")
-
-        #     unit = cu.ComputeUnit._register (descr, manager=self)
-        #     pid  = None
-
-        #     pid = None
-
-        #     # try to schedule the unit on a pilot
-        #     if  len (self.pilots)  == 0 :
-        #         # nothing to schedule on...
-        #         pid = None
-
-        #     elif len (self.pilots) == 1 :
-        #         # if we have only one pilot, there is not much to 
-        #         # scheduler (i.e., direct submission)
-        #         pid = self.pilots[0]
-
-        #     elif not self._scheduler :
-        #         # if we don't have a scheduler, we do random assignments
-        #         # FIXME: we might allow user hints, you know, for 'research'?
-        #         pid = random.choice (self.pilots)
-
-        #     else :
-        #         # hurray, we can use the scheduler!
-        #         pid = self._scheduler.schedule (descr)
-
-            
-        #     # have a target pilot?  If so, schedule -- if not, keep around
-        #     if  None == pid :
-        #         # no eligible pilot, yet
-        #         self._unscheduled.append (unit)
-
-        #     else :
-
-        #         if  not pid in self._pilots :
-        #             raise e.NoSuccess ("Internal error - invalid scheduler reply")
-
-        #         unit._submit (self._pilots[pid])
+        ## unit = cu.ComputeUnit._register (unit_description_dict, manager=self)
+        ## pilot_id  = None
 
 
-        #     return unit
+     ## # try to schedule the unit on a pilot
+     ## if  len (self.pilots)  == 0 :
+     ##     # nothing to schedule on...
+     ##     pilot_id = None
+     ##
+     ## elif len (self.pilots) == 1 :
+     ##     # if we have only one pilot, there is not much to 
+     ##     # scheduler (i.e., direct submission)
+     ##     pilot_id = self.pilots[0]
+     ##
+     ## elif not self._scheduler :
+     ##     # if we don't have a scheduler, we do random assignments
+     ##     # FIXME: we might allow user hints, you know, for 'research'?
+     ##     pilot_id = random.choice (self.pilots)
+     ##
+     ## else :
+            # hurray, we can use the scheduler!
 
+        if True : ## always use the scheduler for now...
 
+            if  not self._scheduler :
+                raise RuntimeError ("Internal error - no unit scheduler")
 
+            # the scheduler will return a dictionary of the form:
+            #   { 
+            #     pilot_id_1  : [ud_1, ud_2, ...], 
+            #     pilot_id_2  : [ud_3, ud_4, ...], 
+            #     ...
+            #   }
+            # The scheduler may not be able to schedule some units -- those will
+            # simply not be listed for any pilot.  The UM needs to make sure
+            # that no UD from the original list is left untreated, eventually.
+            try :
+                schedule = self._scheduler.schedule (as_list(unit_descriptions))
+            except Exception as e :
+                raise RuntimeError ("Internal error - unit scheduler failed: %s" % e)
+
+          # import pprint
+          # pprint.pprint (schedule)
+
+            units       = list()  # compute unit instances to return
+            unscheduled = list()  # unscheduled unit descriptions
+
+            # we copy all unit descriptions into unscheduled, and then remove
+            # the scheduled ones...
+            unscheduled = as_list(unit_descriptions)[:]  # python semi-deep-copy magic
+
+            # submit to all pilots which got something submitted to
+            for pilot_id in schedule.keys () :
+
+                # sanity check on scheduler provided information
+                if not pilot_id in self.list_pilots () :
+                    raise RuntimeError ("Internal error - invalid scheduler reply, "
+                                        "no such pilot %s" % pilot_id)
+
+                # get the scheduled unit descriptions for this pilot
+                uds = schedule[pilot_id]
+
+                # submit each unit description scheduled here, all in one bulk
+                submission_dict = {}
+                for ud in uds :
+
+                    # sanity check on scheduler provided information
+                    if  not ud in unscheduled :
+                        raise RuntimeError ("Internal error - invalid scheduler reply, "
+                                            "no such unit description %s" % ud)
+
+                    # looks ok -- add the unit as submission candidate
+                    submission_dict[ObjectId()] = {
+                        'description': ud, 
+                        'info': {'state': states.PENDING, 
+                                 'submitted': datetime.datetime.now(),
+                                 'log': []}
+                    }
+
+                    # this unit is not unscheduled anumore...
+                    unscheduled.remove (ud)
+
+                    ## FIXME:
+                    ## u = sinon.ComputeUnit (ud)
+                    ## units.append (u)
+                    units.append (ud)
+
+                # done iterating over all units, for this plot -- submit bulk 
+                # for this pilot
+                self._DB.insert_workunits(pilot_id=pilot_id, 
+                    unit_manager_uid=self.uid,
+                    unit_descriptions=submission_dict)
+
+            # the schedule provided by the scheduler is now evaluated -- check
+            # that we didn't lose/gain any units
+            if  len(units) + len(unscheduled) != len (as_list(unit_descriptions)) :
+                raise RuntimeError ("Internal error - wrong #units returned from scheduler")
+
+            # keep unscheduled units around for later, out-of-band scheduling
+            self._unscheduled_units = unscheduled
+
+            # and return scheduled units as appropriate
+            if   isinstance (unit_descriptions, list) : return units 
+            elif len(units)                           : return units[0]
+            else                                      : return None
 
 
     # --------------------------------------------------------------------------
