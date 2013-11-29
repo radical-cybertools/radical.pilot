@@ -1,92 +1,94 @@
-"""
-.. module:: setup
-   :platform: Unix
-   :synopsis: Setup script for SAGA-Pilot.
 
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
-
-__copyright__ = "Copyright 2013, radical.rutgers.edu"
+__author__    = "Andre Merzky, Ole Weidner"
+__copyright__ = "Copyright 2013, RADICAL Research, Rutgers University"
 __license__   = "MIT"
 
-import os, sys
-from distutils.command.install_data import install_data
-from distutils.command.sdist import sdist
-from setuptools import setup, find_packages
+
+""" Setup script. Used by easy_install and pip. """
+
+import os
+import sys
+import subprocess
+
+from setuptools import setup, Command, find_packages
+
 
 #-----------------------------------------------------------------------------
-# figure out the current version
-def update_version():
-    """
-    Updates the version based on git tags
-    """
+#
+# versioning mechanism:
+#
+#   - short_version:  1.2.3 - is used for installation
+#   - long_version:  v1.2.3-9-g0684b06  - is used as runtime (ru.version)
+#   - both are derived from the last git tag
+#   - the file sinon/VERSION is created with the long_version, und used
+#     by ru.__init__.py to provide the runtime version information. 
+#
+def get_version():
 
-    version = 'latest'
+    short_version = None  # 0.4.0
+    long_version  = None  # 0.4.0-9-g0684b06
 
     try:
-        cwd = os.path.dirname(os.path.abspath(__file__))
-        fn = os.path.join(cwd, 'src/sinon/VERSION')
-        version = open(fn).read().strip()
-    except IOError:
-        from subprocess import Popen, PIPE, STDOUT
+        import subprocess as sp
         import re
 
-        VERSION_MATCH = re.compile(r'\d+\.\d+\.\d+(\w|-)*')
+        VERSION_MATCH = re.compile (r'(([\d\.]+)\D.*)')
 
-        try:
-            p = Popen(['git', 'describe', '--tags', '--always'],
-                      stdout=PIPE, stderr=STDOUT)
-            out = p.communicate()[0]
+        # attempt to get version information from git
+        p   = sp.Popen (['git', 'describe', '--tags', '--always'],
+                        stdout=sp.PIPE, stderr=sp.STDOUT)
+        out = p.communicate()[0]
 
-            if (not p.returncode) and out:
-                v = VERSION_MATCH.search(out)
-                if v:
-                    version = v.group()
-        except OSError:
-            pass
 
-    return version
+        if  p.returncode != 0 or not out :
+
+            # the git check failed -- its likely that we are called from
+            # a tarball, so use ./VERSION instead
+            out=open (os.path.dirname (os.path.abspath (__file__)) + "/VERSION", 'r').read().strip()
+
+
+        # from the full string, extract short and long versions
+        v = VERSION_MATCH.search (out)
+        if v:
+            long_version  = v.groups ()[0]
+            short_version = v.groups ()[1]
+
+
+        # sanity check if we got *something*
+        if  not short_version or not long_version :
+            sys.stderr.write ("Cannot determine version from git or ./VERSION\n")
+            import sys
+            sys.exit (-1)
+
+
+        # make sure the version files exist for the runtime version inspection
+        open (          'VERSION', 'w').write (long_version+"\n")
+        open ('src/sinon/VERSION', 'w').write (long_version+"\n")
+
+
+    except Exception as e :
+        print 'Could not extract/set version: %s' % e
+        import sys
+        sys.exit (-1)
+
+    return short_version, long_version
+
+short_version, long_version = get_version ()
 
 #-----------------------------------------------------------------------------
-# check python version. we need > 2.5
-if sys.hexversion < 0x02050000:
-    raise RuntimeError("Sinon requires Python 2.5 or better")
+# check python version. we need > 2.5, <3.x
+if  sys.hexversion < 0x02050000 or sys.hexversion >= 0x03000000:
+    raise RuntimeError("SAGA requires Python 2.x (2.5 or higher)")
 
 
 #-----------------------------------------------------------------------------
-# 
-class sinon_install_data(install_data):
-
-    def finalize_options(self): 
-        self.set_undefined_options('install',
-                                   ('install_lib', 'install_dir'))
-        install_data.finalize_options(self)
-
+class our_test(Command):
     def run(self):
-        install_data.run(self)
-        # ensure there's a radical/utils/VERSION file
-        fn = os.path.join(self.install_dir, 'src/sinon', 'VERSION')
-
-        if os.path.exists(fn):
-            os.remove(fn)
-
-        open(fn, 'w').write(update_version())
-        self.outfiles.append(fn)
-
-
-#-----------------------------------------------------------------------------
-# 
-class sinon_sdist(sdist):
-
-    def make_release_tree(self, base_dir, files):
-        sdist.make_release_tree(self, base_dir, files)
-
-        fn = os.path.join(base_dir, 'src/sinon', 'VERSION')
-
-        if os.path.exists(fn):
-            os.remove(fn)
-
-        open(fn, 'w').write(update_version())
+        testdir = "%s/tests/" % os.path.dirname(os.path.realpath(__file__))
+        retval  = subprocess.call([sys.executable, 
+                                  '%s/run_tests.py'          % testdir,
+                                  '%s/configs/basetests.cfg' % testdir])
+        raise SystemExit(retval)
 
 
 #-----------------------------------------------------------------------------
@@ -94,49 +96,63 @@ class sinon_sdist(sdist):
 def read(*rnames):
     return open(os.path.join(os.path.dirname(__file__), *rnames)).read()
 
+
 #-----------------------------------------------------------------------------
-#
-setup(name='sinon',
-      version=update_version(),
-      author='RADICAL Group at Rutgers University',
-      author_email='ole.weidner@rutgers.edu',
-      description="A SAGA-based pilot job framework",
-      long_description=(read('README.md') + '\n\n' + read('CHANGES.md')),
-      license='MIT',
-      keywords="radical pilot job saga",
-      classifiers = [
-          'Development Status :: 5 - Production/Stable',
-          'Environment :: No Input/Output (Daemon)',
-          'Intended Audience :: Developers',
-          'License :: OSI Approved :: MIT',
-          'Programming Language :: Python',
-          'Programming Language :: Python :: 2',
-          'Programming Language :: Python :: 2.6',
-          'Programming Language :: Python :: 2.7',
-          'Natural Language :: English',
-          'Operating System :: OS Independent',
-          'Topic :: Internet :: WWW/HTTP',
-          'Framework :: Rhythmos'],
-      url='https://github.com/saga-project/sinon',
-      packages=find_packages('src'),
-      package_dir = {'': 'src'},
-      scripts=['bin/sinon-version', 
-               'bin/bootstrap-and-run-agent',
-               'bin/sinon-agent',
-               'bin/sinon-node-monitor',
-               'bin/sinon-process-wrapper'],
-      install_requires=['setuptools',
-                        'saga-python',
-                        'radical.utils',
-                        'psutil',
-                        'motor',
-                        'python-hostlist'],
-      test_suite = 'sinon.tests',
-      package_data = {'': ['*.sh', 'src/sinon/VERSION']},
-      include_package_data = True,
-      zip_safe = False,
-      cmdclass = {
-          'install_data': sinon_install_data,
-          'sdist': sinon_sdist
-      },
-)
+setup_args = {
+    'name'             : 'sinon',
+    'version'          : short_version,
+    'description'      : "A SAGA-based pilot job framework",
+    'long_description' : (read('README.md') + '\n\n' + read('CHANGES.md')),
+    'author'           : 'RADICAL Group at Rutgers University',
+    'author_email'     : 'ole.weidner@rutgers.edu',
+    'maintainer'       : "Ole Weidner", 
+    'maintainer_email' : 'ole.weidner@rutgers.edu',
+    'url'              : 'https://github.com/saga-project/sinon',
+    'license'          : 'MIT',
+    'keywords'         : "radical pilot job saga",
+    'classifiers'      :  [
+        'Development Status   :: 5 - Production/Stable',
+        'Intended Audience    :: Developers',
+        'Environment          :: Console',                    
+        'License              :: OSI Approved :: MIT',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.5',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Topic                :: Utilities',
+        'Topic                :: System :: Distributed Computing',
+        'Topic                :: Scientific/Engineering :: Interface Engine/Protocol Translator',
+        'Operating System     :: MacOS :: MacOS X',
+        'Operating System     :: POSIX',
+        'Operating System     :: Unix',
+        'Framework            :: Rhythmos',
+    ],
+    'packages'         : find_packages('src'),
+    'package_dir'      : {'': 'src'},
+    'scripts'          : ['bin/sinon-version', 
+                          'bin/bootstrap-and-run-agent',
+                          'bin/sinon-agent',
+                          'bin/sinon-node-monitor',
+                          'bin/sinon-process-wrapper'],
+    'package_data'     : {'': ['*.sh', 'VERSION']},
+    'cmdclass'         : {
+        'test'         : our_test,
+    },
+    'install_requires' : ['setuptools',
+                          'saga-python',
+                          'radical.utils',
+                          'psutil',
+                          'motor',
+                          'python-hostlist'],
+    'tests_require'    : ['setuptools', 'nose'],
+    'test_suite'       : 'sinon.tests',
+    'zip_safe'         : False,
+}
+
+#-----------------------------------------------------------------------------
+
+setup(**setup_args)
+
+#-----------------------------------------------------------------------------
+
