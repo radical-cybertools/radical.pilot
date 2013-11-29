@@ -34,7 +34,8 @@ import os
 import radical.utils.logger as rul
 
 version=open    (os.path.dirname (os.path.abspath (__file__)) + "/VERSION", 'r').read().strip()
-rul.log_version ('sinon', 'sinon', version)
+rul.getLogger   ('sinon').info ('sinon           version: %s' % version)
+# rul.log_version ('sinon', 'sinon', version)
 
 
 # ------------------------------------------------------------------------------
