@@ -78,7 +78,7 @@ short_version, long_version = get_version ()
 #-----------------------------------------------------------------------------
 # check python version. we need > 2.5, <3.x
 if  sys.hexversion < 0x02050000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError("SAGA requires Python 2.x (2.5 or higher)")
+    raise RuntimeError("Sinon requires Python 2.x (2.5 or higher)")
 
 
 #-----------------------------------------------------------------------------
