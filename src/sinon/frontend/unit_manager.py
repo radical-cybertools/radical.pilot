@@ -104,7 +104,7 @@ class UnitManager(attributes.Attributes) :
         self._attributes_register(SCHEDULER_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(SCHEDULER_DETAILS, self._get_scheduler_details_priv)
 
-        pm = ru.PluginManager ('sinon')
+        pm = ru.PluginManager ('sinon.frontend')
 
         if scheduler == "~+=RECON=+~":
             # When we get the "~RECON~" keyword as scheduler, we were called 
