@@ -21,9 +21,11 @@ def demo_milestone_01_1():
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         pd = sinon.ComputePilotDescription()
-        pd.resource = "futuregrid.INDIA"
-        pd.working_directory = "sftp://india.futuregrid.org/N/u/oweidner/sinon/" # overriding resource config
-        pd.cores = 16
+        pd.resource          = "futuregrid.INDIA"
+        pd.working_directory = "sftp://india.futuregrid.org/N/u/oweidner/sinon/"
+        pd.cores             = 16
+        pd.run_time          = 1 # minutes
+
         p1 = pm.submit_pilots(pd)
 
         # Error checking
@@ -33,7 +35,7 @@ def demo_milestone_01_1():
 
         # Add a Unit Manager to the session and add the newly created 
         # pilot to it.
-        um = sinon.UnitManager(session=session)
+        um = sinon.UnitManager(session=session, scheduler="direct-submission")
         um.add_pilots(p1)
 
         # Now we create a few ComputeUnits ...
