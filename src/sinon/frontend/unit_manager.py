@@ -15,6 +15,7 @@ from   sinon.utils import as_list
 
 import sinon.frontend.types as types
 import sinon.frontend.states as states
+import sinon.frontend.exceptions as exceptions
 import sinon.frontend.attributes as attributes
 
 import time
@@ -103,17 +104,22 @@ class UnitManager(attributes.Attributes) :
         self._attributes_register(SCHEDULER_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(SCHEDULER_DETAILS, self._get_scheduler_details_priv)
 
+        pm = ru.PluginManager ('sinon')
 
         if scheduler == "~+=RECON=+~":
             # When we get the "~RECON~" keyword as scheduler, we were called 
             # from the 'get()' class method
+
+            # TODO: get 'scheduler' name from MongoDB
+            #self._scheduler = pm.load('unit_scheduler',  scheduler)
+            #self._scheduler.init(self)
             pass
+
         else:
             self._uid = self._DB.insert_unit_manager(unit_manager_data={})
 
-            pm = ru.PluginManager ('sinon.frontend')
-            self._scheduler = pm.load ('unit_scheduler',  scheduler)
-            self._scheduler.init  (self)
+            self._scheduler = pm.load('unit_scheduler', scheduler)
+            self._scheduler.init(self)
 
     # --------------------------------------------------------------------------
     #
@@ -303,7 +309,7 @@ class UnitManager(attributes.Attributes) :
         if True : ## always use the scheduler for now...
 
             if  not self._scheduler :
-                raise RuntimeError ("Internal error - no unit scheduler")
+                raise exceptions.SinonException("Internal error - no unit scheduler")
 
             # the scheduler will return a dictionary of the form:
             #   { 
@@ -317,7 +323,7 @@ class UnitManager(attributes.Attributes) :
             try :
                 schedule = self._scheduler.schedule (as_list(unit_descriptions))
             except Exception as e :
-                raise RuntimeError ("Internal error - unit scheduler failed: %s" % e)
+                raise exceptions.SinonException("Internal error - unit scheduler failed: %s" % e)
 
           # import pprint
           # pprint.pprint (schedule)
@@ -334,7 +340,7 @@ class UnitManager(attributes.Attributes) :
 
                 # sanity check on scheduler provided information
                 if not pilot_id in self.list_pilots () :
-                    raise RuntimeError ("Internal error - invalid scheduler reply, "
+                    raise exceptions.SinonException("Internal error - invalid scheduler reply, "
                                         "no such pilot %s" % pilot_id)
 
                 # get the scheduled unit descriptions for this pilot
@@ -346,7 +352,7 @@ class UnitManager(attributes.Attributes) :
 
                     # sanity check on scheduler provided information
                     if  not ud in unscheduled :
-                        raise RuntimeError ("Internal error - invalid scheduler reply, "
+                        raise exceptions.SinonException("Internal error - invalid scheduler reply, "
                                             "no such unit description %s" % ud)
 
                     # looks ok -- add the unit as submission candidate
@@ -374,15 +380,18 @@ class UnitManager(attributes.Attributes) :
             # the schedule provided by the scheduler is now evaluated -- check
             # that we didn't lose/gain any units
             if  len(units) + len(unscheduled) != len (as_list(unit_descriptions)) :
-                raise RuntimeError ("Internal error - wrong #units returned from scheduler")
+                raise exceptions.SinonException("Internal error - wrong #units returned from scheduler")
 
             # keep unscheduled units around for later, out-of-band scheduling
             self._unscheduled_units = unscheduled
 
             # and return scheduled units as appropriate
-            if   isinstance (unit_descriptions, list) : return units 
-            elif len(units)                           : return units[0]
-            else                                      : return None
+            if isinstance(unit_descriptions, list): 
+                return units 
+            elif len(units): 
+                return units[0]
+            else: 
+                return None
 
 
     # --------------------------------------------------------------------------
