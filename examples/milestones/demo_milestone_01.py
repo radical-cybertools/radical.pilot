@@ -1,11 +1,12 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 import sys
 import sinon
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
+FGCONF = 'file://localhost/%s/configs/futuregrid.json' % os.getcwd()
 
 #-------------------------------------------------------------------------------
 #
@@ -22,8 +23,8 @@ def demo_milestone_01_1():
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "futuregrid.INDIA"
-        pd.working_directory = "sftp://india.futuregrid.org/N/u/merzky/sinon/"
+        pd.resource          = "futuregrid.SIERRA"
+        pd.working_directory = "N/u/oweidner/sinon/"
         pd.cores             = 16
         pd.run_time          = 1 # minutes
 

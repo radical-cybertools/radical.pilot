@@ -296,13 +296,14 @@ class PilotManager(attributes.Attributes):
                     # agent will bootstrap its own virtual environment in this 
                     # directory.
                     #
-                    if pilot_description['description'].working_directory is not None:
-                        wd = pilot_description['description'].working_directory
+                    fs = saga.Url(resource_cfg['filesystem'])
+                    if pilot_description['description'].working_directory is None:
+                        raise Exception("Working directory not defined.")
                     else:
-                        wd = resource_cfg['working_directory']
+                        fs.path += pilot_description['description'].working_directory
 
                     agent_dir_url = saga.Url("%s/pilot-%s/" \
-                        % (wd, str(pilot_id)))
+                        % (str(fs), str(pilot_id)))
 
                     agent_dir = saga.filesystem.Directory(agent_dir_url, 
                         saga.filesystem.CREATE_PARENTS)
