@@ -16,14 +16,13 @@ def demo_milestone_01_1():
         # Create a new session. A session is a set of Pilot Managers
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sinon.Session(database_url=DBURL)
-        um = sinon.UnitManager(session=session, scheduler="round_robin")
 
         # Add a Pilot Manager and a Pilot to the session.
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         pd = sinon.ComputePilotDescription()
         pd.resource          = "futuregrid.INDIA"
-        pd.working_directory = "sftp://india.futuregrid.org/N/u/merzky/sinon/"
+        pd.working_directory = "sftp://india.futuregrid.org/N/u/oweidner/sinon/"
         pd.cores             = 16
         pd.run_time          = 1 # minutes
 
