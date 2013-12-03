@@ -83,6 +83,9 @@ if  sys.hexversion < 0x02050000 or sys.hexversion >= 0x03000000:
 
 #-----------------------------------------------------------------------------
 class our_test(Command):
+    user_options=[]
+    def initialize_options (self) : pass
+    def finalize_options   (self) : pass
     def run(self):
         testdir = "%s/tests/" % os.path.dirname(os.path.realpath(__file__))
         retval  = subprocess.call([sys.executable, 
@@ -136,9 +139,10 @@ setup_args = {
                           'bin/sinon-node-monitor',
                           'bin/sinon-process-wrapper'],
     'package_data'     : {'': ['*.sh', 'VERSION']},
-    'cmdclass'         : {
-        'test'         : our_test,
-    },
+ #  'cmdclass'         : {
+ #      'test'         : our_test,
+ #  },
+    'test_suite'       : 'sinon.tests',
     'install_requires' : ['setuptools',
                           'saga-python',
                           'radical.utils',
