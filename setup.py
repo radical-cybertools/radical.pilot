@@ -157,7 +157,7 @@ setup_args = {
          'sinon.agent',
        # 'sinon.v1',
          'sinon.db',
-         'sinon._api',
+       # 'sinon._api',
          'sinon',
     ],
     'package_dir'      : {'': 'src'},
