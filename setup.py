@@ -65,7 +65,6 @@ def get_version():
         open (          'VERSION', 'w').write (long_version+"\n")
         open ('src/sinon/VERSION', 'w').write (long_version+"\n")
 
-
     except Exception as e :
         print 'Could not extract/set version: %s' % e
         import sys
@@ -85,7 +84,6 @@ if  sys.hexversion < 0x02050000 or sys.hexversion >= 0x03000000:
 def read(*rnames):
     return open(os.path.join(os.path.dirname(__file__), *rnames)).read()
 
-
 #-----------------------------------------------------------------------------
 setup_args = {
     'name'             : 'sinon',
@@ -102,7 +100,7 @@ setup_args = {
     'classifiers'      :  [
         'Development Status   :: 5 - Production/Stable',
         'Intended Audience    :: Developers',
-        'Environment          :: Console',                    
+        'Environment          :: Console',
         'License              :: OSI Approved :: MIT',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
@@ -123,7 +121,7 @@ setup_args = {
                           'bin/sinon-agent',
                           'bin/sinon-node-monitor',
                           'bin/sinon-process-wrapper'],
-    'package_data'     : {'': ['*.sh', 'VERSION', 'configs']},
+    'package_data'     : {'': ['*.sh', 'VERSION']},
     'test_suite'       : 'sinon.tests',
     'install_requires' : ['setuptools',
                           'saga-python',
