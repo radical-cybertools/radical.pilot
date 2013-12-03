@@ -10,7 +10,7 @@ import os
 import sys
 import subprocess
 
-from setuptools import setup, Command
+from setuptools import setup, find_packages, Command
 
 
 #-----------------------------------------------------------------------------
@@ -80,20 +80,6 @@ short_version, long_version = get_version ()
 if  sys.hexversion < 0x02050000 or sys.hexversion >= 0x03000000:
     raise RuntimeError("Sinon requires Python 2.x (2.5 or higher)")
 
-
-#-----------------------------------------------------------------------------
-class our_test(Command):
-    user_options=[]
-    def initialize_options (self) : pass
-    def finalize_options   (self) : pass
-    def run(self):
-        testdir = "%s/tests/" % os.path.dirname(os.path.realpath(__file__))
-        retval  = subprocess.call([sys.executable, 
-                                  '%s/run_tests.py'          % testdir,
-                                  '%s/configs/basetests.cfg' % testdir])
-        raise SystemExit(retval)
-
-
 #-----------------------------------------------------------------------------
 #
 def read(*rnames):
@@ -125,51 +111,19 @@ setup_args = {
         'Programming Language :: Python :: 2.7',
         'Topic                :: Utilities',
         'Topic                :: System :: Distributed Computing',
-        'Topic                :: Scientific/Engineering :: Interface Engine/Protocol Translator',
         'Operating System     :: MacOS :: MacOS X',
         'Operating System     :: POSIX',
         'Operating System     :: Unix',
         'Framework            :: Rhythmos',
     ],
-    'packages'         : [
-         'sinon.frontend.plugins.unit_scheduler',
-         'sinon.frontend.plugins',
-       # 'sinon.frontend._api',
-       # 'sinon.frontend._v1',
-         'sinon.frontend',
-         'sinon.tests.api',
-         'sinon.tests.db',
-         'sinon.tests',
-         'sinon.utils',
-         'sinon.agent.tests',
-         'sinon.agent.taskresults.drivers',
-         'sinon.agent.taskresults',
-         'sinon.agent.taskevents.drivers',
-         'sinon.agent.taskevents',
-         'sinon.agent.agentlog.drivers.local',
-         'sinon.agent.agentlog.drivers',
-         'sinon.agent.agentlog',
-         'sinon.agent.nodemonitor',
-         'sinon.agent.processwrapper',
-         'sinon.agent.application',
-         'sinon.agent.tasksource.drivers',
-         'sinon.agent.tasksource',
-         'sinon.agent',
-       # 'sinon.v1',
-         'sinon.db',
-       # 'sinon._api',
-         'sinon',
-    ],
-    'package_dir'      : {'': 'src'},
+    'packages'    : find_packages('src'),
+    'package_dir' : {'': 'src'},    
     'scripts'          : ['bin/sinon-version', 
                           'bin/bootstrap-and-run-agent',
                           'bin/sinon-agent',
                           'bin/sinon-node-monitor',
                           'bin/sinon-process-wrapper'],
-    'package_data'     : {'': ['*.sh', 'VERSION']},
- #  'cmdclass'         : {
- #      'test'         : our_test,
- #  },
+    'package_data'     : {'': ['*.sh', 'VERSION', 'configs']},
     'test_suite'       : 'sinon.tests',
     'install_requires' : ['setuptools',
                           'saga-python',

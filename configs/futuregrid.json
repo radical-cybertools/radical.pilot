@@ -1,21 +1,20 @@
 {
     "localhost": {
-        "URL": "fork://localhost",
-        "working_directory": "file://localhost/tmp/sinon/"
-
+        "URL"                : "fork://localhost",
+        "filesystem"         : "file://localhost/tmp/sinon/"
     },
 
     "futuregrid.INDIA": {
-        "URL": "pbs+ssh://india.futuregrid.org",
-        "working_directory": "sftp://india.futuregrid.org/N/u/merzky/sinon/",
-        "python_interpreter": "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap": ["module load python", "module load openmpi"]
+        "URL"                : "pbs+ssh://india.futuregrid.org",
+        "filesystem"         : "sftp://india.futuregrid.org/",
+        "python_interpreter" : "/N/soft/python/2.7/bin/python",
+        "pre_bootstrap"      : ["module load python", "module load openmpi"]
     },
 
     "futuregrid.SIERRA": {
-        "URL": "pbs+ssh://sierra.futuregrid.org",
-        "working_directory": "sftp://sierra.futuregrid.org/N/u/oweidner/sinon/",
-        "python_interpreter": "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap": ["module load python", "module load mpich2"]
+        "URL"                : "pbs+ssh://sierra.futuregrid.org",
+        "filesystem"         : "sftp://sierra.futuregrid.org/",
+        "python_interpreter" : "/N/soft/python/2.7/bin/python",
+        "pre_bootstrap"      : ["module load python", "module load mpich2"]
     }
 }
