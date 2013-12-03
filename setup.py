@@ -10,7 +10,7 @@ import os
 import sys
 import subprocess
 
-from setuptools import setup, Command, find_packages
+from setuptools import setup, Command
 
 
 #-----------------------------------------------------------------------------
@@ -131,7 +131,35 @@ setup_args = {
         'Operating System     :: Unix',
         'Framework            :: Rhythmos',
     ],
-    'packages'         : find_packages('src'),
+    'packages'         : [
+         'sinon.frontend.plugins.unit_scheduler',
+         'sinon.frontend.plugins',
+         'sinon.frontend._api',
+         'sinon.frontend._v1',
+         'sinon.frontend',
+         'sinon.tests.api',
+         'sinon.tests.db',
+         'sinon.tests',
+         'sinon.utils',
+         'sinon.agent.tests',
+         'sinon.agent.taskresults.drivers',
+         'sinon.agent.taskresults',
+         'sinon.agent.taskevents.drivers',
+         'sinon.agent.taskevents',
+         'sinon.agent.agentlog.drivers.local',
+         'sinon.agent.agentlog.drivers',
+         'sinon.agent.agentlog',
+         'sinon.agent.nodemonitor',
+         'sinon.agent.processwrapper',
+         'sinon.agent.application',
+         'sinon.agent.tasksource.drivers',
+         'sinon.agent.tasksource',
+         'sinon.agent',
+         'sinon.v1',
+         'sinon.db',
+         'sinon._api',
+         'sinon',
+    ],
     'package_dir'      : {'': 'src'},
     'scripts'          : ['bin/sinon-version', 
                           'bin/bootstrap-and-run-agent',
