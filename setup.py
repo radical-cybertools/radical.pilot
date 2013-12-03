@@ -123,7 +123,7 @@ setup_args = {
                           'bin/sinon-agent',
                           'bin/sinon-node-monitor',
                           'bin/sinon-process-wrapper'],
-    'package_data'     : {'': ['*.sh', 'VERSION']},
+    'package_data'     : {'': ['*.sh', 'VERSION', 'configs']},
     'test_suite'       : 'sinon.tests',
     'install_requires' : ['setuptools',
                           'saga-python',

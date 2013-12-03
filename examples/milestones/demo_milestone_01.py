@@ -6,7 +6,9 @@ import sys
 import sinon
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-FGCONF = 'file://localhost/%s/configs/futuregrid.json' % os.getcwd()
+FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % \
+    os.path.dirname(os.path.abspath(__file__))
+
 
 #-------------------------------------------------------------------------------
 #
