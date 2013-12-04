@@ -69,17 +69,71 @@ fi
 
 # create a fresh virtualenv. we use and older 1.9.x version of 
 # virtualenv as this seems to work more reliable than newer versions.
-curl --insecure -s https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py | $PYTHON - --python=$PYTHON $R_SYS_DIR
+CURL_CMD="curl -OL --insecure -s https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py"
+echo ""
+echo "################################################################################"
+echo "## Downloading virtualenv"
+echo "## CMDLINE: $CURL_CMD"
+$CURL_CMD
+OUT=$?
+if [ $OUT -ne 0 ];then
+   echo "Couldn't download virtuelenv via curl! ABORTING"
+   exit 1
+fi
+
+BOOTSTRAP_CMD="$PYTHON virtualenv.py --unzip-setuptools --python=$PYTHON $R_SYS_DIR"
+echo ""
+echo "################################################################################"
+echo "## Creating virtualenv"
+echo "## CMDLINE: $BOOTSTRAP_CMD"
+$BOOTSTRAP_CMD
+OUT=$?
+if [ $OUT -ne 0 ];then
+   echo "Couldn't bootstrap virtuelenv! ABORTING"
+   exit 1
+fi
+
 source $R_SYS_DIR/bin/activate
 
 # for now we use development version directly from git
 # this blows up the virtualenv (and agent bootstrap time) significantly
 # at some point we will bootstrap everything directly from PyPi.
 # maybe a flag would be good to switch between 'production' and 'deve' ? 
-pip install -e git://github.com/saga-project/saga-python.git@devel#egg=saga-python
-pip install -e git://github.com/apache/libcloud.git@0.13.x#egg=apache-libcloud
-pip install -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
+PIP_CMD="pip install -q -e git://github.com/apache/libcloud.git@0.13.x#egg=apache-libcloud"
+echo ""
+echo "################################################################################"
+echo "## Installing apache-libcloud"
+echo "## CMDLINE: $PIP_CMD"
+$PIP_CMD
+OUT=$?
+if [ $OUT -ne 0 ];then
+   echo "Couldn't install apache-libcloud! ABORTING"
+   exit 1
+fi
 
+PIP_CMD="pip install -q -e git://github.com/saga-project/saga-python.git@devel#egg=saga-python"
+echo ""
+echo "################################################################################"
+echo "## Installing saga-python"
+echo "## CMDLINE: $PIP_CMD"
+$PIP_CMD
+OUT=$?
+if [ $OUT -ne 0 ];then
+   echo "Couldn't install saga-python! ABORTING"
+   exit 1
+fi
+
+PIP_CMD="pip install -q -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot"
+echo ""
+echo "################################################################################"
+echo "## Installing saga-pilot"
+echo "## CMDLINE: $PIP_CMD"
+$PIP_CMD
+OUT=$?
+if [ $OUT -ne 0 ];then
+   echo "Couldn't install saga-pilot! ABORTING"
+   exit 1
+fi
 }
 
 # -----------------------------------------------------------------------------
@@ -87,9 +141,17 @@ pip install -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilo
 #
 launchagent()
 {
+AGENT_CMD="sinon-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
+              --task-results=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
+              --events=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID"
+echo ""
+echo "################################################################################"
+echo "## Launching sinon-pilot"
+echo "## CMDLINE: $AGENT_CMD"
 sinon-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
               --task-results=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
-              --events=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID
+              --events=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
+              --agent-log=file://localohst//`pwd`/AGENT.LOG
 }
 
 # -----------------------------------------------------------------------------
@@ -123,7 +185,16 @@ do
              ;;
          e)
              PREBOOTSTRAP=$OPTARG
+             echo ""
+             echo "################################################################################"
+             echo "## Running pre-bootstrapping command"
+             echo "## CMDLINE: $PREBOOTSTRAP"
              $PREBOOTSTRAP
+             OUT=$?
+             if [ $OUT -ne 0 ];then
+                echo "Error running pre-boostrapping command! ABORTING"
+                exit 1
+             fi
              ;;
          C)
              CLEANUP=true
@@ -143,12 +214,14 @@ fi
 
 # bootstrap virtualenv
 installvenv
+
+# launch the agent
 launchagent
 
 # cleanup
 if [[ $CLEANUP ]]
 then
-    rm -rf $WORKDIR/virtualenv/
+    rm -rf $WORKDIR/virtualenv*
 fi
 
 # ... and exit

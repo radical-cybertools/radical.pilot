@@ -1,7 +1,8 @@
 {
     "localhost": {
         "URL"                : "fork://localhost",
-        "filesystem"         : "file://localhost/tmp/sinon/"
+        "filesystem"         : "file://localhost",
+        "pre_bootstrap"      : ["hostname", "date"]
     },
 
     "futuregrid.ALAMO": {
