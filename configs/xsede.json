@@ -1,0 +1,9 @@
+{
+    "xsede.STAMPEDE": {
+        "URL"                : "slurm+ssh://stampede.tacc.utexas.edu",
+        "filesystem"         : "sftp://stampede.tacc.utexas.edu/",
+        "default_queue"      : "normal",
+        "python_interpreter" : "/N/soft/python/2.7/bin/python",
+        "pre_bootstrap"      : ["module load python", "module load openmpi"]
+    }
+}

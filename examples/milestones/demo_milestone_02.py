@@ -1,13 +1,14 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
+import os
 import sys
 import sinon
 import time
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
+FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % \
+    os.path.dirname(os.path.abspath(__file__))
 
 #-------------------------------------------------------------------------------
 #

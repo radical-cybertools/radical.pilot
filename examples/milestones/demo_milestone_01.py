@@ -25,9 +25,9 @@ def demo_milestone_01_1():
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "futuregrid.SIERRA"
-        pd.working_directory = "N/u/oweidner/sinon/"
-        pd.cores             = 16
+        pd.resource          = "localhost"
+        pd.working_directory = "/tmp/sinon/"
+        pd.cores             = 8
         pd.run_time          = 1 # minutes
 
         p1 = pm.submit_pilots(pd)
