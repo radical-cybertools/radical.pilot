@@ -12,8 +12,11 @@ import os
 import sys
 import time
 import Queue
+import logging
 import pymongo
+import StringIO
 import datetime
+import hostlist
 import optparse
 import threading 
 import subprocess
@@ -25,6 +28,163 @@ from bson.objectid import ObjectId
 # CONSTANTS
 FREE = None
 MAX_EXEC_WORKERS = 8
+
+#-----------------------------------------------------------------------------
+#
+def which(program):
+    '''taken from:
+        http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+    '''
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
+
+
+#-----------------------------------------------------------------------------
+#
+class ExecutionEnvironment(object):
+
+    #-------------------------------------------------------------------------
+    #
+    @classmethod
+    def discover(cls, logger):
+
+        eenv = cls(logger)
+        # detect nodes, cores and memory available
+        eenv._detect_nodes()
+        eenv._detect_cores_and_memory()
+
+        # check for 'mpirun'
+        eenv._mpirun_location = which('mpirun')
+        eenv._aprun_location  = which('aprun')
+        eenv._ssh_location    = which('ssh')
+
+        # suggest a launch method. the current precendce is 
+        # aprun, mpirun, ssh, fork. this can be overrdden 
+        # by passing the '--launch-method' parameter to the agent.
+
+        if eenv._aprun_location is not None:
+            eenv._launch_method = "APRUN"
+        elif eenv._mpirun_location is not None:
+            eenv._launch_method = "MPIRUN"
+        elif eenv._ssh_location is not None:
+            eenv._launch_method = "SSH"
+        else:
+            eenv._launch_method = "LOCAL"
+
+        # create node dictionary
+        for rn in eenv._raw_nodes:
+            if rn not in eenv._nodes:
+                eenv._nodes[rn] = {#'_count': 1,
+                                   'cores': eenv._cores_per_node,
+                                   'memory': eenv._memory_per_node}
+            #else:
+            #    eenv._nodes[rn]['_count'] += 1
+
+        logger.info("Discovered execution environment: %s" % eenv._nodes)
+
+        return eenv
+
+    #-------------------------------------------------------------------------
+    #
+    def __init__(self, logger=None):
+        '''le constructeur
+        '''
+        self._log = logger
+
+        self._nodes = dict()
+        self._raw_nodes = list()
+        self._cores_per_node = 0
+        self._memory_per_node = 0
+        self._launch_method = None
+
+        self._aprun_location  = None
+        self._mpirun_location = None
+        self._ssh_location    = None
+
+    #-------------------------------------------------------------------------
+    #
+    @property
+    def raw_nodes(self):
+        return self._raw_nodes
+
+    #-------------------------------------------------------------------------
+    #
+    @property
+    def nodes(self):
+        return self._nodes
+
+    #-------------------------------------------------------------------------
+    #
+    @property
+    def launch_method(self):
+        return self._launch_method
+
+    #-------------------------------------------------------------------------
+    #
+    @property
+    def mpirun(self):
+        if self._mpirun_location is None:
+            return 'mpirun'
+        else:
+            return self._mpirun_location
+
+    #-------------------------------------------------------------------------
+    #
+    @property
+    def aprun(self): 
+        if self._aprun_location is None:
+            return 'aprun'
+        else:
+            return self._aprun_location
+
+    #-------------------------------------------------------------------------
+    #
+    @property
+    def ssh(self):
+        if self._ssh_location is None:
+            return 'ssh'
+        else:
+            return self._ssh_location
+
+    #-------------------------------------------------------------------------
+    #
+    def _detect_cores_and_memory(self):
+        self._cores_per_node = multiprocessing.cpu_count() #psutil.NUM_CPUS
+        #mem_in_megabyte = int(psutil.virtual_memory().total/1024/1024)
+        #self._memory_per_node = mem_in_megabyte
+
+    #-------------------------------------------------------------------------
+    #
+    def _detect_nodes(self):
+        # see if we have a PBS_NODEFILE
+        pbs_nodefile = os.environ.get('PBS_NODEFILE')
+        slurm_nodelist = os.environ.get('SLURM_NODELIST')
+
+        if pbs_nodefile is not None:
+            # parse PBS the nodefile
+            self._raw_nodes = [line.strip() for line in open(pbs_nodefile)]
+            self._log.info("Found PBS_NODEFILE %s: %s" % (pbs_nodefile, self._raw_nodes))
+
+        elif slurm_nodelist is not None:
+            # parse SLURM nodefile
+            self._raw_nodes = hostlist.expand_hostlist(slurm_nodelist)
+            self._log.info("Found SLURM_NODELIST %s. Expanded to: %s" % (slurm_nodelist, self._raw_nodes))
+
+        else:
+            self._raw_nodes = ['localhost']
+            self._log.info("No PBS_NODEFILE or SLURM_NODELIST found. Using hosts: %s" % (self._raw_nodes))
+
 
 # ----------------------------------------------------------------------------
 #
@@ -49,14 +209,12 @@ class Task(object):
         # dynamic task properties
         self._start_time = None
         self._end_time   = None
-        self._run_time   = None
 
         self._state      = None
         self._exit_code  = None
         self._exec_loc   = None
 
         self._log        = []
-
 
 
     # ------------------------------------------------------------------------
@@ -97,6 +255,36 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
+    @property
+    def started(self):
+        return self._start_time
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def finished(self):
+        return self._end_time
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def state(self):
+        return self._state
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def exit_code(self):
+        return self._exit_code
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def exec_loc(self):
+        return self._exec_loc
+
+    # ------------------------------------------------------------------------
+    #
     def update_state(self, start_time=None, end_time=None, state=None, 
                      exit_code=None, exec_loc=None):
         """Updates one or more of the task's dynamic properties
@@ -124,7 +312,7 @@ class Task(object):
         if exec_loc is None:
             exec_loc = self._exec_loc
         else:
-            self._exec_loc = self._exec_loc
+            self._exec_loc = exec_loc
 
     # ------------------------------------------------------------------------
     #
@@ -145,13 +333,15 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, database_info, task_queue, 
+    def __init__(self, logger, database_info, task_queue, 
                  hosts, cores_per_host, launch_method):
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
         self.daemon      = True
         self._terminate  = False
+
+        self._log = logger
 
         self._database_info  = database_info
         self._task_queue     = task_queue
@@ -171,6 +361,13 @@ class ExecWorker(multiprocessing.Process):
             for _ in range(0, cores_per_host):
                 self._slots[host].append(FREE)
 
+        # Initialize a database connection. Pymongo takes care of connection 
+        # pooling, etc. so we don't really have to worry about when and where
+        # we open new connections. 
+        self._client = pymongo.MongoClient(database_info['url'])
+        self._db     = self._client[database_info['dbname']]
+        self._w      = self._db["%s.w"  % database_info['session']]
+
     # ------------------------------------------------------------------------
     #
     def stop(self):
@@ -184,85 +381,108 @@ class ExecWorker(multiprocessing.Process):
         """Starts the process when Process.start() is called.
         """
         while self._terminate is False:
-            while True:
 
-                for host, slots in self._slots.iteritems():
-                    # we iterate over all slots. if slots are emtpy, we try
-                    # to run a new process. if they are occupied, we try to 
-                    # update the state 
-                    for slot in range(len(slots)):
-                        # check if slot is free. if so, launch a new task
-                        if self._slots[host][slot] is FREE:
+            # we iterate over all slots. if slots are emtpy, we try
+            # to run a new process. if they are occupied, we try to 
+            # update the state             
+            for host, slots in self._slots.iteritems():
+                
+                # we update tasks in 'bulk' after each iteration. 
+                # all tasks that require DB updates are in update_tasks
+                update_tasks = []
 
-                            try:
-                                task = self._task_queue.get_nowait()
+                for slot in range(len(slots)):
 
-                                # create working directory in case it
-                                # doesn't exist
-                                os.makedirs(task.workdir)
+                    # check if slot is free. if so, launch a new task
+                    if self._slots[host][slot] is FREE:
 
-                                # RUN THE TASK
-                                self._slots[host][slot] = self._exec(task=task)
-                                task.update_state(
-                                    start_time=datetime.datetime.now(),
-                                    exec_loc=host,
-                                    state='RUNNING'
-                                )
+                        try:
+                            task = self._task_queue.get_nowait()
 
+                            # create working directory in case it
+                            # doesn't exist
+                            os.makedirs(task.workdir)
 
-                            except Queue.Empty:
-                                # do nothing if we don't have any queued tasks
-                                self._slots[host][slot] = None
+                            # RUN THE TASK
+                            self._slots[host][slot] = _Process(task=task, host=host,
+                                launch_method=self._launch_method)
+                            self._slots[host][slot].task.update_state(
+                                start_time=datetime.datetime.now(),
+                                exec_loc=host,
+                                state='RUNNING'
+                            )
+                            update_tasks.append(self._slots[host][slot].task)
 
+                        except Queue.Empty:
+                            # do nothing if we don't have any queued tasks
+                            self._slots[host][slot] = None
+
+                    else:
+                        rc = self._slots[host][slot].poll()
+                        if rc is None:
+                            # subprocess is still running
+                            pass
                         else:
-                            rc = self._slots[host][slot].poll()
-                            if rc is None:
-                                # subprocess is still running
-                                pass
+                            print "slot %s: %s" % (slot, rc)
+                            self._slots[host][slot].close_and_flush_filehandles()
+
+                            # update database, set task state and notify.
+                            if rc != 0:
+                                state = 'FAILED'
                             else:
-                                self._slots[host][slot].close_and_flush_filehandles()
+                                state = 'DONE'
 
-                                # update database, set task state and notify.
-                                if rc != 0:
-                                    state = 'FAILED'
-                                else:
-                                    state = 'DONE'
+                            self._slots[host][slot].task.update_state(
+                                end_time=datetime.datetime.now(),
+                                exit_code=rc,
+                                state=state
+                            )
+                            update_tasks.append(self._slots[host][slot].task)
 
-                                task.update_state(
-                                    end_time=datetime.datetime.now(),
-                                    exit_code=rc,
-                                    state=state
-                                )
+                            # mark slot as available
+                            self._slots[host][slot] = FREE
 
-                                # mark slot as available
-                                self._slots[host][slot] = FREE
+                # update all the tasks that are marked for update.
+                self._update_tasks(update_tasks)
+
+                self._log.debug("Slot status:\n%s", self._slot_status(self._slots))
 
             time.sleep(1)
 
     # ------------------------------------------------------------------------
     #
-    def _exec(self, task):
+    def _slot_status(self, slots):
+        """Returns a multiline string corresponding to slot status.
+        """
+        slot_matrix = ""
+        for host, slots in slots.iteritems():
+            slot_vector = ""
+            for slot in slots:
+                if slot is FREE:
+                    slot_vector += " - "
+                else:
+                    slot_vector += " X "
+            slot_matrix += "%s: %s\n" % (host.ljust(24), slot_vector)
+        return slot_matrix
 
-        # Assemble command line
-        cmdline = str()
+    # ------------------------------------------------------------------------
+    #
 
-        # Based on the launch method we use different, well, launch methods
-        # to launch the task. just on the shell, via mpirun, ssh or aprun
-        if self._launch_method == "LOCAL":
-            pass
+    def _update_tasks(self, tasks):
+        """Updates the database entries for one or more tasks, inlcuding 
+        task state, log, etc.
+        """
+        
 
-        # task executable and arguments
-        cmdline += " %s " % task.executable
-        if task.arguments is not None:
-            for arg in task.arguments:
-                cmdline += " %s " % arg
+        for task in tasks:
+            print "update task %s - state %s" % (task.uid, task.state)
+            self._w.update({"_id": ObjectId(task.uid)}, 
+            {"$set": {"info.state"     : task.state,
+                      "info.started"   : task.started,
+                      "info.finished"  : task.finished,
+                      "info.exec_loc"  : task.exec_loc,
+                      "info.exit_code" : task.exit_code}})
 
-        proc = _Process(args=cmdline,
-                        cwd=task.workdir,
-                        stdout_file=task.stdout,
-                        stderr_file=task.stderr)
-
-        return proc
 
 # ----------------------------------------------------------------------------
 #
@@ -270,7 +490,7 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, workdir, launch_method, database_info):
+    def __init__(self, logger, exec_env, launch_method, workdir, database_info):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -278,9 +498,17 @@ class Agent(threading.Thread):
         self.lock        = threading.Lock()
         self._terminate  = threading.Event()
 
+        self._log            = logger
+
         self._workdir        = workdir
-        self._launch_method  = launch_method
         self._pilot_id       = database_info['pilot']
+
+        # launch method is determined by the execution environment,
+        # but can be overridden if the 'launch_method' flag is set 
+        if launch_method == 'AUTO':
+            self._launch_method = exec_env.launch_method
+        else:
+            self._launch_method = launch_method
 
         # Try to establish a database connection
         self._client = pymongo.MongoClient(database_info['url'])
@@ -288,36 +516,53 @@ class Agent(threading.Thread):
         self._p      = self._db["%s.p"  % database_info['session']]
         self._w      = self._db["%s.w"  % database_info['session']]
 
-
         # the task queue holds the tasks that are pulled from the MongoDB 
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
-        # the exec workers compete for tasks in the task queue. we start up
-        # to MAX_EXEC_WORKERS tasks. at some point, this should be come a 
-        # configurabale paramter.
+        # we devide up the host list into maximum MAX_EXEC_WORKERS host 
+        # partitions and assign them to the exec workers. asignment is 
+        # round robin
+        self._host_partitions = []
+        partition_idx = 0
+        for host in exec_env.nodes:
+            if partition_idx >= MAX_EXEC_WORKERS:
+                partition_idx = 0
+            print("index %s: %s", partition_idx,  host)
+            if len(self._host_partitions) <= partition_idx:
+                self._host_partitions.append([host])
+            else:
+                self._host_partitions[partition_idx].append(host)
+            partition_idx += 1
+
+        # we assign each host partition to a task execution worker
         self._exec_workers = []
-        for x in range(0, MAX_EXEC_WORKERS):
+        for hp in self._host_partitions:
             exec_worker = ExecWorker(
+                logger         = self._log,
                 task_queue     = self._task_queue,
                 database_info  = database_info,
-                launch_method  = launch_method,
-                hosts          = 'localhost',
+                launch_method  = self._launch_method,
+                hosts          = hp,
                 cores_per_host = 8
             )
             exec_worker.start()
+            self._log.info("Started up %s serving hosts %s", 
+                exec_worker, hp)
             self._exec_workers.append(exec_worker)
-
 
 
     # ------------------------------------------------------------------------
     #
-    def __del__(self):
-        """Le destructeur. Deletes the agent instance.
+    def stop(self):
+        """Terminate the agent main loop.
         """
+        # First, we need to shut down all the workers
         for ew in self._exec_workers:
             ew.terminate()
-            ew.join()
+
+        # Next, we set our own termination signal
+        self._terminate.set()
 
     # ------------------------------------------------------------------------
     #
@@ -326,11 +571,17 @@ class Agent(threading.Thread):
         """
         while not self._terminate.isSet():
 
+            # Check the workers periodically. If they have died, we 
+            # exit as well. this can happen, e.g., if the worker 
+            # process has caught a ctrl+C
+            for ew in self._exec_workers:
+                if ew.is_alive() is False:
+                    self.stop()
+
             # try to get new tasks from the database. for this, we check the 
             # wu_queue of the pilot. if there are new entries, we get them,
             # get the actual pilot entries for them and remove them from 
             # the wu_queue. 
-
             try: 
                 # Check the pilot's workunit queue
                 p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
@@ -339,6 +590,7 @@ class Agent(threading.Thread):
                 # There are new work units in the wu_queue on the database.
                 # Get the corresponding wu entries
                 if len(new_wu_ids) > 0:
+                    self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
                     wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
                     for wu in wu_cursor:
                         # Create new task objects and put them into the 
@@ -348,9 +600,8 @@ class Agent(threading.Thread):
                                     executable=wu["description"]["Executable"], 
                                     arguments=wu["description"]["Arguments"], 
                                     workdir=task_dir_name, 
-                                    stdout='STDOUT', 
-                                    stderr='STDERR')
-                        print task
+                                    stdout=task_dir_name+'/STDOUT', 
+                                    stderr=task_dir_name+'/STDERR')
                         self._task_queue.put(task)
 
                     # now we can remove the entries from the pilot's wu_queue
@@ -359,11 +610,7 @@ class Agent(threading.Thread):
             except Exception, ex:
                 print "MongoDB error: %s" % ex
 
-            time.sleep(10)
-
-
-
-
+            time.sleep(1)
 
 
 #-----------------------------------------------------------------------------
@@ -372,36 +619,52 @@ class _Process(subprocess.Popen):
 
     #-------------------------------------------------------------------------
     #
-    def __init__(self, args, stdout_file, stderr_file, bufsize=0, 
-                 executable=None, stdin=None, stdout=None, stderr=None, 
-                 close_fds=False, shell=False, cwd=None, env=None):
+    def __init__(self, task, host, launch_method):
 
-        preexec_fn = None
-        universal_newlines = False
-        startupinfo = None  # Only relevant on MS Windows
-        creationflags = 0   # Only relevant on MS Windows
-        shell = True
+        self._task = task
 
-        self.stdout_filename = stdout_file
-        self._stdout_file_h = open(stdout_file, "w")
+        # Assemble command line
+        cmdline = str()
 
-        self.stderr_filename = stderr_file
-        self._stderr_file_h = open(stderr_file, "w")
+        # Based on the launch method we use different, well, launch methods
+        # to launch the task. just on the shell, via mpirun, ssh or aprun
+        if launch_method == "LOCAL":
+            pass
 
-        super(_Process, self).__init__(args=args,
-                                       bufsize=bufsize,
-                                       executable=executable,
-                                       stdin=stdin,
+        # task executable and arguments
+        cmdline += " %s " % task.executable
+        if task.arguments is not None:
+            for arg in task.arguments:
+                cmdline += " %s " % arg
+
+        self.stdout_filename = task.stdout
+        self._stdout_file_h  = open(self.stdout_filename, "w")
+
+        self.stderr_filename = task.stderr
+        self._stderr_file_h  = open(self.stderr_filename, "w")
+
+        super(_Process, self).__init__(args=cmdline,
+                                       bufsize=0,
+                                       executable=None,
+                                       stdin=None,
                                        stdout=self._stdout_file_h,
                                        stderr=self._stderr_file_h,
-                                       preexec_fn=preexec_fn,
-                                       close_fds=close_fds,
-                                       shell=shell,
-                                       cwd=cwd,
-                                       env=env,
-                                       universal_newlines=universal_newlines,
-                                       startupinfo=startupinfo,
-                                       creationflags=creationflags)
+                                       preexec_fn=None,
+                                       close_fds=True,
+                                       shell=True,
+                                       cwd=task.workdir,
+                                       env=None,
+                                       universal_newlines=False,
+                                       startupinfo=None,
+                                       creationflags=0)
+
+    #-------------------------------------------------------------------------
+    #
+    @property
+    def task(self):
+        """Returns the task object associated with the process.
+        """
+        return self._task
 
     #-------------------------------------------------------------------------
     #
@@ -473,10 +736,24 @@ def parse_commandline():
 #
 if __name__ == "__main__":
 
+    # parse command line options
     options = parse_commandline()
 
+    # configure the agent logger
+    logger = logging.getLogger('sinon.agent')
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
-    agent = Agent(workdir       = options.workdir, 
+    # discover environment, mpirun, cores, etc.
+    exec_env = ExecutionEnvironment.discover(logger)
+
+    agent = Agent(logger        = logger,
+                  exec_env      = exec_env,
+                  workdir       = options.workdir, 
                   launch_method = options.launch_method, 
                   database_info = {
                     'url':     options.mongodb_url, 
@@ -484,5 +761,11 @@ if __name__ == "__main__":
                     'session': options.session_id,
                     'pilot':   options.pilot_id
                 })
-    agent.start()
-    agent.join()
+    try:
+        agent.start()
+        agent.join()
+
+    except KeyboardInterrupt:
+        agent.stop()
+
+
