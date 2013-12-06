@@ -9,8 +9,7 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.utils      import as_list
-from sinon.exceptions import SinonException
+from sinon.frontend.exceptions import SinonException
 
 import sinon.frontend.states as states
 import sinon.frontend.attributes as attributes
@@ -120,7 +119,11 @@ class PilotManager(attributes.Attributes):
         # Donwload and parse the configuration file(s) and the content to 
         # our resource dictionary.
         self._resource_cfgs = {}
-        for rcf in as_list(resource_configurations):
+        
+        if not isinstance(resource_configurations, list):
+            resource_configurations = [resource_configurations]
+        
+        for rcf in resource_configurations:
             try:
                 # download resource configuration file
                 response = urllib2.urlopen(rcf)
@@ -207,6 +210,9 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
+        
+        if not isinstance(pilot_descriptions, list):
+            pilot_descriptions = [pilot_descriptions]
 
         # Sumbit pilots is always a bulk operation. In bulk submission, it
         # doesn't make too much sense to throw  exceptions if a pilot fails to
@@ -220,7 +226,7 @@ class PilotManager(attributes.Attributes):
 
         # implicit -> list -> dict conversion
         pilot_description_dict = {}
-        for pd in as_list(pilot_descriptions):
+        for pd in pilot_descriptions:
             pilot_description_dict[ObjectId()] = {
                 'description': pd, 
                 'info': {'state': None, 
@@ -440,10 +446,10 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
-        # implicit list conversion
-        pilot_id_list = as_list(pilot_ids)
+        if not isinstance(pilot_ids, list):
+            pilot_ids = [pilot_ids]
 
-        pilots = Pilot._get(pilot_ids=pilot_id_list, pilot_manager_obj=self)
+        pilots = Pilot._get(pilot_ids=pilot_ids, pilot_manager_obj=self)
         return pilots
 
     # --------------------------------------------------------------------------
