@@ -19,6 +19,7 @@ from sinon.frontend.compute_pilot import ComputePilot
 
 from radical.utils import which
 
+import os
 import saga
 import json
 import urllib2
@@ -309,12 +310,14 @@ class PilotManager(attributes.Attributes):
                         saga.filesystem.CREATE_PARENTS)
                     pilot_description_dict[pilot_id]['info']['log'].append("Created agent directory '%s'" % str(agent_dir_url))
 
-                    bootstrap_script_url = saga.Url("file://localhost/%s" \
-                        % (which('bootstrap-and-run-agent')))
+                    script_dir_path = os.path.dirname(os.path.abspath(which('bootstrap-and-run-agent')))
+                    script_dir_url  = saga.Url("file://localhost/%s" % script_dir_path) 
 
-                    bootstrap_script = saga.filesystem.File(bootstrap_script_url)
-                    bootstrap_script.copy(agent_dir_url)
-                    pilot_description_dict[pilot_id]['info']['log'].append("Copied launch script '%s' to agent directory" % str(bootstrap_script_url))
+                    script_dir = saga.filesystem.Directory(script_dir_url)
+                    script_dir.copy('bootstrap-and-run-agent', agent_dir_url)
+                    pilot_description_dict[pilot_id]['info']['log'].append("Copied 'bootstrap-and-run-agent' script to agent directory")
+                    script_dir.copy('sinon-pilot-agent', agent_dir_url)
+                    pilot_description_dict[pilot_id]['info']['log'].append("Copied 'sinon-pilot-agent' script to agent directory")
 
                     # extract the required connection parameters and uids
                     # for the agent:
@@ -359,7 +362,7 @@ class PilotManager(attributes.Attributes):
                     # clean up / close all saga objects
                     js.close()
                     agent_dir.close()
-                    bootstrap_script.close()
+                    script_dir.close()
 
                     # at this point, submission has succeeded. we can update
                     #   * the state to 'PENDING'

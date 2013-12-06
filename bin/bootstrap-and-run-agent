@@ -99,39 +99,27 @@ source $R_SYS_DIR/bin/activate
 # this blows up the virtualenv (and agent bootstrap time) significantly
 # at some point we will bootstrap everything directly from PyPi.
 # maybe a flag would be good to switch between 'production' and 'deve' ? 
-PIP_CMD="pip install -q -e git://github.com/apache/libcloud.git@0.13.x#egg=apache-libcloud"
+PIP_CMD="pip install python-hostlist"
 echo ""
 echo "################################################################################"
-echo "## Installing apache-libcloud"
+echo "## Installing python-hostlist"
 echo "## CMDLINE: $PIP_CMD"
 $PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't install apache-libcloud! ABORTING"
+   echo "Couldn't install python-hostlist! ABORTING"
    exit 1
 fi
 
-PIP_CMD="pip install -q -e git://github.com/saga-project/saga-python.git@devel#egg=saga-python"
+PIP_CMD="pip install pymongo"
 echo ""
 echo "################################################################################"
-echo "## Installing saga-python"
+echo "## Installing pymongo"
 echo "## CMDLINE: $PIP_CMD"
 $PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't install saga-python! ABORTING"
-   exit 1
-fi
-
-PIP_CMD="pip install -q -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot"
-echo ""
-echo "################################################################################"
-echo "## Installing saga-pilot"
-echo "## CMDLINE: $PIP_CMD"
-$PIP_CMD
-OUT=$?
-if [ $OUT -ne 0 ];then
-   echo "Couldn't install saga-pilot! ABORTING"
+   echo "Couldn't install pymongo! ABORTING"
    exit 1
 fi
 }
@@ -141,17 +129,12 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="sinon-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
-              --task-results=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
-              --events=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID"
+AGENT_CMD="sinon-pilot-agent -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID"
 echo ""
 echo "################################################################################"
-echo "## Launching sinon-pilot"
+echo "## Launching sinon-pilot-agent"
 echo "## CMDLINE: $AGENT_CMD"
-sinon-agent --task-source=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
-              --task-results=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
-              --events=sagapilot://$REMOTE\?dbname=$DBNAME\&session=$SESSIONID\&pilot=$PILOTID \
-              --agent-log=file://localohst//`pwd`/AGENT.LOG
+sinon-pilot-agent -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID
 }
 
 # -----------------------------------------------------------------------------

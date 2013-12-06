@@ -26,15 +26,17 @@ from bson.objectid import ObjectId
 
 # ----------------------------------------------------------------------------
 # CONSTANTS
-FREE = None
-MAX_EXEC_WORKERS = 8
+FREE             = None # just an alias
+MAX_EXEC_WORKERS = 8    # max number of worker processes
 
 #-----------------------------------------------------------------------------
 #
 def which(program):
-    '''taken from:
-        http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-    '''
+    """Finds the location of an executable.
+    Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+    """
+    #-------------------------------------------------------------------------
+    #
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
@@ -49,16 +51,17 @@ def which(program):
                 return exe_file
     return None
 
-
 #-----------------------------------------------------------------------------
 #
 class ExecutionEnvironment(object):
-
+    """DOC
+    """
     #-------------------------------------------------------------------------
     #
     @classmethod
     def discover(cls, logger):
-
+        """Factory method creates a new execution environment.
+        """
         eenv = cls(logger)
         # detect nodes, cores and memory available
         eenv._detect_nodes()
