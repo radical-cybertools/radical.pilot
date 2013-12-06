@@ -27,7 +27,7 @@ def demo_milestone_01_1():
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "futuregrid.SIERRA"
+        pd.resource          = "futuregrid.ALAMO"
         pd.working_directory = "/N/u/oweidner/sinon"
         pd.cores             = 8
         pd.run_time          = 10 # minutes

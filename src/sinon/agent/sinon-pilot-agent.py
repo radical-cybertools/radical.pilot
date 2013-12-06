@@ -26,15 +26,17 @@ from bson.objectid import ObjectId
 
 # ----------------------------------------------------------------------------
 # CONSTANTS
-FREE = None
-MAX_EXEC_WORKERS = 8
+FREE             = None # just an alias
+MAX_EXEC_WORKERS = 8    # max number of worker processes
 
 #-----------------------------------------------------------------------------
 #
 def which(program):
-    '''taken from:
-        http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-    '''
+    """Finds the location of an executable.
+    Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+    """
+    #-------------------------------------------------------------------------
+    #
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
@@ -49,16 +51,17 @@ def which(program):
                 return exe_file
     return None
 
-
 #-----------------------------------------------------------------------------
 #
 class ExecutionEnvironment(object):
-
+    """DOC
+    """
     #-------------------------------------------------------------------------
     #
     @classmethod
     def discover(cls, logger):
-
+        """Factory method creates a new execution environment.
+        """
         eenv = cls(logger)
         # detect nodes, cores and memory available
         eenv._detect_nodes()
@@ -409,7 +412,7 @@ class ExecWorker(multiprocessing.Process):
                             self._slots[host][slot].task.update_state(
                                 start_time=datetime.datetime.now(),
                                 exec_loc=host,
-                                state='RUNNING'
+                                state='Running'
                             )
                             update_tasks.append(self._slots[host][slot].task)
 
@@ -428,9 +431,9 @@ class ExecWorker(multiprocessing.Process):
 
                             # update database, set task state and notify.
                             if rc != 0:
-                                state = 'FAILED'
+                                state = 'Failed'
                             else:
-                                state = 'DONE'
+                                state = 'Done'
 
                             self._slots[host][slot].task.update_state(
                                 end_time=datetime.datetime.now(),
@@ -606,6 +609,8 @@ class Agent(threading.Thread):
 
                     # now we can remove the entries from the pilot's wu_queue
                     # PRINT TODO
+                    self._p.update({"_id": ObjectId(self._pilot_id)}, 
+                                   {"$pullAll": { "wu_queue": new_wu_ids}})
 
             except Exception, ex:
                 print "MongoDB error: %s" % ex
@@ -742,7 +747,7 @@ if __name__ == "__main__":
     # configure the agent logger
     logger = logging.getLogger('sinon.agent')
     logger.setLevel(logging.INFO)
-    ch = logging.StreamHandler()
+    ch = logging.FileHandler("AGENT.LOG")
     ch.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)

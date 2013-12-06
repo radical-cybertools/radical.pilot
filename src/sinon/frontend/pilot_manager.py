@@ -9,8 +9,7 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.utils      import as_list
-from sinon.exceptions import SinonException
+from sinon.frontend.exceptions import SinonException
 
 import sinon.frontend.states as states
 import sinon.frontend.attributes as attributes
@@ -19,6 +18,7 @@ from sinon.frontend.compute_pilot import ComputePilot
 
 from radical.utils import which
 
+import os
 import saga
 import json
 import urllib2
@@ -119,7 +119,11 @@ class PilotManager(attributes.Attributes):
         # Donwload and parse the configuration file(s) and the content to 
         # our resource dictionary.
         self._resource_cfgs = {}
-        for rcf in as_list(resource_configurations):
+        
+        if not isinstance(resource_configurations, list):
+            resource_configurations = [resource_configurations]
+        
+        for rcf in resource_configurations:
             try:
                 # download resource configuration file
                 response = urllib2.urlopen(rcf)
@@ -206,6 +210,9 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
+        
+        if not isinstance(pilot_descriptions, list):
+            pilot_descriptions = [pilot_descriptions]
 
         # Sumbit pilots is always a bulk operation. In bulk submission, it
         # doesn't make too much sense to throw  exceptions if a pilot fails to
@@ -219,7 +226,7 @@ class PilotManager(attributes.Attributes):
 
         # implicit -> list -> dict conversion
         pilot_description_dict = {}
-        for pd in as_list(pilot_descriptions):
+        for pd in pilot_descriptions:
             pilot_description_dict[ObjectId()] = {
                 'description': pd, 
                 'info': {'state': None, 
@@ -309,12 +316,19 @@ class PilotManager(attributes.Attributes):
                         saga.filesystem.CREATE_PARENTS)
                     pilot_description_dict[pilot_id]['info']['log'].append("Created agent directory '%s'" % str(agent_dir_url))
 
-                    bootstrap_script_url = saga.Url("file://localhost/%s" \
-                        % (which('bootstrap-and-run-agent')))
+                    # Copy the bootstrap shell script
+                    bs_script_url = saga.Url("file://localhost/%s" % which('bootstrap-and-run-agent')) 
+                    bs_script = saga.filesystem.File(bs_script_url)
+                    bs_script.copy(agent_dir_url)
+                    pilot_description_dict[pilot_id]['info']['log'].append("Copied '%s' script to agent directory" % bs_script_url)
 
-                    bootstrap_script = saga.filesystem.File(bootstrap_script_url)
-                    bootstrap_script.copy(agent_dir_url)
-                    pilot_description_dict[pilot_id]['info']['log'].append("Copied launch script '%s' to agent directory" % str(bootstrap_script_url))
+                    # Copy the agent script
+                    cwd = os.path.dirname(os.path.abspath(__file__))
+                    agent_path = os.path.abspath("%s/../agent/sinon-pilot-agent.py" % cwd)
+                    agent_script_url = saga.Url("file://localhost/%s" % agent_path) 
+                    agent_script = saga.filesystem.File(agent_script_url)
+                    agent_script.copy(agent_dir_url)
+                    pilot_description_dict[pilot_id]['info']['log'].append("Copied '%s' script to agent directory" % agent_script_url)
 
                     # extract the required connection parameters and uids
                     # for the agent:
@@ -359,7 +373,8 @@ class PilotManager(attributes.Attributes):
                     # clean up / close all saga objects
                     js.close()
                     agent_dir.close()
-                    bootstrap_script.close()
+                    agent_script.close()
+                    bs_script.close()
 
                     # at this point, submission has succeeded. we can update
                     #   * the state to 'PENDING'
@@ -431,10 +446,10 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
-        # implicit list conversion
-        pilot_id_list = as_list(pilot_ids)
+        if not isinstance(pilot_ids, list):
+            pilot_ids = [pilot_ids]
 
-        pilots = Pilot._get(pilot_ids=pilot_id_list, pilot_manager_obj=self)
+        pilots = Pilot._get(pilot_ids=pilot_ids, pilot_manager_obj=self)
         return pilots
 
     # --------------------------------------------------------------------------
