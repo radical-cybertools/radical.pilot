@@ -6,9 +6,10 @@ import sys
 import sinon
 import time
 
+PWD    = os.path.dirname(os.path.abspath(__file__))
+
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % \
-    os.path.dirname(os.path.abspath(__file__))
+FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 
 #-------------------------------------------------------------------------------
 #
@@ -27,10 +28,9 @@ def demo_milestone_02():
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
         pd.resource          = "futuregrid.INDIA"
-        pd.working_directory = "sftp://india.futuregrid.org/N/u/merzky/sinon/" # overriding resource config
+        pd.working_directory = "/N/u/oweidner/sinon"
         pd.cores             = 16
-        pd.run_time          = 5 # minutes
-        pd.cleanup           = True
+        pd.run_time          = 10 # minutes
 
         print "* Submitting pilot to '%s'..." % (pd.resource)
         india_pilot = pm.submit_pilots(pd)
