@@ -5,9 +5,11 @@ import os
 import sys
 import sinon
 
+PWD    = os.path.dirname(os.path.abspath(__file__))
+
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % \
-    os.path.dirname(os.path.abspath(__file__))
+FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
+    
 
 
 #-------------------------------------------------------------------------------
@@ -25,10 +27,10 @@ def demo_milestone_01_1():
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "localhost"
-        pd.working_directory = "/tmp/sinon/"
+        pd.resource          = "futuregrid.SIERRA"
+        pd.working_directory = "/N/u/oweidner/sinon"
         pd.cores             = 8
-        pd.run_time          = 1 # minutes
+        pd.run_time          = 10 # minutes
 
         p1 = pm.submit_pilots(pd)
 
