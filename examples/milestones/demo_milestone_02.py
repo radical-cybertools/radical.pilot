@@ -27,8 +27,8 @@ def demo_milestone_02():
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "futuregrid.INDIA"
-        pd.working_directory = "/N/u/oweidner/sinon"
+        pd.resource          = "futuregrid.HOTEL"
+        pd.working_directory = "/N/u/oweidner/scratch/sinon"
         pd.cores             = 16
         pd.run_time          = 10 # minutes
 

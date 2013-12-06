@@ -118,7 +118,7 @@ setup_args = {
     'package_dir' : {'': 'src'},    
     'scripts'          : ['bin/sinon-version', 
                           'bin/bootstrap-and-run-agent',
-                          'bin/sinon-pilot-agent'],
+                         ],
     'package_data'     : {'': ['*.sh', 'VERSION', ]},
     #'data_files'       : [('agent', ['bin/sinon-pilot-agent'])],
     'test_suite'       : 'sinon.tests',
