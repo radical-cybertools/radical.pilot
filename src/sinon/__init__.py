@@ -11,21 +11,21 @@ __license__   = "MIT"
 
 # ------------------------------------------------------------------------------
 #
-import sinon.frontend.types as types
-import sinon.frontend.states as states
+import sinon.api.types as types
+import sinon.api.states as states
 
 
 # ------------------------------------------------------------------------------
 #
-from sinon.frontend.session                   import Session 
-from sinon.frontend.exceptions                import SinonException
+from sinon.api.session                   import Session 
+from sinon.api.exceptions                import SinonException
 
-from sinon.frontend.unit_manager              import UnitManager
-from sinon.frontend.compute_unit_description  import ComputeUnitDescription
+from sinon.api.unit_manager              import UnitManager
+from sinon.api.compute_unit_description  import ComputeUnitDescription
 
-from sinon.frontend.pilot_manager             import PilotManager
-from sinon.frontend.compute_pilot             import ComputePilot
-from sinon.frontend.compute_pilot_description import ComputePilotDescription
+from sinon.api.pilot_manager             import PilotManager
+from sinon.api.compute_pilot             import ComputePilot
+from sinon.api.compute_pilot_description import ComputePilotDescription
 
 
 # ------------------------------------------------------------------------------

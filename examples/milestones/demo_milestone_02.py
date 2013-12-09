@@ -46,7 +46,7 @@ def demo_milestone_02():
 
         # Create a workload of 64 '/bin/date' compute units
         compute_units = []
-        for unit_count in range(0, 64):
+        for unit_count in range(0, 1024):
             cu = sinon.ComputeUnitDescription()
             cu.cores = 1
             cu.executable = "/bin/date"

@@ -1,5 +1,5 @@
 """
-.. module:: sinon.frontend.states
+.. module:: sinon.states
    :platform: Unix
    :synopsis: State constants.
 

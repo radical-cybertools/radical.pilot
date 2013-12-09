@@ -1,5 +1,5 @@
 """
-.. module:: sinon.frontent
+.. module:: sinon.api
    :platform: Unix
    :synopsis: The frontent (library) part of sinon.
 

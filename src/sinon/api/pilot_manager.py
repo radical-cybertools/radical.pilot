@@ -9,12 +9,12 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.frontend.exceptions import SinonException
+from sinon.api.exceptions import SinonException
 
-import sinon.frontend.states as states
-import sinon.frontend.attributes as attributes
+import sinon.api.states as states
+import sinon.api.attributes as attributes
 
-from sinon.frontend.compute_pilot import ComputePilot
+from sinon.api.compute_pilot import ComputePilot
 
 from radical.utils import which
 

@@ -9,9 +9,9 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sinon.frontend.states as states
-import sinon.frontend.attributes as attributes
-import sinon.frontend.excetions as exceptions
+import sinon.api.states as states
+import sinon.api.attributes as attributes
+import sinon.api.excetions as exceptions
 
 import time
 

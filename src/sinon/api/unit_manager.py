@@ -13,10 +13,10 @@ __license__   = "MIT"
 import radical.utils as ru
 from   sinon.utils import as_list
 
-import sinon.frontend.types as types
-import sinon.frontend.states as states
-import sinon.frontend.exceptions as exceptions
-import sinon.frontend.attributes as attributes
+import sinon.api.types as types
+import sinon.api.states as states
+import sinon.api.exceptions as exceptions
+import sinon.api.attributes as attributes
 
 import time
 import datetime
@@ -104,7 +104,7 @@ class UnitManager(attributes.Attributes) :
         self._attributes_register(SCHEDULER_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(SCHEDULER_DETAILS, self._get_scheduler_details_priv)
 
-        pm = ru.PluginManager ('sinon.frontend')
+        pm = ru.PluginManager ('sinon.api')
 
         if scheduler == "~+=RECON=+~":
             # When we get the "~RECON~" keyword as scheduler, we were called 

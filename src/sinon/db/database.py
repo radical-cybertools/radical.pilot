@@ -220,6 +220,7 @@ class Session():
                 "_id"           : pilot_id,
                 "description"   : pilot_desc['description'].as_dict(),
                 "wu_queue"      : [],
+                "command"       : None,
                 "info"          : {
                     "submitted" : pilot_desc['info']['submitted'],
                     "started"   : None,
@@ -285,6 +286,23 @@ class Session():
             pilots_json.append(obj)
 
         return pilots_json
+
+    #---------------------------------------------------------------------------
+    #
+    def signal_pilots(self, pilot_ids, cmd):
+        """ Send a signal to one or more pilots.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        if not isinstance(pilot_ids, list):
+            pilot_ids = [pilot_ids]
+
+        for pilot_id in pilot_ids:
+            self._p.update(
+                {"_id": ObjectId(pilot_id)}, 
+                {"$set": {"command" : cmd}}
+            )
 
     #---------------------------------------------------------------------------
     #
