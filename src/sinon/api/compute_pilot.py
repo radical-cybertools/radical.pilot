@@ -9,9 +9,9 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sinon.api.states as states
+import sinon.api.states     as states
 import sinon.api.attributes as attributes
-import sinon.api.exceptions as excpetions
+import sinon.api.exceptions as exceptions
 
 import time
 
@@ -155,7 +155,7 @@ class ComputePilot (attributes.Attributes) :
             * A unique identifier (string).
         """
         if not self._uid:
-            raise excpetions.SinonException(msg="Invalid Pilot instance.")
+            raise exceptions.SinonException(msg="Invalid Pilot instance.")
 
         return self._uid
 
@@ -165,7 +165,7 @@ class ComputePilot (attributes.Attributes) :
         """PRIVATE: Returns the pilot description the pilot was started with.
         """
         if not self._uid:
-            raise excpetions.SinonException(msg="Invalid Pilot instance.")
+            raise exceptions.SinonException(msg="Invalid Pilot instance.")
 
         return self._description
 
@@ -175,7 +175,7 @@ class ComputePilot (attributes.Attributes) :
         """PRIVATE: Returns the current state of the pilot.
         """
         if not self._uid:
-            raise excpetions.SinonException(msg="Invalid Pilot instance.")
+            raise exceptions.SinonException(msg="Invalid Pilot instance.")
 
         # state is dynamic and changes over the lifetime of a pilot, hence we 
         # need to make a call to the database layer
@@ -185,7 +185,7 @@ class ComputePilot (attributes.Attributes) :
         # make sure the result makes sense
         if len(pilots_json) != 1: 
             msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise excpetions.SinonException(msg=msg)
+            raise exceptions.SinonException(msg=msg)
 
         return pilots_json[0]['info']['state']
 
@@ -198,7 +198,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Pilot instance.")
+            raise exceptions.SinonException("Invalid Pilot instance.")
 
         # state detail is dynamic and changes over the  lifetime of a pilot,
         # hence we need to make a call to the  database layer.
@@ -208,7 +208,7 @@ class ComputePilot (attributes.Attributes) :
         # make sure the result makes sense
         if len(pilots_json) != 1: 
             msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise excpetions.SinonException(msg=msg)
+            raise exceptions.SinonException(msg=msg)
 
         return pilots_json[0]['info']['log']
 
@@ -218,7 +218,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the pilot manager object for this pilot.
         """
         if not self._uid:
-            raise excpetions.SinonException("Invalid Pilot instance.")
+            raise exceptions.SinonException("Invalid Pilot instance.")
 
         return self._manager
 
@@ -228,9 +228,9 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the pilot manager object for this pilot.
         """
         if not self._uid:
-            raise excpetions.SinonException("Invalid Pilot instance.")
+            raise exceptions.SinonException("Invalid Pilot instance.")
 
-        raise excpetions.SinonException("Not Implemented")
+        raise exceptions.SinonException("Not Implemented")
 
 
     # --------------------------------------------------------------------------
@@ -240,9 +240,9 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Pilot instance.")
+            raise exceptions.SinonException("Invalid Pilot instance.")
 
-        raise excpetions.SinonException("Not Implemented")
+        raise exceptions.SinonException("Not Implemented")
 
     # --------------------------------------------------------------------------
     #
@@ -251,7 +251,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Pilot instance.")
+            raise exceptions.SinonException("Invalid Pilot instance.")
 
         pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
@@ -259,7 +259,7 @@ class ComputePilot (attributes.Attributes) :
         # make sure the result makes sense
         if len(pilots_json) != 1: 
             msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise excpetions.SinonException(msg=msg)
+            raise exceptions.SinonException(msg=msg)
 
         return pilots_json[0]['info']['submitted']
 
@@ -269,7 +269,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the time the pilot was started on the backend. 
         """
         if not self._uid:
-            raise excpetions.SinonException("Invalid Pilot instance.")
+            raise exceptions.SinonException("Invalid Pilot instance.")
 
         pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
@@ -277,7 +277,7 @@ class ComputePilot (attributes.Attributes) :
         # make sure the result makes sense
         if len(pilots_json) != 1: 
             msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise excpetions.SinonException(msg=msg)
+            raise exceptions.SinonException(msg=msg)
 
         return pilots_json[0]['info']['started']
 
@@ -287,12 +287,12 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the time the pilot was stopped. 
         """
         if not self._uid:
-            raise excpetions.SinonException("Invalid Pilot instance.")
+            raise exceptions.SinonException("Invalid Pilot instance.")
 
         # make sure the result makes sense
         if len(pilots_json) != 1: 
             msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise excpetions.SinonException(msg=msg)
+            raise exceptions.SinonException(msg=msg)
 
         return pilots_json[0]['info']['finished']
 
@@ -329,22 +329,24 @@ class ComputePilot (attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.excpetions.SinonException` if the state of the 
+            * :class:`sinon.exceptions.SinonException` if the state of the 
               pilot cannot be determined. 
         """
         # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Pilot instance.")
+            raise exceptions.SinonException("Invalid Pilot instance.")
 
         if not isinstance (state, list):
             state = [state]
 
         start_wait = time.time ()
+        # the self.state property pulls the state from the back end.
         while self.state not in state:
             time.sleep (1)
 
             if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
                 break
+
         # done waiting
         return
 
@@ -355,12 +357,12 @@ class ComputePilot (attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.excpetions.SinonException if the termination 
+            * :class:`sinon.exceptions.SinonException if the termination 
               request cannot be fulfilled. 
         """
         # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException(msg="Invalid Pilot instance.")
+            raise exceptions.SinonException(msg="Invalid Pilot instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:
             # nothing to do as we are already in a terminal state
@@ -368,7 +370,7 @@ class ComputePilot (attributes.Attributes) :
 
         if self.state == states.UNKNOWN:
             msg = "Invalid pilot state: '%s'" % states.UNKNOWN
-            raise excpetions.SinonException(msg=msg)
+            raise exceptions.SinonException(msg=msg)
 
         # now we can send a 'cancel' command to the pilot.
         self._DB.signal_pilots(pilot_manager_id=self._manager.uid, 
