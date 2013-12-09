@@ -32,11 +32,12 @@ def get_version():
         import subprocess as sp
         import re
 
+        srcroot       = os.path.dirname (os.path.abspath (__file__))
         VERSION_MATCH = re.compile (r'(([\d\.]+)\D.*)')
 
         # attempt to get version information from git
-        p   = sp.Popen (['git', 'describe', '--tags', '--always'],
-                        stdout=sp.PIPE, stderr=sp.STDOUT)
+        p   = sp.Popen ('cd %s && git describe --tags --always' % srcroot,
+                        stdout=sp.PIPE, stderr=sp.STDOUT, shell=True)
         out = p.communicate()[0]
 
 
@@ -44,7 +45,7 @@ def get_version():
 
             # the git check failed -- its likely that we are called from
             # a tarball, so use ./VERSION instead
-            out=open (os.path.dirname (os.path.abspath (__file__)) + "/VERSION", 'r').read().strip()
+            out=open ("%s/VERSION" % srcroot, 'r').read().strip()
 
 
         # from the full string, extract short and long versions
@@ -62,8 +63,9 @@ def get_version():
 
 
         # make sure the version files exist for the runtime version inspection
-        open (          'VERSION', 'w').write (long_version+"\n")
-        open ('src/sinon/VERSION', 'w').write (long_version+"\n")
+        open (          '%s/VERSION' % srcroot, 'w').write (long_version+"\n")
+        open ('%s/src/sinon/VERSION' % srcroot, 'w').write (long_version+"\n")
+
 
     except Exception as e :
         print 'Could not extract/set version: %s' % e
@@ -71,6 +73,7 @@ def get_version():
         sys.exit (-1)
 
     return short_version, long_version
+
 
 short_version, long_version = get_version ()
 
@@ -135,7 +138,7 @@ setup_args = {
 
 #-----------------------------------------------------------------------------
 
-setup(**setup_args)
+setup (**setup_args)
 
 #-----------------------------------------------------------------------------
 

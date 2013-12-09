@@ -21,37 +21,38 @@ def demo_milestone_01_1():
         # Create a new session. A session is a set of Pilot Managers
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sinon.Session(database_url=DBURL)
-        um = sinon.UnitManager(session=session, scheduler="round_robin")
 
-        # Add a Pilot Manager and a Pilot to the session.
+        # Add a Pilot Manager with a machine configuration file for FutureGrid
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
+        # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
         pd.resource          = "futuregrid.ALAMO"
-        pd.working_directory = "/N/u/oweidner/sinon"
+        pd.working_directory = "/N/u/merzky/sinon"
         pd.cores             = 8
         pd.run_time          = 10 # minutes
 
+        print "* Submitting pilot to '%s'..." % (pd.resource)
         p1 = pm.submit_pilots(pd)
 
         # Error checking
         if p1.state in [sinon.states.FAILED]:
-            print "* [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
+            print "  [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
             sys.exit(-1)
+        else:
+            print "  [OK]    Pilot %s submitted successfully: %s." % (p1, p1.state_details[-1])
 
-        # Add a Unit Manager to the session and add the newly created 
-        # pilot to it.
-        um = sinon.UnitManager(session=session, scheduler="round_robin")
-        um.add_pilots(p1)
-
-        # Now we create a few ComputeUnits ...
+        # Create a workload of 64 '/bin/hostname' compute units
         compute_units = []
-        for unit_count in range(0, 16):
+        for unit_count in range(0, 64):
             cu = sinon.ComputeUnitDescription()
             cu.executable = "/bin/hostname"
             compute_units.append(cu)
 
-        # ... and add them to the manager. Note that this happens in bulk!
+        # Combine the pilot, the workload and a scheduler via 
+        # a UnitManager.
+        um = sinon.UnitManager(session=session, scheduler="round_robin")
+        um.add_pilots(p1)
         um.submit_units(compute_units)
 
         # Print and return the session id so we can re-connect to it later.
