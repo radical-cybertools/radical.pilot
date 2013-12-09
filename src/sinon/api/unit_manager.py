@@ -308,7 +308,7 @@ class UnitManager(attributes.Attributes) :
 
         if True : ## always use the scheduler for now...
 
-            if  not self._scheduler :
+            if not self._scheduler :
                 raise exceptions.SinonException("Internal error - no unit scheduler")
 
             # the scheduler will return a dictionary of the form:

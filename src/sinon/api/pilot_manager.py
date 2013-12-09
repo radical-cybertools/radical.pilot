@@ -131,17 +131,17 @@ class PilotManager(attributes.Attributes):
                 rcf_content = response.read()
             except urllib2.URLError, err:
                 msg = "Couln't open/download resource configuration file '%s': %s." % (rcf, str(err))
-                raise exceptions.SinonException(msg=msg)
+                raise exceptions.BadParameter(msg=msg)
 
             try:
                 # convert JSON string to dictionary and append
                 rcf_dict = json.loads(rcf_content)
                 for key, val in rcf_dict.iteritems():
                     if key in self._resource_cfgs:
-                        raise SinonException("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
+                        raise exceptions.BadParameter("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
                     self._resource_cfgs[key] = val
             except ValueError, err:
-                raise SinonException("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
+                raise exceptions.BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
 
         self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
 
@@ -175,7 +175,7 @@ class PilotManager(attributes.Attributes):
         ###########################################
 
         if pilot_manager_id not in session._dbs.list_pilot_manager_uids():
-            raise exceptions.SinonException ("PilotManager '%s' not in database." \
+            raise exceptions.BadParameter ("PilotManager with ID'%s' not in database." \
                 % pilot_manager_id)
 
         # Create the object
@@ -200,7 +200,7 @@ class PilotManager(attributes.Attributes):
             * A unique identifier [`string`].
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         return self._uid
 
@@ -219,7 +219,7 @@ class PilotManager(attributes.Attributes):
             * :class:`sinon.SinonException`
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
         
         if not isinstance(pilot_descriptions, list):
             pilot_descriptions = [pilot_descriptions]
@@ -443,7 +443,7 @@ class PilotManager(attributes.Attributes):
             * :class:`sinon.SinonException`
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid Pilot instance.")
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         return self._DB.list_pilot_uids(self._uid)
 
@@ -468,7 +468,7 @@ class PilotManager(attributes.Attributes):
             * :class:`sinon.SinonException`
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
@@ -514,7 +514,7 @@ class PilotManager(attributes.Attributes):
             * :class:`sinon.SinonException`
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         if not isinstance (state, list):
             state = [state]
@@ -558,7 +558,7 @@ class PilotManager(attributes.Attributes):
             * :class:`sinon.SinonException`
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         # now we can send a 'cancel' command to the pilots.
         self._DB.signal_pilots(pilot_manager_id=self._uid, 
