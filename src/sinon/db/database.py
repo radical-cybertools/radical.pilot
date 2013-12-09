@@ -187,11 +187,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        print "PILOT UID: %s" % pilot_uid
-
         cursor = self._w.find({"links.pilot": pilot_uid})
-
-        print "RESULTS %s" % cursor
 
         pilots_json = []
         for obj in cursor:
@@ -298,7 +294,6 @@ class Session():
         if pilot_ids is None:
             # send command to all pilots that are known to the 
             # pilot manager.
-            print "signalling for pmid %s" % pilot_manager_id
             self._p.update(
                 {"links.pilotmanager": pilot_manager_id}, 
                 {"$set": {"command" : cmd}},
