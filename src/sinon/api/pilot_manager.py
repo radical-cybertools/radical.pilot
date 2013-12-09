@@ -200,7 +200,7 @@ class PilotManager(attributes.Attributes):
             * A unique identifier [`string`].
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid Pilot instance.")
+            raise exceptions.SinonException(msg="Invalid object instance.")
 
         return self._uid
 
@@ -219,7 +219,7 @@ class PilotManager(attributes.Attributes):
             * :class:`sinon.SinonException`
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid Pilot instance.")
+            raise exceptions.SinonException(msg="Invalid object instance.")
         
         if not isinstance(pilot_descriptions, list):
             pilot_descriptions = [pilot_descriptions]
@@ -468,7 +468,7 @@ class PilotManager(attributes.Attributes):
             * :class:`sinon.SinonException`
         """
         if not self._uid:
-            raise exceptions.SinonException(msg="Invalid Pilot instance.")
+            raise exceptions.SinonException(msg="Invalid object instance.")
 
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
@@ -513,6 +513,9 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
+        if not self._uid:
+            raise exceptions.SinonException(msg="Invalid object instance.")
+
         if not isinstance (state, list):
             state = [state]
 
@@ -522,26 +525,26 @@ class PilotManager(attributes.Attributes):
         while all_done is False:
 
             all_done = True
-            
+
             pilots_json = self._DB.get_pilots(pilot_manager_id=self)
             for pilot in pilots_json:
                 if pilot['info']['state'] not in state:
                     all_done = False
+                    break # leave for loop
 
-            # all pilots have reached desired state(s)
-            if all_done is True:
-                break
-
-            # satisfy timeout
+            # check timeout
             if (None != timeout) and (timeout <= (time.time () - start_wait)):
                 break
+
+            # wait a bit
+            time.sleep(1)
 
         # done waiting
         return
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, pilot_uids=None):
+    def cancel_pilots(self, pilot_ids=None):
         """Cancels one or more Pilots. 
 
         **Arguments:**
@@ -554,6 +557,9 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
-        pass
+        if not self._uid:
+            raise exceptions.SinonException(msg="Invalid object instance.")
 
-
+        # now we can send a 'cancel' command to the pilots.
+        self._DB.signal_pilots(pilot_manager_id=self._uid, 
+            pilot_ids=pilot_ids, cmd="CANCEL")

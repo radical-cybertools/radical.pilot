@@ -443,17 +443,22 @@ class UnitManager(attributes.Attributes) :
             state = [state]
 
         start_wait = time.time ()
+        all_done   = False
 
-        all_done = False
-        while all_done is not True:
-            for workunit in self._DB.get_workunits(workunit_manager_uid=self.uid):
-                if workunit['info']['state'] in state:
-                    all_done = True
-                else:
+        while all_done is False:
+
+            all_done = True
+
+            for wu_state in self._DB.get_workunit_states(workunit_manager_id=self._uid):
+                if wu_state not in state:
                     all_done = False
-            if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
+                    break # leave for loop
+
+            # check timeout
+            if (None != timeout) and (timeout <= (time.time () - start_wait)) :
                 break
 
+            # wait a bit
             time.sleep(1)
 
         # done waiting
@@ -461,8 +466,14 @@ class UnitManager(attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units (self, uids) :
-        pass
+    def cancel_units (self, uids):
+        """Cancel one or more pilots.
+        """
+        if not isinstance(uids, list):
+            uids = [uids]
 
+        # now we can send a 'cancel' command to the pilot.
+        self._DB.signal_pilots(pilot_manager_id=self, pilot_ids=uids, 
+            cmd="CANCEL")
 
 
