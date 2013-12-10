@@ -1,5 +1,5 @@
 """
-.. module:: sinon.frontend.types
+.. module:: sinon.types
    :platform: Unix
    :synopsis: Type constants.
 

@@ -411,7 +411,7 @@ class ExecWorker(multiprocessing.Process):
                                 launch_method=self._launch_method)
                             self._slots[host][slot].task.update_state(
                                 start_time=datetime.datetime.now(),
-                                exec_loc=host,
+                                exec_loc="node:%s;core:%s" % (host, slot),
                                 state='Running'
                             )
                             update_tasks.append(self._slots[host][slot].task)
@@ -426,7 +426,6 @@ class ExecWorker(multiprocessing.Process):
                             # subprocess is still running
                             pass
                         else:
-                            print "slot %s: %s" % (slot, rc)
                             self._slots[host][slot].close_and_flush_filehandles()
 
                             # update database, set task state and notify.
@@ -475,10 +474,7 @@ class ExecWorker(multiprocessing.Process):
         """Updates the database entries for one or more tasks, inlcuding 
         task state, log, etc.
         """
-        
-
         for task in tasks:
-            print "update task %s - state %s" % (task.uid, task.state)
             self._w.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"info.state"     : task.state,
                       "info.started"   : task.started,
@@ -508,7 +504,7 @@ class Agent(threading.Thread):
 
         # launch method is determined by the execution environment,
         # but can be overridden if the 'launch_method' flag is set 
-        if launch_method == 'AUTO':
+        if launch_method.lower() == "auto":
             self._launch_method = exec_env.launch_method
         else:
             self._launch_method = launch_method
@@ -531,7 +527,6 @@ class Agent(threading.Thread):
         for host in exec_env.nodes:
             if partition_idx >= MAX_EXEC_WORKERS:
                 partition_idx = 0
-            print("index %s: %s", partition_idx,  host)
             if len(self._host_partitions) <= partition_idx:
                 self._host_partitions.append([host])
             else:
@@ -572,6 +567,13 @@ class Agent(threading.Thread):
     def run(self):
         """Starts the thread when Thread.start() is called.
         """
+        # first order of business: set the start time and state of the pilot
+        self._log.info("Agent started. Database updated.")
+        self._p.update(
+            {"_id": ObjectId(self._pilot_id)}, 
+            {"$set": {"info.state"     : "RUNNING",
+                      "info.started"   : datetime.datetime.now()}})
+
         while not self._terminate.isSet():
 
             # Check the workers periodically. If they have died, we 
@@ -586,8 +588,17 @@ class Agent(threading.Thread):
             # get the actual pilot entries for them and remove them from 
             # the wu_queue. 
             try: 
-                # Check the pilot's workunit queue
                 p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
+
+                # Check if there's a command waiting
+                command = p_cursor[0]['command']
+                if command is not None:
+                    self._log.info("Received new command: %s" % command)
+                    if command.lower() == "cancel":
+                        # if we receive 'cancel', we terminate the loop.
+                        break
+
+                # Check the pilot's workunit queue
                 new_wu_ids = p_cursor[0]['wu_queue']
 
                 # There are new work units in the wu_queue on the database.
@@ -613,9 +624,18 @@ class Agent(threading.Thread):
                                    {"$pullAll": { "wu_queue": new_wu_ids}})
 
             except Exception, ex:
-                print "MongoDB error: %s" % ex
+                self._log.error("MongoDB error while checking for new work units: %s" % ex)
+                break
 
             time.sleep(1)
+
+        # last order of business: set the start time and state of the pilot
+        self._p.update(
+            {"_id": ObjectId(self._pilot_id)}, 
+            {"$set": {"info.state"     : "DONE",
+                      "info.finished"   : datetime.datetime.now()}})
+        self._log.info("Agent stopped. Database updated.")
+
 
 
 #-----------------------------------------------------------------------------
@@ -633,7 +653,7 @@ class _Process(subprocess.Popen):
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh or aprun
-        if launch_method == "LOCAL":
+        if launch_method.lower() == "local":
             pass
 
         # task executable and arguments
@@ -770,7 +790,8 @@ if __name__ == "__main__":
         agent.start()
         agent.join()
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
+        print "INTERRUPPTTTTTTTTTTTTTTTTT"
         agent.stop()
 
 

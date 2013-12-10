@@ -9,17 +9,18 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.frontend.exceptions import SinonException
 
-import sinon.frontend.states as states
-import sinon.frontend.attributes as attributes
+import sinon.api.states     as states
+import sinon.api.attributes as attributes
+import sinon.api.exceptions as exceptions
 
-from sinon.frontend.compute_pilot import ComputePilot
-
+from bson.objectid import ObjectId
 from radical.utils import which
+from sinon.api.compute_pilot import ComputePilot
 
 import os
 import saga
+import time
 import json
 import urllib2
 import datetime
@@ -99,8 +100,8 @@ class PilotManager(attributes.Attributes):
         attributes.Attributes.__init__(self)
 
         # set attribute interface properties
-        self._attributes_extensible  (False)
-        self._attributes_camelcasing (True)
+        self._attributes_extensible(False)
+        self._attributes_camelcasing(True)
 
         # The UID attributes
         self._attributes_register(UID, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
@@ -129,17 +130,18 @@ class PilotManager(attributes.Attributes):
                 response = urllib2.urlopen(rcf)
                 rcf_content = response.read()
             except urllib2.URLError, err:
-                raise SinonException("Couln't open/download resource configuration file '%s': %s." % (rcf, str(err)))
+                msg = "Couln't open/download resource configuration file '%s': %s." % (rcf, str(err))
+                raise exceptions.BadParameter(msg=msg)
 
             try:
                 # convert JSON string to dictionary and append
                 rcf_dict = json.loads(rcf_content)
                 for key, val in rcf_dict.iteritems():
                     if key in self._resource_cfgs:
-                        raise SinonException("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
+                        raise exceptions.BadParameter("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
                     self._resource_cfgs[key] = val
             except ValueError, err:
-                raise SinonException("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
+                raise exceptions.BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
 
         self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
 
@@ -173,13 +175,16 @@ class PilotManager(attributes.Attributes):
         ###########################################
 
         if pilot_manager_id not in session._dbs.list_pilot_manager_uids():
-            raise LookupError ("PilotManager '%s' not in database." \
-                % pilot_manager_uid)
+            raise exceptions.BadParameter ("PilotManager with ID'%s' not in database." \
+                % pilot_manager_id)
 
+        # Create the object
         obj = cls(session=session, resource_configurations="~=RECON=~")
-        obj._uid = pilot_manager_id
+        obj._uid           = pilot_manager_id
+        obj._DB            = session._dbs
         obj._resource_cfgs = None # TODO: reconnect
 
+        # Return the object
         return obj
 
     #---------------------------------------------------------------------------
@@ -194,7 +199,28 @@ class PilotManager(attributes.Attributes):
 
             * A unique identifier [`string`].
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         return self._uid
+
+    # --------------------------------------------------------------------------
+    #
+    def as_dict(self):
+        """Returns information about the pilot manager as a Python dictionary.
+        """
+        info_dict = {
+            'type' : 'PilotManager', 
+            'id'   : self._get_uid_priv()
+        }
+        return info_dict
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the pilot manager.
+        """
+        return str(self.as_dict())
 
     # --------------------------------------------------------------------------
     #
@@ -210,6 +236,8 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
         
         if not isinstance(pilot_descriptions, list):
             pilot_descriptions = [pilot_descriptions]
@@ -222,16 +250,17 @@ class PilotManager(attributes.Attributes):
         # add the submission errror  which we would have thrown as an exception
         # otherwise, to the pilot's  log.
 
-        from bson.objectid import ObjectId
-
-        # implicit -> list -> dict conversion
         pilot_description_dict = {}
         for pd in pilot_descriptions:
             pilot_description_dict[ObjectId()] = {
-                'description': pd, 
-                'info': {'state': None, 
-                         'submitted': None,
-                         'log': []}
+                'description' : pd, 
+                'command'     : None, 
+                'info'        : {'state'     : None, 
+                                 'submitted' : None,
+                                 'started'   : None,
+                                 'finished'  : None,
+                                 'log'       : []
+                                }
             }
 
         # create the pilot objects, launch the actual pilots via saga
@@ -242,6 +271,7 @@ class PilotManager(attributes.Attributes):
             resource_key = pilot_description['description'].resource
             number_cores = pilot_description['description'].cores
             run_time     = pilot_description['description'].run_time
+            queue        = pilot_description['description'].queue
 
             try_submit = True
 
@@ -349,6 +379,12 @@ class PilotManager(attributes.Attributes):
                                             "-p", str(pilot_id),  # pilot uid
                                             "-C"]                 # clean up by default
 
+                    # process the 'queue' attribute
+                    if queue is not None:
+                        jd.queue = queue
+                    elif 'queue' in resource_cfg:
+                        jd.queue = resource_cfg['queue']
+
                     # if resource config defines 'pre_bootstrap' commands,
                     # we add those to the argument list
                     if 'pre_bootstrap' in resource_cfg:
@@ -401,7 +437,7 @@ class PilotManager(attributes.Attributes):
             pilots.append(pilot)
 
         # bulk-create database entries
-        self._session._dbs.insert_pilots(pilot_manager_uid=self.uid, 
+        self._DB.insert_pilots(pilot_manager_uid=self._uid, 
             pilot_descriptions=pilot_description_dict)
 
         # implicit return value conversion
@@ -413,8 +449,8 @@ class PilotManager(attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """Lists the unique identifiers of all :class:`sinon.ComputePilot` instances 
-        associated with this PilotManager
+        """Lists the unique identifiers of all :class:`sinon.ComputePilot` 
+        instances associated with this PilotManager
 
         **Returns:**
 
@@ -424,7 +460,10 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
-        return self._session._dbs.list_pilot_uids(self._uid)
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
+        return self._DB.list_pilot_uids(self._uid)
 
     # --------------------------------------------------------------------------
     #
@@ -446,15 +485,19 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
-        if not isinstance(pilot_ids, list):
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
+        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
             pilot_ids = [pilot_ids]
 
-        pilots = Pilot._get(pilot_ids=pilot_ids, pilot_manager_obj=self)
+        pilots = ComputePilot._get(pilot_ids=pilot_ids, pilot_manager_obj=self)
         return pilots
 
     # --------------------------------------------------------------------------
     #
-    def wait_pilots(self, pilot_ids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=-1.0):
+    def wait_pilots(self, pilot_ids=None, 
+        state=[states.DONE, states.FAILED, states.CANCELED], timeout=-1.0):
         """Returns when one or more :class:`sinon.ComputePilots` reach a 
         specific state or when an optional timeout is reached.
 
@@ -488,12 +531,41 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         if not isinstance (state, list):
             state = [state]
 
+        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
+            pilot_ids = [pilot_ids]
+
+        start_wait = time.time()
+        all_done   = False
+
+        while all_done is False:
+
+            all_done = True
+
+            pilots_json = self._DB.get_pilots(pilot_manager_id=self)
+            for pilot in pilots_json:
+                if pilot['info']['state'] not in state:
+                    all_done = False
+                    break # leave for loop
+
+            # check timeout
+            if (None != timeout) and (timeout <= (time.time () - start_wait)):
+                break
+
+            # wait a bit
+            time.sleep(1)
+
+        # done waiting
+        return
+
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, pilot_uids=None):
+    def cancel_pilots(self, pilot_ids=None):
         """Cancels one or more Pilots. 
 
         **Arguments:**
@@ -506,6 +578,12 @@ class PilotManager(attributes.Attributes):
 
             * :class:`sinon.SinonException`
         """
-        pass
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
 
+        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
+            pilot_ids = [pilot_ids]
 
+        # now we can send a 'cancel' command to the pilots.
+        self._DB.signal_pilots(pilot_manager_id=self._uid, 
+            pilot_ids=pilot_ids, cmd="CANCEL")

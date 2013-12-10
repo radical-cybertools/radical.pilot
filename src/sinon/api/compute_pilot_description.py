@@ -9,7 +9,7 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sinon.frontend.attributes  as attributes
+import sinon.api.attributes  as attributes
 
 # ------------------------------------------------------------------------------
 # Attribute description keys

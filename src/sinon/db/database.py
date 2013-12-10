@@ -187,11 +187,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        print "PILOT UID: %s" % pilot_uid
-
         cursor = self._w.find({"links.pilot": pilot_uid})
-
-        print "RESULTS %s" % cursor
 
         pilots_json = []
         for obj in cursor:
@@ -220,6 +216,7 @@ class Session():
                 "_id"           : pilot_id,
                 "description"   : pilot_desc['description'].as_dict(),
                 "wu_queue"      : [],
+                "command"       : None,
                 "info"          : {
                     "submitted" : pilot_desc['info']['submitted'],
                     "started"   : None,
@@ -279,12 +276,39 @@ class Session():
                 pilot_oid.append(ObjectId(pid))
             cursor = self._p.find({"_id": {"$in": pilot_oid},
                                    "links.pilotmanager": pilot_manager_id})
-        # cursor -> dict
+
         pilots_json = []
         for obj in cursor:
             pilots_json.append(obj)
 
         return pilots_json
+
+    #---------------------------------------------------------------------------
+    #
+    def signal_pilots(self, pilot_manager_id, pilot_ids, cmd):
+        """ Send a signal to one or more pilots.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        if pilot_ids is None:
+            # send command to all pilots that are known to the 
+            # pilot manager.
+            self._p.update(
+                {"links.pilotmanager": pilot_manager_id}, 
+                {"$set": {"command" : cmd}},
+                multi=True
+            )
+        else:
+            if not isinstance(pilot_ids, list):
+                pilot_ids = [pilot_ids]
+            # send command to selected pilots if pilot_ids are 
+            # specified 
+            self._p.update(
+                {"_id": {"$in":pilot_ids} },
+                {"$set": {"command" : cmd}},
+                multi=True
+            )
 
     #---------------------------------------------------------------------------
     #
@@ -295,20 +319,58 @@ class Session():
             raise Exception("No active session.")
 
         if workunit_uids == None:
-            cursor = self._w.find({"links.unitmanager": workunit_manager_uid})
+            cursor = self._w.find(
+                {"links.unitmanager": workunit_manager_uid}
+            )
+
         else:
             # convert ids to object ids
             workunit_oid = []
             for wid in workunit_uids:
                 workunit_oid.append(ObjectId(wid))
-            cursor = self._w.find({"_id": {"$in": workunit_oid},
-                                   "links.unitmanager": workunit_manager_uid})
-        # cursor -> dict
+
+            cursor = self._w.find(
+                {"_id": {"$in": workunit_oid},
+                 "links.unitmanager": workunit_manager_uid}
+            )
+
         workunits_json = []
         for obj in cursor:
             workunits_json.append(obj)
 
         return workunits_json
+
+    #---------------------------------------------------------------------------
+    #
+    def get_workunit_states(self, workunit_manager_id, workunit_uids=None):
+        """ Get yerself a bunch of workunit
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        if workunit_uids == None:
+            cursor = self._w.find(
+                {"links.unitmanager": workunit_manager_id},
+                {"info.state"}
+            )
+
+        else:
+            # convert ids to object ids
+            workunit_oid = []
+            for wid in workunit_uids:
+                workunit_oid.append(ObjectId(wid))
+
+            cursor = self._w.find(
+                {"_id": {"$in": workunit_oid},
+                 "links.unitmanager": workunit_manager_id},
+                {"info.state"}
+            )
+
+        workunit_states = []
+        for obj in cursor:
+            workunit_states.append(obj['info']['state'])
+
+        return workunit_states
 
     #---------------------------------------------------------------------------
     #
@@ -320,11 +382,21 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        unit_manager_json = {"data" : unit_manager_data}
-        result = self._um.insert(unit_manager_json)
+        result = self._um.insert(unit_manager_data)
 
         # return the object id as a string
         return str(result)
+
+    #---------------------------------------------------------------------------
+    #
+    def get_unit_manager(self, unit_manager_id):
+        """ Get a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._um.find({"_id": ObjectId(unit_manager_id)})
+        return cursor[0]
 
     #---------------------------------------------------------------------------
     #
