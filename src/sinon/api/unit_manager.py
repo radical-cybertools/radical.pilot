@@ -18,6 +18,8 @@ import sinon.api.states as states
 import sinon.api.exceptions as exceptions
 import sinon.api.attributes as attributes
 
+from sinon.api.compute_unit import ComputeUnit
+
 import time
 import datetime
 
@@ -391,7 +393,8 @@ class UnitManager(attributes.Attributes) :
                                             "no such unit description %s" % ud)
 
                     # looks ok -- add the unit as submission candidate
-                    submission_dict[ObjectId()] = {
+                    unit_id = ObjectId()
+                    submission_dict[unit_id] = {
                         'description': ud, 
                         'info': {'state': states.PENDING, 
                                  'submitted': datetime.datetime.now(),
@@ -401,16 +404,21 @@ class UnitManager(attributes.Attributes) :
                     # this unit is not unscheduled anumore...
                     unscheduled.remove (ud)
 
-                    ## FIXME:
-                    ## u = sinon.ComputeUnit (ud)
-                    ## units.append (u)
-                    units.append (ud)
-
                 # done iterating over all units, for this plot -- submit bulk 
                 # for this pilot
-                self._DB.insert_workunits(pilot_id=pilot_id, 
+                self._DB.insert_workunits(
+                    pilot_id=pilot_id, 
                     unit_manager_uid=self.uid,
-                    unit_descriptions=submission_dict)
+                    unit_descriptions=submission_dict
+                )
+
+                for unit_id, unit_desc in submission_dict.iteritems():
+                    compute_unit = ComputeUnit._create(
+                        unit_id=str(unit_id),
+                        unit_description=unit_desc['description'], 
+                        unit_manager_obj=self
+                    )
+                    units.append(compute_unit)
 
             # the schedule provided by the scheduler is now evaluated -- check
             # that we didn't lose/gain any units
@@ -420,24 +428,28 @@ class UnitManager(attributes.Attributes) :
             # keep unscheduled units around for later, out-of-band scheduling
             self._unscheduled_units = unscheduled
 
-            # and return scheduled units as appropriate
-            if isinstance(unit_descriptions, list): 
-                return units 
-            elif len(units): 
+            if len(units) == 1: 
                 return units[0]
             else: 
-                return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_unit (self, uids) :
-        pass
-
+                return units
 
     # --------------------------------------------------------------------------
     #
-    def wait_units(self, unit_uids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
+    def get_units(self, unit_ids=None):
+        """Returns one or more compute units.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
+        if (not isinstance(unit_ids, list)) and (unit_ids is not None):
+            unit_ids = [unit_ids]
+
+        pilots = ComputeUnit._get(unit_ids=unit_ids, unit_manager_obj=self)
+        return pilots
+
+    # --------------------------------------------------------------------------
+    #
+    def wait_units(self, unit_ids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
         """Returns when one or more :class:`sinon.ComputeUnits` reach a 
         specific state. 
 
@@ -477,8 +489,8 @@ class UnitManager(attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        if not isinstance (state, list):
-            state = [state]
+        if (not isinstance(unit_ids, list)) and (unit_ids is not None):
+            unit_ids = [unit_ids]
 
         start_wait = time.time ()
         all_done   = False
@@ -504,17 +516,15 @@ class UnitManager(attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units (self, uids):
+    def cancel_units (self, unit_ids=None):
         """Cancel one or more pilots.
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        if not isinstance(uids, list):
-            uids = [uids]
+        if (not isinstance(unit_ids, list)) and (unit_ids is not None):
+            unit_ids = [unit_ids]
 
-        # now we can send a 'cancel' command to the pilot.
-        self._DB.signal_pilots(pilot_manager_id=self, pilot_ids=uids, 
-            cmd="CANCEL")
+        raise Exception("Not implemented")
 
 

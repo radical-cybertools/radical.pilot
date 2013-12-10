@@ -21,7 +21,7 @@ class PLUGIN_CLASS (object) :
     #
     def __init__ (self) :
 
-        print "loading the round-robin unit plugin"
+        #print "loading the round-robin unit plugin"
         self._manager = None
         self._idx     = 0
 
@@ -47,7 +47,7 @@ class PLUGIN_CLASS (object) :
         # simply not be listed for any pilot.  The UM needs to make sure
         # that no UD from the original list is left untreated, eventually.
 
-        print "round-robin scheduling of %s units" % len(unit_descriptions)
+        #print "round-robin scheduling of %s units" % len(unit_descriptions)
 
         if  not self._manager :
             print "WARNING: unit scheduler is not initialized"
