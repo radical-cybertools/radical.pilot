@@ -11,7 +11,7 @@ __license__   = "MIT"
 
 import sinon.api.states as states
 import sinon.api.attributes as attributes
-import sinon.api.excetions as exceptions
+import sinon.api.exceptions as exceptions
 
 import time
 
@@ -42,6 +42,10 @@ class ComputeUnit(attributes.Attributes):
         # 'static' members
         self._uid = None
         self._description = None
+        self._manager = None
+
+        # database handle
+        self._DB = None
 
         attributes.Attributes.__init__(self)
 
@@ -76,6 +80,72 @@ class ComputeUnit(attributes.Attributes):
         # The stop time
         self._attributes_register(STOP_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(STOP_TIME, self._get_stop_time_priv)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod 
+    def _create (unit_manager_obj, unit_id, unit_description):
+        """ PRIVATE: Create a new compute unit.
+        """
+        # create and return pilot object
+        computeunit = ComputeUnit()
+
+        computeunit._uid         = unit_id
+        computeunit._description = unit_description
+        computeunit._manager     = unit_manager_obj
+
+        computeunit._DB          = unit_manager_obj._DB
+
+        return computeunit
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod 
+    def _get (unit_manager_obj, unit_ids) :
+        """ PRIVATE: Get one or more pilot via their UIDs.
+        """
+        # create database entry
+        units_json = unit_manager_obj._DB.get_workunits(
+            workunit_manager_uid=unit_manager_obj.uid, 
+            workunit_uids=unit_ids
+        )
+        # create and return pilot objects
+        computeunits = []
+
+        for u in units_json:
+            computeunit = ComputeUnit()
+            computeunit._uid = str(u['_id'])
+            computeunit._description = u['description']
+            computeunit._manager = unit_manager_obj
+
+            computeunit._DB = unit_manager_obj._DB
+        
+            computeunits.append(computeunit)
+
+        return computeunits
+
+    # --------------------------------------------------------------------------
+    #
+    def as_dict(self):
+        """Returns information about the comnpute unit as a Python dictionary.
+        """
+        info_dict = {
+            'type'            : 'ComputeUnit', 
+            'id'              : self._get_uid_priv(), 
+            'state'           : self._get_state_priv(),
+ #           'submission_time' : self._get_submission_time_priv(), 
+ #           'start_time'      : self._get_start_time_priv(), 
+ #           'stop_time'       : self._get_stop_time_priv()
+        }
+        return info_dict
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the compute unit.
+        """
+        return str(self.as_dict())
 
 
     # --------------------------------------------------------------------------
@@ -119,10 +189,13 @@ class ComputeUnit(attributes.Attributes):
         if not self._uid:
             raise exceptions.SinonException("Invalid Compute Unit instance.")
 
-        # state is oviously dynamic and changes over the 
-        # lifetime of a pilot, hence we need to make a call to the 
-        # database layer (db layer might cache this call).
-        pass
+        # state is dynamic and changes over the  lifetime of a pilot, hence we
+        # need to make a call to the  database layer (db layer might cache
+        # this call).
+        return self._DB.get_workunit_states(
+            workunit_manager_id=self._manager.uid, 
+            workunit_uids=[self.uid]
+        )
 
     # --------------------------------------------------------------------------
     #
