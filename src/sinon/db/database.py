@@ -276,7 +276,7 @@ class Session():
                 pilot_oid.append(ObjectId(pid))
             cursor = self._p.find({"_id": {"$in": pilot_oid},
                                    "links.pilotmanager": pilot_manager_id})
-        # cursor -> dict
+
         pilots_json = []
         for obj in cursor:
             pilots_json.append(obj)
@@ -382,11 +382,21 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        unit_manager_json = {"data" : unit_manager_data}
-        result = self._um.insert(unit_manager_json)
+        result = self._um.insert(unit_manager_data)
 
         # return the object id as a string
         return str(result)
+
+    #---------------------------------------------------------------------------
+    #
+    def get_unit_manager(self, unit_manager_id):
+        """ Get a unit manager.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._um.find({"_id": ObjectId(unit_manager_id)})
+        return cursor[0]
 
     #---------------------------------------------------------------------------
     #

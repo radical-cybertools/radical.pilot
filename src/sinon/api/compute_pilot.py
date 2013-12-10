@@ -289,6 +289,9 @@ class ComputePilot (attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState("Invalid object instance.")
 
+        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+                                          pilot_ids=[self.uid])
+
         # make sure the result makes sense
         if len(pilots_json) != 1: 
             msg = "Couldn't find pilot with UID '%s'" % self.uid
@@ -298,10 +301,44 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def __str__(self):
-        """Returns string representation of this pilot.
+    def _get_resource_priv(self):
+        """ Returns the time the pilot was stopped. 
         """
-        return str({'type': 'ComputePilot', 'id': self.uid})
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid object instance.")
+
+        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+                                          pilot_ids=[self.uid])
+
+        # make sure the result makes sense
+        if len(pilots_json) != 1: 
+            msg = "Couldn't find pilot with UID '%s'" % self.uid
+            raise exceptions.BadParameter(msg=msg)
+
+        return pilots_json[0]['description']['Resource']
+
+    # --------------------------------------------------------------------------
+    #
+    def as_dict(self):
+        """Returns information about the pilot as a Python dictionary.
+        """
+        info_dict = {
+            'type'            : 'ComputePilot', 
+            'id'              : self._get_uid_priv(), 
+            'state'           : self._get_state_priv(),
+            'resource'        : self._get_resource_priv(),
+ #           'submission_time' : self._get_submission_time_priv(), 
+ #           'start_time'      : self._get_start_time_priv(), 
+ #           'stop_time'       : self._get_stop_time_priv()
+        }
+        return info_dict
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the pilot.
+        """
+        return str(self.as_dict())
 
     # --------------------------------------------------------------------------
     #

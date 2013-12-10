@@ -206,6 +206,24 @@ class PilotManager(attributes.Attributes):
 
     # --------------------------------------------------------------------------
     #
+    def as_dict(self):
+        """Returns information about the pilot manager as a Python dictionary.
+        """
+        info_dict = {
+            'type' : 'PilotManager', 
+            'id'   : self._get_uid_priv()
+        }
+        return info_dict
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the pilot manager.
+        """
+        return str(self.as_dict())
+
+    # --------------------------------------------------------------------------
+    #
     def submit_pilots(self, pilot_descriptions):
         """Submits a new :class:`sinon.ComputePilot` to a resource. 
 
@@ -470,7 +488,7 @@ class PilotManager(attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        if not isinstance(pilot_ids, list):
+        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
             pilot_ids = [pilot_ids]
 
         pilots = ComputePilot._get(pilot_ids=pilot_ids, pilot_manager_obj=self)
@@ -519,6 +537,9 @@ class PilotManager(attributes.Attributes):
         if not isinstance (state, list):
             state = [state]
 
+        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
+            pilot_ids = [pilot_ids]
+
         start_wait = time.time()
         all_done   = False
 
@@ -559,6 +580,9 @@ class PilotManager(attributes.Attributes):
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
+
+        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
+            pilot_ids = [pilot_ids]
 
         # now we can send a 'cancel' command to the pilots.
         self._DB.signal_pilots(pilot_manager_id=self._uid, 

@@ -106,20 +106,12 @@ class UnitManager(attributes.Attributes) :
 
         pm = ru.PluginManager ('sinon.api')
 
-        if scheduler == "~+=RECON=+~":
-            # When we get the "~RECON~" keyword as scheduler, we were called 
-            # from the 'get()' class method
 
-            # TODO: get 'scheduler' name from MongoDB
-            #self._scheduler = pm.load('unit_scheduler',  scheduler)
-            #self._scheduler.init(self)
-            pass
+        self._scheduler = pm.load('unit_scheduler', scheduler)
+        self._scheduler.init(self)
 
-        else:
-            self._uid = self._DB.insert_unit_manager(unit_manager_data={})
-
-            self._scheduler = pm.load('unit_scheduler', scheduler)
-            self._scheduler.init(self)
+        self._uid = self._DB.insert_unit_manager(
+            unit_manager_data={'scheduler' : scheduler})
 
     # --------------------------------------------------------------------------
     #
@@ -150,9 +142,11 @@ class UnitManager(attributes.Attributes) :
               `unit_manager_uid` doesn't exist in the database.
         """
         if unit_manager_id not in session._dbs.list_unit_manager_uids():
-            raise LookupError ("UnitManager '%s' not in database." % unit_manager_id)
+            raise exceptions.BadParameter("UnitManager '%s' not in database." % unit_manager_id)
 
-        obj = cls(session=session, scheduler="~+=RECON=+~")
+        um_data = session._dbs.get_unit_manager(unit_manager_id)
+
+        obj = cls(session=session, scheduler=um_data['scheduler'])
         obj._uid = unit_manager_id
 
         return obj
@@ -162,6 +156,9 @@ class UnitManager(attributes.Attributes) :
     def _get_uid_priv(self):
         """Returns the unit manager id.
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         return self._uid
 
     #---------------------------------------------------------------------------
@@ -169,14 +166,39 @@ class UnitManager(attributes.Attributes) :
     def _get_scheduler_priv(self):
         """Returns the scheduler name. 
         """
-        raise Exception("Not implemented")
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
+        return self._scheduler
 
     #---------------------------------------------------------------------------
     #
     def _get_scheduler_details_priv(self):
         """Returns the scheduler details, e.g., the scheduler logs. 
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         raise Exception("Not implemented")
+
+    # --------------------------------------------------------------------------
+    #
+    def as_dict(self):
+        """Returns information about the pilot manager as a Python dictionary.
+        """
+        info_dict = {
+            'type'      : 'UnitManagerManager', 
+            'id'        : self._get_uid_priv(),
+            'scheduler' : self._get_scheduler_priv()
+        }
+        return info_dict
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the pilot manager.
+        """
+        return str(self.as_dict())
 
     # --------------------------------------------------------------------------
     #
@@ -193,6 +215,9 @@ class UnitManager(attributes.Attributes) :
 
             * :class:`sinon.SinonException`
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         if not isinstance (pilots, list):
             pilots = [pilots]
 
@@ -225,6 +250,8 @@ class UnitManager(attributes.Attributes) :
 
             * :class:`sinon.SinonException`
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         return self._DB.unit_manager_list_pilots(unit_manager_uid=self.uid)
 
@@ -248,6 +275,9 @@ class UnitManager(attributes.Attributes) :
 
             * :class:`sinon.SinonException`
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         if not isinstance (pilot_ids, list):
             pilot_ids = [pilot_ids]
 
@@ -265,6 +295,9 @@ class UnitManager(attributes.Attributes) :
               * A list of :class:`sinon.ComputeUnit` UIDs [`string`].
 
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
 
     # --------------------------------------------------------------------------
@@ -272,6 +305,8 @@ class UnitManager(attributes.Attributes) :
     def submit_units(self, unit_descriptions) :
         """Docstring!
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         from bson.objectid import ObjectId
 
@@ -439,6 +474,9 @@ class UnitManager(attributes.Attributes) :
 
             * :class:`sinon.SinonException`
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         if not isinstance (state, list):
             state = [state]
 
@@ -469,6 +507,9 @@ class UnitManager(attributes.Attributes) :
     def cancel_units (self, uids):
         """Cancel one or more pilots.
         """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
         if not isinstance(uids, list):
             uids = [uids]
 

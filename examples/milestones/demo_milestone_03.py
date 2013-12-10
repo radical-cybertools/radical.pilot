@@ -68,11 +68,22 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
     try:
         # Re-connect to the previously created session via its ID.
         session = sinon.Session(session_uid=session_id, database_url=DBURL)
-        print "* Reconnected to session with session ID %s" % session.uid
+        print "  Session: %s" % str(session)
 
+        # Re-connect to the pilot manager and print some information about it
         pmgr = sinon.PilotManager.get(session=session, pilot_manager_id=pmgr_id)
-        #umgr = sinon.UnitManager.get(session=session, unit_manager_id=umgr_id)
+        print "  |\n  |- Pilot Manager: %s " % str(pmgr) 
 
+        # Get the pilots from the pilot manager and print some information about them
+        pilots = pmgr.get_pilots()
+        for pilot in pilots:
+            print "  |  |- Pilot: %s " % str(pilot)
+
+        # Re-connect to the unit manager and print some information about it
+        umgr = sinon.UnitManager.get(session=session, unit_manager_id=umgr_id)
+        print "  |\n  |- Unit Manager: %s " % str(umgr)
+
+        
         pmgr.cancel_pilots()
 
     except sinon.SinonException, ex:
@@ -84,7 +95,7 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
 if __name__ == "__main__":
     session_id, pmgr_id, umgr_id = demo_milestone_03_part_1()
 
-    time.sleep(30)
+    time.sleep(1)
 
     demo_milestone_03_part_2(session_id, pmgr_id, umgr_id)
     
