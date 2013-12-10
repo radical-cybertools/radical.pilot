@@ -431,13 +431,18 @@ class UnitManager(attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def get_unit (self, uids) :
-        pass
+    def get_units(self, unit_ids=None):
+        """Returns one or more compute units.
+        """
+        if (not isinstance(unit_ids, list)) and (unit_ids is not None):
+            unit_ids = [unit_ids]
+
+        return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
 
 
     # --------------------------------------------------------------------------
     #
-    def wait_units(self, unit_uids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
+    def wait_units(self, unit_ids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
         """Returns when one or more :class:`sinon.ComputeUnits` reach a 
         specific state. 
 
@@ -477,8 +482,8 @@ class UnitManager(attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        if not isinstance (state, list):
-            state = [state]
+        if (not isinstance(unit_ids, list)) and (unit_ids is not None):
+            unit_ids = [unit_ids]
 
         start_wait = time.time ()
         all_done   = False
@@ -504,17 +509,15 @@ class UnitManager(attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units (self, uids):
+    def cancel_units (self, unit_ids=None):
         """Cancel one or more pilots.
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        if not isinstance(uids, list):
-            uids = [uids]
+        if (not isinstance(unit_ids, list)) and (unit_ids is not None):
+            unit_ids = [unit_ids]
 
-        # now we can send a 'cancel' command to the pilot.
-        self._DB.signal_pilots(pilot_manager_id=self, pilot_ids=uids, 
-            cmd="CANCEL")
+        raise Exception("Not implemented")
 
 
