@@ -411,7 +411,7 @@ class ExecWorker(multiprocessing.Process):
                                 launch_method=self._launch_method)
                             self._slots[host][slot].task.update_state(
                                 start_time=datetime.datetime.now(),
-                                exec_loc=host,
+                                exec_loc="node:%s;core:%s" % (host, slot),
                                 state='Running'
                             )
                             update_tasks.append(self._slots[host][slot].task)
