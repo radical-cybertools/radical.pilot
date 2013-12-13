@@ -62,7 +62,7 @@ class Test_PilotManager(unittest.TestCase):
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert session.list_pilot_managers() == [pm.uid], "Wrong list of pilot managers"
 
-        pm_r = sinon.PilotManager.get(session=session, pilot_manager_uid=pm.uid)
+        pm_r = session.get_pilot_managers(pilot_manager_ids=pm.uid)
 
         assert session.list_pilot_managers() == [pm_r.uid], "Wrong list of pilot managers"
 
@@ -81,10 +81,12 @@ class Test_PilotManager(unittest.TestCase):
         pm2 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
-        for i in range(0,10):
+        for i in range(0, 2):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource = "localhost"
-            cpd.cores = 1
+            cpd.resource          = "localhost"
+            cpd.cores             = 1
+            cpd.run_time          = 1
+            cpd.working_directory = "/tmp/sinon.unit-tests"
 
             pm1.submit_pilots(pilot_descriptions=cpd)
             pm2.submit_pilots(pilot_descriptions=cpd)
@@ -105,16 +107,18 @@ class Test_PilotManager(unittest.TestCase):
         pm2 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
-        for i in range(0,10):
+        for i in range(0, 2):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource = "localhost"
-            cpd.cores = 1
+            cpd.resource          = "localhost"
+            cpd.cores             = 1
+            cpd.run_time          = 1
+            cpd.working_directory = "/tmp/sinon.unit-tests"
 
             pm1.submit_pilots(pilot_descriptions=cpd)
             pm2.submit_pilots(pilot_descriptions=cpd)
 
-        pm1_r = sinon.PilotManager.get(session=session, pilot_manager_uid=pm1.uid)
-        pm2_r = sinon.PilotManager.get(session=session, pilot_manager_uid=pm2.uid)
+        pm1_r = session.get_pilot_managers(pilot_manager_ids=pm1.uid)
+        pm2_r = session.get_pilot_managers(pilot_manager_ids=pm2.uid)
 
         assert len(pm1.list_pilots()) == 10, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 10, "Wrong number of pilots returned."
@@ -133,10 +137,12 @@ class Test_PilotManager(unittest.TestCase):
         pm1_pilot_uids = []
         pm2_pilot_uids = []
 
-        for i in range(0, 10):
+        for i in range(0, 2):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource = "localhost"
-            cpd.cores = 1
+            cpd.resource          = "localhost"
+            cpd.cores             = 1
+            cpd.run_time          = 1
+            cpd.working_directory = "/tmp/sinon.unit-tests"
 
             pilot_pm1 = pm1.submit_pilots(pilot_descriptions=cpd)
             pm1_pilot_uids.append(pilot_pm1.uid)

@@ -44,11 +44,7 @@ def get_data(logger, session_id, database_url, database_name):
 
         # ------------------------------------------------------------
         # PILOTS
-        pmgrs = []
         for pmgr in session.get_pilot_managers():
-            pmgrs.append(pmgr)
-
-        for pmgr in pmgrs:
             for pilot in pmgr.get_pilots():
                 logger.info("Found pilot: %s" % pilot)
 
@@ -68,15 +64,7 @@ def get_data(logger, session_id, database_url, database_name):
 
         # ------------------------------------------------------------
         # TASKS
-        umgrs = []
-
         for umgr in session.get_unit_managers():
-            umgrs.append(umgr)
-
-        print umgrs
-        sys.exit(-1)
-
-        for umgr in umgrs:
             tasks = umgr.get_units()
             logger.info("Found %s compute units." % len(tasks))
             for task in tasks:

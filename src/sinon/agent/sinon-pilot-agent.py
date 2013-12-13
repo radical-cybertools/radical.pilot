@@ -29,6 +29,11 @@ from bson.objectid import ObjectId
 FREE             = None # just an alias
 MAX_EXEC_WORKERS = 8    # max number of worker processes
 
+LAUNCH_METHOD_MPIRUN = 'MPIRUN'
+LAUNCH_METHOD_APRUN  = 'APRUN'
+LAUNCH_METHOD_SSH    = 'SSH'
+LAUNCH_METHOD_LOCAL  = 'LOCAL'
+
 #-----------------------------------------------------------------------------
 #
 def which(program):
@@ -77,13 +82,17 @@ class ExecutionEnvironment(object):
         # by passing the '--launch-method' parameter to the agent.
 
         if eenv._aprun_location is not None:
-            eenv._launch_method = "APRUN"
+            eenv._launch_method = LAUNCH_METHOD_APRUN
+            eenv._launch_command = eenv._aprun_location
         elif eenv._mpirun_location is not None:
-            eenv._launch_method = "MPIRUN"
+            eenv._launch_method = LAUNCH_METHOD_MPIRUN
+            eenv._launch_command = eenv._mpirun_location
         elif eenv._ssh_location is not None:
-            eenv._launch_method = "SSH"
+            eenv._launch_method = LAUNCH_METHOD_SSH
+            eenv._launch_command = eenv._ssh_location
         else:
-            eenv._launch_method = "LOCAL"
+            eenv._launch_method = LAUNCH_METHOD_LOCAL
+            eenv._launch_command = None
 
         # create node dictionary
         for rn in eenv._raw_nodes:
@@ -95,6 +104,7 @@ class ExecutionEnvironment(object):
             #    eenv._nodes[rn]['_count'] += 1
 
         logger.info("Discovered execution environment: %s" % eenv._nodes)
+        logger.info("Dicsovered launch method: %s (%s)" % (eenv._launch_method, eenv._launch_command))
 
         return eenv
 
@@ -109,7 +119,9 @@ class ExecutionEnvironment(object):
         self._raw_nodes = list()
         self._cores_per_node = 0
         self._memory_per_node = 0
-        self._launch_method = None
+
+        self._launch_method  = None
+        self._launch_command = None
 
         self._aprun_location  = None
         self._mpirun_location = None
@@ -138,6 +150,12 @@ class ExecutionEnvironment(object):
     @property
     def launch_method(self):
         return self._launch_method
+
+    #-------------------------------------------------------------------------
+    #
+    @property
+    def launch_command(self):
+        return self._launch_command
 
     #-------------------------------------------------------------------------
     #
@@ -213,6 +231,7 @@ class Task(object):
         self._workdir        = workdir
         self._stdout         = stdout
         self._stderr         = stdout
+        self._numcores       = 1
 
 
         # dynamic task properties
@@ -230,6 +249,12 @@ class Task(object):
     @property
     def uid(self):
         return self._uid
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def numcores(self):
+        return self._numcores
 
     # ------------------------------------------------------------------------
     #
@@ -342,7 +367,7 @@ class ExecWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, database_info, task_queue, 
-                 hosts, cores_per_host, launch_method):
+                 hosts, cores_per_host, launch_method, launch_command):
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
@@ -355,6 +380,7 @@ class ExecWorker(multiprocessing.Process):
         self._task_queue     = task_queue
         
         self._launch_method  = launch_method
+        self._launch_command = launch_command
 
         # Slots represents the internal process management structure. The 
         # structure is as follows:
@@ -412,8 +438,12 @@ class ExecWorker(multiprocessing.Process):
                             os.makedirs(task.workdir)
 
                             # RUN THE TASK
-                            self._slots[host][slot] = _Process(task=task, host=host,
-                                launch_method=self._launch_method)
+                            self._slots[host][slot] = _Process(
+                                task=task, 
+                                host=host,
+                                launch_method=self._launch_method,
+                                launch_command=self._launch_command,
+                                logger=self._log)
                             self._slots[host][slot].task.update_state(
                                 start_time=datetime.datetime.utcnow(),
                                 exec_locs = { host : [slot] } ,
@@ -547,9 +577,10 @@ class Agent(threading.Thread):
                 logger         = self._log,
                 task_queue     = self._task_queue,
                 database_info  = database_info,
-                launch_method  = self._launch_method,
+                launch_method  = self._exec_env.launch_method,
+                launch_command = self._exec_env.launch_command,
                 hosts          = hp,
-                cores_per_host = 8
+                cores_per_host = self._exec_env.cores_per_node
             )
             exec_worker.start()
             self._log.info("Started up %s serving hosts %s", 
@@ -653,17 +684,30 @@ class _Process(subprocess.Popen):
 
     #-------------------------------------------------------------------------
     #
-    def __init__(self, task, host, launch_method):
+    def __init__(self, task, host, launch_method, launch_command, logger):
 
         self._task = task
+        self._log  = logger
 
         # Assemble command line
         cmdline = str()
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh or aprun
-        if launch_method.lower() == "local":
+        if launch_method == LAUNCH_METHOD_LOCAL:
             pass
+
+        if launch_method == LAUNCH_METHOD_MPIRUN:
+            cmdline =  launch_command
+            cmdline += " -np %s -host %s" % (str(task.numcores), host)
+
+        elif launch_method == launch_command:
+            cmdline =  launch_command
+            cmdline += " -n %s " % str(task.numcores)
+            
+        elif launch_method == LAUNCH_METHOD_SSH:
+            cmdline = launch_command
+            cmdline += " %s " % host
 
         # task executable and arguments
         cmdline += " %s " % task.executable
@@ -676,6 +720,8 @@ class _Process(subprocess.Popen):
 
         self.stderr_filename = task.stderr
         self._stderr_file_h  = open(self.stderr_filename, "w")
+
+        self._log.info("Launching task %s via %s" % (task.uid, cmdline))
 
         super(_Process, self).__init__(args=cmdline,
                                        bufsize=0,

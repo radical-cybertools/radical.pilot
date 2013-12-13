@@ -186,11 +186,14 @@ class Session(object):
             * :class:`sinon.SinonException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
+        return_scalar = False
+
         if pilot_manager_ids is None:
             pilot_manager_ids = self.list_pilot_managers()
 
         elif not isinstance(pilot_manager_ids, list):
             pilot_manager_ids = [pilot_manager_ids]
+            return_scalar = True
 
         pilot_manager_objects = []
 
@@ -198,8 +201,8 @@ class Session(object):
             pilot_manager = PilotManager._reconnect(session=self, pilot_manager_id=pilot_manager_id)
             pilot_manager_objects.append(pilot_manager)
 
-        #if len(pilot_manager_objects) == 1:
-        #    pilot_manager_objects = pilot_manager_objects[0]
+        if return_scalar is True:
+            pilot_manager_objects = pilot_manager_objects[0]
 
         return pilot_manager_objects
 
@@ -251,11 +254,13 @@ class Session(object):
             * :class:`sinon.SinonException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
+        return_scalar = False
         if unit_manager_ids is None:
             unit_manager_ids = self.list_unit_managers()
 
         elif not isinstance(unit_manager_ids, list):
             unit_manager_ids = [unit_manager_ids]
+            return_scalar = True
 
         unit_manager_objects = []
 
@@ -263,8 +268,8 @@ class Session(object):
             unit_manager = UnitManager._reconnect(session=self, unit_manager_id=unit_manager_id)
             unit_manager_objects.append(unit_manager)
 
-        #if len(unit_manager_objects) == 1:
-        #    unit_manager_objects = unit_manager_objects[0]
+        if return_scalar is True:
+            unit_manager_objects = unit_manager_objects[0]
 
         return unit_manager_objects
 

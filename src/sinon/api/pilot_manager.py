@@ -260,6 +260,7 @@ class PilotManager(attributes.Attributes):
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
+                raise exceptions.BadParameter(error_msg)
 
             # check wether mandatory attribute 'resource' was defined
             if resource_key not in self._resource_cfgs:
@@ -268,6 +269,7 @@ class PilotManager(attributes.Attributes):
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
+                raise exceptions.BadParameter(error_msg)
 
             # check wether mandatory attribute 'cores' was defined
             if number_cores is None:
@@ -276,6 +278,7 @@ class PilotManager(attributes.Attributes):
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
+                raise exceptions.BadParameter(error_msg)
 
             # check wether mandatory attribute 'run_time' was defined
             if run_time is None:
@@ -284,6 +287,7 @@ class PilotManager(attributes.Attributes):
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
+                raise exceptions.BadParameter(error_msg)
 
             # check wether the resource key actually exists
             if resource_key not in self._resource_cfgs:
@@ -292,6 +296,7 @@ class PilotManager(attributes.Attributes):
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
+                raise exceptions.BadParameter(error_msg)
             else:
                 resource_cfg = self._resource_cfgs[resource_key]
 
@@ -310,7 +315,7 @@ class PilotManager(attributes.Attributes):
                     #
                     fs = saga.Url(resource_cfg['filesystem'])
                     if pilot_description['description'].working_directory is None:
-                        raise Exception("Working directory not defined.")
+                        raise exceptions.BadParameter("Working directory not defined.")
                     else:
                         fs.path += pilot_description['description'].working_directory
 
@@ -397,8 +402,10 @@ class PilotManager(attributes.Attributes):
                 except saga.SagaException, se: 
                     # at this point, submission has failed. we update the 
                     # agent status accordingly
+                    error_msg = "Pilot Job submission failed: '%s'" % str(se)
                     pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
-                    pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job submission failed: '%s'" % str(se))
+                    pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
+                    raise exceptions.BadParameter(error_msg)
 
             # Set submission date and reate a pilot object, regardless whether 
             # submission has failed or not.                 
