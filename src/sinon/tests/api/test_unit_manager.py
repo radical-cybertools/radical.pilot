@@ -109,7 +109,7 @@ class TestUnitManager(unittest.TestCase):
             pilot_list.append(p)
 
         pl = um.list_pilots()
-        assert len(pl) == 10, "Wrong number of associated pilots"
+        assert len(pl) == 2, "Wrong number of associated pilots"
         for l in pilot_list:
             assert l in pilot_list, "Unknown pilot in list"
             um.remove_pilots(l.uid)

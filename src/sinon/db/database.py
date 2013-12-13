@@ -466,8 +466,8 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def unit_manager_remove_pilot(self, unit_manager_id, pilot_ids):
-        """ Removes a pilot from a unit manager.
+    def unit_manager_remove_pilots(self, unit_manager_id, pilot_ids):
+        """ Removes one or more pilots from a unit manager.
         """
         if self._s is None:
             raise Exception("No active session.")
