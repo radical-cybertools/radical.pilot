@@ -4,5 +4,4 @@
 import os
 import unittest
 
-from db  import * 
 from api import * 

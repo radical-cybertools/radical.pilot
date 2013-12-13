@@ -29,8 +29,8 @@ def demo_milestone_02():
         pd = sinon.ComputePilotDescription()
       # pd.resource          = "futuregrid.ALAMO"
       # pd.working_directory = "/N/u/merzky/sinon"
-        pd.resource          = "futuregrid.HOTEL"
-        pd.working_directory = "/N/u/oweidner/scratch/sinon"
+        pd.resource          = "futuregrid.SIERRA"
+        pd.working_directory = "/N/u/oweidner/sinon"
         pd.cores             = 16
         pd.run_time          = 10 # minutes
 

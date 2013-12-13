@@ -4,9 +4,22 @@
 from pymongo import *
 from bson.objectid import ObjectId
 
+
+# ------------------------------------------------------------------------------
+#
+class DBException(Exception):
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__ (self, msg, obj=None) :
+        """Le constructeur. Creates a new exception object. 
+        """
+        Exception.__init__(self, msg)
+        self._obj = obj
+
+
 #-----------------------------------------------------------------------------
 #
-
 class Session():
 
     #---------------------------------------------------------------------------
@@ -58,7 +71,7 @@ class Session():
         """
         # make sure session doesn't exist already
         if sid in self._db.collection_names():
-            raise Exception("Session ID '%s' already exists in DB." % sid)
+            raise DBException("Session with id '%s' already exists." % sid)
 
         # remember session id
         self._session_id = sid
@@ -91,7 +104,7 @@ class Session():
         """
         # make sure session exists
         if sid not in self._db.collection_names():
-            raise Exception("Session ID '%s' doesn't exists in DB." % sid)
+            raise DBException("Session with id '%s' doesn't exists." % sid)
 
         # remember session id
         self._session_id = sid
@@ -119,7 +132,7 @@ class Session():
         """ Removes a session and all associated collections from the DB.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise DBException("No active session.")
 
         for collection in [self._s, self._w, self._um, self._p, self._pm]:
             collection.drop()
@@ -217,16 +230,20 @@ class Session():
                 "description"   : pilot_desc['description'].as_dict(),
                 "wu_queue"      : [],
                 "command"       : None,
-                "info"          : {
-                    "submitted" : pilot_desc['info']['submitted'],
-                    "started"   : None,
-                    "finished"  : None,
-                    "state"     : pilot_desc['info']['state'],
-                    "log"       : pilot_desc['info']['log']
+                "info"          : 
+                {
+                    "submitted"      : pilot_desc['info']['submitted'],
+                    "nodes"          : None,
+                    "cores_per_node" : None,
+                    "started"        : None,
+                    "finished"       : None,
+                    "state"          : pilot_desc['info']['state'],
+                    "log"            : pilot_desc['info']['log']
                 },
-                "links" : {
-                    "pilotmanager"  : pilot_manager_uid,
-                    "unitmanager"   : None
+                "links" : 
+                {
+                    "pilotmanager"   : pilot_manager_uid,
+                    "unitmanager"    : None
                 }
             }
             pilot_docs.append(pilot_json)
@@ -312,26 +329,26 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def get_workunits(self, workunit_manager_uid, workunit_uids=None):
+    def get_workunits(self, workunit_manager_id, workunit_ids=None):
         """ Get yerself a bunch of workunit
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        if workunit_uids == None:
+        if workunit_ids == None:
             cursor = self._w.find(
-                {"links.unitmanager": workunit_manager_uid}
+                {"links.unitmanager": workunit_manager_id}
             )
 
         else:
             # convert ids to object ids
             workunit_oid = []
-            for wid in workunit_uids:
+            for wid in workunit_ids:
                 workunit_oid.append(ObjectId(wid))
 
             cursor = self._w.find(
                 {"_id": {"$in": workunit_oid},
-                 "links.unitmanager": workunit_manager_uid}
+                 "links.unitmanager": workunit_manager_id}
             )
 
         workunits_json = []
@@ -393,9 +410,30 @@ class Session():
         """ Get a unit manager.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise DBException("No active session.")
 
         cursor = self._um.find({"_id": ObjectId(unit_manager_id)})
+
+        if cursor.count() != 1:
+            msg = "No unit manager with id %s found in DB." % unit_manager_id
+            raise DBException(msg=msg)
+
+        return cursor[0]
+
+    #---------------------------------------------------------------------------
+    #
+    def get_pilot_manager(self, pilot_manager_id):
+        """ Get a pilot manager.
+        """
+        if self._s is None:
+            raise DBException("No active session.")
+
+        cursor = self._pm.find({"_id": ObjectId(pilot_manager_id)})
+
+        if cursor.count() != 1:
+            msg = "No pilot manager with id %s found in DB." % pilot_manager_id
+            raise DBException(msg=msg)
+
         return cursor[0]
 
     #---------------------------------------------------------------------------
@@ -428,8 +466,8 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def unit_manager_remove_pilot(self, unit_manager_id, pilot_ids):
-        """ Removes a pilot from a unit manager.
+    def unit_manager_remove_pilots(self, unit_manager_id, pilot_ids):
+        """ Removes one or more pilots from a unit manager.
         """
         if self._s is None:
             raise Exception("No active session.")
@@ -526,11 +564,12 @@ class Session():
                     "pilot"       : pilot_id,
                 },
                 "info"          : {
-                    "submitted" : wu_desc['info']['submitted'],
-                    "started"   : None,
-                    "finished"  : None,
-                    "state"     : wu_desc['info']['state'],
-                    "log"       : wu_desc['info']['log']
+                    "submitted"     : wu_desc['info']['submitted'],
+                    "started"       : None,
+                    "finished"      : None,
+                    "exec_locs"     : None,
+                    "state"         : wu_desc['info']['state'],
+                    "log"           : wu_desc['info']['log']
                 }
             } 
             workunit_docs.append(workunit)

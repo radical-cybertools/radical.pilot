@@ -46,10 +46,10 @@ class TestUnitManager(unittest.TestCase):
 
         assert session.list_unit_managers() == [], "Wrong number of unit managers"
 
-        um1 = sinon.UnitManager(session=session)
+        um1 = sinon.UnitManager(session=session, scheduler='round_robin')
         assert session.list_unit_managers() == [um1.uid], "Wrong list of unit managers"
 
-        um2 = sinon.UnitManager(session=session)
+        um2 = sinon.UnitManager(session=session, scheduler='round_robin')
         assert len(session.list_unit_managers()) == 2, "Wrong number of unit managers"
 
     #-------------------------------------------------------------------------
@@ -59,10 +59,10 @@ class TestUnitManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        um = sinon.UnitManager(session=session)
+        um = sinon.UnitManager(session=session, scheduler='round_robin')
         assert session.list_unit_managers() == [um.uid], "Wrong list of unit managers"
 
-        um_r = sinon.UnitManager.get(session=session, unit_manager_uid=um.uid)
+        um_r = session.get_unit_managers(unit_manager_ids=um.uid)
         assert session.list_unit_managers() == [um_r.uid], "Wrong list of unit managers"
 
         assert um.uid == um_r.uid, "Unit Manager IDs not matching!"
@@ -77,38 +77,42 @@ class TestUnitManager(unittest.TestCase):
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource = "localhost"
-        cpd.cores = 1
-        
+        cpd.resource          = "localhost"
+        cpd.cores             = 1
+        cpd.run_time          = 1
+        cpd.working_directory = "/tmp/sinon.unit-tests" 
+
         p1 = pm.submit_pilots(pilot_descriptions=cpd)
 
-        um = sinon.UnitManager(session=session)
+        um = sinon.UnitManager(session=session, scheduler='round_robin')
         assert um.list_pilots() == [], "Wrong list of pilots"
 
-        um.add_pilot(p1)
+        um.add_pilots(p1)
         assert um.list_pilots() == [p1.uid], "Wrong list of pilots"
 
         # adding the same pilot twice should be ignored
-        um.add_pilot(p1)
+        um.add_pilots(p1)
         assert um.list_pilots() == [p1.uid], "Wrong list of pilots"
 
-        um.remove_pilot(p1.uid)
+        um.remove_pilots(p1.uid)
         assert um.list_pilots() == [], "Wrong list of pilots"
 
         pilot_list = []
-        for x in range(0, 10):
+        for x in range(0, 2):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource = "localhost"
-            cpd.cores = 1
+            cpd.resource          = "localhost"
+            cpd.cores             = 1
+            cpd.run_time          = 1
+            cpd.working_directory = "/tmp/sinon.unit-tests" 
             p = pm.submit_pilots(pilot_descriptions=cpd)
-            um.add_pilot(p)
+            um.add_pilots(p)
             pilot_list.append(p)
 
         pl = um.list_pilots()
-        assert len(pl) == 10, "Wrong number of associated pilots"
+        assert len(pl) == 2, "Wrong number of associated pilots"
         for l in pilot_list:
             assert l in pilot_list, "Unknown pilot in list"
-            um.remove_pilot(l.uid)
+            um.remove_pilots(l.uid)
 
         assert um.list_pilots() == [], "Wrong list of pilots"
 

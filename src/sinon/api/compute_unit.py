@@ -21,6 +21,7 @@ UID               = 'UID'
 DESCRIPTION       = 'Description'
 STATE             = 'State'
 STATE_DETAILS     = 'StateDetails'
+EXECUTION_DETAILS = 'ExecutionDetails'
 
 SUBMISSION_TIME   = 'SubmissionTime'
 START_TIME        = 'StartTime'
@@ -65,12 +66,16 @@ class ComputeUnit(attributes.Attributes):
         self._attributes_register(STATE, states.UNKNOWN, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(STATE, self._get_state_priv)
 
-        # The state detail a.k.a. 'log' attributesribute 
+        # The state detail a.k.a. 'log' attribute 
         self._attributes_register(STATE_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STATE_DETAILS, self._get_state_detail_priv)
+        self._attributes_set_getter(STATE_DETAILS, self._get_state_details_priv)
+
+        # The execution details attribute 
+        self._attributes_register(EXECUTION_DETAILS, None, attributes.STRING, attributes.VECTOR, attributes.READONLY)
+        self._attributes_set_getter(EXECUTION_DETAILS, self._get_execution_details_priv)
 
         # The submission time
-        self._attributes_register(SUBMISSION_TIME, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
+        self._attributes_register(SUBMISSION_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(SUBMISSION_TIME, self._get_submission_time_priv)
 
         # The start time
@@ -107,8 +112,8 @@ class ComputeUnit(attributes.Attributes):
         """
         # create database entry
         units_json = unit_manager_obj._DB.get_workunits(
-            workunit_manager_uid=unit_manager_obj.uid, 
-            workunit_uids=unit_ids
+            workunit_manager_id=unit_manager_obj.uid, 
+            workunit_ids=unit_ids
         )
         # create and return pilot objects
         computeunits = []
@@ -145,6 +150,9 @@ class ComputeUnit(attributes.Attributes):
     def __str__(self):
         """Returns a string representation of the compute unit.
         """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
         return str(self.as_dict())
 
 
@@ -159,9 +167,8 @@ class ComputeUnit(attributes.Attributes):
         **Returns:**
             * A unique identifier (string).
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise exceptions.SinonException("Invalid Compute Unit instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         # uid is static and doesn't change over the lifetime 
         # of a pilot, hence it can be stored in a member var.
@@ -172,9 +179,8 @@ class ComputeUnit(attributes.Attributes):
     def _get_description_priv(self):
         """PRIVATE: Returns the pilot description the pilot was started with.
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise exceptions.SinonException("Invalid Compute Unit instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         # description is static and doesn't change over the lifetime 
         # of a pilot, hence it can be stored in a member var.
@@ -185,28 +191,31 @@ class ComputeUnit(attributes.Attributes):
     def _get_state_priv(self):
         """PRIVATE: Returns the current state of the pilot.
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise exceptions.SinonException("Invalid Compute Unit instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         # state is dynamic and changes over the  lifetime of a pilot, hence we
         # need to make a call to the  database layer (db layer might cache
         # this call).
-        return self._DB.get_workunit_states(
+        workunit_json = self._DB.get_workunit_states(
             workunit_manager_id=self._manager.uid, 
-            workunit_uids=[self.uid]
+            workunit_ids=[self.uid]
         )
 
+        return workunit_json[0]
+        
     # --------------------------------------------------------------------------
     #
-    def _get_state_detail_priv(self):
+    def _get_state_details_priv(self):
         """PRIVATE: Returns the current state of the pilot.
-
-        This 
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise exceptions.SinonException("Invalid Compute Unit instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
+
+        workunit_json = self._DB.get_workunits(
+            workunit_manager_id=self._manager.uid, 
+            workunit_ids=[self.uid]
+            )
 
         # state detail is oviously dynamic and changes over the 
         # lifetime of a pilot, hence we need to make a call to the 
@@ -215,16 +224,38 @@ class ComputeUnit(attributes.Attributes):
 
     # --------------------------------------------------------------------------
     #
+    def _get_execution_details_priv(self):
+        """PRIVATE: Returns the current state of the pilot.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
+        #workunit_json = self._DB.get_workunits(
+        #    workunit_manager_id=self._manager.uid, 
+        #    workunit_ids=[self.uid]
+        #)
+
+        #execution_details = {
+        #    'nodes'          : workunit_json[0]['info']['exec_loc_nodes'],
+        #    'cores_per_node' : workunit_json[0]['info']['exec_loc_cores']
+        #}
+
+        return ['de']
+
+    # --------------------------------------------------------------------------
+    #
     def _get_submission_time_priv(self):
         """ Returns the time the compute unit was submitted. 
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Compute Unit instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.uid])
-        return pilots_json[0]['info']['submitted']
+        workunit_json = self._DB.get_workunits(
+            workunit_manager_id=self._manager.uid, 
+            workunit_ids=[self.uid]
+        )
+
+        return workunit_json[0]['info']['submitted']
 
 
     # --------------------------------------------------------------------------
@@ -232,22 +263,31 @@ class ComputeUnit(attributes.Attributes):
     def _get_start_time_priv(self):
         """ Returns the time the compute unit was started on the backend. 
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Compute Unit instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
-        raise excpetions.SinonException("Not Implemented")
+        workunit_json = self._DB.get_workunits(
+            workunit_manager_id=self._manager.uid, 
+            workunit_ids=[self.uid]
+        )
+
+        return workunit_json[0]['info']['started']
+
 
     # --------------------------------------------------------------------------
     #
     def _get_stop_time_priv(self):
         """ Returns the time the compute unit was stopped. 
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Compute Unit instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
-        raise excpetions.SinonException("Not Implemented")
+        workunit_json = self._DB.get_workunits(
+            workunit_manager_id=self._manager.uid, 
+            workunit_ids=[self.uid]
+        )
+
+        return workunit_json[0]['info']['finished']
 
     # --------------------------------------------------------------------------
     #
@@ -275,9 +315,8 @@ class ComputeUnit(attributes.Attributes):
 
         **Raises:**
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Compute Unit instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
     # --------------------------------------------------------------------------
     #
