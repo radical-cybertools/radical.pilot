@@ -410,9 +410,30 @@ class Session():
         """ Get a unit manager.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise DBException("No active session.")
 
         cursor = self._um.find({"_id": ObjectId(unit_manager_id)})
+
+        if cursor.count() != 1:
+            msg = "No unit manager with id %s found in DB." % unit_manager_id
+            raise DBException(msg=msg)
+
+        return cursor[0]
+
+    #---------------------------------------------------------------------------
+    #
+    def get_pilot_manager(self, pilot_manager_id):
+        """ Get a pilot manager.
+        """
+        if self._s is None:
+            raise DBException("No active session.")
+
+        cursor = self._pm.find({"_id": ObjectId(pilot_manager_id)})
+
+        if cursor.count() != 1:
+            msg = "No pilot manager with id %s found in DB." % pilot_manager_id
+            raise DBException(msg=msg)
+
         return cursor[0]
 
     #---------------------------------------------------------------------------

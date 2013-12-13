@@ -72,7 +72,7 @@ class UnitManager(attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, session, scheduler=None) :
+    def __init__ (self, session, scheduler=None, _reconnect=False) :
         """Creates a new UnitManager and attaches it to the session. 
 
         **Args:**
@@ -112,8 +112,13 @@ class UnitManager(attributes.Attributes) :
         self._scheduler = pm.load('unit_scheduler', scheduler)
         self._scheduler.init(self)
 
-        self._uid = self._DB.insert_unit_manager(
-            unit_manager_data={'scheduler' : scheduler})
+        if _reconnect is False:
+            # Add a new unit manager netry to the DB
+            self._uid = self._DB.insert_unit_manager(
+                unit_manager_data={'scheduler' : scheduler})
+        else:
+            # re-connect. do nothing
+            pass
 
     #---------------------------------------------------------------------------
     #
@@ -125,8 +130,8 @@ class UnitManager(attributes.Attributes) :
 
         um_data = session._dbs.get_unit_manager(unit_manager_id)
 
-        obj = cls(session=session, scheduler=um_data['scheduler'])
-        obj._uid           = unit_manager_id
+        obj = cls(session=session, scheduler=um_data['scheduler'], _reconnect=True)
+        obj._uid = unit_manager_id
 
         return obj
 

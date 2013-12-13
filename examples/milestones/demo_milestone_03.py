@@ -35,8 +35,8 @@ def demo_milestone_03_part_1():
 
         # Define a 16-core pilot to hotel.futuregrid.org
         pd_hotel = sinon.ComputePilotDescription()
-        pd_hotel.resource          = "futuregrid.HOTEL"
-        pd_hotel.working_directory = "/N/u/oweidner/scratch/sinon"
+        pd_hotel.resource          = "localhost"
+        pd_hotel.working_directory = "/tmp/sinon/"
         pd_hotel.cores             = 32
         pd_hotel.run_time          = 10 # minutes
 
@@ -59,7 +59,7 @@ def demo_milestone_03_part_1():
 
         # Submit 16 bulks of 64 tasks with varying runtime runtime varies 
         # between 1 and 10 seconds
-        for bulk in xrange(1, 17):
+        for bulk in xrange(1, 3):
             compute_units = []
             for _ in xrange(0, 32):
                 cunit = sinon.ComputeUnitDescription()
@@ -108,7 +108,7 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
 
         # Submit 16 bulks of 64 tasks with varying runtime runtime varies 
         # between 1 and 20 seconds
-        for bulk in xrange(1, 17):
+        for bulk in xrange(1, 3):
             compute_units = []
             for _ in xrange(0, 32):
                 cunit = sinon.ComputeUnitDescription()
