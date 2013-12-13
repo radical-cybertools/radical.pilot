@@ -11,7 +11,13 @@ __license__   = "MIT"
 
 import uuid
 
+from sinon.api.unit_manager import UnitManager
+from sinon.api.pilot_manager import PilotManager
+
 from sinon.db import Session as dbSession
+from sinon.db import DBException
+
+import exceptions
 
 
 # ------------------------------------------------------------------------------
@@ -58,17 +64,21 @@ class Session(object):
         **Raises:**
             * :class:`sinon.SinonException`
         """
-        if session_uid is None:
-            # if session_uid is 'None' we create a new session
-            session_uid = str(uuid.uuid4())
-            self._dbs = dbSession.new(sid=session_uid, 
-                                      db_url=database_url, 
-                                      db_name=database_name)
-        else:
-            # otherwise, we reconnect to an exissting session
-            self._dbs = dbSession.reconnect(sid=session_uid, 
-                                            db_url=database_url, 
-                                            db_name=database_name)
+        try:
+            if session_uid is None:
+                # if session_uid is 'None' we create a new session
+                session_uid = str(uuid.uuid4())
+                self._dbs = dbSession.new(sid=session_uid, 
+                                          db_url=database_url, 
+                                          db_name=database_name)
+            else:
+                # otherwise, we reconnect to an exissting session
+                self._dbs = dbSession.reconnect(sid=session_uid, 
+                                                db_url=database_url, 
+                                                db_name=database_name)
+        except DBException, ex:
+            raise exceptions.SinonException("Database Error: %s" % ex)
+
 
         self._database_url  = database_url
         self._database_name = database_name 
@@ -97,7 +107,15 @@ class Session(object):
         **Returns:**
             * A unique identifier (`string`).
 
+        **Raises:**
+            * :class:`sinon.IncorrectState` if the session is closed
+              or doesn't exist. 
+
         """
+        if not self._session_uid:
+            msg = "Invalid instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
         return self._session_uid
 
     #---------------------------------------------------------------------------
@@ -108,7 +126,15 @@ class Session(object):
         All subsequent attempts access objects attached to the session and 
         attempts to re-connect to the session via its uid will result in
         an error.
+
+        **Raises:**
+            * :class:`sinon.IncorrectState` if the session is closed
+              or doesn't exist. 
         """
+        if not self._session_uid:
+            msg = "Invalid instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
         self._dbs.delete()
 
     #---------------------------------------------------------------------------
@@ -127,9 +153,55 @@ class Session(object):
             * A list of :class:`sinon.PilotManager` uids (`list` oif strings`).
 
         **Raises:**
-            * :class:`sinon.SinonException`
+            * :class:`sinon.IncorrectState` if the session is closed
+              or doesn't exist. 
         """
+        if not self._session_uid:
+            msg = "Invalid instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
         return self._dbs.list_pilot_manager_uids()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_pilot_managers(self, pilot_manager_ids=None) :
+        """ Re-connects to and returns one or more existing PilotManager(s).
+
+        **Arguments:**
+
+            * **session** [:class:`sinon.Session`]: 
+              The session instance to use.
+
+            * **pilot_manager_uid** [`string`]: 
+              The unique identifier of the PilotManager we want 
+              to re-connect to.
+
+        **Returns:**
+
+            * One or more new [:class:`sinon.PilotManager`] objects.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException` if a PilotManager with 
+              `pilot_manager_uid` doesn't exist in the database.
+        """
+        if pilot_manager_ids is None:
+            pilot_manager_ids = self.list_pilot_managers()
+
+        elif not isinstance(pilot_manager_ids, list):
+            pilot_manager_ids = [pilot_manager_ids]
+
+        pilot_manager_objects = []
+
+        for pilot_manager_id in pilot_manager_ids:
+            pilot_manager = PilotManager._reconnect(session=self, pilot_manager_id=pilot_manager_id)
+            pilot_manager_objects.append(pilot_manager)
+
+        #if len(pilot_manager_objects) == 1:
+        #    pilot_manager_objects = pilot_manager_objects[0]
+
+        return pilot_manager_objects
 
     #---------------------------------------------------------------------------
     #
@@ -147,7 +219,52 @@ class Session(object):
             * A list of :class:`sinon.UnitManager` uids (`list` of `strings`).
 
         **Raises:**
-            * :class:`sinon.SinonException`
+            * :class:`sinon.IncorrectState` if the session is closed
+              or doesn't exist. 
         """
+        if not self._session_uid:
+            msg = "Invalid instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
         return self._dbs.list_unit_manager_uids()
+
+    # --------------------------------------------------------------------------
+    #
+    def get_unit_managers(self, unit_manager_ids=None) :
+        """ Re-connects to and returns one or more existing UnitManager(s).
+
+        **Arguments:**
+
+            * **session** [:class:`sinon.Session`]: 
+              The session instance to use.
+
+            * **pilot_manager_uid** [`string`]: 
+              The unique identifier of the PilotManager we want 
+              to re-connect to.
+
+        **Returns:**
+
+            * One or more new [:class:`sinon.PilotManager`] objects.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException` if a PilotManager with 
+              `pilot_manager_uid` doesn't exist in the database.
+        """
+        if unit_manager_ids is None:
+            unit_manager_ids = self.list_unit_managers()
+
+        elif not isinstance(unit_manager_ids, list):
+            unit_manager_ids = [unit_manager_ids]
+
+        unit_manager_objects = []
+
+        for unit_manager_id in unit_manager_ids:
+            unit_manager = UnitManager._reconnect(session=self, unit_manager_id=unit_manager_id)
+            unit_manager_objects.append(unit_manager)
+
+        #if len(unit_manager_objects) == 1:
+        #    unit_manager_objects = unit_manager_objects[0]
+
+        return unit_manager_objects
 

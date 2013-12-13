@@ -22,6 +22,7 @@ DESCRIPTION       = 'Description'
 
 STATE             = 'State'
 STATE_DETAILS     = 'StateDetails'
+RESOURCE_DETAILS  = 'ResourceDetails'
 
 SUBMISSION_TIME   = 'SubmissionTime'
 START_TIME        = 'StartTime'
@@ -51,25 +52,29 @@ class ComputePilot (attributes.Attributes) :
         # initialize attributes
         attributes.Attributes.__init__(self)
 
-        # set attributesribute interface properties
+        # set attribute interface properties
         self._attributes_extensible(False)
         self._attributes_camelcasing(True)
 
-        # The UID attributesribute
+        # The UID attribute
         self._attributes_register(UID, self._uid, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(UID, self._get_uid_priv)
 
-        # The description attributesribute
+        # The description attribute
         self._attributes_register(DESCRIPTION, self._description, attributes.ANY, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(DESCRIPTION, self._get_description_priv)
 
-        # The state attributesribute
+        # The state attribute
         self._attributes_register(STATE, states.UNKNOWN, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(STATE, self._get_state_priv)
 
-        # The state detail a.k.a. 'log' attributesribute 
+        # The state details a.k.a. attribute 
         self._attributes_register(STATE_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(STATE_DETAILS, self._get_state_detail_priv)
+
+        # The resources details a.k.a additional informations about the resource the pilot is using
+        self._attributes_register(RESOURCE_DETAILS, None, attributes.STRING, attributes.VECTOR, attributes.READONLY)
+        self._attributes_set_getter(RESOURCE_DETAILS, self._get_resource_detail_priv)
 
         # The units assigned to this pilot
         self._attributes_register(UNITS, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
@@ -155,7 +160,7 @@ class ComputePilot (attributes.Attributes) :
             * A unique identifier (string).
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid instance.")
 
         return self._uid
 
@@ -165,7 +170,7 @@ class ComputePilot (attributes.Attributes) :
         """PRIVATE: Returns the pilot description the pilot was started with.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid instance.")
 
         return self._description
 
@@ -175,7 +180,7 @@ class ComputePilot (attributes.Attributes) :
         """PRIVATE: Returns the current state of the pilot.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid instance.")
 
         # state is dynamic and changes over the lifetime of a pilot, hence we 
         # need to make a call to the database layer
@@ -198,7 +203,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         # state detail is dynamic and changes over the  lifetime of a pilot,
         # hence we need to make a call to the  database layer.
@@ -212,13 +217,42 @@ class ComputePilot (attributes.Attributes) :
 
         return pilots_json[0]['info']['log']
 
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_resource_detail_priv(self):
+        """PRIVATE: Returns the resource details of the pilot.
+
+        This 
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
+        # state detail is dynamic and changes over the  lifetime of a pilot,
+        # hence we need to make a call to the  database layer.
+        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+                                          pilot_ids=[self.uid])
+
+        # make sure the result makes sense
+        if len(pilots_json) != 1: 
+            msg = "Couldn't find pilot with UID '%s'" % self.uid
+            raise exceptions.BadParameter(msg=msg)
+
+        resource_details = {
+            'nodes'          : pilots_json[0]['info']['nodes'],
+            'cores_per_node' : pilots_json[0]['info']['cores_per_node']
+        }
+
+        return resource_details
+
     # --------------------------------------------------------------------------
     #
     def _get_pilot_manager_priv(self):
         """ Returns the pilot manager object for this pilot.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         return self._manager
 
@@ -228,7 +262,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the pilot manager object for this pilot.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         raise exceptions.SinonException("Not Implemented")
 
@@ -240,7 +274,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         raise exceptions.SinonException("Not Implemented")
 
@@ -251,7 +285,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
@@ -269,7 +303,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the time the pilot was started on the backend. 
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
@@ -287,7 +321,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the time the pilot was stopped. 
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
@@ -305,7 +339,7 @@ class ComputePilot (attributes.Attributes) :
         """ Returns the time the pilot was stopped. 
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
@@ -371,7 +405,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid object instance.")
+            raise exceptions.IncorrectState("Invalid instance.")
 
         if not isinstance (state, list):
             state = [state]
@@ -399,7 +433,7 @@ class ComputePilot (attributes.Attributes) :
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise exceptions.IncorrectState(msg="Invalid instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:
             # nothing to do as we are already in a terminal state

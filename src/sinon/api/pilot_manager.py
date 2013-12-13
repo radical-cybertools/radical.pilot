@@ -145,46 +145,21 @@ class PilotManager(attributes.Attributes):
 
         self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
 
-    # --------------------------------------------------------------------------
+
+    #---------------------------------------------------------------------------
     #
-    @classmethod 
-    def get(cls, session, pilot_manager_id) :
-        """ Re-connects to an existing PilotManager via its uid.
-
-        **Arguments:**
-
-            * **session** [:class:`sinon.Session`]: 
-              The session instance to use.
-
-            * **pilot_manager_uid** [`string`]: 
-              The unique identifier of the PilotManager we want 
-              to re-connect to.
-
-        **Returns:**
-
-            * A new `PilotManager` object [:class:`sinon.ComputePilotManager`].
-
-        **Raises:**
-
-            * :class:`sinon.SinonException` if a PilotManager with 
-              `pilot_manager_uid` doesn't exist in the database.
-        """
-
-        ###########################################
-        # Reconnect to an existing pilot manager. #
-        ###########################################
+    @classmethod
+    def _reconnect(cls, session, pilot_manager_id):
 
         if pilot_manager_id not in session._dbs.list_pilot_manager_uids():
-            raise exceptions.BadParameter ("PilotManager with ID'%s' not in database." \
-                % pilot_manager_id)
+            raise exceptions.BadParameter ("PilotManager with id '%s' not in database." % pilot_manager_id)
 
-        # Create the object
+        #pm_data = session._dbs.get_pilot_manager(unit_manager_id)
+
         obj = cls(session=session, resource_configurations="~=RECON=~")
         obj._uid           = pilot_manager_id
-        obj._DB            = session._dbs
         obj._resource_cfgs = None # TODO: reconnect
 
-        # Return the object
         return obj
 
     #---------------------------------------------------------------------------
@@ -283,7 +258,7 @@ class PilotManager(attributes.Attributes):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'resource'."
                 pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
 
             # check wether mandatory attribute 'resource' was defined
@@ -291,7 +266,7 @@ class PilotManager(attributes.Attributes):
                 error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
                 pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
 
             # check wether mandatory attribute 'cores' was defined
@@ -299,7 +274,7 @@ class PilotManager(attributes.Attributes):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
                 pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
 
             # check wether mandatory attribute 'run_time' was defined
@@ -307,7 +282,7 @@ class PilotManager(attributes.Attributes):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'run_time'."
                 pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
 
             # check wether the resource key actually exists
@@ -315,7 +290,7 @@ class PilotManager(attributes.Attributes):
                 error_msg = "No entry found for resource key '%s' in resource configuration." % resource_key
                 pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
-                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+                pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
                 try_submit = False
             else:
                 resource_cfg = self._resource_cfgs[resource_key]
@@ -427,7 +402,7 @@ class PilotManager(attributes.Attributes):
 
             # Set submission date and reate a pilot object, regardless whether 
             # submission has failed or not.                 
-            pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.now()
+            pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
 
             pilot = ComputePilot._create(
                 pilot_id=str(pilot_id),

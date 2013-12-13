@@ -65,7 +65,7 @@ def demo_milestone_03_part_1():
                 cunit = sinon.ComputeUnitDescription()
                 cunit.cores = 1
                 cunit.executable = "/bin/sleep"
-                cunit.arguments  = ["%s" % str(randint(1, 10))]
+                cunit.arguments  = ["%s" % str(randint(1, 2))]
                 compute_units.append(cunit)
             umgr.submit_units(compute_units)
             print "  <Submmitted %s bulk(s) of 64 compute units>" % bulk
@@ -114,7 +114,7 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
                 cunit = sinon.ComputeUnitDescription()
                 cunit.cores = 1
                 cunit.executable = "/bin/sleep"
-                cunit.arguments  = ["%s" % str(randint(1, 10))]
+                cunit.arguments  = ["%s" % str(randint(1, 2))]
                 compute_units.append(cunit)
             umgr.submit_units(compute_units)
             print "  <Submmitted %s bulk(s) of 64 compute units>" % bulk

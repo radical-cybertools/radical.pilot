@@ -120,6 +120,7 @@ setup_args = {
     'packages'    : find_packages('src'),
     'package_dir' : {'': 'src'},    
     'scripts'          : ['bin/sinon-version', 
+                          'bin/sinon-timeline',
                           'bin/bootstrap-and-run-agent',
                          ],
     'package_data'     : {'': ['*.sh', 'VERSION', ]},

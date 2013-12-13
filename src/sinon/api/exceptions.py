@@ -1,18 +1,17 @@
 """
 .. module:: sinon.exceptions
    :platform: Unix
-   :synopsis: Implementation of the Exception class(es).
+   :synopsis: Implementation of the exception classes.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, radical.rutgers.edu"
+__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
-
 
 # ------------------------------------------------------------------------------
 #
-class SinonException (Exception) :
+class SinonException(Exception) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -34,11 +33,11 @@ class SinonException (Exception) :
     # --------------------------------------------------------------------------
     #
     def __init__ (self, msg, obj=None) :
+        """Le constructeur. Creates a new exception object. 
         """
-        some more info
-        """
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
-
+        Exception.__init__(self, msg)
+        self._obj = obj
+        self.message = msg
 
     # --------------------------------------------------------------------------
     #
@@ -46,7 +45,7 @@ class SinonException (Exception) :
         """
         Return the object instance on whose activity the exception was raised.
         """
-        raise Exception ("%s.get_object() is not implemented" % self.__class__.__name__)
+        return self._obj
 
 
     # --------------------------------------------------------------------------
@@ -55,7 +54,7 @@ class SinonException (Exception) :
         """
         Return the error message associated with the exception
         """
-        raise Exception ("%s.get_message() is not implemented" % self.__class__.__name__)
+        return self.message
 
 
     # --------------------------------------------------------------------------
@@ -64,7 +63,7 @@ class SinonException (Exception) :
         """
         an alias for `get_message()`
         """
-        raise Exception ("%s.__str__() is not implemented" % self.__class__.__name__)
+        return self.get_message()
 
 
 # ------------------------------------------------------------------------------
@@ -80,7 +79,7 @@ class IncorrectURL (SinonException) :
     / unknown schema. 
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        SinonException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -95,7 +94,7 @@ class BadParameter (SinonException) :
     A given parameter is out of bound or ill formatted.
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        SinonException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -110,7 +109,7 @@ class DoesNotExist (SinonException) :
     An operation tried to access a non-existing entity.
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        SinonException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -125,7 +124,7 @@ class IncorrectState (SinonException) :
     The operation is not allowed on the entity in its current state.
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        SinonException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -140,7 +139,7 @@ class PermissionDenied (SinonException) :
     The used identity is not permitted to perform the requested operation.
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        SinonException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -155,7 +154,7 @@ class AuthorizationFailed (SinonException) :
     The backend could not accept the given identity.
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        SinonException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -170,7 +169,7 @@ class AuthenticationFailed (SinonException) :
     The backend could not establish a valid identity.
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        SinonException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -185,7 +184,7 @@ class Timeout (SinonException) :
     The interaction with the backend timed out.
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
+        SinonException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -200,10 +199,4 @@ class NoSuccess (SinonException) :
     Some unsopecified error occurred.
     """
     def __init__ (self, msg, obj=None) :
-        raise Exception ("%s is not implemented" % self.__class__.__name__)
-
-
-# ------------------------------------------------------------------------------
-#
-
-
+        SinonException.__init__(self, msg, obj)

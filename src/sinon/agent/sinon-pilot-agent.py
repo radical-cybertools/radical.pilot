@@ -130,6 +130,12 @@ class ExecutionEnvironment(object):
     #-------------------------------------------------------------------------
     #
     @property
+    def cores_per_node(self):
+        return self._cores_per_node
+
+    #-------------------------------------------------------------------------
+    #
+    @property
     def launch_method(self):
         return self._launch_method
 
@@ -201,24 +207,23 @@ class Task(object):
         self._description = None
 
         # static task properties
-        self._uid        = uid
-        self._executable = executable
-        self._arguments  = arguments
-        self._workdir    = workdir
-        self._stdout     = stdout
-        self._stderr     = stdout
+        self._uid            = uid
+        self._executable     = executable
+        self._arguments      = arguments
+        self._workdir        = workdir
+        self._stdout         = stdout
+        self._stderr         = stdout
 
 
         # dynamic task properties
-        self._start_time = None
-        self._end_time   = None
+        self._start_time     = None
+        self._end_time       = None
 
-        self._state      = None
-        self._exit_code  = None
-        self._exec_loc   = None
+        self._state          = None
+        self._exit_code      = None
+        self._exec_locs      = None
 
-        self._log        = []
-
+        self._log            = []
 
     # ------------------------------------------------------------------------
     #
@@ -283,13 +288,13 @@ class Task(object):
     # ------------------------------------------------------------------------
     #
     @property
-    def exec_loc(self):
-        return self._exec_loc
+    def exec_locs(self):
+        return self._exec_locs
 
     # ------------------------------------------------------------------------
     #
     def update_state(self, start_time=None, end_time=None, state=None, 
-                     exit_code=None, exec_loc=None):
+                     exit_code=None, exec_locs=None):
         """Updates one or more of the task's dynamic properties
         """
         if start_time is None:
@@ -312,10 +317,10 @@ class Task(object):
         else:
             self._exit_code = exit_code
 
-        if exec_loc is None:
-            exec_loc = self._exec_loc
+        if exec_locs is None:
+            exec_locs = self._exec_locs
         else:
-            self._exec_loc = exec_loc
+            self._exec_locs = exec_locs
 
     # ------------------------------------------------------------------------
     #
@@ -410,8 +415,8 @@ class ExecWorker(multiprocessing.Process):
                             self._slots[host][slot] = _Process(task=task, host=host,
                                 launch_method=self._launch_method)
                             self._slots[host][slot].task.update_state(
-                                start_time=datetime.datetime.now(),
-                                exec_loc="node:%s;core:%s" % (host, slot),
+                                start_time=datetime.datetime.utcnow(),
+                                exec_locs = { host : [slot] } ,
                                 state='Running'
                             )
                             update_tasks.append(self._slots[host][slot].task)
@@ -435,7 +440,7 @@ class ExecWorker(multiprocessing.Process):
                                 state = 'Done'
 
                             self._slots[host][slot].task.update_state(
-                                end_time=datetime.datetime.now(),
+                                end_time=datetime.datetime.utcnow(),
                                 exit_code=rc,
                                 state=state
                             )
@@ -476,11 +481,11 @@ class ExecWorker(multiprocessing.Process):
         """
         for task in tasks:
             self._w.update({"_id": ObjectId(task.uid)}, 
-            {"$set": {"info.state"     : task.state,
-                      "info.started"   : task.started,
-                      "info.finished"  : task.finished,
-                      "info.exec_loc"  : task.exec_loc,
-                      "info.exit_code" : task.exit_code}})
+            {"$set": {"info.state"         : task.state,
+                      "info.started"       : task.started,
+                      "info.finished"      : task.finished,
+                      "info.exec_locs"     : task.exec_locs,
+                      "info.exit_code"     : task.exit_code}})
 
 
 # ----------------------------------------------------------------------------
@@ -497,10 +502,12 @@ class Agent(threading.Thread):
         self.lock        = threading.Lock()
         self._terminate  = threading.Event()
 
-        self._log            = logger
+        self._log        = logger
 
-        self._workdir        = workdir
-        self._pilot_id       = database_info['pilot']
+        self._workdir    = workdir
+        self._pilot_id   = database_info['pilot']
+
+        self._exec_env   = exec_env
 
         # launch method is determined by the execution environment,
         # but can be overridden if the 'launch_method' flag is set 
@@ -524,7 +531,7 @@ class Agent(threading.Thread):
         # round robin
         self._host_partitions = []
         partition_idx = 0
-        for host in exec_env.nodes:
+        for host in self._exec_env.nodes:
             if partition_idx >= MAX_EXEC_WORKERS:
                 partition_idx = 0
             if len(self._host_partitions) <= partition_idx:
@@ -571,8 +578,10 @@ class Agent(threading.Thread):
         self._log.info("Agent started. Database updated.")
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"info.state"     : "RUNNING",
-                      "info.started"   : datetime.datetime.now()}})
+            {"$set": {"info.state"          : "RUNNING",
+                      "info.nodes"          : self._exec_env.nodes.keys(),
+                      "info.cores_per_node" : self._exec_env.cores_per_node,
+                      "info.started"        : datetime.datetime.utcnow()}})
 
         while not self._terminate.isSet():
 
@@ -633,7 +642,7 @@ class Agent(threading.Thread):
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"info.state"     : "DONE",
-                      "info.finished"   : datetime.datetime.now()}})
+                      "info.finished"   : datetime.datetime.utcnow()}})
         self._log.info("Agent stopped. Database updated.")
 
 

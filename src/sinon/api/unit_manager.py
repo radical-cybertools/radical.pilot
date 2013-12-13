@@ -115,41 +115,18 @@ class UnitManager(attributes.Attributes) :
         self._uid = self._DB.insert_unit_manager(
             unit_manager_data={'scheduler' : scheduler})
 
-    # --------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
     #
-    @classmethod 
-    def get(cls, session, unit_manager_id) :
-        """ Re-connects to an existing UnitManager via its uid.
+    @classmethod
+    def _reconnect(cls, session, unit_manager_id):
 
-        **Example**::
-
-            s = sinon.Session(database_url=DBURL)
-            
-            um1 = sinon.UnitManager(session=s)
-            # Re-connect via the 'get()' method.
-            um2 = sinon.UnitManager.get(session=s, unit_manager_uid=um1.uid)
-
-            # pm1 and pm2 are pointing to the same UnitManager
-            assert um1.uid == um2.uid
-
-        **Arguments:**
-
-            * **session** (:class:`sinon.Session`): The session instance to use.
-
-            * **unit_manager_uid** (`string`): The unique identifier of the 
-              UnitManager we want to re-connect to.
-
-        **Raises:**
-            * :class:`sinon.SinonException` if a UnitManager with 
-              `unit_manager_uid` doesn't exist in the database.
-        """
         if unit_manager_id not in session._dbs.list_unit_manager_uids():
-            raise exceptions.BadParameter("UnitManager '%s' not in database." % unit_manager_id)
+            raise exceptions.BadParameter ("PilotManager with id '%s' not in database." % unit_manager_id)
 
         um_data = session._dbs.get_unit_manager(unit_manager_id)
 
         obj = cls(session=session, scheduler=um_data['scheduler'])
-        obj._uid = unit_manager_id
+        obj._uid           = unit_manager_id
 
         return obj
 
@@ -305,43 +282,27 @@ class UnitManager(attributes.Attributes) :
     # --------------------------------------------------------------------------
     #
     def submit_units(self, unit_descriptions) :
-        """Docstring!
+        """Submits on or more :class:`sinon.ComputeUnit` instances to the unit
+        manager. 
+
+        **Arguments:**
+
+            * **unit_descriptions** [:class:`sinon.ComputeUnitDescription` or list of 
+              :class:`sinon.ComputeUnitDescription`]: The description of the 
+              compute unit instance(s) to create.
+
+        **Returns:**
+
+              * A list of :class:`sinon.ComputeUnit` objects.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         from bson.objectid import ObjectId
-
-        ## if  not unit_description_dict.attribute_exists ('dtype') :
-        ##     raise e.BadParameter ("Invalid description (no type)")
-
-        ## if  not unit_description_dict.dtype in [ sa.COMPUTE, sa.DATA ] :
-        ##     raise e.BadParameter ("Unknown description type %s" % unit_description_dict.dtype)
-
-        ## if  not unit_description_dict.dtype in [ sa.COMPUTE ] :
-        ##     raise e.BadParameter ("Only compute units are supported")
-
-        ## unit = cu.ComputeUnit._register (unit_description_dict, manager=self)
-        ## pilot_id  = None
-
-
-     ## # try to schedule the unit on a pilot
-     ## if  len (self.pilots)  == 0 :
-     ##     # nothing to schedule on...
-     ##     pilot_id = None
-     ##
-     ## elif len (self.pilots) == 1 :
-     ##     # if we have only one pilot, there is not much to 
-     ##     # scheduler (i.e., direct submission)
-     ##     pilot_id = self.pilots[0]
-     ##
-     ## elif not self._scheduler :
-     ##     # if we don't have a scheduler, we do random assignments
-     ##     # FIXME: we might allow user hints, you know, for 'research'?
-     ##     pilot_id = random.choice (self.pilots)
-     ##
-     ## else :
-            # hurray, we can use the scheduler!
 
         if True : ## always use the scheduler for now...
 
@@ -361,9 +322,6 @@ class UnitManager(attributes.Attributes) :
                 schedule = self._scheduler.schedule (as_list(unit_descriptions))
             except Exception as e :
                 raise exceptions.SinonException("Internal error - unit scheduler failed: %s" % e)
-
-          # import pprint
-          # pprint.pprint (schedule)
 
             units       = list()  # compute unit instances to return
             unscheduled = list()  # unscheduled unit descriptions
@@ -397,7 +355,7 @@ class UnitManager(attributes.Attributes) :
                     submission_dict[unit_id] = {
                         'description': ud, 
                         'info': {'state': states.PENDING, 
-                                 'submitted': datetime.datetime.now(),
+                                 'submitted': datetime.datetime.utcnow(),
                                  'log': []}
                     }
 
@@ -436,7 +394,20 @@ class UnitManager(attributes.Attributes) :
     # --------------------------------------------------------------------------
     #
     def get_units(self, unit_ids=None):
-        """Returns one or more compute units.
+        """Returns one or more compute units identified by their IDs. 
+
+        **Arguments:**
+
+            * **unit_ids** [`string` or `list of strings`]: The IDs of the 
+              compute unit objects to return.
+
+        **Returns:**
+
+              * A list of :class:`sinon.ComputeUnit` objects.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -517,7 +488,16 @@ class UnitManager(attributes.Attributes) :
     # --------------------------------------------------------------------------
     #
     def cancel_units (self, unit_ids=None):
-        """Cancel one or more pilots.
+        """Cancel one or more :class:`sinon.ComputeUnits`.
+
+        **Arguments:**
+
+            * **unit_ids** [`string` or `list of strings`]: The IDs of the 
+              compute unit objects to cancel.
+
+        **Raises:**
+
+            * :class:`sinon.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -526,5 +506,4 @@ class UnitManager(attributes.Attributes) :
             unit_ids = [unit_ids]
 
         raise Exception("Not implemented")
-
 

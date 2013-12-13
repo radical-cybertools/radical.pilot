@@ -27,8 +27,8 @@ def demo_milestone_01_1():
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "futuregrid.ALAMO"
-        pd.working_directory = "/N/u/merzky/sinon"
+        pd.resource          = "localhost"
+        pd.working_directory = "/tmp/sinon/"
         pd.cores             = 8
         pd.run_time          = 10 # minutes
 
@@ -72,14 +72,12 @@ def demo_milestone_01_2(session_uid):
         session = sinon.Session(session_uid=session_uid, database_url=DBURL)
         print "* Reconnected to session with session ID %s" % session.uid
 
-        for pm_uid in session.list_pilot_managers():
-            pm = sinon.PilotManager.get(session=session, pilot_manager_id=pm_uid)
+        for pm in session.get_pilot_managers():
             print "   * Found Pilot Manager with ID %s" % pm.uid
             for pilot_ids in pm.list_pilots():
                 print "      * Owns Pilot [%s]" % pilot_ids
 
-        for um_uid in session.list_unit_managers():
-            um = sinon.UnitManager.get(session=session, unit_manager_id=um_uid)
+        for um in session.get_unit_managers():
             print "   * Found Unit Manager with ID %s" % um.uid
             for pilot_ids in um.list_pilots():
                 print "      * Associated with Pilot [%s]" % pilot_ids
