@@ -480,7 +480,7 @@ class ExecWorker(multiprocessing.Process):
 
                             self._slots[host][slot].task.update_state(
                                 start_time=datetime.datetime.utcnow(),
-                                exec_locs = exec_locs ,
+                                exec_locs = exec_locsca ,
                                 state='Running'
                             )
                             update_tasks.append(self._slots[host][slot].task)
