@@ -26,13 +26,14 @@ from bson.objectid import ObjectId
 
 # ----------------------------------------------------------------------------
 # CONSTANTS
-FREE             = None # just an alias
-MAX_EXEC_WORKERS = 8    # max number of worker processes
+FREE                 = None # just an alias
+MAX_EXEC_WORKERS     = 8    # max number of worker processes
 
-LAUNCH_METHOD_MPIRUN = 'MPIRUN'
-LAUNCH_METHOD_APRUN  = 'APRUN'
 LAUNCH_METHOD_SSH    = 'SSH'
+LAUNCH_METHOD_AUTO   = 'AUTO'
+LAUNCH_METHOD_APRUN  = 'APRUN'
 LAUNCH_METHOD_LOCAL  = 'LOCAL'
+LAUNCH_METHOD_MPIRUN = 'MPIRUN'
 
 #-----------------------------------------------------------------------------
 #
@@ -64,7 +65,7 @@ class ExecutionEnvironment(object):
     #-------------------------------------------------------------------------
     #
     @classmethod
-    def discover(cls, logger):
+    def discover(cls, logger, launch_method):
         """Factory method creates a new execution environment.
         """
         eenv = cls(logger)
@@ -81,18 +82,48 @@ class ExecutionEnvironment(object):
         # aprun, mpirun, ssh, fork. this can be overrdden 
         # by passing the '--launch-method' parameter to the agent.
 
-        if eenv._aprun_location is not None:
-            eenv._launch_method = LAUNCH_METHOD_APRUN
-            eenv._launch_command = eenv._aprun_location
-        elif eenv._mpirun_location is not None:
-            eenv._launch_method = LAUNCH_METHOD_MPIRUN
-            eenv._launch_command = eenv._mpirun_location
-        elif eenv._ssh_location is not None:
-            eenv._launch_method = LAUNCH_METHOD_SSH
-            eenv._launch_command = eenv._ssh_location
-        else:
-            eenv._launch_method = LAUNCH_METHOD_LOCAL
-            eenv._launch_command = None
+        if launch_method == LAUNCH_METHOD_AUTO:
+            # Try to autodetect launch method
+            if eenv._aprun_location is not None:
+                eenv._launch_method = LAUNCH_METHOD_APRUN
+                eenv._launch_command = eenv._aprun_location
+            elif eenv._mpirun_location is not None:
+                eenv._launch_method = LAUNCH_METHOD_MPIRUN
+                eenv._launch_command = eenv._mpirun_location
+            elif eenv._ssh_location is not None:
+                eenv._launch_method = LAUNCH_METHOD_SSH
+                eenv._launch_command = eenv._ssh_location
+            else:
+                eenv._launch_method = LAUNCH_METHOD_LOCAL
+                eenv._launch_command = None
+
+        elif launch_method == LAUNCH_METHOD_SSH:
+            if eenv._ssh_location is None:
+                self._log.error("Launch method set to %S but 'ssh' not found in path." % launch_method)
+                return None
+            else:
+                eenv._launch_method = LAUNCH_METHOD_SSH
+                eenv._launch_command = eenv._ssh_location   
+
+        elif launch_method == LAUNCH_METHOD_MPIRUN:
+            if eenv._mpirun_location is None:
+                self._log.error("Launch method set to %S but 'mpirun' not found in path." % launch_method)
+                return None
+            else:
+                eenv._launch_method = LAUNCH_METHOD_MPIRUN
+                eenv._launch_command = eenv._mpirun_location       
+
+        elif launch_method == LAUNCH_METHOD_APRUN:
+            if eenv._aprun_location is None:
+                self._log.error("Launch method set to %S but 'aprun' not found in path." % launch_method)
+                return None
+            else:
+                eenv._launch_method = LAUNCH_METHOD_APRUN
+                eenv._launch_command = eenv._aprun_location      
+
+        elif launch_method == LAUNCH_METHOD_LOCAL:
+                eenv._launch_method = LAUNCH_METHOD_LOCAL
+                eenv._launch_command = None
 
         # create node dictionary
         for rn in eenv._raw_nodes:
@@ -787,11 +818,11 @@ def parse_commandline():
                       help='Specifies the base (working) directory for the agent. [default: %default]',
                       default='.')
 
-    parser.add_option('-m', '--launch-method', 
+    parser.add_option('-l', '--launch-method', 
                       metavar='METHOD',
                       dest='launch_method',
-                      help='Enforce a specific launch method (AUTO, FORK, SSH, MPIRUN, APRUN). [default: %default]',
-                      default='AUTO')
+                      help='Enforce a specific launch method (AUTO, LOCAL, SSH, MPIRUN, APRUN). [default: %default]',
+                      default=LAUNCH_METHOD_AUTO)
 
     # parse the whole shebang
     (options, args) = parser.parse_args()
@@ -806,7 +837,7 @@ def parse_commandline():
         parser.error("You must define a pilot id (-p/--pilot-id). Try --help for help.")
 
     if options.launch_method is not None: 
-        valid_options = ['AUTO', 'FORK', 'SSH', 'MPIRUN', 'APRUN']
+        valid_options = [LAUNCH_METHOD_AUTO, LAUNCH_METHOD_LOCAL, LAUNCH_METHOD_SSH, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_APRUN]
         if options.launch_method.upper() not in valid_options:
             parser.error("--launch-method must be one of these: %s" % valid_options)
 
@@ -829,7 +860,14 @@ if __name__ == "__main__":
     logger.addHandler(ch)
 
     # discover environment, mpirun, cores, etc.
-    exec_env = ExecutionEnvironment.discover(logger)
+    exec_env = ExecutionEnvironment.discover(
+        logger=logger,
+        launch_method=options.launch_method
+    )
+
+    if exec_env is None:
+        logger.error("Problems setting up execution environment. EXITING")
+        sys.exit(255)
 
     agent = Agent(logger        = logger,
                   exec_env      = exec_env,

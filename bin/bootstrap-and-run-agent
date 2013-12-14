@@ -19,6 +19,7 @@ PILOTID=
 SESSIONID=
 WORKDIR=`pwd`
 PYTHON=`which python`
+LAUNCH_MODE=AUTO
 
 # -----------------------------------------------------------------------------
 # print out script usage help
@@ -44,6 +45,8 @@ OPTIONS:
 
    -i      The Python interpreter to use, e.g., python2.6
            (default is '/usr/bin/python')
+
+   -l      Task lauch mode, AUTO, LOCAL, MPIRUN, APRUN
 
    -e      List of commands to run before botstrapping
 
@@ -129,19 +132,19 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python sinon-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID"
+AGENT_CMD="python sinon-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -l $LAUNCH_MODE"
 echo ""
 echo "################################################################################"
 echo "## Launching sinon-pilot-agent"
 echo "## CMDLINE: $AGENT_CMD"
-python sinon-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID
+python sinon-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -l $LAUNCH_MODE
 }
 
 # -----------------------------------------------------------------------------
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:e:C” OPTION
+while getopts “hr:d:s:p:w:i:l:e:C” OPTION
 do
      case $OPTION in
          h)
@@ -165,6 +168,9 @@ do
              ;;
          i)
              PYTHON=$OPTARG
+             ;;
+         l)
+             LAUNCH_MODE=$OPTARG
              ;;
          e)
              PREBOOTSTRAP=$OPTARG

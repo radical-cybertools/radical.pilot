@@ -359,6 +359,9 @@ class PilotManager(attributes.Attributes):
                                             "-p", str(pilot_id),  # pilot uid
                                             "-C"]                 # clean up by default
 
+                    if 'task_launch_mode' in resource_cfg:
+                        jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
+
                     # process the 'queue' attribute
                     if queue is not None:
                         jd.queue = queue
