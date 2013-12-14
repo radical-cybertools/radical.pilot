@@ -475,9 +475,12 @@ class ExecWorker(multiprocessing.Process):
                                 launch_method=self._launch_method,
                                 launch_command=self._launch_command,
                                 logger=self._log)
+
+                            exec_locs = ["%s:%s" % (host, slot)]
+
                             self._slots[host][slot].task.update_state(
                                 start_time=datetime.datetime.utcnow(),
-                                exec_locs = { host : [slot] } ,
+                                exec_locs = exec_locs ,
                                 state='Running'
                             )
                             update_tasks.append(self._slots[host][slot].task)
