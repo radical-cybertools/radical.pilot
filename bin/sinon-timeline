@@ -62,6 +62,8 @@ def get_data(logger, session_id, database_url, database_name):
                     } 
                 })
 
+        print pilot_data 
+
         # ------------------------------------------------------------
         # TASKS
         for umgr in session.get_unit_managers():
@@ -69,19 +71,18 @@ def get_data(logger, session_id, database_url, database_name):
             logger.info("Found %s compute units." % len(tasks))
             for task in tasks:
 
-                exec_details = task.execution_details
-
                 task_data.append({
-                    'id'     : task.uid,
-                #    'name'   : pilot.description['Resource'],
-                #    'cores'  : res_details['cores_per_node'],
-                #    'nodes'  : res_details['nodes'],
-                    'timing' : {
+                    'id'       : task.uid,
+                    'name'     : pilot.description['Resource'],
+                    'location_node' : task.execution_details,
+                    'timing'   : {
                         'scheduled' : task.submission_time,
                         'started'   : task.start_time,
                         'stopped'   : task.stop_time,
                     } 
                 })
+
+        print task_data
 
 
     except sinon.SinonException, ex:

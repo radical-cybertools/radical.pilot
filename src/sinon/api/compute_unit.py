@@ -230,17 +230,12 @@ class ComputeUnit(attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        #workunit_json = self._DB.get_workunits(
-        #    workunit_manager_id=self._manager.uid, 
-        #    workunit_ids=[self.uid]
-        #)
+        workunit_json = self._DB.get_workunits(
+            workunit_manager_id=self._manager.uid, 
+            workunit_ids=[self.uid]
+        )
 
-        #execution_details = {
-        #    'nodes'          : workunit_json[0]['info']['exec_loc_nodes'],
-        #    'cores_per_node' : workunit_json[0]['info']['exec_loc_cores']
-        #}
-
-        return ['de']
+        return workunit_json[0]['info']['exec_locs']
 
     # --------------------------------------------------------------------------
     #

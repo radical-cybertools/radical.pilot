@@ -124,7 +124,6 @@ setup_args = {
                           'bin/bootstrap-and-run-agent',
                          ],
     'package_data'     : {'': ['*.sh', 'VERSION', ]},
-    #'data_files'       : [('agent', ['bin/sinon-pilot-agent'])],
     'test_suite'       : 'sinon.tests',
     'install_requires' : ['setuptools',
                           'saga-python',
