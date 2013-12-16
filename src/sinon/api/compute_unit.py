@@ -313,6 +313,20 @@ class ComputeUnit(attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
+        if not isinstance (state, list):
+            state = [state]
+
+        start_wait = time.time ()
+        # the self.state property pulls the state from the back end.
+        while self.state not in state:
+            time.sleep (1)
+
+            if  (None != timeout) and (timeout <= (time.time () - start_wait)):
+                break
+
+        # done waiting
+        return
+
     # --------------------------------------------------------------------------
     #
     def cancel (self):
@@ -333,8 +347,7 @@ class ComputeUnit(attributes.Attributes):
         if self.state in [states.UNKNOWN] :
             raise excpetions.SinonException("Compute Unit state is UNKNOWN, cannot cancel")
 
-        # now we can send a 'cancel' command to the pilot
-        # through the database layer. 
-        pass
+        # done waiting
+        return
 
 

@@ -11,7 +11,6 @@ __license__   = "MIT"
 
 
 import radical.utils as ru
-from   sinon.utils import as_list
 
 import sinon.api.types as types
 import sinon.api.states as states
@@ -307,6 +306,9 @@ class UnitManager(attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
+        if not isinstance(unit_descriptions, list):
+            unit_descriptions = [unit_descriptions]
+
         from bson.objectid import ObjectId
 
         if True : ## always use the scheduler for now...
@@ -324,7 +326,7 @@ class UnitManager(attributes.Attributes) :
             # simply not be listed for any pilot.  The UM needs to make sure
             # that no UD from the original list is left untreated, eventually.
             try :
-                schedule = self._scheduler.schedule (as_list(unit_descriptions))
+                schedule = self._scheduler.schedule (unit_descriptions)
             except Exception as e :
                 raise exceptions.SinonException("Internal error - unit scheduler failed: %s" % e)
 
@@ -333,7 +335,7 @@ class UnitManager(attributes.Attributes) :
 
             # we copy all unit descriptions into unscheduled, and then remove
             # the scheduled ones...
-            unscheduled = as_list(unit_descriptions)[:]  # python semi-deep-copy magic
+            unscheduled = unit_descriptions[:]  # python semi-deep-copy magic
 
             # submit to all pilots which got something submitted to
             for pilot_id in schedule.keys () :
@@ -385,7 +387,7 @@ class UnitManager(attributes.Attributes) :
 
             # the schedule provided by the scheduler is now evaluated -- check
             # that we didn't lose/gain any units
-            if  len(units) + len(unscheduled) != len (as_list(unit_descriptions)) :
+            if  len(units) + len(unscheduled) != len(unit_descriptions) :
                 raise exceptions.SinonException("Internal error - wrong #units returned from scheduler")
 
             # keep unscheduled units around for later, out-of-band scheduling
