@@ -327,7 +327,13 @@ class PilotManager(attributes.Attributes):
                     pilot_description_dict[pilot_id]['info']['log'].append("Created agent directory '%s'" % str(agent_dir_url))
 
                     # Copy the bootstrap shell script
-                    bs_script_url = saga.Url("file://localhost/%s" % which('bootstrap-and-run-agent')) 
+                    # This works for installed versions of saga-pilot
+                    bs_script = which('bootstrap-and-run-agent')
+                    if bs_script is None:
+                        bs_script = os.path.abspath("%s/../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
+                    # This works for non-installed versions (i.e., python setup.py test)
+                    bs_script_url = saga.Url("file://localhost/%s" % bs_script) 
+
                     bs_script = saga.filesystem.File(bs_script_url)
                     bs_script.copy(agent_dir_url)
                     pilot_description_dict[pilot_id]['info']['log'].append("Copied '%s' script to agent directory" % bs_script_url)
