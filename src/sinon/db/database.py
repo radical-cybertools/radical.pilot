@@ -359,13 +359,13 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def get_workunit_states(self, workunit_manager_id, workunit_uids=None):
+    def get_workunit_states(self, workunit_manager_id, workunit_ids=None):
         """ Get yerself a bunch of workunit
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        if workunit_uids == None:
+        if workunit_ids == None:
             cursor = self._w.find(
                 {"links.unitmanager": workunit_manager_id},
                 {"info.state"}
@@ -374,7 +374,7 @@ class Session():
         else:
             # convert ids to object ids
             workunit_oid = []
-            for wid in workunit_uids:
+            for wid in workunit_ids:
                 workunit_oid.append(ObjectId(wid))
 
             cursor = self._w.find(
