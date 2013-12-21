@@ -446,3 +446,4 @@ class ComputePilot (attributes.Attributes) :
         # now we can send a 'cancel' command to the pilot.
         self._DB.signal_pilots(pilot_manager_id=self._manager.uid, 
             pilot_ids=self.uid, cmd="CANCEL")
+

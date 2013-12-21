@@ -50,15 +50,13 @@ class PLUGIN_CLASS (object) :
         #print "round-robin scheduling of %s units" % len(unit_descriptions)
 
         if  not self._manager :
-            print "WARNING: unit scheduler is not initialized"
-            return None
+            raise RuntimeError ('Unit scheduler is not initialized')
 
         pilots = self._manager.list_pilots ()
         ret    = dict()
 
         if not len (pilots) :
-            print "WARNING: unit scheduler cannot operate on empty pilot set"
-            return ret
+            raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
 
         for ud in unit_descriptions :
