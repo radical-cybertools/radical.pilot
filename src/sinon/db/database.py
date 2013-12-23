@@ -18,6 +18,30 @@ class DBException(Exception):
         self._obj = obj
 
 
+# ------------------------------------------------------------------------------
+#
+class DBEntryExistsException(Exception):
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__ (self, msg, obj=None) :
+        """Le constructeur. Creates a new exception object. 
+        """
+        Exception.__init__(self, msg)
+        self._obj = obj
+
+# ------------------------------------------------------------------------------
+#
+class DBEntryDoesntExistException(Exception):
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__ (self, msg, obj=None) :
+        """Le constructeur. Creates a new exception object. 
+        """
+        Exception.__init__(self, msg)
+        self._obj = obj
+
 #-----------------------------------------------------------------------------
 #
 class Session():
@@ -71,7 +95,7 @@ class Session():
         """
         # make sure session doesn't exist already
         if sid in self._db.collection_names():
-            raise DBException("Session with id '%s' already exists." % sid)
+            raise DBEntryExistsException("Session with id '%s' already exists." % sid)
 
         # remember session id
         self._session_id = sid
@@ -104,7 +128,7 @@ class Session():
         """
         # make sure session exists
         if sid not in self._db.collection_names():
-            raise DBException("Session with id '%s' doesn't exists." % sid)
+            raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
 
         # remember session id
         self._session_id = sid

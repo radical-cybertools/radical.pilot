@@ -45,7 +45,7 @@ class Session(object):
 
     #---------------------------------------------------------------------------
     #
-    def __init__ (self, database_url, session_uid=None, database_name="sinon"):
+    def __init__ (self, database_url, database_name="sinon", session_uid=None):
         """Creates a new or reconnects to an exising session.
 
         If called without a session_uid, a new Session instance is created and 
@@ -53,16 +53,20 @@ class Session(object):
         retrieved from the database. 
 
         **Arguments:**
-            * **database_url** (`string`): The URL of the MongoDB back-end database. 
+            * **database_url** (`string`): The MongoDB URL. 
 
-            * **database_name** (`string`): An alternative root database name 
+            * **database_name** (`string`): An alternative database name 
               (default: 'sinon').
 
-            * **session_uid** (`string`): If session_uid is set, we try re-connect to an
-              existing session instead of creating a new one.
+            * **session_uid** (`string`): If session_uid is set, we try 
+              re-connect to an existing session instead of creating a new one.
+
+        **Returns:**
+            * A new Session instance.
 
         **Raises:**
-            * :class:`sinon.SinonException`
+            * :class:`sinon.DatabaseError`
+
         """
         try:
             if session_uid is None:

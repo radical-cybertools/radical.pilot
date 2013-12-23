@@ -68,6 +68,21 @@ class SinonException(Exception) :
 
 # ------------------------------------------------------------------------------
 #
+class DatabaseError (SinonException) :
+    """
+    :param msg: Error message, indicating the cause for the exception
+                being raised.
+    :type  msg: string
+    :raises:    --
+
+    The given URL could not be interpreted, for example due to an incorrect
+    / unknown schema. 
+    """
+    def __init__ (self, msg, obj=None) :
+        SinonException.__init__(self, msg, obj)
+
+# ------------------------------------------------------------------------------
+#
 class IncorrectURL (SinonException) :
     """
     :param msg: Error message, indicating the cause for the exception
