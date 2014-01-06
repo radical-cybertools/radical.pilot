@@ -18,6 +18,7 @@ import sinon.api.states as states
 # ------------------------------------------------------------------------------
 #
 from sinon.api.session                   import Session 
+from sinon.api.credential                import Context 
 from sinon.api.exceptions                import SinonException
 
 from sinon.api.unit_manager              import UnitManager

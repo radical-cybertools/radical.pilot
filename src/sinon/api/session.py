@@ -88,6 +88,9 @@ class Session(object):
         self._database_name = database_name 
         self._session_uid   = session_uid
 
+        # list of security contexts
+        self._credentials      = []
+
     #---------------------------------------------------------------------------
     #
     def __repr__(self):
@@ -117,10 +120,34 @@ class Session(object):
 
         """
         if not self._session_uid:
-            msg = "Invalid instance: closed or doesn't exist."
+            msg = "Invalid session instance: closed or doesn't exist."
             raise exceptions.IncorrectState(msg=msg)
 
         return self._session_uid
+
+
+    #---------------------------------------------------------------------------
+    #
+    def add_credential(self, credential):
+        """Adds a new security credential to the session.
+        """
+        if not self._session_uid:
+            msg = "Invalid session instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
+        self._credentials.append(credential)
+
+
+    #---------------------------------------------------------------------------
+    #
+    def list_credentials(self, credential):
+        """Lists the security credentials of the session.
+        """
+        if not self._session_uid:
+            msg = "Invalid session instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
+        return self._credentials
 
     #---------------------------------------------------------------------------
     #
@@ -136,7 +163,7 @@ class Session(object):
               or doesn't exist. 
         """
         if not self._session_uid:
-            msg = "Invalid instance: closed or doesn't exist."
+            msg = "Invalid session instance: closed or doesn't exist."
             raise exceptions.IncorrectState(msg=msg)
 
         self._dbs.delete()
@@ -161,7 +188,7 @@ class Session(object):
               or doesn't exist. 
         """
         if not self._session_uid:
-            msg = "Invalid instance: closed or doesn't exist."
+            msg = "Invalid session instance: closed or doesn't exist."
             raise exceptions.IncorrectState(msg=msg)
 
         return self._dbs.list_pilot_manager_uids()
@@ -190,6 +217,10 @@ class Session(object):
             * :class:`sinon.SinonException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
+        if not self._session_uid:
+            msg = "Invalid session instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
         return_scalar = False
 
         if pilot_manager_ids is None:
@@ -230,7 +261,7 @@ class Session(object):
               or doesn't exist. 
         """
         if not self._session_uid:
-            msg = "Invalid instance: closed or doesn't exist."
+            msg = "Invalid session instance: closed or doesn't exist."
             raise exceptions.IncorrectState(msg=msg)
 
         return self._dbs.list_unit_manager_uids()
@@ -258,6 +289,10 @@ class Session(object):
             * :class:`sinon.SinonException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
+        if not self._session_uid:
+            msg = "Invalid session instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
         return_scalar = False
         if unit_manager_ids is None:
             unit_manager_ids = self.list_unit_managers()
