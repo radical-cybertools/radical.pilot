@@ -115,7 +115,6 @@ setup_args = {
         'Operating System     :: MacOS :: MacOS X',
         'Operating System     :: POSIX',
         'Operating System     :: Unix',
-        'Framework            :: Rhythmos',
     ],
     'packages'    : find_packages('src'),
     'package_dir' : {'': 'src'},    
