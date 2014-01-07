@@ -18,7 +18,7 @@ import sinon.api.states as states
 # ------------------------------------------------------------------------------
 #
 from sinon.api.session                   import Session 
-from sinon.api.credential                import Context 
+from sinon.api.credentials               import SSHCredential 
 from sinon.api.exceptions                import SinonException
 
 from sinon.api.unit_manager              import UnitManager
@@ -31,13 +31,10 @@ from sinon.api.compute_pilot_description import ComputePilotDescription
 
 # ------------------------------------------------------------------------------
 #
-import os
-import radical.utils.logger as rul
+from sinon.utils.version                 import version
+from sinon.utils.logger                  import logger
 
-version=open    (os.path.dirname (os.path.abspath (__file__)) + "/VERSION", 'r').read().strip()
-rul.getLogger   ('sinon').info ('sinon           version: %s' % version)
-# rul.log_version ('sinon', 'sinon', version)
+logger.info ('loading sinon version: %s' % version)
 
 
-# ------------------------------------------------------------------------------
 

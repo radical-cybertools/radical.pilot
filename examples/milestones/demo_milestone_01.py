@@ -23,7 +23,7 @@ def demo_milestone_01_1():
         session = sinon.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        cred = sinon.Credential("ssh")
+        cred = sinon.SSHCredential()
         cred.user_id = "oweidner"
 
         session.add_credential(cred)

@@ -11,13 +11,15 @@ __license__   = "MIT"
 
 import uuid
 
-from sinon.api.unit_manager import UnitManager
+from sinon.api.unit_manager  import UnitManager
 from sinon.api.pilot_manager import PilotManager
 
-from sinon.db import Session as dbSession
-from sinon.db import DBException
+from sinon.utils.logger      import logger
 
-import exceptions
+from sinon.db                import Session as dbSession
+from sinon.db                import DBException
+
+import sinon.api.exceptions
 
 
 # ------------------------------------------------------------------------------
@@ -69,27 +71,38 @@ class Session(object):
 
         """
         try:
+            self._database_url  = database_url
+            self._database_name = database_name 
+
             if session_uid is None:
                 # if session_uid is 'None' we create a new session
                 session_uid = str(uuid.uuid4())
                 self._dbs = dbSession.new(sid=session_uid, 
                                           db_url=database_url, 
                                           db_name=database_name)
+                self._session_uid   = session_uid
+                logger.info("Successfully created new session object %s" % str(self))
+
             else:
                 # otherwise, we reconnect to an exissting session
                 self._dbs = dbSession.reconnect(sid=session_uid, 
                                                 db_url=database_url, 
                                                 db_name=database_name)
+
+                self._session_uid   = session_uid
+                logger.info("Successfully reconnected to existing session object %s" % str(self))
+
         except DBException, ex:
             raise exceptions.SinonException("Database Error: %s" % ex)
 
 
-        self._database_url  = database_url
-        self._database_name = database_name 
-        self._session_uid   = session_uid
+
 
         # list of security contexts
         self._credentials      = []
+
+
+
 
     #---------------------------------------------------------------------------
     #
