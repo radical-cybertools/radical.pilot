@@ -144,12 +144,11 @@ class Session(object):
             raise exceptions.IncorrectState(msg=msg)
 
         self._credentials.append(credential)
-        logger.info("Added new %s credential: %s to session %s." % (credential._context.type, str(credential._context), self.uid))
-
+        logger.info("Added credential %s to session %s." % (str(credential), self.uid))
 
     #---------------------------------------------------------------------------
     #
-    def list_credentials(self, credential):
+    def list_credentials(self):
         """Lists the security credentials of the session.
         """
         if not self._session_uid:

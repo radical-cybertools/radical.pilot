@@ -156,8 +156,6 @@ class PilotManager(attributes.Attributes):
         if pilot_manager_id not in session._dbs.list_pilot_manager_uids():
             raise exceptions.BadParameter ("PilotManager with id '%s' not in database." % pilot_manager_id)
 
-        #pm_data = session._dbs.get_pilot_manager(unit_manager_id)
-
         obj = cls(session=session, resource_configurations="~=RECON=~")
         obj._uid           = pilot_manager_id
         obj._resource_cfgs = None # TODO: reconnect
@@ -307,6 +305,14 @@ class PilotManager(attributes.Attributes):
                 # Create SAGA Job description and submit the pilot job #
                 ########################################################
                 try:
+                    # create a custom SAGA Session and add the credentials
+                    # that are attached to the session
+                    session = saga.Session()
+                    for cred in self._session.list_credentials():
+                        ctx = cred._context
+                        session.add_context(ctx)
+                        logger.info("Added credential %s to SAGA job service." % str(cred))
+
                     # Create working directory if it doesn't exist and copy
                     # the agent bootstrap script into it. 
                     #
@@ -355,7 +361,7 @@ class PilotManager(attributes.Attributes):
 
                     # now that the script is in place and we know where it is,
                     # we can launch the agent
-                    js = saga.job.Service(resource_cfg['URL'])
+                    js = saga.job.Service(resource_cfg['URL'], session=session)
 
                     jd = saga.job.Description()
                     jd.working_directory = agent_dir_url.path
