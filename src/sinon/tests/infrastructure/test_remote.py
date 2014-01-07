@@ -1,11 +1,13 @@
 """ Test resources
 """
 
-import os
 import sinon
+
+import os
+import uuid
+import getpass
 import unittest
 
-import uuid
 from copy import deepcopy
 from sinon.db import Session
 from pymongo import MongoClient
@@ -42,12 +44,19 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_submission(self):
         """ Test saga-pilot on real backends
         """
-        test_resource = os.getenv('SAGAPILOT_TEST_RESOURCE',  "localhost")
-        test_workdir  = os.getenv('SAGAPILOT_TEST_WORKDIR',   "/tmp/sinon.unit-tests")
-        test_cores    = os.getenv('SAGAPILOT_TEST_CORES',     "1")
-        test_num_cus  = os.getenv('SAGAPILOT_TEST_NUM_CUS',   "2")
+        test_resource = os.getenv('SINON_TEST_REMOTE_RESOURCE',   "localhost")
+        test_ssh_uid  = os.getenv('SINON_TEST_REMOTE_SSH_USER_ID',  None)
+        test_ssh_key  = os.getenv('SINON_TEST_REMOTE_SSH_USER_KEY', None)
+        test_workdir  = os.getenv('SINON_TEST_REMOTE_WORKDIR',   "/tmp/sinon.unit-tests")
+        test_cores    = os.getenv('SINON_TEST_REMOTE_CORES',     "1")
+        test_num_cus  = os.getenv('SINON_TEST_REMOTE_NUM_CUS',   "2")
 
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+        cred = sinon.SSHCredential()
+        cred.user_id  = test_ssh_uid
+        cred.user_key = test_ssh_key
+        
+        session.add_credential(cred)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 

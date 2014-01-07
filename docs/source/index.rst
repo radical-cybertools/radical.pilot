@@ -33,4 +33,5 @@ Contents:
    apidoc.rst
    schedulers.rst
    machconf.rst
+   testing.rst
 
