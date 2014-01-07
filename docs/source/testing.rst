@@ -42,5 +42,13 @@ So if for example you want to run the unit tests on Futuregrid's _India_ cluster
 
 .. code-block:: bash
 
+    SINON_VERBOSE=info \
     SINON_TEST_REMOTE_RESOURCE= \
     python setup.py test
+
+.. warning:: 
+ 
+    Be aware that it can take quite some time for pilots to get scheduled on 
+    the remote system. Since the unit tests launch at least O(10) pilots,
+    executing the unit tests on a remote machine might take a significant 
+    amount of time.

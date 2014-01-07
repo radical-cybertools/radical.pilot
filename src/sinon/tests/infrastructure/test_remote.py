@@ -55,7 +55,7 @@ class TestRemoteSubmission(unittest.TestCase):
         cred = sinon.SSHCredential()
         cred.user_id  = test_ssh_uid
         cred.user_key = test_ssh_key
-        
+
         session.add_credential(cred)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
@@ -76,7 +76,7 @@ class TestRemoteSubmission(unittest.TestCase):
             cudesc = sinon.ComputeUnitDescription()
             cudesc.cores = 1
             cudesc.executable = "/bin/sleep"
-            cudesc.arguments = ['10']
+            cudesc.arguments = ['1']
             cudescs.append(cudesc)
 
                 
@@ -98,7 +98,7 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.stop_time is not None
 
 
-        pilot.cancel()
+        pm.cancel_pilots()
 
 
 

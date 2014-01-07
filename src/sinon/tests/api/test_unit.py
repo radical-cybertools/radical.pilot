@@ -75,7 +75,7 @@ class TestUnit(unittest.TestCase):
         assert cu.state == sinon.states.DONE
         assert cu.stop_time is not None
 
-        pilot.cancel()
+        pm.cancel_pilots()
 
 
 
