@@ -9,6 +9,8 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+from sinon.api.compute_pilot import ComputePilot
+from sinon.utils.logger      import logger
 
 import sinon.api.states     as states
 import sinon.api.attributes as attributes
@@ -16,7 +18,6 @@ import sinon.api.exceptions as exceptions
 
 from bson.objectid import ObjectId
 from radical.utils import which
-from sinon.api.compute_pilot import ComputePilot
 
 import os
 import saga
@@ -145,6 +146,7 @@ class PilotManager(attributes.Attributes):
 
         self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
 
+        logger.info("Successfully created new PilotManager object %s." % str(self))
 
     #---------------------------------------------------------------------------
     #
@@ -160,6 +162,8 @@ class PilotManager(attributes.Attributes):
         obj._uid           = pilot_manager_id
         obj._resource_cfgs = None # TODO: reconnect
 
+        logger.info("Successfully reconnected to existing PilotManager object %s." % str(obj))
+
         return obj
 
     #---------------------------------------------------------------------------
@@ -174,9 +178,6 @@ class PilotManager(attributes.Attributes):
 
             * A unique identifier [`string`].
         """
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
-
         return self._uid
 
     # --------------------------------------------------------------------------

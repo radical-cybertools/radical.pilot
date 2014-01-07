@@ -81,7 +81,7 @@ class Session(object):
                                           db_url=database_url, 
                                           db_name=database_name)
                 self._session_uid   = session_uid
-                logger.info("Successfully created new session object %s" % str(self))
+                logger.info("Successfully created new Session object %s." % str(self))
 
             else:
                 # otherwise, we reconnect to an exissting session
@@ -90,18 +90,13 @@ class Session(object):
                                                 db_name=database_name)
 
                 self._session_uid   = session_uid
-                logger.info("Successfully reconnected to existing session object %s" % str(self))
+                logger.info("Successfully reconnected to existing Session object %s." % str(self))
 
         except DBException, ex:
             raise exceptions.SinonException("Database Error: %s" % ex)
 
-
-
-
         # list of security contexts
         self._credentials      = []
-
-
 
 
     #---------------------------------------------------------------------------
@@ -149,6 +144,7 @@ class Session(object):
             raise exceptions.IncorrectState(msg=msg)
 
         self._credentials.append(credential)
+        logger.info("Added new %s credential: %s to session %s." % (credential._context.type, str(credential._context), self.uid))
 
 
     #---------------------------------------------------------------------------
@@ -180,6 +176,9 @@ class Session(object):
             raise exceptions.IncorrectState(msg=msg)
 
         self._dbs.delete()
+        logger.info("Deleted session %s from database." % self._session_uid)
+        self._session_uid = None
+
 
     #---------------------------------------------------------------------------
     #
@@ -248,6 +247,7 @@ class Session(object):
         for pilot_manager_id in pilot_manager_ids:
             pilot_manager = PilotManager._reconnect(session=self, pilot_manager_id=pilot_manager_id)
             pilot_manager_objects.append(pilot_manager)
+
 
         if return_scalar is True:
             pilot_manager_objects = pilot_manager_objects[0]

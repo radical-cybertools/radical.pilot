@@ -12,12 +12,13 @@ __license__   = "MIT"
 
 import radical.utils as ru
 
-import sinon.api.types as types
-import sinon.api.states as states
-import sinon.api.exceptions as exceptions
-import sinon.api.attributes as attributes
+from sinon.api.compute_unit  import ComputeUnit
+from sinon.utils.logger      import logger
 
-from sinon.api.compute_unit import ComputeUnit
+import sinon.api.types       as types
+import sinon.api.states      as states
+import sinon.api.exceptions  as exceptions
+import sinon.api.attributes  as attributes
 
 import time
 import datetime
@@ -115,9 +116,11 @@ class UnitManager(attributes.Attributes) :
             # Add a new unit manager netry to the DB
             self._uid = self._DB.insert_unit_manager(
                 unit_manager_data={'scheduler' : scheduler})
+            logger.info("Successfully created new UnitManager object %s." % str(self))
+
         else:
-            # re-connect. do nothing
             pass
+            # re-connect. do nothing
 
     #---------------------------------------------------------------------------
     #
@@ -131,6 +134,8 @@ class UnitManager(attributes.Attributes) :
 
         obj = cls(session=session, scheduler=um_data['scheduler'], _reconnect=True)
         obj._uid = unit_manager_id
+        
+        logger.info("Successfully reconnected to existing UnitManager object %s." % str(obj))
 
         return obj
 
@@ -139,9 +144,6 @@ class UnitManager(attributes.Attributes) :
     def _get_uid_priv(self):
         """Returns the unit manager id.
         """
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
-
         return self._uid
 
     #---------------------------------------------------------------------------
