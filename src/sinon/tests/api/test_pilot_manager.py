@@ -117,9 +117,6 @@ class Test_PilotManager(unittest.TestCase):
             pm1.submit_pilots(pilot_descriptions=cpd)
             pm2.submit_pilots(pilot_descriptions=cpd)
 
-        print pm1.list_pilots()
-        print pm2.list_pilots()
-
         assert len(pm1.list_pilots()) == 2, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 2, "Wrong number of pilots returned."
 
