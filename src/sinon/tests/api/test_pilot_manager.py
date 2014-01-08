@@ -117,11 +117,18 @@ class Test_PilotManager(unittest.TestCase):
             pm1.submit_pilots(pilot_descriptions=cpd)
             pm2.submit_pilots(pilot_descriptions=cpd)
 
-        pm1_r = session.get_pilot_managers(pilot_manager_ids=pm1.uid)
-        pm2_r = session.get_pilot_managers(pilot_manager_ids=pm2.uid)
+        print pm1.list_pilots()
+        print pm2.list_pilots()
 
         assert len(pm1.list_pilots()) == 2, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 2, "Wrong number of pilots returned."
+
+        pm1_r = session.get_pilot_managers(pilot_manager_ids=pm1.uid)
+        pm2_r = session.get_pilot_managers(pilot_manager_ids=pm2.uid)
+
+        assert len(pm1_r.list_pilots()) == 2, "Wrong number of pilots returned."
+        assert len(pm2_r.list_pilots()) == 2, "Wrong number of pilots returned."
+
 
     #-------------------------------------------------------------------------
     #

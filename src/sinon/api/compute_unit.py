@@ -9,9 +9,10 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sinon.api.states as states
-import sinon.api.attributes as attributes
-import sinon.api.exceptions as exceptions
+import sinon.api.states      as states
+import sinon.api.attributes  as attributes
+import sinon.api.exceptions  as exceptions
+from sinon.utils.logger      import logger
 
 import time
 
@@ -318,8 +319,12 @@ class ComputeUnit(attributes.Attributes):
 
         start_wait = time.time ()
         # the self.state property pulls the state from the back end.
-        while self.state not in state:
+        new_state = self.state
+        while new_state not in state:
             time.sleep (1)
+
+            new_state = self.state
+            logger.debug("Compute unit %s in state %s" % (self._uid, new_state))
 
             if  (None != timeout) and (timeout <= (time.time () - start_wait)):
                 break

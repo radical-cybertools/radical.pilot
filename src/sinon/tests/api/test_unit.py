@@ -67,6 +67,8 @@ class TestUnit(unittest.TestCase):
         assert cu.start_time is None
         assert cu.start_time is None
 
+        print "AASDSADASDASDAS: %s" % cu.state
+
         cu.wait(sinon.states.RUNNING)
         assert cu.state == sinon.states.RUNNING
         assert cu.start_time is not None
