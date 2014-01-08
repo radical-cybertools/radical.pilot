@@ -9,8 +9,6 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import uuid
-
 from sinon.api.unit_manager  import UnitManager
 from sinon.api.pilot_manager import PilotManager
 
@@ -20,6 +18,7 @@ from sinon.db                import Session as dbSession
 from sinon.db                import DBException
 
 import sinon.api.exceptions
+from bson.objectid import ObjectId
 
 
 # ------------------------------------------------------------------------------
@@ -76,12 +75,12 @@ class Session(object):
 
             if session_uid is None:
                 # if session_uid is 'None' we create a new session
-                session_uid = str(uuid.uuid4())
+                session_uid = str(ObjectId())
                 self._dbs = dbSession.new(sid=session_uid, 
                                           db_url=database_url, 
                                           db_name=database_name)
                 self._session_uid   = session_uid
-                logger.info("Successfully created new Session object %s." % str(self))
+                logger.info("Created new Session %s." % str(self))
 
             else:
                 # otherwise, we reconnect to an exissting session
@@ -90,7 +89,7 @@ class Session(object):
                                                 db_name=database_name)
 
                 self._session_uid   = session_uid
-                logger.info("Successfully reconnected to existing Session object %s." % str(self))
+                logger.info("Reconnected to existing Session %s." % str(self))
 
         except DBException, ex:
             raise exceptions.SinonException("Database Error: %s" % ex)

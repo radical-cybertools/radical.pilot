@@ -116,7 +116,7 @@ class UnitManager(attributes.Attributes) :
             # Add a new unit manager netry to the DB
             self._uid = self._DB.insert_unit_manager(
                 unit_manager_data={'scheduler' : scheduler})
-            logger.info("Successfully created new UnitManager object %s." % str(self))
+            logger.info("Created new UnitManager %s." % str(self))
 
         else:
             pass
@@ -135,7 +135,7 @@ class UnitManager(attributes.Attributes) :
         obj = cls(session=session, scheduler=um_data['scheduler'], _reconnect=True)
         obj._uid = unit_manager_id
         
-        logger.info("Successfully reconnected to existing UnitManager object %s." % str(obj))
+        logger.info("Reconnected to existing UnitManager %s." % str(obj))
 
         return obj
 
@@ -173,8 +173,8 @@ class UnitManager(attributes.Attributes) :
         """
         info_dict = {
             'type'      : 'UnitManagerManager', 
-            'id'        : self._get_uid_priv(),
-            'scheduler' : self._get_scheduler_priv()
+            'uid'       : self._get_uid_priv(),
+            'scheduler' : str(self._get_scheduler_priv())
         }
         return info_dict
 

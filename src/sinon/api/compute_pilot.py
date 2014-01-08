@@ -13,6 +13,9 @@ import sinon.api.states     as states
 import sinon.api.attributes as attributes
 import sinon.api.exceptions as exceptions
 
+from sinon.utils.logger     import logger
+
+
 import time
 
 # ------------------------------------------------------------------------------
@@ -122,6 +125,8 @@ class ComputePilot (attributes.Attributes) :
 
         pilot._DB = pilot._manager._DB
 
+        logger.info("Created new ComputePilot %s" % str(pilot))
+
         return pilot
 
     # --------------------------------------------------------------------------
@@ -144,6 +149,7 @@ class ComputePilot (attributes.Attributes) :
 
             pilot._DB = pilot._manager._DB
         
+            logger.info("Reconnected to existing ComputePilot %s" % str(pilot))
             pilots.append(pilot)
 
         return pilots
@@ -359,8 +365,8 @@ class ComputePilot (attributes.Attributes) :
         info_dict = {
             'type'            : 'ComputePilot', 
             'id'              : self._get_uid_priv(), 
-            'state'           : self._get_state_priv(),
-            'resource'        : self._get_resource_priv(),
+            #'state'           : self._get_state_priv(),
+            #'resource'        : self._get_resource_priv(),
  #           'submission_time' : self._get_submission_time_priv(), 
  #           'start_time'      : self._get_start_time_priv(), 
  #           'stop_time'       : self._get_stop_time_priv()

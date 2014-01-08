@@ -18,7 +18,7 @@ execution of parallel executables, for example based on MPI or OpenMP.
 SAGA-Pilot is not a static system, but it rather provides the user with a
 programming library ("Pilot-API") that  provides abstractions for resource
 access and task management. With this  library, the user can develop everything
-from simple "submission scripts" to arbitrarily complex applictions, higher-
+from simple "submission scripts" to arbitrarily complex applications, higher-
 level services and tools.
 
 #########
