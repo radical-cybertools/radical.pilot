@@ -99,7 +99,7 @@ class ExecutionEnvironment(object):
 
         elif launch_method == LAUNCH_METHOD_SSH:
             if eenv._ssh_location is None:
-                self._log.error("Launch method set to %S but 'ssh' not found in path." % launch_method)
+                logger.error("Launch method set to %s but 'ssh' not found in path." % launch_method)
                 return None
             else:
                 eenv._launch_method = LAUNCH_METHOD_SSH
@@ -107,7 +107,7 @@ class ExecutionEnvironment(object):
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
             if eenv._mpirun_location is None:
-                self._log.error("Launch method set to %S but 'mpirun' not found in path." % launch_method)
+                logger.error("Launch method set to %s but 'mpirun' not found in path." % launch_method)
                 return None
             else:
                 eenv._launch_method = LAUNCH_METHOD_MPIRUN
@@ -115,7 +115,7 @@ class ExecutionEnvironment(object):
 
         elif launch_method == LAUNCH_METHOD_APRUN:
             if eenv._aprun_location is None:
-                self._log.error("Launch method set to %S but 'aprun' not found in path." % launch_method)
+                logger.error("Launch method set to %s but 'aprun' not found in path." % launch_method)
                 return None
             else:
                 eenv._launch_method = LAUNCH_METHOD_APRUN

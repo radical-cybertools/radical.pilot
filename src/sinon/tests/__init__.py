@@ -4,5 +4,5 @@
 import os
 import unittest
 
-from api import * 
-from infrastructure import * 
+from api    import * 
+from remote import * 

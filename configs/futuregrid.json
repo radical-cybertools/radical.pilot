@@ -29,7 +29,7 @@
         "filesystem"         : "sftp://sierra.futuregrid.org/",
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"      : ["module load python", "module load mpich2"],
+        "pre_bootstrap"      : ["module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN"
     },
 

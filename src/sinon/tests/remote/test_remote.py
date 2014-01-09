@@ -41,15 +41,17 @@ class TestRemoteSubmission(unittest.TestCase):
 
     #-------------------------------------------------------------------------
     #
-    def test__remote_submission(self):
-        """ Test saga-pilot on real backends
+    def test__remote_simple_submission(self):
+        """ Test simple remote submission with one pilot.
         """
-        test_resource = os.getenv('SINON_TEST_REMOTE_RESOURCE',   "localhost")
+        test_resource = os.getenv('SINON_TEST_REMOTE_RESOURCE',     "localhost")
         test_ssh_uid  = os.getenv('SINON_TEST_REMOTE_SSH_USER_ID',  None)
         test_ssh_key  = os.getenv('SINON_TEST_REMOTE_SSH_USER_KEY', None)
-        test_workdir  = os.getenv('SINON_TEST_REMOTE_WORKDIR',   "/tmp/sinon.unit-tests")
-        test_cores    = os.getenv('SINON_TEST_REMOTE_CORES',     "1")
-        test_num_cus  = os.getenv('SINON_TEST_REMOTE_NUM_CUS',   "2")
+        test_workdir  = os.getenv('SINON_TEST_REMOTE_WORKDIR',      "/tmp/sinon.unit-tests")
+        test_cores    = os.getenv('SINON_TEST_REMOTE_CORES',        "1")
+        test_num_cus  = os.getenv('SINON_TEST_REMOTE_NUM_CUS',      "2")
+        test_timeout  = os.getenv('SINON_TEST_TIMEOUT',             "5")
+
 
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
         cred = sinon.SSHCredential()
@@ -76,31 +78,27 @@ class TestRemoteSubmission(unittest.TestCase):
             cudesc = sinon.ComputeUnitDescription()
             cudesc.cores = 1
             cudesc.executable = "/bin/sleep"
-            cudesc.arguments = ['1']
+            cudesc.arguments = ['10']
             cudescs.append(cudesc)
 
-                
-        cu = um.submit_units(cudescs)
+        cus = um.submit_units(cudescs)
 
-        um.wait_units()
+        for cu in cus:
+            assert cu is not None
+            assert cu.submission_time is not None
+            assert cu.start_time is None
+            assert cu.start_time is None
 
-        #assert cu is not None
-        #assert cu.submission_time is not None
-        #assert cu.start_time is None
-        #assert cu.start_time is None
+        um.wait_units(state=[sinon.states.RUNNING], timeout=test_timeout)
 
-        #cu.wait(sinon.states.RUNNING)
-        #assert cu.state == sinon.states.RUNNING
-        #assert cu.start_time is not None
+        for cu in cus:
+            assert cu.state == sinon.states.RUNNING
+            assert cu.start_time is not None
 
-        #cu.wait(sinon.states.DONE)
-        #assert cu.state == sinon.states.DONE
-        #assert cu.stop_time is not None
+        um.wait_units(state=[sinon.states.DONE, sinon.states.FAILED], timeout=test_timeout)
 
+        for cu in cus:
+            assert cu.state == sinon.states.DONE
+            assert cu.stop_time is not None
 
         pm.cancel_pilots()
-
-
-
-
-
