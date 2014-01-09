@@ -4,6 +4,8 @@
 * Github only release: 
   pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
 
+* Added logging
+* Added security credential handling 
 * Closed tickets: 
   - https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed
 
@@ -15,24 +17,4 @@
   pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
 
 * Closed tickets: 
-  - https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed
-
-
-0.1.1 Release 
----------------------------------------------------------------------
-
-* Github only release: 
-  pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
-
-* Closed tickets: 
-  - https://github.com/saga-project/saga-pilot/issues?milestone=2&state=closed
-
-
-0.1.0 Release 
----------------------------------------------------------------------
-
-* Github only release: 
-  pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
-
-* Closed tickets: 
-  - https://github.com/saga-project/saga-pilot/issues?milestone=1&state=closed
+  - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed

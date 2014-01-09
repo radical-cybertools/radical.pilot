@@ -22,6 +22,12 @@ def demo_milestone_02():
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sinon.Session(database_url=DBURL)
 
+        # Add an ssh identity to the session.
+        cred = sinon.SSHCredential()
+        cred.user_id = "oweidner"
+
+        session.add_credential(cred)
+
         # Add a Pilot Manager with a machine configuration file for FutureGrid
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 

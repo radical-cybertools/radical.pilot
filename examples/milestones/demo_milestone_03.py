@@ -30,6 +30,12 @@ def demo_milestone_03_part_1():
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sinon.Session(database_url=DBURL)
 
+        # Add an ssh identity to the session.
+        cred = sinon.SSHCredential()
+        cred.user_id = "oweidner"
+
+        session.add_credential(cred)
+
         # Add a Pilot Manager with a machine configuration file for FutureGrid
         pmgr = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
@@ -91,7 +97,7 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
         print "  Session: %s" % str(session)
 
         # Re-connect to the pilot manager and print some information about it
-        pmgr = sinon.PilotManager.get(session=session, pilot_manager_id=pmgr_id)
+        pmgr = session.get_pilot_managers(pilot_manager_ids=pmgr_id)
         print "  |\n  |- Pilot Manager: %s " % str(pmgr) 
 
         # Get the pilots from the pilot manager and print some information about them
@@ -100,7 +106,7 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
             print "  |  |- Pilot: %s " % str(pilot)
 
         # Re-connect to the unit manager and print some information about it
-        umgr = sinon.UnitManager.get(session=session, unit_manager_id=umgr_id)
+        umgr = session.get_unit_managers(unit_manager_ids=umgr_id)
         print "  |\n  |- Unit Manager: %s " % str(umgr)
         print "  |  |- Units: %s" % (len(umgr.list_units()))
 
