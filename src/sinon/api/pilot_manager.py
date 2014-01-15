@@ -418,6 +418,9 @@ class PilotManager(attributes.Attributes):
                     pilot_description_dict[pilot_id]['info']['state'] = states.PENDING
                     pilot_description_dict[pilot_id]['info']['log'].append("Pilot Job successfully submitted with JobID '%s'" % pilotjob_id)
 
+                    # keep the actual submission URL around for pilot inspection
+                    pilot_description['description']['resource'] = resource_cfg['URL']
+
                 except saga.SagaException, se: 
                     # at this point, submission has failed. we update the 
                     # agent status accordingly
