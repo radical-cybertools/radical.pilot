@@ -354,7 +354,7 @@ class PilotManager(attributes.Attributes):
                     agent_script = saga.filesystem.File(agent_script_url)
                     agent_script.copy(agent_dir_url)
                     pilot_description_dict[pilot_id]['info']['log'].append("Copied '%s' script to agent directory" % agent_script_url)
-                    logger.debug("Copied '%s' script to agent directory" % agent_script_url)
+                    logger.debug("Copied '%s' script to agent directory '%s'" % (agent_script_url, agent_dir_url))
 
                     # extract the required connection parameters and uids
                     # for the agent:
