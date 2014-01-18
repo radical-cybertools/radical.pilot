@@ -20,6 +20,16 @@ DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 
 #-------------------------------------------------------------------------------
+# Change these according to your needs 
+CFG_USERNAME      = "oweidner"
+CFG_RESOURCE_A    = "localhost"    
+CFG_WORKING_DIR_A = "/tmp/sinon/"
+CFG_NUMCORES_A    = 8
+CFG_RESOURCE_B    = "futuregrid.INDIA"    
+CFG_WORKING_DIR_B = "/N/u/oweidner/sinon"
+CFG_NUMCORES_B    = 32
+
+#-------------------------------------------------------------------------------
 #
 def demo_milestone_03_part_1():
     """PART 1: Create two 16-core pilots on hotel and india, submit 16 bulks 
@@ -32,7 +42,7 @@ def demo_milestone_03_part_1():
 
         # Add an ssh identity to the session.
         cred = sinon.SSHCredential()
-        cred.user_id = "oweidner"
+        cred.user_id = CFG_USERNAME
 
         session.add_credential(cred)
 
@@ -41,16 +51,16 @@ def demo_milestone_03_part_1():
 
         # Define a 16-core pilot to hotel.futuregrid.org
         pd_hotel = sinon.ComputePilotDescription()
-        pd_hotel.resource          = "localhost"
-        pd_hotel.working_directory = "/tmp/sinon/"
-        pd_hotel.cores             = 32
+        pd_hotel.resource          = CFG_RESOURCE_A
+        pd_hotel.working_directory = CFG_WORKING_DIR_A
+        pd_hotel.cores             = CFG_NUMCORES_A
         pd_hotel.run_time          = 10 # minutes
 
         # Define a 16-core pilot to india.futuregrid.org
         pd_india = sinon.ComputePilotDescription()
-        pd_india.resource          = "futuregrid.INDIA"
-        pd_india.working_directory = "/N/u/oweidner/sinon"
-        pd_india.cores             = 32
+        pd_india.resource          = CFG_RESOURCE_B
+        pd_india.working_directory = CFG_WORKING_DIR_B
+        pd_india.cores             = CFG_NUMCORES_B
         pd_india.run_time          = 10 # minutes
 
         # Submit both pilots

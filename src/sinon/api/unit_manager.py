@@ -376,7 +376,7 @@ class UnitManager(attributes.Attributes) :
                 self._DB.insert_workunits(
                     pilot_id=pilot_id, 
                     unit_manager_uid=self.uid,
-                    unit_descriptions=submission_dict
+                    units=submission_dict
                 )
 
                 for unit_id, unit_desc in submission_dict.iteritems():

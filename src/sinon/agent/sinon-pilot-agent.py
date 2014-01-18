@@ -683,7 +683,16 @@ class Agent(threading.Thread):
                     for wu in wu_cursor:
                         # Create new task objects and put them into the 
                         # task queue
-                        task_dir_name = "%s/task-%s" % (self._workdir, str(wu["_id"]))
+
+                        # WorkingDirectoryPriv is defined, we override the 
+                        # standard working directory schema. 
+                        # NOTE: this is not a good idea and just implemented
+                        #       to support some last minute TROY experiments.
+                        if wu["description"]["WorkingDirectoryPriv"] is not None:
+                            task_dir_name = wu["description"]["WorkingDirectoryPriv"]
+                        else:
+                            task_dir_name = "%s/task-%s" % (self._workdir, str(wu["_id"]))
+
                         task = Task(uid=str(wu["_id"]), 
                                     executable=wu["description"]["Executable"], 
                                     arguments=wu["description"]["Arguments"], 

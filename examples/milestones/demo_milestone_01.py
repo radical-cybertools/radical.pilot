@@ -6,10 +6,14 @@ import sys
 import sinon
 
 PWD    = os.path.dirname(os.path.abspath(__file__))
-
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
-    
+
+#-------------------------------------------------------------------------------
+# Change these according to your needs 
+CFG_USERNAME    = "oweidner"
+CFG_RESOURCE    = "localhost"    
+CFG_WORKING_DIR = "/tmp/sinon/"
 
 
 #-------------------------------------------------------------------------------
@@ -24,7 +28,7 @@ def demo_milestone_01_1():
 
         # Add an ssh identity to the session.
         cred = sinon.SSHCredential()
-        cred.user_id = "oweidner"
+        cred.user_id = CFG_USERNAME
 
         session.add_credential(cred)
 
@@ -33,8 +37,8 @@ def demo_milestone_01_1():
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "localhost"
-        pd.working_directory = "/tmp/sinon/"
+        pd.resource          = CFG_RESOURCE
+        pd.working_directory = CFG_WORKING_DIR
         pd.cores             = 8
         pd.run_time          = 10 # minutes
 

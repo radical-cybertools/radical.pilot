@@ -14,11 +14,13 @@ import sinon.api.attributes  as attributes
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
-NAME              = 'Name'
-EXECUTABLE        = 'Executable'
-ARGUMENTS         = 'Arguments'
-ENVIRONMENT       = 'Environment'
-CORES             = 'Cores'
+NAME               = 'Name'
+EXECUTABLE         = 'Executable'
+ARGUMENTS          = 'Arguments'
+ENVIRONMENT        = 'Environment'
+CORES              = 'Cores'
+
+WORKING_DIRECTORY_PRIV = 'WorkingDirectoryPriv'
 
 # ------------------------------------------------------------------------------
 #
@@ -71,7 +73,7 @@ class ComputeUnitDescription (attributes.Attributes) :
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
-        #self._attributes_register(WORKING_DIRECTORY, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(WORKING_DIRECTORY_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(INPUT,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(OUTPUT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(ERROR,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -99,7 +101,30 @@ class ComputeUnitDescription (attributes.Attributes) :
     def as_dict(self):
       """Returns dict/JSON representation.
       """
-      return attributes.Attributes.as_dict(self)
+      d =  attributes.Attributes.as_dict(self)
+
+      # Apparently the aatribute interface only handles 'non-None' attributes,
+      # so we do some manual check-and-set.
+      if NAME not in d:
+        d[NAME] = None
+
+      if EXECUTABLE not in d:
+        d[EXECUTABLE] = None
+
+      if ARGUMENTS not in d:
+        d[ARGUMENTS] = None
+
+      if ENVIRONMENT not in d:
+        d[ENVIRONMENT] = None
+
+      if WORKING_DIRECTORY_PRIV not in d:
+        d[WORKING_DIRECTORY_PRIV] = None
+
+      if CORES not in d:
+        d[CORES] = None
+
+      return d
+
 
     #------------------------------------------------------------------------------
     #

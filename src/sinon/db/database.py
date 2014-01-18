@@ -562,7 +562,7 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def insert_workunits(self, pilot_id, unit_manager_uid, unit_descriptions):
+    def insert_workunits(self, pilot_id, unit_manager_uid, units):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
@@ -583,14 +583,15 @@ class Session():
 
         # Construct and insert workunit documents
         workunit_docs = []
-        for key, wu_desc in unit_descriptions.iteritems():
+        for key, wu_desc in units.iteritems():
             workunit = {
                 "_id"           : key,
-                "description"   : {
-                    "Executable" : wu_desc['description'].executable,
-                    "Arguments"  : wu_desc['description'].arguments, 
-                    "Cores"      : wu_desc['description'].cores
-                },
+                "description"   : wu_desc['description'].as_dict(), #{
+                    #"Executable" : wu_desc['description'].executable,
+                    #"Arguments"  : wu_desc['description'].arguments, 
+                    #"Cores"      : wu_desc['description'].cores
+                    #"WorkingD"
+                #},
                 "links"    : {
                     "unitmanager" : unit_manager_uid, 
                     "pilot"       : pilot_id,

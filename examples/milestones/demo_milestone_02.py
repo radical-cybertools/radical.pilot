@@ -7,9 +7,14 @@ import sinon
 import time
 
 PWD    = os.path.dirname(os.path.abspath(__file__))
-
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
+
+#-------------------------------------------------------------------------------
+# Change these according to your needs 
+CFG_USERNAME    = "oweidner"
+CFG_RESOURCE    = "localhost"    
+CFG_WORKING_DIR = "/tmp/sinon/"
 
 #-------------------------------------------------------------------------------
 #
@@ -24,7 +29,7 @@ def demo_milestone_02():
 
         # Add an ssh identity to the session.
         cred = sinon.SSHCredential()
-        cred.user_id = "oweidner"
+        cred.user_id = CFG_USERNAME
 
         session.add_credential(cred)
 
@@ -33,8 +38,8 @@ def demo_milestone_02():
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "futuregrid.ALAMO"
-        pd.working_directory = "/N/u/oweidner/sinon/"
+        pd.resource          = CFG_RESOURCE
+        pd.working_directory = CFG_WORKING_DIR
         pd.cores             = 16
         pd.run_time          = 10 # minutes
 
@@ -50,11 +55,13 @@ def demo_milestone_02():
 
         # Create a workload of 64 '/bin/date' compute units
         compute_units = []
-        for unit_count in range(0, 1024):
+        for unit_count in range(0, 16):
             cu = sinon.ComputeUnitDescription()
             cu.cores = 1
             cu.executable = "/bin/date"
+            cu.working_directory_priv = "/tmp/atask-%s" % unit_count
             compute_units.append(cu)
+
 
         # Combine the pilot, the workload and a scheduler via 
         # a UnitManager.
