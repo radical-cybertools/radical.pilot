@@ -21,7 +21,7 @@ class PLUGIN_CLASS (object) :
     #
     def __init__ (self) :
 
-        print "loading the direct_submission unit plugin"
+      # print "loading the direct_submission unit plugin"
         self._manager    = None
         self._last_pilot = -1
 
@@ -54,7 +54,7 @@ class PLUGIN_CLASS (object) :
         for ud in unit_descriptions :
             ret[pilots[0]].append (ud)
 
-        print "direct submission to %s" % pilots[0]
+      # print "direct submission to %s" % pilots[0]
 
         return ret
 
