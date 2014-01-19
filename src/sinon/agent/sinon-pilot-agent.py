@@ -10,6 +10,7 @@ __license__   = "MIT"
 
 import os
 import sys
+import errno
 import time
 import Queue
 import logging
@@ -466,7 +467,14 @@ class ExecWorker(multiprocessing.Process):
 
                             # create working directory in case it
                             # doesn't exist
-                            os.makedirs(task.workdir)
+                            try :
+                                os.makedirs(task.workdir)
+                            except OSError as e :
+                                # ignore failure on existing directory
+                                if  e.errno == errno.EEXIST and os.path.isdir (task.workdir) :
+                                    pass
+                                else : 
+                                    raise
 
                             # RUN THE TASK
                             self._slots[host][slot] = _Process(
