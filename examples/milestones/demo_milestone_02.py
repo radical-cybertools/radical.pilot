@@ -59,7 +59,6 @@ def demo_milestone_02():
             cu = sinon.ComputeUnitDescription()
             cu.cores = 1
             cu.executable = "/bin/date"
-            cu.working_directory_priv = "/tmp/atask-%s" % unit_count
             compute_units.append(cu)
 
 

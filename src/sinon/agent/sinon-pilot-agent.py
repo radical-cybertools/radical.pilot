@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 
-"""An agent for saga-pilot (sinon).
+"""An agent for SAGA-Pilot.
 """
 
 __author__    = "Ole Weidner"
 __email__     = "ole.weidner@rutgers.edu"
-__copyright__ = "Copyright 2013, The RADICAL Project at Rutgers"
+__copyright__ = "Copyright 2013-2014, The RADICAL Project at Rutgers"
 __license__   = "MIT"
 
 import os
 import sys
-import errno
 import time
+import errno
 import Queue
+import signal
 import logging
 import pymongo
-import StringIO
 import datetime
 import hostlist
 import optparse
@@ -24,6 +24,7 @@ import subprocess
 import multiprocessing
 
 from bson.objectid import ObjectId
+
 
 # ----------------------------------------------------------------------------
 # CONSTANTS
@@ -57,6 +58,36 @@ def which(program):
             if is_exe(exe_file):
                 return exe_file
     return None
+
+#---------------------------------------------------------------------------
+#
+def pilot_FAILED(mongo_p, pilot_uid, message):
+    """Updates the state of one or more pilots.
+    """
+    mongo_p.update({"_id": ObjectId(pilot_uid)},
+        {"$push": {"info.log" : message}})
+                  
+    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+        {"$set": {"info.state" : 'Failed'}})
+
+#---------------------------------------------------------------------------
+#
+def pilot_CANCELED(mongo_p, pilot_uid, message):
+    """Updates the state of one or more pilots.
+    """
+    mongo_p.update({"_id": ObjectId(pilot_uid)},
+        {"$push": {"info.log" : message}})
+                  
+    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+        {"$set": {"info.state" : 'Canceled'}})
+
+#---------------------------------------------------------------------------
+#
+def pilot_DONE(mongo_p, pilot_uid):
+    """Updates the state of one or more pilots.
+    """
+    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+        {"$set": {"info.state" : 'Done'}})
 
 #-----------------------------------------------------------------------------
 #
@@ -398,7 +429,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, database_info, task_queue, 
+    def __init__(self, logger, mongo_w, task_queue, 
                  hosts, cores_per_host, launch_method, launch_command):
         """Le Constructeur creates a new ExecWorker instance.
         """
@@ -407,8 +438,8 @@ class ExecWorker(multiprocessing.Process):
         self._terminate  = False
 
         self._log = logger
-
-        self._database_info  = database_info
+        self._w   = mongo_w
+        
         self._task_queue     = task_queue
         
         self._launch_method  = launch_method
@@ -426,13 +457,6 @@ class ExecWorker(multiprocessing.Process):
             self._slots[host] = []
             for _ in range(0, cores_per_host):
                 self._slots[host].append(FREE)
-
-        # Initialize a database connection. Pymongo takes care of connection 
-        # pooling, etc. so we don't really have to worry about when and where
-        # we open new connections. 
-        self._client = pymongo.MongoClient(database_info['url'])
-        self._db     = self._client[database_info['dbname']]
-        self._w      = self._db["%s.w"  % database_info['session']]
 
     # ------------------------------------------------------------------------
     #
@@ -566,7 +590,8 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, launch_method, workdir, database_info):
+    def __init__(self, logger, exec_env, launch_method, workdir, 
+        pilot_id, pilot_collection, workunit_collection):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -577,7 +602,7 @@ class Agent(threading.Thread):
         self._log        = logger
 
         self._workdir    = workdir
-        self._pilot_id   = database_info['pilot']
+        self._pilot_id   = pilot_id
 
         self._exec_env   = exec_env
 
@@ -588,11 +613,8 @@ class Agent(threading.Thread):
         else:
             self._launch_method = launch_method
 
-        # Try to establish a database connection
-        self._client = pymongo.MongoClient(database_info['url'])
-        self._db     = self._client[database_info['dbname']]
-        self._p      = self._db["%s.p"  % database_info['session']]
-        self._w      = self._db["%s.w"  % database_info['session']]
+        self._p      = pilot_collection
+        self._w      = workunit_collection
 
         # the task queue holds the tasks that are pulled from the MongoDB 
         # server. The ExecWorkers compete for the tasks in the queue. 
@@ -618,7 +640,7 @@ class Agent(threading.Thread):
             exec_worker = ExecWorker(
                 logger         = self._log,
                 task_queue     = self._task_queue,
-                database_info  = database_info,
+                mongo_w        = self._w,
                 launch_method  = self._exec_env.launch_method,
                 launch_command = self._exec_env.launch_command,
                 hosts          = hp,
@@ -726,8 +748,6 @@ class Agent(threading.Thread):
             {"$set": {"info.state"     : "DONE",
                       "info.finished"   : datetime.datetime.utcnow()}})
         self._log.info("Agent stopped. Database updated.")
-
-
 
 #-----------------------------------------------------------------------------
 #
@@ -879,32 +899,91 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-    # discover environment, mpirun, cores, etc.
-    exec_env = ExecutionEnvironment.discover(
-        logger=logger,
-        launch_method=options.launch_method
-    )
-
-    if exec_env is None:
-        logger.error("Problems setting up execution environment. EXITING")
-        sys.exit(255)
-
-    agent = Agent(logger        = logger,
-                  exec_env      = exec_env,
-                  workdir       = options.workdir, 
-                  launch_method = options.launch_method, 
-                  database_info = {
-                    'url':     options.mongodb_url, 
-                    'dbname':  options.database_name, 
-                    'session': options.session_id,
-                    'pilot':   options.pilot_id
-                })
+    #--------------------------------------------------------------------------
+    # Establish database connection
     try:
+        mongo_client = pymongo.MongoClient(options.mongodb_url)
+        mongo_db     = mongo_client[options.database_name]
+        mongo_p      = mongo_db["%s.p"  % options.session_id]
+        mongo_w      = mongo_db["%s.w"  % options.session_id]
+
+    except Exception, ex:
+        logger.error("Can't establish database connection: %s" % str(ex))
+        sys.exit(1)
+
+    #--------------------------------------------------------------------------
+    # Some singal handling magic 
+    def sigint_handler(signal, frame):
+        msg = 'Caught SIGINT. EXITING.'
+        pilot_CANCELED(mongo_p, options.pilot_id, msg)
+        logger.warning(msg)
+        sys.exit(0)
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    def sigalarm_handler(signal, frame):
+        msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
+        pilot_CANCELED(mongo_p, options.pilot_id, msg)
+        logger.warning(msg)
+        sys.exit(0)
+    signal.signal(signal.SIGALRM, sigalarm_handler)
+
+    #def sigkill_handler(signal, frame):
+    #    msg = 'Caught SIGKILL. EXITING'
+    #    pilot_CANCELED(mongo_p, options.pilot_id, msg)
+    #    logger.warning(msg)
+    #    sys.exit(0)
+    #signal.signal(signal.SIGKILL, sigkill_handler)
+
+    def sigterm_handler(signal, frame):
+        msg = 'Caught SIGTERM. EXITING'
+        pilot_CANCELED(mongo_p, options.pilot_id, msg)
+        logger.warning(msg)
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, sigterm_handler)
+
+    #--------------------------------------------------------------------------
+    # Discover environment, mpirun, cores, etc.
+    try:
+        exec_env = ExecutionEnvironment.discover(
+            logger=logger,
+            launch_method=options.launch_method
+        )
+        if exec_env is None:
+            msg = "Couldn't set up execution environment."
+            logger.error(msg)
+            pilot_FAILED(mongo_p, options.pilot_id, msg)
+            sys.exit(1)
+
+    except Exception, ex:
+        msg = "Error setting up execution environment: %s" % str(ex)
+        logger.error(msg)
+        pilot_FAILED(mongo_p, options.pilot_id, msg)
+        sys.exit(1)
+
+    #--------------------------------------------------------------------------
+    # Launch the agent thread
+    try:
+        agent = Agent(logger              = logger,
+                      exec_env            = exec_env,
+                      workdir             = options.workdir, 
+                      launch_method       = options.launch_method, 
+                      pilot_id            = options.pilot_id,
+                      pilot_collection    = mongo_p,
+                      workunit_collection = mongo_w
+        )
+
         agent.start()
         agent.join()
 
-    except (KeyboardInterrupt, SystemExit):
-        print "INTERRUPPTTTTTTTTTTTTTTTTT"
+    except Exception, ex:
+        msg = "Error running agent: %s" % str(ex)
+        logger.error(msg)
+        pilot_FAILED(mongo_p, options.pilot_id, msg)
         agent.stop()
+        sys.exit(1)
 
+    except SystemExit:
+
+        logger.error("Caught keyboard interrupt. EXITING")
+        agent.stop()
 
