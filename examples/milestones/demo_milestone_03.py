@@ -34,7 +34,7 @@ CFG_NUMCORES_B    = 32
 #-------------------------------------------------------------------------------
 #
 def demo_milestone_03_part_1():
-    """PART 1: Create two 16-core pilots on resource_A and resource_B, submit 16 bulks 
+    """PART 1: Create two 32-core pilots on resource_A and resource_B, submit 16 bulks 
     of 32 compute unites and disconnect. 
     """
     try:
@@ -71,6 +71,7 @@ def demo_milestone_03_part_1():
         # Set to true if one or more pilots fail
         failed = False
 
+        # Error checking.
         for pilot in pilots:
             state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
             if state == sinon.states.FAILED:
@@ -79,6 +80,8 @@ def demo_milestone_03_part_1():
             else:
                 print "  [OK]    Pilot %s submitted successfully: %s." % (pilot, pilot.state_details[-1])
 
+        # If one or more pilots fail, we call cancel() on all pilots
+        # and abort the example! 
         if failed == True:
             for pilot in pilots:
                 pilot.cancel()
