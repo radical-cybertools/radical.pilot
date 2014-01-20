@@ -42,10 +42,13 @@ def error_handling_1():
 
         pilot = pm.submit_pilots(pd)
         state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
-        print pilot.state
-        print pilot.state_details[-1] # Get the last log message
 
-        return 0
+        if state == sinon.states.FAILED:
+            print pilot.state_details[-1] # Get the last log message
+            return 1
+
+        else:
+            return 0
 
     except sinon.SinonException, ex:
         print "Error: %s" % ex
