@@ -418,14 +418,15 @@ class ComputePilot (attributes.Attributes) :
 
         start_wait = time.time ()
         # the self.state property pulls the state from the back end.
-        while self.state not in state:
+        new_state = self.state
+        while new_state not in state:
             time.sleep (1)
 
             if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
                 break
 
         # done waiting
-        return
+        return new_state
 
     # --------------------------------------------------------------------------
     #

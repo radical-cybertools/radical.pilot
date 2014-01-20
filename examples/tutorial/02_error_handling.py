@@ -41,7 +41,7 @@ def error_handling_1():
         pd.run_time          = 10 
 
         pilot = pm.submit_pilots(pd)
-        pilot.wait()
+        state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
         print pilot.state
         print pilot.state_details[-1] # Get the last log message
 

@@ -28,6 +28,8 @@ from sinon.api.pilot_manager             import PilotManager
 from sinon.api.compute_pilot             import ComputePilot
 from sinon.api.compute_pilot_description import ComputePilotDescription
 
+from sinon.api.states                    import * 
+
 
 # ------------------------------------------------------------------------------
 #
