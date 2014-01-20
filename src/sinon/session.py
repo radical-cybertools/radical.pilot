@@ -9,15 +9,15 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.api.unit_manager  import UnitManager
-from sinon.api.pilot_manager import PilotManager
+from sinon.unit_manager  import UnitManager
+from sinon.pilot_manager import PilotManager
 
 from sinon.utils.logger      import logger
 
 from sinon.db                import Session as dbSession
 from sinon.db                import DBException
 
-import sinon.api.exceptions
+import sinon.exceptions
 from bson.objectid import ObjectId
 
 

@@ -9,12 +9,12 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.api.compute_pilot import ComputePilot
+from sinon.compute_pilot import ComputePilot
 from sinon.utils.logger      import logger
 
-import sinon.api.states     as states
-import sinon.api.attributes as attributes
-import sinon.api.exceptions as exceptions
+import sinon.states     as states
+import sinon.attributes as attributes
+import sinon.exceptions as exceptions
 
 from bson.objectid import ObjectId
 from radical.utils import which
@@ -349,7 +349,7 @@ class PilotManager(attributes.Attributes):
 
                     # Copy the agent script
                     cwd = os.path.dirname(os.path.abspath(__file__))
-                    agent_path = os.path.abspath("%s/../agent/sinon-pilot-agent.py" % cwd)
+                    agent_path = os.path.abspath("%s/agent/sinon-pilot-agent.py" % cwd)
                     agent_script_url = saga.Url("file://localhost/%s" % agent_path) 
                     agent_script = saga.filesystem.File(agent_script_url)
                     agent_script.copy(agent_dir_url)

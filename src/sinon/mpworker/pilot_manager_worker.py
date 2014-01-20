@@ -1,7 +1,7 @@
 """
-.. module:: sinon.api
+.. module:: sinon.pilot_manager
    :platform: Unix
-   :synopsis: The frontent (library) part of sinon.
+   :synopsis: Implementation of the PilotManager class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """

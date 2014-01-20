@@ -24,7 +24,12 @@ CFG_WORKING_DIR = "/tmp/sinon/"
 #-------------------------------------------------------------------------------
 #
 def synchronous_error_handling():
-    """Short description.
+    """This example shows how simple error handling can be implemented 
+    synchronously using blocking wait() calls.
+
+    The code launches a pilot with 128 cores on 'localhost'. Unless localhost
+    has 128 or more cores available, this is bound to fail. This example shows
+    how this error can be caught and handled. 
     """
     try:
         # Create a new session. A session is a set of Pilot Managers

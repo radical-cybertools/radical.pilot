@@ -12,13 +12,13 @@ __license__   = "MIT"
 
 import radical.utils as ru
 
-from sinon.api.compute_unit  import ComputeUnit
+from sinon.compute_unit  import ComputeUnit
 from sinon.utils.logger      import logger
 
-import sinon.api.types       as types
-import sinon.api.states      as states
-import sinon.api.exceptions  as exceptions
-import sinon.api.attributes  as attributes
+import sinon.types       as types
+import sinon.states      as states
+import sinon.exceptions  as exceptions
+import sinon.attributes  as attributes
 
 import time
 import datetime
