@@ -373,6 +373,7 @@ class PilotManager(attributes.Attributes):
                                             "-d", database_name,  # database name
                                             "-s", session_uid,    # session uid
                                             "-p", str(pilot_id),  # pilot uid
+                                            "-c", number_cores,   # number of cores
                                             "-C"]                 # clean up by default
 
                     if 'task_launch_mode' in resource_cfg:

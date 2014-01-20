@@ -97,7 +97,7 @@ class ExecutionEnvironment(object):
     #-------------------------------------------------------------------------
     #
     @classmethod
-    def discover(cls, logger, launch_method):
+    def discover(cls, logger, launch_method, requested_cores):
         """Factory method creates a new execution environment.
         """
         eenv = cls(logger)
@@ -167,7 +167,11 @@ class ExecutionEnvironment(object):
             #    eenv._nodes[rn]['_count'] += 1
 
         logger.info("Discovered execution environment: %s" % eenv._nodes)
-        logger.info("Dicsovered launch method: %s (%s)" % (eenv._launch_method, eenv._launch_command))
+        logger.info("Discovered launch method: %s (%s)" % (eenv._launch_method, eenv._launch_command))
+
+        cores_avail = len(eenv._nodes) * int(eenv._cores_per_node)
+        if cores_avail < int(requested_cores):
+            raise Exception("Not enought cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
 
         return eenv
 
@@ -858,6 +862,11 @@ def parse_commandline():
                       help='Specifies the base (working) directory for the agent. [default: %default]',
                       default='.')
 
+    parser.add_option('-c', '--cores',
+                      metavar='CORES',
+                      dest='cores',
+                      help='Specifies the number of cores to allocate.')
+
     parser.add_option('-l', '--launch-method', 
                       metavar='METHOD',
                       dest='launch_method',
@@ -875,6 +884,8 @@ def parse_commandline():
         parser.error("You must define a session id (-s/--session-id). Try --help for help.")
     elif options.pilot_id is None:
         parser.error("You must define a pilot id (-p/--pilot-id). Try --help for help.")
+    elif options.cores is None:
+        parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
 
     if options.launch_method is not None: 
         valid_options = [LAUNCH_METHOD_AUTO, LAUNCH_METHOD_LOCAL, LAUNCH_METHOD_SSH, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_APRUN]
@@ -946,7 +957,8 @@ if __name__ == "__main__":
     try:
         exec_env = ExecutionEnvironment.discover(
             logger=logger,
-            launch_method=options.launch_method
+            launch_method=options.launch_method,
+            requested_cores=options.cores
         )
         if exec_env is None:
             msg = "Couldn't set up execution environment."
