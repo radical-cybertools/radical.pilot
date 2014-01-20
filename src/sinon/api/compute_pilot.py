@@ -421,6 +421,7 @@ class ComputePilot (attributes.Attributes) :
         new_state = self.state
         while new_state not in state:
             time.sleep (1)
+            new_state = self.state
 
             if  (None != timeout) and (timeout <= (time.time () - start_wait)) :
                 break
