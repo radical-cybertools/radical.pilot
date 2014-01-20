@@ -38,7 +38,7 @@
         "filesystem"         : "sftp://hotel.futuregrid.org/",
         "default_queue"      : "batch",
         "python_interpreter" : "/soft/python/gnu-4.1/2.7/bin/python",
-        "pre_bootstrap"      : ["module load python", "module load mpich2"],
+        "pre_bootstrap"      : ["module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN"
     }
 }
