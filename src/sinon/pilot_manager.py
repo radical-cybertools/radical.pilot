@@ -94,6 +94,10 @@ class PilotManager(attributes.Attributes):
         **Raises:**
             * :class:`sinon.SinonException`
         """
+        # Each pilot manager has a worker thread associated with it. The task of the 
+        # worker thread is to check and update the state of pilots, fire callbacks
+        # and so on. 
+
         self._DB = session._dbs
         self._session = session
 
@@ -547,16 +551,19 @@ class PilotManager(attributes.Attributes):
 
         start_wait = time.time()
         all_done   = False
+        return_states = []
 
         while all_done is False:
 
             all_done = True
 
-            pilots_json = self._DB.get_pilots(pilot_manager_id=self)
+            pilots_json = self._DB.get_pilots(pilot_manager_id=self.uid)
             for pilot in pilots_json:
                 if pilot['info']['state'] not in state:
                     all_done = False
                     break # leave for loop
+                else:
+                    return_states.append(pilot['info']['state'])
 
             # check timeout
             if (None != timeout) and (timeout <= (time.time () - start_wait)):
@@ -566,7 +573,7 @@ class PilotManager(attributes.Attributes):
             time.sleep(1)
 
         # done waiting
-        return
+        return return_states
 
     # --------------------------------------------------------------------------
     #

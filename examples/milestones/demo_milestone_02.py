@@ -46,8 +46,10 @@ def demo_milestone_02():
         print "* Submitting pilot to '%s'..." % (pd.resource)
         p1 = pm.submit_pilots(pd)
 
-        # Error checking
-        if p1.state in [sinon.states.FAILED]:
+        state = p1.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
+
+        # If the pilot is in FAILED state it probably didn't start up properly. 
+        if state == sinon.states.FAILED:
             print "  [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
             sys.exit(-1)
         else:

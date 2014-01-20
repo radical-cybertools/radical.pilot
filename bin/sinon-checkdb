@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# -----------------------------------------------------------------------------
+# Author: Ole Weidner (ole.weidner@rutgers.edu)
+# Copyright 2013, radical@rutgers.edu
+# License under the MIT License
+#
+# This script tests sinon's database connectivity.
+#
+
+# -----------------------------------------------------------------------------
+# print out script usage help
+#
+DBURL=
+
+usage()
+{
+cat << EOF
+usage: $0 options
+
+This script launches a sinon compute pilot.
+
+OPTIONS:
+
+   -d      The database url 
+
+   -h      Show this message
+
+EOF
+}
+
+while getopts “hd:” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+
+         d)
+             DBURL=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+if [[ -z $DBURL ]]
+then
+     usage
+     exit 1
+fi
+
+
+python -c "import sinon; print sinon.version"

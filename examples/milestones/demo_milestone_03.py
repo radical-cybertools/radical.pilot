@@ -22,9 +22,11 @@ FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 #-------------------------------------------------------------------------------
 # Change these according to your needs 
 CFG_USERNAME      = "oweidner"
-CFG_RESOURCE_A    = "localhost"    
-CFG_WORKING_DIR_A = "/tmp/sinon/"
-CFG_NUMCORES_A    = 8
+
+CFG_RESOURCE_A    = "futuregrid.HOTEL"    
+CFG_WORKING_DIR_A = "/gpfs/scratch/oweidner/sinon"
+CFG_NUMCORES_A    = 32
+
 CFG_RESOURCE_B    = "futuregrid.INDIA"    
 CFG_WORKING_DIR_B = "/N/u/oweidner/sinon"
 CFG_NUMCORES_B    = 32
@@ -65,6 +67,11 @@ def demo_milestone_03_part_1():
 
         # Submit both pilots
         pilots = pmgr.submit_pilots([pd_hotel, pd_india])
+
+        x = pmgr.wait_pilots(state=[sinon.states.RUNNING, sinon.states.FAILED])
+        print x
+
+
         print "  \n  <Submitted pilots to '%s'>" % [pd_hotel.resource, pd_india.resource]
 
 

@@ -106,7 +106,7 @@ class UnitManager(attributes.Attributes) :
         self._attributes_register(SCHEDULER_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(SCHEDULER_DETAILS, self._get_scheduler_details_priv)
 
-        pm = ru.PluginManager ('sinon.api')
+        pm = ru.PluginManager ('sinon')
 
 
         self._scheduler = pm.load('unit_scheduler', scheduler)
