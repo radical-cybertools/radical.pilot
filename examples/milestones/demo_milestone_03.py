@@ -1,5 +1,5 @@
 """Demo for Milestone 3: 
-    * submit 2 Pilot to india and 2 to sierra
+    * submit 2 Pilot to resource_B and 2 to sierra
     * run 10 bulks of 10 CUs (CUs vary in runtime)
     * after 5 bulks: disconnect / reconnect
     * state changes for pilots and CUs are delivered via notifications
@@ -34,7 +34,7 @@ CFG_NUMCORES_B    = 32
 #-------------------------------------------------------------------------------
 #
 def demo_milestone_03_part_1():
-    """PART 1: Create two 16-core pilots on hotel and india, submit 16 bulks 
+    """PART 1: Create two 16-core pilots on resource_A and resource_B, submit 16 bulks 
     of 32 compute unites and disconnect. 
     """
     try:
@@ -51,28 +51,40 @@ def demo_milestone_03_part_1():
         # Add a Pilot Manager with a machine configuration file for FutureGrid
         pmgr = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
-        # Define a 16-core pilot to hotel.futuregrid.org
-        pd_hotel = sinon.ComputePilotDescription()
-        pd_hotel.resource          = CFG_RESOURCE_A
-        pd_hotel.working_directory = CFG_WORKING_DIR_A
-        pd_hotel.cores             = CFG_NUMCORES_A
-        pd_hotel.run_time          = 10 # minutes
+        # Define a 16-core pilot to resource_A.futuregrid.org
+        pd_resource_A = sinon.ComputePilotDescription()
+        pd_resource_A.resource          = CFG_RESOURCE_A
+        pd_resource_A.working_directory = CFG_WORKING_DIR_A
+        pd_resource_A.cores             = CFG_NUMCORES_A
+        pd_resource_A.run_time          = 10 # minutes
 
-        # Define a 16-core pilot to india.futuregrid.org
-        pd_india = sinon.ComputePilotDescription()
-        pd_india.resource          = CFG_RESOURCE_B
-        pd_india.working_directory = CFG_WORKING_DIR_B
-        pd_india.cores             = CFG_NUMCORES_B
-        pd_india.run_time          = 10 # minutes
+        # Define a 16-core pilot to resource_B.futuregrid.org
+        pd_resource_B = sinon.ComputePilotDescription()
+        pd_resource_B.resource          = CFG_RESOURCE_B
+        pd_resource_B.working_directory = CFG_WORKING_DIR_B
+        pd_resource_B.cores             = CFG_NUMCORES_B
+        pd_resource_B.run_time          = 10 # minutes
 
         # Submit both pilots
-        pilots = pmgr.submit_pilots([pd_hotel, pd_india])
+        pilots = pmgr.submit_pilots([pd_resource_A, pd_resource_B])
 
-        x = pmgr.wait_pilots(state=[sinon.states.RUNNING, sinon.states.FAILED])
-        print x
+        # Set to true if one or more pilots fail
+        failed = False
 
+        for pilot in pilots:
+            state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
+            if state == sinon.states.FAILED:
+                print "  [ERROR] Pilot %s failed: %s." % (pilot, pilot.state_details[-1])
+                failed = True
+            else:
+                print "  [OK]    Pilot %s submitted successfully: %s." % (pilot, pilot.state_details[-1])
 
-        print "  \n  <Submitted pilots to '%s'>" % [pd_hotel.resource, pd_india.resource]
+        if failed == True:
+            for pilot in pilots:
+                pilot.cancel()
+            sys.exit(1)
+
+        print "  \n  <Submitted pilots to '%s'>" % [pd_resource_A.resource, pd_resource_B.resource]
 
 
         # Create a new unit manager, attach both pilots and select
