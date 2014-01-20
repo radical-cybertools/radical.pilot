@@ -677,7 +677,7 @@ class Agent(threading.Thread):
         self._log.info("Agent started. Database updated.")
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"info.state"          : "RUNNING",
+            {"$set": {"info.state"          : "Running",
                       "info.nodes"          : self._exec_env.nodes.keys(),
                       "info.cores_per_node" : self._exec_env.cores_per_node,
                       "info.started"        : datetime.datetime.utcnow()}})
@@ -749,7 +749,7 @@ class Agent(threading.Thread):
         # last order of business: set the start time and state of the pilot
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"info.state"     : "DONE",
+            {"$set": {"info.state"     : "Done",
                       "info.finished"   : datetime.datetime.utcnow()}})
         self._log.info("Agent stopped. Database updated.")
 

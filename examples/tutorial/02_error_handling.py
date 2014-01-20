@@ -23,7 +23,7 @@ CFG_WORKING_DIR = "/tmp/sinon/"
 
 #-------------------------------------------------------------------------------
 #
-def error_handling_1():
+def synchronous_error_handling():
     """Short description.
     """
     try:
@@ -31,9 +31,11 @@ def error_handling_1():
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sinon.Session(database_url=DBURL)
 
-        # Add a Pilot Manager with a machine configuration file for FutureGrid
+        # Create a new pilot manager.
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
+        # Create a new pilot with 128 cores. This will most definetly 
+        # fail on 'localhost' because not enough cores are available. 
         pd = sinon.ComputePilotDescription()
         pd.resource          = "localhost"
         pd.working_directory = "/tmp/sinon"
@@ -41,13 +43,21 @@ def error_handling_1():
         pd.run_time          = 10 
 
         pilot = pm.submit_pilots(pd)
-        state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
+        state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED], timeout=60)
 
+        # If the pilot is in FAILED state it probably didn't start up properly. 
         if state == sinon.states.FAILED:
             print pilot.state_details[-1] # Get the last log message
             return 1
-
+        # The timeout was reached if the pilot state is still FAILED.
+        elif state == sinon.states.PENDING:
+            print "Timeout..."
+            return 1
+        # If the pilot is not in FAILED or PENDING state, it is probably running.
         else:
+            print "Pilot in state '%s'" % state
+            # Since the pilot is running, we can cancel it now.
+            pilot.cancel()
             return 0
 
     except sinon.SinonException, ex:
@@ -57,5 +67,5 @@ def error_handling_1():
 #-------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
-    sys.exit(error_handling_1())
+    sys.exit(synchronous_error_handling())
 
