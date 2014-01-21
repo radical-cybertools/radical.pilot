@@ -1,0 +1,20 @@
+merzky@thinkie:~/saga/saga-pilot/benchmark (sp1 *%>) $ ruby redis_vs_mongodb.rb -h ec2-184-72-89-141.compute-1.amazonaws.com
+Running benchmarks against host ec2-184-72-89-141.compute-1.amazonaws.com
+Each benchmark iterates 100 times for each operation
+
+Redis
+--------------------------------------------------------
+                 user     system      total        real
+write        0.060000   0.010000   0.070000 ( 13.710642)
+read         0.050000   0.010000   0.060000 ( 12.994046)
+update       0.030000   0.020000   0.050000 ( 12.843630)
+Total benchmark time for Redis: 39.886350224s
+
+MongoDB
+--------------------------------------------------------
+                 user     system      total        real
+write        0.090000   0.000000   0.090000 ( 14.081129)
+read         0.070000   0.000000   0.070000 ( 13.313748)
+update       0.110000   0.020000   0.130000 ( 28.236125)
+Total benchmark time for MongoDB: 56.190431789s
+
