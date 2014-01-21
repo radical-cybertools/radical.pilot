@@ -66,6 +66,7 @@ def synchronous_error_handling():
             return 0
 
     except sinon.SinonException, ex:
+        # This catches all exeptions but no runtime errors.
         print "Error: %s" % ex
         return -1
 
