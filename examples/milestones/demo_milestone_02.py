@@ -60,7 +60,7 @@ def demo_milestone_02():
         for unit_count in range(0, 16):
             cu = sinon.ComputeUnitDescription()
             cu.cores = 1
-            cu.executable = "/bin/g"
+            cu.executable = "/bin/date"
             compute_units.append(cu)
 
 
