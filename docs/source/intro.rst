@@ -1,8 +1,8 @@
 .. _chapter_intro:
 
-**************************
-Introduction to SAGA-Pilot
-**************************
+************
+Introduction
+************
 
 SAGA-Pilot is a `Pilot Job <https://en.wikipedia.org/wiki/Pilot_job>`_ system
 written in Python. It allows a user to run large numbers of computational

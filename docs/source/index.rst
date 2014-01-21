@@ -30,6 +30,7 @@ Contents:
 
    intro.rst
    installation.rst
+   examples/index.rst
    apidoc.rst
    schedulers.rst
    machconf.rst
