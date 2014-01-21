@@ -9,3 +9,4 @@ Examples & Best Practice
    :maxdepth: 3
 
    gettingstarted.rst
+   errorhandling.rst
