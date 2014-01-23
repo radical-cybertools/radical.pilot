@@ -351,7 +351,7 @@ class PilotManager(attributes.Attributes):
                     # This works for installed versions of saga-pilot
                     bs_script = which('bootstrap-and-run-agent')
                     if bs_script is None:
-                        bs_script = os.path.abspath("%s/../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
+                        bs_script = os.path.abspath("%s/../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
                     # This works for non-installed versions (i.e., python setup.py test)
                     bs_script_url = saga.Url("file://localhost/%s" % bs_script) 
 

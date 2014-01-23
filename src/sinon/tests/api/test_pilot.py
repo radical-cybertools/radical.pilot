@@ -57,11 +57,13 @@ class TestPilot(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        cu.wait(sinon.states.RUNNING)
+        pilot.wait(sinon.states.RUNNING)
         assert pilot.state == sinon.states.RUNNING
         assert pilot.start_time is not None
 
-        cu.wait(sinon.states.DONE)
+        # the pilot should finish after it has reached run_time
+
+        pilot.wait(sinon.states.DONE)
         assert pilot.state == sinon.states.DONE
         assert pilot.stop_time is not None
 

@@ -592,7 +592,7 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, launch_method, workdir, 
-        pilot_id, pilot_collection, workunit_collection):
+        pilot_id, pilot_collection, workunit_collection, runtime):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -606,6 +606,9 @@ class Agent(threading.Thread):
         self._pilot_id   = pilot_id
 
         self._exec_env   = exec_env
+
+        self._runtime    = runtime
+        self._starttime  = None
 
         # launch method is determined by the execution environment,
         # but can be overridden if the 'launch_method' flag is set 
@@ -679,7 +682,12 @@ class Agent(threading.Thread):
                       "info.cores_per_node" : self._exec_env.cores_per_node,
                       "info.started"        : datetime.datetime.utcnow()}})
 
+        self._starttime = time.time()
+
         while not self._terminate.isSet():
+
+            # Make sure that we haven't exceeded the agent runtime. if 
+            # we have, terminate. 
 
             # Check the workers periodically. If they have died, we 
             # exit as well. this can happen, e.g., if the worker 
@@ -687,6 +695,14 @@ class Agent(threading.Thread):
             for ew in self._exec_workers:
                 if ew.is_alive() is False:
                     self.stop()
+
+            if time.time() >= self._starttime + (self._runtime*60)
+                self._log.info("Agent has reached runtime limit of %s seconds." % str(self._runtime*60))
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)}, 
+                    {"$set": {"info.state"     : "Done",
+                              "info.finished"   : datetime.datetime.utcnow()}})
+                break
 
             # try to get new tasks from the database. for this, we check the 
             # wu_queue of the pilot. if there are new entries, we get them,
@@ -701,6 +717,11 @@ class Agent(threading.Thread):
                     self._log.info("Received new command: %s" % command)
                     if command.lower() == "cancel":
                         # if we receive 'cancel', we terminate the loop.
+                        self._p.update(
+                            {"_id": ObjectId(self._pilot_id)}, 
+                            {"$set": {"info.state"     : "Canceled",
+                                      "info.finished"   : datetime.datetime.utcnow()}})
+
                         break
 
                 # Check the pilot's workunit queue
@@ -739,16 +760,13 @@ class Agent(threading.Thread):
 
             except Exception, ex:
                 self._log.error("MongoDB error while checking for new work units: %s" % ex)
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)}, 
+                    {"$set": {"info.state"     : "Failed",
+                              "info.finished"   : datetime.datetime.utcnow()}})
                 break
 
             time.sleep(1)
-
-        # last order of business: set the start time and state of the pilot
-        self._p.update(
-            {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"info.state"     : "Done",
-                      "info.finished"   : datetime.datetime.utcnow()}})
-        self._log.info("Agent stopped. Database updated.")
 
 #-----------------------------------------------------------------------------
 #
@@ -864,6 +882,11 @@ def parse_commandline():
                       dest='cores',
                       help='Specifies the number of cores to allocate.')
 
+    parser.add_option('-t', '--runtime',
+                      metavar='RUNTIME',
+                      dest='runtime',
+                      help='Specifies the agent runtime in minutes.')
+
     parser.add_option('-l', '--launch-method', 
                       metavar='METHOD',
                       dest='launch_method',
@@ -883,6 +906,8 @@ def parse_commandline():
         parser.error("You must define a pilot id (-p/--pilot-id). Try --help for help.")
     elif options.cores is None:
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
+    elif options.runtime is None:
+        parser.error("You must define the agent runtime (-t/--runtime). Try --help for help.")
 
     if options.launch_method is not None: 
         valid_options = [LAUNCH_METHOD_AUTO, LAUNCH_METHOD_LOCAL, LAUNCH_METHOD_SSH, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_APRUN]
@@ -978,7 +1003,8 @@ if __name__ == "__main__":
                       launch_method       = options.launch_method, 
                       pilot_id            = options.pilot_id,
                       pilot_collection    = mongo_p,
-                      workunit_collection = mongo_w
+                      workunit_collection = mongo_w,
+                      runtime             = options.runtime
         )
 
         agent.start()
