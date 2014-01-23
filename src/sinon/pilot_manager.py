@@ -386,8 +386,8 @@ class PilotManager(attributes.Attributes):
                     # process the 'queue' attribute
                     if queue is not None:
                         jd.queue = queue
-                    elif 'queue' in resource_cfg:
-                        jd.queue = resource_cfg['queue']
+                    elif 'default_queue' in resource_cfg:
+                        jd.queue = resource_cfg['default_queue']
 
                     # if resource config defines 'pre_bootstrap' commands,
                     # we add those to the argument list
