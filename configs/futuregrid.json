@@ -11,8 +11,9 @@
         "filesystem"         : "sftp://alamo.futuregrid.org/",
         "default_queue"      : "short",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"      : ["module load python", "module load openmpi"],
+        "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN"
+        "valid_paths"        : ["/N", "/home"]
     },
 
     "futuregrid.INDIA": {
@@ -20,7 +21,7 @@
         "filesystem"         : "sftp://india.futuregrid.org/",
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"      : ["module load python", "module load openmpi"],
+        "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN"
     },
 
@@ -29,7 +30,7 @@
         "filesystem"         : "sftp://sierra.futuregrid.org/",
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"      : ["module load python", "module load openmpi"],
+        "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN"
     },
 
@@ -38,7 +39,7 @@
         "filesystem"         : "sftp://hotel.futuregrid.org/",
         "default_queue"      : "batch",
         "python_interpreter" : "/soft/python/gnu-4.1/2.7/bin/python",
-        "pre_bootstrap"      : ["module load python", "module load openmpi"],
+        "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN"
     }
 }
