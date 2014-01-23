@@ -328,6 +328,15 @@ class PilotManager(attributes.Attributes):
                     if pilot_description['description'].working_directory is None:
                         raise exceptions.BadParameter("Working directory not defined.")
                     else:
+
+                        if "valid_roots" in resource_cfg:
+                            is_valid = False
+                            for vp in resource_cfg["valid_roots"]:
+                                if pilot_description['description'].working_directory.startswith(vp):
+                                    is_valid = True
+                            if is_valid is False:
+                                raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (resource_key, pilot_description['description'].working_directory, resource_cfg["valid_roots"]))
+
                         fs.path += pilot_description['description'].working_directory
 
                     agent_dir_url = saga.Url("%s/pilot-%s/" \
