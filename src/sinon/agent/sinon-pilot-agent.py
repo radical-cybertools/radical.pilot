@@ -553,6 +553,7 @@ class ExecWorker(multiprocessing.Process):
 
             time.sleep(1)
 
+
     # ------------------------------------------------------------------------
     #
     def _slot_status(self, slots):
@@ -696,8 +697,8 @@ class Agent(threading.Thread):
                 if ew.is_alive() is False:
                     self.stop()
 
-            if time.time() >= self._starttime + (self._runtime*60)
-                self._log.info("Agent has reached runtime limit of %s seconds." % str(self._runtime*60))
+            if time.time() >= self._starttime + (int(self._runtime) * 60):
+                self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
                 self._p.update(
                     {"_id": ObjectId(self._pilot_id)}, 
                     {"$set": {"info.state"     : "Done",
@@ -767,6 +768,8 @@ class Agent(threading.Thread):
                 break
 
             time.sleep(1)
+
+        self._log.info("Exiting agent main loop.")
 
 #-----------------------------------------------------------------------------
 #
@@ -967,12 +970,12 @@ if __name__ == "__main__":
     #    sys.exit(0)
     #signal.signal(signal.SIGKILL, sigkill_handler)
 
-    def sigterm_handler(signal, frame):
-        msg = 'Caught SIGTERM. EXITING'
-        pilot_CANCELED(mongo_p, options.pilot_id, msg)
-        logger.warning(msg)
-        sys.exit(0)
-    signal.signal(signal.SIGTERM, sigterm_handler)
+    #def sigterm_handler(signal, frame):
+    #    msg = 'Caught SIGTERM. EXITING'
+    #    pilot_CANCELED(mongo_p, options.pilot_id, msg)
+    #    logger.warning(msg)
+    #    sys.exit(0)
+    #signal.signal(signal.SIGTERM, sigterm_handler)
 
     #--------------------------------------------------------------------------
     # Discover environment, mpirun, cores, etc.
