@@ -67,10 +67,38 @@ class TestPilot(unittest.TestCase):
         assert pilot.state == sinon.states.DONE
         assert pilot.stop_time is not None
 
-        #pm.cancel_pilots()
+    #-------------------------------------------------------------------------
+    #
+    def test__pilot_cancel(self):
+        """ Test if we can cancel a pilot. 
+        """
+        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
+        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
+        cpd = sinon.ComputePilotDescription()
+        cpd.resource          = "localhost"
+        cpd.cores             = 1
+        cpd.run_time          = 1
+        cpd.working_directory = "/tmp/sinon.unit-tests" 
 
+        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+
+        assert pilot is not None
+        assert pilot.submission_time is not None
+        #assert cu.start_time is None
+        #assert cu.start_time is None
+
+        pilot.wait(sinon.states.RUNNING)
+        assert pilot.state == sinon.states.RUNNING
+        assert pilot.start_time is not None
+
+        # the pilot should finish after it has reached run_time
+        pilot.cancel()
+
+        pilot.wait(sinon.states.CANCELED)
+        assert pilot.state == sinon.states.CANCELED
+        assert pilot.stop_time is not None
 
 
 

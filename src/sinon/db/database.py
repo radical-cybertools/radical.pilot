@@ -353,11 +353,12 @@ class Session():
                 pilot_ids = [pilot_ids]
             # send command to selected pilots if pilot_ids are 
             # specified 
-            self._p.update(
-                {"_id": {"$in":pilot_ids} },
-                {"$set": {"command" : cmd}},
-                multi=True
-            )
+            # convert ids to object ids
+            for pid in pilot_ids:
+                self._p.update(
+                    {"_id": ObjectId(pid) },
+                    {"$set": {"command" : cmd}}
+                )
 
     #---------------------------------------------------------------------------
     #
