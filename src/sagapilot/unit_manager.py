@@ -1,12 +1,12 @@
 """
-.. module:: sinon.unit_manager
+.. module:: sagapilot.unit_manager
    :platform: Unix
    :synopsis: Implementation of the UnitManager class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 

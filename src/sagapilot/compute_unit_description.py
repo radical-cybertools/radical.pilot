@@ -1,12 +1,12 @@
 """
-.. module:: sinon.compute_unit_description
+.. module:: sagapilot.compute_unit_description
    :platform: Unix
    :synopsis: Implementation of the ComputeUnitDescription class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sagapilot.types       as types

@@ -1,12 +1,12 @@
 """
-.. module:: sinon.attributes
+.. module:: sagapilot.attributes
    :platform: Unix
    :synopsis: Implementation of the attribute interface and constants.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import saga.attributes  as satt

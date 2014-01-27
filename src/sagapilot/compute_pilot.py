@@ -1,12 +1,12 @@
 """
-.. module:: sinon.compute_pilot
+.. module:: sagapilot.compute_pilot
    :platform: Unix
    :synopsis: Implementation of the ComputePilot class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sagapilot.states     as states

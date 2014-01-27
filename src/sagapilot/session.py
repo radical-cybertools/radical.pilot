@@ -1,12 +1,12 @@
 """
-.. module:: sinon.session
+.. module:: sagapilot.session
    :platform: Unix
    :synopsis: Implementation of the Session class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 from sagapilot.unit_manager  import UnitManager
