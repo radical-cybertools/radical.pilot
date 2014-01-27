@@ -58,7 +58,7 @@ class PilotManager(attributes.Attributes):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, session, resource_configurations): 
+    def __init__ (self, session, resource_configurations=None): 
         """Creates a new PilotManager and attaches is to the session. 
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -125,28 +125,39 @@ class PilotManager(attributes.Attributes):
         # Donwload and parse the configuration file(s) and the content to 
         # our resource dictionary.
         self._resource_cfgs = {}
-        
-        if not isinstance(resource_configurations, list):
-            resource_configurations = [resource_configurations]
-        
-        for rcf in resource_configurations:
-            try:
-                # download resource configuration file
-                response = urllib2.urlopen(rcf)
-                rcf_content = response.read()
-            except urllib2.URLError, err:
-                msg = "Couln't open/download resource configuration file '%s': %s." % (rcf, str(err))
-                raise exceptions.BadParameter(msg=msg)
 
-            try:
-                # convert JSON string to dictionary and append
-                rcf_dict = json.loads(rcf_content)
-                for key, val in rcf_dict.iteritems():
-                    if key in self._resource_cfgs:
-                        raise exceptions.BadParameter("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
-                    self._resource_cfgs[key] = val
-            except ValueError, err:
-                raise exceptions.BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
+        # Add 'localhost' as a built-in resource configuration
+        self._resource_cfgs["localhost"] = {
+                "URL"                : "fork://localhost",
+                "filesystem"         : "file://localhost",
+                "pre_bootstrap"      : ["hostname", "date"],
+                "task_launch_mode"   : "LOCAL"
+        }
+        
+        if resource_configurations is not None:
+
+            # implicit list conversion
+            if not isinstance(resource_configurations, list):
+                resource_configurations = [resource_configurations]
+        
+            for rcf in resource_configurations:
+                try:
+                    # download resource configuration file
+                    response = urllib2.urlopen(rcf)
+                    rcf_content = response.read()
+                except urllib2.URLError, err:
+                    msg = "Couln't open/download resource configuration file '%s': %s." % (rcf, str(err))
+                    raise exceptions.BadParameter(msg=msg)
+
+                try:
+                    # convert JSON string to dictionary and append
+                    rcf_dict = json.loads(rcf_content)
+                    for key, val in rcf_dict.iteritems():
+                        if key in self._resource_cfgs:
+                            raise exceptions.BadParameter("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
+                        self._resource_cfgs[key] = val
+                except ValueError, err:
+                    raise exceptions.BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
 
         self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
 
