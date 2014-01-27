@@ -1,7 +1,7 @@
 """
-.. module:: sinon
+.. module:: sagapilot
    :platform: Unix
-   :synopsis: sinon is an alias namespace for sagapilot.
+   :synopsis: SAGA-Pilot (a.k.a SAGA-Pilot) is a distributed Pilot-Job framework.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
@@ -30,8 +30,8 @@ from sagapilot.compute_pilot_description import ComputePilotDescription
 
 # ------------------------------------------------------------------------------
 #
-from sagapilot.utils.version             import version
-from sagapilot.utils.logger              import logger
+from sagapilot.utils.version                 import version
+from sagapilot.utils.logger                  import logger
 
 logger.info ('loading SAGA-Pilot version: %s' % version)
 

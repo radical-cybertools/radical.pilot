@@ -63,8 +63,8 @@ def get_version():
 
 
         # make sure the version files exist for the runtime version inspection
-        open (          '%s/VERSION' % srcroot, 'w').write (long_version+"\n")
-        open ('%s/src/sinon/VERSION' % srcroot, 'w').write (long_version+"\n")
+        open (              '%s/VERSION' % srcroot, 'w').write (long_version+"\n")
+        open ('%s/src/sagapilot/VERSION' % srcroot, 'w').write (long_version+"\n")
 
 
     except Exception as e :
