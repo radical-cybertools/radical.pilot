@@ -19,7 +19,7 @@ import sagapilot.states as states
 #
 from sagapilot.session                   import Session 
 from sagapilot.credentials               import SSHCredential 
-from sagapilot.exceptions                import SinonException
+from sagapilot.exceptions                import SagapilotException
 
 from sagapilot.unit_manager              import UnitManager
 from sagapilot.compute_unit_description  import ComputeUnitDescription
