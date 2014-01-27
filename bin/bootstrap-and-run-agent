@@ -158,12 +158,12 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python sagapilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -l $LAUNCH_MODE"
+AGENT_CMD="python sagapilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE"
 echo ""
 echo "################################################################################"
 echo "## Launching sagapilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-python sagapilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE
+           python sagapilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE
 }
 
 # -----------------------------------------------------------------------------

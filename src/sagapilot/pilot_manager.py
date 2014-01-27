@@ -362,7 +362,7 @@ class PilotManager(attributes.Attributes):
 
                     # Copy the agent script
                     cwd = os.path.dirname(os.path.abspath(__file__))
-                    agent_path = os.path.abspath("%s/agent/sagapilot-pilot-agent.py" % cwd)
+                    agent_path = os.path.abspath("%s/agent/sagapilot-agent.py" % cwd)
                     agent_script_url = saga.Url("file://localhost/%s" % agent_path) 
                     agent_script = saga.filesystem.File(agent_script_url)
                     agent_script.copy(agent_dir_url)
