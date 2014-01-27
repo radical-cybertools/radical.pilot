@@ -11,17 +11,17 @@ __license__   = "MIT"
 
 # ------------------------------------------------------------------------------
 #
-class SinonException(Exception) :
+class SagapilotException(Exception):
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
-    :param obj: Sinon object on whose activity the exception was raised.
+    :param obj: SAGA-Pilot object on whose activity the exception was raised.
     :type  obj: object
     :raises:    --
 
-    The base class for all  Sinon Exception classes -- this exception type is
-    never raised directly, but can be used to catch all Sinon exceptions within
+    The base class for all  SAGA-Pilot Exception classes -- this exception type is
+    never raised directly, but can be used to catch all SAGA-Pilot exceptions within
     a single `except` clause.
 
     The exception message and originating object are also accessable as class
@@ -68,7 +68,7 @@ class SinonException(Exception) :
 
 # ------------------------------------------------------------------------------
 #
-class DatabaseError (SinonException) :
+class DatabaseError (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -79,11 +79,11 @@ class DatabaseError (SinonException) :
     / unknown schema. 
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectURL (SinonException) :
+class IncorrectURL (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -94,12 +94,12 @@ class IncorrectURL (SinonException) :
     / unknown schema. 
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
 #
-class BadParameter (SinonException) :
+class BadParameter (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -109,12 +109,12 @@ class BadParameter (SinonException) :
     A given parameter is out of bound or ill formatted.
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
 #
-class DoesNotExist (SinonException) :
+class DoesNotExist (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -124,12 +124,12 @@ class DoesNotExist (SinonException) :
     An operation tried to access a non-existing entity.
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectState (SinonException) :
+class IncorrectState (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -139,12 +139,12 @@ class IncorrectState (SinonException) :
     The operation is not allowed on the entity in its current state.
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
 #
-class PermissionDenied (SinonException) :
+class PermissionDenied (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -154,12 +154,12 @@ class PermissionDenied (SinonException) :
     The used identity is not permitted to perform the requested operation.
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
 #
-class AuthorizationFailed (SinonException) :
+class AuthorizationFailed (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -169,12 +169,12 @@ class AuthorizationFailed (SinonException) :
     The backend could not accept the given identity.
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
 #
-class AuthenticationFailed (SinonException) :
+class AuthenticationFailed (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -184,12 +184,12 @@ class AuthenticationFailed (SinonException) :
     The backend could not establish a valid identity.
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
 #
-class Timeout (SinonException) :
+class Timeout (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -199,12 +199,12 @@ class Timeout (SinonException) :
     The interaction with the backend timed out.
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
 #
-class NoSuccess (SinonException) :
+class NoSuccess (SagapilotException) :
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -214,4 +214,4 @@ class NoSuccess (SinonException) :
     Some unsopecified error occurred.
     """
     def __init__ (self, msg, obj=None) :
-        SinonException.__init__(self, msg, obj)
+        SagapilotException.__init__(self, msg, obj)
