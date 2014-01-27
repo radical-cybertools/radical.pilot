@@ -33,24 +33,24 @@ UID  = 'UID'
 # ------------------------------------------------------------------------------
 #
 class PilotManager(attributes.Attributes):
-    """A PilotManager holds :class:`sinon.ComputePilot` instances that are 
-    submitted via the :meth:`sinon.ComputePilotManager.submit_pilots` method.
+    """A PilotManager holds :class:`sagapilot.ComputePilot` instances that are 
+    submitted via the :meth:`sagapilot.ComputePilotManager.submit_pilots` method.
     
     It is possible to attach one or more :ref:`chapter_machconf` 
     to a PilotManager to outsource machine specific configuration 
     parameters to an external configuration file. 
 
-    Each PilotManager has a unique identifier :data:`sinon.ComputePilotManager.uid`
+    Each PilotManager has a unique identifier :data:`sagapilot.ComputePilotManager.uid`
     that can be used to re-connect to previoulsy created PilotManager in a
-    given :class:`sinon.Session`.
+    given :class:`sagapilot.Session`.
 
     **Example**::
 
-        s = sinon.Session(database_url=DBURL)
+        s = sagapilot.Session(database_url=DBURL)
         
-        pm1 = sinon.ComputePilotManager(session=s, resource_configurations=RESCONF)
+        pm1 = sagapilot.ComputePilotManager(session=s, resource_configurations=RESCONF)
         # Re-connect via the 'get()' method.
-        pm2 = sinon.ComputePilotManager.get(session=s, pilot_manager_id=pm1.uid)
+        pm2 = sagapilot.ComputePilotManager.get(session=s, pilot_manager_id=pm1.uid)
 
         # pm1 and pm2 are pointing to the same PilotManager
         assert pm1.uid == pm2.uid
@@ -67,7 +67,7 @@ class PilotManager(attributes.Attributes):
 
         **Arguments:**
 
-            * **session** [:class:`sinon.Session`]: 
+            * **session** [:class:`sagapilot.Session`]: 
               The session instance to use.
 
             * **resource_configurations** [`string` or `list of strings`]: 
@@ -79,9 +79,9 @@ class PilotManager(attributes.Attributes):
               entries in the  files via the :class:`ComputePilotDescription`.
               For example::
 
-                  pm = sinon.ComputePilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+                  pm = sagapilot.ComputePilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
-                  pd = sinon.ComputePilotDescription()
+                  pd = sagapilot.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
                   pd.cores = 16
 
@@ -89,10 +89,10 @@ class PilotManager(attributes.Attributes):
 
         **Returns:**
 
-            * A new `PilotManager` object [:class:`sinon.ComputePilotManager`].
+            * A new `PilotManager` object [:class:`sagapilot.ComputePilotManager`].
 
         **Raises:**
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         # Each pilot manager has a worker thread associated with it. The task of the 
         # worker thread is to check and update the state of pilots, fire callbacks
@@ -173,7 +173,7 @@ class PilotManager(attributes.Attributes):
     def _get_uid_priv(self):
         """Returns the PilotManagers's unique identifier.
 
-        The uid identifies the PilotManager within the :class:`sinon.Session`
+        The uid identifies the PilotManager within the :class:`sagapilot.Session`
         and can be used to retrieve an existing PilotManager.
 
         **Returns:**
@@ -203,16 +203,16 @@ class PilotManager(attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     def submit_pilots(self, pilot_descriptions):
-        """Submits a new :class:`sinon.ComputePilot` to a resource. 
+        """Submits a new :class:`sagapilot.ComputePilot` to a resource. 
 
         **Returns:**
 
-            * One or more :class:`sinon.ComputePilot` instances 
-              [`list of :class:`sinon.ComputePilot`].
+            * One or more :class:`sagapilot.ComputePilot` instances 
+              [`list of :class:`sagapilot.ComputePilot`].
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -362,7 +362,7 @@ class PilotManager(attributes.Attributes):
 
                     # Copy the agent script
                     cwd = os.path.dirname(os.path.abspath(__file__))
-                    agent_path = os.path.abspath("%s/agent/sinon-pilot-agent.py" % cwd)
+                    agent_path = os.path.abspath("%s/agent/sagapilot-pilot-agent.py" % cwd)
                     agent_script_url = saga.Url("file://localhost/%s" % agent_path) 
                     agent_script = saga.filesystem.File(agent_script_url)
                     agent_script.copy(agent_dir_url)
@@ -468,16 +468,16 @@ class PilotManager(attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """Lists the unique identifiers of all :class:`sinon.ComputePilot` 
+        """Lists the unique identifiers of all :class:`sagapilot.ComputePilot` 
         instances associated with this PilotManager
 
         **Returns:**
 
-            * A list of :class:`sinon.ComputePilot` uids [`string`].
+            * A list of :class:`sagapilot.ComputePilot` uids [`string`].
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -487,7 +487,7 @@ class PilotManager(attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     def get_pilots(self, pilot_ids=None):
-        """Returns one or more :class:`sinon.ComputePilot` instances.
+        """Returns one or more :class:`sagapilot.ComputePilot` instances.
 
         **Arguments:**
 
@@ -497,12 +497,12 @@ class PilotManager(attributes.Attributes):
 
         **Returns:**
 
-            * A list of :class:`sinon.ComputePilot` objects 
-              [`list of :class:`sinon.ComputePilot`].
+            * A list of :class:`sagapilot.ComputePilot` objects 
+              [`list of :class:`sagapilot.ComputePilot`].
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -517,7 +517,7 @@ class PilotManager(attributes.Attributes):
     #
     def wait_pilots(self, pilot_ids=None, 
         state=[states.DONE, states.FAILED, states.CANCELED], timeout=-1.0):
-        """Returns when one or more :class:`sinon.ComputePilots` reach a 
+        """Returns when one or more :class:`sagapilot.ComputePilots` reach a 
         specific state or when an optional timeout is reached.
 
         If `pilot_uids` is `None`, `wait_pilots` returns when **all** Pilots
@@ -537,9 +537,9 @@ class PilotManager(attributes.Attributes):
               By default `wait_pilots` waits for the Pilots to reach 
               a **terminal** state, which can be one of the following:
 
-              * :data:`sinon.DONE`
-              * :data:`sinon.FAILED`
-              * :data:`sinon.CANCELED`
+              * :data:`sagapilot.DONE`
+              * :data:`sagapilot.FAILED`
+              * :data:`sagapilot.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless 
@@ -548,7 +548,7 @@ class PilotManager(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -598,7 +598,7 @@ class PilotManager(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")

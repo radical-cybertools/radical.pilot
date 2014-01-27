@@ -32,23 +32,23 @@ SCHEDULER_DETAILS = 'SchedulerDetails'
 # ------------------------------------------------------------------------------
 #
 class UnitManager(attributes.Attributes) :
-    """A UnitManager manages :class:`sinon.ComputeUnit` instances which 
+    """A UnitManager manages :class:`sagapilot.ComputeUnit` instances which 
     represent the **executable** workload in SAGA-Pilot. A UnitManager connects 
     the ComputeUnits with one or more :class:`Pilot` instances (which represent
     the workload **executors** in SAGA-Pilot) and a **scheduler** which 
     determines which :class:`ComputeUnit` gets executed on which :class:`Pilot`.
 
-    Each UnitManager has a unique identifier :data:`sinon.UnitManager.uid`
+    Each UnitManager has a unique identifier :data:`sagapilot.UnitManager.uid`
     that can be used to re-connect to previoulsy created UnitManager in a
-    given :class:`sinon.Session`.
+    given :class:`sagapilot.Session`.
 
     **Example**::
 
-        s = sinon.Session(database_url=DBURL)
+        s = sagapilot.Session(database_url=DBURL)
         
-        pm = sinon.PilotManager(session=s)
+        pm = sagapilot.PilotManager(session=s)
 
-        pd = sinon.ComputePilotDescription()
+        pd = sagapilot.ComputePilotDescription()
         pd.resource = "futuregrid.alamo"
         pd.cores = 16
 
@@ -58,14 +58,14 @@ class UnitManager(attributes.Attributes) :
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
         for unit_count in range(0, 128):
-            cu = sinon.ComputeUnitDescription()
+            cu = sagapilot.ComputeUnitDescription()
             cu.executable = "/bin/sleep"
             cu.arguments = ['60']
             compute_units.append(cu)
 
         # Combine the two pilots, the workload and a scheduler via 
         # a UnitManager.
-        um = sinon.UnitManager(session=session, scheduler="round_robin")
+        um = sagapilot.UnitManager(session=session, scheduler="round_robin")
         um.add_pilot(p1)
         um.submit_units(compute_units)
     """
@@ -82,7 +82,7 @@ class UnitManager(attributes.Attributes) :
             * scheduler (`string`): The name of the scheduler plug-in to use.
 
         **Raises:**
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         self._DB = session._dbs
         self._session = session
@@ -106,7 +106,7 @@ class UnitManager(attributes.Attributes) :
         self._attributes_register(SCHEDULER_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
         self._attributes_set_getter(SCHEDULER_DETAILS, self._get_scheduler_details_priv)
 
-        pm = ru.PluginManager ('sinon')
+        pm = ru.PluginManager ('sagapilot')
 
 
         self._scheduler = pm.load('unit_scheduler', scheduler)
@@ -192,13 +192,13 @@ class UnitManager(attributes.Attributes) :
 
         **Arguments:**
 
-            * **pilots** [:class:`sinon.ComputePilot` or list of 
-              :class:`sinon.ComputePilot`]: The pilot objects that will be 
+            * **pilots** [:class:`sagapilot.ComputePilot` or list of 
+              :class:`sagapilot.ComputePilot`]: The pilot objects that will be 
               added to the unit manager.
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -223,17 +223,17 @@ class UnitManager(attributes.Attributes) :
 
             * **type** [`int`]: The type of pilots to list. Possible options are:
 
-              * :data:`sinon.types.PILOT_ANY`
-              * :data:`sinon.types.PILOT_DATA`
-              * :data:`sinon.types.PILOT_COMPUTE`
+              * :data:`sagapilot.types.PILOT_ANY`
+              * :data:`sagapilot.types.PILOT_DATA`
+              * :data:`sagapilot.types.PILOT_COMPUTE`
 
         **Returns:**
 
-              * A list of :class:`sinon.ComputePilot` UIDs [`string`].
+              * A list of :class:`sagapilot.ComputePilot` UIDs [`string`].
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -258,7 +258,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -272,12 +272,12 @@ class UnitManager(attributes.Attributes) :
     # --------------------------------------------------------------------------
     #
     def list_units (self, utype=types.ANY) :
-        """Returns the UIDs of the :class:`sinon.ComputeUnit` managed by this 
+        """Returns the UIDs of the :class:`sagapilot.ComputeUnit` managed by this 
         unit manager.
 
         **Returns:**
 
-              * A list of :class:`sinon.ComputeUnit` UIDs [`string`].
+              * A list of :class:`sagapilot.ComputeUnit` UIDs [`string`].
 
         """
         if not self._uid:
@@ -288,22 +288,22 @@ class UnitManager(attributes.Attributes) :
     # --------------------------------------------------------------------------
     #
     def submit_units(self, unit_descriptions) :
-        """Submits on or more :class:`sinon.ComputeUnit` instances to the unit
+        """Submits on or more :class:`sagapilot.ComputeUnit` instances to the unit
         manager. 
 
         **Arguments:**
 
-            * **unit_descriptions** [:class:`sinon.ComputeUnitDescription` or list of 
-              :class:`sinon.ComputeUnitDescription`]: The description of the 
+            * **unit_descriptions** [:class:`sagapilot.ComputeUnitDescription` or list of 
+              :class:`sagapilot.ComputeUnitDescription`]: The description of the 
               compute unit instance(s) to create.
 
         **Returns:**
 
-              * A list of :class:`sinon.ComputeUnit` objects.
+              * A list of :class:`sagapilot.ComputeUnit` objects.
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -412,11 +412,11 @@ class UnitManager(attributes.Attributes) :
 
         **Returns:**
 
-              * A list of :class:`sinon.ComputeUnit` objects.
+              * A list of :class:`sagapilot.ComputeUnit` objects.
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -430,7 +430,7 @@ class UnitManager(attributes.Attributes) :
     # --------------------------------------------------------------------------
     #
     def wait_units(self, unit_ids=None, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
-        """Returns when one or more :class:`sinon.ComputeUnits` reach a 
+        """Returns when one or more :class:`sagapilot.ComputeUnits` reach a 
         specific state. 
 
         If `unit_uids` is `None`, `wait_units` returns when **all** ComputeUnits
@@ -454,9 +454,9 @@ class UnitManager(attributes.Attributes) :
               By default `wait_units` waits for the ComputeUnits to 
               reach a terminal state, which can be one of the following:
 
-              * :data:`sinon.DONE`
-              * :data:`sinon.FAILED`
-              * :data:`sinon.CANCELED`
+              * :data:`sagapilot.DONE`
+              * :data:`sagapilot.FAILED`
+              * :data:`sagapilot.CANCELED`
 
             * **timeout** [`float`]
               Timeout in seconds before the call returns regardless of Pilot
@@ -464,7 +464,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -497,7 +497,7 @@ class UnitManager(attributes.Attributes) :
     # --------------------------------------------------------------------------
     #
     def cancel_units (self, unit_ids=None):
-        """Cancel one or more :class:`sinon.ComputeUnits`.
+        """Cancel one or more :class:`sagapilot.ComputeUnits`.
 
         **Arguments:**
 
@@ -506,7 +506,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.SinonException`
+            * :class:`sagapilot.SinonException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")

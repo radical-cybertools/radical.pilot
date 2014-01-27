@@ -395,9 +395,9 @@ class ComputePilot (attributes.Attributes) :
               By default `wait` waits for the Pilot to reach 
               a **terminal** state, which can be one of the following:
 
-              * :data:`sinon.states.DONE`
-              * :data:`sinon.states.FAILED`
-              * :data:`sinon.states.CANCELED`
+              * :data:`sagapilot.states.DONE`
+              * :data:`sagapilot.states.FAILED`
+              * :data:`sagapilot.states.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless 
@@ -406,7 +406,7 @@ class ComputePilot (attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.exceptions.SinonException` if the state of the 
+            * :class:`sagapilot.exceptions.SinonException` if the state of the 
               pilot cannot be determined. 
         """
         # Check if this instance is valid
@@ -436,7 +436,7 @@ class ComputePilot (attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sinon.exceptions.SinonException if the termination 
+            * :class:`sagapilot.exceptions.SinonException if the termination 
               request cannot be fulfilled. 
         """
         # Check if this instance is valid

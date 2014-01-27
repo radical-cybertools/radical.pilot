@@ -27,8 +27,8 @@ PROJECT           = 'Project'
 #
 class ComputePilotDescription (attributes.Attributes) :
     """A ComputePilotDescription object describes the requirements and 
-    properties of a :class:`sinon.Pilot` and is passed as a parameter to
-    :meth:`sinon.PilotManager.submit_pilots` to instantiate a new pilot.
+    properties of a :class:`sagapilot.Pilot` and is passed as a parameter to
+    :meth:`sagapilot.PilotManager.submit_pilots` to instantiate a new pilot.
 
     .. note:: A ComputePilotDescription **MUST** define at least 
               :data:`resource` and the number of :data:`cores` to allocate on 
@@ -36,9 +36,9 @@ class ComputePilotDescription (attributes.Attributes) :
 
     **Example**::
 
-        pm = sinon.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+        pm = sagapilot.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
-        pd = sinon.ComputePilotDescription()
+        pd = sagapilot.ComputePilotDescription()
         pd.resource = "futuregrid.INDIA"  # Key defined in futuregrid.json
         pd.cores = 16
 
@@ -50,8 +50,8 @@ class ComputePilotDescription (attributes.Attributes) :
        The key of a :ref:`chapter_machconf` entry.
        If the key exists, the machine-specifc configuration is loaded from the 
        configuration once the ComputePilotDescription is passed to 
-       :meth:`sinon.PilotManager.submit_pilots`. If the key doesn't exist, a
-       :class:`sinon.SinonException` is thrown.
+       :meth:`sagapilot.PilotManager.submit_pilots`. If the key doesn't exist, a
+       :class:`sagapilot.SinonException` is thrown.
 
     .. data:: cores
 

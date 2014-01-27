@@ -26,8 +26,8 @@ WORKING_DIRECTORY_PRIV = 'WorkingDirectoryPriv'
 #
 class ComputeUnitDescription (attributes.Attributes) :
     """A ComputeUnitDescription object describes the requirements and 
-    properties of a :class:`sinon.ComputeUnit` and is passed as a parameter to
-    :meth:`sinon.UnitManager.submit_units` to instantiate and run a new 
+    properties of a :class:`sagapilot.ComputeUnit` and is passed as a parameter to
+    :meth:`sagapilot.UnitManager.submit_units` to instantiate and run a new 
     ComputeUnit.
 
     .. note:: A ComputeUnitDescription **MUST** define at least an :data:`executable`.

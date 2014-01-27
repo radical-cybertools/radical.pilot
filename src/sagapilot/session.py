@@ -27,17 +27,17 @@ class Session(object):
     """A Session encapsulates a SAGA-Pilot instance and is the *root* object
     for all other SAGA-Pilot objects. 
 
-    A Session holds :class:`sinon.PilotManager` and :class:`sinon.UnitManager`
-    instances which in turn hold  :class:`sinon.Pilot` and
-    :class:`sinon.ComputeUnit` instances.
+    A Session holds :class:`sagapilot.PilotManager` and :class:`sagapilot.UnitManager`
+    instances which in turn hold  :class:`sagapilot.Pilot` and
+    :class:`sagapilot.ComputeUnit` instances.
 
-    Each Session has a unique identifier :data:`sinon.Session.uid` that can be
+    Each Session has a unique identifier :data:`sagapilot.Session.uid` that can be
     used to re-connect to a SAGA-Pilot instance in the database.
 
     **Example**::
 
-        s1 = sinon.Session(database_url=DBURL)
-        s2 = sinon.Session(database_url=DBURL, session_uid=s1.uid)
+        s1 = sagapilot.Session(database_url=DBURL)
+        s2 = sagapilot.Session(database_url=DBURL, session_uid=s1.uid)
 
         # s1 and s2 are pointing to the same session
         assert s1.uid == s2.uid
@@ -46,7 +46,7 @@ class Session(object):
 
     #---------------------------------------------------------------------------
     #
-    def __init__ (self, database_url, database_name="sinon", session_uid=None):
+    def __init__ (self, database_url, database_name="sagapilot", session_uid=None):
         """Creates a new or reconnects to an exising session.
 
         If called without a session_uid, a new Session instance is created and 
@@ -57,7 +57,7 @@ class Session(object):
             * **database_url** (`string`): The MongoDB URL. 
 
             * **database_name** (`string`): An alternative database name 
-              (default: 'sinon').
+              (default: 'sagapilot').
 
             * **session_uid** (`string`): If session_uid is set, we try 
               re-connect to an existing session instead of creating a new one.
@@ -66,7 +66,7 @@ class Session(object):
             * A new Session instance.
 
         **Raises:**
-            * :class:`sinon.DatabaseError`
+            * :class:`sagapilot.DatabaseError`
 
         """
         try:
@@ -122,7 +122,7 @@ class Session(object):
             * A unique identifier (`string`).
 
         **Raises:**
-            * :class:`sinon.IncorrectState` if the session is closed
+            * :class:`sagapilot.IncorrectState` if the session is closed
               or doesn't exist. 
 
         """
@@ -166,7 +166,7 @@ class Session(object):
         an error.
 
         **Raises:**
-            * :class:`sinon.IncorrectState` if the session is closed
+            * :class:`sagapilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
         if not self._session_uid:
@@ -181,20 +181,20 @@ class Session(object):
     #---------------------------------------------------------------------------
     #
     def list_pilot_managers(self):
-        """Lists the unique identifiers of all :class:`sinon.PilotManager` 
+        """Lists the unique identifiers of all :class:`sagapilot.PilotManager` 
         instances associated with this session.
 
         **Example**::
 
-            s = sinon.Session(database_url=DBURL)
+            s = sagapilot.Session(database_url=DBURL)
             for pm_uid in s.list_pilot_managers():
-                pm = sinon.PilotManager(session=s, pilot_manager_uid=pm_uid) 
+                pm = sagapilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of :class:`sinon.PilotManager` uids (`list` oif strings`).
+            * A list of :class:`sagapilot.PilotManager` uids (`list` oif strings`).
 
         **Raises:**
-            * :class:`sinon.IncorrectState` if the session is closed
+            * :class:`sagapilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
         if not self._session_uid:
@@ -211,7 +211,7 @@ class Session(object):
 
         **Arguments:**
 
-            * **session** [:class:`sinon.Session`]: 
+            * **session** [:class:`sagapilot.Session`]: 
               The session instance to use.
 
             * **pilot_manager_uid** [`string`]: 
@@ -220,11 +220,11 @@ class Session(object):
 
         **Returns:**
 
-            * One or more new [:class:`sinon.PilotManager`] objects.
+            * One or more new [:class:`sagapilot.PilotManager`] objects.
 
         **Raises:**
 
-            * :class:`sinon.SinonException` if a PilotManager with 
+            * :class:`sagapilot.SinonException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         if not self._session_uid:
@@ -255,20 +255,20 @@ class Session(object):
     #---------------------------------------------------------------------------
     #
     def list_unit_managers(self):
-        """Lists the unique identifiers of all :class:`sinon.UnitManager` 
+        """Lists the unique identifiers of all :class:`sagapilot.UnitManager` 
         instances associated with this session.
 
         **Example**::
 
-            s = sinon.Session(database_url=DBURL)
+            s = sagapilot.Session(database_url=DBURL)
             for pm_uid in s.list_unit_managers():
-                pm = sinon.PilotManager(session=s, pilot_manager_uid=pm_uid) 
+                pm = sagapilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of :class:`sinon.UnitManager` uids (`list` of `strings`).
+            * A list of :class:`sagapilot.UnitManager` uids (`list` of `strings`).
 
         **Raises:**
-            * :class:`sinon.IncorrectState` if the session is closed
+            * :class:`sagapilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
         if not self._session_uid:
@@ -284,7 +284,7 @@ class Session(object):
 
         **Arguments:**
 
-            * **session** [:class:`sinon.Session`]: 
+            * **session** [:class:`sagapilot.Session`]: 
               The session instance to use.
 
             * **pilot_manager_uid** [`string`]: 
@@ -293,11 +293,11 @@ class Session(object):
 
         **Returns:**
 
-            * One or more new [:class:`sinon.PilotManager`] objects.
+            * One or more new [:class:`sagapilot.PilotManager`] objects.
 
         **Raises:**
 
-            * :class:`sinon.SinonException` if a PilotManager with 
+            * :class:`sagapilot.SinonException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         if not self._session_uid:

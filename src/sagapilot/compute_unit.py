@@ -300,9 +300,9 @@ class ComputeUnit(attributes.Attributes):
               By default `wait` waits for the compute unit to reach 
               a **terminal** state, which can be one of the following:
 
-              * :data:`sinon.states.DONE`
-              * :data:`sinon.states.FAILED`
-              * :data:`sinon.states.CANCELED`
+              * :data:`sagapilot.states.DONE`
+              * :data:`sagapilot.states.FAILED`
+              * :data:`sagapilot.states.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless 
@@ -339,7 +339,7 @@ class ComputeUnit(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sinon.SinonException
+            * :class:`sagapilot.SinonException
         """
         # Check if this instance is valid
         if not self._uid:
