@@ -82,7 +82,7 @@ class UnitManager(attributes.Attributes) :
             * scheduler (`string`): The name of the scheduler plug-in to use.
 
         **Raises:**
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         self._DB = session._dbs
         self._session = session
@@ -198,7 +198,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -233,7 +233,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -258,7 +258,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -303,7 +303,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -316,7 +316,7 @@ class UnitManager(attributes.Attributes) :
         if True : ## always use the scheduler for now...
 
             if not self._scheduler :
-                raise exceptions.SinonException("Internal error - no unit scheduler")
+                raise exceptions.SagapilotException("Internal error - no unit scheduler")
 
             # the scheduler will return a dictionary of the form:
             #   { 
@@ -330,7 +330,7 @@ class UnitManager(attributes.Attributes) :
             try :
                 schedule = self._scheduler.schedule (unit_descriptions)
             except Exception as e :
-                raise exceptions.SinonException("Internal error - unit scheduler failed: %s" % e)
+                raise exceptions.SagapilotException("Internal error - unit scheduler failed: %s" % e)
 
             units       = list()  # compute unit instances to return
             unscheduled = list()  # unscheduled unit descriptions
@@ -344,7 +344,7 @@ class UnitManager(attributes.Attributes) :
 
                 # sanity check on scheduler provided information
                 if not pilot_id in self.list_pilots () :
-                    raise exceptions.SinonException("Internal error - invalid scheduler reply, "
+                    raise exceptions.SagapilotException("Internal error - invalid scheduler reply, "
                                         "no such pilot %s" % pilot_id)
 
                 # get the scheduled unit descriptions for this pilot
@@ -356,7 +356,7 @@ class UnitManager(attributes.Attributes) :
 
                     # sanity check on scheduler provided information
                     if  not ud in unscheduled :
-                        raise exceptions.SinonException("Internal error - invalid scheduler reply, "
+                        raise exceptions.SagapilotException("Internal error - invalid scheduler reply, "
                                             "no such unit description %s" % ud)
 
                     # looks ok -- add the unit as submission candidate
@@ -390,7 +390,7 @@ class UnitManager(attributes.Attributes) :
             # the schedule provided by the scheduler is now evaluated -- check
             # that we didn't lose/gain any units
             if  len(units) + len(unscheduled) != len(unit_descriptions) :
-                raise exceptions.SinonException("Internal error - wrong #units returned from scheduler")
+                raise exceptions.SagapilotException("Internal error - wrong #units returned from scheduler")
 
             # keep unscheduled units around for later, out-of-band scheduling
             self._unscheduled_units = unscheduled
@@ -416,7 +416,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -464,7 +464,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -506,7 +506,7 @@ class UnitManager(attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")

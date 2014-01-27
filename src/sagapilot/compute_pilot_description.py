@@ -51,7 +51,7 @@ class ComputePilotDescription (attributes.Attributes) :
        If the key exists, the machine-specifc configuration is loaded from the 
        configuration once the ComputePilotDescription is passed to 
        :meth:`sagapilot.PilotManager.submit_pilots`. If the key doesn't exist, a
-       :class:`sagapilot.SinonException` is thrown.
+       :class:`sagapilot.SagapilotException` is thrown.
 
     .. data:: cores
 

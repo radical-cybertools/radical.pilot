@@ -196,7 +196,7 @@ class ComputePilot (attributes.Attributes) :
         # make sure the result makes sense
         if len(pilots_json) != 1: 
             msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.SinonException(msg=msg)
+            raise exceptions.SagapilotException(msg=msg)
 
         return pilots_json[0]['info']['state']
 
@@ -270,7 +270,7 @@ class ComputePilot (attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        raise exceptions.SinonException("Not Implemented")
+        raise exceptions.SagapilotException("Not Implemented")
 
 
     # --------------------------------------------------------------------------
@@ -282,7 +282,7 @@ class ComputePilot (attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        raise exceptions.SinonException("Not Implemented")
+        raise exceptions.SagapilotException("Not Implemented")
 
     # --------------------------------------------------------------------------
     #
@@ -406,7 +406,7 @@ class ComputePilot (attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.exceptions.SinonException` if the state of the 
+            * :class:`sagapilot.exceptions.SagapilotException` if the state of the 
               pilot cannot be determined. 
         """
         # Check if this instance is valid
@@ -436,7 +436,7 @@ class ComputePilot (attributes.Attributes) :
 
         **Raises:**
 
-            * :class:`sagapilot.exceptions.SinonException if the termination 
+            * :class:`sagapilot.SagapilotException` if the termination 
               request cannot be fulfilled. 
         """
         # Check if this instance is valid

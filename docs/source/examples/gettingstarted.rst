@@ -28,7 +28,32 @@ You can check / print the version of your SAGA-Pilot installation via the ``vers
 Creating a Session
 ------------------
 
-A ``Session`` in SAGA-Pilot is the  
+A :class:`sagapilot.Session` is the root object for all other objects in SAGA-Pilot. You can think
+of it as a *tree* or a *directory structure* with a Session as root:
+
+.. code-block:: bash
+
+    [Session]
+    |
+    |---- SSHCredential
+    |---- ....
+    |
+    |---- [PilotManager]
+    |     |
+    |     |---- ComputePilot
+    |     |---- ComputePilot
+    |  
+    |---- [UnitManager]
+    |     |
+    |     |---- ComputeUnit
+    |     |---- ComputeUnit
+    |     |....
+    |
+    |---- [UnitManager]
+    |     |
+    |     |....
+    |
+    |....
 
 
 

@@ -92,7 +92,7 @@ class PilotManager(attributes.Attributes):
             * A new `PilotManager` object [:class:`sagapilot.ComputePilotManager`].
 
         **Raises:**
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         # Each pilot manager has a worker thread associated with it. The task of the 
         # worker thread is to check and update the state of pilots, fire callbacks
@@ -212,7 +212,7 @@ class PilotManager(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -477,7 +477,7 @@ class PilotManager(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -502,7 +502,7 @@ class PilotManager(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -548,7 +548,7 @@ class PilotManager(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -598,7 +598,7 @@ class PilotManager(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException`
+            * :class:`sagapilot.SagapilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")

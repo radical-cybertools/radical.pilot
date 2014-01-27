@@ -50,10 +50,12 @@ ComputeUnitDescription
 .. autoclass:: sagapilot.ComputeUnitDescription
    :members: ComputeUnitDescription
 
-Miscellanea 
-===========
-
 Exceptions
-----------
-.. autoclass:: sagapilot.SinonException
-   :members: SinonException
+==========
+
+.. autoclass:: sagapilot.SagapilotException
+   :members: SagapilotException
+
+.. autoclass:: sagapilot.DatabaseError
+   :members: DatabaseError
+

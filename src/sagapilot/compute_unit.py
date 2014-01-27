@@ -339,18 +339,18 @@ class ComputeUnit(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException
+            * :class:`sagapilot.SagapilotException
         """
         # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SinonException("Invalid Compute Unit instance.")
+            raise excpetions.SagapilotException("Invalid Compute Unit instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:
             # nothing to do
             return
 
         if self.state in [states.UNKNOWN] :
-            raise excpetions.SinonException("Compute Unit state is UNKNOWN, cannot cancel")
+            raise excpetions.SagapilotException("Compute Unit state is UNKNOWN, cannot cancel")
 
         # done waiting
         return

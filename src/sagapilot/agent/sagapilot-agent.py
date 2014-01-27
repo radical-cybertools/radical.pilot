@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
-"""An agent for SAGA-Pilot.
+"""
+.. module:: sagapilot.agent
+   :platform: Unix
+   :synopsis: An agent for SAGA-Pilot.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__author__    = "Ole Weidner"
-__email__     = "ole.weidner@rutgers.edu"
-__copyright__ = "Copyright 2013-2014, The RADICAL Project at Rutgers"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
@@ -927,7 +930,7 @@ if __name__ == "__main__":
     options = parse_commandline()
 
     # configure the agent logger
-    logger = logging.getLogger('sinon.agent')
+    logger = logging.getLogger('sagapilot.agent')
     logger.setLevel(logging.INFO)
     ch = logging.FileHandler("AGENT.LOG")
     ch.setLevel(logging.INFO)

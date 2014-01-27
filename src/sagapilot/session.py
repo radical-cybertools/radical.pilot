@@ -92,7 +92,7 @@ class Session(object):
                 logger.info("Reconnected to existing Session %s." % str(self))
 
         except DBException, ex:
-            raise exceptions.SinonException("Database Error: %s" % ex)
+            raise exceptions.SagapilotException("Database Error: %s" % ex)
 
         # list of security contexts
         self._credentials      = []
@@ -224,7 +224,7 @@ class Session(object):
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException` if a PilotManager with 
+            * :class:`sagapilot.SagapilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         if not self._session_uid:
@@ -297,7 +297,7 @@ class Session(object):
 
         **Raises:**
 
-            * :class:`sagapilot.SinonException` if a PilotManager with 
+            * :class:`sagapilot.SagapilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         if not self._session_uid:
