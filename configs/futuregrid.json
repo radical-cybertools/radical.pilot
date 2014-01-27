@@ -1,5 +1,5 @@
 {
-    "futuregrid.ALAMO": {
+    "alamo.futuregrid.org": {
         "URL"                : "pbs+ssh://alamo.futuregrid.org",
         "filesystem"         : "sftp://alamo.futuregrid.org/",
         "default_queue"      : "short",
@@ -9,7 +9,7 @@
         "valid_roots"        : ["/N", "/home"]
     },
 
-    "futuregrid.INDIA": {
+    "india.futuregrid.org": {
         "URL"                : "pbs+ssh://india.futuregrid.org",
         "filesystem"         : "sftp://india.futuregrid.org/",
         "default_queue"      : "batch",
@@ -19,7 +19,7 @@
         "valid_roots"        : ["/N"]
     },
 
-    "futuregrid.SIERRA": {
+    "sierra.futuregrid.org": {
         "URL"                : "pbs+ssh://sierra.futuregrid.org",
         "filesystem"         : "sftp://sierra.futuregrid.org/",
         "default_queue"      : "batch",
@@ -30,7 +30,7 @@
 
     },
 
-    "futuregrid.HOTEL": {
+    "hotel.futuregrid.org": {
         "URL"                : "pbs+ssh://hotel.futuregrid.org",
         "filesystem"         : "sftp://hotel.futuregrid.org/",
         "default_queue"      : "batch",
