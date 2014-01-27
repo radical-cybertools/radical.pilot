@@ -89,7 +89,7 @@ def read(*rnames):
 
 #-----------------------------------------------------------------------------
 setup_args = {
-    'name'             : 'sinon',
+    'name'             : 'sagapilot',
     'version'          : short_version,
     'description'      : "A SAGA-based pilot job framework",
     'long_description' : (read('README.md') + '\n\n' + read('CHANGES.md')),
