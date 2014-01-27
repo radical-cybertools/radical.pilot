@@ -1,13 +1,6 @@
-__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
-__license__   = "MIT"
-
 import sagapilot
 
-
-import os 
-PWD    = os.path.dirname(os.path.abspath(__file__))
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
-FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 
 #-------------------------------------------------------------------------------
 #
@@ -38,6 +31,7 @@ if __name__ == "__main__":
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
+        print "Pilot UID       : {0} ".format( pilot.uid )
 
         # state = p1.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
 

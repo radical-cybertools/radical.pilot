@@ -8,7 +8,10 @@ After you have successfully installed SAGA-Pilot (see chapter :ref:`chapter_inst
 
 [Description of what the getting started example does]
 
- 
+ .. note:: The following sections explain the individual components of 
+           SAGA-Pilot in detail. It is highly recommended that you carefully 
+           read and understand all of this. For your convenience, you can find
+           a fully working example at the end of this page.
 
 Loading the Module
 ------------------
@@ -109,27 +112,66 @@ Session, a PilotManager has a unique id (`uid`) as well as a traversal method
 
 In order to create a new ComputePilot, you first need to describe its
 requirements and properties. This is done with the help of a
-:class:`sagapilot.ComputePilotDescription` object. The minimum set of properties
-that you need to define is:
+:class:`sagapilot.ComputePilotDescription` object. The mandatory properties
+that you need to define are:
 
-   * `resource`
-   * `sandbox`
-   * `runtime`
-   * `cores`
+   * `resource` - The name (hostname) of the target system or ``localhost`` to launch a local ComputePilot.
+   * `sandbox` - The sandbox (working directory) under which the ComputePilot agent will run.
+   * `runtime` - The runtime (in minutes) of the ComputePilot agent.
+   * `cores` - The number or cores the ComputePilot agent will try to allocate.
 
 You can define and submit a 2-core local pilot that runs in
-/tmp/sagapilot.sandbox for 15 minutes like this:
+/tmp/sagapilot.sandbox for 5 minutes like this:
 
 .. code-block:: python
 
     pdesc = sagapilot.ComputePilotDescription()
     pdesc.resource  = "localhost"
     pdesc.sandbox   = "/tmp/sagapilot.sandbox"
-    pdesc.runtime   = 15 # minutes
+    pdesc.runtime   = 5 # minutes
     pdesc.cores     = 2
 
+A ComputePilot is launched by passing the ComputePilotDescription to the 
+``submit_pilots()`` method of the PilotManager. This automatically adds the 
+ComputePilot to the PilotManager. Like any other object in SAGA-Pilot, a 
+ComputePilot also has a unique identifier (``uid``)
 
 .. code-block:: python
 
     pilot = pmgr.submit_pilots(pdesc)
+    print "Pilot UID     : {0} ".format( pilot.uid )
 
+
+**TIP:** You change to the ComputePilot sandbox directory
+(``/tmp/sagapilot.sandbox`` in the above example) to see the raw logs and output
+files of the ComputePilot agent(s) ``[pilot-<uid>]`` as well as the working
+directories and output of the individual ComputeUnits (``[task-<uid>]``).
+*Please note that knowing  where to find these files might come in handy for
+debugging  purposes but it is not required for regular SAGA-Pilot usage.*
+
+.. code-block:: bash
+
+    [/sandbox-dir/]
+    |
+    |----[pilot-<uid>/]
+    |    |
+    |    |---- STDERR
+    |    |---- STDOUT
+    |    |---- AGENT.LOG
+    |    |---- [task-<uid>/]
+    |    |---- [task-<uid>/]
+    |    |....
+    |
+    |....
+
+
+Creating ComputeUnits (Tasks)
+-----------------------------
+
+The Complete Example
+--------------------
+
+Putting it all together, your first SAGA-Pilot application will look somewhat 
+like the script below.
+
+.. literalinclude:: ../../../examples/getting_started.py
