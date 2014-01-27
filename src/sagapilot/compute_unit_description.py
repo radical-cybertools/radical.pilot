@@ -9,8 +9,8 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sinon.types       as types
-import sinon.attributes  as attributes
+import sagapilot.types       as types
+import sagapilot.attributes  as attributes
 
 # ------------------------------------------------------------------------------
 # Attribute description keys

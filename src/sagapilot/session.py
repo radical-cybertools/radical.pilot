@@ -9,15 +9,15 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.unit_manager  import UnitManager
-from sinon.pilot_manager import PilotManager
+from sagapilot.unit_manager  import UnitManager
+from sagapilot.pilot_manager import PilotManager
 
-from sinon.utils.logger      import logger
+from sagapilot.utils.logger      import logger
 
-from sinon.db                import Session as dbSession
-from sinon.db                import DBException
+from sagapilot.db                import Session as dbSession
+from sagapilot.db                import DBException
 
-import sinon.exceptions
+import sagapilot.exceptions
 from bson.objectid import ObjectId
 
 

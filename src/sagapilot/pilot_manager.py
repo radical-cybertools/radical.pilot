@@ -9,12 +9,12 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sinon.compute_pilot import ComputePilot
-from sinon.utils.logger      import logger
+from sagapilot.compute_pilot import ComputePilot
+from sagapilot.utils.logger      import logger
 
-import sinon.states     as states
-import sinon.attributes as attributes
-import sinon.exceptions as exceptions
+import sagapilot.states     as states
+import sagapilot.attributes as attributes
+import sagapilot.exceptions as exceptions
 
 from bson.objectid import ObjectId
 from radical.utils import which

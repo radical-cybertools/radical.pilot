@@ -9,11 +9,11 @@
 __copyright__ = "Copyright 2013, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sinon.states     as states
-import sinon.attributes as attributes
-import sinon.exceptions as exceptions
+import sagapilot.states     as states
+import sagapilot.attributes as attributes
+import sagapilot.exceptions as exceptions
 
-from sinon.utils.logger     import logger
+from sagapilot.utils.logger     import logger
 
 
 import time

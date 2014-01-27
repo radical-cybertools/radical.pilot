@@ -12,13 +12,13 @@ __license__   = "MIT"
 
 import radical.utils as ru
 
-from sinon.compute_unit  import ComputeUnit
-from sinon.utils.logger      import logger
+from sagapilot.compute_unit  import ComputeUnit
+from sagapilot.utils.logger      import logger
 
-import sinon.types       as types
-import sinon.states      as states
-import sinon.exceptions  as exceptions
-import sinon.attributes  as attributes
+import sagapilot.types       as types
+import sagapilot.states      as states
+import sagapilot.exceptions  as exceptions
+import sagapilot.attributes  as attributes
 
 import time
 import datetime
