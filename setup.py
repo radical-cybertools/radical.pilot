@@ -63,8 +63,8 @@ def get_version():
 
 
         # make sure the version files exist for the runtime version inspection
-        open (          '%s/VERSION' % srcroot, 'w').write (long_version+"\n")
-        open ('%s/src/sinon/VERSION' % srcroot, 'w').write (long_version+"\n")
+        open (              '%s/VERSION' % srcroot, 'w').write (long_version+"\n")
+        open ('%s/src/sagapilot/VERSION' % srcroot, 'w').write (long_version+"\n")
 
 
     except Exception as e :
@@ -89,7 +89,7 @@ def read(*rnames):
 
 #-----------------------------------------------------------------------------
 setup_args = {
-    'name'             : 'sinon',
+    'name'             : 'sagapilot',
     'version'          : short_version,
     'description'      : "A SAGA-based pilot job framework",
     'long_description' : (read('README.md') + '\n\n' + read('CHANGES.md')),
@@ -115,12 +115,11 @@ setup_args = {
         'Operating System     :: MacOS :: MacOS X',
         'Operating System     :: POSIX',
         'Operating System     :: Unix',
-        'Framework            :: Rhythmos',
     ],
     'packages'    : find_packages('src'),
     'package_dir' : {'': 'src'},    
     'scripts'          : ['bin/sinon-version', 
-                          'bin/sinon-timeline',
+                          'bin/sagapilot-version',
                           'bin/bootstrap-and-run-agent',
                          ],
     'package_data'     : {'': ['*.sh', 'VERSION', ]},

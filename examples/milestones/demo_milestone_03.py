@@ -1,5 +1,5 @@
 """Demo for Milestone 3: 
-    * submit 2 Pilot to india and 2 to sierra
+    * submit 2 Pilot to resource_B and 2 to sierra
     * run 10 bulks of 10 CUs (CUs vary in runtime)
     * after 5 bulks: disconnect / reconnect
     * state changes for pilots and CUs are delivered via notifications
@@ -20,9 +20,21 @@ DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 
 #-------------------------------------------------------------------------------
+# Change these according to your needs 
+CFG_USERNAME      = "oweidner"
+
+CFG_RESOURCE_A    = "futuregrid.HOTEL"    
+CFG_WORKING_DIR_A = "/gpfs/scratch/oweidner/sinon"
+CFG_NUMCORES_A    = 32
+
+CFG_RESOURCE_B    = "futuregrid.INDIA"    
+CFG_WORKING_DIR_B = "/N/u/oweidner/sinon"
+CFG_NUMCORES_B    = 32
+
+#-------------------------------------------------------------------------------
 #
 def demo_milestone_03_part_1():
-    """PART 1: Create two 16-core pilots on hotel and india, submit 16 bulks 
+    """PART 1: Create two 32-core pilots on resource_A and resource_B, submit 16 bulks 
     of 32 compute unites and disconnect. 
     """
     try:
@@ -30,26 +42,52 @@ def demo_milestone_03_part_1():
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sinon.Session(database_url=DBURL)
 
+        # Add an ssh identity to the session.
+        cred = sinon.SSHCredential()
+        cred.user_id = CFG_USERNAME
+
+        session.add_credential(cred)
+
         # Add a Pilot Manager with a machine configuration file for FutureGrid
         pmgr = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
-        # Define a 16-core pilot to hotel.futuregrid.org
-        pd_hotel = sinon.ComputePilotDescription()
-        pd_hotel.resource          = "localhost"
-        pd_hotel.working_directory = "/tmp/sinon/"
-        pd_hotel.cores             = 32
-        pd_hotel.run_time          = 10 # minutes
+        # Define a 16-core pilot to resource_A.futuregrid.org
+        pd_resource_A = sinon.ComputePilotDescription()
+        pd_resource_A.resource          = CFG_RESOURCE_A
+        pd_resource_A.working_directory = CFG_WORKING_DIR_A
+        pd_resource_A.cores             = CFG_NUMCORES_A
+        pd_resource_A.run_time          = 10 # minutes
 
-        # Define a 16-core pilot to india.futuregrid.org
-        pd_india = sinon.ComputePilotDescription()
-        pd_india.resource          = "futuregrid.INDIA"
-        pd_india.working_directory = "/N/u/oweidner/sinon"
-        pd_india.cores             = 32
-        pd_india.run_time          = 10 # minutes
+        # Define a 16-core pilot to resource_B.futuregrid.org
+        pd_resource_B = sinon.ComputePilotDescription()
+        pd_resource_B.resource          = CFG_RESOURCE_B
+        pd_resource_B.working_directory = CFG_WORKING_DIR_B
+        pd_resource_B.cores             = CFG_NUMCORES_B
+        pd_resource_B.run_time          = 10 # minutes
 
         # Submit both pilots
-        pilots = pmgr.submit_pilots([pd_hotel, pd_india])
-        print "  \n  <Submitted pilots to '%s'>" % [pd_hotel.resource, pd_india.resource]
+        pilots = pmgr.submit_pilots([pd_resource_A, pd_resource_B])
+
+        # Set to true if one or more pilots fail
+        failed = False
+
+        # Error checking.
+        for pilot in pilots:
+            state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
+            if state == sinon.states.FAILED:
+                print "  [ERROR] Pilot %s failed: %s." % (pilot, pilot.state_details[-1])
+                failed = True
+            else:
+                print "  [OK]    Pilot %s submitted successfully: %s." % (pilot, pilot.state_details[-1])
+
+        # If one or more pilots fail, we call cancel() on all pilots
+        # and abort the example! 
+        if failed == True:
+            for pilot in pilots:
+                pilot.cancel()
+            sys.exit(1)
+
+        print "  \n  <Submitted pilots to '%s'>" % [pd_resource_A.resource, pd_resource_B.resource]
 
 
         # Create a new unit manager, attach both pilots and select
@@ -91,7 +129,7 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
         print "  Session: %s" % str(session)
 
         # Re-connect to the pilot manager and print some information about it
-        pmgr = sinon.PilotManager.get(session=session, pilot_manager_id=pmgr_id)
+        pmgr = session.get_pilot_managers(pilot_manager_ids=pmgr_id)
         print "  |\n  |- Pilot Manager: %s " % str(pmgr) 
 
         # Get the pilots from the pilot manager and print some information about them
@@ -100,7 +138,7 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
             print "  |  |- Pilot: %s " % str(pilot)
 
         # Re-connect to the unit manager and print some information about it
-        umgr = sinon.UnitManager.get(session=session, unit_manager_id=umgr_id)
+        umgr = session.get_unit_managers(unit_manager_ids=umgr_id)
         print "  |\n  |- Unit Manager: %s " % str(umgr)
         print "  |  |- Units: %s" % (len(umgr.list_units()))
 

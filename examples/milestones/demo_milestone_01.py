@@ -6,10 +6,14 @@ import sys
 import sinon
 
 PWD    = os.path.dirname(os.path.abspath(__file__))
-
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
-    
+
+#-------------------------------------------------------------------------------
+# Change these according to your needs 
+CFG_USERNAME    = "oweidner"
+CFG_RESOURCE    = "localhost"    
+CFG_WORKING_DIR = "/tmp/sinon/"
 
 
 #-------------------------------------------------------------------------------
@@ -22,21 +26,29 @@ def demo_milestone_01_1():
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sinon.Session(database_url=DBURL)
 
+        # Add an ssh identity to the session.
+        cred = sinon.SSHCredential()
+        cred.user_id = CFG_USERNAME
+
+        session.add_credential(cred)
+
         # Add a Pilot Manager with a machine configuration file for FutureGrid
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource          = "localhost"
-        pd.working_directory = "/tmp/sinon/"
+        pd.resource          = CFG_RESOURCE
+        pd.working_directory = CFG_WORKING_DIR
         pd.cores             = 8
         pd.run_time          = 10 # minutes
 
         print "* Submitting pilot to '%s'..." % (pd.resource)
         p1 = pm.submit_pilots(pd)
 
-        # Error checking
-        if p1.state in [sinon.states.FAILED]:
+        state = p1.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
+
+        # If the pilot is in FAILED state it probably didn't start up properly. 
+        if state == sinon.states.FAILED:
             print "  [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
             sys.exit(-1)
         else:

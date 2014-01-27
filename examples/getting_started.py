@@ -40,7 +40,7 @@ def demo_milestone_02():
         pd = sinon.ComputePilotDescription()
         pd.resource          = CFG_RESOURCE
         pd.working_directory = CFG_WORKING_DIR
-        pd.cores             = 8
+        pd.cores             = 16
         pd.run_time          = 10 # minutes
 
         print "* Submitting pilot to '%s'..." % (pd.resource)

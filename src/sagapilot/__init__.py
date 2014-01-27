@@ -1,12 +1,12 @@
 """
-.. module:: sinon
+.. module:: sagapilot
    :platform: Unix
-   :synopsis: sinon is an alias namespace for sagapilot.
+   :synopsis: SAGA-Pilot (a.k.a SAGA-Pilot) is a distributed Pilot-Job framework.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013-2014, radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 # ------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ import sagapilot.states as states
 #
 from sagapilot.session                   import Session 
 from sagapilot.credentials               import SSHCredential 
-from sagapilot.exceptions                import SagapilotException as SinonException
+from sagapilot.exceptions                import *
 
 from sagapilot.unit_manager              import UnitManager
 from sagapilot.compute_unit_description  import ComputeUnitDescription
@@ -30,8 +30,8 @@ from sagapilot.compute_pilot_description import ComputePilotDescription
 
 # ------------------------------------------------------------------------------
 #
-from sagapilot.utils.version             import version
-from sagapilot.utils.logger              import logger
+from sagapilot.utils.version                 import version
+from sagapilot.utils.logger                  import logger
 
 logger.info ('loading SAGA-Pilot version: %s' % version)
 
