@@ -17,8 +17,10 @@ RESOURCE          = 'Resource'
 QUEUE             = 'Queue'
 CORES             = 'Cores'
 WORKING_DIRECTORY = 'WorkingDirectory'
+SANDBOX           = 'Sandbox'
 OUTPUT            = 'Output'
 ERROR             = 'Error'
+RUNTIME           = 'Runtime'
 RUN_TIME          = 'RunTime'
 CLEANUP           = 'Cleanup'
 PROJECT           = 'Project'
@@ -39,8 +41,10 @@ class ComputePilotDescription (attributes.Attributes) :
         pm = sagapilot.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
         pd = sagapilot.ComputePilotDescription()
-        pd.resource = "futuregrid.INDIA"  # Key defined in futuregrid.json
-        pd.cores = 16
+        pd.resource = "localhost"
+        pd.sandbox  = "/tmp/sagapilot.sandbox"
+        pd.runtime  = 10
+        pd.cores    = 16
 
         pilot_india = pm.submit_pilots(pd)
 
@@ -52,6 +56,16 @@ class ComputePilotDescription (attributes.Attributes) :
        configuration once the ComputePilotDescription is passed to 
        :meth:`sagapilot.PilotManager.submit_pilots`. If the key doesn't exist, a
        :class:`sagapilot.SagapilotException` is thrown.
+
+    .. data:: sandbox 
+
+       (`Property`) [Type: `string`]  The working direcotry ("sandbox") of the 
+       ComputePilot agent.
+
+    .. data:: runtime  
+
+       (`Property`) [Type: `int`] The total run time (wall-clock time) in 
+       **minutes** of the ComputePilot.
 
     .. data:: cores
 
@@ -71,12 +85,6 @@ class ComputePilotDescription (attributes.Attributes) :
        configuration (:data:`resource`), defining `allocation` will 
        override it explicitly.
 
-
-    .. data:: run_time  
-
-       (`Property`) [Type: `int`] The total run time (wall-clock time) in 
-       **minutes** of the pilot.
-
     """
 
     def __init__ (self, vals={}) : 
@@ -89,14 +97,18 @@ class ComputePilotDescription (attributes.Attributes) :
 
         # register properties with the attribute interface
         # runtime properties
-        self._attributes_register(RUN_TIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(RUNTIME, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register_deprecated(key=RUN_TIME, alias=RUNTIME, flow='_down')
 
         #self._attributes_register(RUN_TIME,                    None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PROJECT,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # i/o
-        self._attributes_register(WORKING_DIRECTORY, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SANDBOX, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register_deprecated(key=WORKING_DIRECTORY, alias=SANDBOX, flow='_down')
+
+
         self._attributes_register(OUTPUT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ERROR,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(FILE_TRANSFER,    None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)

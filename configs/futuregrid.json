@@ -1,11 +1,4 @@
 {
-    "localhost": {
-        "URL"                : "fork://localhost",
-        "filesystem"         : "file://localhost",
-        "pre_bootstrap"      : ["hostname", "date"],
-        "task_launch_mode"   : "LOCAL"
-    },
-
     "futuregrid.ALAMO": {
         "URL"                : "pbs+ssh://alamo.futuregrid.org",
         "filesystem"         : "sftp://alamo.futuregrid.org/",

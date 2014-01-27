@@ -17,6 +17,12 @@ Sessions
    :members: Session
    :special-members: __init__
 
+SSHCredentials
+--------------
+.. autoclass:: sagapilot.SSHCredential
+   :members: SSHCredential
+   :special-members: __init__
+
 Pilots and PilotManagers
 ========================
 
