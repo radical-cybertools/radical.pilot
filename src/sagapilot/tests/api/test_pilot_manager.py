@@ -10,7 +10,6 @@ from sinon.db import Session
 from pymongo import MongoClient
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-RESCFG = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
 DBNAME = 'sinon_test'
 
 #-----------------------------------------------------------------------------
@@ -45,10 +44,10 @@ class Test_PilotManager(unittest.TestCase):
 
         assert session.list_pilot_managers() == [], "Wrong number of pilot managers"
 
-        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = sinon.PilotManager(session=session)
         assert session.list_pilot_managers() == [pm.uid], "Wrong list of pilot managers"
 
-        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = sinon.PilotManager(session=session)
         assert len(session.list_pilot_managers()) == 2, "Wrong number of pilot managers"
 
 
@@ -59,7 +58,7 @@ class Test_PilotManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = sinon.PilotManager(session=session)
         assert session.list_pilot_managers() == [pm.uid], "Wrong list of pilot managers"
 
         pm_r = session.get_pilot_managers(pilot_manager_ids=pm.uid)
@@ -75,10 +74,10 @@ class Test_PilotManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm1 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm1 = sinon.PilotManager(session=session)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
 
-        pm2 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm2 = sinon.PilotManager(session=session)
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0, 2):
@@ -86,7 +85,7 @@ class Test_PilotManager(unittest.TestCase):
             cpd.resource          = "localhost"
             cpd.cores             = 1
             cpd.run_time          = 1
-            cpd.working_directory = "/tmp/sinon.unit-tests"
+            cpd.working_directory = "/tmp/sagapilot.unit-tests"
 
             pm1.submit_pilots(pilot_descriptions=cpd)
             pm2.submit_pilots(pilot_descriptions=cpd)
@@ -101,10 +100,10 @@ class Test_PilotManager(unittest.TestCase):
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm1 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm1 = sinon.PilotManager(session=session)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
 
-        pm2 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm2 = sinon.PilotManager(session=session)
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0, 2):
@@ -112,7 +111,7 @@ class Test_PilotManager(unittest.TestCase):
             cpd.resource          = "localhost"
             cpd.cores             = 1
             cpd.run_time          = 1
-            cpd.working_directory = "/tmp/sinon.unit-tests"
+            cpd.working_directory = "/tmp/sagapilot.unit-tests"
 
             pm1.submit_pilots(pilot_descriptions=cpd)
             pm2.submit_pilots(pilot_descriptions=cpd)
@@ -132,10 +131,10 @@ class Test_PilotManager(unittest.TestCase):
     def test__pilotmanager_get_pilots(self):
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm1 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm1 = sinon.PilotManager(session=session)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
 
-        pm2 = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm2 = sinon.PilotManager(session=session)
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         pm1_pilot_uids = []
@@ -146,7 +145,7 @@ class Test_PilotManager(unittest.TestCase):
             cpd.resource          = "localhost"
             cpd.cores             = 1
             cpd.run_time          = 1
-            cpd.working_directory = "/tmp/sinon.unit-tests"
+            cpd.working_directory = "/tmp/sagapilot.unit-tests"
 
             pilot_pm1 = pm1.submit_pilots(pilot_descriptions=cpd)
             pm1_pilot_uids.append(pilot_pm1.uid)
