@@ -1,5 +1,5 @@
 
-.. _chapter_machconf:
+.. _chapter_testing:
 
 *******
 Testing

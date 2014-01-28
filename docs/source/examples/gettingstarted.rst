@@ -142,31 +142,34 @@ ComputePilot also has a unique identifier (``uid``)
     print "Pilot UID     : {0} ".format( pilot.uid )
 
 
-**TIP:** You change to the ComputePilot sandbox directory
-(``/tmp/sagapilot.sandbox`` in the above example) to see the raw logs and output
-files of the ComputePilot agent(s) ``[pilot-<uid>]`` as well as the working
-directories and output of the individual ComputeUnits (``[task-<uid>]``).
-*Please note that knowing  where to find these files might come in handy for
-debugging  purposes but it is not required for regular SAGA-Pilot usage.*
+.. note:: You change to the ComputePilot sandbox directory
+        (``/tmp/sagapilot.sandbox`` in the above example) to see the raw logs and output
+        files of the ComputePilot agent(s) ``[pilot-<uid>]`` as well as the working
+        directories and output of the individual ComputeUnits (``[task-<uid>]``).
 
-.. code-block:: bash
+        .. code-block:: bash
 
-    [/sandbox-dir/]
-    |
-    |----[pilot-<uid>/]
-    |    |
-    |    |---- STDERR
-    |    |---- STDOUT
-    |    |---- AGENT.LOG
-    |    |---- [task-<uid>/]
-    |    |---- [task-<uid>/]
-    |    |....
-    |
-    |....
+            [/<sandbox-dir>/]
+            |
+            |----[pilot-<uid>/]
+            |    |
+            |    |---- STDERR
+            |    |---- STDOUT
+            |    |---- AGENT.LOG
+            |    |---- [task-<uid>/]
+            |    |---- [task-<uid>/]
+            |    |....
+            |
+            |....
+
+        *Knowing where to find these files might come in handy for
+        debugging  purposes but it is not required for regular SAGA-Pilot usage.*
 
 
 Creating ComputeUnits (Tasks)
 -----------------------------
+
+See: :ref:`chapter_example_multiple_commands`
 
 The Complete Example
 --------------------

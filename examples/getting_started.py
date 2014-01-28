@@ -33,22 +33,17 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
         print "Pilot UID       : {0} ".format( pilot.uid )
 
-        # state = p1.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
+        # Create a workload of 8 '/bin/sleep' ComputeUnits (tasks)
+        compute_units = []
 
-        # # If the pilot is in FAILED state it probably didn't start up properly. 
-        # if state == sinon.states.FAILED:
-        #     print "  [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
-        #     sys.exit(-1)
-        # else:
-        #     print "  [OK]    Pilot %s submitted successfully: %s." % (p1, p1.state_details[-1])
-
-        # # Create a workload of 64 '/bin/date' compute units
-        # compute_units = []
-        # for unit_count in range(0, 16):
-        #     cu = sinon.ComputeUnitDescription()
-        #     cu.cores = 1
-        #     cu.executable = "/bin/date"
-        #     compute_units.append(cu)
+        for unit_count in range(0, 8):
+            cu = sagapilot.ComputeUnitDescription()
+            cu.environment = {"NAP_TIME" : "10"}
+            cu.executable  = "/bin/sleep"
+            cu.arguments   = ["$NAP_TIME"]
+            cu.cores       = 1
+        
+            compute_units.append(cu)
 
 
         # # Combine the pilot, the workload and a scheduler via 

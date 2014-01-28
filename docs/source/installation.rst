@@ -66,3 +66,5 @@ Optionally, you can try to run the unit tests:
 .. code-block:: bash
 
     python setup.py test
+
+.. note:: More on testing can be found in chapter :ref:`chapter_testing`.
