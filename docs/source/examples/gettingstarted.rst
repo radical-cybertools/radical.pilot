@@ -143,6 +143,13 @@ ComputePilot also has a unique identifier (``uid``)
     pilot = pmgr.submit_pilots(pdesc)
     print "Pilot UID     : {0} ".format( pilot.uid )
 
+.. warning:: Note that ``submit_pilots()`` is a non-blocking call and that 
+   the submitted ComputePilot agent **will not terminate** when your Python
+   scripts finishes. ComputePilot agents terminate only after they have 
+   reached their ``runtime`` limit or if you call  :func:`sagapilot.PilotManager.cancel_pilots`
+   or :func:`sagapilot.ComputePilot.cancel`.
+
+
 
 .. note:: You change to the ComputePilot sandbox directory
         (``/tmp/sagapilot.sandbox`` in the above example) to see the raw logs and output
@@ -171,7 +178,40 @@ ComputePilot also has a unique identifier (``uid``)
 Creating ComputeUnits (Tasks)
 -----------------------------
 
-See: :ref:`chapter_example_multiple_commands`
+After you have launched a ComputePilot, you can now generate a few
+:class:`sagapilot.ComputeUnit`  objects for the ComputePilot to execute. You
+can think of a ComputeUnit as something very similar to an operating system
+process that consists of an ``executable``, a list of ``arguments``, and an
+``environment`` along with some runtime requirements.
+
+Analogous to ComputePilots, a ComputeUnit is described via a
+:class:`sagapilot.ComputeUnitDescription` object. The mandatory properties
+that you need to define are:
+
+   * ``executable`` - The executable to launch.
+   * ``arguments`` - The arguments to pass to the executable.
+   * ``cores`` - The number of cores required by the executable.
+
+For example, you can create a workload of 8 '/bin/sleep' ComputeUnits like this:
+
+.. code-block:: python
+
+    compute_units = []
+
+    for unit_count in range(0, 8):
+        cu = sagapilot.ComputeUnitDescription()
+        cu.environment = {"SLEEP_TIME" : "10"}
+        cu.executable  = "/bin/sleep"
+        cu.arguments   = ["$SLEEP_TIME"]
+        cu.cores       = 1
+
+        compute_units.append(cu)
+
+
+.. note:: The example above uses a single executable that requires only one core. It is 
+          however possible to run multiple commands in one ComputeUnit. This is described
+          in :ref:`chapter_example_multiple_commands`. If you want to run multi-core 
+          executables, like for example MPI programs, check out :ref:`chapter_example_multicore`.
 
 The Complete Example
 --------------------

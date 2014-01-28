@@ -339,7 +339,7 @@ class ComputeUnit(attributes.Attributes):
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException
+            * :class:`sagapilot.SagapilotException`
         """
         # Check if this instance is valid
         if not self._uid:

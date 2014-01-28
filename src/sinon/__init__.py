@@ -26,6 +26,7 @@ from sagapilot.credentials               import SSHCredential
 from sagapilot.exceptions                import SagapilotException as SinonException
 
 from sagapilot.unit_manager              import UnitManager
+from sagapilot.compute_unit              import ComputeUnit
 from sagapilot.compute_unit_description  import ComputeUnitDescription
 
 from sagapilot.pilot_manager             import PilotManager
