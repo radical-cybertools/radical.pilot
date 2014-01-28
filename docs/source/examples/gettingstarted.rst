@@ -41,27 +41,29 @@ Session as root. Each Session can have  zero or more
 
 .. code-block:: bash
 
-     (MongoDB) <---- [Session]
-                     |
-                     |---- SSHCredential
-                     |---- ....
-                     |
-                     |---- [PilotManager]
-                     |     |
-                     |     |---- ComputePilot
-                     |     |---- ComputePilot
-                     |  
-                     |---- [UnitManager]
-                     |     |
-                     |     |---- ComputeUnit
-                     |     |---- ComputeUnit
-                     |     |....
-                     |
-                     |---- [UnitManager]
-                     |     |
-                     |     |....
-                     |
-                     |....
+     (~~~~~~~~~)
+     (         ) <---- [Session]
+     ( MongoDB )       |
+     (         )       |---- SSHCredential
+     (_________)       |---- ....
+                       |
+                       |---- [PilotManager]
+                       |     |
+                       |     |---- ComputePilot
+                       |     |---- ComputePilot
+                       |  
+                       |---- [UnitManager]
+                       |     |
+                       |     |---- ComputeUnit
+                       |     |---- ComputeUnit
+                       |     |....
+                       |
+                       |---- [UnitManager]
+                       |     |
+                       |     |....
+                       |
+                       |....
+
 
 A Session also encapsulates the connection(s) to a backend `MongoDB
 <http://www.mongodb.org/>`_ server which is the *brain* and *central nervous
@@ -83,7 +85,7 @@ Session as required. This  is covered in
 .. code-block:: python
 
     print "UID           : {0} ".format( session.uid )
-    print "Crentials     : {0} ".format( session.list_credentials() )
+    print "Credentials   : {0} ".format( session.list_credentials() )
     print "UnitManagers  : {0} ".format( session.list_unit_managers() )
     print "PilotManagers : {0} ".format( session.list_pilot_managers() )
 
@@ -141,6 +143,13 @@ ComputePilot also has a unique identifier (``uid``)
     pilot = pmgr.submit_pilots(pdesc)
     print "Pilot UID     : {0} ".format( pilot.uid )
 
+.. warning:: Note that ``submit_pilots()`` is a non-blocking call and that 
+   the submitted ComputePilot agent **will not terminate** when your Python
+   scripts finishes. ComputePilot agents terminate only after they have 
+   reached their ``runtime`` limit or if you call :func:`sagapilot.PilotManager.cancel_pilots`
+   or :func:`sagapilot.ComputePilot.cancel`.
+
+
 
 .. note:: You change to the ComputePilot sandbox directory
         (``/tmp/sagapilot.sandbox`` in the above example) to see the raw logs and output
@@ -169,12 +178,117 @@ ComputePilot also has a unique identifier (``uid``)
 Creating ComputeUnits (Tasks)
 -----------------------------
 
-See: :ref:`chapter_example_multiple_commands`
+After you have launched a ComputePilot, you can now generate a few
+:class:`sagapilot.ComputeUnit`  objects for the ComputePilot to execute. You
+can think of a ComputeUnit as something very similar to an operating system
+process that consists of an ``executable``, a list of ``arguments``, and an
+``environment`` along with some runtime requirements.
+
+Analogous to ComputePilots, a ComputeUnit is described via a
+:class:`sagapilot.ComputeUnitDescription` object. The mandatory properties
+that you need to define are:
+
+   * ``executable`` - The executable to launch.
+   * ``arguments`` - The arguments to pass to the executable.
+   * ``cores`` - The number of cores required by the executable.
+
+For example, you can create a workload of 8 '/bin/sleep' ComputeUnits like this:
+
+.. code-block:: python
+
+    compute_units = []
+
+    for unit_count in range(0, 8):
+        cu = sagapilot.ComputeUnitDescription()
+        cu.environment = {"SLEEP_TIME" : "10"}
+        cu.executable  = "/bin/sleep"
+        cu.arguments   = ["$SLEEP_TIME"]
+        cu.cores       = 1
+
+        compute_units.append(cu)
+
+.. note:: The example above uses a single executable that requires only one core. It is 
+          however possible to run multiple commands in one ComputeUnit. This is described
+          in :ref:`chapter_example_multiple_commands`. If you want to run multi-core 
+          executables, like for example MPI programs, check out :ref:`chapter_example_multicore`.
+
+
+Scheduling ComputeUnits 
+-----------------------
+
+In the previous steps we have created and launched a ComputePilot (via a
+PilotManager) and created a list of ComputeUnitDescriptions. In order to put
+it all together and execute the ComputeUnits on the ComputePilot, we need to
+create a :class:`sagapilot.UnitManager` instance.
+
+As shown in the diagram below, a UnitManager combines three things: the
+ComputeUnits, added via :func:`sagapilot.UnitManager.submit_units`, one or
+more ComputePilots, added via :func:`sagapilot.UnitManager.add_pilots` and a
+:ref:`chapter_schedulers`. Once instantiated, a UnitManager assigns the
+submitted CUs to one of its ComputePilots based on the selected scheduling
+algorithm.
+
+.. code-block:: bash
+
+      +----+  +----+  +----+  +----+       +----+ 
+      | CU |  | CU |  | CU |  | CU |  ...  | CU |
+      +----+  +----+  +----+  +----+       +----+
+         |       |       |       |            |
+         |_______|_______|_______|____________|
+                           |
+                           v submit_units()
+                   +---------------+
+                   |  UnitManager  |
+                   |---------------|
+                   |               |
+                   |  <SCHEDULER>  |
+                   +---------------+
+                           ^ add_pilots()
+                           |
+                 __________|___________
+                 |       |            |
+              +~~~~+  +~~~~+       +~~~~+  
+              | CP |  | CP |  ...  | CP |
+              +~~~~+  +~~~~+       +~~~~+ 
+
+Since we have only one ComputePilot, we don't need any specific scheduling 
+algorithm for our example. We choose ``SCHED_DIRECT_SUBMISSION`` which simply 
+passes the ComputeUnits on to the ComputePilot.
+
+.. code-block:: python
+
+    umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+
+    umgr.add_pilots(pilot)
+    umgr.submit_units(compute_units)
+
+    umgr.wait_units()
+
+The :func:`sagapilot.UnitManager.wait_units` call blocks until all ComputeUnits have
+been  executed by the UnitManager. Simple control flows / depdendcies can be
+realized with ``wait_units()``, however, for more complex control flows it can
+become inefficent due to its blocking nature. For this reason SAGA-Pilot also
+provides mechanisms for asynchronous notifications and callbacks. This is 
+discussed in more detail in :ref:`chapter_example_async`.
+
+.. note:: The ``SCHED_DIRECT_SUBMISSION`` only works with a sinlge ComputePilot. If you add more
+          than one ComputePilot to a UnitManager, you will end up with an error. If you want to
+          use SAGA-Pilot to run multiple ComputePilots concurrently, possibly on different 
+          machines, check out :ref:`chapter_example_remote_and_hpc_pilots`.
+
+Results and Inspection
+----------------------
+
+.. code-block:: python
+
+        for unit in umgr.get_units():
+            print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}".format(
+                unit.uid, unit.state, unit.start_time, unit.stop_time)
 
 The Complete Example
 --------------------
 
-Putting it all together, your first SAGA-Pilot application will look somewhat 
+After putting it all together, your first SAGA-Pilot application will look somewhat 
 like the script below.
 
 .. literalinclude:: ../../../examples/getting_started.py

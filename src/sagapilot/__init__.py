@@ -14,6 +14,9 @@ __license__   = "MIT"
 import sagapilot.types as types
 import sagapilot.states as states
 
+# ------------------------------------------------------------------------------
+# Scheduler name constant
+from sagapilot.plugins                   import *
 
 # ------------------------------------------------------------------------------
 #
@@ -22,6 +25,7 @@ from sagapilot.credentials               import SSHCredential
 from sagapilot.exceptions                import *
 
 from sagapilot.unit_manager              import UnitManager
+from sagapilot.compute_unit              import ComputeUnit
 from sagapilot.compute_unit_description  import ComputeUnitDescription
 
 from sagapilot.pilot_manager             import PilotManager
@@ -30,8 +34,9 @@ from sagapilot.compute_pilot_description import ComputePilotDescription
 
 # ------------------------------------------------------------------------------
 #
-from sagapilot.utils.version                 import version
-from sagapilot.utils.logger                  import logger
+from sagapilot.utils.version             import version
+from sagapilot.utils.logger              import logger
+
 
 logger.info ('loading SAGA-Pilot version: %s' % version)
 

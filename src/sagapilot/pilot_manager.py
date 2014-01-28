@@ -259,7 +259,7 @@ class PilotManager(attributes.Attributes):
             # check wether pilot description defines the mandatory fields 
             resource_key = pilot_description['description'].resource
             number_cores = pilot_description['description'].cores
-            run_time     = pilot_description['description'].run_time
+            runtime     = pilot_description['description'].runtime
             queue        = pilot_description['description'].queue
 
             try_submit = True
@@ -294,9 +294,9 @@ class PilotManager(attributes.Attributes):
                 try_submit = False
                 raise exceptions.BadParameter(error_msg)
 
-            # check wether mandatory attribute 'run_time' was defined
-            if run_time is None:
-                error_msg = "ComputePilotDescription does not define mandatory attribute 'run_time'."
+            # check wether mandatory attribute 'runtime' was defined
+            if runtime is None:
+                error_msg = "ComputePilotDescription does not define mandatory attribute 'runtime'."
                 pilot_description_dict[pilot_id]['info']['state'] = states.FAILED
                 pilot_description_dict[pilot_id]['info']['log'].append(error_msg)
                 pilot_description_dict[pilot_id]['info']['submitted'] = datetime.datetime.utcnow()
@@ -336,19 +336,19 @@ class PilotManager(attributes.Attributes):
                     # directory.
                     #
                     fs = saga.Url(resource_cfg['filesystem'])
-                    if pilot_description['description'].working_directory is None:
-                        raise exceptions.BadParameter("Working directory not defined.")
+                    if pilot_description['description'].sandbox is None:
+                        raise exceptions.BadParameter("Sandbox directory not defined.")
                     else:
 
                         if "valid_roots" in resource_cfg:
                             is_valid = False
                             for vp in resource_cfg["valid_roots"]:
-                                if pilot_description['description'].working_directory.startswith(vp):
+                                if pilot_description['description'].sandbox.startswith(vp):
                                     is_valid = True
                             if is_valid is False:
                                 raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (resource_key, pilot_description['description'].working_directory, resource_cfg["valid_roots"]))
 
-                        fs.path += pilot_description['description'].working_directory
+                        fs.path += pilot_description['description'].sandbox
 
                     agent_dir_url = saga.Url("%s/pilot-%s/" \
                         % (str(fs), str(pilot_id)))
@@ -397,7 +397,7 @@ class PilotManager(attributes.Attributes):
                                             "-d", database_name,  # database name
                                             "-s", session_uid,    # session uid
                                             "-p", str(pilot_id),  # pilot uid
-                                            "-t", run_time,       # agent runtime in minutes
+                                            "-t", runtime,       # agent runtime in minutes
                                             "-c", number_cores,   # number of cores
                                             "-C"]                 # clean up by default
 
@@ -424,7 +424,7 @@ class PilotManager(attributes.Attributes):
                     jd.output            = "STDOUT"
                     jd.error             = "STDERR"
                     jd.total_cpu_count   = number_cores
-                    jd.wall_time_limit    = run_time
+                    jd.wall_time_limit    = runtime
 
                     pilotjob = js.create_job(jd)
                     pilotjob.run()

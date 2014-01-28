@@ -102,7 +102,7 @@ class TestUnitManager(unittest.TestCase):
             cpd.resource          = "localhost"
             cpd.cores             = 1
             cpd.run_time          = 1
-            cpd.working_directory = "/tmp/sagapilot.unit-tests" 
+            cpd.working_directory = "/tmp/sagapilot.sandbox.unittests" 
             p = pm.submit_pilots(pilot_descriptions=cpd)
             um.add_pilots(p)
             pilot_list.append(p)

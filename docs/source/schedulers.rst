@@ -1,9 +1,9 @@
 
 .. _chapter_schedulers:
 
-**********
-Schedulers
-**********
+**************
+Unit Scheduler
+**************
 
 .. toctree::
    :numbered:
@@ -11,8 +11,8 @@ Schedulers
 Introduction
 ------------
 
-Default Scheduler
------------------
+Direct Submission Scheduler (``SCHED_DIRECT_SUBMISSION``)
+---------------------------------------------------------
 
-Round Robin Scheduler
----------------------
+Round Robin Scheduler (``SCHED_ROUND_ROBIN``)
+---------------------------------------------

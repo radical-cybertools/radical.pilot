@@ -42,8 +42,8 @@ Pilots
 .. autoclass:: sagapilot.ComputePilot
    :members: ComputePilot
 
-WorkUnits and UnitManagers
-==========================
+ComputeUnits and UnitManagers
+=============================
 
 UnitManager
 -----------
@@ -55,6 +55,11 @@ ComputeUnitDescription
 -----------------------
 .. autoclass:: sagapilot.ComputeUnitDescription
    :members: ComputeUnitDescription
+
+ComputeUnit
+-----------
+.. autoclass:: sagapilot.ComputeUnit
+   :members: ComputeUnit
 
 Exceptions
 ==========

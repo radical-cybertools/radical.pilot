@@ -13,3 +13,5 @@ Examples & Best Practice
    disconnect_reconnect.rst
    remote_hpc_pilots.rst
    multiple_commands.rst
+   multicore.rst
+   async.rst
