@@ -36,11 +36,12 @@ A resource configuration has the following layout::
         }
     }
 
-In the example above, `futuregrid.INDIA` and `futuregrid.SIERRA` are the **resource keys**.
-Resource keys are used in :class:`sinon.ComputePilotDescription` to create a :class:`Pilot`
-for a given machine::
+In the example above, `futuregrid.INDIA` and `futuregrid.SIERRA` are the
+**resource keys**. Resource keys are used in
+:class:`sagapilot.ComputePilotDescription` to create a
+:class:`sagapilot.ComputePilot` for a given machine::
 
-    pd = sinon.ComputePilotDescription()
+    pd = sagapilot.ComputePilotDescription()
     pd.resource = "futuregrid.INDIA"  # Key defined in futuregrid.json
     pd.cores = 16
 

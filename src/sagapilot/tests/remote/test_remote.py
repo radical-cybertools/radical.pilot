@@ -9,7 +9,7 @@ import getpass
 import unittest
 
 from copy import deepcopy
-from sinon.db import Session
+from sagapilot.db import Session
 from pymongo import MongoClient
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
@@ -44,13 +44,13 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_simple_submission(self):
         """ Test simple remote submission with one pilot.
         """
-        test_resource = os.getenv('SINON_TEST_REMOTE_RESOURCE',     "localhost")
-        test_ssh_uid  = os.getenv('SINON_TEST_REMOTE_SSH_USER_ID',  None)
-        test_ssh_key  = os.getenv('SINON_TEST_REMOTE_SSH_USER_KEY', None)
-        test_workdir  = os.getenv('SINON_TEST_REMOTE_WORKDIR',      "/tmp/sagapilot.unit-tests")
-        test_cores    = os.getenv('SINON_TEST_REMOTE_CORES',        "1")
-        test_num_cus  = os.getenv('SINON_TEST_REMOTE_NUM_CUS',      "2")
-        test_timeout  = os.getenv('SINON_TEST_TIMEOUT',             "5")
+        test_resource = os.getenv('SAGAPILOT_TEST_REMOTE_RESOURCE',     "localhost")
+        test_ssh_uid  = os.getenv('SAGAPILOT_TEST_REMOTE_SSH_USER_ID',  None)
+        test_ssh_key  = os.getenv('SAGAPILOT_TEST_REMOTE_SSH_USER_KEY', None)
+        test_workdir  = os.getenv('SAGAPILOT_TEST_REMOTE_WORKDIR',      "/tmp/sagapilot.sandbox.unittests")
+        test_cores    = os.getenv('SAGAPILOT_TEST_REMOTE_CORES',        "1")
+        test_num_cus  = os.getenv('SAGAPILOT_TEST_REMOTE_NUM_CUS',      "2")
+        test_timeout  = os.getenv('SAGAPILOT_TEST_TIMEOUT',             "5")
 
 
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
@@ -111,7 +111,7 @@ class TestRemoteSubmission(unittest.TestCase):
         test_resource = os.getenv('SINON_TEST_REMOTE_RESOURCE',     "localhost")
         test_ssh_uid  = os.getenv('SINON_TEST_REMOTE_SSH_USER_ID',  None)
         test_ssh_key  = os.getenv('SINON_TEST_REMOTE_SSH_USER_KEY', None)
-        test_workdir  = os.getenv('SINON_TEST_REMOTE_WORKDIR',      "/tmp/sagapilot.unit-tests")
+        test_workdir  = os.getenv('SINON_TEST_REMOTE_WORKDIR',      "/tmp/sagapilot.sandbox.unittests")
         test_cores    = os.getenv('SINON_TEST_REMOTE_CORES',        "1")
         test_num_cus  = os.getenv('SINON_TEST_REMOTE_NUM_CUS',      "2")
         test_timeout  = os.getenv('SINON_TEST_TIMEOUT',             "5")

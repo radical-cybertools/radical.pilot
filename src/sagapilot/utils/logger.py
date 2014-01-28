@@ -1,5 +1,5 @@
 """
-.. module:: sinon.utils.logger
+.. module:: sagapilot.utils.logger
    :platform: Unix
    :synopsis: Implementation of the logging facility.
 
@@ -11,4 +11,4 @@ __license__   = "MIT"
 
 import radical.utils.logger as rul
 
-logger = rul.logger.getLogger ('sinon')
+logger = rul.logger.getLogger ('sagapilot')

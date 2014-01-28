@@ -57,9 +57,9 @@ copyright = u'2013, The RADICAL Group at Rutgers University'
 # The short X.Y version - get this directly from SAGA !
 
 try:
-    import sinon
-    version = sinon.version
-    release = sinon.version
+    import sagapilot
+    version = sagapilot.version
+    release = sagapilot.version
 except Exception, ex:
     version = "UNKNOWN"
     release = "UNKNOWN"
@@ -230,7 +230,7 @@ latex_show_pagerefs = True
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'sinon', u'SAGA-Pilot Documentation',
+    ('index', 'sagapilot', u'SAGA-Pilot Documentation',
      [u'The RADICAL Group at Rutgers University'], 1)
 ]
 

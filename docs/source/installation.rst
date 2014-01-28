@@ -38,7 +38,7 @@ been installed properly. In the same virtualenv, run:
 
 .. code-block:: bash
 
-    sinon-version
+    sagapilot-version
 
 This should return the version of the SAGA-Pilot installation, e.g., `0.X.Y`.
 

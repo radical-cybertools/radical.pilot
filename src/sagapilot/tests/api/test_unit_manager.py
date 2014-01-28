@@ -6,7 +6,7 @@ import unittest
 
 import uuid
 from copy import deepcopy
-from sinon.db import Session
+from sagapilot.db import Session
 from pymongo import MongoClient
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
@@ -79,7 +79,7 @@ class TestUnitManager(unittest.TestCase):
         cpd.resource          = "localhost"
         cpd.cores             = 1
         cpd.run_time          = 1
-        cpd.working_directory = "/tmp/sagapilot.unit-tests" 
+        cpd.working_directory = "/tmp/sagapilot.sandbox.unittests" 
 
         p1 = pm.submit_pilots(pilot_descriptions=cpd)
 

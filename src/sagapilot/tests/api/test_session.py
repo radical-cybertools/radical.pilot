@@ -6,7 +6,7 @@ import unittest
 
 import uuid
 from copy import deepcopy
-from sinon.db import Session
+from sagapilot.db import Session
 from pymongo import MongoClient
 
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
