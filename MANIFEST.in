@@ -1,6 +1,6 @@
-
-recursive-include src/sinon       *
-recursive-include src/sinon/tests *
+recursive-include src/sinon           *
+recursive-include src/sagapilot       *
+recursive-include src/sagapilot/tests *
 
 include MANIFEST.in README.md CHANGES.md LICENSE.md VERSION
 

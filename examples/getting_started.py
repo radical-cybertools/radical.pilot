@@ -1,13 +1,6 @@
-__copyright__ = "Copyright 2013, http://radical.rutgers.edu"
-__license__   = "MIT"
-
 import sagapilot
 
-
-import os 
-PWD    = os.path.dirname(os.path.abspath(__file__))
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
-FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 
 #-------------------------------------------------------------------------------
 #
@@ -38,23 +31,19 @@ if __name__ == "__main__":
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
+        print "Pilot UID       : {0} ".format( pilot.uid )
 
-        # state = p1.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
+        # Create a workload of 8 '/bin/sleep' ComputeUnits (tasks)
+        compute_units = []
 
-        # # If the pilot is in FAILED state it probably didn't start up properly. 
-        # if state == sinon.states.FAILED:
-        #     print "  [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
-        #     sys.exit(-1)
-        # else:
-        #     print "  [OK]    Pilot %s submitted successfully: %s." % (p1, p1.state_details[-1])
-
-        # # Create a workload of 64 '/bin/date' compute units
-        # compute_units = []
-        # for unit_count in range(0, 16):
-        #     cu = sinon.ComputeUnitDescription()
-        #     cu.cores = 1
-        #     cu.executable = "/bin/date"
-        #     compute_units.append(cu)
+        for unit_count in range(0, 8):
+            cu = sagapilot.ComputeUnitDescription()
+            cu.environment = {"NAP_TIME" : "10"}
+            cu.executable  = "/bin/sleep"
+            cu.arguments   = ["$NAP_TIME"]
+            cu.cores       = 1
+        
+            compute_units.append(cu)
 
 
         # # Combine the pilot, the workload and a scheduler via 

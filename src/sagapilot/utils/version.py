@@ -1,5 +1,5 @@
 """
-.. module:: sinon.utils.version
+.. module:: sagapilot.utils.version
    :platform: Unix
    :synopsis: Implementation of the version extractor.
 
