@@ -1,9 +1,9 @@
 
 .. _chapter_schedulers:
 
-***************
-Unit Schedulers
-***************
+**************
+Unit Scheduler
+**************
 
 .. toctree::
    :numbered:

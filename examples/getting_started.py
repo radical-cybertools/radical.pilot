@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
         # # Combine the pilot, the workload and a scheduler via 
         # # a UnitManager.
-        umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN)
+        umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
         umgr.add_pilots(pilot)
         
         umgr.submit_units(compute_units)

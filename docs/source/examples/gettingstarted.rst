@@ -146,7 +146,7 @@ ComputePilot also has a unique identifier (``uid``)
 .. warning:: Note that ``submit_pilots()`` is a non-blocking call and that 
    the submitted ComputePilot agent **will not terminate** when your Python
    scripts finishes. ComputePilot agents terminate only after they have 
-   reached their ``runtime`` limit or if you call  :func:`sagapilot.PilotManager.cancel_pilots`
+   reached their ``runtime`` limit or if you call :func:`sagapilot.PilotManager.cancel_pilots`
    or :func:`sagapilot.ComputePilot.cancel`.
 
 
@@ -207,11 +207,66 @@ For example, you can create a workload of 8 '/bin/sleep' ComputeUnits like this:
 
         compute_units.append(cu)
 
-
 .. note:: The example above uses a single executable that requires only one core. It is 
           however possible to run multiple commands in one ComputeUnit. This is described
           in :ref:`chapter_example_multiple_commands`. If you want to run multi-core 
           executables, like for example MPI programs, check out :ref:`chapter_example_multicore`.
+
+
+Scheduling ComputeUnits 
+-----------------------
+
+In the previous steps we have created and launched a ComputePilot (via a
+PilotManager) and created a list of ComputeUnitDescriptions. In order to put
+it all together and execute the ComputeUnits on the ComputePilot, we need to
+create a :class:`sagapilot.UnitManager` instance.
+
+As shown in the diagram below, a UnitManager combines three things: the
+ComputeUnits, added via :func:`sagapilot.UnitManager.submit_units`, one or
+more ComputePilots, added via :func:`sagapilot.UnitManager.add_pilots` and a
+:ref:`chapter_schedulers`. Once instantiated, a UnitManager assigns the
+submitted CUs to one of its ComputePilots based on the selected scheduling
+algorithm.
+
+.. code-block:: bash
+
+      +----+  +----+  +----+  +----+       +----+ 
+      | CU |  | CU |  | CU |  | CU |  ...  | CU |
+      +----+  +----+  +----+  +----+       +----+
+         |       |       |       |            |
+         |_______|_______|_______|____________|
+                           |
+                           v submit_units()
+                   +---------------+
+                   |  UnitManager  |
+                   |---------------|
+                   |               |
+                   |  <SCHEDULER>  |
+                   +---------------+
+                           ^ add_pilots()
+                           |
+                 __________|___________
+                 |       |            |
+              +~~~~+  +~~~~+       +~~~~+  
+              | CP |  | CP |  ...  | CP |
+              +~~~~+  +~~~~+       +~~~~+ 
+
+Since we have only one ComputePilot, we don't need any specific scheduling 
+algorithm for our example. We choose ``SCHED_DIRECT_SUBMISSION`` which simply 
+passes the ComputeUnits on to the ComputePilot.
+
+.. code-block:: python
+
+    umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+
+    umgr.add_pilots(pilot)
+    umgr.submit_units(compute_units)
+
+    umgr.wait()
+
+
+.. note:: The ``SCHED_DIRECT_SUBMISSION`` only works with 
+
 
 The Complete Example
 --------------------

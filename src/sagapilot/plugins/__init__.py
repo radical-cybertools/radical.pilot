@@ -11,5 +11,5 @@ __license__   = "MIT"
 
 # ------------------------------------------------------------------------------
 # Constants
-SCHED_ROUND_ROBIN    = "round_robin"
-SCHED_DIRECT_BINDING = "direct_submission"
+SCHED_ROUND_ROBIN       = "round_robin"
+SCHED_DIRECT_SUBMISSION = "direct_submission"
