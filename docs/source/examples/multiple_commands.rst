@@ -1,8 +1,8 @@
 .. _chapter_example_multiple_commands:
 
-*************************************************
-Running Multiple Commands in a Single ComputeUnit  
-*************************************************
+***************************************************
+Executing Multiple Commands in a Single ComputeUnit  
+***************************************************
 
 Using ``/bin/bash`` as Executable
 ---------------------------------

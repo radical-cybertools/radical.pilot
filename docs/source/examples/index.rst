@@ -14,3 +14,4 @@ Examples & Best Practice
    remote_hpc_pilots.rst
    multiple_commands.rst
    multicore.rst
+   async.rst

@@ -264,14 +264,27 @@ passes the ComputeUnits on to the ComputePilot.
 
     umgr.wait()
 
+The :func:`sagapilot.UnitManager.wait` call blocks until all ComputeUnits have
+been  executed by the UnitManager. Simple control flows / depdendcies can be
+realized with ``wait()``, however, for more complex control flows it can
+become inefficent due to its blocking nature. For this reason SAGA-Pilot also
+provides mechanisms for asynchronous notifications and callbacks. This is 
+discussed in more detail in :ref:`chapter_example_async`.
 
-.. note:: The ``SCHED_DIRECT_SUBMISSION`` only works with 
+.. note:: The ``SCHED_DIRECT_SUBMISSION`` only works with a sinlge ComputePilot. If you add more
+          than one ComputePilot to a UnitManager, you will end up with an error. If you want to
+          use SAGA-Pilot to run multiple ComputePilots concurrently, possibly on different 
+          machines, check out :ref:`chapter_example_remote_and_hpc_pilots`.
 
+Results and Inspection
+----------------------
+
+...
 
 The Complete Example
 --------------------
 
-Putting it all together, your first SAGA-Pilot application will look somewhat 
+After putting it all together, your first SAGA-Pilot application will look somewhat 
 like the script below.
 
 .. literalinclude:: ../../../examples/getting_started.py
