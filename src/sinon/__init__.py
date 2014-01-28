@@ -16,6 +16,10 @@ import sagapilot.states as states
 
 
 # ------------------------------------------------------------------------------
+# Scheduler name constant
+from sagapilot.plugins                   import *
+
+# ------------------------------------------------------------------------------
 #
 from sagapilot.session                   import Session 
 from sagapilot.credentials               import SSHCredential 
