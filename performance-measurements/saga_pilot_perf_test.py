@@ -21,7 +21,7 @@ def pilot_bulk_submit_test_real():
     try:
         session = sinon.Session(database_url=DBURL)
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
-        um = sinon.UnitManager(session=session, scheduler="round_robin")  
+        um = sinon.UnitManager(session=session, scheduler=sinon.SCHED_ROUND_ROBIN)  
 
         avg_pm_submit_pilots_times = []
         avg_um_add_pilots_times = []
@@ -473,7 +473,7 @@ def pilot_bulk_submit_test_db_calls():
                     compute_units.append(cu)
 
                 # Add a Unit Manager to the session and add the newly created pilot to it 
-                um = sinon.UnitManager(session=session, scheduler="round_robin")  
+                um = sinon.UnitManager(session=session, scheduler=sinon.SCHED_ROUND_ROBIN)  
 
                 start_time = time.time()
                 um.add_pilots(pilot_objects)
@@ -564,7 +564,7 @@ def cu_bulk_submit_test():
     try:
         session = sinon.Session(database_url=DBURL)
         pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
-        um = sinon.UnitManager(session=session, scheduler="round_robin") 
+        um = sinon.UnitManager(session=session, scheduler=sinon.SCHED_ROUND_ROBIN) 
 
         #for i in [1,2,4,8,16,32,64,128,256,512,1024]:
         for i in [1,2]:

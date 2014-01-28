@@ -92,7 +92,7 @@ def demo_milestone_03_part_1():
 
         # Create a new unit manager, attach both pilots and select
         # 'round_robin' as the scheduling method.
-        umgr = sinon.UnitManager(session=session, scheduler="round_robin")
+        umgr = sinon.UnitManager(session=session, scheduler=sinon.SCHED_ROUND_ROBIN)
         umgr.add_pilots(pilots)
 
         # Submit 16 bulks of 64 tasks with varying runtime runtime varies 

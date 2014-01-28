@@ -65,7 +65,7 @@ class UnitManager(attributes.Attributes) :
 
         # Combine the two pilots, the workload and a scheduler via 
         # a UnitManager.
-        um = sagapilot.UnitManager(session=session, scheduler="round_robin")
+        um = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
     """
