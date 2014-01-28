@@ -85,7 +85,7 @@ Session as required. This  is covered in
 .. code-block:: python
 
     print "UID           : {0} ".format( session.uid )
-    print "Crentials     : {0} ".format( session.list_credentials() )
+    print "Credentials   : {0} ".format( session.list_credentials() )
     print "UnitManagers  : {0} ".format( session.list_unit_managers() )
     print "PilotManagers : {0} ".format( session.list_pilot_managers() )
 
@@ -262,11 +262,11 @@ passes the ComputeUnits on to the ComputePilot.
     umgr.add_pilots(pilot)
     umgr.submit_units(compute_units)
 
-    umgr.wait()
+    umgr.wait_units()
 
-The :func:`sagapilot.UnitManager.wait` call blocks until all ComputeUnits have
+The :func:`sagapilot.UnitManager.wait_units` call blocks until all ComputeUnits have
 been  executed by the UnitManager. Simple control flows / depdendcies can be
-realized with ``wait()``, however, for more complex control flows it can
+realized with ``wait_units()``, however, for more complex control flows it can
 become inefficent due to its blocking nature. For this reason SAGA-Pilot also
 provides mechanisms for asynchronous notifications and callbacks. This is 
 discussed in more detail in :ref:`chapter_example_async`.
@@ -279,7 +279,11 @@ discussed in more detail in :ref:`chapter_example_async`.
 Results and Inspection
 ----------------------
 
-...
+.. code-block:: python
+
+        for unit in umgr.get_units():
+            print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}".format(
+                unit.uid, unit.state, unit.start_time, unit.stop_time)
 
 The Complete Example
 --------------------

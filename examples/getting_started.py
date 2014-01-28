@@ -12,7 +12,7 @@ if __name__ == "__main__":
         session = sagapilot.Session(database_url=DBURL)
 
         print "S UID           : {0} ".format(session.uid)
-        print "S Crentials     : {0} ".format(session.list_credentials())
+        print "S Credentials   : {0} ".format(session.list_credentials())
         print "S UnitManagers  : {0} ".format(session.list_unit_managers())
         print "S PilotManagers : {0} ".format(session.list_pilot_managers())
 
@@ -58,6 +58,10 @@ if __name__ == "__main__":
         # # Wait for all compute units to finish.
         # print "* Waiting for all compute units to finish..."
         umgr.wait_units()
+
+        for unit in umgr.get_units():
+            print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}".format(
+                unit.uid, unit.state, unit.start_time, unit.stop_time)
         
         # Cancel all pilots.
         pmgr.cancel_pilots()
