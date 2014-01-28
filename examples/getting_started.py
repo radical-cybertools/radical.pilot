@@ -48,22 +48,21 @@ if __name__ == "__main__":
 
         # # Combine the pilot, the workload and a scheduler via 
         # # a UnitManager.
-        # um = sinon.UnitManager(session=session, scheduler=sinon.SCHED_ROUND_ROBIN)
-        # um.add_pilots(p1)
-        # um.submit_units(compute_units)
+        umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN)
+        umgr.add_pilots(pilot)
+        
+        umgr.submit_units(compute_units)
 
         # unit_list = um.list_units()
         # print "* Submitted %s compute units: %s" % (len(unit_list), unit_list)
 
         # # Wait for all compute units to finish.
         # print "* Waiting for all compute units to finish..."
-        # um.wait_units()
-        # print "  FINISHED"
+        umgr.wait_units()
+        
+        # Cancel all pilots.
+        pmgr.cancel_pilots()
 
-        # # Cancel all pilots.
-        # pm.cancel_pilots()
-
-        # return 0
 
     except sagapilot.SagapilotException, ex:
         print "Error: %s" % ex
