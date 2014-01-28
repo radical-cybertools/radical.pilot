@@ -92,7 +92,7 @@ class ComputePilotDescription (attributes.Attributes) :
         attributes.Attributes.__init__(self)
 
         # set attribute interface properties
-        self._attributes_extensible  (True)
+        self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
         self._attributes_register            (RUNTIME, None, attributes.INT, attributes.SCALAR, attributes.WRITEABLE)
