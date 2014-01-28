@@ -41,27 +41,29 @@ Session as root. Each Session can have  zero or more
 
 .. code-block:: bash
 
-     (MongoDB) <---- [Session]
-                     |
-                     |---- SSHCredential
-                     |---- ....
-                     |
-                     |---- [PilotManager]
-                     |     |
-                     |     |---- ComputePilot
-                     |     |---- ComputePilot
-                     |  
-                     |---- [UnitManager]
-                     |     |
-                     |     |---- ComputeUnit
-                     |     |---- ComputeUnit
-                     |     |....
-                     |
-                     |---- [UnitManager]
-                     |     |
-                     |     |....
-                     |
-                     |....
+     (~~~~~~~~~)
+     (         ) <---- [Session]
+     ( MongoDB )       |
+     (         )       |---- SSHCredential
+     (_________)       |---- ....
+                       |
+                       |---- [PilotManager]
+                       |     |
+                       |     |---- ComputePilot
+                       |     |---- ComputePilot
+                       |  
+                       |---- [UnitManager]
+                       |     |
+                       |     |---- ComputeUnit
+                       |     |---- ComputeUnit
+                       |     |....
+                       |
+                       |---- [UnitManager]
+                       |     |
+                       |     |....
+                       |
+                       |....
+
 
 A Session also encapsulates the connection(s) to a backend `MongoDB
 <http://www.mongodb.org/>`_ server which is the *brain* and *central nervous
