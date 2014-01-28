@@ -13,8 +13,14 @@ Sessions and Security Contexts
 
 Sessions
 --------
-.. autoclass:: sinon.Session
+.. autoclass:: sagapilot.Session
    :members: Session
+   :special-members: __init__
+
+SSHCredentials
+--------------
+.. autoclass:: sagapilot.SSHCredential
+   :members: SSHCredential
    :special-members: __init__
 
 Pilots and PilotManagers
@@ -22,18 +28,18 @@ Pilots and PilotManagers
 
 PilotManagers
 -------------
-.. autoclass:: sinon.PilotManager
+.. autoclass:: sagapilot.PilotManager
    :members: PilotManager
    :special-members: __init__
 
 ComputePilotDescription
 -----------------------
-.. autoclass:: sinon.ComputePilotDescription
+.. autoclass:: sagapilot.ComputePilotDescription
    :members: ComputePilotDescription
 
 Pilots
 ------
-.. autoclass:: sinon.ComputePilot
+.. autoclass:: sagapilot.ComputePilot
    :members: ComputePilot
 
 WorkUnits and UnitManagers
@@ -41,19 +47,21 @@ WorkUnits and UnitManagers
 
 UnitManager
 -----------
-.. autoclass:: sinon.UnitManager
+.. autoclass:: sagapilot.UnitManager
    :members: UnitManager
    :special-members: __init__
 
 ComputeUnitDescription
 -----------------------
-.. autoclass:: sinon.ComputeUnitDescription
+.. autoclass:: sagapilot.ComputeUnitDescription
    :members: ComputeUnitDescription
 
-Miscellanea 
-===========
-
 Exceptions
-----------
-.. autoclass:: sinon.SinonException
-   :members: SinonException
+==========
+
+.. autoclass:: sagapilot.SagapilotException
+   :members: SagapilotException
+
+.. autoclass:: sagapilot.DatabaseError
+   :members: DatabaseError
+

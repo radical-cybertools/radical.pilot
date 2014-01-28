@@ -38,7 +38,7 @@ been installed properly. In the same virtualenv, run:
 
 .. code-block:: bash
 
-    sinon-version
+    sagapilot-version
 
 This should return the version of the SAGA-Pilot installation, e.g., `0.X.Y`.
 
@@ -66,3 +66,5 @@ Optionally, you can try to run the unit tests:
 .. code-block:: bash
 
     python setup.py test
+
+.. note:: More on testing can be found in chapter :ref:`chapter_testing`.

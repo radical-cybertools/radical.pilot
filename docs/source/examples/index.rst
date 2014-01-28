@@ -6,7 +6,10 @@ Examples & Best Practice
 
 .. toctree::
    :numbered:
-   :maxdepth: 3
+   :maxdepth: 1
 
    gettingstarted.rst
    errorhandling.rst
+   disconnect_reconnect.rst
+   remote_hpc_pilots.rst
+   multiple_commands.rst

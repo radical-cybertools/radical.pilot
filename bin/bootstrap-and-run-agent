@@ -2,10 +2,10 @@
 
 # -----------------------------------------------------------------------------
 # Author: Ole Weidner (ole.weidner@rutgers.edu)
-# Copyright 2013, radical@rutgers.edu
+# Copyright 2013-2014, radical@rutgers.edu
 # License under the MIT License
 #
-# This script launches a sinon compute pilot.
+# This script launches a SAGA-Pilot compute pilot.
 #
 
 # -----------------------------------------------------------------------------
@@ -15,6 +15,7 @@ PREBOOTSTRAP=
 CLEANUP=
 REMOTE=
 CORES=
+RUNTIME=
 DBNAME=
 PILOTID=
 SESSIONID=
@@ -30,7 +31,7 @@ usage()
 cat << EOF
 usage: $0 options
 
-This script launches a sinon compute pilot.
+This script launches a SAGA-Pilot compute pilot.
 
 OPTIONS:
    -r      Address and port of the coordination service host (MongoDB)
@@ -50,6 +51,8 @@ OPTIONS:
    -l      Task lauch mode, AUTO, LOCAL, MPIRUN, APRUN
 
    -e      List of commands to run before botstrapping
+
+   -t      Runtime in minutes
 
    -c      Number of requested cores
 
@@ -155,19 +158,19 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python sinon-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -l $LAUNCH_MODE"
+AGENT_CMD="python sagapilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE"
 echo ""
 echo "################################################################################"
-echo "## Launching sinon-pilot-agent for $CORES cores."
+echo "## Launching sagapilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-python sinon-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -l $LAUNCH_MODE
+           python sagapilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE
 }
 
 # -----------------------------------------------------------------------------
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:l:e:c:C” OPTION
+while getopts “hr:d:s:p:w:i:l:e:t:c:C” OPTION
 do
      case $OPTION in
          h)
@@ -208,6 +211,9 @@ do
                 exit 1
              fi
              ;;
+         t)
+             RUNTIME=$OPTARG
+             ;;
          c)
              CORES=$OPTARG
              ;;
@@ -221,7 +227,7 @@ do
      esac
 done
 
-if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]]
+if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]]
 then
      usage
      exit 1

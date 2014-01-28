@@ -20,7 +20,7 @@ from setuptools import setup, find_packages, Command
 #   - short_version:  1.2.3 - is used for installation
 #   - long_version:  v1.2.3-9-g0684b06  - is used as runtime (ru.version)
 #   - both are derived from the last git tag
-#   - the file sinon/VERSION is created with the long_version, und used
+#   - the file sagapilot/VERSION is created with the long_version, und used
 #     by ru.__init__.py to provide the runtime version information. 
 #
 def get_version():
@@ -63,8 +63,8 @@ def get_version():
 
 
         # make sure the version files exist for the runtime version inspection
-        open (          '%s/VERSION' % srcroot, 'w').write (long_version+"\n")
-        open ('%s/src/sinon/VERSION' % srcroot, 'w').write (long_version+"\n")
+        open (              '%s/VERSION' % srcroot, 'w').write (long_version+"\n")
+        open ('%s/src/sagapilot/VERSION' % srcroot, 'w').write (long_version+"\n")
 
 
     except Exception as e :
@@ -89,7 +89,7 @@ def read(*rnames):
 
 #-----------------------------------------------------------------------------
 setup_args = {
-    'name'             : 'sinon',
+    'name'             : 'sagapilot',
     'version'          : short_version,
     'description'      : "A SAGA-based pilot job framework",
     'long_description' : (read('README.md') + '\n\n' + read('CHANGES.md')),
@@ -97,7 +97,7 @@ setup_args = {
     'author_email'     : 'ole.weidner@rutgers.edu',
     'maintainer'       : "Ole Weidner", 
     'maintainer_email' : 'ole.weidner@rutgers.edu',
-    'url'              : 'https://github.com/saga-project/sinon',
+    'url'              : 'https://github.com/saga-project/saga-pilot',
     'license'          : 'MIT',
     'keywords'         : "radical pilot job saga",
     'classifiers'      :  [
@@ -119,12 +119,10 @@ setup_args = {
     'packages'    : find_packages('src'),
     'package_dir' : {'': 'src'},    
     'scripts'          : ['bin/sinon-version', 
-                          'bin/sinon-timeline',
-                          'bin/sinon-checkdb',
+                          'bin/sagapilot-version',
                           'bin/bootstrap-and-run-agent',
                          ],
     'package_data'     : {'': ['*.sh', 'VERSION', ]},
-    'test_suite'       : 'sinon.tests',
     'install_requires' : ['setuptools',
                           'saga-python',
                           'radical.utils',
@@ -132,7 +130,7 @@ setup_args = {
                           'motor',
                           'python-hostlist'],
     'tests_require'    : ['setuptools', 'nose'],
-    'test_suite'       : 'sinon.tests',
+    'test_suite'       : 'sagapilot.tests',
     'zip_safe'         : False,
 }
 

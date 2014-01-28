@@ -1,46 +1,43 @@
 {
-    "localhost": {
-        "URL"                : "fork://localhost",
-        "filesystem"         : "file://localhost",
-        "pre_bootstrap"      : ["hostname", "date"],
-        "task_launch_mode"   : "LOCAL"
-    },
-
-    "futuregrid.ALAMO": {
+    "alamo.futuregrid.org": {
         "URL"                : "pbs+ssh://alamo.futuregrid.org",
         "filesystem"         : "sftp://alamo.futuregrid.org/",
         "default_queue"      : "short",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN",
-        "valid_paths"        : ["/N", "/home"]
+        "valid_roots"        : ["/N", "/home"]
     },
 
-    "futuregrid.INDIA": {
+    "india.futuregrid.org": {
         "URL"                : "pbs+ssh://india.futuregrid.org",
         "filesystem"         : "sftp://india.futuregrid.org/",
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "MPIRUN"
+        "task_launch_mode"   : "MPIRUN",
+        "valid_roots"        : ["/N"]
     },
 
-    "futuregrid.SIERRA": {
+    "sierra.futuregrid.org": {
         "URL"                : "pbs+ssh://sierra.futuregrid.org",
         "filesystem"         : "sftp://sierra.futuregrid.org/",
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "MPIRUN"
+        "task_launch_mode"   : "MPIRUN",
+        "valid_roots"        : ["/N"]
+
     },
 
-    "futuregrid.HOTEL": {
+    "hotel.futuregrid.org": {
         "URL"                : "pbs+ssh://hotel.futuregrid.org",
         "filesystem"         : "sftp://hotel.futuregrid.org/",
         "default_queue"      : "batch",
         "python_interpreter" : "/soft/python/gnu-4.1/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "MPIRUN"
+        "task_launch_mode"   : "MPIRUN",
+        "valid_roots"        : ["/N", "/gpfs"]
     }
 }
 

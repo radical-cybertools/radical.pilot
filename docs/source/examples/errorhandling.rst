@@ -1,8 +1,8 @@
 .. _chapter_example_errorhandling:
 
-**************
-Error Handling  
-**************
+*************************
+Error Handling Strategies 
+*************************
 
 
 Simple Error Handling
