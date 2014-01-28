@@ -13,7 +13,7 @@ TODO - explain -c and -l
     
     cu = sagapilot.ComputeUnitDescription()
     cu.executable  = "/bin/bash"
-    cu.arguments   = ["-c", "-l", " this && and && that """]
+    cu.arguments   = ["-l", "-c", " this && and && that """]
     cu.cores       = 1
  
 

@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import ast
 import sys
 import time
 import errno
@@ -286,13 +287,14 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, workdir, stdout, stderr):
+    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr):
 
         self._log         = None
         self._description = None
 
         # static task properties
         self._uid            = uid
+        self._environment    = environment
         self._executable     = executable
         self._arguments      = arguments
         self._workdir        = workdir
@@ -328,6 +330,12 @@ class Task(object):
     @property
     def executable(self):
         return self._executable
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def environment(self):
+        return self._environment
 
     # ------------------------------------------------------------------------
     #
@@ -474,87 +482,92 @@ class ExecWorker(multiprocessing.Process):
     def run(self):
         """Starts the process when Process.start() is called.
         """
-        while self._terminate is False:
+        try: 
+            while self._terminate is False:
 
-            # we iterate over all slots. if slots are emtpy, we try
-            # to run a new process. if they are occupied, we try to 
-            # update the state             
-            for host, slots in self._slots.iteritems():
-                
-                # we update tasks in 'bulk' after each iteration. 
-                # all tasks that require DB updates are in update_tasks
-                update_tasks = []
+                # we iterate over all slots. if slots are emtpy, we try
+                # to run a new process. if they are occupied, we try to 
+                # update the state             
+                for host, slots in self._slots.iteritems():
+                    
+                    # we update tasks in 'bulk' after each iteration. 
+                    # all tasks that require DB updates are in update_tasks
+                    update_tasks = []
 
-                for slot in range(len(slots)):
+                    for slot in range(len(slots)):
 
-                    # check if slot is free. if so, launch a new task
-                    if self._slots[host][slot] is FREE:
+                        # check if slot is free. if so, launch a new task
+                        if self._slots[host][slot] is FREE:
 
-                        try:
-                            task = self._task_queue.get_nowait()
+                            try:
+                                task = self._task_queue.get_nowait()
 
-                            # create working directory in case it
-                            # doesn't exist
-                            try :
-                                os.makedirs(task.workdir)
-                            except OSError as e :
-                                # ignore failure on existing directory
-                                if  e.errno == errno.EEXIST and os.path.isdir (task.workdir) :
-                                    pass
-                                else : 
-                                    raise
+                                # create working directory in case it
+                                # doesn't exist
+                                try :
+                                    os.makedirs(task.workdir)
+                                except OSError as e :
+                                    # ignore failure on existing directory
+                                    if  e.errno == errno.EEXIST and os.path.isdir (task.workdir) :
+                                        pass
+                                    else : 
+                                        raise
 
-                            # RUN THE TASK
-                            self._slots[host][slot] = _Process(
-                                task=task, 
-                                host=host,
-                                launch_method=self._launch_method,
-                                launch_command=self._launch_command,
-                                logger=self._log)
+                                # RUN THE TASK
+                                self._slots[host][slot] = _Process(
+                                    task=task, 
+                                    host=host,
+                                    launch_method=self._launch_method,
+                                    launch_command=self._launch_command,
+                                    logger=self._log)
 
-                            exec_locs = ["%s:%s" % (host, slot)]
+                                exec_locs = ["%s:%s" % (host, slot)]
 
-                            self._slots[host][slot].task.update_state(
-                                start_time=datetime.datetime.utcnow(),
-                                exec_locs = exec_locs ,
-                                state='Running'
-                            )
-                            update_tasks.append(self._slots[host][slot].task)
+                                self._slots[host][slot].task.update_state(
+                                    start_time=datetime.datetime.utcnow(),
+                                    exec_locs = exec_locs ,
+                                    state='Running'
+                                )
+                                update_tasks.append(self._slots[host][slot].task)
 
-                        except Queue.Empty:
-                            # do nothing if we don't have any queued tasks
-                            self._slots[host][slot] = None
+                            except Queue.Empty:
+                                # do nothing if we don't have any queued tasks
+                                self._slots[host][slot] = None
 
-                    else:
-                        rc = self._slots[host][slot].poll()
-                        if rc is None:
-                            # subprocess is still running
-                            pass
                         else:
-                            self._slots[host][slot].close_and_flush_filehandles()
 
-                            # update database, set task state and notify.
-                            if rc != 0:
-                                state = 'Failed'
+                            rc = self._slots[host][slot].poll()
+                            if rc is None:
+                                # subprocess is still running
+                                pass
                             else:
-                                state = 'Done'
+                                self._slots[host][slot].close_and_flush_filehandles()
 
-                            self._slots[host][slot].task.update_state(
-                                end_time=datetime.datetime.utcnow(),
-                                exit_code=rc,
-                                state=state
-                            )
-                            update_tasks.append(self._slots[host][slot].task)
+                                # update database, set task state and notify.
+                                if rc != 0:
+                                    state = 'Failed'
+                                else:
+                                    state = 'Done'
 
-                            # mark slot as available
-                            self._slots[host][slot] = FREE
+                                self._slots[host][slot].task.update_state(
+                                    end_time=datetime.datetime.utcnow(),
+                                    exit_code=rc,
+                                    state=state
+                                )
+                                update_tasks.append(self._slots[host][slot].task)
 
-                # update all the tasks that are marked for update.
-                self._update_tasks(update_tasks)
+                                # mark slot as available
+                                self._slots[host][slot] = FREE
 
-                self._log.debug("Slot status:\n%s", self._slot_status(self._slots))
+                    # update all the tasks that are marked for update.
+                    self._update_tasks(update_tasks)
+                    self._log.debug("Slot status:\n%s", self._slot_status(self._slots))
 
-            time.sleep(1)
+                time.sleep(1)
+
+        except Exception, ex:
+            self._log.error("Error in ExecWorker loop: %s", ex)
+            raise
 
 
     # ------------------------------------------------------------------------
@@ -688,91 +701,102 @@ class Agent(threading.Thread):
 
         self._starttime = time.time()
 
-        while not self._terminate.isSet():
+        try:
 
-            # Make sure that we haven't exceeded the agent runtime. if 
-            # we have, terminate. 
+            while not self._terminate.isSet():
 
-            # Check the workers periodically. If they have died, we 
-            # exit as well. this can happen, e.g., if the worker 
-            # process has caught a ctrl+C
-            for ew in self._exec_workers:
-                if ew.is_alive() is False:
-                    self.stop()
+                # Make sure that we haven't exceeded the agent runtime. if 
+                # we have, terminate. 
 
-            if time.time() >= self._starttime + (int(self._runtime) * 60):
-                self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
-                self._p.update(
-                    {"_id": ObjectId(self._pilot_id)}, 
-                    {"$set": {"info.state"     : "Done",
-                              "info.finished"   : datetime.datetime.utcnow()}})
-                break
+                # Check the workers periodically. If they have died, we 
+                # exit as well. this can happen, e.g., if the worker 
+                # process has caught a ctrl+C
+                for ew in self._exec_workers:
+                    if ew.is_alive() is False:
+                        self.stop()
 
-            # try to get new tasks from the database. for this, we check the 
-            # wu_queue of the pilot. if there are new entries, we get them,
-            # get the actual pilot entries for them and remove them from 
-            # the wu_queue. 
-            try: 
-                p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
+                if time.time() >= self._starttime + (int(self._runtime) * 60):
+                    self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
+                    self._p.update(
+                        {"_id": ObjectId(self._pilot_id)}, 
+                        {"$set": {"info.state"     : "Done",
+                                  "info.finished"   : datetime.datetime.utcnow()}})
+                    break
 
-                # Check if there's a command waiting
-                command = p_cursor[0]['command']
-                if command is not None:
-                    self._log.info("Received new command: %s" % command)
-                    if command.lower() == "cancel":
-                        # if we receive 'cancel', we terminate the loop.
-                        self._p.update(
-                            {"_id": ObjectId(self._pilot_id)}, 
-                            {"$set": {"info.state"     : "Canceled",
-                                      "info.finished"   : datetime.datetime.utcnow()}})
+                # try to get new tasks from the database. for this, we check the 
+                # wu_queue of the pilot. if there are new entries, we get them,
+                # get the actual pilot entries for them and remove them from 
+                # the wu_queue. 
+                try: 
+                    p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
 
-                        break
+                    # Check if there's a command waiting
+                    command = p_cursor[0]['command']
+                    if command is not None:
+                        self._log.info("Received new command: %s" % command)
+                        if command.lower() == "cancel":
+                            # if we receive 'cancel', we terminate the loop.
+                            self._p.update(
+                                {"_id": ObjectId(self._pilot_id)}, 
+                                {"$set": {"info.state"     : "Canceled",
+                                          "info.finished"   : datetime.datetime.utcnow()}})
+                            break
 
-                # Check the pilot's workunit queue
-                new_wu_ids = p_cursor[0]['wu_queue']
+                    # Check the pilot's workunit queue
+                    new_wu_ids = p_cursor[0]['wu_queue']
 
-                # There are new work units in the wu_queue on the database.
-                # Get the corresponding wu entries
-                if len(new_wu_ids) > 0:
-                    self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
-                    wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
-                    for wu in wu_cursor:
-                        # Create new task objects and put them into the 
-                        # task queue
+                    # There are new work units in the wu_queue on the database.
+                    # Get the corresponding wu entries
+                    if len(new_wu_ids) > 0:
+                        self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
+                        wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
+                        for wu in wu_cursor:
+                            # Create new task objects and put them into the 
+                            # task queue
 
-                        # WorkingDirectoryPriv is defined, we override the 
-                        # standard working directory schema. 
-                        # NOTE: this is not a good idea and just implemented
-                        #       to support some last minute TROY experiments.
-                        if wu["description"]["WorkingDirectoryPriv"] is not None:
-                            task_dir_name = wu["description"]["WorkingDirectoryPriv"]
-                        else:
-                            task_dir_name = "%s/task-%s" % (self._workdir, str(wu["_id"]))
+                            # WorkingDirectoryPriv is defined, we override the 
+                            # standard working directory schema. 
+                            # NOTE: this is not a good idea and just implemented
+                            #       to support some last minute TROY experiments.
+                            if wu["description"]["WorkingDirectoryPriv"] is not None:
+                                task_dir_name = wu["description"]["WorkingDirectoryPriv"]
+                            else:
+                                task_dir_name = "%s/task-%s" % (self._workdir, str(wu["_id"]))
 
-                        task = Task(uid=str(wu["_id"]), 
-                                    executable=wu["description"]["Executable"], 
-                                    arguments=wu["description"]["Arguments"], 
-                                    workdir=task_dir_name, 
-                                    stdout=task_dir_name+'/STDOUT', 
-                                    stderr=task_dir_name+'/STDERR')
-                        self._task_queue.put(task)
+                            task = Task(uid         =str(wu["_id"]), 
+                                        executable  = wu["description"]["Executable"], 
+                                        arguments   = wu["description"]["Arguments"],
+                                        environment = wu["description"]["Environment"],
+                                        workdir     = task_dir_name, 
+                                        stdout      = task_dir_name+'/STDOUT', 
+                                        stderr      = task_dir_name+'/STDERR')
 
-                    # now we can remove the entries from the pilot's wu_queue
-                    # PRINT TODO
-                    self._p.update({"_id": ObjectId(self._pilot_id)}, 
-                                   {"$pullAll": { "wu_queue": new_wu_ids}})
+                            self._task_queue.put(task)
 
-            except Exception, ex:
-                self._log.error("MongoDB error while checking for new work units: %s" % ex)
-                self._p.update(
-                    {"_id": ObjectId(self._pilot_id)}, 
-                    {"$set": {"info.state"     : "Failed",
-                              "info.finished"   : datetime.datetime.utcnow()}})
-                break
+                        # now we can remove the entries from the pilot's wu_queue
+                        # PRINT TODO
+                        self._p.update({"_id": ObjectId(self._pilot_id)}, 
+                                       {"$pullAll": { "wu_queue": new_wu_ids}})
 
-            time.sleep(1)
+                except Exception, ex:
+                    self._log.error("MongoDB error while checking for new work units: %s" % ex)
+                    #self._p.update(
+                    #    {"_id": ObjectId(self._pilot_id)}, 
+                    #    {"$set": {"info.state"     : "Failed",
+                    #              "info.finished"   : datetime.datetime.utcnow()}})
+                    #break
+                    raise
 
-        self._log.info("Exiting agent main loop.")
+                time.sleep(1)
+
+            # If we arrive here, the main loop has finished properly.
+            pilot_DONE(self._p, self._pilot_id)
+            self._log.info("FINISHED. Exiting agent main loop.")
+
+        except Exception, ex:
+            # If we arrive here, there was an exception in the main loop.
+            pilot_FAILED(self._p, self._pilot_id, str(ex))
+            self._log.error("ERROR in agent main loop. EXITING.")
 
 #-----------------------------------------------------------------------------
 #
@@ -817,7 +841,7 @@ class _Process(subprocess.Popen):
         self.stderr_filename = task.stderr
         self._stderr_file_h  = open(self.stderr_filename, "w")
 
-        self._log.info("Launching task %s via %s" % (task.uid, cmdline))
+        self._log.info("Launching task %s via %s (env: %s)" % (task.uid, cmdline, task.environment))
 
         super(_Process, self).__init__(args=cmdline,
                                        bufsize=0,
@@ -829,7 +853,7 @@ class _Process(subprocess.Popen):
                                        close_fds=True,
                                        shell=True,
                                        cwd=task.workdir,
-                                       env=None,
+                                       env=task.environment,
                                        universal_newlines=False,
                                        startupinfo=None,
                                        creationflags=0)

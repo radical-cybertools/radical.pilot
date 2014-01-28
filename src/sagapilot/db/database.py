@@ -585,6 +585,7 @@ class Session():
         # Construct and insert workunit documents
         workunit_docs = []
         for key, wu_desc in units.iteritems():
+
             workunit = {
                 "_id"           : key,
                 "description"   : wu_desc['description'].as_dict(), #{

@@ -67,7 +67,7 @@ class ComputeUnitDescription (attributes.Attributes) :
         self._attributes_register(NAME,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(EXECUTABLE,        None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ARGUMENTS,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(ENVIRONMENT,       None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(ENVIRONMENT,       None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
         #self._attributes_register(CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(START_TIME,        None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
