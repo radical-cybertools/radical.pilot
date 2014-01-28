@@ -20,8 +20,8 @@ WORKING_DIRECTORY = 'WorkingDirectory'
 SANDBOX           = 'Sandbox'
 OUTPUT            = 'Output'
 ERROR             = 'Error'
-RUNTIME           = 'Runtime'
 RUN_TIME          = 'RunTime'
+RUNTIME           = 'Runtime'
 CLEANUP           = 'Cleanup'
 PROJECT           = 'Project'
 
@@ -87,40 +87,35 @@ class ComputePilotDescription (attributes.Attributes) :
 
     """
 
-    def __init__ (self, vals={}) : 
+    def __init__ (self) : 
         # initialize attributes
         attributes.Attributes.__init__(self)
 
         # set attribute interface properties
-        self._attributes_extensible  (False)
+        self._attributes_extensible  (True)
         self._attributes_camelcasing (True)
 
-        # register properties with the attribute interface
-        # runtime properties
-        self._attributes_register(RUNTIME, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register_deprecated(key=RUN_TIME, alias=RUNTIME, flow='_down')
+        self._attributes_register            (RUNTIME, None, attributes.INT, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register_deprecated (RUN_TIME, RUNTIME, flow='_down')
 
-        #self._attributes_register(RUN_TIME,                    None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PROJECT,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register            (CLEANUP, None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register            (PROJECT, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
-        # i/o
-        self._attributes_register(SANDBOX, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register_deprecated(key=WORKING_DIRECTORY, alias=SANDBOX, flow='_down')
+        self._attributes_register            (SANDBOX, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register_deprecated (WORKING_DIRECTORY, SANDBOX, flow='_down')
 
+        self._attributes_register             (RESOURCE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register             (CORES, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register             (QUEUE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
-        self._attributes_register(OUTPUT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(ERROR,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(FILE_TRANSFER,    None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        #self._attributes_register            (OUTPUT, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register            (ERROR, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register            (FILE_TRANSFER, None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
-        # resource requirements
-        self._attributes_register(RESOURCE,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CORES,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(CANDIDATE_HOSTS,  None, attributes.INT,    attributes.VECTOR, attributes.WRITEABLE)
-        #self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(QUEUE,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register            (CANDIDATE_HOSTS,  None, attributes.INT,    attributes.VECTOR, attributes.WRITEABLE)
+        #self._attributes_register            (CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register            (OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        #self._attributes_register            (MEMORY, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
     #------------------------------------------------------------------------------
     #

@@ -26,6 +26,14 @@ class TestRemoteSubmission(unittest.TestCase):
         client = MongoClient(DBURL)
         client.drop_database(DBNAME)
 
+        self.test_resource = os.getenv('SAGAPILOT_TEST_REMOTE_RESOURCE',     "localhost")
+        self.test_ssh_uid  = os.getenv('SAGAPILOT_TEST_REMOTE_SSH_USER_ID',  None)
+        self.test_ssh_key  = os.getenv('SAGAPILOT_TEST_REMOTE_SSH_USER_KEY', None)
+        self.test_workdir  = os.getenv('SAGAPILOT_TEST_REMOTE_WORKDIR',      "/tmp/sagapilot.sandbox.unittests")
+        self.test_cores    = os.getenv('SAGAPILOT_TEST_REMOTE_CORES',        "1")
+        self.test_num_cus  = os.getenv('SAGAPILOT_TEST_REMOTE_NUM_CUS',      "2")
+        self.test_timeout  = os.getenv('SAGAPILOT_TEST_TIMEOUT',             "5")
+
     def tearDown(self):
         # clean up after ourselves 
         client = MongoClient(DBURL)
@@ -44,29 +52,20 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_simple_submission(self):
         """ Test simple remote submission with one pilot.
         """
-        test_resource = os.getenv('SAGAPILOT_TEST_REMOTE_RESOURCE',     "localhost")
-        test_ssh_uid  = os.getenv('SAGAPILOT_TEST_REMOTE_SSH_USER_ID',  None)
-        test_ssh_key  = os.getenv('SAGAPILOT_TEST_REMOTE_SSH_USER_KEY', None)
-        test_workdir  = os.getenv('SAGAPILOT_TEST_REMOTE_WORKDIR',      "/tmp/sagapilot.sandbox.unittests")
-        test_cores    = os.getenv('SAGAPILOT_TEST_REMOTE_CORES',        "1")
-        test_num_cus  = os.getenv('SAGAPILOT_TEST_REMOTE_NUM_CUS',      "2")
-        test_timeout  = os.getenv('SAGAPILOT_TEST_TIMEOUT',             "5")
-
-
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
         cred = sinon.SSHCredential()
-        cred.user_id  = test_ssh_uid
-        cred.user_key = test_ssh_key
+        cred.user_id  = self.test_ssh_uid
+        cred.user_key = self.test_ssh_key
 
         session.add_credential(cred)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource          = test_resource
-        cpd.cores             = test_cores
+        cpd.resource          = self.test_resource
+        cpd.cores             = self.test_cores
         cpd.run_time          = 5
-        cpd.working_directory = test_workdir 
+        cpd.working_directory = self.test_workdir 
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -74,7 +73,7 @@ class TestRemoteSubmission(unittest.TestCase):
         um.add_pilots(pilot)
 
         cudescs = []
-        for _ in range(0,int(test_num_cus)):
+        for _ in range(0,int(self.test_num_cus)):
             cudesc = sinon.ComputeUnitDescription()
             cudesc.cores = 1
             cudesc.executable = "/bin/sleep"
@@ -89,13 +88,13 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.start_time is None
             assert cu.start_time is None
 
-        um.wait_units(state=[sinon.states.RUNNING], timeout=test_timeout)
+        um.wait_units(state=[sinon.states.RUNNING], timeout=self.test_timeout)
 
         for cu in cus:
             assert cu.state == sinon.states.RUNNING
             assert cu.start_time is not None
 
-        um.wait_units(state=[sinon.states.DONE, sinon.states.FAILED], timeout=test_timeout)
+        um.wait_units(state=[sinon.states.DONE, sinon.states.FAILED], timeout=self.test_timeout)
 
         for cu in cus:
             assert cu.state == sinon.states.DONE
@@ -108,29 +107,20 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_pilot_wait(self):
         """ Test if we can wait for different pilot states. 
         """
-        test_resource = os.getenv('SINON_TEST_REMOTE_RESOURCE',     "localhost")
-        test_ssh_uid  = os.getenv('SINON_TEST_REMOTE_SSH_USER_ID',  None)
-        test_ssh_key  = os.getenv('SINON_TEST_REMOTE_SSH_USER_KEY', None)
-        test_workdir  = os.getenv('SINON_TEST_REMOTE_WORKDIR',      "/tmp/sagapilot.sandbox.unittests")
-        test_cores    = os.getenv('SINON_TEST_REMOTE_CORES',        "1")
-        test_num_cus  = os.getenv('SINON_TEST_REMOTE_NUM_CUS',      "2")
-        test_timeout  = os.getenv('SINON_TEST_TIMEOUT',             "5")
-
-
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
         cred = sinon.SSHCredential()
-        cred.user_id  = test_ssh_uid
-        cred.user_key = test_ssh_key
+        cred.user_id  = self.test_ssh_uid
+        cred.user_key = self.test_ssh_key
 
         session.add_credential(cred)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource          = test_resource
-        cpd.cores             = test_cores
+        cpd.resource          = self.test_resource
+        cpd.cores             = self.test_cores
         cpd.run_time          = 2
-        cpd.working_directory = test_workdir 
+        cpd.working_directory = self.test_workdir 
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -154,29 +144,20 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_pilot_cancel(self):
         """ Test if we can cancel a pilot. 
         """
-        test_resource = os.getenv('SINON_TEST_REMOTE_RESOURCE',     "localhost")
-        test_ssh_uid  = os.getenv('SINON_TEST_REMOTE_SSH_USER_ID',  None)
-        test_ssh_key  = os.getenv('SINON_TEST_REMOTE_SSH_USER_KEY', None)
-        test_workdir  = os.getenv('SINON_TEST_REMOTE_WORKDIR',      "/tmp/sagapilot.unit-tests")
-        test_cores    = os.getenv('SINON_TEST_REMOTE_CORES',        "1")
-        test_num_cus  = os.getenv('SINON_TEST_REMOTE_NUM_CUS',      "2")
-        test_timeout  = os.getenv('SINON_TEST_TIMEOUT',             "5")
-
-
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
         cred = sinon.SSHCredential()
-        cred.user_id  = test_ssh_uid
-        cred.user_key = test_ssh_key
+        cred.user_id  = self.test_ssh_uid
+        cred.user_key = self.test_ssh_key
 
         session.add_credential(cred)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource          = test_resource
-        cpd.cores             = test_cores
+        cpd.resource          = self.test_resource
+        cpd.cores             = self.test_cores
         cpd.run_time          = 2
-        cpd.working_directory = test_workdir 
+        cpd.working_directory = self.test_workdir 
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
