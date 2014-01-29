@@ -4,7 +4,8 @@
         "filesystem"         : "sftp://stampede.tacc.utexas.edu/",
         "default_queue"      : "normal",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"      : ["module load python", "module load openmpi"]
+        "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN",
+        "valid_roots"        : ["/home1", "/scratch", "/work"]
     }
 }

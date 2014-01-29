@@ -1,7 +1,7 @@
 import sagapilot
 
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
-RFILE  = "https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json"
+RFILE  = "https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json"
 
 #-------------------------------------------------------------------------------
 #
@@ -24,8 +24,8 @@ if __name__ == "__main__":
         # Define a 2-core local pilot in /tmp/sagapilot.sandbox that runs 
         # for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
-        pdesc.resource  = "india.futuregrid.org"
-        pdesc.sandbox   = "$HOME/sagapilot.sandbox"
+        pdesc.resource  = "stampede.tacc.utexas.edu"
+        pdesc.sandbox   = "/home1/00988/tg802352/sagapilot.sandbox"
         pdesc.runtime   = 15 # minutes
         pdesc.cores     = 16 
 
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         # Create a workload of 8 '/bin/sleep' ComputeUnits (tasks)
         compute_units = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 32):
             cu = sagapilot.ComputeUnitDescription()
             cu.environment = {"NAP_TIME" : "10"}
             cu.executable  = "/bin/sleep"
