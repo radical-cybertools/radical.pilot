@@ -38,9 +38,9 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 32):
             cu = sagapilot.ComputeUnitDescription()
-            cu.environment = {"NAP_TIME" : "10"}
-            cu.executable  = "/bin/sleep"
-            cu.arguments   = ["$NAP_TIME"]
+            #cu.environment = {"NAP_TIME" : "10"}
+            cu.executable  = "/bin/date"
+            #cu.arguments   = ["$NAP_TIME"]
             cu.cores       = 1
         
             compute_units.append(cu)
