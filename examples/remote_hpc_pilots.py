@@ -1,7 +1,7 @@
 import sagapilot
 
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
-RFILE  = "https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json"
+RFILE  = "https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json"
 
 #-------------------------------------------------------------------------------
 #
@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         cred = sagapilot.SSHCredential()
-        cred.user_id = "oweidner"
+        cred.user_id = "tg802352"
 
         session.add_credential(cred)
 
@@ -38,9 +38,9 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 32):
             cu = sagapilot.ComputeUnitDescription()
-            cu.environment = {"NAP_TIME" : "10"}
-            cu.executable  = "/bin/sleep"
-            cu.arguments   = ["$NAP_TIME"]
+            #cu.environment = {"NAP_TIME" : "10"}
+            cu.executable  = "/bin/date"
+            #cu.arguments   = ["$NAP_TIME"]
             cu.cores       = 1
         
             compute_units.append(cu)
