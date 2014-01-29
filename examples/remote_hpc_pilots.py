@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         cred = sagapilot.SSHCredential()
-        cred.user_id = "oweidner"
+        cred.user_id = "tg802352"
 
         session.add_credential(cred)
 
