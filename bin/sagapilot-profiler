@@ -15,6 +15,7 @@ import sys
 import sagapilot
 import logging
 import optparse
+import pprint
 
 def get_data(logger, session_id, database_url, database_name):
     """Returns timing data for pilots and compute units.
@@ -49,43 +50,48 @@ def get_data(logger, session_id, database_url, database_name):
         # PILOTS
         for pmgr in session.get_pilot_managers():
             for pilot in pmgr.get_pilots():
-                logger.info("Found pilot: %s" % pilot)
+                #logger.info("Found pilot: %s" % pilot)
 
                 res_details = pilot.resource_details
 
                 pilot_data.append({
-                    'id'     : pilot.uid,
-                    'name'   : pilot.description['Resource'],
-                    'cores'  : res_details['cores_per_node'],
-                    'nodes'  : res_details['nodes'],
-                    'timing' : {
-                        'scheduled' : pilot.submission_time,
-                        'started'   : pilot.start_time,
-                        'stopped'   : pilot.stop_time,
+                    'id'          : pilot.uid,
+                    'description' : pilot.description,
+                    'cores'       : res_details['cores_per_node'],
+                    'nodes'       : res_details['nodes'],
+                    'timing'      : {
+                          'scheduled' : pilot.submission_time,
+                          'started'   : pilot.start_time,
+                          'stopped'   : pilot.stop_time,
                     } 
                 })
 
-        print pilot_data 
+        #pp = pprint.PrettyPrinter(indent=4)
+        #pp.pprint(pilot_data)
 
         # ------------------------------------------------------------
         # TASKS
         for umgr in session.get_unit_managers():
             tasks = umgr.get_units()
-            logger.info("Found %s compute units." % len(tasks))
+            #logger.info("Found %s compute units." % len(tasks))
             for task in tasks:
 
                 task_data.append({
-                    'id'       : task.uid,
-                    'name'     : pilot.description['Resource'],
-                    'location_node' : task.execution_details,
+                    'id'          : task.uid,
+                    'description' : task.description,
+
+                    'locations': task.execution_details,
                     'timing'   : {
                         'scheduled' : task.submission_time,
                         'started'   : task.start_time,
                         'stopped'   : task.stop_time,
-                    } 
+                    }
+
                 })
 
-        print task_data
+
+        alldata = {"ComputePilots" : pilot_data, "ComputeUnits" : task_data}
+        pprint.pprint(alldata)
 
 
     except sagapilot.SagapilotException, ex:
@@ -154,8 +160,6 @@ if __name__ == "__main__":
 
     options = parse_commandline()
     logger  = setup_logger()
-
-    logger.info("hello from plotter")
 
     get_data(
         logger        = logger, 
