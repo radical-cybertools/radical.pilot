@@ -1,7 +1,7 @@
 import sagapilot
 
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
-RFILE  = "https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json"
+RFILE  = "https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json"
 
 #-------------------------------------------------------------------------------
 #
