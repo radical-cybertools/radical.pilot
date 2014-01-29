@@ -120,6 +120,7 @@ setup_args = {
     'package_dir' : {'': 'src'},    
     'scripts'          : ['bin/sinon-version', 
                           'bin/sagapilot-version',
+                          'bin/sagapilot-profiler',
                           'bin/bootstrap-and-run-agent',
                          ],
     'package_data'     : {'': ['*.sh', 'VERSION', ]},

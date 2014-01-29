@@ -1,17 +1,21 @@
 #!/usr/bin/env python
 
-"""An agent for saga-pilot (sinon).
+"""
+.. module:: sagapilot-profiler
+   :platform: Unix
+   :synopsis: A simple runtime profiler for SAGA-Pilot.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
-__author__    = "Ole Weidner"
-__email__     = "ole.weidner@rutgers.edu"
-__copyright__ = "Copyright 2013, The RADICAL Project at Rutgers"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
-import sinon
+import sagapilot
 import logging
 import optparse
+import pprint
 
 def get_data(logger, session_id, database_url, database_name):
     """Returns timing data for pilots and compute units.
@@ -35,7 +39,7 @@ def get_data(logger, session_id, database_url, database_name):
 
 
     try: 
-        session = sinon.Session(
+        session = sagapilot.Session(
             session_uid   = session_id,
             database_url  = database_url,
             database_name = database_name
@@ -46,46 +50,51 @@ def get_data(logger, session_id, database_url, database_name):
         # PILOTS
         for pmgr in session.get_pilot_managers():
             for pilot in pmgr.get_pilots():
-                logger.info("Found pilot: %s" % pilot)
+                #logger.info("Found pilot: %s" % pilot)
 
                 res_details = pilot.resource_details
 
                 pilot_data.append({
-                    'id'     : pilot.uid,
-                    'name'   : pilot.description['Resource'],
-                    'cores'  : res_details['cores_per_node'],
-                    'nodes'  : res_details['nodes'],
-                    'timing' : {
-                        'scheduled' : pilot.submission_time,
-                        'started'   : pilot.start_time,
-                        'stopped'   : pilot.stop_time,
+                    'id'          : pilot.uid,
+                    'description' : pilot.description,
+                    'cores'       : res_details['cores_per_node'],
+                    'nodes'       : res_details['nodes'],
+                    'timing'      : {
+                          'scheduled' : pilot.submission_time,
+                          'started'   : pilot.start_time,
+                          'stopped'   : pilot.stop_time,
                     } 
                 })
 
-        print pilot_data 
+        #pp = pprint.PrettyPrinter(indent=4)
+        #pp.pprint(pilot_data)
 
         # ------------------------------------------------------------
         # TASKS
         for umgr in session.get_unit_managers():
             tasks = umgr.get_units()
-            logger.info("Found %s compute units." % len(tasks))
+            #logger.info("Found %s compute units." % len(tasks))
             for task in tasks:
 
                 task_data.append({
-                    'id'       : task.uid,
-                    'name'     : pilot.description['Resource'],
-                    'location_node' : task.execution_details,
+                    'id'          : task.uid,
+                    'description' : task.description,
+
+                    'locations': task.execution_details,
                     'timing'   : {
                         'scheduled' : task.submission_time,
                         'started'   : task.start_time,
                         'stopped'   : task.stop_time,
-                    } 
+                    }
+
                 })
 
-        print task_data
+
+        alldata = {"ComputePilots" : pilot_data, "ComputeUnits" : task_data}
+        pprint.pprint(alldata)
 
 
-    except sinon.SinonException, ex:
+    except sagapilot.SagapilotException, ex:
             logger.error(ex)
             sys.exit(255)
 
@@ -96,7 +105,7 @@ def setup_logger():
 
     Since this is a command line tool, we simply log to the console. 
     """
-    logger = logging.getLogger('sinon-timeline')
+    logger = logging.getLogger('sagapilot-profiler')
 
     logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
@@ -120,18 +129,18 @@ def parse_commandline():
     parser.add_option('-d', '--mongodb-url',
                       metavar='URL',
                       dest='database_url',
-                      help='Specifies the url of the MongoDB database.')
+                      help='specifies the url of the MongoDB database.')
 
     parser.add_option('-n', '--database-name',
                       metavar='URL',
                       dest='database_name',
-                      default='sinon',
-                      help='Specifies the name of the database [default: %default].')
+                      default='sagapilot',
+                      help='specifies the name of the database [default: %default].')
 
     parser.add_option('-s', '--session-id',
                       metavar='SID',
                       dest='session_id',
-                      help='Specifies the id of the session you want to inspect')
+                      help='specifies the id of the session you want to inspect.')
 
     # parse the whole shebang
     (options, args) = parser.parse_args()
@@ -151,8 +160,6 @@ if __name__ == "__main__":
 
     options = parse_commandline()
     logger  = setup_logger()
-
-    logger.info("hello from plotter")
 
     get_data(
         logger        = logger, 
