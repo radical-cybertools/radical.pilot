@@ -24,11 +24,11 @@ FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 CFG_USERNAME      = "oweidner"
 
 CFG_RESOURCE_A    = "hotel.futuregrid.org"    
-CFG_WORKING_DIR_A = "/gpfs/scratch/oweidner/sinon"
+CFG_WORKING_DIR_A = "/gpfs/scratch/oweidner/sagapilot.sandbox"
 CFG_NUMCORES_A    = 32
 
 CFG_RESOURCE_B    = "india.futuregrid.org"    
-CFG_WORKING_DIR_B = "/N/u/oweidner/sinon"
+CFG_WORKING_DIR_B = "/N/u/oweidner/sagapiot.sandbox"
 CFG_NUMCORES_B    = 32
 
 #-------------------------------------------------------------------------------

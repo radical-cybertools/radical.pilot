@@ -1,6 +1,7 @@
 import sagapilot
 
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
+RFILE  = "https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json"
 
 #-------------------------------------------------------------------------------
 #
@@ -11,23 +12,22 @@ if __name__ == "__main__":
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sagapilot.Session(database_url=DBURL)
 
-        print "S UID           : {0} ".format(session.uid)
-        print "S Credentials   : {0} ".format(session.list_credentials())
-        print "S UnitManagers  : {0} ".format(session.list_unit_managers())
-        print "S PilotManagers : {0} ".format(session.list_pilot_managers())
+        # Add an ssh identity to the session.
+        cred = sagapilot.SSHCredential()
+        cred.user_id = "oweidner"
 
-        # Add a Pilot Manager 
-        pmgr = sagapilot.PilotManager(session=session)
-        print "PM UID          : {0} ".format( pmgr.uid )
-        print "PM Pilots       : {0} ".format( pmgr.list_pilots() )
+        session.add_credential(cred)
+
+        # Add a Pilot Manager with a machine configuration file for FutureGrid
+        pmgr = sagapilot.PilotManager(session=session, resource_configurations=RFILE)
 
         # Define a 2-core local pilot in /tmp/sagapilot.sandbox that runs 
         # for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
-        pdesc.resource  = "localhost"
-        pdesc.sandbox   = "/tmp/sagapilot.sandbox"
-        pdesc.runtime   = 15 # minutes 
-        pdesc.cores     = 2 
+        pdesc.resource  = "india.futuregrid.org"
+        pdesc.sandbox   = "$HOME/sagapilot.sandbox"
+        pdesc.runtime   = 15 # minutes
+        pdesc.cores     = 16 
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -45,18 +45,12 @@ if __name__ == "__main__":
         
             compute_units.append(cu)
 
-        # # Combine the pilot, the workload and a scheduler via 
-        # # a UnitManager.
-        umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+        umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN)
         umgr.add_pilots(pilot)
         
         umgr.submit_units(compute_units)
 
-        # unit_list = um.list_units()
-        # print "* Submitted %s compute units: %s" % (len(unit_list), unit_list)
-
-        # # Wait for all compute units to finish.
-        # print "* Waiting for all compute units to finish..."
+        # Wait for all compute units to finish.
         umgr.wait_units()
 
         for unit in umgr.get_units():
@@ -66,10 +60,11 @@ if __name__ == "__main__":
         # Cancel all pilots.
         pmgr.cancel_pilots()
 
-        # Remove session from database
-        session.destroy()
-
     except sagapilot.SagapilotException, ex:
         print "Error: %s" % ex
+
+    finally:
+        # Remove session from database
+        session.destroy()
         
 
