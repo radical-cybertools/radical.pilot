@@ -11,23 +11,22 @@ if __name__ == "__main__":
         # and Unit Managers (with associated Pilots and ComputeUnits).
         session = sagapilot.Session(database_url=DBURL)
 
-        print "S UID           : {0} ".format(session.uid)
-        print "S Credentials   : {0} ".format(session.list_credentials())
-        print "S UnitManagers  : {0} ".format(session.list_unit_managers())
-        print "S PilotManagers : {0} ".format(session.list_pilot_managers())
+        # Add an ssh identity to the session.
+        cred = sinon.SSHCredential()
+        cred.user_id = CFG_USERNAME
 
-        # Add a Pilot Manager 
+        session.add_credential(cred)
+
+        # Add a Pilot Manager with a machine configuration file for FutureGrid
         pmgr = sagapilot.PilotManager(session=session)
-        print "PM UID          : {0} ".format( pmgr.uid )
-        print "PM Pilots       : {0} ".format( pmgr.list_pilots() )
 
         # Define a 2-core local pilot in /tmp/sagapilot.sandbox that runs 
         # for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
-        pdesc.resource  = "localhost"
-        pdesc.sandbox   = "/tmp/sagapilot.sandbox"
-        pdesc.runtime   = 15 # minutes 
-        pdesc.cores     = 2 
+        pdesc.resource  = "india.futuregrid.org"
+        pdesc.sandbox   = "$HOME/sagapilot.sandbox"
+        pdesc.runtime   = 15 # minutes
+        pdesc.cores     = 16 
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

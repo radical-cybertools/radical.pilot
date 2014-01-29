@@ -4,14 +4,21 @@
 Getting Started 
 ***************
 
-After you have successfully installed SAGA-Pilot (see chapter :ref:`chapter_installation`) on your system, let's write our first SAGA-Python application. 
+In this chapter we explain the main components of SAGA-Pilot and the
+foundations of their function and their interplay. **It is highly recommended
+that you carefully read and understand all of this** before you go off and
+start developing your own applications. For your convenience, you can find a
+fully working example at the end of this page.
 
-[Description of what the getting started example does]
+After you have worked through this chapter, you will understand how to launch
+a local ComputePilot and use a UnitManager to schedule and run ComputeUnits
+(task) on it. Throughout this chapter you will also find links to more
+advanced topics like launching ComputePilots on remote HPC clusters and 
+scheduling. 
 
- .. note:: The following sections explain the individual components of 
-           SAGA-Pilot in detail. It is highly recommended that you carefully 
-           read and understand all of this. For your convenience, you can find
-           a fully working example at the end of this page.
+.. note:: This chapter assumes that you have successfully installed SAGA-Pilot on
+          (see chapter :ref:`chapter_installation`).
+
 
 Loading the Module
 ------------------
@@ -88,6 +95,10 @@ Session as required. This  is covered in
     print "Credentials   : {0} ".format( session.list_credentials() )
     print "UnitManagers  : {0} ".format( session.list_unit_managers() )
     print "PilotManagers : {0} ".format( session.list_pilot_managers() )
+
+.. note:: In this introduction we don't use :class:`sagapilot.SSHCredential`
+   since they are not required for local ComputePilots. SSHCredentials
+   are described in :ref:`chapter_example_remote_and_hpc_pilots`.
 
 
 Creating a ComputePilot
@@ -265,9 +276,9 @@ passes the ComputeUnits on to the ComputePilot.
     umgr.wait_units()
 
 The :func:`sagapilot.UnitManager.wait_units` call blocks until all ComputeUnits have
-been  executed by the UnitManager. Simple control flows / depdendcies can be
+been  executed by the UnitManager. Simple control flows / dependencies can be
 realized with ``wait_units()``, however, for more complex control flows it can
-become inefficent due to its blocking nature. For this reason SAGA-Pilot also
+become inefficient due to its blocking nature. To address this, SAGA-Pilot also
 provides mechanisms for asynchronous notifications and callbacks. This is 
 discussed in more detail in :ref:`chapter_example_async`.
 
@@ -281,9 +292,39 @@ Results and Inspection
 
 .. code-block:: python
 
-        for unit in umgr.get_units():
-            print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}".format(
-                unit.uid, unit.state, unit.start_time, unit.stop_time)
+    for unit in umgr.get_units():
+        print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}".format(
+            unit.uid, unit.state, unit.start_time, unit.stop_time)
+
+Cleanup and Shutdown
+--------------------
+
+When your application has finished executing all ComputeUnits, it should make an
+attempt to cancel the ComputePilot. If a ComputePilot is not canceled, it will 
+continue running until it reaches is ``runtime`` limit, even if application 
+has terminated. 
+
+An individual ComputePilot is canceled by calling :func:`sagapilot.ComputePilot.cancel`.
+Alternatively, all ComputePilots of a PilotManager can be canceled by calling 
+:func:`sagapilot.PilotManager.cancel_pilots`.
+
+.. code-block:: python 
+
+    pmgr.cancel_pilots()
+
+Even if the ComputePilots haven been canceled and your application has
+terminated,  your Session information is kept persistently in MongoDB. Keeping
+the information in the database allows you to reconnect (see
+:ref:`chapter_example_disconnect_reconnect`) to your Session at a later point
+in time. This can for example  be useful for
+:ref:`chapter_example_execution_profiling`. However, if you don't plan to use
+the Session data any further, you should call
+:func:`sagapilot.Session.destroy`. This will remove it **permanently** from
+the database.
+
+.. code-block:: python
+
+    session.destroy()
 
 The Complete Example
 --------------------
