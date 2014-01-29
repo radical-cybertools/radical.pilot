@@ -346,7 +346,7 @@ class PilotManager(attributes.Attributes):
                                 if pilot_description['description'].sandbox.startswith(vp):
                                     is_valid = True
                             if is_valid is False:
-                                raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (resource_key, pilot_description['description'].working_directory, resource_cfg["valid_roots"]))
+                                raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (resource_key, pilot_description['description'].sandbox, resource_cfg["valid_roots"]))
 
                         fs.path += pilot_description['description'].sandbox
 

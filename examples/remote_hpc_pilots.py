@@ -1,6 +1,7 @@
 import sagapilot
 
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
+RFILE  = "https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json"
 
 #-------------------------------------------------------------------------------
 #
@@ -12,13 +13,13 @@ if __name__ == "__main__":
         session = sagapilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        cred = sinon.SSHCredential()
-        cred.user_id = CFG_USERNAME
+        cred = sagapilot.SSHCredential()
+        cred.user_id = "oweidner"
 
         session.add_credential(cred)
 
         # Add a Pilot Manager with a machine configuration file for FutureGrid
-        pmgr = sagapilot.PilotManager(session=session)
+        pmgr = sagapilot.PilotManager(session=session, resource_configurations=RFILE)
 
         # Define a 2-core local pilot in /tmp/sagapilot.sandbox that runs 
         # for 10 minutes.
@@ -44,18 +45,12 @@ if __name__ == "__main__":
         
             compute_units.append(cu)
 
-        # # Combine the pilot, the workload and a scheduler via 
-        # # a UnitManager.
-        umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+        umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN)
         umgr.add_pilots(pilot)
         
         umgr.submit_units(compute_units)
 
-        # unit_list = um.list_units()
-        # print "* Submitted %s compute units: %s" % (len(unit_list), unit_list)
-
-        # # Wait for all compute units to finish.
-        # print "* Waiting for all compute units to finish..."
+        # Wait for all compute units to finish.
         umgr.wait_units()
 
         for unit in umgr.get_units():
@@ -65,10 +60,11 @@ if __name__ == "__main__":
         # Cancel all pilots.
         pmgr.cancel_pilots()
 
-        # Remove session from database
-        session.destroy()
-
     except sagapilot.SagapilotException, ex:
         print "Error: %s" % ex
+
+    finally:
+        # Remove session from database
+        session.destroy()
         
 
