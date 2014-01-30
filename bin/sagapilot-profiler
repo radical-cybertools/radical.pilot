@@ -33,7 +33,7 @@ def get_data(logger, session_id, database_url, database_name):
     #        } 
     #    }
     #]
-    pilot_data = []
+    pilot_info = []
 
     task_data  = []
 
@@ -54,20 +54,20 @@ def get_data(logger, session_id, database_url, database_name):
 
                 res_details = pilot.resource_details
 
-                pilot_data.append({
-                    'id'          : pilot.uid,
-                    'description' : pilot.description,
-                    'cores'       : res_details['cores_per_node'],
-                    'nodes'       : res_details['nodes'],
-                    'timing'      : {
-                          'scheduled' : pilot.submission_time,
-                          'started'   : pilot.start_time,
-                          'stopped'   : pilot.stop_time,
+                pilot_info.append({
+                    'id'             : pilot.uid,
+                    'description'    : pilot.description,
+                    'cores_per_node' : res_details['cores_per_node'],
+                    'nodes'          : res_details['nodes'],
+                    'timing'         : {
+                          'scheduled'    : pilot.submission_time,
+                          'started'      : pilot.start_time,
+                          'stopped'      : pilot.stop_time,
                     } 
                 })
 
         #pp = pprint.PrettyPrinter(indent=4)
-        #pp.pprint(pilot_data)
+        #pp.pprint(pilot_info)
 
         # ------------------------------------------------------------
         # TASKS
@@ -90,7 +90,7 @@ def get_data(logger, session_id, database_url, database_name):
                 })
 
 
-        alldata = {"ComputePilots" : pilot_data, "ComputeUnits" : task_data}
+        alldata = {"ComputePilots" : pilot_info, "ComputeUnits" : task_data}
         pprint.pprint(alldata)
 
 
