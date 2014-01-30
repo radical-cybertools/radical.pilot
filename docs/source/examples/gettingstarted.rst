@@ -47,7 +47,7 @@ Session as root. Each Session can have  zero or more
 :class:`sagapilot.SSHCredential`, :class:`sagapilot.PilotManager` and
 :class:`sagapilot.UnitManager` attached to it.
 
-.. code-block:: bash
+.. code-block:: text
 
      (~~~~~~~~~)
      (         ) <---- [Session]
@@ -168,7 +168,7 @@ ComputePilot also has a unique identifier (``uid``)
         files of the ComputePilot agent(s) ``[pilot-<uid>]`` as well as the working
         directories and output of the individual ComputeUnits (``[task-<uid>]``).
 
-        .. code-block:: bash
+        .. code-block:: text
 
             [/<sandbox-dir>/]
             |
@@ -240,7 +240,7 @@ more ComputePilots, added via :func:`sagapilot.UnitManager.add_pilots` and a
 submitted CUs to one of its ComputePilots based on the selected scheduling
 algorithm.
 
-.. code-block:: bash
+.. code-block:: text
 
       +----+  +----+  +----+  +----+       +----+ 
       | CU |  | CU |  | CU |  | CU |  ...  | CU |

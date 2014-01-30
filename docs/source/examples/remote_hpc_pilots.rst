@@ -29,8 +29,54 @@ supports HPC clusters running the following queuing systems:
 Authentication and SSH Credentials 
 ----------------------------------
 
-ssh creds...
+SAGA-Pilot's remote capabilities are built to a large extend on top of SSH and
+SFTP. ComputePilot agents are transferred on-the-fly via SFTP and launched via
+SSH on the remote clusters. Once a ComputePilot agent has been started, the 
+rest of the communication between SAGA-Pilot and the agent happens through
+MongoDB (see diagram below).
 
+.. code-block:: text
+
+    +--------------------------------------+
+    |              SAGA-Pilot              |
+    +--------------------------------------+
+          ^                      |
+          | <MDB>                | <SSH/SFTP>
+          v                      |
+     (~~~~~~~~~)           +-----|---------+
+     (         )           |  HPC|Cluster  |
+     ( MongoDB )           |-----v---------|
+     (         )   <MDB>   | +~~~~~~~+     |
+     (_________)<----------->| Agent |     |
+                           | +~~~~~~~+     |
+                           +---------------+
+
+In order to allow SAGA-Pilot to launch ComputePilot agents on a remote  host
+via SSH, you need to provided it with the right credentials. This  is done via
+the :class:`sagapilot.SSHCredential` class.
+
+.. note:: In order for SSHCredentials to work, you need to be able to manually
+          SSH into the target host, i.e., you need to have either a username
+          and password or a public / private key set for the host. The 
+          most practical way is to set up password-less public-key authentication
+          on the remote host. More about password-less keys can be found 
+          `HERE <http://www.debian-administration.org/articles/152>`_.
+
+Assuming that you have password-less public-key authentication set up for 
+a remote host, the most common way to use SSHCredentials is to set the 
+user name you use on the remote host:
+
+.. code-block:: python
+
+      session = sagapilot.Session(database_url=DBURL)
+
+      cred = sagapilot.SSHCredential()
+      cred.user_id = "tg802352"
+
+      session.add_credential(cred)
+
+Once you have added a credential to a session, it is available to all
+PilotManagers that are created withing this session.
 
 Launching an HPC ComputePilot
 -----------------------------
