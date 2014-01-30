@@ -60,8 +60,8 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for unit in umgr.get_units():
-            print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}".format(
-                unit.uid, unit.state, unit.start_time, unit.stop_time)
+            print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}, EXEC_LOC: {4}".format(
+                unit.uid, unit.state, unit.start_time, unit.stop_time, unit.execution_details)
         
         # Cancel all pilots.
         pmgr.cancel_pilots()

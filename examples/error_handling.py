@@ -1,25 +1,15 @@
 #!/usr/bin/env python
 
-""" LINK TO TUTORIAL PAGE
-"""
-
-__copyright__ = "Copyright 2014, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
 import sys
-import sinon
+import sagapilot
 import time
 
-PWD    = os.path.dirname(os.path.abspath(__file__))
-DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
-
-#-------------------------------------------------------------------------------
-# Change these according to your needs 
-CFG_USERNAME    = "oweidner"
-CFG_RESOURCE    = "localhost"    
-CFG_WORKING_DIR = "/tmp/sinon/"
+PWD   = os.path.dirname(os.path.abspath(__file__))
+DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 
 #-------------------------------------------------------------------------------
 #
@@ -34,28 +24,28 @@ def synchronous_error_handling():
     try:
         # Create a new session. A session is a set of Pilot Managers
         # and Unit Managers (with associated Pilots and ComputeUnits).
-        session = sinon.Session(database_url=DBURL)
+        session = sagapilot.Session(database_url=DBURL)
 
         # Create a new pilot manager.
-        pm = sinon.PilotManager(session=session, resource_configurations=FGCONF)
+        pm = sagapilot.PilotManager(session=session)
 
         # Create a new pilot with 128 cores. This will most definetly 
         # fail on 'localhost' because not enough cores are available. 
-        pd = sinon.ComputePilotDescription()
-        pd.resource          = "localhost"
-        pd.working_directory = "/tmp/sinon"
-        pd.cores             = 128
-        pd.run_time          = 10 
+        pd = sagapilot.ComputePilotDescription()
+        pd.resource  = "localhost"
+        pd.sandbox   = "/tmp/sagapilot.sandbox"
+        pd.cores     = 128
+        pd.runtime   = 10 
 
         pilot = pm.submit_pilots(pd)
-        state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED], timeout=60)
+        state = pilot.wait(state=[sagapilot.states.RUNNING, sagapilot.states.FAILED], timeout=60)
 
         # If the pilot is in FAILED state it probably didn't start up properly. 
-        if state == sinon.states.FAILED:
+        if state == sagapilot.states.FAILED:
             print pilot.state_details[-1] # Get the last log message
             return 1
         # The timeout was reached if the pilot state is still FAILED.
-        elif state == sinon.states.PENDING:
+        elif state == sagapilot.states.PENDING:
             print "Timeout..."
             return 1
         # If the pilot is not in FAILED or PENDING state, it is probably running.
@@ -65,7 +55,7 @@ def synchronous_error_handling():
             pilot.cancel()
             return 0
 
-    except sinon.SinonException, ex:
+    except sagapilot.SagapilotException, ex:
         # This catches all exeptions but no runtime errors.
         print "Error: %s" % ex
         return -1

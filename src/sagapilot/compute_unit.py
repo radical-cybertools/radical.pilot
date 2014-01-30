@@ -34,6 +34,45 @@ PILOT             = 'Pilot'
 # ------------------------------------------------------------------------------
 #
 class ComputeUnit(attributes.Attributes):
+    """TODO: document me!
+
+    .. data:: description 
+
+       (`Attribute`) Returns the ComputePilotDescription that was used to create the ComputeUnit [read-only].
+
+    .. data:: state 
+
+       (`Attribute`) The execution state of the ComputeUnit [read-only].
+
+    .. data:: state_details 
+
+       (`Attribute`) The logs of the ComputeUnit (if any) [read-only].
+
+    .. data:: execution_details 
+
+       (`Attribute`) The execution details, like the node and CPU(s) the ComputeUnit was executed on [read-only].
+
+    .. data:: submission_time 
+
+       (`Attribute`) The time and date the ComputeUnit was submitted to the UnitManager [read-only].
+
+    .. data:: start_time 
+
+       (`Attribute`) The time and date the ComputeUnit started executing on a ComputePilot [read-only].
+
+    .. data:: stop_time 
+
+       (`Attribute`) The time and date the ComputeUnit finished execution [read-only].
+
+    .. data:: unit_manager 
+
+       (`Attribute`) The UID of the UnitManager the ComputeUnit is associated with [read-only].
+
+    .. data:: pilot 
+
+       (`Attribute`) The UID of the ComputePilot that executed the ComputeUnit [read-only].
+
+    """
 
     # --------------------------------------------------------------------------
     #

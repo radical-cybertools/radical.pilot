@@ -4,11 +4,12 @@
 Getting Started 
 ***************
 
+**This is where you should start if you are new to SAGA-Pilot. It is highly
+recommendedthat you carefully read and understand all of this before you go
+off and start developing your own applications.**
+
 In this chapter we explain the main components of SAGA-Pilot and the
-foundations of their function and their interplay. **It is highly recommended
-that you carefully read and understand all of this** before you go off and
-start developing your own applications. For your convenience, you can find a
-fully working example at the end of this page.
+foundations of their function and their interplay. For your convenience, you can find a fully working example at the end of this page.
 
 After you have worked through this chapter, you will understand how to launch
 a local ComputePilot and use a UnitManager to schedule and run ComputeUnits
@@ -325,6 +326,15 @@ the database.
 .. code-block:: python
 
     session.destroy()
+
+Whats Next?
+-----------
+
+Now that you understand the basic mechanics of SAGA-Python, it's time to dive into some of the more advanced topics. We suggest that you check out the following chapters next: 
+
+* :ref:`chapter_example_errorhandling`. Error handling is crucial for any SAGA-Pilot application! This chapter captures everything from exception handling to state callbacks. 
+* :ref:`chapter_example_remote_and_hpc_pilots`. In this chapter we explain how to launch ComputePilots on remote HPC clusters, something you most definetly want to do.
+* :ref:`chapter_example_disconnect_reconnect`. This chapter is very useful for example if you work with long-running tasks that don't need conintuous supervision. 
 
 The Complete Example
 --------------------
