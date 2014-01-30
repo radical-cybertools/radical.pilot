@@ -34,13 +34,13 @@ UID  = 'UID'
 #
 class PilotManager(attributes.Attributes):
     """A PilotManager holds :class:`sagapilot.ComputePilot` instances that are 
-    submitted via the :meth:`sagapilot.ComputePilotManager.submit_pilots` method.
+    submitted via the :func:`sagapilot.PilotManager.submit_pilots` method.
     
     It is possible to attach one or more :ref:`chapter_machconf` 
     to a PilotManager to outsource machine specific configuration 
     parameters to an external configuration file. 
 
-    Each PilotManager has a unique identifier :data:`sagapilot.ComputePilotManager.uid`
+    Each PilotManager has a unique identifier :data:`sagapilot.PilotManager.uid`
     that can be used to re-connect to previoulsy created PilotManager in a
     given :class:`sagapilot.Session`.
 
@@ -48,9 +48,9 @@ class PilotManager(attributes.Attributes):
 
         s = sagapilot.Session(database_url=DBURL)
         
-        pm1 = sagapilot.ComputePilotManager(session=s, resource_configurations=RESCONF)
+        pm1 = sagapilot.PilotManager(session=s, resource_configurations=RESCONF)
         # Re-connect via the 'get()' method.
-        pm2 = sagapilot.ComputePilotManager.get(session=s, pilot_manager_id=pm1.uid)
+        pm2 = sagapilot.PilotManager.get(session=s, pilot_manager_id=pm1.uid)
 
         # pm1 and pm2 are pointing to the same PilotManager
         assert pm1.uid == pm2.uid
@@ -79,7 +79,7 @@ class PilotManager(attributes.Attributes):
               entries in the  files via the :class:`ComputePilotDescription`.
               For example::
 
-                  pm = sagapilot.ComputePilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+                  pm = sagapilot.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
                   pd = sagapilot.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
@@ -89,7 +89,7 @@ class PilotManager(attributes.Attributes):
 
         **Returns:**
 
-            * A new `PilotManager` object [:class:`sagapilot.ComputePilotManager`].
+            * A new `PilotManager` object [:class:`sagapilot.PilotManager`].
 
         **Raises:**
             * :class:`sagapilot.SagapilotException`

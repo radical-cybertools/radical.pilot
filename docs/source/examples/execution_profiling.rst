@@ -47,7 +47,7 @@ A typical invocation looks like this:
 
 The result is a JSON string containing informations about ComputePilots and ComputeUnits. 
 
-.. code-block:: JSON
+.. code-block:: text
 
     {'ComputePilots': [{'cores': 8,
                         'description': {u'Cores': 2,

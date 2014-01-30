@@ -1,7 +1,7 @@
 import sagapilot
 
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
-RFILE  = "https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json"
+RCONF  = "https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json"
 
 #-------------------------------------------------------------------------------
 #
@@ -19,15 +19,15 @@ if __name__ == "__main__":
         session.add_credential(cred)
 
         # Add a Pilot Manager with a machine configuration file for FutureGrid
-        pmgr = sagapilot.PilotManager(session=session, resource_configurations=RFILE)
+        pmgr = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
 
-        # Define a 2-core local pilot in /tmp/sagapilot.sandbox that runs 
-        # for 10 minutes.
+        # Define a 32-core on stamped that runs for 15 mintutes and 
+        # uses $HOME/sagapilot.sandbox as sandbox directoy. 
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource  = "stampede.tacc.utexas.edu"
         pdesc.sandbox   = "/home1/00988/tg802352/sagapilot.sandbox"
         pdesc.runtime   = 15 # minutes
-        pdesc.cores     = 16 
+        pdesc.cores     = 32 
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

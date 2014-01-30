@@ -52,6 +52,11 @@ class ComputeUnitDescription (attributes.Attributes) :
 
        (`Attribute`) Environment variables to set in the execution environment (`dict`) [`optional`].
 
+    .. data:: cores 
+
+       (`Attribute`) The number of cores (int) required by the executable.
+
+
     """
     def __init__ (self, vals={}) : 
 
