@@ -155,8 +155,8 @@ class ExecutionEnvironment(object):
                 eenv._launch_command = eenv._aprun_location      
 
         elif launch_method == LAUNCH_METHOD_LOCAL:
-                eenv._launch_method = LAUNCH_METHOD_LOCAL
-                eenv._launch_command = None
+            eenv._launch_method = LAUNCH_METHOD_LOCAL
+            eenv._launch_command = None
 
         # create node dictionary
         for rn in eenv._raw_nodes:
@@ -173,6 +173,11 @@ class ExecutionEnvironment(object):
         cores_avail = len(eenv._nodes) * int(eenv._cores_per_node)
         if cores_avail < int(requested_cores):
             raise Exception("Not enought cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
+
+        if launch_method == LAUNCH_METHOD_LOCAL:
+            # make sure that we don't hog all cores with a local
+            # pilot but only the number of cores that were allocated 
+            eenv._cores_per_node = int(requested_cores)
 
         return eenv
 
