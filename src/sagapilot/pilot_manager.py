@@ -167,7 +167,10 @@ class PilotManager(object):
         """Le destructeur.
         """
         logger.debug("__del__(): PilotManager '%s'." % self._uid )
+        # Stop the worker process
         self._worker.stop()
+        # Remove worker from registry
+        self._session._process_registry.remove(self._uid)
 
     #---------------------------------------------------------------------------
     #

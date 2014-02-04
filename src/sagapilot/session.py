@@ -47,7 +47,7 @@ class _ProcessRegistry(object):
     def keys(self):
         """List all keys of all process in the registry.
         """
-        return self._dict.keys
+        return self._dict.keys()
 
     def remove(self, key):
         """Remove a process from the registry.
@@ -83,8 +83,8 @@ class Session(object):
         """Le destructeur.
         """
         logger.debug("__del__(): Session '%s'." % self._session_uid )
-        if len(self._process_registry.keys) > 0:
-            logger.warning("Active workers left in registry %s." % self._process_registry.keys)
+        if len(self._process_registry.keys()) > 0:
+            logger.warning("Active workers left in registry: %s." % self._process_registry.keys())
 
     #---------------------------------------------------------------------------
     #

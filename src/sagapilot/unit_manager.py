@@ -121,6 +121,8 @@ class UnitManager(object):
         """
         logger.debug("__del__(): UnitManager '%s'." % self._uid )
         self._worker.stop()
+        # Remove worker from registry
+        self._session._process_registry.remove(self._uid)
 
     #---------------------------------------------------------------------------
     #
