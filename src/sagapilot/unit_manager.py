@@ -492,6 +492,7 @@ class UnitManager(object):
             all_done = True
 
             for wu_state in self._DB.get_workunit_states(workunit_manager_id=self._uid):
+                print "state: %s -- waiting for %s" % (wu_state, state)
                 if wu_state not in state:
                     all_done = False
                     break # leave for loop

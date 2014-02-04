@@ -64,8 +64,8 @@ class TestRemoteSubmission(unittest.TestCase):
         cpd = sinon.ComputePilotDescription()
         cpd.resource          = self.test_resource
         cpd.cores             = self.test_cores
-        cpd.run_time          = 5
-        cpd.working_directory = self.test_workdir 
+        cpd.runtime           = 5
+        cpd.sandbox           = self.test_workdir 
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -120,8 +120,8 @@ class TestRemoteSubmission(unittest.TestCase):
         cpd = sinon.ComputePilotDescription()
         cpd.resource          = self.test_resource
         cpd.cores             = self.test_cores
-        cpd.run_time          = 2
-        cpd.working_directory = self.test_workdir 
+        cpd.runtime           = 2
+        cpd.sandbox           = self.test_workdir 
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -158,8 +158,8 @@ class TestRemoteSubmission(unittest.TestCase):
         cpd = sinon.ComputePilotDescription()
         cpd.resource          = self.test_resource
         cpd.cores             = self.test_cores
-        cpd.run_time          = 2
-        cpd.working_directory = self.test_workdir 
+        cpd.runtime           = 2
+        cpd.sandbox           = self.test_workdir 
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
