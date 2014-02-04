@@ -74,11 +74,13 @@ if __name__ == "__main__":
         # Cancel all pilots.
         pmgr.cancel_pilots()
 
-        # Remove session from database
-        #session.destroy()
+        import gc
+        rs = gc.get_referrers(pilot)
+        for r in rs:
+            print "* %s\n" % r 
 
-        import time
-        time.sleep(5)
+        # Remove session from database
+        session.destroy()
 
     except sagapilot.SagapilotException, ex:
         print "Error: %s" % ex

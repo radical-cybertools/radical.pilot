@@ -10,11 +10,9 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sagapilot.states     as states
-import sagapilot.attributes as attributes
 import sagapilot.exceptions as exceptions
 
 from sagapilot.utils.logger     import logger
-
 
 import time
 
@@ -37,12 +35,15 @@ UNITS             = 'Units'
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilot (attributes.Attributes) :
+class ComputePilot (object):
+    """A ComputePilot represent a resource overlay on a local or remote
+       resource. 
+    """
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self):
-        """ Le constructeur. Not meant to be called directly.
+        """Le constructeur. Not meant to be called directly.
         """
         # 'static' members
         self._uid = None
@@ -52,63 +53,12 @@ class ComputePilot (attributes.Attributes) :
         # database handle
         self._DB = None
 
-        # initialize attributes
-        attributes.Attributes.__init__(self)
-
-        # set attribute interface properties
-        self._attributes_extensible(False)
-        self._attributes_camelcasing(True)
-
-        # The UID attribute
-        self._attributes_register(UID, self._uid, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(UID, self._get_uid_priv)
-
-        # The description attribute
-        self._attributes_register(DESCRIPTION, self._description, attributes.ANY, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(DESCRIPTION, self._get_description_priv)
-
-        # The state attribute
-        self._attributes_register(STATE, states.UNKNOWN, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STATE, self._get_state_priv)
-
-        # The state details a.k.a. attribute 
-        self._attributes_register(STATE_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STATE_DETAILS, self._get_state_detail_priv)
-
-        # The resources details a.k.a additional informations about the resource the pilot is using
-        self._attributes_register(RESOURCE_DETAILS, None, attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(RESOURCE_DETAILS, self._get_resource_detail_priv)
-
-        # The units assigned to this pilot
-        self._attributes_register(UNITS, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(UNITS, self._get_units_priv)
-
-        # The unit managers this pilot is attached to
-        self._attributes_register(UNIT_MANAGERS, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(UNIT_MANAGERS, self._get_unit_managers_priv)
-
-        # The pilot manager this pilot is attached to
-        self._attributes_register(PILOT_MANAGER, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(PILOT_MANAGER, self._get_pilot_manager_priv)
-
-        # The submission time
-        self._attributes_register(SUBMISSION_TIME, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(SUBMISSION_TIME, self._get_submission_time_priv)
-
-        # The start time
-        self._attributes_register(START_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(START_TIME, self._get_start_time_priv)
-
-        # The stop time
-        self._attributes_register(STOP_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STOP_TIME, self._get_stop_time_priv)
-
     # --------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
         """
-        pass
+        print "CP Destructor"
 
     # --------------------------------------------------------------------------
     #
@@ -156,8 +106,32 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_uid_priv(self):
-        """PRIVATE: Returns the Pilot's unique identifier.
+    def as_dict(self):
+        """Returns a Python dictionary representation of the 
+           ComputePilot object.
+        """
+        obj_dict = {
+            'uid'              : self.uid, 
+            'state'            : self.state,
+            'resource'         : self.resource,
+            'submission_time'  : self.submission_time, 
+            'start_time'       : self.start_time, 
+            'stop_time'        : self.stop_time
+        }
+        return obj_dict
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the ComputePilot object.
+        """
+        return str(self.as_dict())
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def uid(self):
+        """Returns the Pilot's unique identifier.
 
         The uid identifies the Pilot within the :class:`PilotManager` and 
         can be used to retrieve an existing Pilot.
@@ -172,8 +146,9 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_description_priv(self):
-        """PRIVATE: Returns the pilot description the pilot was started with.
+    @property
+    def description(self):
+        """Returns the pilot description the pilot was started with.
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
@@ -182,8 +157,9 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_state_priv(self):
-        """PRIVATE: Returns the current state of the pilot.
+    @property
+    def state(self):
+        """Returns the current state of the pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
@@ -202,8 +178,9 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_state_detail_priv(self):
-        """PRIVATE: Returns the current state of the pilot.
+    @property 
+    def state_detail(self):
+        """Returns the current state of the pilot.
 
         This 
         """
@@ -226,8 +203,9 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_resource_detail_priv(self):
-        """PRIVATE: Returns the resource details of the pilot.
+    @property
+    def resource_detail(self):
+        """Returns the resource details of the pilot.
 
         This 
         """
@@ -254,7 +232,8 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_pilot_manager_priv(self):
+    @property
+    def pilot_manager(self):
         """ Returns the pilot manager object for this pilot.
         """
         if not self._uid:
@@ -264,7 +243,8 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_unit_managers_priv(self):
+    @property
+    def unit_managers(self):
         """ Returns the pilot manager object for this pilot.
         """
         if not self._uid:
@@ -275,7 +255,8 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_units_priv(self):
+    @property
+    def units(self):
         """ Returns the units scheduled for this pilot.
         """
         # Check if this instance is valid
@@ -286,7 +267,8 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_submission_time_priv(self):
+    @property
+    def submission_time(self):
         """ Returns the time the pilot was submitted. 
         """
         # Check if this instance is valid
@@ -305,7 +287,8 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_start_time_priv(self):
+    @property
+    def start_time(self):
         """ Returns the time the pilot was started on the backend. 
         """
         if not self._uid:
@@ -323,7 +306,8 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_stop_time_priv(self):
+    @property
+    def stop_time(self):
         """ Returns the time the pilot was stopped. 
         """
         if not self._uid:
@@ -341,8 +325,9 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_resource_priv(self):
-        """ Returns the time the pilot was stopped. 
+    @property
+    def resource(self):
+        """ Returns the resource. 
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -357,28 +342,7 @@ class ComputePilot (attributes.Attributes) :
 
         return pilots_json[0]['description']['Resource']
 
-    # --------------------------------------------------------------------------
-    #
-    def as_dict(self):
-        """Returns information about the pilot as a Python dictionary.
-        """
-        info_dict = {
-            'type'            : 'ComputePilot', 
-            'id'              : self._get_uid_priv(), 
-            #'state'           : self._get_state_priv(),
-            #'resource'        : self._get_resource_priv(),
- #           'submission_time' : self._get_submission_time_priv(), 
- #           'start_time'      : self._get_start_time_priv(), 
- #           'stop_time'       : self._get_stop_time_priv()
-        }
-        return info_dict
 
-    # --------------------------------------------------------------------------
-    #
-    def __str__(self):
-        """Returns a string representation of the pilot.
-        """
-        return str(self.as_dict())
 
     # --------------------------------------------------------------------------
     #

@@ -18,7 +18,7 @@ from sagapilot.utils.logger  import logger
 from sagapilot.mpworker import PilotManagerWorker
 
 import sagapilot.states     as states
-import sagapilot.attributes as attributes
+#import sagapilot.attributes as attributes
 import sagapilot.exceptions as exceptions
 
 from bson.objectid import ObjectId
@@ -38,7 +38,7 @@ UID  = 'UID'
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager(attributes.Attributes):
+class PilotManager(object):
     """A PilotManager holds :class:`sagapilot.ComputePilot` instances that are 
     submitted via the :func:`sagapilot.PilotManager.submit_pilots` method.
     
@@ -100,23 +100,9 @@ class PilotManager(attributes.Attributes):
         **Raises:**
             * :class:`sagapilot.SagapilotException`
         """
-        # Each pilot manager has a worker thread associated with it. The task of the 
-        # worker thread is to check and update the state of pilots, fire callbacks
-        # and so on. 
-
-        self._DB = session._dbs
+        self._DB      = session._dbs
         self._session = session
-
-        # initialize attributes
-        attributes.Attributes.__init__(self)
-
-        # set attribute interface properties
-        self._attributes_extensible(False)
-        self._attributes_camelcasing(True)
-
-        # The UID attributes
-        self._attributes_register(UID, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(UID, self._get_uid_priv)
+        self._uid     = None
 
         if resource_configurations == "~=RECON=~":
             # When we get the "~=RECON=~" keyword as resource_configurations, we
@@ -172,13 +158,15 @@ class PilotManager(attributes.Attributes):
         self._worker = PilotManagerWorker(logger=logger, pilotmanager_id=self._uid, db_connection=session._dbs)
         self._worker.start()
 
-        # Register the worker with the session-wide process registry.
+        # Each pilot manager has a worker thread associated with it. The task of the 
+        # worker thread is to check and update the state of pilots, fire callbacks
+        # and so on. 
         self._session._process_registry.register(self._uid, self._worker)
 
     #---------------------------------------------------------------------------
     #
     def __del__(self):
-        print "calling destructor"
+        print "PM Destructor"
         self._worker.stop()
         self._worker.join()
 
@@ -212,7 +200,8 @@ class PilotManager(attributes.Attributes):
 
     #---------------------------------------------------------------------------
     #
-    def _get_uid_priv(self):
+    @property
+    def uid(self):
         """Returns the PilotManagers's unique identifier.
 
         The uid identifies the PilotManager within the :class:`sagapilot.Session`
@@ -227,17 +216,18 @@ class PilotManager(attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        """Returns information about the pilot manager as a Python dictionary.
+        """Returns a Python dictionary representation of the 
+           PilotManager object.
         """
-        info_dict = {
-            'uid'   : self._get_uid_priv()
+        obj_dict = {
+            'uid'   : self.uid
         }
-        return info_dict
+        return obj_dict
 
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        """Returns a string representation of the pilot manager.
+        """Returns a string representation of the PilotManager object.
         """
         return str(self.as_dict())
 

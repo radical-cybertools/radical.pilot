@@ -76,6 +76,9 @@ class Session(object):
         assert s1.uid == s2.uid
     """
 
+    def __del__(self):
+        print "Session D'tor"
+
 
     #---------------------------------------------------------------------------
     #
