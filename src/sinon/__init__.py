@@ -1,8 +1,8 @@
 """
 .. module:: sinon
    :platform: Unix
-   :synopsis: sinon is an alias namespace for sagapilot.
-
+   :synopsis: sinon is an alias namespace for sagapilot and kept around 
+              for backwards compatibility.
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
@@ -14,10 +14,9 @@ __license__   = "MIT"
 import sagapilot.types as types
 import sagapilot.states as states
 
-
 # ------------------------------------------------------------------------------
 # Scheduler name constant
-from sagapilot.plugins                   import *
+from sagapilot.scheduler                 import *
 
 # ------------------------------------------------------------------------------
 #

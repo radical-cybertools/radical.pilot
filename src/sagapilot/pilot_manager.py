@@ -166,9 +166,10 @@ class PilotManager(object):
     #---------------------------------------------------------------------------
     #
     def __del__(self):
-        print "PM Destructor"
+        """Le destructeur.
+        """
+        logger.debug("__del__(): PilotManager '%s'." % self._uid )
         self._worker.stop()
-        self._worker.join()
 
     #---------------------------------------------------------------------------
     #

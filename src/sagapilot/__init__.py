@@ -16,7 +16,7 @@ import sagapilot.states as states
 
 # ------------------------------------------------------------------------------
 # Scheduler name constant
-from sagapilot.plugins                   import *
+from sagapilot.scheduler                 import *
 
 # ------------------------------------------------------------------------------
 #

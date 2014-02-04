@@ -41,9 +41,9 @@ class PilotManagerWorker(multiprocessing.Process):
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
         self.daemon  = True
-        self._stop   = multiprocessing.Event()
 
-        self._info   = {"PID": self.pid}
+        self._stop   = multiprocessing.Event()
+        self._stop.clear()
 
         self.logger  = logger
         self._pm_id  = pilotmanager_id
@@ -61,6 +61,8 @@ class PilotManagerWorker(multiprocessing.Process):
         """stop() signals the process to finish up and terminate. 
         """
         self._stop.set()
+        self.join()
+        self.logger.info("Worker process (PID: %s) for PilotManager %s stopped." % (self.pid, self._pm_id))
 
     # ------------------------------------------------------------------------
     #
@@ -69,7 +71,6 @@ class PilotManagerWorker(multiprocessing.Process):
            PilotManagerWorker.start().
         """
         self.logger.info("Worker process for PilotManager %s started with PID %s." % (self._pm_id, self.pid))
-        self._info["PID"] = self.pid
 
         while not self._stop.is_set():
 
@@ -86,19 +87,8 @@ class PilotManagerWorker(multiprocessing.Process):
                 self._execute_startup_pilots(pilot_descriptions)
             except Empty:
                 pass
-
-            # catch DB error HERE
-
+            # TODO: catch DB error HERE
             time.sleep(1)
-
-        self.logger.info("Worker process (PID: %s) for PilotManager %s stopped." % (self.pid, self._pm_id))
-
-    # ------------------------------------------------------------------------
-    #
-    def info(self):
-        """info() returns runtime information about this process.
-        """
-        return self._info
 
     # ------------------------------------------------------------------------
     #

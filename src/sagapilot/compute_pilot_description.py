@@ -151,11 +151,6 @@ class ComputePilotDescription (attributes.Attributes) :
 
     # ------------------------------------------------------------------------------
     #
-    def __del__(self):
-        print "CPD Destructor"
-
-    # ------------------------------------------------------------------------------
-    #
     def __str__(self):
       """Returns string representation.
       """

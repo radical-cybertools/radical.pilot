@@ -58,7 +58,8 @@ class ComputePilot (object):
     def __del__(self):
         """Le destructeur.
         """
-        print "CP Destructor"
+        logger.debug("__del__(): ComputePilot '%s'." % self._uid )
+
 
     # --------------------------------------------------------------------------
     #
