@@ -1,3 +1,4 @@
+#pylint: disable=C0301, C0103, W0212
 """
 .. module:: sagapilot.session
    :platform: Unix
@@ -76,9 +77,14 @@ class Session(object):
         assert s1.uid == s2.uid
     """
 
+    #---------------------------------------------------------------------------
+    #
     def __del__(self):
-        print "Session D'tor"
-
+        """Le destructeur.
+        """
+        logger.debug("__del__(): Session '%s'." % self._session_uid )
+        if len(self._process_registry.keys) > 0:
+            logger.warning("Active workers left in registry %s." % self._process_registry.keys)
 
     #---------------------------------------------------------------------------
     #

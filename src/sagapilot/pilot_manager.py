@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.pilot_manager
    :platform: Unix
@@ -9,16 +11,12 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-#pylint: disable=C0301, C0103
-#pylint: disable=W0212
-
 from sagapilot.compute_pilot import ComputePilot
 from sagapilot.utils.logger  import logger
 
 from sagapilot.mpworker import PilotManagerWorker
 
 import sagapilot.states     as states
-#import sagapilot.attributes as attributes
 import sagapilot.exceptions as exceptions
 
 from bson.objectid import ObjectId
