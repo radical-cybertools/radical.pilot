@@ -37,12 +37,12 @@ class PLUGIN_CLASS (object) :
     #
     def schedule (self, unit_descriptions) :
 
-        if  not self._manager :
+        if  not self._manager:
             raise RuntimeError ('Unit scheduler is not initialized')
 
         pilots = self._manager.list_pilots ()
 
-        if not len (pilots) :
+        if not len (pilots):
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
         if len (pilots) > 1:

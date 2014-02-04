@@ -36,9 +36,3 @@ from sagapilot.compute_pilot_description import ComputePilotDescription
 #
 from sagapilot.utils.version             import version
 from sagapilot.utils.logger              import logger
-
-
-logger.info ('loading SAGA-Pilot version: %s' % version)
-
-
-

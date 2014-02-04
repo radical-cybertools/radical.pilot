@@ -84,7 +84,6 @@ class TestRemoteSubmission(unittest.TestCase):
 
         for cu in cus:
             assert cu is not None
-            assert cu.submission_time is not None
             assert cu.start_time is None
             assert cu.start_time is None
 
@@ -93,6 +92,8 @@ class TestRemoteSubmission(unittest.TestCase):
         for cu in cus:
             assert cu.state == sinon.states.RUNNING
             assert cu.start_time is not None
+            assert cu.submission_time is not None
+
 
         um.wait_units(state=[sinon.states.DONE, sinon.states.FAILED], timeout=self.test_timeout)
 
@@ -125,13 +126,14 @@ class TestRemoteSubmission(unittest.TestCase):
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
         assert pilot is not None
-        assert pilot.submission_time is not None
         #assert cu.start_time is None
         #assert cu.start_time is None
 
         pilot.wait(sinon.states.RUNNING, timeout=5.0)
         assert pilot.state == sinon.states.RUNNING
         assert pilot.start_time is not None
+        assert pilot.submission_time is not None
+
 
         # the pilot should finish after it has reached run_time
 
@@ -162,12 +164,12 @@ class TestRemoteSubmission(unittest.TestCase):
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
         assert pilot is not None
-        assert pilot.submission_time is not None
         #assert cu.start_time is None
         #assert cu.start_time is None
 
         pilot.wait(sinon.states.RUNNING, timeout=5.0)
         assert pilot.state == sinon.states.RUNNING
+        assert pilot.submission_time is not None
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time

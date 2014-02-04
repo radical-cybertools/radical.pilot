@@ -745,7 +745,7 @@ class Agent(threading.Thread):
                                 {"_id": ObjectId(self._pilot_id)}, 
                                 {"$set": {"info.state"     : "Canceled",
                                           "info.finished"   : datetime.datetime.utcnow()}})
-                            break
+                            return # leave loop immediatedly
 
                     # Check the pilot's workunit queue
                     new_wu_ids = p_cursor[0]['wu_queue']

@@ -241,27 +241,54 @@ class Session():
         return pilots_json
 
 
-    #---------------------------------------------------------------------------
-    #
-    def insert_pilots(self, pilot_manager_uid, pilot_descriptions):
-        """ Adds one or more pilots to the database.
-
-            Input is a list of sinon pilot descriptions.
-
-            Inserting any number of pilots costs one roundtrip. 
-
-                (1) Inserting pilot into pilot collection
+    def update_pilot_state(self, pilot_uid, started=None, finished=None, submitted=None, state=None, sagajobid=None, logs=None):
+        """Updates the information of a pilot.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_docs = []
+        # construct the update query 
+        set_query = dict()
+        push_query = dict()
+
+        if state is not None:
+            set_query["info.state"]     = state
+
+        if started is not None:
+            set_query["info.started"]   = started
+
+        if finished is not None:
+            set_query["info.finished"]  = finished
+
+        if submitted is not None:
+            set_query["info.submitted"] = submitted
+
+        if sagajobid is not None:
+            set_query["info.sagajobid"] = sagajobid
+
+        if logs is not None:
+            push_query["info.logs"]     = logs 
+
+        # update pilot entry.
+        self._p.update(
+            {"_id": ObjectId(pilot_uid)}, 
+            {"$set": set_query, "$pushAll": push_query},
+            multi=True
+        )
+
+    #---------------------------------------------------------------------------
+    #
+    def insert_new_pilots(self, pilot_manager_uid, pilot_descriptions):
+        """Adds one or more pilots to the database.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        #pilot_docs = []
         for pilot_id, pilot_desc in pilot_descriptions.iteritems():
             pilot_json = {
                 "_id"           : pilot_id,
-                "description"   : pilot_desc['description'].as_dict(),
-                "wu_queue"      : [],
-                "command"       : None,
+                "description"   : pilot_desc['description'],
                 "info"          : 
                 {
                     "submitted"      : pilot_desc['info']['submitted'],
@@ -276,17 +303,12 @@ class Session():
                 {
                     "pilotmanager"   : pilot_manager_uid,
                     "unitmanager"    : None
-                }
+                },
+                "wu_queue"      : [],
+                "command"       : None,
             }
-            pilot_docs.append(pilot_json)
-            
-        pilot_ids = self._p.insert(pilot_docs)
 
-        # return the object id as a string
-        pilot_id_strings = []
-        for pilot_id in pilot_ids:
-            pilot_id_strings.append(str(pilot_id))
-        return pilot_id_strings
+            self._p.insert(pilot_json, upsert=False)
 
     #---------------------------------------------------------------------------
     #
@@ -495,7 +517,7 @@ class Session():
 
         for pilot_id in pilot_ids:
             self._p.update({"_id": ObjectId(pilot_id)}, 
-                           {"$set": {"links.unitmanager" : unit_manager_id}})
+                           {"$set": {"links.unitmanager" : unit_manager_id}}, True)
 
     #---------------------------------------------------------------------------
     #
@@ -508,7 +530,7 @@ class Session():
         # Add the ids to the pilot's queue
         for pilot_id in pilot_ids:
             self._p.update({"_id": ObjectId(pilot_id)}, 
-                           {"$set": {"links.unitmanager" : None}})
+                           {"$set": {"links.unitmanager" : None}}, True)
 
     #---------------------------------------------------------------------------
     #

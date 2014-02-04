@@ -52,11 +52,11 @@ class TestPilot(unittest.TestCase):
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
         assert pilot is not None
-        assert pilot.submission_time is not None
         #assert cu.start_time is None
         #assert cu.start_time is None
 
         pilot.wait(sinon.states.RUNNING)
+        assert pilot.submission_time is not None
         assert pilot.state == sinon.states.RUNNING
         assert pilot.start_time is not None
 
@@ -84,11 +84,11 @@ class TestPilot(unittest.TestCase):
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
         assert pilot is not None
-        assert pilot.submission_time is not None
         #assert cu.start_time is None
         #assert cu.start_time is None
 
         pilot.wait(sinon.states.RUNNING)
+        assert pilot.submission_time is not None
         assert pilot.state == sinon.states.RUNNING
         assert pilot.start_time is not None
 

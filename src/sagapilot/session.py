@@ -20,6 +20,39 @@ from sagapilot.db                import DBException
 import sagapilot.exceptions
 from bson.objectid import ObjectId
 
+# ------------------------------------------------------------------------------
+#
+class _ProcessRegistry(object):
+    """A _ProcessRegistry contains a dictionary of all worker processes 
+    that are currently active.
+    """
+    def __init__(self):
+        self._dict = dict()
+
+    def register(self, key, process):
+        """Add a new process to the registry.
+        """
+        if key not in self._dict:
+            self._dict[key] = process
+
+    def retrieve(self, key):
+        """Retrieve a process from the registry.
+        """
+        if key not in self._dict:
+            return None
+        else:
+            return self._dict[key]
+
+    def keys(self):
+        """List all keys of all process in the registry.
+        """
+        return self._dict.keys
+
+    def remove(self, key):
+        """Remove a process from the registry.
+        """
+        if key in self._dict:
+            del self._dict[key]
 
 # ------------------------------------------------------------------------------
 #
@@ -69,6 +102,13 @@ class Session(object):
             * :class:`sagapilot.DatabaseError`
 
         """
+
+        # Create a new process registry. All objects belonging to this 
+        # session will register their worker processes (if they have any)
+        # in this registry. This makes it easier to shut down things in 
+        # a more coordinate fashion. 
+        self._process_registry = _ProcessRegistry()
+
         try:
             self._database_url  = database_url
             self._database_name = database_name 
@@ -100,14 +140,18 @@ class Session(object):
 
     #---------------------------------------------------------------------------
     #
-    def __repr__(self):
-        return {"database_url": self._database_url,
-                "session_uid"  : self._session_uid}
+    def as_dict(self):
+        """Returns a dictionary containing the session data.
+        """
+        return {"uid"           : self._session_uid,
+                "database_url"  : self._database_url,
+                "database_name" : self._database_name,
+                "session_uid"   : self._session_uid,}
 
     #---------------------------------------------------------------------------
     #
     def __str__(self):
-        return str(self.__repr__())
+        return str(self.as_dict())
 
     #---------------------------------------------------------------------------
     #

@@ -122,7 +122,32 @@ class ComputePilotDescription (attributes.Attributes) :
     def as_dict(self):
       """Returns dict/JSON representation.
       """
-      return attributes.Attributes.as_dict(self)
+      # Apparently the atribute interface only handles 'non-None' attributes,
+      # so we do some manual check-and-set.
+      d =  attributes.Attributes.as_dict(self)
+
+      if RUNTIME not in d:
+        d[RUNTIME] = None
+
+      if CLEANUP not in d:
+        d[CLEANUP] = None
+
+      if PROJECT not in d:
+        d[PROJECT] = None
+
+      if SANDBOX not in d:
+        d[SANDBOX] = None
+
+      if RESOURCE not in d:
+        d[RESOURCE] = None
+
+      if CORES not in d:
+        d[CORES] = None
+
+      if QUEUE not in d:
+        d[QUEUE] = None
+
+      return d
 
     # ------------------------------------------------------------------------------
     #
