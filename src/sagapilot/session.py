@@ -15,6 +15,7 @@ import os
 
 from sagapilot.unit_manager  import UnitManager
 from sagapilot.pilot_manager import PilotManager
+from sagapilot.credentials   import SSHCredential
 from sagapilot.utils.logger  import logger
 from sagapilot               import exceptions
 
@@ -122,44 +123,59 @@ class Session(object):
         # a more coordinate fashion. 
         self._process_registry = _ProcessRegistry()
 
+        # List of credentials registered with this session.
+        self._credentials = []
+
+
         try:
             self._database_url  = database_url
             self._database_name = database_name 
 
+            ##########################
+            ## CREATE A NEW SESSION ##
+            ##########################
             if session_uid is None:
-                # if session_uid is 'None' we create a new session
-                session_uid = str(ObjectId())
-                self._dbs = dbSession.new(sid=session_uid, 
-                                          db_url=database_url, 
-                                          db_name=database_name)
-                self._session_uid   = session_uid
-                logger.info("Created new Session %s." % str(self))
 
+                self._session_uid    = str(ObjectId())
+                self._last_reconnect = None
+
+                self._dbs, self._created = dbSession.new(sid=self._session_uid, 
+                                                         db_url=database_url, 
+                                                         db_name=database_name)
+
+                logger.info("New Session created%s." % str(self))
+
+            ######################################
+            ## RECONNECT TO AN EXISTING SESSION ##
+            ######################################
             else:
                 # otherwise, we reconnect to an exissting session
-                self._dbs = dbSession.reconnect(sid=session_uid, 
-                                                db_url=database_url, 
-                                                db_name=database_name)
+                self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
+                                                              db_url=database_url, 
+                                                              db_name=database_name)
 
-                self._session_uid   = session_uid
+                self._session_uid    = session_uid
+                self._created        = session_info["info"]["created"]
+                self._last_reconnect = session_info["info"]["last_reconnect"]
+
+                for cred_dict in session_info["credentials"]:
+                    self._credentials.append(SSHCredential.from_dict(cred_dict))
+
                 logger.info("Reconnected to existing Session %s." % str(self))
 
         except DBException, ex:
-            raise exceptions.SagapilotException("Database Error: %s" % ex)
-
-        # list of security contexts
-        self._credentials      = []
-
+            raise exceptions.SagapilotException("Database Error: %s" % ex)        
 
     #---------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
-        return {"uid"           : self._session_uid,
-                "database_url"  : self._database_url,
-                "database_name" : self._database_name,
-                "session_uid"   : self._session_uid,}
+        return {"uid"            : self._session_uid,
+                "created"        : self._created,
+                "last_reconnect" : self._last_reconnect,
+                "database_url"   : self._database_url,
+                "database_name"  : self._database_name}
 
     #---------------------------------------------------------------------------
     #
@@ -191,6 +207,30 @@ class Session(object):
 
         return self._session_uid
 
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def created(self):
+        """Returns the UTC date and time the session was created.
+        """
+        if not self._session_uid:
+            msg = "Invalid session instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
+        return self._created
+
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def last_reconnect(self):
+        """Returns the most recent UTC date and time the session was
+        reconnected to.
+        """
+        if not self._session_uid:
+            msg = "Invalid session instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
+        return self._last_reconnect
 
     #---------------------------------------------------------------------------
     #
@@ -201,6 +241,7 @@ class Session(object):
             msg = "Invalid session instance: closed or doesn't exist."
             raise exceptions.IncorrectState(msg=msg)
 
+        self._dbs.session_add_credential(credential.as_dict())
         self._credentials.append(credential)
         logger.info("Added credential %s to session %s." % (str(credential), self.uid))
 

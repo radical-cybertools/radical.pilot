@@ -61,11 +61,9 @@ if __name__ == "__main__":
         # Cancel all pilots.
         pmgr.cancel_pilots()
 
+        session.destroy()
+
     except sagapilot.SagapilotException, ex:
         print "Error: %s" % ex
 
-    #finally:
-        # Remove session from database
-        #session.destroy()
-        
 

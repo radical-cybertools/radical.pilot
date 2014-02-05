@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import datetime
 from pymongo import *
 from bson.objectid import ObjectId
 
@@ -79,13 +80,15 @@ class Session():
     def new(sid, db_url, db_name="sinon"):
         """ Creates a new session (factory method).
         """
-        s = Session(db_url, db_name)
-        s._create(sid)
-        return s
+        creation_time = datetime.datetime.utcnow()
+
+        dbs = Session(db_url, db_name)
+        dbs._create(sid, creation_time)
+        return (dbs, creation_time)
 
     #---------------------------------------------------------------------------
     #
-    def _create(self, sid):
+    def _create(self, sid, creation_time):
         """ Creates a new session (private).
 
             A session is a distinct collection with three sub-collections 
@@ -109,8 +112,19 @@ class Session():
         self._session_id = sid
 
         self._s = self._db["%s" % sid]
-        self._s.insert({"CREATED": "<DATE>"})
+        self._s.insert( 
+            {
+                "_id"  : ObjectId(sid),
+                "info" : 
+                {
+                    "created"        : creation_time,
+                    "last_reconnect" : None
+                },
+                "credentials" : []
+            }
+        )
 
+        # Create the collection shortcut:
         self._w  = self._db["%s.w"  % sid]
         self._um = self._db["%s.wm" % sid] 
 
@@ -125,9 +139,9 @@ class Session():
 
             Here we simply check if a sinon.<sid> collection exists.
         """
-        s = Session(db_url, db_name)
-        s._reconnect(sid)
-        return s
+        dbs = Session(db_url, db_name)
+        session_info = dbs._reconnect(sid)
+        return (dbs, session_info)
 
     #---------------------------------------------------------------------------
     #
@@ -135,20 +149,45 @@ class Session():
         """ Reconnects to an existing session (private).
         """
         # make sure session exists
-        if sid not in self._db.collection_names():
-            raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
-
-        # remember session id
-        self._session_id = sid
+        #if sid not in self._db.collection_names():
+        #    raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
 
         self._s = self._db["%s" % sid]
-        self._s.insert({'reconnected': 'DATE'})
+        cursor = self._s.find({"_id": ObjectId(sid)})
+        
+        self._s.update({"_id"  : ObjectId(sid)},
+                       {"$set" : {"info.last_reconnect" : datetime.datetime.utcnow()}}
+        )
 
+        cursor = self._s.find({"_id": ObjectId(sid)})
+
+
+        # cursor -> dict
+        #if len(cursor) != 1:
+        #    raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
+
+        self._session_id = sid
+
+        # Create the collection shortcut:
         self._w  = self._db["%s.w"  % sid]
         self._um = self._db["%s.wm" % sid]
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
+
+        return cursor[0]
+
+    #---------------------------------------------------------------------------
+    #
+    def session_add_credential(self, credential):
+        if self._s is None:
+            raise DBException("No active session.")
+
+        self._s.update(
+            {"_id": ObjectId(self._session_id)}, 
+            {"$push": {"credentials": credential}},
+            multi=True
+        )
 
     #---------------------------------------------------------------------------
     #

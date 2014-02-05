@@ -26,6 +26,21 @@ class SSHCredential(object):
         """
         self._context = sc.Context("SSH")
 
+    #---------------------------------------------------------------------------
+    #
+    @classmethod
+    def from_dict(cls, thedict):
+        """Creates a new object instance from a string.
+
+                c._from_dict(x.as_dict) == x
+        """
+        obj = cls()
+        obj._context.user_id   = thedict["user_id"]
+        obj._context.user_pass = thedict["user_pass"]
+        obj._context.user_key  = thedict["user_key"]
+
+        return obj
+
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
