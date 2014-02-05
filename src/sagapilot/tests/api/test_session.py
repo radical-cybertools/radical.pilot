@@ -83,14 +83,14 @@ class Test_Session(unittest.TestCase):
         cred2.user_id = "abcedesds"
         session.add_credential(cred2)
 
-        assert len(session.list_credentials()) == 2
+        assert len(session.credentials) == 2
 
         session2 = sinon.Session(database_url=DBURL, session_uid=session.uid)
         print "Session: {0} ".format(session2)
 
-        assert len(session2.list_credentials()) == 2
+        assert len(session2.credentials) == 2
 
-        for cred in session2.list_credentials():
+        for cred in session2.credentials:
             assert cred.as_dict() in [cred1.as_dict(), cred2.as_dict()]
 
         session.destroy()

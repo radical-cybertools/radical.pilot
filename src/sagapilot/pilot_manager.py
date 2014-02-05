@@ -298,7 +298,12 @@ class PilotManager(object):
             }
 
         # Register the startup request with the worker.
-        self._worker.register_startup_pilots_request(pilot_descriptions=pilot_description_dict)
+        cred_dict = []
+        for cred in self._session.credentials:
+            cred_dict.append(cred.as_dict())
+
+        self._worker.register_startup_pilots_request(pilot_descriptions=pilot_description_dict, 
+            credentials=cred_dict)
 
         # Create the pilot objects, launch the actual pilots via saga
         # and update the status accordingly.

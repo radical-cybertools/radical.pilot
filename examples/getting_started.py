@@ -12,7 +12,7 @@ if __name__ == "__main__":
         session = sagapilot.Session(database_url=DBURL)
 
         print "S UID           : {0} ".format(session.uid)
-        print "S Credentials   : {0} ".format(session.list_credentials())
+        print "S Credentials   : {0} ".format(session.credentials)
         print "S UnitManagers  : {0} ".format(session.list_unit_managers())
         print "S PilotManagers : {0} ".format(session.list_pilot_managers())
 

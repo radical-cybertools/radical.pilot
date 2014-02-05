@@ -247,8 +247,9 @@ class Session(object):
 
     #---------------------------------------------------------------------------
     #
-    def list_credentials(self):
-        """Lists the security credentials of the session.
+    @property
+    def credentials(self):
+        """Returns the security credentials of the session.
         """
         if not self._session_uid:
             msg = "Invalid session instance: closed or doesn't exist."

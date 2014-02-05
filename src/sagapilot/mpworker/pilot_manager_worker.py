@@ -25,6 +25,7 @@ from Queue import Empty
 from radical.utils import which
 
 import sagapilot.states       as     states
+from   sagapilot.credentials  import SSHCredential
 from   sagapilot.utils.logger import logger
 
 # ----------------------------------------------------------------------------
@@ -84,8 +85,8 @@ class PilotManagerWorker(multiprocessing.Process):
 
             # Check if there are any pilots to start.
             try:
-                pilot_descriptions = self._startup_pilot_requests.get_nowait()
-                self._execute_startup_pilots(pilot_descriptions)
+                request = self._startup_pilot_requests.get_nowait()
+                self._execute_startup_pilots(request["pilot_descriptions"], request["credentials"])
             except Empty:
                 pass
             # TODO: catch DB error HERE
@@ -113,7 +114,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _execute_startup_pilots(self, pilot_descriptions):
+    def _execute_startup_pilots(self, pilot_descriptions, credentials):
         """Carries out pilot cancelation.
         """
         for pilot_id, pilot_description in pilot_descriptions.iteritems():
@@ -136,11 +137,14 @@ class PilotManagerWorker(multiprocessing.Process):
             try:
                 # create a custom SAGA Session and add the credentials
                 # that are attached to the session
-                #session = saga.Session()
-                #for cred in self._session.list_credentials():
-                #    ctx = cred._context
-                #    session.add_context(ctx)
-                #    logger.info("Added credential %s to SAGA job service." % str(cred))
+                saga_session = saga.Session()
+
+                for cred_dict in credentials:
+                    cred = SSHCredential.from_dict(cred_dict)
+
+                    saga_session.add_context(cred._context)
+
+                    logger.info("Added credential %s to SAGA job service." % str(cred))
 
                 # Create working directory if it doesn't exist and copy
                 # the agent bootstrap script into it. 
@@ -196,7 +200,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 # now that the script is in place and we know where it is,
                 # we can launch the agent
-                js = saga.job.Service(resource_cfg['URL'], session=session)
+                js = saga.job.Service(resource_cfg['URL'], session=saga_session)
 
                 jd = saga.job.Description()
                 jd.working_directory = agent_dir_url.path
@@ -264,10 +268,10 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def register_startup_pilots_request(self, pilot_descriptions):
+    def register_startup_pilots_request(self, pilot_descriptions, credentials):
         """Registers one or more pilots for cancelation.
         """
-        self._startup_pilot_requests.put(pilot_descriptions)
+        self._startup_pilot_requests.put({"pilot_descriptions" : pilot_descriptions, "credentials" : credentials})
         self._db.insert_new_pilots(pilot_manager_uid=self._pm_id, pilot_descriptions=pilot_descriptions)
 
 
