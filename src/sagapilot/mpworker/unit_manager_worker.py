@@ -1,5 +1,7 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
-.. module:: sinon.mpworker.UnitManagerWorker
+.. module:: sinon.mpworker.unit_manager_worker
    :platform: Unix
    :synopsis: Implements a multiprocessing worker backend for 
               the UnitManager class.
@@ -10,8 +12,6 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-#pylint: disable=C0301, C0103
-#pylint: disable=W0212
 
 import os
 import time
@@ -23,9 +23,7 @@ from Queue import Empty
 
 from radical.utils import which
 
-import sagapilot.states     as states
-import sagapilot.exceptions as exceptions
-
+from   sagapilot.utils.logger import logger
 
 # ----------------------------------------------------------------------------
 #
@@ -36,7 +34,7 @@ class UnitManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, unitmanager_id, db_connection):
+    def __init__(self, unitmanager_id, db_connection):
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
@@ -45,7 +43,6 @@ class UnitManagerWorker(multiprocessing.Process):
         self._stop   = multiprocessing.Event()
         self._stop.clear()
 
-        self.logger  = logger
         self._um_id  = unitmanager_id
         self._db     = db_connection
 
@@ -63,7 +60,7 @@ class UnitManagerWorker(multiprocessing.Process):
         """
         self._stop.set()
         self.join()
-        self.logger.info("Worker process (PID: %s) for UnitManager %s stopped." % (self.pid, self._um_id))
+        logger.info("Worker process (PID: %s) for UnitManager %s stopped." % (self.pid, self._um_id))
 
     # ------------------------------------------------------------------------
     #
@@ -71,7 +68,7 @@ class UnitManagerWorker(multiprocessing.Process):
         """run() is called when the process is started via 
            PilotManagerWorker.start().
         """
-        self.logger.info("Worker process for UnitManager %s started with PID %s." % (self._um_id, self.pid))
+        logger.info("Worker process for UnitManager %s started with PID %s." % (self._um_id, self.pid))
 
         while not self._stop.is_set():
             time.sleep(1)

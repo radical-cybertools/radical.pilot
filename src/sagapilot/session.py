@@ -1,4 +1,5 @@
 #pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.session
    :platform: Unix
@@ -10,15 +11,16 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os 
+
 from sagapilot.unit_manager  import UnitManager
 from sagapilot.pilot_manager import PilotManager
+from sagapilot.utils.logger  import logger
+from sagapilot               import exceptions
 
-from sagapilot.utils.logger      import logger
+from sagapilot.db            import Session as dbSession
+from sagapilot.db            import DBException
 
-from sagapilot.db                import Session as dbSession
-from sagapilot.db                import DBException
-
-import sagapilot.exceptions
 from bson.objectid import ObjectId
 
 # ------------------------------------------------------------------------------
@@ -82,7 +84,9 @@ class Session(object):
     def __del__(self):
         """Le destructeur.
         """
-        logger.debug("__del__(): Session '%s'." % self._session_uid )
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): Session '%s'." % self._session_uid )
+
         if len(self._process_registry.keys()) > 0:
             logger.warning("Active workers left in registry: %s." % self._process_registry.keys())
 
@@ -150,7 +154,7 @@ class Session(object):
     #---------------------------------------------------------------------------
     #
     def as_dict(self):
-        """Returns a dictionary containing the session data.
+        """Returns a Python dictionary representation of the object.
         """
         return {"uid"           : self._session_uid,
                 "database_url"  : self._database_url,
@@ -160,6 +164,8 @@ class Session(object):
     #---------------------------------------------------------------------------
     #
     def __str__(self):
+        """Returns a string representation of the object.
+        """
         return str(self.as_dict())
 
     #---------------------------------------------------------------------------

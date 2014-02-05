@@ -43,11 +43,10 @@ if __name__ == "__main__":
             cu.executable  = "/bin/cat"
             cu.arguments   = ["$FILE1", "$FILE2"]
             cu.cores       = 1
-
-            #cu.inputs      = [ "./file1.txt > /why/file1.dat",
-            #                   "file2.dat" ]    
-            #cu.outputs     = [ "results.txt < STDOUT" ]
-            # 
+            cu.input_data  = [ "./file1.txt > /why/file1.dat",
+                               "file2.dat" ]    
+            cu.output_data = [ "results.txt < STDOUT" ]
+             
             compute_units.append(cu)
 
         # # Combine the pilot, the workload and a scheduler via 
@@ -68,8 +67,8 @@ if __name__ == "__main__":
             print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}, EXEC_LOC: {4}".format(
                 unit.uid, unit.state, unit.start_time, unit.stop_time, unit.execution_details)
         
-        #print unit.stdout
-        #print unit.stderr
+        print unit.stdout
+        print unit.stderr
 
         # Cancel all pilots.
         pmgr.cancel_pilots()

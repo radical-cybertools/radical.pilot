@@ -11,28 +11,19 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sagapilot.compute_pilot import ComputePilot
-from sagapilot.utils.logger  import logger
-
-from sagapilot.mpworker import PilotManagerWorker
-
-import sagapilot.states     as states
-import sagapilot.exceptions as exceptions
-
-from bson.objectid import ObjectId
-from radical.utils import which
-
 import os
-import saga
 import time
 import json
 import urllib2
-import datetime
 
+from   sagapilot.compute_pilot import ComputePilot
+from   sagapilot.utils.logger  import logger 
+from   sagapilot.mpworker      import PilotManagerWorker
 
-# ------------------------------------------------------------------------------
-# Attribute keys
-UID  = 'UID'
+import sagapilot.states        as states
+import sagapilot.exceptions    as exceptions
+
+from bson.objectid import ObjectId
 
 # ------------------------------------------------------------------------------
 #
@@ -50,7 +41,7 @@ class PilotManager(object):
 
     **Example**::
 
-        s = sagapilot.Session(database_url=DBURL)
+        s = sagapilot.Session(database_url=dbURL)
         
         pm1 = sagapilot.PilotManager(session=s, resource_configurations=RESCONF)
         # Re-connect via the 'get()' method.
@@ -98,7 +89,7 @@ class PilotManager(object):
         **Raises:**
             * :class:`sagapilot.SagapilotException`
         """
-        self._DB      = session._dbs
+        self._db      = session._dbs
         self._session = session
         self._uid     = None
 
@@ -149,11 +140,11 @@ class PilotManager(object):
                 except ValueError, err:
                     raise exceptions.BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
 
-        self._uid = self._DB.insert_pilot_manager(pilot_manager_data={})
+        self._uid = self._db.insert_pilot_manager(pilot_manager_data={})
 
         # Start a worker process fo this PilotManager instance. The worker 
         # process encapsulates database access et al.
-        self._worker = PilotManagerWorker(logger=logger, pilotmanager_id=self._uid, db_connection=session._dbs)
+        self._worker = PilotManagerWorker(pilotmanager_id=self._uid, db_connection=session._dbs)
         self._worker.start()
 
         # Each pilot manager has a worker thread associated with it. The task of the 
@@ -166,7 +157,8 @@ class PilotManager(object):
     def __del__(self):
         """Le destructeur.
         """
-        logger.debug("__del__(): PilotManager '%s'." % self._uid )
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): PilotManager '%s'." % self._uid )
         # Stop the worker process
         self._worker.stop()
         # Remove worker from registry
@@ -191,7 +183,7 @@ class PilotManager(object):
         if worker is not None:
             obj._worker = worker
         else:
-            obj._worker = PilotManagerWorker(logger=logger, pilotmanager_id=pilot_manager_id, db_connection=session._dbs)
+            obj._worker = PilotManagerWorker(pilotmanager_id=pilot_manager_id, db_connection=session._dbs)
             session._process_registry.register(pilot_manager_id, obj._worker)
 
         # start the worker if it's not already running
@@ -218,8 +210,7 @@ class PilotManager(object):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        """Returns a Python dictionary representation of the 
-           PilotManager object.
+        """Returns a Python dictionary representation of the object.
         """
         obj_dict = {
             'uid'   : self.uid
@@ -229,7 +220,7 @@ class PilotManager(object):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        """Returns a string representation of the PilotManager object.
+        """Returns a string representation of the object.
         """
         return str(self.as_dict())
 
@@ -380,7 +371,7 @@ class PilotManager(object):
     # --------------------------------------------------------------------------
     #
     def wait_pilots(self, pilot_ids=None, 
-        state=[states.DONE, states.FAILED, states.CANCELED], timeout=-1.0):
+        state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
         """Returns when one or more :class:`sagapilot.ComputePilots` reach a 
         specific state or when an optional timeout is reached.
 
@@ -431,7 +422,7 @@ class PilotManager(object):
 
             all_done = True
 
-            pilots_json = self._DB.get_pilots(pilot_manager_id=self.uid)
+            pilots_json = self._db.get_pilots(pilot_manager_id=self.uid)
             for pilot in pilots_json:
                 if pilot['info']['state'] not in state:
                     all_done = False

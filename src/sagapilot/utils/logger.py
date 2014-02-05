@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212, E1101, R0903
+
 """
 .. module:: sagapilot.utils.logger
    :platform: Unix
@@ -9,9 +11,10 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+from logging import Formatter
+
 from   radical.utils.singleton import Singleton
-import radical.utils.logger as rul
-from   logging import Formatter
+import radical.utils.logger    as rul
 
 # ------------------------------------------------------------------------------
 #

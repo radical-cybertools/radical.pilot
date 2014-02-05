@@ -1,4 +1,5 @@
 #pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.scheduler.RoundRobinScheduler
    :platform: Unix
@@ -10,6 +11,9 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os 
+
+from sagapilot.utils.logger        import logger
 from sagapilot.scheduler.interface import Scheduler 
 
 # -----------------------------------------------------------------------------
@@ -21,11 +25,11 @@ class RoundRobinScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, logger):
+    def __init__(self):
         """Le constructeur.
         """
-        Scheduler.__init__(self, logger)
-        self.logger.debug("__init__(): %s." % self.name)
+        Scheduler.__init__(self)
+        logger.info("Loaded scheduler: %s." % self.name)
 
         self._idx = 0
 
@@ -34,7 +38,8 @@ class RoundRobinScheduler(Scheduler):
     def __del__(self):
         """Le destructeur.
         """
-        self.logger.debug("__del__(): %s." % self.name)
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): %s." % self.name)
 
     # -------------------------------------------------------------------------
     #

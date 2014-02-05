@@ -1,4 +1,5 @@
 #pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.scheduler
    :platform: Unix
@@ -20,14 +21,14 @@ SCHED_DIRECT_SUBMISSION = "direct_submission"
 
 # -----------------------------------------------------------------------------
 # 
-def get_scheduler(name, logger):
+def get_scheduler(name):
     """get_scheduler returns a scheduler object for 'name'.
     """
     if name == SCHED_ROUND_ROBIN:
-        return RoundRobinScheduler(logger=logger)
+        return RoundRobinScheduler()
 
     elif name == SCHED_DIRECT_SUBMISSION:
-        return DirectSubmissionScheduler(logger=logger)
+        return DirectSubmissionScheduler()
 
     else:
         raise RuntimeError("Scheduler '%s' doesn't exist." % name)

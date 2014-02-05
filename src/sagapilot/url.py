@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212, R0903, W0232
+
 """
 .. module:: sagapilot.url
    :platform: Unix
@@ -15,4 +17,6 @@ from saga import Url as sagaURL
 # ------------------------------------------------------------------------------
 #
 class Url(sagaURL): 
+    """Defines a URL class.
+    """
     pass

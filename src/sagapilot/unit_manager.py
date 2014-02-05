@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.unit_manager
    :platform: Unix
@@ -9,8 +11,11 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os 
+import time
+import datetime
 
-import radical.utils as ru
+from bson.objectid import ObjectId
 
 from sagapilot.compute_unit  import ComputeUnit
 from sagapilot.utils.logger  import logger
@@ -21,18 +26,6 @@ from sagapilot.scheduler     import get_scheduler
 import sagapilot.types       as types
 import sagapilot.states      as states
 import sagapilot.exceptions  as exceptions
-
-import time
-import datetime
-
-#pylint: disable=C0301, C0103
-#pylint: disable=W0212
-
-# ------------------------------------------------------------------------------
-# Attribute keys
-UID               = 'UID'
-SCHEDULER         = 'Scheduler'
-SCHEDULER_DETAILS = 'SchedulerDetails'
 
 # ------------------------------------------------------------------------------
 #
@@ -89,20 +82,20 @@ class UnitManager(object):
         **Raises:**
             * :class:`sagapilot.SagapilotException`
         """
-        self._DB = session._dbs
+        self._db = session._dbs
         self._session = session
 
-        self._scheduler = get_scheduler(name=scheduler, logger=logger)
+        self._scheduler = get_scheduler(name=scheduler)
 
         if _reconnect is False:
             # Add a new unit manager netry to the DB
-            self._uid = self._DB.insert_unit_manager(
+            self._uid = self._db.insert_unit_manager(
                 unit_manager_data={'scheduler' : scheduler})
             logger.info("Created new UnitManager %s." % str(self))
 
             # Start a worker process fo this UnitManager instance. The worker 
             # process encapsulates database access et al.
-            self._worker = UnitManagerWorker(logger=logger, unitmanager_id=self._uid, db_connection=session._dbs)
+            self._worker = UnitManagerWorker(unitmanager_id=self._uid, db_connection=session._dbs)
             self._worker.start()
 
             # Each pilot manager has a worker thread associated with it. 
@@ -119,7 +112,9 @@ class UnitManager(object):
     def __del__(self):
         """Le destructeur.
         """
-        logger.debug("__del__(): UnitManager '%s'." % self._uid )
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): UnitManager '%s'." % self._uid )
+
         self._worker.stop()
         # Remove worker from registry
         self._session._process_registry.remove(self._uid)
@@ -146,7 +141,7 @@ class UnitManager(object):
         if worker is not None:
             obj._worker = worker
         else:
-            obj._worker = UnitManagerWorker(logger=logger, unitmanager_id=unit_manager_id, db_connection=session._dbs)
+            obj._worker = UnitManagerWorker(unitmanager_id=unit_manager_id, db_connection=session._dbs)
             session._process_registry.register(unit_manager_id, obj._worker)
 
         # start the worker if it's not already running
@@ -230,7 +225,7 @@ class UnitManager(object):
         for pilot in pilots:
             pids.append(pilot.uid)
 
-        self._DB.unit_manager_add_pilots(unit_manager_id=self.uid,
+        self._db.unit_manager_add_pilots(unit_manager_id=self.uid,
                                          pilot_ids=pids)
 
     # --------------------------------------------------------------------------
@@ -250,12 +245,14 @@ class UnitManager(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        return self._DB.unit_manager_list_pilots(unit_manager_uid=self.uid)
+        return self._db.unit_manager_list_pilots(unit_manager_uid=self.uid)
 
     # --------------------------------------------------------------------------
     #
     def remove_pilots(self, pilot_ids, drain=True):
         """Disassociates one or more pilots from the unit manager. 
+
+        TODO: Implement 'drain'.
 
         After a pilot has been removed from a unit manager, it won't process
         any of the unit manager's units anymore. Calling `remove_pilots` doesn't 
@@ -278,12 +275,12 @@ class UnitManager(object):
         if not isinstance (pilot_ids, list):
             pilot_ids = [pilot_ids]
 
-        self._DB.unit_manager_remove_pilots(unit_manager_id=self.uid,
+        self._db.unit_manager_remove_pilots(unit_manager_id=self.uid,
                                             pilot_ids=pilot_ids)
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=types.ANY) :
+    def list_units (self): #, utype=types.ANY) :
         """Returns the UIDs of the :class:`sagapilot.ComputeUnit` managed by this 
         unit manager.
 
@@ -295,7 +292,7 @@ class UnitManager(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
+        return self._db.unit_manager_list_work_units(unit_manager_uid=self.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -322,8 +319,6 @@ class UnitManager(object):
 
         if not isinstance(unit_descriptions, list):
             unit_descriptions = [unit_descriptions]
-
-        from bson.objectid import ObjectId
 
         if True : ## always use the scheduler for now...
 
@@ -385,7 +380,7 @@ class UnitManager(object):
 
                 # done iterating over all units, for this plot -- submit bulk 
                 # for this pilot
-                self._DB.insert_workunits(
+                self._db.insert_workunits(
                     pilot_id=pilot_id, 
                     unit_manager_uid=self.uid,
                     units=submission_dict
@@ -450,7 +445,7 @@ class UnitManager(object):
 
         **Example**::
 
-            # TODO
+            # TODO -- add example
 
         **Arguments:**
 
@@ -491,7 +486,7 @@ class UnitManager(object):
 
             all_done = True
 
-            for wu_state in self._DB.get_workunit_states(workunit_manager_id=self._uid):
+            for wu_state in self._db.get_workunit_states(workunit_manager_id=self._uid):
                 print "state: %s -- waiting for %s" % (wu_state, state)
                 if wu_state not in state:
                     all_done = False

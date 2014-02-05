@@ -763,15 +763,15 @@ class Agent(threading.Thread):
                             # standard working directory schema. 
                             # NOTE: this is not a good idea and just implemented
                             #       to support some last minute TROY experiments.
-                            if wu["description"]["WorkingDirectoryPriv"] is not None:
-                                task_dir_name = wu["description"]["WorkingDirectoryPriv"]
+                            if wu["description"]["working_directory_priv"] is not None:
+                                task_dir_name = wu["description"]["working_directory_priv"]
                             else:
                                 task_dir_name = "%s/task-%s" % (self._workdir, str(wu["_id"]))
 
                             task = Task(uid         =str(wu["_id"]), 
-                                        executable  = wu["description"]["Executable"], 
-                                        arguments   = wu["description"]["Arguments"],
-                                        environment = wu["description"]["Environment"],
+                                        executable  = wu["description"]["executable"], 
+                                        arguments   = wu["description"]["arguments"],
+                                        environment = wu["description"]["environment"],
                                         workdir     = task_dir_name, 
                                         stdout      = task_dir_name+'/STDOUT', 
                                         stderr      = task_dir_name+'/STDERR')

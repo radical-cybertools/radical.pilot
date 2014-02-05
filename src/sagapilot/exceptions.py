@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.exceptions
    :platform: Unix
@@ -70,6 +72,7 @@ class SagapilotException(Exception):
 #
 class DatabaseError (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
@@ -85,6 +88,7 @@ class DatabaseError (SagapilotException) :
 #
 class IncorrectURL (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
@@ -116,6 +120,7 @@ class BadParameter (SagapilotException) :
 #
 class DoesNotExist (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
@@ -131,6 +136,7 @@ class DoesNotExist (SagapilotException) :
 #
 class IncorrectState (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
@@ -146,6 +152,7 @@ class IncorrectState (SagapilotException) :
 #
 class PermissionDenied (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
@@ -161,6 +168,7 @@ class PermissionDenied (SagapilotException) :
 #
 class AuthorizationFailed (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
@@ -176,6 +184,7 @@ class AuthorizationFailed (SagapilotException) :
 #
 class AuthenticationFailed (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
@@ -191,6 +200,7 @@ class AuthenticationFailed (SagapilotException) :
 #
 class Timeout (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
@@ -206,6 +216,7 @@ class Timeout (SagapilotException) :
 #
 class NoSuccess (SagapilotException) :
     """
+    TODO: Document me!
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string

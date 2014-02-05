@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.context
    :platform: Unix
@@ -26,34 +28,34 @@ class SSHCredential(object):
 
     # --------------------------------------------------------------------------
     #
-    def __str__ (self):
-        """Returns the string representation of the credential.
-        """
-        return str(self.as_dict())
-
-    # --------------------------------------------------------------------------
-    #
     def as_dict(self):
-        """Returns the dictionary representation of the credential. 
+        """Returns a Python dictionary representation of the object.
         """
         dct = {
-            "Type"      : "SSH",
-            "UserID"    : self._context.user_id,
-            "UserPass"  : self._context.user_pass,
-            "UserKey"   : self._context.user_key,
+            "type"      : "SSH",
+            "user_id"   : self._context.user_id,
+            "user_pass" : self._context.user_pass,
+            "user_key"  : self._context.user_key,
         }
         return dct
 
     # --------------------------------------------------------------------------
     #
+    def __str__ (self):
+        """Returns the string representation of the object.
+        """
+        return str(self.as_dict())
+
+    # --------------------------------------------------------------------------
+    #
     @property
     def user_id(self):
-        """ XXX
+        """ TODO: Document me 
         """
         return self._context.user_id
     @user_id.setter
     def user_id(self, value):
-        """
+        """ TODO: document me
         """
         self._context.user_id = value
     
@@ -61,12 +63,12 @@ class SSHCredential(object):
     #
     @property
     def user_pass(self):
-        """ XXX
+        """ TODO: Document me 
         """
         return self._context.user_pass
     @user_pass.setter
     def user_pass(self, value):
-        """ XXX
+        """ TODO: Document me 
         """
         self._context.user_pass = value
 
@@ -74,11 +76,11 @@ class SSHCredential(object):
     #
     @property
     def user_key(self):
-        """ XXX
+        """ TODO: Document me 
         """
         return self._context.user_key
     @user_key.setter
     def user_key(self, value):
-        """ XXX
+        """ TODO: Document me 
         """
         self._context.user_key = value

@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.compute_pilot
    :platform: Unix
@@ -9,12 +11,13 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sagapilot.states     as states
-import sagapilot.exceptions as exceptions
-
-from sagapilot.utils.logger     import logger
-
+import os
 import time
+
+import sagapilot.states       as states
+import sagapilot.exceptions   as exceptions
+from   sagapilot.utils.logger import logger
+
 
 # ------------------------------------------------------------------------------
 # Attribute keys
@@ -51,14 +54,15 @@ class ComputePilot (object):
         self._manager = None
 
         # database handle
-        self._DB = None
+        self._db = None
 
     # --------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
         """
-        logger.debug("__del__(): ComputePilot '%s'." % self._uid )
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): ComputePilot '%s'." % self._uid )
 
 
     # --------------------------------------------------------------------------
@@ -74,7 +78,7 @@ class ComputePilot (object):
         pilot._description = pilot_description
         pilot._manager     = pilot_manager_obj
 
-        pilot._DB = pilot._manager._DB
+        pilot._db = pilot._manager._db
 
         logger.info("Created new ComputePilot %s" % str(pilot))
 
@@ -87,7 +91,7 @@ class ComputePilot (object):
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
         # create database entry
-        pilots_json = pilot_manager_obj._DB.get_pilots(
+        pilots_json = pilot_manager_obj._db.get_pilots(
             pilot_manager_id=pilot_manager_obj.uid, pilot_ids=pilot_ids)
         # create and return pilot objects
         pilots = []
@@ -98,7 +102,7 @@ class ComputePilot (object):
             pilot._description = p['description']
             pilot._manager = pilot_manager_obj
 
-            pilot._DB = pilot._manager._DB
+            pilot._db = pilot._manager._db
         
             logger.info("Reconnected to existing ComputePilot %s" % str(pilot))
             pilots.append(pilot)
@@ -167,7 +171,7 @@ class ComputePilot (object):
 
         # state is dynamic and changes over the lifetime of a pilot, hence we 
         # need to make a call to the database layer
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
             pilot_ids=[self.uid])
 
         # make sure the result makes sense
@@ -191,7 +195,7 @@ class ComputePilot (object):
 
         # state detail is dynamic and changes over the  lifetime of a pilot,
         # hence we need to make a call to the  database layer.
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
 
         # make sure the result makes sense
@@ -216,7 +220,7 @@ class ComputePilot (object):
 
         # state detail is dynamic and changes over the  lifetime of a pilot,
         # hence we need to make a call to the  database layer.
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
 
         # make sure the result makes sense
@@ -276,7 +280,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
 
         # make sure the result makes sense
@@ -295,7 +299,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
 
         # make sure the result makes sense
@@ -314,7 +318,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
 
         # make sure the result makes sense
@@ -333,7 +337,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
+        pilots_json = self._db.get_pilots(pilot_manager_id=self._manager.uid, 
                                           pilot_ids=[self.uid])
 
         # make sure the result makes sense

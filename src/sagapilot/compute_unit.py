@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.compute_unit
    :platform: Unix
@@ -9,11 +11,12 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
+import time
+
 import sagapilot.states        as states
 import sagapilot.exceptions    as exceptions
 from   sagapilot.utils.logger  import logger
-
-import time
 
 # ------------------------------------------------------------------------------
 # Attribute keys
@@ -41,21 +44,21 @@ class ComputeUnit(object): #attributes.Attributes):
     def __init__ (self):
         """ Le constructeur. Not meant to be called directly.
         """
-
         # 'static' members
         self._uid = None
         self._description = None
         self._manager = None
 
         # database handle
-        self._DB = None
+        self._db = None
 
     #---------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
         """
-        logger.debug("__del__(): ComputeUnit '%s'." % self._uid )
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): ComputeUnit '%s'." % self._uid )
 
     # --------------------------------------------------------------------------
     #
@@ -70,7 +73,7 @@ class ComputeUnit(object): #attributes.Attributes):
         computeunit._description = unit_description
         computeunit._manager     = unit_manager_obj
 
-        computeunit._DB          = unit_manager_obj._DB
+        computeunit._db          = unit_manager_obj._db
 
         return computeunit
 
@@ -81,7 +84,7 @@ class ComputeUnit(object): #attributes.Attributes):
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
         # create database entry
-        units_json = unit_manager_obj._DB.get_workunits(
+        units_json = unit_manager_obj._db.get_workunits(
             workunit_manager_id=unit_manager_obj.uid, 
             workunit_ids=unit_ids
         )
@@ -94,7 +97,7 @@ class ComputeUnit(object): #attributes.Attributes):
             computeunit._description = u['description']
             computeunit._manager = unit_manager_obj
 
-            computeunit._DB = unit_manager_obj._DB
+            computeunit._db = unit_manager_obj._db
         
             computeunits.append(computeunit)
 
@@ -103,8 +106,7 @@ class ComputeUnit(object): #attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        """Returns a Python dictionary representation of the 
-           ComputeUnit object.
+        """Returns a Python dictionary representation of the object.
         """
         obj_dict = {
             'uid'               : self.uid,
@@ -120,7 +122,7 @@ class ComputeUnit(object): #attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        """Returns a string representation of the ComputeUnit object.
+        """Returns a string representation of the object.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -149,6 +151,26 @@ class ComputeUnit(object): #attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     @property
+    def stdout(self):
+        """Returns a snapshot of the executable's STDOUT stream.
+
+        .. warning: This can become very inefficient for lare data volumes.
+        """
+        return "WU.stdout not implemented yet"
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def stderr(self):
+        """Returns a snapshot of the executable's STDERR stream.
+
+        .. warning: This can become very inefficient for lare data volumes.
+        """
+        return "WU.stderr not implemented yet"
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def description(self):
         """Returns the pilot description the pilot was started with.
         """
@@ -171,7 +193,7 @@ class ComputeUnit(object): #attributes.Attributes):
         # state is dynamic and changes over the  lifetime of a pilot, hence we
         # need to make a call to the  database layer (db layer might cache
         # this call).
-        workunit_json = self._DB.get_workunit_states(
+        workunit_json = self._db.get_workunit_states(
             workunit_manager_id=self._manager.uid, 
             workunit_ids=[self.uid]
         )
@@ -187,26 +209,25 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
+        workunit_json = self._db.get_workunits(
             workunit_manager_id=self._manager.uid, 
             workunit_ids=[self.uid]
             )
 
-        # state detail is oviously dynamic and changes over the 
-        # lifetime of a pilot, hence we need to make a call to the 
-        # database layer (db layer might cache this call).
-        pass
+        # TODO: implement me 
+
+        return "unknown"
 
     # --------------------------------------------------------------------------
     #
     @property
     def execution_details(self):
-        """PRIVATE: Returns the current state of the pilot.
+        """Returns the current state of the pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
+        workunit_json = self._db.get_workunits(
             workunit_manager_id=self._manager.uid, 
             workunit_ids=[self.uid]
         )
@@ -222,13 +243,12 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
+        workunit_json = self._db.get_workunits(
             workunit_manager_id=self._manager.uid, 
             workunit_ids=[self.uid]
         )
 
         return workunit_json[0]['info']['submitted']
-
 
     # --------------------------------------------------------------------------
     #
@@ -239,13 +259,12 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
+        workunit_json = self._db.get_workunits(
             workunit_manager_id=self._manager.uid, 
             workunit_ids=[self.uid]
         )
 
         return workunit_json[0]['info']['started']
-
 
     # --------------------------------------------------------------------------
     #
@@ -256,7 +275,7 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
+        workunit_json = self._db.get_workunits(
             workunit_manager_id=self._manager.uid, 
             workunit_ids=[self.uid]
         )
@@ -321,16 +340,14 @@ class ComputeUnit(object): #attributes.Attributes):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SagapilotException("Invalid Compute Unit instance.")
+            raise exceptions.SagapilotException("Invalid Compute Unit instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:
             # nothing to do
             return
 
         if self.state in [states.UNKNOWN] :
-            raise excpetions.SagapilotException("Compute Unit state is UNKNOWN, cannot cancel")
+            raise exceptions.SagapilotException("Compute Unit state is UNKNOWN, cannot cancel")
 
         # done waiting
         return
-
-

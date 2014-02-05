@@ -1,5 +1,7 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
-.. module:: sinon.mpworker.PilotManagerWorker
+.. module:: sinon.mpworker.pilot_manager_worker
    :platform: Unix
    :synopsis: Implements a multiprocessing worker backend for 
               the PilotManager class.
@@ -20,12 +22,10 @@ import datetime
 import multiprocessing
 from Queue import Empty
 
-
 from radical.utils import which
 
-import sagapilot.states     as states
-import sagapilot.exceptions as exceptions
-
+import sagapilot.states       as     states
+from   sagapilot.utils.logger import logger
 
 # ----------------------------------------------------------------------------
 #
@@ -36,7 +36,9 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, pilotmanager_id, db_connection):
+    def __init__(self, pilotmanager_id, db_connection):
+        """Le constructeur.
+        """
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
@@ -45,7 +47,6 @@ class PilotManagerWorker(multiprocessing.Process):
         self._stop   = multiprocessing.Event()
         self._stop.clear()
 
-        self.logger  = logger
         self._pm_id  = pilotmanager_id
         self._db     = db_connection
 
@@ -62,7 +63,7 @@ class PilotManagerWorker(multiprocessing.Process):
         """
         self._stop.set()
         self.join()
-        self.logger.info("Worker process (PID: %s) for PilotManager %s stopped." % (self.pid, self._pm_id))
+        logger.info("Worker process (PID: %s) for PilotManager %s stopped." % (self.pid, self._pm_id))
 
     # ------------------------------------------------------------------------
     #
@@ -70,7 +71,7 @@ class PilotManagerWorker(multiprocessing.Process):
         """run() is called when the process is started via 
            PilotManagerWorker.start().
         """
-        self.logger.info("Worker process for PilotManager %s started with PID %s." % (self._pm_id, self.pid))
+        logger.info("Worker process for PilotManager %s started with PID %s." % (self._pm_id, self.pid))
 
         while not self._stop.is_set():
 
@@ -106,9 +107,9 @@ class PilotManagerWorker(multiprocessing.Process):
             pilot_ids=pilot_ids, cmd="CANCEL")
 
         if pilot_ids is None:
-            self.logger.info("Sent 'CANCEL' to all pilots.")
+            logger.info("Sent 'CANCEL' to all pilots.")
         else:
-            self.logger.info("Sent 'CANCEL' to pilots %s.", pilot_ids)
+            logger.info("Sent 'CANCEL' to pilots %s.", pilot_ids)
 
     # ------------------------------------------------------------------------
     #
@@ -159,7 +160,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 log_msg = "Created agent directory '%s'." % str(agent_dir_url)
                 pilot_logs.append(log_msg)
-                self.logger.debug(log_msg)
+                logger.debug(log_msg)
 
                 # Copy the bootstrap shell script
                 # This works for installed versions of saga-pilot
@@ -174,7 +175,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 log_msg = "Copied '%s' script to agent directory." % bs_script_url
                 pilot_logs.append(log_msg)
-                self.logger.debug(log_msg)
+                logger.debug(log_msg)
 
                 # Copy the agent script
                 cwd = os.path.dirname(os.path.abspath(__file__))
@@ -185,7 +186,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 log_msg = "Copied '%s' script to agent directory." % agent_script_url
                 pilot_logs.append(log_msg)
-                self.logger.debug(log_msg)
+                logger.debug(log_msg)
 
                 # extract the required connection parameters and uids
                 # for the agent:
@@ -246,7 +247,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 log_msg = "ComputePilot agent successfully submitted with JobID '%s'" % pilotjob_id
                 pilot_logs.append(log_msg)
-                self.logger.info(log_msg)
+                logger.info(log_msg)
 
                 self._db.update_pilot_state(pilot_uid=str(pilot_id),
                     state=states.PENDING, sagajobid=pilotjob_id,
@@ -256,7 +257,7 @@ class PilotManagerWorker(multiprocessing.Process):
                 error_msg = "Pilot Job submission failed: '%s'" % str(ex)
                 pilot_description['info']['state'] = states.FAILED
                 pilot_logs.append(error_msg)
-                self.logger.error(error_msg)
+                logger.error(error_msg)
 
                 self._db.update_pilot_state(pilot_uid=str(pilot_id),
                     state=states.FAILED, submitted=datetime.datetime.utcnow(), logs=pilot_logs)

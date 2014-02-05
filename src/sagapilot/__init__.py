@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212, W0401
+
 """
 .. module:: sagapilot
    :platform: Unix
