@@ -306,7 +306,7 @@ class Session():
             set_query["info.sagajobid"] = sagajobid
 
         if logs is not None:
-            push_query["info.logs"]     = logs 
+            push_query["info.log"]     = logs 
 
         # update pilot entry.
         self._p.update(

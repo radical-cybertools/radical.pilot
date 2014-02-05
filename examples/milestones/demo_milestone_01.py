@@ -49,10 +49,10 @@ def demo_milestone_01_1():
 
         # If the pilot is in FAILED state it probably didn't start up properly. 
         if state == sinon.states.FAILED:
-            print "  [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
+            print "  [ERROR] Pilot %s failed: %s." % (p1, p1.log[-1])
             sys.exit(-1)
         else:
-            print "  [OK]    Pilot %s submitted successfully: %s." % (p1, p1.state_details[-1])
+            print "  [OK]    Pilot %s submitted successfully: %s." % (p1, p1.log[-1])
 
         # Create a workload of 64 '/bin/hostname' compute units
         compute_units = []

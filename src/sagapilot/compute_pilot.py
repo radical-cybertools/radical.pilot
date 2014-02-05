@@ -118,6 +118,7 @@ class ComputePilot (object):
         obj_dict = {
             'uid'              : self.uid, 
             'state'            : self.state,
+            'log'              : self.log,
             'resource'         : self.resource,
             'submission_time'  : self.submission_time, 
             'start_time'       : self.start_time, 
@@ -184,8 +185,8 @@ class ComputePilot (object):
     # --------------------------------------------------------------------------
     #
     @property 
-    def state_detail(self):
-        """Returns the current state of the pilot.
+    def log(self):
+        """Returns the log of the pilot.
 
         This 
         """

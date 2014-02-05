@@ -187,7 +187,7 @@ class PilotManager(object):
             session._process_registry.register(pilot_manager_id, obj._worker)
 
         # start the worker if it's not already running
-        if worker.is_alive() is False:
+        if obj._worker.is_alive() is False:
             obj._worker.start()
 
         return obj
