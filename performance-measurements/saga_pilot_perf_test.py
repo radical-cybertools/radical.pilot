@@ -85,13 +85,13 @@ def pilot_bulk_submit_test_real():
                 if i > 1:
                     for pilot in pilot_objects:
                         if pilot.state in [sinon.states.FAILED]:
-                            print " * [ERROR] Pilot %s failed: %s." % (pilot, pilot.state_details[-1])
+                            print " * [ERROR] Pilot %s failed: %s." % (pilot, pilot.logs[-1])
                             # Add some smart fault tolerance mechanism here!
                         #else:
-                            #print " * [OK] Pilot %s submitted successfully: %s" % (pilot, pilot.state_details[-1])
+                            #print " * [OK] Pilot %s submitted successfully: %s" % (pilot, pilot.logs[-1])
                 else:
                     if pilot_objects.state in [sinon.states.FAILED]:
-                        print " * [ERROR] Pilot %s failed: %s." % (pilot_objects, pilot_objects.state_details[-1])
+                        print " * [ERROR] Pilot %s failed: %s." % (pilot_objects, pilot_objects.logs[-1])
                         # Add some smart fault tolerance mechanism here!
                     #else:
 
@@ -454,13 +454,13 @@ def pilot_bulk_submit_test_db_calls():
                 if i > 1:
                     for pilot in pilot_objects:
                         if pilot.state in [sinon.states.FAILED]:
-                            print " * [ERROR] Pilot %s failed: %s." % (pilot, pilot.state_details[-1])
+                            print " * [ERROR] Pilot %s failed: %s." % (pilot, pilot.logs[-1])
                             # Add some smart fault tolerance mechanism here!
                         #else:
-                            #print " * [OK] Pilot %s submitted successfully: %s" % (pilot, pilot.state_details[-1])
+                            #print " * [OK] Pilot %s submitted successfully: %s" % (pilot, pilot.logs[-1])
                 else:
                     if pilot_objects.state in [sinon.states.FAILED]:
-                        print " * [ERROR] Pilot %s failed: %s." % (pilot_objects, pilot_objects.state_details[-1])
+                        print " * [ERROR] Pilot %s failed: %s." % (pilot_objects, pilot_objects.logs[-1])
                         # Add some smart fault tolerance mechanism here!
                     #else:
 
@@ -533,16 +533,16 @@ def pilot_serialised_submit_test():
                 if i > 1:
                     for pilot in pilot_objects:
                         if pilot.state in [sinon.states.FAILED]:
-                            print " * [ERROR] Pilot %s failed: %s." % (pilot, pilot.state_details[-1])
+                            print " * [ERROR] Pilot %s failed: %s." % (pilot, pilot.logs[-1])
                             # Add some smart fault tolerance mechanism here!
                         #else:
-                            #print " * [OK] Pilot %s submitted successfully: %s" % (pilot, pilot.state_details[-1])
+                            #print " * [OK] Pilot %s submitted successfully: %s" % (pilot, pilot.logs[-1])
                 else:
                     if pilot_objects.state in [sinon.states.FAILED]:
-                        print " * [ERROR] Pilot %s failed: %s." % (pilot_objects, pilot_objects.state_details[-1])
+                        print " * [ERROR] Pilot %s failed: %s." % (pilot_objects, pilot_objects.logs[-1])
                         # Add some smart fault tolerance mechanism here!
                     #else:
-                        #print " * [OK] Pilot %s submitted successfully: %s" % (pilot_objects, pilot_objects.state_details[-1])
+                        #print " * [OK] Pilot %s submitted successfully: %s" % (pilot_objects, pilot_objects.logs[-1])
 
                 pm.cancel_pilots()
 

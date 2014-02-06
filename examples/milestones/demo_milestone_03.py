@@ -75,10 +75,10 @@ def demo_milestone_03_part_1():
         for pilot in pilots:
             state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
             if state == sinon.states.FAILED:
-                print "  [ERROR] Pilot %s failed: %s." % (pilot, pilot.state_details[-1])
+                print "  [ERROR] Pilot %s failed: %s." % (pilot, pilot.log[-1])
                 failed = True
             else:
-                print "  [OK]    Pilot %s submitted successfully: %s." % (pilot, pilot.state_details[-1])
+                print "  [OK]    Pilot %s submitted successfully: %s." % (pilot, pilot.log[-1])
 
         # If one or more pilots fail, we call cancel() on all pilots
         # and abort the example! 

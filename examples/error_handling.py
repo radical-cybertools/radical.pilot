@@ -42,7 +42,7 @@ def synchronous_error_handling():
 
         # If the pilot is in FAILED state it probably didn't start up properly. 
         if state == sagapilot.states.FAILED:
-            print pilot.state_details[-1] # Get the last log message
+            print pilot.log[-1] # Get the last log message
             return 1
         # The timeout was reached if the pilot state is still FAILED.
         elif state == sagapilot.states.PENDING:
