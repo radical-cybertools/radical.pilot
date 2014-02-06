@@ -649,12 +649,7 @@ class Session():
 
             workunit = {
                 "_id"           : key,
-                "description"   : wu_desc['description'].as_dict(), #{
-                    #"Executable" : wu_desc['description'].executable,
-                    #"Arguments"  : wu_desc['description'].arguments, 
-                    #"Cores"      : wu_desc['description'].cores
-                    #"WorkingD"
-                #},
+                "description"   : wu_desc['description'].as_dict(),
                 "links"    : {
                     "unitmanager" : unit_manager_uid, 
                     "pilot"       : pilot_id,
