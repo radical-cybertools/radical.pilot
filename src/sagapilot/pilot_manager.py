@@ -271,6 +271,7 @@ class PilotManager(object):
             # Make sure resource key is known.
             if pilot_description.resource not in self._resource_cfgs:
                 error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % pilot_description.resource
+                raise exceptions.BadParameter(error_msg)
             else:
                 resource_cfg = self._resource_cfgs[pilot_description.resource]
 
