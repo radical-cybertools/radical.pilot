@@ -7,5 +7,15 @@
         "pre_bootstrap"      : ["module purge", "module load TACC", "module load cluster", "module load python"],
         "task_launch_mode"   : "SSH",
         "valid_roots"        : ["/home1", "/scratch", "/work"]
+    },
+    "trestles.sdsc.xsede.org": {
+        "URL"                : "pbs+ssh://trestles.sdsc.xsede.org",
+        "filesystem"         : "sftp://trestles.sdsc.xsede.org/",
+        "default_queue"      : "normal",
+        "python_interpreter" : "/usr/bin/python",
+        "pre_bootstrap"      : ["module purge", "module load pgi", "module load mvapich2_ib", "module load gnubase"],
+        "task_launch_mode"   : "SSH",
+        "valid_roots"        : ["/home"]
     }
 }
+

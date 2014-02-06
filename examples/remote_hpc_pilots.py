@@ -1,7 +1,8 @@
 import sagapilot
 
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
-RCONF  = "https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json"
+RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
+          "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
 
 #-------------------------------------------------------------------------------
 # 
