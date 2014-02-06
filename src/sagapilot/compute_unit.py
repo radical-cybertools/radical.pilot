@@ -156,7 +156,8 @@ class ComputeUnit(object): #attributes.Attributes):
 
         .. warning: This can become very inefficient for lare data volumes.
         """
-        return "WU.stdout not implemented yet"
+        stdout_str = self._db.get_workunit_stdout(workunit_uid=self.uid)
+        return stdout_str
 
     # --------------------------------------------------------------------------
     #
@@ -166,7 +167,10 @@ class ComputeUnit(object): #attributes.Attributes):
 
         .. warning: This can become very inefficient for lare data volumes.
         """
-        return "WU.stderr not implemented yet"
+        stderr_str = self._db.get_workunit_stderr(workunit_uid=self.uid)
+        return stderr_str
+
+
 
     # --------------------------------------------------------------------------
     #

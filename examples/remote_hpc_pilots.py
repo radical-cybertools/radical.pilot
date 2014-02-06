@@ -39,9 +39,8 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 32):
             cu = sagapilot.ComputeUnitDescription()
-            #cu.environment = {"NAP_TIME" : "10"}
-            cu.executable  = "/bin/date"
-            #cu.arguments   = ["$NAP_TIME"]
+            cu.executable  = "/bin/hostname"
+            cu.arguments   = ["-A"]
             cu.cores       = 1
         
             compute_units.append(cu)
@@ -55,8 +54,12 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for unit in umgr.get_units():
-            print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}, EXEC_LOC: {4}".format(
+            print "* UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}, EXEC_LOC: {4}".format(
                 unit.uid, unit.state, unit.start_time, unit.stop_time, unit.execution_details)
+        
+            # Get the stdout and stderr streams of the ComputeUnit.
+            print "  STDOUT: {0}".format(unit.stdout)
+            print "  STDERR: {0}".format(unit.stderr)
         
         # Cancel all pilots.
         pmgr.cancel_pilots()

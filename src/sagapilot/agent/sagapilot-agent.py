@@ -584,6 +584,7 @@ class ExecWorker(multiprocessing.Process):
 
                                 # upload stdout and stderr to GridFF
                                 workdir = self._slots[host][slot].task.workdir
+                                task_id = self._slots[host][slot].task.uid
 
                                 stdout_id = None
                                 stderr_id = None
@@ -592,7 +593,7 @@ class ExecWorker(multiprocessing.Process):
                                 if os.path.isfile(stdout):
                                     fs = gridfs.GridFS(self._db_handle)
                                     with open(stdout, 'r') as stdout_f:
-                                        stdout_id = fs.put(stdout_f.read())
+                                        stdout_id = fs.put(stdout_f.read(), filename=stdout)
                                         self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
 
 
@@ -600,7 +601,7 @@ class ExecWorker(multiprocessing.Process):
                                 if os.path.isfile(stderr):
                                     fs = gridfs.GridFS(self._db_handle)
                                     with open(stderr, 'r') as stderr_f:
-                                        stderr_id = fs.put(stderr_f.read())
+                                        stderr_id = fs.put(stderr_f.read(), filename=stderr)
                                         self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
 
                                 self._slots[host][slot].task.update_state(

@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 import datetime
+import gridfs
 from pymongo import *
 from bson.objectid import ObjectId
 
@@ -262,6 +263,50 @@ class Session():
 
         self._w.update({"_id": ObjectId(workunit_uid)}, 
             {"$set": {"info.state" : state}})
+
+    #---------------------------------------------------------------------------
+    #
+    def get_workunit_stdout(self, workunit_uid):
+        """Returns the WorkUnit's unit's stdout.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._w.find(
+            {"_id": ObjectId(workunit_uid)},
+            {"info.stdout_id"}
+        )
+
+        stdout_id = cursor[0]['info']['stdout_id']
+
+        if stdout_id is None:
+            return None
+        else:
+            gfs = gridfs.GridFS(self._db)
+            stdout = gfs.get(stdout_id)
+            return stdout.read()
+
+    #---------------------------------------------------------------------------
+    #
+    def get_workunit_stderr(self, workunit_uid):
+        """Returns the WorkUnit's unit's stderr.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._w.find(
+            {"_id": ObjectId(workunit_uid)},
+            {"info.stderr_id"}
+        )
+
+        stderr_id = cursor[0]['info']['stderr_id']
+
+        if stderr_id is None:
+            return None
+        else:
+            gfs = gridfs.GridFS(self._db)
+            stderr = gfs.get(stderr_id)
+            return stderr.read()
 
     #---------------------------------------------------------------------------
     #
