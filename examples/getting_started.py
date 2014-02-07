@@ -27,7 +27,7 @@ if __name__ == "__main__":
         pdesc.resource  = "localhost"
         pdesc.sandbox   = "/tmp/sagapilot.sandbox"
         pdesc.runtime   = 15 # minutes 
-        pdesc.cores     = 2 
+        pdesc.cores     = 60 
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

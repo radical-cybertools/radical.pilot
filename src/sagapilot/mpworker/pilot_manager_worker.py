@@ -89,7 +89,12 @@ class PilotManagerWorker(multiprocessing.Process):
                 self._execute_startup_pilots(request["pilot_descriptions"], request["credentials"])
             except Empty:
                 pass
-            # TODO: catch DB error HERE
+
+            # Check and update pilots:
+            #   * list all pilots and check their state
+            result = self._db.get_pilots(self._pm_id)
+            print result
+
             time.sleep(1)
 
     # ------------------------------------------------------------------------
