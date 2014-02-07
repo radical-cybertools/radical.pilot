@@ -78,9 +78,10 @@ class PilotManager(object):
 
                   pd = sagapilot.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
-                  pd.cores = 16
+                  pd.cores    = 16
+                  pd.runtime  = 5 # minutes
 
-                  pilot_india = pm.submit_pilots(pd)
+                  pilot = pm.submit_pilots(pd)
 
         **Returns:**
 
@@ -112,7 +113,7 @@ class PilotManager(object):
                 "URL"                : "fork://localhost",
                 "filesystem"         : "file://localhost",
                 "pre_bootstrap"      : ["hostname", "date"],
-                "task_launch_mode"   : "LOCAL"
+                "task_launch_mode"   : "LOCAL",
         }
         
         if resource_configurations is not None:
@@ -256,10 +257,6 @@ class PilotManager(object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'resource'."
                 raise exceptions.BadParameter(error_msg)
 
-            elif pilot_description.sandbox is None:
-                error_msg = "ComputePilotDescription does not define mandatory attribute 'sandbox'."
-                raise exceptions.BadParameter(error_msg)
-
             elif pilot_description.cores is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'runtime'."
                 raise exceptions.BadParameter(error_msg)
@@ -275,14 +272,15 @@ class PilotManager(object):
             else:
                 resource_cfg = self._resource_cfgs[pilot_description.resource]
 
-            # Make sure sandbox is a valid path.
-            if "valid_roots" in resource_cfg:
-                is_valid = False
-                for vr in resource_cfg["valid_roots"]:
-                    if pilot_description.sandbox.startswith(vr):
-                        is_valid = True
-                if is_valid is False:
-                    raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (pilot_description.resource, pilot_description.sandbox, resource_cfg["valid_roots"]))
+            # If 'default_sandbox' is defined, set it.
+            if pilot_description.sandbox is not None:
+                if "valid_roots" in resource_cfg:
+                    is_valid = False
+                    for vr in resource_cfg["valid_roots"]:
+                        if pilot_description.sandbox.startswith(vr):
+                            is_valid = True
+                    if is_valid is False:
+                        raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (pilot_description.resource, pilot_description.sandbox, resource_cfg["valid_roots"]))
 
             # Create the dictionary object.
             pilot_description_dict[ObjectId()] = {

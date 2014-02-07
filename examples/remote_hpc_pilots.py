@@ -27,7 +27,6 @@ if __name__ == "__main__":
         # uses $HOME/sagapilot.sandbox as sandbox directoy. 
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource  = "stampede.tacc.utexas.edu"
-        pdesc.sandbox   = "/home1/00988/tg802352/sagapilot.sandbox"
         pdesc.runtime   = 15 # minutes
         pdesc.cores     = 32 
 

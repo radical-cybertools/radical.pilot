@@ -73,13 +73,6 @@ class SagapilotException(Exception):
 class DatabaseError (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    The given URL could not be interpreted, for example due to an incorrect
-    / unknown schema. 
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -89,13 +82,6 @@ class DatabaseError (SagapilotException) :
 class IncorrectURL (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    The given URL could not be interpreted, for example due to an incorrect
-    / unknown schema. 
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -105,12 +91,7 @@ class IncorrectURL (SagapilotException) :
 #
 class BadParameter (SagapilotException) :
     """
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    A given parameter is out of bound or ill formatted.
+    TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -121,12 +102,6 @@ class BadParameter (SagapilotException) :
 class DoesNotExist (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    An operation tried to access a non-existing entity.
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -137,12 +112,6 @@ class DoesNotExist (SagapilotException) :
 class IncorrectState (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    The operation is not allowed on the entity in its current state.
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -153,12 +122,6 @@ class IncorrectState (SagapilotException) :
 class PermissionDenied (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    The used identity is not permitted to perform the requested operation.
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -169,12 +132,6 @@ class PermissionDenied (SagapilotException) :
 class AuthorizationFailed (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    The backend could not accept the given identity.
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -185,12 +142,6 @@ class AuthorizationFailed (SagapilotException) :
 class AuthenticationFailed (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    The backend could not establish a valid identity.
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -201,12 +152,6 @@ class AuthenticationFailed (SagapilotException) :
 class Timeout (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    The interaction with the backend timed out.
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)
@@ -217,12 +162,6 @@ class Timeout (SagapilotException) :
 class NoSuccess (SagapilotException) :
     """
     TODO: Document me!
-    :param msg: Error message, indicating the cause for the exception
-                being raised.
-    :type  msg: string
-    :raises:    --
-
-    Some unsopecified error occurred.
     """
     def __init__ (self, msg, obj=None) :
         SagapilotException.__init__(self, msg, obj)

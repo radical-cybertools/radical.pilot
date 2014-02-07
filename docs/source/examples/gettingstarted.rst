@@ -130,18 +130,15 @@ requirements and properties. This is done with the help of a
 that you need to define are:
 
    * `resource` - The name (hostname) of the target system or ``localhost`` to launch a local ComputePilot.
-   * `sandbox` - The sandbox (working directory) under which the ComputePilot agent will run.
    * `runtime` - The runtime (in minutes) of the ComputePilot agent.
    * `cores` - The number or cores the ComputePilot agent will try to allocate.
 
-You can define and submit a 2-core local pilot that runs in
-/tmp/sagapilot.sandbox for 5 minutes like this:
+You can define and submit a 2-core local pilot that runs for 5 minutes like this:
 
 .. code-block:: python
 
     pdesc = sagapilot.ComputePilotDescription()
     pdesc.resource  = "localhost"
-    pdesc.sandbox   = "/tmp/sagapilot.sandbox"
     pdesc.runtime   = 5 # minutes
     pdesc.cores     = 2
 
@@ -163,7 +160,7 @@ ComputePilot also has a unique identifier (``uid``)
 
 
 
-.. note:: You change to the ComputePilot sandbox directory
+.. note:: You can change to the ComputePilot sandbox directory
         (``/tmp/sagapilot.sandbox`` in the above example) to see the raw logs and output
         files of the ComputePilot agent(s) ``[pilot-<uid>]`` as well as the working
         directories and output of the individual ComputeUnits (``[task-<uid>]``).

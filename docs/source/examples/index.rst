@@ -16,3 +16,4 @@ Examples & Best Practice
    multicore.rst
    async.rst
    execution_profiling.rst
+   condor_grids.rst

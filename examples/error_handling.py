@@ -33,7 +33,6 @@ def synchronous_error_handling():
         # fail on 'localhost' because not enough cores are available. 
         pd = sagapilot.ComputePilotDescription()
         pd.resource  = "localhost"
-        pd.sandbox   = "/tmp/sagapilot.sandbox"
         pd.cores     = 128
         pd.runtime   = 10 
 

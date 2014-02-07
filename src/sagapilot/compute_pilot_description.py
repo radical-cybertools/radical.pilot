@@ -40,52 +40,55 @@ class ComputePilotDescription (attributes.Attributes) :
 
     **Example**::
 
-        pm = sagapilot.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+          pm = sagapilot.PilotManager(session=s)
 
-        pd = sagapilot.ComputePilotDescription()
-        pd.resource = "localhost"
-        pd.sandbox  = "/tmp/sagapilot.sandbox"
-        pd.runtime  = 10
-        pd.cores    = 16
+          pd = sagapilot.ComputePilotDescription()
+          pd.resource = "localhost"  # defined in futuregrid.json
+          pd.cores    = 16
+          pd.runtime  = 5 # minutes
 
-        pilot_india = pm.submit_pilots(pd)
+          pilot = pm.submit_pilots(pd)
 
     .. data:: resource 
 
-       (`Property`) [Type: `string` or `list of strings`] 
-       The key of a :ref:`chapter_machconf` entry. [`mandatory`]
+       [Type: `string` or `list of strings`] [**`mandatory`**] The key of a :ref:`chapter_machconf` entry.
        If the key exists, the machine-specifc configuration is loaded from the 
        configuration once the ComputePilotDescription is passed to 
        :meth:`sagapilot.PilotManager.submit_pilots`. If the key doesn't exist, a
        :class:`sagapilot.SagapilotException` is thrown.
 
-    .. data:: sandbox 
-
-       (`Property`) [Type: `string`]  The working direcotry ("sandbox") of the 
-       ComputePilot agent. [`mandatory`]
-
     .. data:: runtime  
 
-       (`Property`) [Type: `int`] The total run time (wall-clock time) in 
-       **minutes** of the ComputePilot. [`mandatory`]
+       [Type: `int`] [**mandatory**] The total run time (wall-clock time) in 
+       **minutes** of the ComputePilot. 
 
     .. data:: cores
 
-       (`Property`) [Type: `int`] The number of cores the pilot should allocate 
-       on the target resource. [`mandatory`]
+       [Type: `int`] [**mandatory**] The number of cores the pilot should allocate 
+       on the target resource. 
+
+    .. data:: sandbox 
+
+       [Type: `string`] [optional] The working ("sandbox") directory  of the 
+       ComputePilot agent. This parameter is optional. If not set, it defaults
+       to `sagapilot.sandox` in your home or login directory.
+
+       .. warning:: If you define a ComputePilot on an HPC cluster and you want to
+                 set `sandbox` manually, make sure that it points to a directory 
+                 on a shared filesystem that can be reached from all compute nodes.
 
     .. data:: queue
 
-       (`Property`) [Type: `string`] The name of the job queue the pilot should 
+       [Type: `string`] [optional] The name of the job queue the pilot should 
        get submitted to . If `queue` is defined in the resource configuration 
-       (:data:`resource`) defining `queue` will override it explicitly. [`optional`]
+       (:data:`resource`) defining `queue` will override it explicitly. 
 
     .. data:: allocation 
 
-       (`Property`) [Type: `string`] The name of the project / allocation to 
+       [Type: `string`] [optional] The name of the project / allocation to 
        charge for used CPU time. If `allocation` is defined in the machine 
        configuration (:data:`resource`), defining `allocation` will 
-       override it explicitly. [`optional`]
+       override it explicitly. 
 
     """
 

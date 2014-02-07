@@ -13,8 +13,6 @@ FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 # Change these according to your needs 
 CFG_USERNAME    = "oweidner"
 CFG_RESOURCE    = "localhost"    
-CFG_WORKING_DIR = "/tmp/sinon/"
-
 
 #-------------------------------------------------------------------------------
 #
@@ -37,10 +35,9 @@ def demo_milestone_01_1():
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource          = CFG_RESOURCE
-        pd.working_directory = CFG_WORKING_DIR
-        pd.cores             = 8
-        pd.run_time          = 10 # minutes
+        pd.resource  = CFG_RESOURCE
+        pd.cores     = 8
+        pd.runtime   = 10 # minutes
 
         print "* Submitting pilot to '%s'..." % (pd.resource)
         p1 = pm.submit_pilots(pd)

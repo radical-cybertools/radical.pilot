@@ -19,6 +19,7 @@ import os
 import time
 import saga
 import datetime
+import traceback
 import multiprocessing
 from Queue import Empty
 
@@ -93,7 +94,6 @@ class PilotManagerWorker(multiprocessing.Process):
             # Check and update pilots:
             #   * list all pilots and check their state
             result = self._db.get_pilots(self._pm_id)
-            print result
 
             time.sleep(1)
 
@@ -159,7 +159,46 @@ class PilotManagerWorker(multiprocessing.Process):
                 # directory.
                 #
                 fs = saga.Url(resource_cfg['filesystem'])
-                fs.path += sandbox
+                if sandbox is not None:
+                    fs.path += sandbox
+                else:
+                    # No sandbox defined. try to determine
+                    found_dir_success = False
+
+                    if resource_cfg['filesystem'].startswith("file"):
+                        workdir = os.path.expanduser("~")
+                        found_dir_success = True
+                    else:
+                        # A horrible hack to get the home directory on the remote machine
+                        import subprocess
+                        
+                        usernames = [None]
+                        for cred in credentials:
+                            usernames.append(cred["user_id"])
+
+                        # We have mutliple usernames we can try... :/
+                        for username in usernames:
+                            if username is not None:
+                                url = "%s@%s" % (username, fs.host)
+                            else:
+                                url = fs.host
+
+                            p = subprocess.Popen(["ssh", url,  "pwd"], 
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                            workdir, err = p.communicate()
+
+                            if err != "":
+                                logger.warning("Couldn't determine remote working directory for %s: %s" % (url, err))
+                            else:
+                                logger.info("Determined remote working directory for %s: %s" % (url, workdir))
+                                found_dir_success = True
+                                break 
+                        
+                    if found_dir_success == False:
+                        raise Exception("Couldn't determine remote working directory.")
+
+                    # At this point we have determined 'pwd'
+                    fs.path += "%s/sagapilot.sandbox" % workdir.rstrip()
 
                 agent_dir_url = saga.Url("%s/pilot-%s/" \
                     % (str(fs), str(pilot_id)))
@@ -263,7 +302,7 @@ class PilotManagerWorker(multiprocessing.Process):
                     submitted=datetime.datetime.utcnow(), logs=pilot_logs)
 
             except Exception, ex:
-                error_msg = "Pilot Job submission failed: '%s'" % str(ex)
+                error_msg = "Pilot Job submission failed:\n %s" % (traceback.format_exc())
                 pilot_description['info']['state'] = states.FAILED
                 pilot_logs.append(error_msg)
                 logger.error(error_msg)

@@ -23,6 +23,7 @@ import pymongo
 import logging
 import datetime
 import hostlist
+import traceback
 import optparse
 import threading 
 import subprocess
@@ -623,7 +624,7 @@ class ExecWorker(multiprocessing.Process):
                 time.sleep(1)
 
         except Exception, ex:
-            self._log.error("Error in ExecWorker loop: %s", ex)
+            self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
             raise
 
 
@@ -841,7 +842,7 @@ class Agent(threading.Thread):
                                        {"$pullAll": { "wu_queue": new_wu_ids}})
 
                 except Exception, ex:
-                    self._log.error("MongoDB error while checking for new work units: %s" % ex)
+                    self._log.error("Error while checking for new work units: %s. \n%s" % (ex, traceback.format_exc()))
                     #self._p.update(
                     #    {"_id": ObjectId(self._pilot_id)}, 
                     #    {"$set": {"info.state"     : "Failed",
@@ -858,7 +859,7 @@ class Agent(threading.Thread):
         except Exception, ex:
             # If we arrive here, there was an exception in the main loop.
             pilot_FAILED(self._p, self._pilot_id, str(ex))
-            self._log.error("ERROR in agent main loop. EXITING.")
+            self._log.error("ERROR in agent main loop. EXITING: \n%s", traceback.format_exc())
 
 #-----------------------------------------------------------------------------
 #

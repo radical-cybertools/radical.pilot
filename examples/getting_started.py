@@ -25,16 +25,14 @@ if __name__ == "__main__":
         # for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource  = "localhost"
-        pdesc.sandbox   = "/tmp/sagapilot.sandbox"
         pdesc.runtime   = 15 # minutes 
-        pdesc.cores     = 60 
+        pdesc.cores     = 4 
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
         print "Pilot UID       : {0} ".format( pilot.uid )
 
-
-        # Create a workload of 8 '/bin/sleep' ComputeUnits (tasks)
+        # Create a workload of 8 ComputeUnits (tasks)
         compute_units = []
 
         for unit_count in range(0, 8):
