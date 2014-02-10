@@ -38,7 +38,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, pilotmanager_id, db_connection):
+    def __init__(self, pilot_manager_uid, pilot_manager_data, db_connection):
         """Le constructeur.
         """
 
@@ -49,7 +49,6 @@ class PilotManagerWorker(multiprocessing.Process):
         self._stop   = multiprocessing.Event()
         self._stop.clear()
 
-        self._pm_id  = pilotmanager_id
         self._db     = db_connection
 
         # The different command queues hold pending operations
@@ -57,6 +56,22 @@ class PilotManagerWorker(multiprocessing.Process):
         # runtime in the run() loop and the worker acts upon them accordingly. 
         self._cancel_pilot_requests  = multiprocessing.Queue()
         self._startup_pilot_requests = multiprocessing.Queue()
+
+        if pilot_manager_uid is None:
+            # Try to register the PilotManager with the database.
+            self._pm_id = self._db.insert_pilot_manager(
+                pilot_manager_data=pilot_manager_data
+            )
+        else:
+            self._pm_id = pilot_manager_uid
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def pilot_manager_uid(self):
+        """Returns the uid of the associated PilotMangager
+        """
+        return self._pm_id
 
     # ------------------------------------------------------------------------
     #
@@ -309,6 +324,17 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 self._db.update_pilot_state(pilot_uid=str(pilot_id),
                     state=states.FAILED, submitted=datetime.datetime.utcnow(), logs=pilot_logs)
+
+    # ------------------------------------------------------------------------
+    #
+    def get_compute_pilot_data(self):
+        """Retruns the raw data (json dicts) of all ComputePilots registered 
+           with this Worker / PilotManager
+        """
+        json_dict = self._db.get_pilots(pilot_manager_id=self._pm_id)
+        return json_dict
+
+
 
     # ------------------------------------------------------------------------
     #

@@ -13,10 +13,11 @@ __license__   = "MIT"
 
 # ------------------------------------------------------------------------------
 # States
-UNKNOWN           = 'Unknown'
-PENDING           = 'Pending'
-RUNNING           = 'Running'
-ACTIVE            =  RUNNING
-DONE              = 'Done'
-CANCELED          = 'Canceled'
-FAILED            = 'Failed' 
+UNKNOWN             = 'Unknown'
+PENDING             = 'Pending'
+TRANSFERRING_INPUT  = 'TransferringInput'
+RUNNING             = 'Running'
+TRANSFERRING_OUTPUT = 'TransferringOutput' 
+DONE                = 'Done'
+CANCELED            = 'Canceled'
+FAILED              = 'Failed' 

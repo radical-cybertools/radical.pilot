@@ -90,8 +90,8 @@ class PilotManager(object):
         **Raises:**
             * :class:`sagapilot.SagapilotException`
         """
-        self._db      = session._dbs
         self._session = session
+        self._worker  = None
         self._uid     = None
 
         if resource_configurations == "~=RECON=~":
@@ -141,12 +141,15 @@ class PilotManager(object):
                 except ValueError, err:
                     raise exceptions.BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
 
-        self._uid = self._db.insert_pilot_manager(pilot_manager_data={})
-
         # Start a worker process fo this PilotManager instance. The worker 
-        # process encapsulates database access et al.
-        self._worker = PilotManagerWorker(pilotmanager_id=self._uid, db_connection=session._dbs)
+        # process encapsulates database access, persitency et al.
+        self._worker = PilotManagerWorker(
+            pilot_manager_uid=None, 
+            pilot_manager_data={}, 
+            db_connection=session._dbs)
         self._worker.start()
+
+        self._uid = self._worker.pilot_manager_uid
 
         # Each pilot manager has a worker thread associated with it. The task of the 
         # worker thread is to check and update the state of pilots, fire callbacks
@@ -160,10 +163,12 @@ class PilotManager(object):
         """
         if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
             logger.debug("__del__(): PilotManager '%s'." % self._uid )
-        # Stop the worker process
-        self._worker.stop()
-        # Remove worker from registry
-        self._session._process_registry.remove(self._uid)
+
+        if self._worker is not None:
+            # Stop the worker process
+            self._worker.stop()
+            # Remove worker from registry
+            self._session._process_registry.remove(self._uid)
 
     #---------------------------------------------------------------------------
     #
@@ -184,7 +189,10 @@ class PilotManager(object):
         if worker is not None:
             obj._worker = worker
         else:
-            obj._worker = PilotManagerWorker(pilotmanager_id=pilot_manager_id, db_connection=session._dbs)
+            obj._worker = PilotManagerWorker(
+                pilot_manager_uid=pilot_manager_id, 
+                pilot_manager_data={},
+                db_connection=session._dbs)
             session._process_registry.register(pilot_manager_id, obj._worker)
 
         # start the worker if it's not already running
@@ -426,7 +434,8 @@ class PilotManager(object):
 
             all_done = True
 
-            pilots_json = self._db.get_pilots(pilot_manager_id=self.uid)
+            pilots_json = self._worker.get_compute_pilot_data()
+
             for pilot in pilots_json:
                 if pilot['info']['state'] not in state:
                     all_done = False

@@ -82,21 +82,20 @@ class UnitManager(object):
         **Raises:**
             * :class:`sagapilot.SagapilotException`
         """
-        self._db = session._dbs
         self._session = session
-
-        self._scheduler = get_scheduler(name=scheduler)
+        self._worker  = None
 
         if _reconnect is False:
-            # Add a new unit manager netry to the DB
-            self._uid = self._db.insert_unit_manager(
-                unit_manager_data={'scheduler' : scheduler})
-            logger.info("Created new UnitManager %s." % str(self))
-
             # Start a worker process fo this UnitManager instance. The worker 
             # process encapsulates database access et al.
-            self._worker = UnitManagerWorker(unitmanager_id=self._uid, db_connection=session._dbs)
+            self._worker = UnitManagerWorker(
+                unit_manager_uid=None, 
+                unit_manager_data={'scheduler' : scheduler}, 
+                db_connection=session._dbs)
             self._worker.start()
+
+            self._uid = self._worker.unit_manager_uid
+            self._scheduler = get_scheduler(name=scheduler)
 
             # Each pilot manager has a worker thread associated with it. 
             # The task of the worker thread is to check and update the state 
@@ -104,8 +103,8 @@ class UnitManager(object):
             self._session._process_registry.register(self._uid, self._worker)
 
         else:
-            pass
             # re-connect. do nothing
+            pass
 
     #---------------------------------------------------------------------------
     #
@@ -115,9 +114,10 @@ class UnitManager(object):
         if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
             logger.debug("__del__(): UnitManager '%s'." % self._uid )
 
-        self._worker.stop()
-        # Remove worker from registry
-        self._session._process_registry.remove(self._uid)
+        if self._worker is not None:
+            self._worker.stop()
+            # Remove worker from registry
+            self._session._process_registry.remove(self._uid)
 
     #---------------------------------------------------------------------------
     #
@@ -125,29 +125,35 @@ class UnitManager(object):
     def _reconnect(cls, session, unit_manager_id):
         """PRIVATE: Reconnect to an existing UnitManager.
         """
-
         if unit_manager_id not in session._dbs.list_unit_manager_uids():
             raise exceptions.BadParameter ("PilotManager with id '%s' not in database." % unit_manager_id)
 
-        um_data = session._dbs.get_unit_manager(unit_manager_id)
-
-        obj = cls(session=session, scheduler=um_data['scheduler'], _reconnect=True)
-        obj._uid = unit_manager_id
+        # The UnitManager object
+        obj = cls(session=session, scheduler=None, _reconnect=True)
         
-        logger.info("Reconnected to existing UnitManager %s." % str(obj))
-
         # Retrieve or start a worker process fo this PilotManager instance.
         worker = session._process_registry.retrieve(unit_manager_id)
         if worker is not None:
             obj._worker = worker
         else:
-            obj._worker = UnitManagerWorker(unitmanager_id=unit_manager_id, db_connection=session._dbs)
+            obj._worker = UnitManagerWorker(
+                unit_manager_uid=unit_manager_id, 
+                unit_manager_data=None, 
+                db_connection=session._dbs)
             session._process_registry.register(unit_manager_id, obj._worker)
 
         # start the worker if it's not already running
         if obj._worker.is_alive() is False:
             obj._worker.start()
 
+        # Now that the worker is running (again), we can get more information
+        # about the UnitManager
+        um_data = obj._worker.get_unit_manager_data()
+
+        obj._scheduler = get_scheduler(name=um_data['scheduler'])
+        obj._uid = unit_manager_id
+
+        logger.info("Reconnected to existing UnitManager %s." % str(obj))
         return obj
 
     # --------------------------------------------------------------------------
@@ -221,12 +227,7 @@ class UnitManager(object):
         if not isinstance (pilots, list):
             pilots = [pilots]
 
-        pids = []
-        for pilot in pilots:
-            pids.append(pilot.uid)
-
-        self._db.unit_manager_add_pilots(unit_manager_id=self.uid,
-                                         pilot_ids=pids)
+        self._worker.add_pilots(pilots)
 
     # --------------------------------------------------------------------------
     #
@@ -245,7 +246,7 @@ class UnitManager(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        return self._db.unit_manager_list_pilots(unit_manager_uid=self.uid)
+        return self._worker.get_pilot_uids(unit_manager_uid=self.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -275,8 +276,7 @@ class UnitManager(object):
         if not isinstance (pilot_ids, list):
             pilot_ids = [pilot_ids]
 
-        self._db.unit_manager_remove_pilots(unit_manager_id=self.uid,
-                                            pilot_ids=pilot_ids)
+        self._worker.remove_pilots(pilot_ids)
 
     # --------------------------------------------------------------------------
     #
@@ -292,7 +292,7 @@ class UnitManager(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        return self._db.unit_manager_list_work_units(unit_manager_uid=self.uid)
+        return self._worker.get_work_units_uid()
 
     # --------------------------------------------------------------------------
     #

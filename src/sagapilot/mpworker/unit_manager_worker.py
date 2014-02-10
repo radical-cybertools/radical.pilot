@@ -34,7 +34,7 @@ class UnitManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unitmanager_id, db_connection):
+    def __init__(self, unit_manager_uid, unit_manager_data, db_connection):
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
@@ -43,7 +43,7 @@ class UnitManagerWorker(multiprocessing.Process):
         self._stop   = multiprocessing.Event()
         self._stop.clear()
 
-        self._um_id  = unitmanager_id
+        self._um_id  = unit_manager_uid
         self._db     = db_connection
 
         # The different command queues hold pending operations
@@ -52,6 +52,21 @@ class UnitManagerWorker(multiprocessing.Process):
         
         #self._cancel_pilot_requests  = multiprocessing.Queue()
         #self._startup_pilot_requests = multiprocessing.Queue()
+
+        if unit_manager_uid is None:
+            # Try to register the PilotManager with the database.
+            self._um_id = self._db.insert_unit_manager(
+                unit_manager_data=unit_manager_data)
+        else:
+            self._um_id = unit_manager_uid
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def unit_manager_uid(self):
+        """Returns the uid of the associated UnitManager
+        """
+        return self._um_id
 
     # ------------------------------------------------------------------------
     #
@@ -72,3 +87,48 @@ class UnitManagerWorker(multiprocessing.Process):
 
         while not self._stop.is_set():
             time.sleep(1)
+
+    # ------------------------------------------------------------------------
+    #
+    def get_unit_manager_data(self):
+        """Returns the raw data (JSON dict) for a UnitManger.
+        """
+        return self._db.get_unit_manager(self._um_id)
+
+    # ------------------------------------------------------------------------
+    #
+    def get_pilot_uids(self):
+        """Returns the UIDs of the pilots registered with the UnitManager.
+        """
+        return self._db.unit_manager_list_pilots(self._um_id)
+
+    # ------------------------------------------------------------------------
+    #
+    def get_work_units_uid(self):
+        """Returns the UIDs of the WorkUnits registered with the UnitManager.
+        """
+        return self._db.unit_manager_list_work_units(self._um_id)
+
+    # ------------------------------------------------------------------------
+    #
+    def add_pilots(self, pilots):
+        """Links ComputePilots to the UnitManager.
+        """
+        # Extract the uids 
+        pids = []
+        for pilot in pilots:
+            pids.append(pilot.uid)
+
+        self._db.unit_manager_add_pilots(unit_manager_id=self._um_id,
+                                         pilot_ids=pids)
+
+    # ------------------------------------------------------------------------
+    #
+    def remove_pilots(self, pilot_uids):
+        """Unlinks one or more ComputePilots from the UnitManager.
+        """
+        self._db.unit_manager_remove_pilots(unit_manager_id=self._um_id,
+                                            pilot_ids=pilot_uids)
+
+
+

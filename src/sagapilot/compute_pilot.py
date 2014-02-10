@@ -78,7 +78,7 @@ class ComputePilot (object):
         pilot._description = pilot_description
         pilot._manager     = pilot_manager_obj
 
-        pilot._db = pilot._manager._db
+        pilot._db = pilot._manager._session._dbs
 
         logger.info("Created new ComputePilot %s" % str(pilot))
 
