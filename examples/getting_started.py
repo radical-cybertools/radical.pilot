@@ -1,5 +1,7 @@
 import sagapilot
 
+# DBURL points to a MongoDB server. For installation of a MongoDB server, please
+# refer to the MongoDB website: http://docs.mongodb.org/manual/installation/
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
 
 #-------------------------------------------------------------------------------

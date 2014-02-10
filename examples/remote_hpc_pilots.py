@@ -1,6 +1,11 @@
 import sagapilot
 
+# DBURL points to a MongoDB server. For installation of a MongoDB server, please
+# refer to the MongoDB website: http://docs.mongodb.org/manual/installation/
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
+
+# RCONF points to the resource configuration files. Read more about resource 
+# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
 RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
           "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
 
