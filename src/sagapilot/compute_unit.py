@@ -73,7 +73,7 @@ class ComputeUnit(object): #attributes.Attributes):
         computeunit._description = unit_description
         computeunit._manager     = unit_manager_obj
 
-        computeunit._db          = unit_manager_obj._db
+        computeunit._db          = unit_manager_obj._session._dbs
 
         return computeunit
 
@@ -97,7 +97,7 @@ class ComputeUnit(object): #attributes.Attributes):
             computeunit._description = u['description']
             computeunit._manager = unit_manager_obj
 
-            computeunit._db = unit_manager_obj._db
+            computeunit._db = unit_manager_obj._session._dbs
         
             computeunits.append(computeunit)
 

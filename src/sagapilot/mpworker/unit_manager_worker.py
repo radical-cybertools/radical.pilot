@@ -104,10 +104,18 @@ class UnitManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def get_work_units_uid(self):
-        """Returns the UIDs of the WorkUnits registered with the UnitManager.
+    def get_work_unit_uids(self):
+        """Returns the UIDs of all WorkUnits registered with the UnitManager.
         """
         return self._db.unit_manager_list_work_units(self._um_id)
+
+    # ------------------------------------------------------------------------
+    #
+    def get_work_unit_states(self):
+        """Returns the states of all WorkUnits registered with the Unitmanager.
+        """
+        return self._db.get_workunit_states(self._um_id)
+
 
     # ------------------------------------------------------------------------
     #
@@ -129,6 +137,19 @@ class UnitManagerWorker(multiprocessing.Process):
         """
         self._db.unit_manager_remove_pilots(unit_manager_id=self._um_id,
                                             pilot_ids=pilot_uids)
+
+    # ------------------------------------------------------------------------
+    #
+    def register_schedule_compute_unit_to_pilot_request(self, pilot_uid, units):
+        """Schedules one or more ComputeUnits to a ComputePilot.
+        """
+        self._db.insert_workunits(
+            pilot_id=pilot_uid, 
+            unit_manager_uid=self._um_id,
+            units=units
+        )
+
+
 
 
 
