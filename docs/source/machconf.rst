@@ -12,32 +12,42 @@ In order to keep SAGA-Pilot applications free from clutter and
 machine-specific parameters and constants, SAGA-Pilot uses 
 resource configration files.
 
-Machine configuration files are a mandatory parameter for 
-creating a new :class:`sinon.PilotManager` instance::
+Machine configuration files can be passed to a :class:`sagapilot.PilotManager` 
+instance::
 
     FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
     
-    s = sinon.Session(database_url=DBURL)
-    pm = sinon.PilotManager(session=s, resource_configurations=FGCONF)
+    s = sagapilot.Session(database_url=DBURL)
+    pm = sagapilot.PilotManager(session=s, resource_configurations=FGCONF)
 
-A resource configuration has the following layout::
+Multiple configuration files can be passed as a list::
+
+    FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
+    XSCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json'
+
+    s = sagapilot.Session(database_url=DBURL)
+    pm = sagapilot.PilotManager(session=s, resource_configurations=[FGCONF, XSCONF])
+
+Resource configuration file URLs can either be `https(s)://` URLs to point to 
+a remote location, or `file://localhost` URLs to point to a local file. ::
+
+    REMOTE_CONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
+    LOCAL_CONF  = 'file://localhost/home/project/cfgs/mycustomconfig.json'
+
+A resource configuration uses the JSON format and has the following layout::
 
     {
         "futuregrid.INDIA": {
-            "URL"  : "pbs+ssh://india.futuregrid.org",
-            "key1" : "val",
-            "key2" : "val"
+            ...
         },
 
         "futuregrid.SIERRA": {
-            "URL": "pbs+ssh://sierra.futuregrid.org",
-            "key1" : "val",
-            "key2" : "val"
+            ...
         }
     }
 
 In the example above, `futuregrid.INDIA` and `futuregrid.SIERRA` are the
-**resource keys**. Resource keys are used in
+**resource keys**. Resource keys are referenced in
 :class:`sagapilot.ComputePilotDescription` to create a
 :class:`sagapilot.ComputePilot` for a given machine::
 
@@ -48,11 +58,10 @@ In the example above, `futuregrid.INDIA` and `futuregrid.SIERRA` are the
     pilot_india = pm.submit_pilots(pd)
 
 
-Available Machine Files
-=======================
+Available Resource Configuration Files
+======================================
 
-We maintain a set of ready to use resource configuration files for some of the more 
-popular cyberinfrastructure federations.
+We maintain a set of ready to use resource configuration files:
 
 FutureGrid
 ----------
@@ -60,5 +69,46 @@ FutureGrid
 * Homepage: `http://www.futuregrid.org <http://www.futuregrid.org>`_
 * Resource file URL: `https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json <https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json>`_
 
-Write a New Machine File
-========================
+XSEDE
+-----
+
+* Homepage: `http://www.xsede.org <http://www.xsede.org>`_
+* Resource file URL: `https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json <https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json>`_
+
+Writing a Custom Resource Configuration File
+============================================
+
+If you want to use SAGA-Pilot with a resource that is not in any of the provided 
+configuration files, you can write your own.
+
+A configuration file has to be valid JSON. The structure is as follows:
+
+.. code-block:: python
+
+    {
+        "RESOURCE_KEY_NAME": {
+            "URL"                : "slurm+ssh://stampede.tacc.utexas.edu",
+            "filesystem"         : "sftp://stampede.tacc.utexas.edu/",
+            "default_queue"      : "normal",
+            "python_interpreter" : "/opt/apps/python/epd/7.3.2/bin/python",
+            "pre_bootstrap"      : ["module purge", "module load TACC", "module load cluster", "module load python/2.7.3-epd-7.3.2"],
+            "task_launch_mode"   : "SSH",
+            "valid_roots"        : ["/home1", "/scratch", "/work"]
+        },
+        "ANOTHER_KEY_NAME": ...
+    }
+
+`RESOURCE_KEY_NAME` is the string which is used as value for 
+`ComputePilotDescription.resource` to reference this entry. They have to be 
+unique. 
+
+All fields are mandatory:
+
+* `URL`: The URL of the cluster queueing manager. This can be one of `pbs+ssh://`, `sge+ssh://`, `slurm+ssh://`.
+* `filesystem`: An SFTP URL that points to the remote cluster's root filesystem. 
+* `default_queue`: The default cluster queue to use if not defined in :class:`sagapilot.ComputePilotDescription` 
+* `python_interpreter`: The path to a valid Python interpreter (**>= 2.6**) on the remote cluster.
+* `pre_bootstrap`: A list of commands to execute before SAGA-Pilot agent startup.
+* `task_launch_mode`: The SAGA-Pilot agent task launch method. This can be either "SSH" (only single-core tasks are supported) or "MPI" (mpi-style tasks are supported).
+* `valid_roots`: A list of valid directory prefixes for shared filesystem mounts. A user can define the agent working directory via the `PilotDescription.sandbox` parameter. This is checked against the list of `valid_roots` to ensure the user doesn't provide an invalid path.
+
