@@ -176,9 +176,14 @@ class PilotManager(object):
     def _reconnect(cls, session, pilot_manager_id):
         """PRIVATE: reconnect to an existing pilot manager.
         """
+        uid_exists = PilotManagerWorker.uid_exists(db_connection=session._dbs, 
+            pilot_manager_uid=pilot_manager_id)
 
-        if pilot_manager_id not in session._dbs.list_pilot_manager_uids():
+        if not uid_exists:
             raise exceptions.BadParameter ("PilotManager with id '%s' not in database." % pilot_manager_id)
+
+
+
 
         obj = cls(session=session, resource_configurations="~=RECON=~")
         obj._uid           = pilot_manager_id

@@ -67,6 +67,19 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
+    @classmethod
+    def uid_exists(cls, db_connection, pilot_manager_uid):
+        """Checks wether a pilot unit manager UID exists.
+        """
+        exists = False
+        
+        if pilot_manager_uid in db_connection.list_pilot_manager_uids():
+            exists = True
+
+        return exists
+
+    # ------------------------------------------------------------------------
+    #
     @property
     def pilot_manager_uid(self):
         """Returns the uid of the associated PilotMangager

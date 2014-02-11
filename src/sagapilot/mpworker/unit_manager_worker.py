@@ -62,6 +62,20 @@ class UnitManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
+    @classmethod
+    def uid_exists(cls, db_connection, unit_manager_uid):
+        """Checks wether a particular unit manager UID exists.
+        """
+        exists = False
+        
+        if unit_manager_uid in db_connection.list_unit_manager_uids():
+            exists = True
+
+        return exists
+
+
+    # ------------------------------------------------------------------------
+    #
     @property
     def unit_manager_uid(self):
         """Returns the uid of the associated UnitManager

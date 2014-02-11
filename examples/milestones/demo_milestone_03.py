@@ -23,7 +23,7 @@ FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 # Change these according to your needs 
 CFG_USERNAME      = "oweidner"
 
-CFG_RESOURCE_A    = "hotel.futuregrid.org"    
+CFG_RESOURCE_A    = "alamo.futuregrid.org"    
 CFG_NUMCORES_A    = 32
 
 CFG_RESOURCE_B    = "india.futuregrid.org"    

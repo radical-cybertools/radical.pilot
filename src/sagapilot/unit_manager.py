@@ -23,7 +23,6 @@ from sagapilot.utils.logger  import logger
 from sagapilot.mpworker      import UnitManagerWorker
 from sagapilot.scheduler     import get_scheduler
 
-import sagapilot.types       as types
 import sagapilot.states      as states
 import sagapilot.exceptions  as exceptions
 
@@ -125,8 +124,11 @@ class UnitManager(object):
     def _reconnect(cls, session, unit_manager_id):
         """PRIVATE: Reconnect to an existing UnitManager.
         """
-        if unit_manager_id not in session._dbs.list_unit_manager_uids():
-            raise exceptions.BadParameter ("PilotManager with id '%s' not in database." % unit_manager_id)
+        uid_exists = UnitManagerWorker.uid_exists(db_connection=session._dbs, 
+            unit_manager_uid=unit_manager_id)
+
+        if not uid_exists:
+            raise exceptions.BadParameter ("UnitManager with id '%s' not in database." % unit_manager_id)
 
         # The UnitManager object
         obj = cls(session=session, scheduler=None, _reconnect=True)
@@ -368,6 +370,7 @@ class UnitManager(object):
 
                     # looks ok -- add the unit as submission candidate
                     unit_id = ObjectId()
+                    
                     submission_dict[unit_id] = {
                         'description': ud, 
                         'info': {'state': states.PENDING, 
