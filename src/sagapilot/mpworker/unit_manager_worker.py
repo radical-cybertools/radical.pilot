@@ -20,6 +20,9 @@ import datetime
 import multiprocessing
 from Queue import Empty
 
+from bson.objectid import ObjectId
+
+import sagapilot.states      as state
 
 from radical.utils import which
 
@@ -51,7 +54,7 @@ class UnitManagerWorker(multiprocessing.Process):
         # runtime in the run() loop and the worker acts upon them accordingly. 
         
         #self._cancel_pilot_requests  = multiprocessing.Queue()
-        #self._startup_pilot_requests = multiprocessing.Queue()
+        self._schedule_compute_unit_requests = multiprocessing.Queue()
 
         if unit_manager_uid is None:
             # Try to register the PilotManager with the database.
@@ -100,7 +103,27 @@ class UnitManagerWorker(multiprocessing.Process):
         logger.info("Worker process for UnitManager %s started with PID %s." % (self._um_id, self.pid))
 
         while not self._stop.is_set():
+
+            # Check if there are any pilots to cancel.
+            #try:
+            #    pilot_ids = self._cancel_pilot_requests.get_nowait()
+            #    self._execute_cancel_pilots(pilot_ids)
+            #except Empty:
+            #    pass
+
+            # Check if there are any compute_units to start.
+            try:
+                request = self._schedule_compute_unit_requests.get_nowait()
+                self._execute_schedule_compute_unit(request)
+            except Empty:
+                pass
+
+            # Check and update pilots:
+            #   * list all pilots and check their state
+            #result = self._db.get_pilots(self._pm_id)
+
             time.sleep(1)
+
 
     # ------------------------------------------------------------------------
     #
@@ -177,16 +200,38 @@ class UnitManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def register_schedule_compute_unit_to_pilot_request(self, pilot_uid, units):
-        """Schedules one or more ComputeUnits to a ComputePilot.
-        """
-        self._db.insert_workunits(
-            pilot_id=pilot_uid, 
-            unit_manager_uid=self._um_id,
-            units=units
+    def _execute_schedule_compute_unit(self, request):
+        """document me"""
+
+        logger.info("Scheduling ComputeUnit '%s' to ComputePilot '%s'." % (request['compute_unit_uid'], request['pilot_uid']))
+        self._db.assign_compute_unit_to_pilot(
+            compute_unit_uid=request['compute_unit_uid'],
+            pilot_uid=request['pilot_uid']
         )
 
 
+    # ------------------------------------------------------------------------
+    #
+    def register_schedule_compute_unit_request(self, pilot_uid, unit_description):
+        """Request the scheduling a ComputeUnit on a ComputePilot.
+        """
+        # create a new object id for the unit
+        unit_uid = str(ObjectId())
 
+        self._db.insert_compute_unit( 
+            pilot_uid=pilot_uid, 
+            unit_manager_uid=self._um_id, 
+            unit_uid=unit_uid, 
+            unit_description=unit_description.as_dict(), 
+            unit_state=state.PENDING, 
+            unit_log=[]
+        )
 
+        # add the ComputeUnit to the transfer scheduler queue.
+        self._schedule_compute_unit_requests.put({
+            "pilot_uid"               : pilot_uid,
+            "compute_unit_uid"        : unit_uid,
+            "compute_unitdescription" : unit_description.as_dict()
+        })
 
+        return unit_uid

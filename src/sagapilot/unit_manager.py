@@ -13,9 +13,6 @@ __license__   = "MIT"
 
 import os 
 import time
-import datetime
-
-from bson.objectid import ObjectId
 
 from sagapilot.compute_unit  import ComputeUnit
 from sagapilot.utils.logger  import logger
@@ -360,7 +357,6 @@ class UnitManager(object):
                 uds = schedule[pilot_id]
 
                 # submit each unit description scheduled here, all in one bulk
-                submission_dict = {}
                 for ud in uds :
 
                     # sanity check on scheduler provided information
@@ -368,30 +364,20 @@ class UnitManager(object):
                         raise exceptions.SagapilotException("Internal error - invalid scheduler reply, "
                                             "no such unit description %s" % ud)
 
-                    # looks ok -- add the unit as submission candidate
-                    unit_id = ObjectId()
-                    
-                    submission_dict[unit_id] = {
-                        'description': ud, 
-                        'info': {'state': states.PENDING, 
-                                 'submitted': datetime.datetime.utcnow(),
-                                 'log': []}
-                    }
-
-                    # this unit is not unscheduled anumore...
+                    # this unit is not unscheduled anymore...
                     unscheduled.remove (ud)
 
-                # done iterating over all units, for this plot -- submit bulk 
-                # for this pilot
-                self._worker.register_schedule_compute_unit_to_pilot_request(
-                    pilot_uid=pilot_id, 
-                    units=submission_dict
-                )
+                    # pass the unit to the worker process. in return we 
+                    # get the unit's object id.
+                    unit_uid = self._worker.register_schedule_compute_unit_request(
+                        pilot_uid=pilot_id, 
+                        unit_description=ud
+                    )
 
-                for unit_id, unit_desc in submission_dict.iteritems():
+                    # create a new ComputeUnit object
                     compute_unit = ComputeUnit._create(
-                        unit_id=str(unit_id),
-                        unit_description=unit_desc['description'], 
+                        unit_id=unit_uid,
+                        unit_description=ud, 
                         unit_manager_obj=self
                     )
                     units.append(compute_unit)

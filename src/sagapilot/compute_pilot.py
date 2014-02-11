@@ -18,24 +18,6 @@ import sagapilot.states       as states
 import sagapilot.exceptions   as exceptions
 from   sagapilot.utils.logger import logger
 
-
-# ------------------------------------------------------------------------------
-# Attribute keys
-UID               = 'UID'
-DESCRIPTION       = 'Description'
-
-STATE             = 'State'
-STATE_DETAILS     = 'StateDetails'
-RESOURCE_DETAILS  = 'ResourceDetails'
-
-SUBMISSION_TIME   = 'SubmissionTime'
-START_TIME        = 'StartTime'
-STOP_TIME         = 'StopTime'
-
-PILOT_MANAGER     = 'PilotManager'
-UNIT_MANAGERS     = 'UnitManagers'
-UNITS             = 'Units'
-
 # ------------------------------------------------------------------------------
 #
 class ComputePilot (object):
@@ -52,6 +34,9 @@ class ComputePilot (object):
         self._uid = None
         self._description = None
         self._manager = None
+
+        # registered callback functions
+        self._cb_func_list = []
 
         # handle to the manager's worker
         self._worker = None
@@ -340,11 +325,17 @@ class ComputePilot (object):
 
         return pilot_json[0]['description']['Resource']
 
-
+    # --------------------------------------------------------------------------
+    #
+    def register_state_change_callback(self, callback_function):
+        """Registers a new callback function that will get called every timeout
+           the ComputePilot changes state.
+        """
+        self._cb_func_list.append(callback_function)
 
     # --------------------------------------------------------------------------
     #
-    def wait (self, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
+    def wait(self, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
         """Returns when the pilot reaches a specific state or 
         when an optional timeout is reached.
 

@@ -666,10 +666,18 @@ class Session():
             pilots.append(obj)
         return pilots
 
+    #---------------------------------------------------------------------------
+    #
+    def assign_compute_unit_to_pilot(self, compute_unit_uid, pilot_uid):
+        """Assigns a compute unit to a pilot.
+        """
+        # Add the ids to the pilot's queue
+        self._p.update({"_id": ObjectId(pilot_uid)}, 
+                       {"$push": {"wu_queue" : ObjectId(compute_unit_uid)}})
 
     #---------------------------------------------------------------------------
     #
-    def insert_workunits(self, pilot_id, unit_manager_uid, units):
+    def insert_compute_unit(self, pilot_uid, unit_manager_uid, unit_uid, unit_description, unit_state, unit_log):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
@@ -688,34 +696,25 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        # Construct and insert workunit documents
-        workunit_docs = []
-        for key, wu_desc in units.iteritems():
+        workunit = {
+            "_id"           : ObjectId(unit_uid),
+            "description"   : unit_description,
+            "links"    : {
+                "unitmanager" : unit_manager_uid, 
+                "pilot"       : pilot_uid,
+            },
+            "info"          : {
+                "submitted"     : datetime.datetime.utcnow(),
+                "started"       : None,
+                "finished"      : None,
+                "exec_locs"     : None,
+                "state"         : unit_state,
+                "log"           : unit_log
+            }
+        } 
 
-            workunit = {
-                "_id"           : key,
-                "description"   : wu_desc['description'].as_dict(),
-                "links"    : {
-                    "unitmanager" : unit_manager_uid, 
-                    "pilot"       : pilot_id,
-                },
-                "info"          : {
-                    "submitted"     : wu_desc['info']['submitted'],
-                    "started"       : None,
-                    "finished"      : None,
-                    "exec_locs"     : None,
-                    "state"         : wu_desc['info']['state'],
-                    "log"           : wu_desc['info']['log']
-                }
-            } 
-            workunit_docs.append(workunit)
-        wu_ids = self._w.insert(workunit_docs)
-
-        # Add the ids to the pilot's queue
-        self._p.update({"_id": ObjectId(pilot_id)}, 
-                       {"$pushAll": {"wu_queue" : wu_ids}})
-        return wu_ids
-
+        self._w.insert(workunit)
+        
     #---------------------------------------------------------------------------
     #
     def get_raw_workunits(self, workunit_ids=None):
