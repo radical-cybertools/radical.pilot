@@ -49,8 +49,8 @@ class ComputeUnit(object): #attributes.Attributes):
         self._description = None
         self._manager = None
 
-        # database handle
-        self._db = None
+        # handle to the manager's worker
+        self._worker = None
 
     #---------------------------------------------------------------------------
     #
@@ -73,8 +73,7 @@ class ComputeUnit(object): #attributes.Attributes):
         computeunit._description = unit_description
         computeunit._manager     = unit_manager_obj
 
-        computeunit._db          = unit_manager_obj._session._dbs
-
+        computeunit._worker      = unit_manager_obj._worker
         return computeunit
 
     # --------------------------------------------------------------------------
@@ -84,7 +83,7 @@ class ComputeUnit(object): #attributes.Attributes):
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
         # create database entry
-        units_json = unit_manager_obj._db.get_workunits(
+        units_json = unit_manager_obj._session._dbs.get_workunits(
             workunit_manager_id=unit_manager_obj.uid, 
             workunit_ids=unit_ids
         )
@@ -96,8 +95,7 @@ class ComputeUnit(object): #attributes.Attributes):
             computeunit._uid = str(u['_id'])
             computeunit._description = u['description']
             computeunit._manager = unit_manager_obj
-
-            computeunit._db = unit_manager_obj._session._dbs
+            computeunit._worker  = unit_manager_obj._worker
         
             computeunits.append(computeunit)
 
@@ -156,8 +154,7 @@ class ComputeUnit(object): #attributes.Attributes):
 
         .. warning: This can become very inefficient for lare data volumes.
         """
-        stdout_str = self._db.get_workunit_stdout(workunit_uid=self.uid)
-        return stdout_str
+        return self._worker.get_compute_unit_stdout(self.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -167,10 +164,7 @@ class ComputeUnit(object): #attributes.Attributes):
 
         .. warning: This can become very inefficient for lare data volumes.
         """
-        stderr_str = self._db.get_workunit_stderr(workunit_uid=self.uid)
-        return stderr_str
-
-
+        return self._worker.get_compute_unit_stderr(self.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -194,15 +188,8 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        # state is dynamic and changes over the  lifetime of a pilot, hence we
-        # need to make a call to the  database layer (db layer might cache
-        # this call).
-        workunit_json = self._db.get_workunit_states(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['state']
         
     # --------------------------------------------------------------------------
     #
@@ -213,14 +200,9 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._db.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-            )
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return "Unknown (Not Implemented)" #cu_json[0]['info']['log']
 
-        # TODO: implement me 
-
-        return "unknown"
 
     # --------------------------------------------------------------------------
     #
@@ -231,12 +213,8 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._db.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]['info']['exec_locs']
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['exec_locs']
 
     # --------------------------------------------------------------------------
     #
@@ -247,12 +225,8 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._db.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]['info']['submitted']
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['submitted']
 
     # --------------------------------------------------------------------------
     #
@@ -263,12 +237,8 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._db.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]['info']['started']
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['started']
 
     # --------------------------------------------------------------------------
     #
@@ -279,12 +249,8 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._db.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]['info']['finished']
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['finished']
 
     # --------------------------------------------------------------------------
     #

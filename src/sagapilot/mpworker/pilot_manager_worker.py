@@ -327,11 +327,12 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_pilot_data(self):
-        """Retruns the raw data (json dicts) of all ComputePilots registered 
-           with this Worker / PilotManager
+    def get_compute_pilot_data(self, pilot_uids=None):
+        """Retruns the raw data (json dicts) of one or more ComputePilots 
+           registered with this Worker / PilotManager
         """
-        json_dict = self._db.get_pilots(pilot_manager_id=self._pm_id)
+        json_dict = self._db.get_pilots(pilot_manager_id=self._pm_id, 
+                                        pilot_ids=pilot_uids)
         return json_dict
 
 

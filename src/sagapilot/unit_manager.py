@@ -292,7 +292,7 @@ class UnitManager(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        return self._worker.get_work_unit_uids()
+        return self._worker.get_compute_unit_uids()
 
     # --------------------------------------------------------------------------
     #
@@ -485,7 +485,7 @@ class UnitManager(object):
 
             all_done = True
 
-            for wu_state in self._worker.get_work_unit_states():
+            for wu_state in self._worker.get_compute_unit_states():
                 #print "state: %s -- waiting for %s" % (wu_state, state)
                 if wu_state not in state:
                     all_done = False

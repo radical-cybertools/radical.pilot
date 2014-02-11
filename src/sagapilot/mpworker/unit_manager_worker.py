@@ -104,18 +104,41 @@ class UnitManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def get_work_unit_uids(self):
+    def get_compute_unit_uids(self):
         """Returns the UIDs of all WorkUnits registered with the UnitManager.
         """
         return self._db.unit_manager_list_work_units(self._um_id)
 
     # ------------------------------------------------------------------------
     #
-    def get_work_unit_states(self):
+    def get_compute_unit_data(self, compute_unit_uid):
+        """Returns the UIDs of all WorkUnits registered with the UnitManager.
+        """
+        return self._db.get_workunits(
+            workunit_manager_id=self._um_id, 
+            workunit_ids=[compute_unit_uid]
+        )
+
+    # ------------------------------------------------------------------------
+    #
+    def get_compute_unit_states(self, work_unit_uids=None):
         """Returns the states of all WorkUnits registered with the Unitmanager.
         """
-        return self._db.get_workunit_states(self._um_id)
+        return self._db.get_workunit_states(self._um_id, workunit_ids=work_unit_uids)
 
+    # ------------------------------------------------------------------------
+    #
+    def get_compute_unit_stdout(self, work_unit_uid):
+        """Returns the stdout for a compute unit.
+        """
+        return self._db.get_workunit_stdout(work_unit_uid)
+
+    # ------------------------------------------------------------------------
+    #
+    def get_compute_unit_stderr(self, work_unit_uid):
+        """Returns the stderr for a compute unit.
+        """
+        return self._db.get_workunit_stderr(work_unit_uid)
 
     # ------------------------------------------------------------------------
     #
