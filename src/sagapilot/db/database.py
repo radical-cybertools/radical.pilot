@@ -6,6 +6,7 @@ import gridfs
 from pymongo import *
 from bson.objectid import ObjectId
 
+from sagapilot import states 
 
 # ------------------------------------------------------------------------------
 #
@@ -368,7 +369,8 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        #pilot_docs = []
+        pilot_json_list = []
+        
         for pilot_id, pilot_desc in pilot_descriptions.iteritems():
             pilot_json = {
                 "_id"           : pilot_id,
@@ -380,8 +382,8 @@ class Session():
                     "cores_per_node" : None,
                     "started"        : None,
                     "finished"       : None,
-                    "state"          : pilot_desc['info']['state'],
-                    "log"            : pilot_desc['info']['log']
+                    "state"          : states.PENDING, #pilot_desc['info']['state'],
+                    "log"            : []#pilot_desc['info']['log']
                 },
                 "links" : 
                 {
@@ -393,6 +395,9 @@ class Session():
             }
 
             self._p.insert(pilot_json, upsert=False)
+            pilot_json_list.append(pilot_json)
+
+        return pilot_json_list
 
     #---------------------------------------------------------------------------
     #
