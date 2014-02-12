@@ -41,6 +41,9 @@ class ComputePilot (object):
         # handle to the manager's worker
         self._worker = None
 
+        # list of callback functions
+        self._callback_list = []
+
     # --------------------------------------------------------------------------
     #
     def __del__(self):
@@ -75,7 +78,7 @@ class ComputePilot (object):
     def _get (pilot_manager_obj, pilot_ids) :
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
-        pilots_json = pilot_manager_obj._worker.get_compute_pilot_data(pilot_uids=pilot_ids)
+        pilots_json = pilot_manager_obj._worker.get_compute_pilot_data(pilot_uid=pilot_ids)
 
         # create and return pilot objects
         pilots = []
@@ -154,16 +157,8 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
-        # state is dynamic and changes over the lifetime of a pilot, hence we 
-        # need to make a call to the database layer
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilot_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.SagapilotException(msg=msg)
-
-        return pilot_json[0]['info']['state']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['state']
 
     # --------------------------------------------------------------------------
     #
@@ -177,16 +172,8 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        # state detail is dynamic and changes over the  lifetime of a pilot,
-        # hence we need to make a call to the  database layer.
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilot_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilot_json[0]['info']['log']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['log']
 
 
     # --------------------------------------------------------------------------
@@ -201,20 +188,11 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        # state detail is dynamic and changes over the  lifetime of a pilot,
-        # hence we need to make a call to the  database layer.
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilot_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
         resource_details = {
-            'nodes'          : pilot_json[0]['info']['nodes'],
-            'cores_per_node' : pilot_json[0]['info']['cores_per_node']
+            'nodes'          : pilot_json['info']['nodes'],
+            'cores_per_node' : pilot_json['info']['cores_per_node']
         }
-
         return resource_details
 
     # --------------------------------------------------------------------------
@@ -262,14 +240,8 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilot_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilot_json[0]['info']['submitted']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['submitted']
 
     # --------------------------------------------------------------------------
     #
@@ -280,14 +252,8 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilot_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilot_json[0]['info']['started']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['started']
 
     # --------------------------------------------------------------------------
     #
@@ -298,14 +264,8 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilot_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilot_json[0]['info']['finished']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['finished']
 
     # --------------------------------------------------------------------------
     #
@@ -316,22 +276,16 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilot_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilot_json[0]['description']['Resource']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['description']['Resource']
 
     # --------------------------------------------------------------------------
     #
-    def register_state_change_callback(self, callback_function):
-        """Registers a new callback function that will get called every timeout
-           the ComputePilot changes state.
+    def register_state_callback(self, callback_func):
+        """Registers a callback function that is triggered every time the 
+        ComputePilot's state changes.
         """
-        self._cb_func_list.append(callback_function)
+        self._worker.register_pilot_state_callback(self._uid, callback_func)
 
     # --------------------------------------------------------------------------
     #

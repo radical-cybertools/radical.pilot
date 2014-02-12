@@ -6,6 +6,15 @@ DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
 
 #-------------------------------------------------------------------------------
 #
+def pilot_state_change_cb(state):
+    """pilot_state_change_cb is a callback function. It handles ComputePilot
+    state changes. Most importantly, it stopps the script if the ComputePilot
+    ends up in 'FAILED' state.
+    """
+    print "[Callback]: ComputePilot state changed to {0}.".format(state)
+
+#-------------------------------------------------------------------------------
+#
 if __name__ == "__main__":
 
     try:
@@ -23,11 +32,13 @@ if __name__ == "__main__":
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource  = "localhost"
         pdesc.runtime   = 15 # minutes 
-        pdesc.cores     = 4 
+        pdesc.cores     = 2 
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
         print "Pilot UID        : {0} ".format( pilot.uid )
+
+        pilot.register_state_callback(pilot_state_change_cb)
 
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
         # uses /bin/cat to concatenate two input files, file1.dat and 
@@ -61,6 +72,9 @@ if __name__ == "__main__":
 
         # Add the previsouly created ComputePilot to the UnitManager. 
         umgr.add_pilots(pilot)
+
+        pilot.state
+
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start 

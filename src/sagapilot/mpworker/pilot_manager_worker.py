@@ -46,10 +46,18 @@ class PilotManagerWorker(multiprocessing.Process):
         multiprocessing.Process.__init__(self)
         self.daemon  = True
 
+        # Stop event can be set to terminate the main loop
         self._stop   = multiprocessing.Event()
         self._stop.clear()
 
-        self._db     = db_connection
+        # The manager communicates data between from the process. The access
+        # is unidirectional: the worker only writes to _shared_data in the
+        # Manager and worker access methods only read from _shared_data. 
+        manager = multiprocessing.Manager()
+        self._shared_data = manager.dict()
+
+        # The MongoDB database handle.
+        self._db = db_connection
 
         # The different command queues hold pending operations
         # that are passed to the worker. Command queues are inspected during 
@@ -119,9 +127,15 @@ class PilotManagerWorker(multiprocessing.Process):
             except Empty:
                 pass
 
-            # Check and update pilots:
-            #   * list all pilots and check their state
-            result = self._db.get_pilots(self._pm_id)
+            # Check and update pilots. This needs to be optimized at
+            # some point, i.e., state pulling should be conditional
+            # or triggered by a tailable MongoDB cursor, etc.
+            pilot_list = self._db.get_pilots(pilot_manager_id=self._pm_id)
+
+            for pilot in pilot_list:
+                pilot_id = str(pilot["_id"])
+                logger.debug("Updating Pilot %s (state: %s)." % (pilot_id, pilot["info"]["state"]))
+                self._shared_data[pilot_id] = pilot
 
             time.sleep(1)
 
@@ -340,15 +354,11 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_pilot_data(self, pilot_uids=None):
+    def get_compute_pilot_data(self, pilot_uid):
         """Retruns the raw data (json dicts) of one or more ComputePilots 
            registered with this Worker / PilotManager
         """
-        json_dict = self._db.get_pilots(pilot_manager_id=self._pm_id, 
-                                        pilot_ids=pilot_uids)
-        return json_dict
-
-
+        return self._shared_data[pilot_uid]
 
     # ------------------------------------------------------------------------
     #
@@ -356,8 +366,25 @@ class PilotManagerWorker(multiprocessing.Process):
         """Registers one or more pilots for cancelation.
         """
         self._startup_pilot_requests.put({"pilot_descriptions" : pilot_descriptions, "credentials" : credentials})
-        self._db.insert_new_pilots(pilot_manager_uid=self._pm_id, pilot_descriptions=pilot_descriptions)
+        pilot_json_list = self._db.insert_new_pilots(pilot_manager_uid=self._pm_id, pilot_descriptions=pilot_descriptions)
 
+        for pilot_json in pilot_json_list:
+            self._shared_data[str(pilot_json['_id'])] = pilot_json
+
+    # ------------------------------------------------------------------------
+    #
+    def register_pilot_state_callback(self, pilot_uid, callback_func):
+        """Registers a callback function.
+        """
+        # Callbacks can only be registered when the ComputeAlready has a 
+        # state. To address this shortcomming we call the callback with the 
+        # current ComputePilot state as soon as it is registered.
+        #try: 
+        callback_func(state="PLARGH")
+        #except Exception, ex:
+        #    raise exceptions.BadParameter("Couldn't call callback function %s: %s" % (cb_func, str(ex)))
+
+        #self._callback_list.append(callback_func)
 
     # ------------------------------------------------------------------------
     #
