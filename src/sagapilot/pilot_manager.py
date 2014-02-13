@@ -16,16 +16,14 @@ import time
 import json
 import urllib2
 
-from   sagapilot.compute_pilot import ComputePilot
-from   sagapilot.utils.logger  import logger 
 from   sagapilot.mpworker      import PilotManagerWorker
+from   sagapilot.utils.logger  import logger 
+from   sagapilot.compute_pilot import ComputePilot
 
 import sagapilot.states        as states
 import sagapilot.exceptions    as exceptions
 
-from bson.objectid import ObjectId
-
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 class PilotManager(object):
     """A PilotManager holds :class:`sagapilot.ComputePilot` instances that are 
@@ -260,9 +258,9 @@ class PilotManager(object):
         if not isinstance(pilot_descriptions, list):
             pilot_descriptions = [pilot_descriptions]
 
-        # Create a dictionary representing the database entry. If any 
-        # mandatory attributes are mussing we throw an exception.
-        pilot_description_dict = {}
+        # Itereate over the pilot descriptions, try to create a pilot for
+        # each one and append it to 'pilot_obj_list'.
+        pilot_obj_list = list()
 
         for pilot_description in pilot_descriptions:
 
@@ -295,50 +293,31 @@ class PilotManager(object):
                     if is_valid is False:
                         raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (pilot_description.resource, pilot_description.sandbox, resource_cfg["valid_roots"]))
 
-            # Create the dictionary object.
-            pilot_description_dict[ObjectId()] = {
-                'description' : pilot_description.as_dict(),
-                'resourcecfg' : resource_cfg,
-                'session'     : self._session.as_dict(),
-                'command'     : None, 
-                'info'        : {'state'     : None, 
-                                 'submitted' : None,
-                                 'started'   : None,
-                                 'finished'  : None,
-                                 'log'       : []
-                                }
-            }
+            # After the sanity checks have passed, we can register a pilot
+            # startup request with the worker process.
+            pilot_uid = self._worker.register_start_pilot_request(
+                pilot_description=pilot_description,
+                resource_config=resource_cfg,
+                session=self._session)
 
-        # Register the startup request with the worker.
-        cred_dict = []
-        for cred in self._session.credentials:
-            cred_dict.append(cred.as_dict())
-
-        self._worker.register_startup_pilots_request(pilot_descriptions=pilot_description_dict, 
-            credentials=cred_dict)
-
-        # Create the pilot objects, launch the actual pilots via saga
-        # and update the status accordingly.
-        pilots = []
-        for pilot_id, pilot_description in pilot_description_dict.iteritems():
-
+            # With the resulting UID we can create a ComputePilot API object.
             pilot = ComputePilot._create(
-                pilot_id=str(pilot_id),
-                pilot_description=pilot_description['description'], 
+                pilot_uid=pilot_uid,
+                pilot_description=pilot_description,
                 pilot_manager_obj=self)
 
-            pilots.append(pilot)
+            pilot_obj_list.append(pilot)
 
-        # implicit return value conversion
-        if len(pilots) == 1:
-            return pilots[0]
+        # Implicit return value conversion
+        if len(pilot_obj_list) == 1:
+            return pilot_obj_list[0]
         else:
-            return pilots
+            return pilot_obj_list
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """Lists the unique identifiers of all :class:`sagapilot.ComputePilot` 
+        """Lists the unique identifiers of all :class:`sagapilot.ComputePilot`
         instances associated with this PilotManager
 
         **Returns:**

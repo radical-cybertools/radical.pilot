@@ -56,20 +56,20 @@ class ComputePilot (object):
     # --------------------------------------------------------------------------
     #
     @staticmethod 
-    def _create (pilot_manager_obj, pilot_id, pilot_description):
+    def _create (pilot_manager_obj, pilot_uid, pilot_description):
         """ PRIVATE: Create a new pilot.
         """
-        # create and return pilot object
+        # Create and return pilot object.
         pilot = ComputePilot()
 
-        pilot._uid = pilot_id
+        pilot._uid = pilot_uid
         pilot._description = pilot_description
-        pilot._manager     = pilot_manager_obj
+        pilot._manager = pilot_manager_obj
 
+        # Pilots use the worker of their parent manager.
         pilot._worker = pilot._manager._worker
 
         logger.info("Created new ComputePilot %s" % str(pilot))
-
         return pilot
 
     # --------------------------------------------------------------------------

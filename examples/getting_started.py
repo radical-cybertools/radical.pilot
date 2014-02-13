@@ -37,7 +37,7 @@ if __name__ == "__main__":
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource  = "localhost"
         pdesc.runtime   = 15 # minutes 
-        pdesc.cores     = 4
+        pdesc.cores     = 2
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -94,9 +94,9 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for unit in umgr.get_units():
-            print "* UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}, EXEC_LOC: {4}".format(
-                unit.uid, unit.state, unit.start_time, unit.stop_time, unit.execution_details)
-        
+            # Print some information about the unit.
+            print "* {0}".format(str(unit)) 
+
             # Get the stdout and stderr streams of the ComputeUnit.
             print "  STDOUT: {0}".format(unit.stdout)
             print "  STDERR: {0}".format(unit.stderr)
@@ -109,5 +109,3 @@ if __name__ == "__main__":
 
     except sagapilot.SagapilotException, ex:
         print "Error: %s" % ex
-        
-

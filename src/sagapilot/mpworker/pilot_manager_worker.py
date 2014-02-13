@@ -29,6 +29,8 @@ import sagapilot.states       as     states
 from   sagapilot.credentials  import SSHCredential
 from   sagapilot.utils.logger import logger
 
+from bson import ObjectId
+
 # ----------------------------------------------------------------------------
 #
 class PilotManagerWorker(multiprocessing.Process):
@@ -139,7 +141,13 @@ class PilotManagerWorker(multiprocessing.Process):
             # Check if there are any pilots to start.
             try:
                 request = self._startup_pilot_requests.get_nowait()
-                self._execute_startup_pilots(request["pilot_descriptions"], request["credentials"])
+                self._execute_startup_pilot(
+                    request["pilot_uid"],
+                    request["pilot_description"],
+                    request["resource_config"],
+                    request["session"],
+                    request["credentials"])
+
             except Empty:
                 pass
 
@@ -193,201 +201,197 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _execute_startup_pilots(self, pilot_descriptions, credentials):
+    def _execute_startup_pilot(self, pilot_uid, pilot_description, resource_cfg, session, credentials):
         """Carries out pilot cancelation.
         """
-        for pilot_id, pilot_description in pilot_descriptions.iteritems():
-            #resource_key = pilot_description['description']['Resource']
-            number_cores = pilot_description['description']['Cores']
-            runtime      = pilot_description['description']['Runtime']
-            queue        = pilot_description['description']['Queue']
-            sandbox      = pilot_description['description']['Sandbox']
+        #resource_key = pilot_description['description']['Resource']
+        number_cores = pilot_description['Cores']
+        runtime      = pilot_description['Runtime']
+        queue        = pilot_description['Queue']
+        sandbox      = pilot_description['Sandbox']
 
-            session      = pilot_description['session']
-            resource_cfg = pilot_description['resourcecfg']
+        # At the end of the submission attempt, pilot_logs will contain
+        # all log messages.
+        pilot_logs    = []
 
-            # At the end of the submission attempt, pilot_logs will contain
-            # all log messages.
-            pilot_logs    = []
+        ########################################################
+        # Create SAGA Job description and submit the pilot job #
+        ########################################################
+        try:
+            # create a custom SAGA Session and add the credentials
+            # that are attached to the session
+            saga_session = saga.Session()
 
-            ########################################################
-            # Create SAGA Job description and submit the pilot job #
-            ########################################################
-            try:
-                # create a custom SAGA Session and add the credentials
-                # that are attached to the session
-                saga_session = saga.Session()
+            for cred_dict in credentials:
+                cred = SSHCredential.from_dict(cred_dict)
 
-                for cred_dict in credentials:
-                    cred = SSHCredential.from_dict(cred_dict)
+                saga_session.add_context(cred._context)
 
-                    saga_session.add_context(cred._context)
+                logger.info("Added credential %s to SAGA job service." % str(cred))
 
-                    logger.info("Added credential %s to SAGA job service." % str(cred))
+            # Create working directory if it doesn't exist and copy
+            # the agent bootstrap script into it. 
+            #
+            # We create a new sub-driectory for each agent. each 
+            # agent will bootstrap its own virtual environment in this 
+            # directory.
+            #
+            fs = saga.Url(resource_cfg['filesystem'])
+            if sandbox is not None:
+                fs.path += sandbox
+            else:
+                # No sandbox defined. try to determine
+                found_dir_success = False
 
-                # Create working directory if it doesn't exist and copy
-                # the agent bootstrap script into it. 
-                #
-                # We create a new sub-driectory for each agent. each 
-                # agent will bootstrap its own virtual environment in this 
-                # directory.
-                #
-                fs = saga.Url(resource_cfg['filesystem'])
-                if sandbox is not None:
-                    fs.path += sandbox
+                if resource_cfg['filesystem'].startswith("file"):
+                    workdir = os.path.expanduser("~")
+                    found_dir_success = True
                 else:
-                    # No sandbox defined. try to determine
-                    found_dir_success = False
+                    # A horrible hack to get the home directory on the remote machine
+                    import subprocess
+                    
+                    usernames = [None]
+                    for cred in credentials:
+                        usernames.append(cred["user_id"])
 
-                    if resource_cfg['filesystem'].startswith("file"):
-                        workdir = os.path.expanduser("~")
-                        found_dir_success = True
-                    else:
-                        # A horrible hack to get the home directory on the remote machine
-                        import subprocess
-                        
-                        usernames = [None]
-                        for cred in credentials:
-                            usernames.append(cred["user_id"])
+                    # We have mutliple usernames we can try... :/
+                    for username in usernames:
+                        if username is not None:
+                            url = "%s@%s" % (username, fs.host)
+                        else:
+                            url = fs.host
 
-                        # We have mutliple usernames we can try... :/
-                        for username in usernames:
-                            if username is not None:
-                                url = "%s@%s" % (username, fs.host)
-                            else:
-                                url = fs.host
+                        p = subprocess.Popen(["ssh", url,  "pwd"], 
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        workdir, err = p.communicate()
 
-                            p = subprocess.Popen(["ssh", url,  "pwd"], 
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                            workdir, err = p.communicate()
+                        if err != "":
+                            logger.warning("Couldn't determine remote working directory for %s: %s" % (url, err))
+                        else:
+                            logger.info("Determined remote working directory for %s: %s" % (url, workdir))
+                            found_dir_success = True
+                            break 
+                    
+                if found_dir_success == False:
+                    raise Exception("Couldn't determine remote working directory.")
 
-                            if err != "":
-                                logger.warning("Couldn't determine remote working directory for %s: %s" % (url, err))
-                            else:
-                                logger.info("Determined remote working directory for %s: %s" % (url, workdir))
-                                found_dir_success = True
-                                break 
-                        
-                    if found_dir_success == False:
-                        raise Exception("Couldn't determine remote working directory.")
+                # At this point we have determined 'pwd'
+                fs.path += "%s/sagapilot.sandbox" % workdir.rstrip()
 
-                    # At this point we have determined 'pwd'
-                    fs.path += "%s/sagapilot.sandbox" % workdir.rstrip()
+            agent_dir_url = saga.Url("%s/pilot-%s/" \
+                % (str(fs), str(pilot_uid)))
 
-                agent_dir_url = saga.Url("%s/pilot-%s/" \
-                    % (str(fs), str(pilot_id)))
+            agent_dir = saga.filesystem.Directory(agent_dir_url, 
+                saga.filesystem.CREATE_PARENTS)
 
-                agent_dir = saga.filesystem.Directory(agent_dir_url, 
-                    saga.filesystem.CREATE_PARENTS)
+            log_msg = "Created agent directory '%s'." % str(agent_dir_url)
+            pilot_logs.append(log_msg)
+            logger.debug(log_msg)
 
-                log_msg = "Created agent directory '%s'." % str(agent_dir_url)
-                pilot_logs.append(log_msg)
-                logger.debug(log_msg)
+            # Copy the bootstrap shell script
+            # This works for installed versions of saga-pilot
+            bs_script = which('bootstrap-and-run-agent')
+            if bs_script is None:
+                bs_script = os.path.abspath("%s/../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
+            # This works for non-installed versions (i.e., python setup.py test)
+            bs_script_url = saga.Url("file://localhost/%s" % bs_script) 
 
-                # Copy the bootstrap shell script
-                # This works for installed versions of saga-pilot
-                bs_script = which('bootstrap-and-run-agent')
-                if bs_script is None:
-                    bs_script = os.path.abspath("%s/../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
-                # This works for non-installed versions (i.e., python setup.py test)
-                bs_script_url = saga.Url("file://localhost/%s" % bs_script) 
+            bs_script = saga.filesystem.File(bs_script_url)
+            bs_script.copy(agent_dir_url)
 
-                bs_script = saga.filesystem.File(bs_script_url)
-                bs_script.copy(agent_dir_url)
+            log_msg = "Copied '%s' script to agent directory." % bs_script_url
+            pilot_logs.append(log_msg)
+            logger.debug(log_msg)
 
-                log_msg = "Copied '%s' script to agent directory." % bs_script_url
-                pilot_logs.append(log_msg)
-                logger.debug(log_msg)
+            # Copy the agent script
+            cwd = os.path.dirname(os.path.abspath(__file__))
+            agent_path = os.path.abspath("%s/../agent/sagapilot-agent.py" % cwd)
+            agent_script_url = saga.Url("file://localhost/%s" % agent_path) 
+            agent_script = saga.filesystem.File(agent_script_url)
+            agent_script.copy(agent_dir_url)
 
-                # Copy the agent script
-                cwd = os.path.dirname(os.path.abspath(__file__))
-                agent_path = os.path.abspath("%s/../agent/sagapilot-agent.py" % cwd)
-                agent_script_url = saga.Url("file://localhost/%s" % agent_path) 
-                agent_script = saga.filesystem.File(agent_script_url)
-                agent_script.copy(agent_dir_url)
+            log_msg = "Copied '%s' script to agent directory." % agent_script_url
+            pilot_logs.append(log_msg)
+            logger.debug(log_msg)
 
-                log_msg = "Copied '%s' script to agent directory." % agent_script_url
-                pilot_logs.append(log_msg)
-                logger.debug(log_msg)
+            # extract the required connection parameters and uids
+            # for the agent:
+            database_host = session["database_url"].split("://")[1]
+            database_name = session["database_name"]
+            session_uid   = session["uid"]
 
-                # extract the required connection parameters and uids
-                # for the agent:
-                database_host = session["database_url"].split("://")[1]
-                database_name = session["database_name"]
-                session_uid   = session["uid"]
+            # now that the script is in place and we know where it is,
+            # we can launch the agent
+            js = saga.job.Service(resource_cfg['URL'], session=saga_session)
 
-                # now that the script is in place and we know where it is,
-                # we can launch the agent
-                js = saga.job.Service(resource_cfg['URL'], session=saga_session)
+            jd = saga.job.Description()
+            jd.working_directory = agent_dir_url.path
+            jd.executable        = "./bootstrap-and-run-agent"
+            jd.arguments         = ["-r", database_host,  # database host (+ port)
+                                    "-d", database_name,  # database name
+                                    "-s", session_uid,    # session uid
+                                    "-p", str(pilot_uid),  # pilot uid
+                                    "-t", runtime,       # agent runtime in minutes
+                                    "-c", number_cores,   # number of cores
+                                    "-C"]                 # clean up by default
 
-                jd = saga.job.Description()
-                jd.working_directory = agent_dir_url.path
-                jd.executable        = "./bootstrap-and-run-agent"
-                jd.arguments         = ["-r", database_host,  # database host (+ port)
-                                        "-d", database_name,  # database name
-                                        "-s", session_uid,    # session uid
-                                        "-p", str(pilot_id),  # pilot uid
-                                        "-t", runtime,       # agent runtime in minutes
-                                        "-c", number_cores,   # number of cores
-                                        "-C"]                 # clean up by default
+            if 'task_launch_mode' in resource_cfg:
+                jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
 
-                if 'task_launch_mode' in resource_cfg:
-                    jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
+            # process the 'queue' attribute
+            if queue is not None:
+                jd.queue = queue
+            elif 'default_queue' in resource_cfg:
+                jd.queue = resource_cfg['default_queue']
 
-                # process the 'queue' attribute
-                if queue is not None:
-                    jd.queue = queue
-                elif 'default_queue' in resource_cfg:
-                    jd.queue = resource_cfg['default_queue']
+            # if resource config defines 'pre_bootstrap' commands,
+            # we add those to the argument list
+            if 'pre_bootstrap' in resource_cfg:
+                for command in resource_cfg['pre_bootstrap']:
+                    jd.arguments.append("-e \"%s\"" % command)
 
-                # if resource config defines 'pre_bootstrap' commands,
-                # we add those to the argument list
-                if 'pre_bootstrap' in resource_cfg:
-                    for command in resource_cfg['pre_bootstrap']:
-                        jd.arguments.append("-e \"%s\"" % command)
+            # if resourc configuration defines a custom 'python_interpreter',
+            # we add it to the argument list
+            if 'python_interpreter' in resource_cfg:
+                jd.arguments.append("-i %s" % resource_cfg['python_interpreter'])
 
-                # if resourc configuration defines a custom 'python_interpreter',
-                # we add it to the argument list
-                if 'python_interpreter' in resource_cfg:
-                    jd.arguments.append("-i %s" % resource_cfg['python_interpreter'])
+            jd.output            = "STDOUT"
+            jd.error             = "STDERR"
+            jd.total_cpu_count   = number_cores
+            jd.wall_time_limit    = runtime
 
-                jd.output            = "STDOUT"
-                jd.error             = "STDERR"
-                jd.total_cpu_count   = number_cores
-                jd.wall_time_limit    = runtime
+            pilotjob = js.create_job(jd)
+            pilotjob.run()
 
-                pilotjob = js.create_job(jd)
-                pilotjob.run()
+            pilotjob_id = pilotjob.id
 
-                pilotjob_id = pilotjob.id
+            # clean up / close all saga objects
+            js.close()
+            agent_dir.close()
+            agent_script.close()
+            bs_script.close()
 
-                # clean up / close all saga objects
-                js.close()
-                agent_dir.close()
-                agent_script.close()
-                bs_script.close()
+            log_msg = "ComputePilot agent successfully submitted with JobID '%s'" % pilotjob_id
+            pilot_logs.append(log_msg)
+            logger.info(log_msg)
 
-                log_msg = "ComputePilot agent successfully submitted with JobID '%s'" % pilotjob_id
-                pilot_logs.append(log_msg)
-                logger.info(log_msg)
+            self._db.update_pilot_state(pilot_uid=str(pilot_uid),
+                state=states.PENDING, sagajobid=pilotjob_id,
+                submitted=datetime.datetime.utcnow(), logs=pilot_logs)
 
-                self._db.update_pilot_state(pilot_uid=str(pilot_id),
-                    state=states.PENDING, sagajobid=pilotjob_id,
-                    submitted=datetime.datetime.utcnow(), logs=pilot_logs)
+        except Exception, ex:
+            error_msg = "Pilot Job submission failed:\n %s" % (traceback.format_exc())
+            pilot_description['info']['state'] = states.FAILED
+            pilot_logs.append(error_msg)
+            logger.error(error_msg)
 
-            except Exception, ex:
-                error_msg = "Pilot Job submission failed:\n %s" % (traceback.format_exc())
-                pilot_description['info']['state'] = states.FAILED
-                pilot_logs.append(error_msg)
-                logger.error(error_msg)
-
-                # Submission wasn't successful. Update the pilot's state
-                # to 'FAILED'.
-                now = datetime.datetime.utcnow()
-                self._db.update_pilot_state(pilot_uid=str(pilot_id),
-                                            state=states.FAILED,
-                                            submitted=now,
-                                            logs=pilot_logs)
+            # Submission wasn't successful. Update the pilot's state
+            # to 'FAILED'.
+            now = datetime.datetime.utcnow()
+            self._db.update_pilot_state(pilot_uid=str(pilot_uid),
+                                        state=states.FAILED,
+                                        submitted=now,
+                                        logs=pilot_logs)
 
     # ------------------------------------------------------------------------
     #
@@ -399,14 +403,35 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def register_startup_pilots_request(self, pilot_descriptions, credentials):
-        """Registers one or more pilots for cancelation.
+    def register_start_pilot_request(self, pilot_description, resource_config, session):
+        """Register a new pilot start request with the worker.
         """
-        self._startup_pilot_requests.put({"pilot_descriptions" : pilot_descriptions, "credentials" : credentials})
-        pilot_json_list = self._db.insert_new_pilots(pilot_manager_uid=self._pm_id, pilot_descriptions=pilot_descriptions)
 
-        for pilot_json in pilot_json_list:
-            self._shared_data[str(pilot_json['_id'])] = pilot_json
+        # Get the credentials from the session.
+        cred_dict = []
+        for cred in session.credentials:
+            cred_dict.append(cred.as_dict())
+
+        # Convert the session to dict.
+        session_dict = session.as_dict()
+
+        # Create a database entry for the new pilot.
+        pilot_uid, pilot_json = self._db.insert_pilot(
+            pilot_manager_uid=self._pm_id,
+            pilot_description=pilot_description)
+
+        # Create a shared data store entry
+        self._shared_data[pilot_uid] = pilot_json
+
+        # Add the startup request to the request queue.
+        self._startup_pilot_requests.put(
+            {"pilot_uid": pilot_uid,
+             "pilot_description": pilot_description.as_dict(),
+             "resource_config": resource_config,
+             "session": session.as_dict(),
+             "credentials": cred_dict})
+
+        return pilot_uid
 
     # ------------------------------------------------------------------------
     #

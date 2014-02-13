@@ -363,41 +363,39 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
-    def insert_new_pilots(self, pilot_manager_uid, pilot_descriptions):
-        """Adds one or more pilots to the database.
+    def insert_pilot(self, pilot_manager_uid, pilot_description):
+        """Adds a new pilot document to the database.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_json_list = []
-        
-        for pilot_id, pilot_desc in pilot_descriptions.iteritems():
-            pilot_json = {
-                "_id"           : pilot_id,
-                "description"   : pilot_desc['description'],
-                "info"          : 
-                {
-                    "submitted"      : pilot_desc['info']['submitted'],
-                    "nodes"          : None,
-                    "cores_per_node" : None,
-                    "started"        : None,
-                    "finished"       : None,
-                    "state"          : states.PENDING, #pilot_desc['info']['state'],
-                    "log"            : []#pilot_desc['info']['log']
-                },
-                "links" : 
-                {
-                    "pilotmanager"   : pilot_manager_uid,
-                    "unitmanager"    : None
-                },
-                "wu_queue"      : [],
-                "command"       : None,
-            }
+        pilot_uid = ObjectId()
 
-            self._p.insert(pilot_json, upsert=False)
-            pilot_json_list.append(pilot_json)
+        pilot_doc = {
+            "_id":            pilot_uid,
+            "description":    pilot_description.as_dict(),
+            "info":
+            {
+                "submitted":      datetime.datetime.utcnow(),
+                "started":        None,
+                "finished":       None,
+                "nodes":          None,
+                "cores_per_node": None,
+                "state":          states.PENDING,
+                "log":            []
+            },
+            "links":
+            {
+                "pilotmanager":   pilot_manager_uid,
+                "unitmanager":    None
+            },
+            "wu_queue":       [],
+            "command":        None,
+        }
 
-        return pilot_json_list
+        self._p.insert(pilot_doc, upsert=False)
+
+        return str(pilot_uid), pilot_doc
 
     #---------------------------------------------------------------------------
     #
