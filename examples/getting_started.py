@@ -1,21 +1,26 @@
+import sys
 import sagapilot
 
 # DBURL points to a MongoDB server. For installation of a MongoDB server, please
 # refer to the MongoDB website: http://docs.mongodb.org/manual/installation/
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
 
-#-------------------------------------------------------------------------------
-#
-def pilot_state_change_cb(state):
-    """pilot_state_change_cb is a callback function. It handles ComputePilot
-    state changes. Most importantly, it stopps the script if the ComputePilot
-    ends up in 'FAILED' state.
-    """
-    print "[Callback]: ComputePilot state changed to {0}.".format(state)
 
 #-------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
+
+    def pilot_state_change_cb(pilot_uid, state):
+        """pilot_state_change_cb is a callback function. It handles ComputePilot
+        state changes. Most importantly, it stopps the script if the ComputePilot
+        ends up in 'FAILED' state.
+        """
+        print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(pilot_uid, state)
+
+        if state == sagapilot.states.FAILED:
+            print "[Callback]: EXITING.".format(pilot_uid, state)
+            session.destroy()
+            sys.exit(1)
 
     try:
         # Create a new session. A session is a set of Pilot Managers
@@ -32,7 +37,7 @@ if __name__ == "__main__":
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource  = "localhost"
         pdesc.runtime   = 15 # minutes 
-        pdesc.cores     = 2 
+        pdesc.cores     = 4
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

@@ -50,19 +50,35 @@ class PilotManagerWorker(multiprocessing.Process):
         self._stop   = multiprocessing.Event()
         self._stop.clear()
 
-        # The manager communicates data between from the process. The access
-        # is unidirectional: the worker only writes to _shared_data in the
-        # Manager and worker access methods only read from _shared_data. 
-        manager = multiprocessing.Manager()
-        self._shared_data = manager.dict()
+        # The shard_data_manager handles data exchange between the worker
+        # process and the API objects. The communication is unidirectional:
+        # workers WRITE to _shared_data and API methods READ from _shared_data.
+        # The strucuture of _shared_data is as follows:
+        #
+        # { pilot1_uid: MongoDB document (dict),
+        #   pilot2_uid: MongoDB document (dict),
+        #   ...
+        # }
+        #
+        shard_data_manager = multiprocessing.Manager()
+        self._shared_data = shard_data_manager.dict()
+
+        # The callback dictionary. The structure is as follows:
+        #
+        # { pilot1_uid : [func_ptr, func_ptr, func_ptr, ...],
+        #   pilot2_uid : [func_ptr, func_ptr, func_ptr, ...],
+        #   ...
+        # }
+        #
+        self._callbacks = shard_data_manager.dict()
 
         # The MongoDB database handle.
         self._db = db_connection
 
         # The different command queues hold pending operations
-        # that are passed to the worker. Command queues are inspected during 
-        # runtime in the run() loop and the worker acts upon them accordingly. 
-        self._cancel_pilot_requests  = multiprocessing.Queue()
+        # that are passed to the worker. Command queues are inspected during
+        # runtime in the run() loop and the worker acts upon them accordingly.
+        self._cancel_pilot_requests = multiprocessing.Queue()
         self._startup_pilot_requests = multiprocessing.Queue()
 
         if pilot_manager_uid is None:
@@ -80,7 +96,7 @@ class PilotManagerWorker(multiprocessing.Process):
         """Checks wether a pilot unit manager UID exists.
         """
         exists = False
-        
+
         if pilot_manager_uid in db_connection.list_pilot_manager_uids():
             exists = True
 
@@ -97,7 +113,7 @@ class PilotManagerWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def stop(self):
-        """stop() signals the process to finish up and terminate. 
+        """stop() signals the process to finish up and terminate.
         """
         self._stop.set()
         self.join()
@@ -106,7 +122,7 @@ class PilotManagerWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def run(self):
-        """run() is called when the process is started via 
+        """run() is called when the process is started via
            PilotManagerWorker.start().
         """
         logger.info("Worker process for PilotManager %s started with PID %s." % (self._pm_id, self.pid))
@@ -134,10 +150,26 @@ class PilotManagerWorker(multiprocessing.Process):
 
             for pilot in pilot_list:
                 pilot_id = str(pilot["_id"])
-                logger.debug("Updating Pilot %s (state: %s)." % (pilot_id, pilot["info"]["state"]))
+
+                new_state = pilot["info"]["state"]
+                if pilot_id in self._shared_data:
+                    old_state = self._shared_data[pilot_id]["info"]["state"]
+                else:
+                    old_state = None
+
+                if new_state != old_state:
+                    # On a state change, we fire zee callbacks.
+                    logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
+                    if pilot_id in self._callbacks:
+                        for cb in self._callbacks[pilot_id]:
+                            cb(pilot_id, new_state)
+
                 self._shared_data[pilot_id] = pilot
 
             time.sleep(1)
+
+            #for cb in self._callbacks["XXX"]:
+            #    cb("ISDDDD", "BLARGHHHH")
 
     # ------------------------------------------------------------------------
     #
@@ -349,8 +381,13 @@ class PilotManagerWorker(multiprocessing.Process):
                 pilot_logs.append(error_msg)
                 logger.error(error_msg)
 
+                # Submission wasn't successful. Update the pilot's state
+                # to 'FAILED'.
+                now = datetime.datetime.utcnow()
                 self._db.update_pilot_state(pilot_uid=str(pilot_id),
-                    state=states.FAILED, submitted=datetime.datetime.utcnow(), logs=pilot_logs)
+                                            state=states.FAILED,
+                                            submitted=now,
+                                            logs=pilot_logs)
 
     # ------------------------------------------------------------------------
     #
@@ -376,15 +413,17 @@ class PilotManagerWorker(multiprocessing.Process):
     def register_pilot_state_callback(self, pilot_uid, callback_func):
         """Registers a callback function.
         """
-        # Callbacks can only be registered when the ComputeAlready has a 
-        # state. To address this shortcomming we call the callback with the 
-        # current ComputePilot state as soon as it is registered.
-        #try: 
-        callback_func(state="PLARGH")
-        #except Exception, ex:
-        #    raise exceptions.BadParameter("Couldn't call callback function %s: %s" % (cb_func, str(ex)))
+        if pilot_uid not in self._callbacks:
+            # First callback ever registered for pilot_uid.
+            self._callbacks[pilot_uid] = [callback_func]
+        else:
+            # Additional callback for pilot_uid.
+            self._callbacks[pilot_uid].append(callback_func)
 
-        #self._callback_list.append(callback_func)
+        # Callbacks can only be registered when the ComputeAlready has a
+        # state. To address this shortcomming we call the callback with the
+        # current ComputePilot state as soon as it is registered.
+        callback_func(pilot_uid, self._shared_data[pilot_uid]["info"]["state"])
 
     # ------------------------------------------------------------------------
     #

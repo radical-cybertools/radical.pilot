@@ -35,8 +35,8 @@ class ComputePilot (object):
         self._description = None
         self._manager = None
 
-        # registered callback functions
-        self._cb_func_list = []
+        # Registered callback functions
+        self._calback_wrappers = dict()
 
         # handle to the manager's worker
         self._worker = None
@@ -285,6 +285,10 @@ class ComputePilot (object):
         """Registers a callback function that is triggered every time the 
         ComputePilot's state changes.
         """
+
+        # We can't (and don't want to) pass CompuePilot objects to the worker
+        # processes. Instead we create a proxy callback function that we can
+        # pass in lieu. We do this via an anonymous function (lambda).
         self._worker.register_pilot_state_callback(self._uid, callback_func)
 
     # --------------------------------------------------------------------------
