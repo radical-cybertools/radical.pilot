@@ -70,32 +70,28 @@ if __name__ == "__main__":
              
             compute_units.append(cu)
 
-        # # Combine the pilot, the workload and a scheduler via 
-        # # a UnitManager.
-        umgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+        # Combine the ComputePilot, the workload and a scheduler via
+        # a UnitManager object.
+        umgr = sagapilot.UnitManager(
+            session=session,
+            scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+
         print "UnitManager UID  : {0} ".format( umgr.uid )
 
-        # Add the previsouly created ComputePilot to the UnitManager. 
+        # Add the previsouly created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
-        pilot.state
-
-
         # Submit the previously created ComputeUnit descriptions to the
-        # PilotManager. This will trigger the selected scheduler to start 
-        # assigning ComputeUnits to the ComputePilots. 
+        # PilotManager. This will trigger the selected scheduler to start
+        # assigning ComputeUnits to the ComputePilots.
         umgr.submit_units(compute_units)
 
-        # unit_list = um.list_units()
-        # print "* Submitted %s compute units: %s" % (len(unit_list), unit_list)
-
         # # Wait for all compute units to finish.
-        # print "* Waiting for all compute units to finish..."
         umgr.wait_units()
 
         for unit in umgr.get_units():
             # Print some information about the unit.
-            print "* {0}".format(str(unit)) 
+            print "{0}".format(str(unit)) 
 
             # Get the stdout and stderr streams of the ComputeUnit.
             print "  STDOUT: {0}".format(unit.stdout)

@@ -35,4 +35,5 @@ Contents:
    schedulers.rst
    machconf.rst
    testing.rst
+   developer.rst
 
