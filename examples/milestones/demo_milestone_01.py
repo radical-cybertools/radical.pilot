@@ -36,7 +36,7 @@ def demo_milestone_01_1():
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
         pd.resource  = CFG_RESOURCE
-        pd.cores     = 8
+        pd.cores     = 2
         pd.runtime   = 10 # minutes
 
         print "* Submitting pilot to '%s'..." % (pd.resource)
