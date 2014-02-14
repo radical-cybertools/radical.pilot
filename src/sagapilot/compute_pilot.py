@@ -3,7 +3,7 @@
 """
 .. module:: sagapilot.compute_pilot
    :platform: Unix
-   :synopsis: Implementation of the ComputePilot class.
+   :synopsis: Provides the interface for the ComputePilot class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
@@ -14,18 +14,20 @@ __license__   = "MIT"
 import os
 import time
 
-import sagapilot.states       as states
-import sagapilot.exceptions   as exceptions
-from   sagapilot.utils.logger import logger
+import sagapilot.states as states
+import sagapilot.exceptions as exceptions
 
-# ------------------------------------------------------------------------------
+from sagapilot.utils.logger import logger
+
+
+# -----------------------------------------------------------------------------
 #
 class ComputePilot (object):
     """A ComputePilot represent a resource overlay on a local or remote
        resource. 
     """
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __init__ (self):
         """Le constructeur. Not meant to be called directly.
@@ -44,19 +46,18 @@ class ComputePilot (object):
         # list of callback functions
         self._callback_list = []
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
         """
         if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): ComputePilot '%s'." % self._uid )
+            logger.debug("__del__(): ComputePilot '%s'." % self._uid)
 
-
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @staticmethod 
-    def _create (pilot_manager_obj, pilot_uid, pilot_description):
+    def _create(pilot_manager_obj, pilot_uid, pilot_description):
         """ PRIVATE: Create a new pilot.
         """
         # Create and return pilot object.
@@ -72,7 +73,7 @@ class ComputePilot (object):
         logger.info("Created new ComputePilot %s" % str(pilot))
         return pilot
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @staticmethod 
     def _get (pilot_manager_obj, pilot_ids) :
@@ -96,37 +97,38 @@ class ComputePilot (object):
 
         return pilots
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def as_dict(self):
-        """Returns a Python dictionary representation of the 
+        """Returns a Python dictionary representation of the
            ComputePilot object.
         """
         obj_dict = {
-            'uid'              : self.uid, 
-            'state'            : self.state,
-            'log'              : self.log,
-            'resource'         : self.resource,
-            'submission_time'  : self.submission_time, 
-            'start_time'       : self.start_time, 
-            'stop_time'        : self.stop_time
+            'uid':             self.uid,
+            'state':           self.state,
+            'log':             self.log,
+            'resource':        self.resource,
+            'submission_time': self.submission_time,
+            'start_time':      self.start_time,
+            'stop_time':       self.stop_time,
+            'resource_detail': self.resource_detail
         }
         return obj_dict
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __str__(self):
         """Returns a string representation of the ComputePilot object.
         """
         return str(self.as_dict())
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def uid(self):
         """Returns the Pilot's unique identifier.
 
-        The uid identifies the Pilot within the :class:`PilotManager` and 
+        The uid identifies the Pilot within the :class:`PilotManager` and
         can be used to retrieve an existing Pilot.
 
         **Returns:**
@@ -137,7 +139,7 @@ class ComputePilot (object):
 
         return self._uid
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def description(self):
@@ -148,7 +150,7 @@ class ComputePilot (object):
 
         return self._description
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def state(self):
@@ -160,7 +162,7 @@ class ComputePilot (object):
         pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
         return pilot_json['info']['state']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property 
     def log(self):
@@ -176,13 +178,11 @@ class ComputePilot (object):
         return pilot_json['info']['log']
 
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def resource_detail(self):
-        """Returns the resource details of the pilot.
-
-        This 
+        """Returns the names of the nodes managed by the pilot.
         """
         # Check if this instance is valid
         if not self._uid:
@@ -190,12 +190,12 @@ class ComputePilot (object):
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
         resource_details = {
-            'nodes'          : pilot_json['info']['nodes'],
-            'cores_per_node' : pilot_json['info']['cores_per_node']
+            'nodes':          pilot_json['info']['nodes'],
+            'cores_per_node': pilot_json['info']['cores_per_node']
         }
         return resource_details
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def pilot_manager(self):
@@ -206,7 +206,7 @@ class ComputePilot (object):
 
         return self._manager
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def unit_managers(self):
@@ -218,7 +218,7 @@ class ComputePilot (object):
         raise exceptions.SagapilotException("Not Implemented")
 
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def units(self):
@@ -230,11 +230,11 @@ class ComputePilot (object):
 
         raise exceptions.SagapilotException("Not Implemented")
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def submission_time(self):
-        """ Returns the time the pilot was submitted. 
+        """ Returns the time the pilot was submitted.
         """
         # Check if this instance is valid
         if not self._uid:
@@ -243,11 +243,11 @@ class ComputePilot (object):
         pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
         return pilot_json['info']['submitted']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def start_time(self):
-        """ Returns the time the pilot was started on the backend. 
+        """ Returns the time the pilot was started on the backend.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -255,11 +255,11 @@ class ComputePilot (object):
         pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
         return pilot_json['info']['started']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def stop_time(self):
-        """ Returns the time the pilot was stopped. 
+        """ Returns the time the pilot was stopped.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -267,11 +267,11 @@ class ComputePilot (object):
         pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
         return pilot_json['info']['finished']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def resource(self):
-        """ Returns the resource. 
+        """ Returns the resource.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -279,10 +279,10 @@ class ComputePilot (object):
         pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
         return pilot_json['description']['Resource']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def register_state_callback(self, callback_func):
-        """Registers a callback function that is triggered every time the 
+        """Registers a callback function that is triggered every time the
         ComputePilot's state changes.
         """
 
@@ -291,19 +291,19 @@ class ComputePilot (object):
         # pass in lieu. We do this via an anonymous function (lambda).
         self._worker.register_pilot_state_callback(self._uid, callback_func)
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def wait(self, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
-        """Returns when the pilot reaches a specific state or 
+        """Returns when the pilot reaches a specific state or
         when an optional timeout is reached.
 
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that Pilot has to reach in order for the 
-              call to return. 
+              The state(s) that Pilot has to reach in order for the
+              call to return.
 
-              By default `wait` waits for the Pilot to reach 
+              By default `wait` waits for the Pilot to reach
               a **terminal** state, which can be one of the following:
 
               * :data:`sagapilot.states.DONE`
@@ -311,14 +311,14 @@ class ComputePilot (object):
               * :data:`sagapilot.states.CANCELED`
 
             * **timeout** [`float`]
-              Optional timeout in seconds before the call returns regardless 
-              whether the Pilot has reached the desired state or not. 
+              Optional timeout in seconds before the call returns regardless
+              whether the Pilot has reached the desired state or not.
               The default value **None** never times out.
 
         **Raises:**
 
-            * :class:`sagapilot.exceptions.SagapilotException` if the state of the 
-              pilot cannot be determined. 
+            * :class:`sagapilot.exceptions.SagapilotException` if the state of
+              the pilot cannot be determined.
         """
         # Check if this instance is valid
         if not self._uid:
@@ -340,15 +340,15 @@ class ComputePilot (object):
         # done waiting
         return new_state
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def cancel(self):
         """Sends sends a termination request to the pilot.
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException` if the termination 
-              request cannot be fulfilled. 
+            * :class:`sagapilot.SagapilotException` if the termination
+              request cannot be fulfilled.
         """
         # Check if this instance is valid
         if not self._uid:

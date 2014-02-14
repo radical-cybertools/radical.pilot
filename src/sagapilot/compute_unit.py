@@ -14,32 +14,20 @@ __license__   = "MIT"
 import os
 import time
 
-import sagapilot.states        as states
-import sagapilot.exceptions    as exceptions
-from   sagapilot.utils.logger  import logger
+from sagapilot.utils.logger import logger
 
-# ------------------------------------------------------------------------------
-# Attribute keys
-UID               = 'UID'
-DESCRIPTION       = 'Description'
-STATE             = 'State'
-STATE_DETAILS     = 'StateDetails'
-EXECUTION_DETAILS = 'ExecutionDetails'
+import sagapilot.states as states
+import sagapilot.exceptions as exceptions
 
-SUBMISSION_TIME   = 'SubmissionTime'
-START_TIME        = 'StartTime'
-STOP_TIME         = 'StopTime'
 
-UNIT_MANAGER      = 'UnitManagers'
-PILOT             = 'Pilot'
-
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
-class ComputeUnit(object): #attributes.Attributes):
-    """TODO: document me!
+class ComputeUnit(object):
+    """A ComputeUnit represent a 'task' that is executed on a ComputePilot.
+    ComputeUnits allow to control and query the state of this task.
     """
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __init__ (self):
         """ Le constructeur. Not meant to be called directly.
@@ -52,7 +40,7 @@ class ComputeUnit(object): #attributes.Attributes):
         # handle to the manager's worker
         self._worker = None
 
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
@@ -60,7 +48,7 @@ class ComputeUnit(object): #attributes.Attributes):
         if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
             logger.debug("__del__(): ComputeUnit '%s'." % self._uid )
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @staticmethod 
     def _create (unit_manager_obj, unit_id, unit_description):
@@ -95,29 +83,29 @@ class ComputeUnit(object): #attributes.Attributes):
             computeunit._uid = str(u['_id'])
             computeunit._description = u['description']
             computeunit._manager = unit_manager_obj
-            computeunit._worker  = unit_manager_obj._worker
+            computeunit._worker = unit_manager_obj._worker
         
             computeunits.append(computeunit)
 
         return computeunits
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
         obj_dict = {
-            'uid'               : self.uid,
-            'state'             : self.state,
-            'state_details'     : self.state_details,
-            'execution_details' : self.state_details,
-            'submission_time'   : self.submission_time, 
-            'start_time'        : self.start_time, 
-            'stop_time'         : self.stop_time
+            'uid':               self.uid,
+            'state':             self.state,
+            'log':               self.log,
+            'execution_details': self.execution_details,
+            'submission_time':   self.submission_time,
+            'start_time':        self.start_time,
+            'stop_time':         self.stop_time
         }
         return obj_dict
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __str__(self):
         """Returns a string representation of the object.
@@ -127,13 +115,13 @@ class ComputeUnit(object): #attributes.Attributes):
 
         return str(self.as_dict())
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def uid(self):
         """Returns the Pilot's unique identifier.
 
-        The uid identifies the ComputePilot within a :class:`PilotManager` and 
+        The uid identifies the ComputePilot within a :class:`PilotManager` and
         can be used to retrieve an existing Pilot.
 
         **Returns:**
@@ -142,11 +130,11 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        # uid is static and doesn't change over the lifetime 
+        # uid is static and doesn't change over the lifetime
         # of a pilot, hence it can be stored in a member var.
         return self._uid
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def stdout(self):
@@ -156,7 +144,7 @@ class ComputeUnit(object): #attributes.Attributes):
         """
         return self._worker.get_compute_unit_stdout(self.uid)
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def stderr(self):
@@ -166,7 +154,7 @@ class ComputeUnit(object): #attributes.Attributes):
         """
         return self._worker.get_compute_unit_stderr(self.uid)
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def description(self):
@@ -175,11 +163,11 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        # description is static and doesn't change over the lifetime 
-        # of a pilot, hence it can be stored in a member var.
+        # description is static and doesn't change over the lifetime
+        # of a pilot, hence it is stored as a member var.
         return self._description
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def state(self):
@@ -190,25 +178,24 @@ class ComputeUnit(object): #attributes.Attributes):
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json[0]['info']['state']
-        
-    # --------------------------------------------------------------------------
+
+    # -------------------------------------------------------------------------
     #
     @property
-    def state_details(self):
-        """Returns the current state of the pilot.
+    def log(self):
+        """Returns the logs of the pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return "Unknown (Not Implemented)" #cu_json[0]['info']['log']
+        return cu_json[0]['info']['log']
 
-
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def execution_details(self):
-        """Returns the current state of the pilot.
+        """Returns the exeuction location(s) of the pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -216,11 +203,11 @@ class ComputeUnit(object): #attributes.Attributes):
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json[0]['info']['exec_locs']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def submission_time(self):
-        """ Returns the time the compute unit was submitted. 
+        """ Returns the time the compute unit was submitted.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -228,11 +215,11 @@ class ComputeUnit(object): #attributes.Attributes):
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json[0]['info']['submitted']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def start_time(self):
-        """ Returns the time the compute unit was started on the backend. 
+        """ Returns the time the compute unit was started on the backend.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -240,11 +227,11 @@ class ComputeUnit(object): #attributes.Attributes):
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json[0]['info']['started']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def stop_time(self):
-        """ Returns the time the compute unit was stopped. 
+        """ Returns the time the compute unit was stopped.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -252,19 +239,20 @@ class ComputeUnit(object): #attributes.Attributes):
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json[0]['info']['finished']
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
-    def wait(self, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
-        """Returns when the compute unit reaches a specific state or 
+    def wait(self, state=[states.DONE, states.FAILED, states.CANCELED],
+             timeout=None):
+        """Returns when the compute unit reaches a specific state or
         when an optional timeout is reached.
 
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that compute unit has to reach in order for the 
-              call to return. 
+              The state(s) that compute unit has to reach in order for the
+              call to return.
 
-              By default `wait` waits for the compute unit to reach 
+              By default `wait` waits for the compute unit to reach
               a **terminal** state, which can be one of the following:
 
               * :data:`sagapilot.states.DONE`
@@ -272,8 +260,8 @@ class ComputeUnit(object): #attributes.Attributes):
               * :data:`sagapilot.states.CANCELED`
 
             * **timeout** [`float`]
-              Optional timeout in seconds before the call returns regardless 
-              whether the compute unit has reached the desired state or not. 
+              Optional timeout in seconds before the call returns regardless
+              whether the compute unit has reached the desired state or not.
               The default value **None** never times out.
 
         **Raises:**
@@ -281,27 +269,27 @@ class ComputeUnit(object): #attributes.Attributes):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        if not isinstance (state, list):
+        if not isinstance(state, list):
             state = [state]
 
-        start_wait = time.time ()
+        start_wait = time.time()
         # the self.state property pulls the state from the back end.
         new_state = self.state
         while new_state not in state:
-            time.sleep (1)
+            time.sleep(1)
 
             new_state = self.state
             logger.debug("Compute unit %s in state %s" % (self._uid, new_state))
 
-            if  (None != timeout) and (timeout <= (time.time () - start_wait)):
+            if(None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
 
         # done waiting
         return
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
-    def cancel (self):
+    def cancel(self):
         """Terminates the compute unit.
 
         **Raises:**

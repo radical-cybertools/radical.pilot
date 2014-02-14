@@ -3,7 +3,7 @@
 """
 .. module:: sagapilot.pilot_manager
    :platform: Unix
-   :synopsis: Implementation of the PilotManager class.
+   :synopsis: Provides the interface for the PilotManager class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
@@ -16,22 +16,23 @@ import time
 import json
 import urllib2
 
-from   sagapilot.mpworker      import PilotManagerWorker
-from   sagapilot.utils.logger  import logger 
-from   sagapilot.compute_pilot import ComputePilot
+import sagapilot.states as states
+import sagapilot.exceptions as exceptions
 
-import sagapilot.states        as states
-import sagapilot.exceptions    as exceptions
+from sagapilot.mpworker import PilotManagerWorker
+from sagapilot.compute_pilot import ComputePilot
+from sagapilot.utils.logger import logger
+
 
 # -----------------------------------------------------------------------------
 #
 class PilotManager(object):
-    """A PilotManager holds :class:`sagapilot.ComputePilot` instances that are 
+    """A PilotManager holds :class:`sagapilot.ComputePilot` instances that are
     submitted via the :func:`sagapilot.PilotManager.submit_pilots` method.
     
-    It is possible to attach one or more :ref:`chapter_machconf` 
-    to a PilotManager to outsource machine specific configuration 
-    parameters to an external configuration file. 
+    It is possible to attach one or more :ref:`chapter_machconf`
+    to a PilotManager to outsource machine specific configuration
+    parameters to an external configuration file.
 
     Each PilotManager has a unique identifier :data:`sagapilot.PilotManager.uid`
     that can be used to re-connect to previoulsy created PilotManager in a
@@ -440,11 +441,11 @@ class PilotManager(object):
     # --------------------------------------------------------------------------
     #
     def cancel_pilots(self, pilot_ids=None):
-        """Cancels one or more ComputePilots. 
+        """Cancels one or more ComputePilots.
 
         **Arguments:**
 
-            * **pilot_uids** [`string` or `list of strings`] 
+            * **pilot_uids** [`string` or `list of strings`]
               If pilot_uids is set, only the Pilots with the specified uids are
               canceled. If pilot_uids is `None`, all Pilots are canceled.
 

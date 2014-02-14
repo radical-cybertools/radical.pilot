@@ -91,11 +91,14 @@ if __name__ == "__main__":
 
         for unit in umgr.get_units():
             # Print some information about the unit.
-            print "{0}".format(str(unit)) 
+            print "{0}".format(str(unit))
 
             # Get the stdout and stderr streams of the ComputeUnit.
             print "  STDOUT: {0}".format(unit.stdout)
             print "  STDERR: {0}".format(unit.stderr)
+
+        # Print some information about the pilot before we cancel it.
+        print "{0}".format(str(pilot))
 
         # Cancel all pilots.
         pmgr.cancel_pilots()
