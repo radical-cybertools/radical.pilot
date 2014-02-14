@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.types
    :platform: Unix
@@ -11,9 +13,9 @@ __license__   = "MIT"
 
 # ------------------------------------------------------------------------------
 # Pilot types
-PILOT_DATA              = 1
-PILOT_COMPUTE           = 2
-PILOT_ANY               = PILOT_DATA | PILOT_COMPUTE
+PILOT_DATA        = 1
+PILOT_COMPUTE     = 2
+PILOT_ANY         = PILOT_DATA | PILOT_COMPUTE
 
 # ------------------------------------------------------------------------------
 # Unit Pilot types

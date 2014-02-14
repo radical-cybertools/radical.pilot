@@ -1,10 +1,16 @@
 import sagapilot
 
+# DBURL points to a MongoDB server. For installation of a MongoDB server, please
+# refer to the MongoDB website: http://docs.mongodb.org/manual/installation/
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
-RCONF  = "https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json"
+
+# RCONF points to the resource configuration files. Read more about resource 
+# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
+RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
+          "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
 
 #-------------------------------------------------------------------------------
-#
+# 
 if __name__ == "__main__":
 
     try:
@@ -26,7 +32,6 @@ if __name__ == "__main__":
         # uses $HOME/sagapilot.sandbox as sandbox directoy. 
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource  = "stampede.tacc.utexas.edu"
-        pdesc.sandbox   = "/home1/00988/tg802352/sagapilot.sandbox"
         pdesc.runtime   = 15 # minutes
         pdesc.cores     = 32 
 
@@ -39,9 +44,8 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 32):
             cu = sagapilot.ComputeUnitDescription()
-            #cu.environment = {"NAP_TIME" : "10"}
-            cu.executable  = "/bin/date"
-            #cu.arguments   = ["$NAP_TIME"]
+            cu.executable  = "/bin/hostname"
+            cu.arguments   = ["-A"]
             cu.cores       = 1
         
             compute_units.append(cu)
@@ -55,17 +59,19 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for unit in umgr.get_units():
-            print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}, EXEC_LOC: {4}".format(
+            print "* UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}, EXEC_LOC: {4}".format(
                 unit.uid, unit.state, unit.start_time, unit.stop_time, unit.execution_details)
+        
+            # Get the stdout and stderr streams of the ComputeUnit.
+            print "  STDOUT: {0}".format(unit.stdout)
+            print "  STDERR: {0}".format(unit.stderr)
         
         # Cancel all pilots.
         pmgr.cancel_pilots()
 
+        session.destroy()
+
     except sagapilot.SagapilotException, ex:
         print "Error: %s" % ex
 
-    #finally:
-        # Remove session from database
-        #session.destroy()
-        
 

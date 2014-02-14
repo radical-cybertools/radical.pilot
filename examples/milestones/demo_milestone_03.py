@@ -23,12 +23,10 @@ FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 # Change these according to your needs 
 CFG_USERNAME      = "oweidner"
 
-CFG_RESOURCE_A    = "hotel.futuregrid.org"    
-CFG_WORKING_DIR_A = "/gpfs/scratch/oweidner/sagapilot.sandbox"
+CFG_RESOURCE_A    = "alamo.futuregrid.org"    
 CFG_NUMCORES_A    = 32
 
 CFG_RESOURCE_B    = "india.futuregrid.org"    
-CFG_WORKING_DIR_B = "/N/u/oweidner/sagapiot.sandbox"
 CFG_NUMCORES_B    = 32
 
 #-------------------------------------------------------------------------------
@@ -54,14 +52,12 @@ def demo_milestone_03_part_1():
         # Define a 16-core pilot to resource_A.futuregrid.org
         pd_resource_A = sinon.ComputePilotDescription()
         pd_resource_A.resource          = CFG_RESOURCE_A
-        pd_resource_A.sandbox           = CFG_WORKING_DIR_A
         pd_resource_A.cores             = CFG_NUMCORES_A
         pd_resource_A.runtime           = 10 # minutes
 
         # Define a 16-core pilot to resource_B.futuregrid.org
         pd_resource_B = sinon.ComputePilotDescription()
         pd_resource_B.resource          = CFG_RESOURCE_B
-        pd_resource_B.sandbox            = CFG_WORKING_DIR_B
         pd_resource_B.cores             = CFG_NUMCORES_B
         pd_resource_B.runtime           = 10 # minutes
 
@@ -75,10 +71,10 @@ def demo_milestone_03_part_1():
         for pilot in pilots:
             state = pilot.wait(state=[sinon.states.RUNNING, sinon.states.FAILED])
             if state == sinon.states.FAILED:
-                print "  [ERROR] Pilot %s failed: %s." % (pilot, pilot.state_details[-1])
+                print "  [ERROR] Pilot %s failed: %s." % (pilot, pilot.log[-1])
                 failed = True
             else:
-                print "  [OK]    Pilot %s submitted successfully: %s." % (pilot, pilot.state_details[-1])
+                print "  [OK]    Pilot %s submitted successfully: %s." % (pilot, pilot.log[-1])
 
         # If one or more pilots fail, we call cancel() on all pilots
         # and abort the example! 

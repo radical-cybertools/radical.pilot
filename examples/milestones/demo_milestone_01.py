@@ -13,8 +13,6 @@ FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 # Change these according to your needs 
 CFG_USERNAME    = "oweidner"
 CFG_RESOURCE    = "localhost"    
-CFG_WORKING_DIR = "/tmp/sinon/"
-
 
 #-------------------------------------------------------------------------------
 #
@@ -37,10 +35,9 @@ def demo_milestone_01_1():
 
         # Submit a 16-core pilot to india.futuregrid.org
         pd = sinon.ComputePilotDescription()
-        pd.resource          = CFG_RESOURCE
-        pd.working_directory = CFG_WORKING_DIR
-        pd.cores             = 8
-        pd.run_time          = 10 # minutes
+        pd.resource  = CFG_RESOURCE
+        pd.cores     = 2
+        pd.runtime   = 10 # minutes
 
         print "* Submitting pilot to '%s'..." % (pd.resource)
         p1 = pm.submit_pilots(pd)
@@ -49,10 +46,10 @@ def demo_milestone_01_1():
 
         # If the pilot is in FAILED state it probably didn't start up properly. 
         if state == sinon.states.FAILED:
-            print "  [ERROR] Pilot %s failed: %s." % (p1, p1.state_details[-1])
+            print "  [ERROR] Pilot %s failed: %s." % (p1, p1.log[-1])
             sys.exit(-1)
         else:
-            print "  [OK]    Pilot %s submitted successfully: %s." % (p1, p1.state_details[-1])
+            print "  [OK]    Pilot %s submitted successfully: %s." % (p1, p1.log[-1])
 
         # Create a workload of 64 '/bin/hostname' compute units
         compute_units = []

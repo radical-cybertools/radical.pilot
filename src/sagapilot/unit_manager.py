@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.unit_manager
    :platform: Unix
@@ -9,29 +11,21 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
-import radical.utils as ru
+import os 
+import time
 
 from sagapilot.compute_unit  import ComputeUnit
-from sagapilot.utils.logger      import logger
+from sagapilot.utils.logger  import logger
 
-import sagapilot.types       as types
+from sagapilot.mpworker      import UnitManagerWorker
+from sagapilot.scheduler     import get_scheduler
+
 import sagapilot.states      as states
 import sagapilot.exceptions  as exceptions
-import sagapilot.attributes  as attributes
-
-import time
-import datetime
-
-# ------------------------------------------------------------------------------
-# Attribute keys
-UID               = 'UID'
-SCHEDULER         = 'Scheduler'
-SCHEDULER_DETAILS = 'SchedulerDetails'
 
 # ------------------------------------------------------------------------------
 #
-class UnitManager(attributes.Attributes) :
+class UnitManager(object):
     """A UnitManager manages :class:`sagapilot.ComputeUnit` instances which 
     represent the **executable** workload in SAGA-Pilot. A UnitManager connects 
     the ComputeUnits with one or more :class:`Pilot` instances (which represent
@@ -84,106 +78,132 @@ class UnitManager(attributes.Attributes) :
         **Raises:**
             * :class:`sagapilot.SagapilotException`
         """
-        self._DB = session._dbs
         self._session = session
-
-        # initialize attributes
-        attributes.Attributes.__init__(self)
-
-        # set attribute interface properties
-        self._attributes_extensible  (False)
-        self._attributes_camelcasing (True)
-
-        # The UID attribute
-        self._attributes_register(UID, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(UID, self._get_uid_priv)
-
-        # The SCHEDULER attribute
-        self._attributes_register(SCHEDULER, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(SCHEDULER, self._get_scheduler_priv)
-
-        # The SCHEDULER_DETAILS attribute
-        self._attributes_register(SCHEDULER_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(SCHEDULER_DETAILS, self._get_scheduler_details_priv)
-
-        pm = ru.PluginManager ('sagapilot')
-
-
-        self._scheduler = pm.load('unit_scheduler', scheduler)
-        self._scheduler.init(self)
+        self._worker  = None
 
         if _reconnect is False:
-            # Add a new unit manager netry to the DB
-            self._uid = self._DB.insert_unit_manager(
-                unit_manager_data={'scheduler' : scheduler})
-            logger.info("Created new UnitManager %s." % str(self))
+            # Start a worker process fo this UnitManager instance. The worker 
+            # process encapsulates database access et al.
+            self._worker = UnitManagerWorker(
+                unit_manager_uid=None, 
+                unit_manager_data={'scheduler' : scheduler}, 
+                db_connection=session._dbs)
+            self._worker.start()
+
+            self._uid = self._worker.unit_manager_uid
+            self._scheduler = get_scheduler(name=scheduler)
+
+            # Each pilot manager has a worker thread associated with it. 
+            # The task of the worker thread is to check and update the state 
+            # of pilots, fire callbacks and so on. 
+            self._session._process_registry.register(self._uid, self._worker)
 
         else:
-            pass
             # re-connect. do nothing
+            pass
+
+    #---------------------------------------------------------------------------
+    #
+    def __del__(self):
+        """Le destructeur.
+        """
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): UnitManager '%s'." % self._uid )
+
+        if self._worker is not None:
+            self._worker.stop()
+            # Remove worker from registry
+            self._session._process_registry.remove(self._uid)
 
     #---------------------------------------------------------------------------
     #
     @classmethod
     def _reconnect(cls, session, unit_manager_id):
+        """PRIVATE: Reconnect to an existing UnitManager.
+        """
+        uid_exists = UnitManagerWorker.uid_exists(db_connection=session._dbs, 
+            unit_manager_uid=unit_manager_id)
 
-        if unit_manager_id not in session._dbs.list_unit_manager_uids():
-            raise exceptions.BadParameter ("PilotManager with id '%s' not in database." % unit_manager_id)
+        if not uid_exists:
+            raise exceptions.BadParameter ("UnitManager with id '%s' not in database." % unit_manager_id)
 
-        um_data = session._dbs.get_unit_manager(unit_manager_id)
-
-        obj = cls(session=session, scheduler=um_data['scheduler'], _reconnect=True)
-        obj._uid = unit_manager_id
+        # The UnitManager object
+        obj = cls(session=session, scheduler=None, _reconnect=True)
         
-        logger.info("Reconnected to existing UnitManager %s." % str(obj))
+        # Retrieve or start a worker process fo this PilotManager instance.
+        worker = session._process_registry.retrieve(unit_manager_id)
+        if worker is not None:
+            obj._worker = worker
+        else:
+            obj._worker = UnitManagerWorker(
+                unit_manager_uid=unit_manager_id, 
+                unit_manager_data=None, 
+                db_connection=session._dbs)
+            session._process_registry.register(unit_manager_id, obj._worker)
 
+        # start the worker if it's not already running
+        if obj._worker.is_alive() is False:
+            obj._worker.start()
+
+        # Now that the worker is running (again), we can get more information
+        # about the UnitManager
+        um_data = obj._worker.get_unit_manager_data()
+
+        obj._scheduler = get_scheduler(name=um_data['scheduler'])
+        obj._uid = unit_manager_id
+
+        logger.info("Reconnected to existing UnitManager %s." % str(obj))
         return obj
+
+    # --------------------------------------------------------------------------
+    #
+    def as_dict(self):
+        """Returns a Python dictionary representation of the 
+           UnitManager object.
+        """
+        obj_dict = {
+            'uid'               : self.uid,
+            'scheduler'         : self.scheduler,
+            'scheduler_details' : self.scheduler_details
+        }
+        return obj_dict
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the UnitManager object.
+        """
+        return str(self.as_dict())
 
     #---------------------------------------------------------------------------
     #
-    def _get_uid_priv(self):
-        """Returns the unit manager id.
+    @property
+    def uid(self):
+        """Returns the unique id.
         """
         return self._uid
 
     #---------------------------------------------------------------------------
     #
-    def _get_scheduler_priv(self):
+    @property
+    def scheduler(self):
         """Returns the scheduler name. 
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        return self._scheduler
+        return self._scheduler.name
 
     #---------------------------------------------------------------------------
     #
-    def _get_scheduler_details_priv(self):
-        """Returns the scheduler details, e.g., the scheduler logs. 
+    @property
+    def scheduler_details(self):
+        """Returns the scheduler logs. 
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        raise Exception("Not implemented")
-
-    # --------------------------------------------------------------------------
-    #
-    def as_dict(self):
-        """Returns information about the pilot manager as a Python dictionary.
-        """
-        info_dict = {
-            'type'      : 'UnitManagerManager', 
-            'uid'       : self._get_uid_priv(),
-            'scheduler' : str(self._get_scheduler_priv())
-        }
-        return info_dict
-
-    # --------------------------------------------------------------------------
-    #
-    def __str__(self):
-        """Returns a string representation of the pilot manager.
-        """
-        return str(self.as_dict())
+        return "NO SCHEDULER DETAILS (Not Implemented)"
 
     # --------------------------------------------------------------------------
     #
@@ -206,26 +226,13 @@ class UnitManager(attributes.Attributes) :
         if not isinstance (pilots, list):
             pilots = [pilots]
 
-        pids = []
-        for pilot in pilots:
-            pids.append(pilot.uid)
-
-        self._DB.unit_manager_add_pilots(unit_manager_id=self.uid,
-                                         pilot_ids=pids)
+        self._worker.add_pilots(pilots)
 
     # --------------------------------------------------------------------------
     #
-    def list_pilots(self, type=types.PILOT_ANY):
+    def list_pilots(self):
         """Lists the UIDs of the pilots currently associated with
         the unit manager.
-
-        **Arguments:**
-
-            * **type** [`int`]: The type of pilots to list. Possible options are:
-
-              * :data:`sagapilot.types.PILOT_ANY`
-              * :data:`sagapilot.types.PILOT_DATA`
-              * :data:`sagapilot.types.PILOT_COMPUTE`
 
         **Returns:**
 
@@ -238,12 +245,14 @@ class UnitManager(attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        return self._DB.unit_manager_list_pilots(unit_manager_uid=self.uid)
+        return self._worker.get_pilot_uids()
 
     # --------------------------------------------------------------------------
     #
     def remove_pilots(self, pilot_ids, drain=True):
         """Disassociates one or more pilots from the unit manager. 
+
+        TODO: Implement 'drain'.
 
         After a pilot has been removed from a unit manager, it won't process
         any of the unit manager's units anymore. Calling `remove_pilots` doesn't 
@@ -266,12 +275,11 @@ class UnitManager(attributes.Attributes) :
         if not isinstance (pilot_ids, list):
             pilot_ids = [pilot_ids]
 
-        self._DB.unit_manager_remove_pilots(unit_manager_id=self.uid,
-                                            pilot_ids=pilot_ids)
+        self._worker.remove_pilots(pilot_ids)
 
     # --------------------------------------------------------------------------
     #
-    def list_units (self, utype=types.ANY) :
+    def list_units (self): #, utype=types.ANY) :
         """Returns the UIDs of the :class:`sagapilot.ComputeUnit` managed by this 
         unit manager.
 
@@ -283,7 +291,7 @@ class UnitManager(attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        return self._DB.unit_manager_list_work_units(unit_manager_uid=self.uid)
+        return self._worker.get_compute_unit_uids()
 
     # --------------------------------------------------------------------------
     #
@@ -311,12 +319,10 @@ class UnitManager(attributes.Attributes) :
         if not isinstance(unit_descriptions, list):
             unit_descriptions = [unit_descriptions]
 
-        from bson.objectid import ObjectId
-
         if True : ## always use the scheduler for now...
 
-            if not self._scheduler :
-                raise exceptions.SagapilotException("Internal error - no unit scheduler")
+           # if not self._scheduler :
+           #     raise exceptions.SagapilotException("Internal error - no unit scheduler")
 
             # the scheduler will return a dictionary of the form:
             #   { 
@@ -328,7 +334,7 @@ class UnitManager(attributes.Attributes) :
             # simply not be listed for any pilot.  The UM needs to make sure
             # that no UD from the original list is left untreated, eventually.
             try :
-                schedule = self._scheduler.schedule (unit_descriptions)
+                schedule = self._scheduler.schedule(manager=self, unit_descriptions=unit_descriptions)
             except Exception as e :
                 raise exceptions.SagapilotException("Internal error - unit scheduler failed: %s" % e)
 
@@ -351,7 +357,6 @@ class UnitManager(attributes.Attributes) :
                 uds = schedule[pilot_id]
 
                 # submit each unit description scheduled here, all in one bulk
-                submission_dict = {}
                 for ud in uds :
 
                     # sanity check on scheduler provided information
@@ -359,30 +364,20 @@ class UnitManager(attributes.Attributes) :
                         raise exceptions.SagapilotException("Internal error - invalid scheduler reply, "
                                             "no such unit description %s" % ud)
 
-                    # looks ok -- add the unit as submission candidate
-                    unit_id = ObjectId()
-                    submission_dict[unit_id] = {
-                        'description': ud, 
-                        'info': {'state': states.PENDING, 
-                                 'submitted': datetime.datetime.utcnow(),
-                                 'log': []}
-                    }
-
-                    # this unit is not unscheduled anumore...
+                    # this unit is not unscheduled anymore...
                     unscheduled.remove (ud)
 
-                # done iterating over all units, for this plot -- submit bulk 
-                # for this pilot
-                self._DB.insert_workunits(
-                    pilot_id=pilot_id, 
-                    unit_manager_uid=self.uid,
-                    units=submission_dict
-                )
+                    # pass the unit to the worker process. in return we 
+                    # get the unit's object id.
+                    unit_uid = self._worker.register_schedule_compute_unit_request(
+                        pilot_uid=pilot_id, 
+                        unit_description=ud
+                    )
 
-                for unit_id, unit_desc in submission_dict.iteritems():
+                    # create a new ComputeUnit object
                     compute_unit = ComputeUnit._create(
-                        unit_id=str(unit_id),
-                        unit_description=unit_desc['description'], 
+                        unit_id=unit_uid,
+                        unit_description=ud, 
                         unit_manager_obj=self
                     )
                     units.append(compute_unit)
@@ -393,7 +388,7 @@ class UnitManager(attributes.Attributes) :
                 raise exceptions.SagapilotException("Internal error - wrong #units returned from scheduler")
 
             # keep unscheduled units around for later, out-of-band scheduling
-            self._unscheduled_units = unscheduled
+            #self._unscheduled_units = unscheduled
 
             if len(units) == 1: 
                 return units[0]
@@ -438,7 +433,7 @@ class UnitManager(attributes.Attributes) :
 
         **Example**::
 
-            # TODO
+            # TODO -- add example
 
         **Arguments:**
 
@@ -479,7 +474,8 @@ class UnitManager(attributes.Attributes) :
 
             all_done = True
 
-            for wu_state in self._DB.get_workunit_states(workunit_manager_id=self._uid):
+            for wu_state in self._worker.get_compute_unit_states():
+                #print "state: %s -- waiting for %s" % (wu_state, state)
                 if wu_state not in state:
                     all_done = False
                     break # leave for loop

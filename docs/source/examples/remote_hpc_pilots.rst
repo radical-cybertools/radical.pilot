@@ -117,16 +117,11 @@ describe a :class:`sagapilot.ComputePilot` via a :class:`sagapilot.ComputePilotD
 
     pdesc = sagapilot.ComputePilotDescription()
     pdesc.resource  = "stampede.tacc.utexas.edu"
-    pdesc.sandbox   = "/home1/00988/tg802352/sagapilot.sandbox"
     pdesc.runtime   = 15
     pdesc.cores     = 32 
 
     pilot = pmgr.submit_pilots(pdesc)
 
-.. note:: In order to launch ComputePilot on an HPC cluster, 
-          ``ComputePilotDescription.sandbox`` needs to point to a directory 
-          on a **shared file system**, otherwise the ComputePilot agent won't 
-          start properly.
 
 Launching Multiple ComputePilots
 --------------------------------

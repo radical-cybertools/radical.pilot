@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.compute_pilot
    :platform: Unix
@@ -9,124 +11,65 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sagapilot.states     as states
-import sagapilot.attributes as attributes
-import sagapilot.exceptions as exceptions
-
-from sagapilot.utils.logger     import logger
-
-
+import os
 import time
 
-# ------------------------------------------------------------------------------
-# Attribute keys
-UID               = 'UID'
-DESCRIPTION       = 'Description'
-
-STATE             = 'State'
-STATE_DETAILS     = 'StateDetails'
-RESOURCE_DETAILS  = 'ResourceDetails'
-
-SUBMISSION_TIME   = 'SubmissionTime'
-START_TIME        = 'StartTime'
-STOP_TIME         = 'StopTime'
-
-PILOT_MANAGER     = 'PilotManager'
-UNIT_MANAGERS     = 'UnitManagers'
-UNITS             = 'Units'
+import sagapilot.states       as states
+import sagapilot.exceptions   as exceptions
+from   sagapilot.utils.logger import logger
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilot (attributes.Attributes) :
+class ComputePilot (object):
+    """A ComputePilot represent a resource overlay on a local or remote
+       resource. 
+    """
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self):
-        """ Le constructeur. Not meant to be called directly.
+        """Le constructeur. Not meant to be called directly.
         """
         # 'static' members
         self._uid = None
         self._description = None
         self._manager = None
 
-        # database handle
-        self._DB = None
+        # Registered callback functions
+        self._calback_wrappers = dict()
 
-        # initialize attributes
-        attributes.Attributes.__init__(self)
+        # handle to the manager's worker
+        self._worker = None
 
-        # set attribute interface properties
-        self._attributes_extensible(False)
-        self._attributes_camelcasing(True)
-
-        # The UID attribute
-        self._attributes_register(UID, self._uid, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(UID, self._get_uid_priv)
-
-        # The description attribute
-        self._attributes_register(DESCRIPTION, self._description, attributes.ANY, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(DESCRIPTION, self._get_description_priv)
-
-        # The state attribute
-        self._attributes_register(STATE, states.UNKNOWN, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STATE, self._get_state_priv)
-
-        # The state details a.k.a. attribute 
-        self._attributes_register(STATE_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STATE_DETAILS, self._get_state_detail_priv)
-
-        # The resources details a.k.a additional informations about the resource the pilot is using
-        self._attributes_register(RESOURCE_DETAILS, None, attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(RESOURCE_DETAILS, self._get_resource_detail_priv)
-
-        # The units assigned to this pilot
-        self._attributes_register(UNITS, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(UNITS, self._get_units_priv)
-
-        # The unit managers this pilot is attached to
-        self._attributes_register(UNIT_MANAGERS, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(UNIT_MANAGERS, self._get_unit_managers_priv)
-
-        # The pilot manager this pilot is attached to
-        self._attributes_register(PILOT_MANAGER, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(PILOT_MANAGER, self._get_pilot_manager_priv)
-
-        # The submission time
-        self._attributes_register(SUBMISSION_TIME, None,  attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(SUBMISSION_TIME, self._get_submission_time_priv)
-
-        # The start time
-        self._attributes_register(START_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(START_TIME, self._get_start_time_priv)
-
-        # The stop time
-        self._attributes_register(STOP_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STOP_TIME, self._get_stop_time_priv)
+        # list of callback functions
+        self._callback_list = []
 
     # --------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
         """
-        pass
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): ComputePilot '%s'." % self._uid )
+
 
     # --------------------------------------------------------------------------
     #
     @staticmethod 
-    def _create (pilot_manager_obj, pilot_id, pilot_description):
+    def _create (pilot_manager_obj, pilot_uid, pilot_description):
         """ PRIVATE: Create a new pilot.
         """
-        # create and return pilot object
+        # Create and return pilot object.
         pilot = ComputePilot()
 
-        pilot._uid = pilot_id
+        pilot._uid = pilot_uid
         pilot._description = pilot_description
-        pilot._manager     = pilot_manager_obj
+        pilot._manager = pilot_manager_obj
 
-        pilot._DB = pilot._manager._DB
+        # Pilots use the worker of their parent manager.
+        pilot._worker = pilot._manager._worker
 
         logger.info("Created new ComputePilot %s" % str(pilot))
-
         return pilot
 
     # --------------------------------------------------------------------------
@@ -135,9 +78,8 @@ class ComputePilot (attributes.Attributes) :
     def _get (pilot_manager_obj, pilot_ids) :
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
-        # create database entry
-        pilots_json = pilot_manager_obj._DB.get_pilots(
-            pilot_manager_id=pilot_manager_obj.uid, pilot_ids=pilot_ids)
+        pilots_json = pilot_manager_obj._worker.get_compute_pilot_data(pilot_uid=pilot_ids)
+
         # create and return pilot objects
         pilots = []
 
@@ -147,7 +89,7 @@ class ComputePilot (attributes.Attributes) :
             pilot._description = p['description']
             pilot._manager = pilot_manager_obj
 
-            pilot._DB = pilot._manager._DB
+            pilot._worker = pilot._manager._worker
         
             logger.info("Reconnected to existing ComputePilot %s" % str(pilot))
             pilots.append(pilot)
@@ -156,8 +98,33 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_uid_priv(self):
-        """PRIVATE: Returns the Pilot's unique identifier.
+    def as_dict(self):
+        """Returns a Python dictionary representation of the 
+           ComputePilot object.
+        """
+        obj_dict = {
+            'uid'              : self.uid, 
+            'state'            : self.state,
+            'log'              : self.log,
+            'resource'         : self.resource,
+            'submission_time'  : self.submission_time, 
+            'start_time'       : self.start_time, 
+            'stop_time'        : self.stop_time
+        }
+        return obj_dict
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the ComputePilot object.
+        """
+        return str(self.as_dict())
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def uid(self):
+        """Returns the Pilot's unique identifier.
 
         The uid identifies the Pilot within the :class:`PilotManager` and 
         can be used to retrieve an existing Pilot.
@@ -172,8 +139,9 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_description_priv(self):
-        """PRIVATE: Returns the pilot description the pilot was started with.
+    @property
+    def description(self):
+        """Returns the pilot description the pilot was started with.
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
@@ -182,28 +150,21 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_state_priv(self):
-        """PRIVATE: Returns the current state of the pilot.
+    @property
+    def state(self):
+        """Returns the current state of the pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
-        # state is dynamic and changes over the lifetime of a pilot, hence we 
-        # need to make a call to the database layer
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
-            pilot_ids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilots_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.SagapilotException(msg=msg)
-
-        return pilots_json[0]['info']['state']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['state']
 
     # --------------------------------------------------------------------------
     #
-    def _get_state_detail_priv(self):
-        """PRIVATE: Returns the current state of the pilot.
+    @property 
+    def log(self):
+        """Returns the log of the pilot.
 
         This 
         """
@@ -211,23 +172,15 @@ class ComputePilot (attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        # state detail is dynamic and changes over the  lifetime of a pilot,
-        # hence we need to make a call to the  database layer.
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilots_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilots_json[0]['info']['log']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['log']
 
 
     # --------------------------------------------------------------------------
     #
-    def _get_resource_detail_priv(self):
-        """PRIVATE: Returns the resource details of the pilot.
+    @property
+    def resource_detail(self):
+        """Returns the resource details of the pilot.
 
         This 
         """
@@ -235,26 +188,17 @@ class ComputePilot (attributes.Attributes) :
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        # state detail is dynamic and changes over the  lifetime of a pilot,
-        # hence we need to make a call to the  database layer.
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilots_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
         resource_details = {
-            'nodes'          : pilots_json[0]['info']['nodes'],
-            'cores_per_node' : pilots_json[0]['info']['cores_per_node']
+            'nodes'          : pilot_json['info']['nodes'],
+            'cores_per_node' : pilot_json['info']['cores_per_node']
         }
-
         return resource_details
 
     # --------------------------------------------------------------------------
     #
-    def _get_pilot_manager_priv(self):
+    @property
+    def pilot_manager(self):
         """ Returns the pilot manager object for this pilot.
         """
         if not self._uid:
@@ -264,7 +208,8 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_unit_managers_priv(self):
+    @property
+    def unit_managers(self):
         """ Returns the pilot manager object for this pilot.
         """
         if not self._uid:
@@ -275,7 +220,8 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_units_priv(self):
+    @property
+    def units(self):
         """ Returns the units scheduled for this pilot.
         """
         # Check if this instance is valid
@@ -286,103 +232,68 @@ class ComputePilot (attributes.Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_submission_time_priv(self):
+    @property
+    def submission_time(self):
         """ Returns the time the pilot was submitted. 
         """
         # Check if this instance is valid
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilots_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilots_json[0]['info']['submitted']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['submitted']
 
     # --------------------------------------------------------------------------
     #
-    def _get_start_time_priv(self):
+    @property
+    def start_time(self):
         """ Returns the time the pilot was started on the backend. 
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilots_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilots_json[0]['info']['started']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['started']
 
     # --------------------------------------------------------------------------
     #
-    def _get_stop_time_priv(self):
+    @property
+    def stop_time(self):
         """ Returns the time the pilot was stopped. 
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilots_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilots_json[0]['info']['finished']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['info']['finished']
 
     # --------------------------------------------------------------------------
     #
-    def _get_resource_priv(self):
-        """ Returns the time the pilot was stopped. 
+    @property
+    def resource(self):
+        """ Returns the resource. 
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilots_json = self._DB.get_pilots(pilot_manager_id=self._manager.uid, 
-                                          pilot_ids=[self.uid])
-
-        # make sure the result makes sense
-        if len(pilots_json) != 1: 
-            msg = "Couldn't find pilot with UID '%s'" % self.uid
-            raise exceptions.BadParameter(msg=msg)
-
-        return pilots_json[0]['description']['Resource']
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        return pilot_json['description']['Resource']
 
     # --------------------------------------------------------------------------
     #
-    def as_dict(self):
-        """Returns information about the pilot as a Python dictionary.
+    def register_state_callback(self, callback_func):
+        """Registers a callback function that is triggered every time the 
+        ComputePilot's state changes.
         """
-        info_dict = {
-            'type'            : 'ComputePilot', 
-            'id'              : self._get_uid_priv(), 
-            #'state'           : self._get_state_priv(),
-            #'resource'        : self._get_resource_priv(),
- #           'submission_time' : self._get_submission_time_priv(), 
- #           'start_time'      : self._get_start_time_priv(), 
- #           'stop_time'       : self._get_stop_time_priv()
-        }
-        return info_dict
+
+        # We can't (and don't want to) pass CompuePilot objects to the worker
+        # processes. Instead we create a proxy callback function that we can
+        # pass in lieu. We do this via an anonymous function (lambda).
+        self._worker.register_pilot_state_callback(self._uid, callback_func)
 
     # --------------------------------------------------------------------------
     #
-    def __str__(self):
-        """Returns a string representation of the pilot.
-        """
-        return str(self.as_dict())
-
-    # --------------------------------------------------------------------------
-    #
-    def wait (self, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
+    def wait(self, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
         """Returns when the pilot reaches a specific state or 
         when an optional timeout is reached.
 
@@ -452,6 +363,4 @@ class ComputePilot (attributes.Attributes) :
             raise exceptions.BadParameter(msg=msg)
 
         # now we can send a 'cancel' command to the pilot.
-        self._DB.signal_pilots(pilot_manager_id=self._manager.uid, 
-            pilot_ids=self.uid, cmd="CANCEL")
-
+        self._manager.cancel_pilots(self.uid)

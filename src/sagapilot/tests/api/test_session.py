@@ -65,6 +65,36 @@ class Test_Session(unittest.TestCase):
 
         session.destroy()
 
+    #-------------------------------------------------------------------------
+    #
+    def test__credentials_reconnect(self):
+        """ Tests if reconnecting to an existing session works as epxected and if
+        credentials are reloaded properly. 
+        """
+        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+
+        # Add an ssh identity to the session.
+        cred1 = sinon.SSHCredential()
+        cred1.user_id = "tg802352"
+        session.add_credential(cred1)
+
+        # Add an ssh identity to the session.
+        cred2 = sinon.SSHCredential()
+        cred2.user_id = "abcedesds"
+        session.add_credential(cred2)
+
+        assert len(session.credentials) == 2
+
+        session2 = sinon.Session(database_url=DBURL, session_uid=session.uid)
+        print "Session: {0} ".format(session2)
+
+        assert len(session2.credentials) == 2
+
+        for cred in session2.credentials:
+            assert cred.as_dict() in [cred1.as_dict(), cred2.as_dict()]
+
+        session.destroy()
+
 
         
 

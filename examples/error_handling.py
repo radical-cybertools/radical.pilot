@@ -33,7 +33,6 @@ def synchronous_error_handling():
         # fail on 'localhost' because not enough cores are available. 
         pd = sagapilot.ComputePilotDescription()
         pd.resource  = "localhost"
-        pd.sandbox   = "/tmp/sagapilot.sandbox"
         pd.cores     = 128
         pd.runtime   = 10 
 
@@ -42,7 +41,7 @@ def synchronous_error_handling():
 
         # If the pilot is in FAILED state it probably didn't start up properly. 
         if state == sagapilot.states.FAILED:
-            print pilot.state_details[-1] # Get the last log message
+            print pilot.log[-1] # Get the last log message
             return 1
         # The timeout was reached if the pilot state is still FAILED.
         elif state == sagapilot.states.PENDING:

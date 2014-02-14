@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212, W0401
+
 """
 .. module:: sagapilot
    :platform: Unix
@@ -16,7 +18,7 @@ import sagapilot.states as states
 
 # ------------------------------------------------------------------------------
 # Scheduler name constant
-from sagapilot.plugins                   import *
+from sagapilot.scheduler                 import *
 
 # ------------------------------------------------------------------------------
 #
@@ -36,9 +38,3 @@ from sagapilot.compute_pilot_description import ComputePilotDescription
 #
 from sagapilot.utils.version             import version
 from sagapilot.utils.logger              import logger
-
-
-logger.info ('loading SAGA-Pilot version: %s' % version)
-
-
-

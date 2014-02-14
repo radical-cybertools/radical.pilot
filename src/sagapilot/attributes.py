@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212, E1101, R0903
+
 """
 .. module:: sagapilot.attributes
    :platform: Unix
@@ -37,14 +39,21 @@ VECTOR      = satt.VECTOR
 #------------------------------------------------------------------------------
 #
 class Attributes(satt.Attributes):
+    """Attributes provides an attribute interface for ComputePilotDescription
+    and ComputeUnitDescription. It's really just a forward declaration of 
+    saga.Attributes.
+    """
 
     #---------------------------------------------------------------------------
     #
     def __init__(self, *args, **kwargs) :
-
+        """Le constructeur.
+        """
         satt.Attributes.__init__ (self, *args, **kwargs)
 
     #---------------------------------------------------------------------------
     #
     def __str__ (self) :
+        """Returns a string representation of the object.
+        """
         return str (self.as_dict())

@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import datetime
+import gridfs
 from pymongo import *
 from bson.objectid import ObjectId
 
+from sagapilot import states 
 
 # ------------------------------------------------------------------------------
 #
@@ -79,13 +82,15 @@ class Session():
     def new(sid, db_url, db_name="sinon"):
         """ Creates a new session (factory method).
         """
-        s = Session(db_url, db_name)
-        s._create(sid)
-        return s
+        creation_time = datetime.datetime.utcnow()
+
+        dbs = Session(db_url, db_name)
+        dbs._create(sid, creation_time)
+        return (dbs, creation_time)
 
     #---------------------------------------------------------------------------
     #
-    def _create(self, sid):
+    def _create(self, sid, creation_time):
         """ Creates a new session (private).
 
             A session is a distinct collection with three sub-collections 
@@ -109,8 +114,19 @@ class Session():
         self._session_id = sid
 
         self._s = self._db["%s" % sid]
-        self._s.insert({"CREATED": "<DATE>"})
+        self._s.insert( 
+            {
+                "_id"  : ObjectId(sid),
+                "info" : 
+                {
+                    "created"        : creation_time,
+                    "last_reconnect" : None
+                },
+                "credentials" : []
+            }
+        )
 
+        # Create the collection shortcut:
         self._w  = self._db["%s.w"  % sid]
         self._um = self._db["%s.wm" % sid] 
 
@@ -125,9 +141,9 @@ class Session():
 
             Here we simply check if a sinon.<sid> collection exists.
         """
-        s = Session(db_url, db_name)
-        s._reconnect(sid)
-        return s
+        dbs = Session(db_url, db_name)
+        session_info = dbs._reconnect(sid)
+        return (dbs, session_info)
 
     #---------------------------------------------------------------------------
     #
@@ -135,20 +151,45 @@ class Session():
         """ Reconnects to an existing session (private).
         """
         # make sure session exists
-        if sid not in self._db.collection_names():
-            raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
-
-        # remember session id
-        self._session_id = sid
+        #if sid not in self._db.collection_names():
+        #    raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
 
         self._s = self._db["%s" % sid]
-        self._s.insert({'reconnected': 'DATE'})
+        cursor = self._s.find({"_id": ObjectId(sid)})
+        
+        self._s.update({"_id"  : ObjectId(sid)},
+                       {"$set" : {"info.last_reconnect" : datetime.datetime.utcnow()}}
+        )
 
+        cursor = self._s.find({"_id": ObjectId(sid)})
+
+
+        # cursor -> dict
+        #if len(cursor) != 1:
+        #    raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
+
+        self._session_id = sid
+
+        # Create the collection shortcut:
         self._w  = self._db["%s.w"  % sid]
         self._um = self._db["%s.wm" % sid]
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
+
+        return cursor[0]
+
+    #---------------------------------------------------------------------------
+    #
+    def session_add_credential(self, credential):
+        if self._s is None:
+            raise DBException("No active session.")
+
+        self._s.update(
+            {"_id": ObjectId(self._session_id)}, 
+            {"$push": {"credentials": credential}},
+            multi=True
+        )
 
     #---------------------------------------------------------------------------
     #
@@ -226,6 +267,50 @@ class Session():
 
     #---------------------------------------------------------------------------
     #
+    def get_workunit_stdout(self, workunit_uid):
+        """Returns the WorkUnit's unit's stdout.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._w.find(
+            {"_id": ObjectId(workunit_uid)},
+            {"info.stdout_id"}
+        )
+
+        stdout_id = cursor[0]['info']['stdout_id']
+
+        if stdout_id is None:
+            return None
+        else:
+            gfs = gridfs.GridFS(self._db)
+            stdout = gfs.get(stdout_id)
+            return stdout.read()
+
+    #---------------------------------------------------------------------------
+    #
+    def get_workunit_stderr(self, workunit_uid):
+        """Returns the WorkUnit's unit's stderr.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._w.find(
+            {"_id": ObjectId(workunit_uid)},
+            {"info.stderr_id"}
+        )
+
+        stderr_id = cursor[0]['info']['stderr_id']
+
+        if stderr_id is None:
+            return None
+        else:
+            gfs = gridfs.GridFS(self._db)
+            stderr = gfs.get(stderr_id)
+            return stderr.read()
+
+    #---------------------------------------------------------------------------
+    #
     def pilot_get_tasks(self, pilot_uid):
         """Get all tasks for the pilot.
         """
@@ -241,52 +326,76 @@ class Session():
         return pilots_json
 
 
-    #---------------------------------------------------------------------------
-    #
-    def insert_pilots(self, pilot_manager_uid, pilot_descriptions):
-        """ Adds one or more pilots to the database.
-
-            Input is a list of sinon pilot descriptions.
-
-            Inserting any number of pilots costs one roundtrip. 
-
-                (1) Inserting pilot into pilot collection
+    def update_pilot_state(self, pilot_uid, started=None, finished=None, submitted=None, state=None, sagajobid=None, logs=None):
+        """Updates the information of a pilot.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_docs = []
-        for pilot_id, pilot_desc in pilot_descriptions.iteritems():
-            pilot_json = {
-                "_id"           : pilot_id,
-                "description"   : pilot_desc['description'].as_dict(),
-                "wu_queue"      : [],
-                "command"       : None,
-                "info"          : 
-                {
-                    "submitted"      : pilot_desc['info']['submitted'],
-                    "nodes"          : None,
-                    "cores_per_node" : None,
-                    "started"        : None,
-                    "finished"       : None,
-                    "state"          : pilot_desc['info']['state'],
-                    "log"            : pilot_desc['info']['log']
-                },
-                "links" : 
-                {
-                    "pilotmanager"   : pilot_manager_uid,
-                    "unitmanager"    : None
-                }
-            }
-            pilot_docs.append(pilot_json)
-            
-        pilot_ids = self._p.insert(pilot_docs)
+        # construct the update query 
+        set_query = dict()
+        push_query = dict()
 
-        # return the object id as a string
-        pilot_id_strings = []
-        for pilot_id in pilot_ids:
-            pilot_id_strings.append(str(pilot_id))
-        return pilot_id_strings
+        if state is not None:
+            set_query["info.state"]     = state
+
+        if started is not None:
+            set_query["info.started"]   = started
+
+        if finished is not None:
+            set_query["info.finished"]  = finished
+
+        if submitted is not None:
+            set_query["info.submitted"] = submitted
+
+        if sagajobid is not None:
+            set_query["info.sagajobid"] = sagajobid
+
+        if logs is not None:
+            push_query["info.log"]     = logs 
+
+        # update pilot entry.
+        self._p.update(
+            {"_id": ObjectId(pilot_uid)}, 
+            {"$set": set_query, "$pushAll": push_query},
+            multi=True
+        )
+
+    #---------------------------------------------------------------------------
+    #
+    def insert_pilot(self, pilot_manager_uid, pilot_description):
+        """Adds a new pilot document to the database.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        pilot_uid = ObjectId()
+
+        pilot_doc = {
+            "_id":            pilot_uid,
+            "description":    pilot_description.as_dict(),
+            "info":
+            {
+                "submitted":      datetime.datetime.utcnow(),
+                "started":        None,
+                "finished":       None,
+                "nodes":          None,
+                "cores_per_node": None,
+                "state":          states.PENDING,
+                "log":            []
+            },
+            "links":
+            {
+                "pilotmanager":   pilot_manager_uid,
+                "unitmanager":    None
+            },
+            "wu_queue":       [],
+            "command":        None,
+        }
+
+        self._p.insert(pilot_doc, upsert=False)
+
+        return str(pilot_uid), pilot_doc
 
     #---------------------------------------------------------------------------
     #
@@ -495,7 +604,7 @@ class Session():
 
         for pilot_id in pilot_ids:
             self._p.update({"_id": ObjectId(pilot_id)}, 
-                           {"$set": {"links.unitmanager" : unit_manager_id}})
+                           {"$set": {"links.unitmanager" : unit_manager_id}}, True)
 
     #---------------------------------------------------------------------------
     #
@@ -508,7 +617,7 @@ class Session():
         # Add the ids to the pilot's queue
         for pilot_id in pilot_ids:
             self._p.update({"_id": ObjectId(pilot_id)}, 
-                           {"$set": {"links.unitmanager" : None}})
+                           {"$set": {"links.unitmanager" : None}}, True)
 
     #---------------------------------------------------------------------------
     #
@@ -560,10 +669,18 @@ class Session():
             pilots.append(obj)
         return pilots
 
+    #---------------------------------------------------------------------------
+    #
+    def assign_compute_unit_to_pilot(self, compute_unit_uid, pilot_uid):
+        """Assigns a compute unit to a pilot.
+        """
+        # Add the ids to the pilot's queue
+        self._p.update({"_id": ObjectId(pilot_uid)}, 
+                       {"$push": {"wu_queue" : ObjectId(compute_unit_uid)}})
 
     #---------------------------------------------------------------------------
     #
-    def insert_workunits(self, pilot_id, unit_manager_uid, units):
+    def insert_compute_unit(self, pilot_uid, unit_manager_uid, unit_uid, unit_description, unit_state, unit_log):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
@@ -582,39 +699,25 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        # Construct and insert workunit documents
-        workunit_docs = []
-        for key, wu_desc in units.iteritems():
+        workunit = {
+            "_id"           : ObjectId(unit_uid),
+            "description"   : unit_description,
+            "links"    : {
+                "unitmanager" : unit_manager_uid, 
+                "pilot"       : pilot_uid,
+            },
+            "info"          : {
+                "submitted"     : datetime.datetime.utcnow(),
+                "started"       : None,
+                "finished"      : None,
+                "exec_locs"     : None,
+                "state"         : unit_state,
+                "log"           : unit_log
+            }
+        } 
 
-            workunit = {
-                "_id"           : key,
-                "description"   : wu_desc['description'].as_dict(), #{
-                    #"Executable" : wu_desc['description'].executable,
-                    #"Arguments"  : wu_desc['description'].arguments, 
-                    #"Cores"      : wu_desc['description'].cores
-                    #"WorkingD"
-                #},
-                "links"    : {
-                    "unitmanager" : unit_manager_uid, 
-                    "pilot"       : pilot_id,
-                },
-                "info"          : {
-                    "submitted"     : wu_desc['info']['submitted'],
-                    "started"       : None,
-                    "finished"      : None,
-                    "exec_locs"     : None,
-                    "state"         : wu_desc['info']['state'],
-                    "log"           : wu_desc['info']['log']
-                }
-            } 
-            workunit_docs.append(workunit)
-        wu_ids = self._w.insert(workunit_docs)
-
-        # Add the ids to the pilot's queue
-        self._p.update({"_id": ObjectId(pilot_id)}, 
-                       {"$pushAll": {"wu_queue" : wu_ids}})
-        return wu_ids
-
+        self._w.insert(workunit)
+        
     #---------------------------------------------------------------------------
     #
     def get_raw_workunits(self, workunit_ids=None):

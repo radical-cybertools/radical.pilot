@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212, E1101, R0903
+
 """
 .. module:: sagapilot.utils.version
    :platform: Unix
@@ -11,4 +13,4 @@ __license__   = "MIT"
 
 import os
 
-version=open    (os.path.dirname (os.path.abspath (__file__)) + "/../VERSION", 'r').read().strip()
+version = open(os.path.dirname (os.path.abspath (__file__)) + "/../VERSION", 'r').read().strip()

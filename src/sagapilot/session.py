@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.session
    :platform: Unix
@@ -9,17 +11,52 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os 
+
 from sagapilot.unit_manager  import UnitManager
 from sagapilot.pilot_manager import PilotManager
+from sagapilot.credentials   import SSHCredential
+from sagapilot.utils.logger  import logger
+from sagapilot               import exceptions
 
-from sagapilot.utils.logger      import logger
+from sagapilot.db            import Session as dbSession
+from sagapilot.db            import DBException
 
-from sagapilot.db                import Session as dbSession
-from sagapilot.db                import DBException
-
-import sagapilot.exceptions
 from bson.objectid import ObjectId
 
+# ------------------------------------------------------------------------------
+#
+class _ProcessRegistry(object):
+    """A _ProcessRegistry contains a dictionary of all worker processes 
+    that are currently active.
+    """
+    def __init__(self):
+        self._dict = dict()
+
+    def register(self, key, process):
+        """Add a new process to the registry.
+        """
+        if key not in self._dict:
+            self._dict[key] = process
+
+    def retrieve(self, key):
+        """Retrieve a process from the registry.
+        """
+        if key not in self._dict:
+            return None
+        else:
+            return self._dict[key]
+
+    def keys(self):
+        """List all keys of all process in the registry.
+        """
+        return self._dict.keys()
+
+    def remove(self, key):
+        """Remove a process from the registry.
+        """
+        if key in self._dict:
+            del self._dict[key]
 
 # ------------------------------------------------------------------------------
 #
@@ -43,6 +80,16 @@ class Session(object):
         assert s1.uid == s2.uid
     """
 
+    #---------------------------------------------------------------------------
+    #
+    def __del__(self):
+        """Le destructeur.
+        """
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): Session '%s'." % self._session_uid )
+
+        if len(self._process_registry.keys()) > 0:
+            logger.warning("Active workers left in registry: %s." % self._process_registry.keys())
 
     #---------------------------------------------------------------------------
     #
@@ -69,45 +116,73 @@ class Session(object):
             * :class:`sagapilot.DatabaseError`
 
         """
+
+        # Create a new process registry. All objects belonging to this 
+        # session will register their worker processes (if they have any)
+        # in this registry. This makes it easier to shut down things in 
+        # a more coordinate fashion. 
+        self._process_registry = _ProcessRegistry()
+
+        # List of credentials registered with this session.
+        self._credentials = []
+
+
         try:
             self._database_url  = database_url
             self._database_name = database_name 
 
+            ##########################
+            ## CREATE A NEW SESSION ##
+            ##########################
             if session_uid is None:
-                # if session_uid is 'None' we create a new session
-                session_uid = str(ObjectId())
-                self._dbs = dbSession.new(sid=session_uid, 
-                                          db_url=database_url, 
-                                          db_name=database_name)
-                self._session_uid   = session_uid
-                logger.info("Created new Session %s." % str(self))
 
+                self._session_uid    = str(ObjectId())
+                self._last_reconnect = None
+
+                self._dbs, self._created = dbSession.new(sid=self._session_uid, 
+                                                         db_url=database_url, 
+                                                         db_name=database_name)
+
+                logger.info("New Session created%s." % str(self))
+
+            ######################################
+            ## RECONNECT TO AN EXISTING SESSION ##
+            ######################################
             else:
                 # otherwise, we reconnect to an exissting session
-                self._dbs = dbSession.reconnect(sid=session_uid, 
-                                                db_url=database_url, 
-                                                db_name=database_name)
+                self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
+                                                              db_url=database_url, 
+                                                              db_name=database_name)
 
-                self._session_uid   = session_uid
+                self._session_uid    = session_uid
+                self._created        = session_info["info"]["created"]
+                self._last_reconnect = session_info["info"]["last_reconnect"]
+
+                for cred_dict in session_info["credentials"]:
+                    self._credentials.append(SSHCredential.from_dict(cred_dict))
+
                 logger.info("Reconnected to existing Session %s." % str(self))
 
         except DBException, ex:
-            raise exceptions.SagapilotException("Database Error: %s" % ex)
-
-        # list of security contexts
-        self._credentials      = []
-
+            raise exceptions.SagapilotException("Database Error: %s" % ex)        
 
     #---------------------------------------------------------------------------
     #
-    def __repr__(self):
-        return {"database_url": self._database_url,
-                "session_uid"  : self._session_uid}
+    def as_dict(self):
+        """Returns a Python dictionary representation of the object.
+        """
+        return {"uid"            : self._session_uid,
+                "created"        : self._created,
+                "last_reconnect" : self._last_reconnect,
+                "database_url"   : self._database_url,
+                "database_name"  : self._database_name}
 
     #---------------------------------------------------------------------------
     #
     def __str__(self):
-        return str(self.__repr__())
+        """Returns a string representation of the object.
+        """
+        return str(self.as_dict())
 
     #---------------------------------------------------------------------------
     #
@@ -132,6 +207,30 @@ class Session(object):
 
         return self._session_uid
 
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def created(self):
+        """Returns the UTC date and time the session was created.
+        """
+        if not self._session_uid:
+            msg = "Invalid session instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
+        return self._created
+
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def last_reconnect(self):
+        """Returns the most recent UTC date and time the session was
+        reconnected to.
+        """
+        if not self._session_uid:
+            msg = "Invalid session instance: closed or doesn't exist."
+            raise exceptions.IncorrectState(msg=msg)
+
+        return self._last_reconnect
 
     #---------------------------------------------------------------------------
     #
@@ -142,13 +241,15 @@ class Session(object):
             msg = "Invalid session instance: closed or doesn't exist."
             raise exceptions.IncorrectState(msg=msg)
 
+        self._dbs.session_add_credential(credential.as_dict())
         self._credentials.append(credential)
         logger.info("Added credential %s to session %s." % (str(credential), self.uid))
 
     #---------------------------------------------------------------------------
     #
-    def list_credentials(self):
-        """Lists the security credentials of the session.
+    @property
+    def credentials(self):
+        """Returns the security credentials of the session.
         """
         if not self._session_uid:
             msg = "Invalid session instance: closed or doesn't exist."

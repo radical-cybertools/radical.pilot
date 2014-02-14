@@ -1,3 +1,5 @@
+#pylint: disable=C0301, C0103, W0212
+
 """
 .. module:: sagapilot.compute_unit
    :platform: Unix
@@ -9,12 +11,12 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
+import time
+
 import sagapilot.states        as states
-import sagapilot.attributes    as attributes
 import sagapilot.exceptions    as exceptions
 from   sagapilot.utils.logger  import logger
-
-import time
 
 # ------------------------------------------------------------------------------
 # Attribute keys
@@ -33,45 +35,8 @@ PILOT             = 'Pilot'
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnit(attributes.Attributes):
+class ComputeUnit(object): #attributes.Attributes):
     """TODO: document me!
-
-    .. data:: description 
-
-       (`Attribute`) Returns the ComputePilotDescription that was used to create the ComputeUnit [read-only].
-
-    .. data:: state 
-
-       (`Attribute`) The execution state of the ComputeUnit [read-only].
-
-    .. data:: state_details 
-
-       (`Attribute`) The logs of the ComputeUnit (if any) [read-only].
-
-    .. data:: execution_details 
-
-       (`Attribute`) The execution details, like the node and CPU(s) the ComputeUnit was executed on [read-only].
-
-    .. data:: submission_time 
-
-       (`Attribute`) The time and date the ComputeUnit was submitted to the UnitManager [read-only].
-
-    .. data:: start_time 
-
-       (`Attribute`) The time and date the ComputeUnit started executing on a ComputePilot [read-only].
-
-    .. data:: stop_time 
-
-       (`Attribute`) The time and date the ComputeUnit finished execution [read-only].
-
-    .. data:: unit_manager 
-
-       (`Attribute`) The UID of the UnitManager the ComputeUnit is associated with [read-only].
-
-    .. data:: pilot 
-
-       (`Attribute`) The UID of the ComputePilot that executed the ComputeUnit [read-only].
-
     """
 
     # --------------------------------------------------------------------------
@@ -79,53 +44,21 @@ class ComputeUnit(attributes.Attributes):
     def __init__ (self):
         """ Le constructeur. Not meant to be called directly.
         """
-
         # 'static' members
         self._uid = None
         self._description = None
         self._manager = None
 
-        # database handle
-        self._DB = None
+        # handle to the manager's worker
+        self._worker = None
 
-        attributes.Attributes.__init__(self)
-
-        # set attributesribute interface properties
-        self._attributes_extensible(False)
-        self._attributes_camelcasing(True)
-
-        # The UID attributesribute
-        self._attributes_register(UID, self._uid, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(UID, self._get_uid_priv)
-
-        # The description attributesribute
-        self._attributes_register(DESCRIPTION, self._description, attributes.ANY, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(DESCRIPTION, self._get_description_priv)
-
-        # The state attributesribute
-        self._attributes_register(STATE, states.UNKNOWN, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STATE, self._get_state_priv)
-
-        # The state detail a.k.a. 'log' attribute 
-        self._attributes_register(STATE_DETAILS, None, attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STATE_DETAILS, self._get_state_details_priv)
-
-        # The execution details attribute 
-        self._attributes_register(EXECUTION_DETAILS, None, attributes.STRING, attributes.VECTOR, attributes.READONLY)
-        self._attributes_set_getter(EXECUTION_DETAILS, self._get_execution_details_priv)
-
-        # The submission time
-        self._attributes_register(SUBMISSION_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(SUBMISSION_TIME, self._get_submission_time_priv)
-
-        # The start time
-        self._attributes_register(START_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(START_TIME, self._get_start_time_priv)
-
-        # The stop time
-        self._attributes_register(STOP_TIME, None,  attributes.STRING, attributes.SCALAR, attributes.READONLY)
-        self._attributes_set_getter(STOP_TIME, self._get_stop_time_priv)
-
+    #---------------------------------------------------------------------------
+    #
+    def __del__(self):
+        """Le destructeur.
+        """
+        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): ComputeUnit '%s'." % self._uid )
 
     # --------------------------------------------------------------------------
     #
@@ -140,8 +73,7 @@ class ComputeUnit(attributes.Attributes):
         computeunit._description = unit_description
         computeunit._manager     = unit_manager_obj
 
-        computeunit._DB          = unit_manager_obj._DB
-
+        computeunit._worker      = unit_manager_obj._worker
         return computeunit
 
     # --------------------------------------------------------------------------
@@ -151,7 +83,7 @@ class ComputeUnit(attributes.Attributes):
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
         # create database entry
-        units_json = unit_manager_obj._DB.get_workunits(
+        units_json = unit_manager_obj._session._dbs.get_workunits(
             workunit_manager_id=unit_manager_obj.uid, 
             workunit_ids=unit_ids
         )
@@ -163,8 +95,7 @@ class ComputeUnit(attributes.Attributes):
             computeunit._uid = str(u['_id'])
             computeunit._description = u['description']
             computeunit._manager = unit_manager_obj
-
-            computeunit._DB = unit_manager_obj._DB
+            computeunit._worker  = unit_manager_obj._worker
         
             computeunits.append(computeunit)
 
@@ -173,35 +104,36 @@ class ComputeUnit(attributes.Attributes):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        """Returns information about the comnpute unit as a Python dictionary.
+        """Returns a Python dictionary representation of the object.
         """
-        info_dict = {
-            'type'            : 'ComputeUnit', 
-            'id'              : self._get_uid_priv(), 
-            'state'           : self._get_state_priv(),
- #           'submission_time' : self._get_submission_time_priv(), 
- #           'start_time'      : self._get_start_time_priv(), 
- #           'stop_time'       : self._get_stop_time_priv()
+        obj_dict = {
+            'uid'               : self.uid,
+            'state'             : self.state,
+            'state_details'     : self.state_details,
+            'execution_details' : self.state_details,
+            'submission_time'   : self.submission_time, 
+            'start_time'        : self.start_time, 
+            'stop_time'         : self.stop_time
         }
-        return info_dict
+        return obj_dict
 
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        """Returns a string representation of the compute unit.
+        """Returns a string representation of the object.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
         return str(self.as_dict())
 
-
     # --------------------------------------------------------------------------
     #
-    def _get_uid_priv(self):
-        """PRIVATE: Returns the Pilot's unique identifier.
+    @property
+    def uid(self):
+        """Returns the Pilot's unique identifier.
 
-        The uid identifies the Pilot within the :class:`PilotManager` and 
+        The uid identifies the ComputePilot within a :class:`PilotManager` and 
         can be used to retrieve an existing Pilot.
 
         **Returns:**
@@ -216,8 +148,29 @@ class ComputeUnit(attributes.Attributes):
 
     # --------------------------------------------------------------------------
     #
-    def _get_description_priv(self):
-        """PRIVATE: Returns the pilot description the pilot was started with.
+    @property
+    def stdout(self):
+        """Returns a snapshot of the executable's STDOUT stream.
+
+        .. warning: This can become very inefficient for lare data volumes.
+        """
+        return self._worker.get_compute_unit_stdout(self.uid)
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def stderr(self):
+        """Returns a snapshot of the executable's STDERR stream.
+
+        .. warning: This can become very inefficient for lare data volumes.
+        """
+        return self._worker.get_compute_unit_stderr(self.uid)
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def description(self):
+        """Returns the pilot description the pilot was started with.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -228,101 +181,76 @@ class ComputeUnit(attributes.Attributes):
 
     # --------------------------------------------------------------------------
     #
-    def _get_state_priv(self):
-        """PRIVATE: Returns the current state of the pilot.
+    @property
+    def state(self):
+        """Returns the current state of the pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        # state is dynamic and changes over the  lifetime of a pilot, hence we
-        # need to make a call to the  database layer (db layer might cache
-        # this call).
-        workunit_json = self._DB.get_workunit_states(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['state']
         
     # --------------------------------------------------------------------------
     #
-    def _get_state_details_priv(self):
-        """PRIVATE: Returns the current state of the pilot.
+    @property
+    def state_details(self):
+        """Returns the current state of the pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-            )
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return "Unknown (Not Implemented)" #cu_json[0]['info']['log']
 
-        # state detail is oviously dynamic and changes over the 
-        # lifetime of a pilot, hence we need to make a call to the 
-        # database layer (db layer might cache this call).
-        pass
 
     # --------------------------------------------------------------------------
     #
-    def _get_execution_details_priv(self):
-        """PRIVATE: Returns the current state of the pilot.
+    @property
+    def execution_details(self):
+        """Returns the current state of the pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]['info']['exec_locs']
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['exec_locs']
 
     # --------------------------------------------------------------------------
     #
-    def _get_submission_time_priv(self):
+    @property
+    def submission_time(self):
         """ Returns the time the compute unit was submitted. 
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]['info']['submitted']
-
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['submitted']
 
     # --------------------------------------------------------------------------
     #
-    def _get_start_time_priv(self):
+    @property
+    def start_time(self):
         """ Returns the time the compute unit was started on the backend. 
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]['info']['started']
-
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['started']
 
     # --------------------------------------------------------------------------
     #
-    def _get_stop_time_priv(self):
+    @property
+    def stop_time(self):
         """ Returns the time the compute unit was stopped. 
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        workunit_json = self._DB.get_workunits(
-            workunit_manager_id=self._manager.uid, 
-            workunit_ids=[self.uid]
-        )
-
-        return workunit_json[0]['info']['finished']
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json[0]['info']['finished']
 
     # --------------------------------------------------------------------------
     #
@@ -382,16 +310,14 @@ class ComputeUnit(attributes.Attributes):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise excpetions.SagapilotException("Invalid Compute Unit instance.")
+            raise exceptions.SagapilotException("Invalid Compute Unit instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:
             # nothing to do
             return
 
         if self.state in [states.UNKNOWN] :
-            raise excpetions.SagapilotException("Compute Unit state is UNKNOWN, cannot cancel")
+            raise exceptions.SagapilotException("Compute Unit state is UNKNOWN, cannot cancel")
 
         # done waiting
         return
-
-

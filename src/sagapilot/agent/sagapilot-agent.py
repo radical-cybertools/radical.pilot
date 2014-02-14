@@ -18,10 +18,12 @@ import time
 import errno
 import Queue
 import signal
-import logging
+import gridfs
 import pymongo
+import logging
 import datetime
 import hostlist
+import traceback
 import optparse
 import threading 
 import subprocess
@@ -316,6 +318,9 @@ class Task(object):
         self._exit_code      = None
         self._exec_locs      = None
 
+        self._stdout_id      = None
+        self._stderr_id      = None
+
         self._log            = []
 
     # ------------------------------------------------------------------------
@@ -398,8 +403,20 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
+    @property
+    def stdout_id(self):
+        return self._stdout_id
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def stderr_id(self):
+        return self._stderr_id
+
+    # ------------------------------------------------------------------------
+    #
     def update_state(self, start_time=None, end_time=None, state=None, 
-                     exit_code=None, exec_locs=None):
+                     exit_code=None, exec_locs=None, stdout_id=None, stderr_id=None):
         """Updates one or more of the task's dynamic properties
         """
         if start_time is None:
@@ -427,6 +444,16 @@ class Task(object):
         else:
             self._exec_locs = exec_locs
 
+        if stdout_id is None:
+            stdout_id = self._stdout_id
+        else:
+            self._stdout_id = stdout_id
+
+        if stderr_id is None:
+            stderr_id = self._stderr_id
+        else:
+            self._stderr_id = stderr_id
+
     # ------------------------------------------------------------------------
     #
     def update_log(self, log):
@@ -447,7 +474,7 @@ class ExecWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, mongo_w, task_queue, 
-                 hosts, cores_per_host, launch_method, launch_command):
+                 hosts, cores_per_host, launch_method, launch_command, db_handle):
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
@@ -456,6 +483,8 @@ class ExecWorker(multiprocessing.Process):
 
         self._log = logger
         self._w   = mongo_w
+
+        self._db_handle = db_handle
         
         self._task_queue     = task_queue
         
@@ -554,10 +583,34 @@ class ExecWorker(multiprocessing.Process):
                                 else:
                                     state = 'Done'
 
+                                # upload stdout and stderr to GridFF
+                                workdir = self._slots[host][slot].task.workdir
+                                task_id = self._slots[host][slot].task.uid
+
+                                stdout_id = None
+                                stderr_id = None
+
+                                stdout = "%s/STDOUT" % workdir
+                                if os.path.isfile(stdout):
+                                    fs = gridfs.GridFS(self._db_handle)
+                                    with open(stdout, 'r') as stdout_f:
+                                        stdout_id = fs.put(stdout_f.read(), filename=stdout)
+                                        self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+
+
+                                stderr = "%s/STDERR" % workdir
+                                if os.path.isfile(stderr):
+                                    fs = gridfs.GridFS(self._db_handle)
+                                    with open(stderr, 'r') as stderr_f:
+                                        stderr_id = fs.put(stderr_f.read(), filename=stderr)
+                                        self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
+
                                 self._slots[host][slot].task.update_state(
                                     end_time=datetime.datetime.utcnow(),
                                     exit_code=rc,
-                                    state=state
+                                    state=state,
+                                    stdout_id=stdout_id,
+                                    stderr_id=stderr_id
                                 )
                                 update_tasks.append(self._slots[host][slot].task)
 
@@ -571,7 +624,7 @@ class ExecWorker(multiprocessing.Process):
                 time.sleep(1)
 
         except Exception, ex:
-            self._log.error("Error in ExecWorker loop: %s", ex)
+            self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
             raise
 
 
@@ -604,7 +657,9 @@ class ExecWorker(multiprocessing.Process):
                       "info.started"       : task.started,
                       "info.finished"      : task.finished,
                       "info.exec_locs"     : task.exec_locs,
-                      "info.exit_code"     : task.exit_code}})
+                      "info.exit_code"     : task.exit_code,
+                      "info.stdout_id"     : task.stdout_id,
+                      "info.stderr_id"     : task.stderr_id}})
 
 
 # ----------------------------------------------------------------------------
@@ -614,7 +669,7 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, launch_method, workdir, 
-        pilot_id, pilot_collection, workunit_collection, runtime):
+        pilot_id, pilot_collection, workunit_collection, runtime, db_handle):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -639,8 +694,10 @@ class Agent(threading.Thread):
         else:
             self._launch_method = launch_method
 
-        self._p      = pilot_collection
-        self._w      = workunit_collection
+        self._p         = pilot_collection
+        self._w         = workunit_collection
+
+        self._db_handle = db_handle
 
         # the task queue holds the tasks that are pulled from the MongoDB 
         # server. The ExecWorkers compete for the tasks in the queue. 
@@ -670,7 +727,8 @@ class Agent(threading.Thread):
                 launch_method  = self._exec_env.launch_method,
                 launch_command = self._exec_env.launch_command,
                 hosts          = hp,
-                cores_per_host = self._exec_env.cores_per_node
+                cores_per_host = self._exec_env.cores_per_node,
+                db_handle      = self._db_handle
             )
             exec_worker.start()
             self._log.info("Started up %s serving hosts %s", 
@@ -745,7 +803,7 @@ class Agent(threading.Thread):
                                 {"_id": ObjectId(self._pilot_id)}, 
                                 {"$set": {"info.state"     : "Canceled",
                                           "info.finished"   : datetime.datetime.utcnow()}})
-                            break
+                            return # leave loop immediatedly
 
                     # Check the pilot's workunit queue
                     new_wu_ids = p_cursor[0]['wu_queue']
@@ -763,15 +821,15 @@ class Agent(threading.Thread):
                             # standard working directory schema. 
                             # NOTE: this is not a good idea and just implemented
                             #       to support some last minute TROY experiments.
-                            if wu["description"]["WorkingDirectoryPriv"] is not None:
-                                task_dir_name = wu["description"]["WorkingDirectoryPriv"]
+                            if wu["description"]["working_directory_priv"] is not None:
+                                task_dir_name = wu["description"]["working_directory_priv"]
                             else:
                                 task_dir_name = "%s/task-%s" % (self._workdir, str(wu["_id"]))
 
                             task = Task(uid         =str(wu["_id"]), 
-                                        executable  = wu["description"]["Executable"], 
-                                        arguments   = wu["description"]["Arguments"],
-                                        environment = wu["description"]["Environment"],
+                                        executable  = wu["description"]["executable"], 
+                                        arguments   = wu["description"]["arguments"],
+                                        environment = wu["description"]["environment"],
                                         workdir     = task_dir_name, 
                                         stdout      = task_dir_name+'/STDOUT', 
                                         stderr      = task_dir_name+'/STDERR')
@@ -784,7 +842,7 @@ class Agent(threading.Thread):
                                        {"$pullAll": { "wu_queue": new_wu_ids}})
 
                 except Exception, ex:
-                    self._log.error("MongoDB error while checking for new work units: %s" % ex)
+                    self._log.error("Error while checking for new work units: %s. \n%s" % (ex, traceback.format_exc()))
                     #self._p.update(
                     #    {"_id": ObjectId(self._pilot_id)}, 
                     #    {"$set": {"info.state"     : "Failed",
@@ -801,7 +859,7 @@ class Agent(threading.Thread):
         except Exception, ex:
             # If we arrive here, there was an exception in the main loop.
             pilot_FAILED(self._p, self._pilot_id, str(ex))
-            self._log.error("ERROR in agent main loop. EXITING.")
+            self._log.error("ERROR in agent main loop. EXITING: \n%s", traceback.format_exc())
 
 #-----------------------------------------------------------------------------
 #
@@ -1039,7 +1097,8 @@ if __name__ == "__main__":
                       pilot_id            = options.pilot_id,
                       pilot_collection    = mongo_p,
                       workunit_collection = mongo_w,
-                      runtime             = options.runtime
+                      runtime             = options.runtime,
+                      db_handle           = mongo_db
         )
 
         agent.start()
