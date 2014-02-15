@@ -269,7 +269,7 @@ class PilotManager(object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'resource'."
                 raise exceptions.BadParameter(error_msg)
 
-            elif pilot_description.cores is None:
+            elif pilot_description.runtime is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'runtime'."
                 raise exceptions.BadParameter(error_msg)
 
