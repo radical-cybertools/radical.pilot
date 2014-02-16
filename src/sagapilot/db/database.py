@@ -678,9 +678,10 @@ class Session():
         self._p.update({"_id": ObjectId(pilot_uid)}, 
                        {"$push": {"wu_queue" : ObjectId(compute_unit_uid)}})
 
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
-    def insert_compute_unit(self, pilot_uid, unit_manager_uid, unit_uid, unit_description, unit_state, unit_log):
+    def insert_compute_unit(self, pilot_uid, unit_manager_uid, unit_uid,
+                            unit_description, unit_log):
         """ Adds one or more workunits to the database.
 
             A workunit must have the following format:
@@ -700,25 +701,25 @@ class Session():
             raise Exception("No active session.")
 
         workunit = {
-            "_id"           : ObjectId(unit_uid),
-            "description"   : unit_description,
-            "links"    : {
-                "unitmanager" : unit_manager_uid, 
-                "pilot"       : pilot_uid,
+            "_id":         ObjectId(unit_uid),
+            "description": unit_description,
+            "links": {
+                "unitmanager": unit_manager_uid,
+                "pilot":       pilot_uid,
             },
-            "info"          : {
-                "submitted"     : datetime.datetime.utcnow(),
-                "started"       : None,
-                "finished"      : None,
-                "exec_locs"     : None,
-                "state"         : unit_state,
-                "log"           : unit_log
+            "info": {
+                "submitted": datetime.datetime.utcnow(),
+                "started":   None,
+                "finished":  None,
+                "exec_locs": None,
+                "state":     states.PENDING,
+                "log":       unit_log
             }
-        } 
+        }
 
         self._w.insert(workunit)
-        
-    #---------------------------------------------------------------------------
+
+    #--------------------------------------------------------------------------
     #
     def get_raw_workunits(self, workunit_ids=None):
         """ Returns the raw workunit documents.

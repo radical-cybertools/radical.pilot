@@ -223,7 +223,6 @@ class UnitManagerWorker(multiprocessing.Process):
             unit_manager_uid=self._um_id, 
             unit_uid=unit_uid, 
             unit_description=unit_description.as_dict(), 
-            unit_state=state.PENDING, 
             unit_log=[]
         )
 

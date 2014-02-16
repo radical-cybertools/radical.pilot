@@ -23,14 +23,16 @@ from sagapilot.scheduler     import get_scheduler
 import sagapilot.states      as states
 import sagapilot.exceptions  as exceptions
 
-# ------------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 #
 class UnitManager(object):
-    """A UnitManager manages :class:`sagapilot.ComputeUnit` instances which 
-    represent the **executable** workload in SAGA-Pilot. A UnitManager connects 
+    """A UnitManager manages :class:`sagapilot.ComputeUnit` instances which
+    represent the **executable** workload in SAGA-Pilot. A UnitManager connects
     the ComputeUnits with one or more :class:`Pilot` instances (which represent
-    the workload **executors** in SAGA-Pilot) and a **scheduler** which 
-    determines which :class:`ComputeUnit` gets executed on which :class:`Pilot`.
+    the workload **executors** in SAGA-Pilot) and a **scheduler** which
+    determines which :class:`ComputeUnit` gets executed on which
+    :class:`Pilot`.
 
     Each UnitManager has a unique identifier :data:`sagapilot.UnitManager.uid`
     that can be used to re-connect to previoulsy created UnitManager in a
@@ -39,7 +41,7 @@ class UnitManager(object):
     **Example**::
 
         s = sagapilot.Session(database_url=DBURL)
-        
+
         pm = sagapilot.PilotManager(session=s)
 
         pd = sagapilot.ComputePilotDescription()
@@ -57,14 +59,15 @@ class UnitManager(object):
             cu.arguments = ['60']
             compute_units.append(cu)
 
-        # Combine the two pilots, the workload and a scheduler via 
+        # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
-        um = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN)
+        um = sagapilot.UnitManager(session=session,
+                                   scheduler=sagapilot.SCHED_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
     """
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __init__ (self, session, scheduler=None, _reconnect=False) :
         """Creates a new UnitManager and attaches it to the session. 

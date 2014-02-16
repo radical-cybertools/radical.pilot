@@ -3,7 +3,7 @@
 """
 .. module:: sagapilot.compute_pilot_description
    :platform: Unix
-   :synopsis: Implementation of the ComputePilotDescription class.
+   :synopsis: Provides the interface for the ComputePilotDescription class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
@@ -13,7 +13,7 @@ __license__   = "MIT"
 
 import sagapilot.attributes as attributes
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Attribute description keys
 RESOURCE          = 'Resource'
 QUEUE             = 'Queue'
@@ -27,15 +27,16 @@ RUNTIME           = 'Runtime'
 CLEANUP           = 'Cleanup'
 PROJECT           = 'Project'
 
-# ------------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 #
-class ComputePilotDescription (attributes.Attributes) :
-    """A ComputePilotDescription object describes the requirements and 
+class ComputePilotDescription(attributes.Attributes):
+    """A ComputePilotDescription object describes the requirements and
     properties of a :class:`sagapilot.Pilot` and is passed as a parameter to
     :meth:`sagapilot.PilotManager.submit_pilots` to instantiate a new pilot.
 
-    .. note:: A ComputePilotDescription **MUST** define at least 
-              :data:`resource` and the number of :data:`cores` to allocate on 
+    .. note:: A ComputePilotDescription **MUST** define at least
+              :data:`resource` and the number of :data:`cores` to allocate on
               the target resource.
 
     **Example**::
@@ -49,50 +50,52 @@ class ComputePilotDescription (attributes.Attributes) :
 
           pilot = pm.submit_pilots(pd)
 
-    .. data:: resource 
+    .. data:: resource
 
-       [Type: `string` or `list of strings`] [**`mandatory`**] The key of a :ref:`chapter_machconf` entry.
-       If the key exists, the machine-specifc configuration is loaded from the 
-       configuration once the ComputePilotDescription is passed to 
-       :meth:`sagapilot.PilotManager.submit_pilots`. If the key doesn't exist, a
-       :class:`sagapilot.SagapilotException` is thrown.
+       [Type: `string` or `list of strings`] [**`mandatory`**] The key of a
+       :ref:`chapter_machconf` entry.
+       If the key exists, the machine-specifc configuration is loaded from the
+       configuration once the ComputePilotDescription is passed to
+       :meth:`sagapilot.PilotManager.submit_pilots`. If the key doesn't exist,
+       a :class:`sagapilot.SagapilotException` is thrown.
 
-    .. data:: runtime  
+    .. data:: runtime
 
-       [Type: `int`] [**mandatory**] The total run time (wall-clock time) in 
-       **minutes** of the ComputePilot. 
+       [Type: `int`] [**mandatory**] The total run time (wall-clock time) in
+       **minutes** of the ComputePilot.
 
     .. data:: cores
 
-       [Type: `int`] [**mandatory**] The number of cores the pilot should allocate 
-       on the target resource. 
+       [Type: `int`] [**mandatory**] The number of cores the pilot should
+       allocate on the target resource.
 
-    .. data:: sandbox 
+    .. data:: sandbox
 
-       [Type: `string`] [optional] The working ("sandbox") directory  of the 
+       [Type: `string`] [optional] The working ("sandbox") directory  of the
        ComputePilot agent. This parameter is optional. If not set, it defaults
        to `sagapilot.sandox` in your home or login directory.
 
-       .. warning:: If you define a ComputePilot on an HPC cluster and you want to
-                 set `sandbox` manually, make sure that it points to a directory 
-                 on a shared filesystem that can be reached from all compute nodes.
+       .. warning:: If you define a ComputePilot on an HPC cluster and you want
+                 to set `sandbox` manually, make sure that it points to a
+                 directory on a shared filesystem that can be reached from all
+                 compute nodes.
 
     .. data:: queue
 
-       [Type: `string`] [optional] The name of the job queue the pilot should 
-       get submitted to . If `queue` is defined in the resource configuration 
-       (:data:`resource`) defining `queue` will override it explicitly. 
+       [Type: `string`] [optional] The name of the job queue the pilot should
+       get submitted to . If `queue` is defined in the resource configuration
+       (:data:`resource`) defining `queue` will override it explicitly.
 
-    .. data:: allocation 
+    .. data:: allocation
 
-       [Type: `string`] [optional] The name of the project / allocation to 
-       charge for used CPU time. If `allocation` is defined in the machine 
-       configuration (:data:`resource`), defining `allocation` will 
-       override it explicitly. 
+       [Type: `string`] [optional] The name of the project / allocation to
+       charge for used CPU time. If `allocation` is defined in the machine
+       configuration (:data:`resource`), defining `allocation` will
+       override it explicitly.
 
     """
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __init__(self):
         """Le constructeur.
@@ -117,14 +120,14 @@ class ComputePilotDescription (attributes.Attributes) :
         self._attributes_register             (CORES, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register             (QUEUE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
-    #------------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
         # Apparently the atribute interface only handles 'non-None' attributes,
         # so we do some manual check-and-set.
-        d =  attributes.Attributes.as_dict(self)
+        d = attributes.Attributes.as_dict(self)
 
         if RUNTIME not in d:
             d[RUNTIME] = None
@@ -149,10 +152,9 @@ class ComputePilotDescription (attributes.Attributes) :
 
         return d
 
-    # ------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __str__(self):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
-
