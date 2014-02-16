@@ -375,13 +375,13 @@ class PilotManagerWorker(multiprocessing.Process):
             pilot_logs.append(log_msg)
             logger.info(log_msg)
 
+            # Submission was successful. We can set the pilot state to 'PENDING'.
             self._db.update_pilot_state(pilot_uid=str(pilot_uid),
                 state=states.PENDING, sagajobid=pilotjob_id,
                 submitted=datetime.datetime.utcnow(), logs=pilot_logs)
 
         except Exception, ex:
             error_msg = "Pilot Job submission failed:\n %s" % (traceback.format_exc())
-            pilot_description['info']['state'] = states.FAILED
             pilot_logs.append(error_msg)
             logger.error(error_msg)
 
