@@ -669,55 +669,58 @@ class Session():
             pilots.append(obj)
         return pilots
 
-    #---------------------------------------------------------------------------
-    #
-    def assign_compute_unit_to_pilot(self, compute_unit_uid, pilot_uid):
-        """Assigns a compute unit to a pilot.
-        """
-        # Add the ids to the pilot's queue
-        self._p.update({"_id": ObjectId(pilot_uid)}, 
-                       {"$push": {"wu_queue" : ObjectId(compute_unit_uid)}})
-
     #--------------------------------------------------------------------------
     #
-    def insert_compute_unit(self, pilot_uid, unit_manager_uid, unit_uid,
-                            unit_description, unit_log):
-        """ Adds one or more workunits to the database.
-
-            A workunit must have the following format:
-
-            {
-                "description": sinon.wu_description,  # work_unit description
-                "queue_id"   : <queue_id>,            # the assigned queue
-            }
-
-            Inserting any number of work units costs 
-            1 * (number of different pilots) round-trips: 
-
-                (1) Inserting work units into the work unit collection
-                (2) Add work unit id's to the pilot's queue.
+    def assign_compute_units_to_pilot(self, pilot_uid, unit_uids):
+        """Assigns one or more compute units to a pilot.
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        workunit = {
-            "_id":         ObjectId(unit_uid),
-            "description": unit_description,
-            "links": {
-                "unitmanager": unit_manager_uid,
-                "pilot":       pilot_uid,
-            },
-            "info": {
-                "submitted": datetime.datetime.utcnow(),
-                "started":   None,
-                "finished":  None,
-                "exec_locs": None,
-                "state":     states.PENDING,
-                "log":       unit_log
-            }
-        }
+        # Make sure we work on a list.
+        if not isinstance(unit_uids, list):
+            unit_uids = [unit_uids]
 
-        self._w.insert(workunit)
+        self._p.update({"_id": ObjectId(pilot_uid)},
+                       {"$pushAll": {"wu_queue": unit_uids}})
+
+    #--------------------------------------------------------------------------
+    #
+    def insert_compute_units(self, pilot_uid, unit_manager_uid,
+                             unit_descriptions, unit_log):
+        """ Adds one or more compute units to the database.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        # Make sure we work on a list.
+        if not isinstance(unit_descriptions, list):
+            unit_descriptions = [unit_descriptions]
+
+        unit_docs = list()
+
+        for unit_description in unit_descriptions:
+
+            unit = {
+                "description": unit_description.as_dict(),
+                "links": {
+                    "unitmanager": unit_manager_uid,
+                    "pilot":       pilot_uid,
+                },
+                "info": {
+                    "submitted": datetime.datetime.utcnow(),
+                    "started":   None,
+                    "finished":  None,
+                    "exec_locs": None,
+                    "state":     states.PENDING,
+                    "log":       unit_log
+                }
+            }
+            unit_docs.append(unit)
+
+        unit_uids = self._w.insert(unit_docs)
+
+        return unit_uids
 
     #--------------------------------------------------------------------------
     #

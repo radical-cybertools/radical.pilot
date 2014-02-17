@@ -11,7 +11,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-import oså
+import os
 import time
 
 from sagapilot.compute_unit import ComputeUnit
@@ -369,7 +369,6 @@ class UnitManager(object):
 
                 # submit each unit description scheduled here, all in one bulk
                 for ud in uds:
-
                     # sanity check on scheduler provided information
                     if not ud in unscheduled:
                         raise exceptions.SagapilotException(
@@ -379,29 +378,27 @@ class UnitManager(object):
                     # this unit is not unscheduled anymore...
                     unscheduled.remove(ud)
 
-                    # pass the unit to the worker process. in return we
-                    # get the unit's object id.
-                    unit_uid = self._worker.register_schedule_compute_unit_request(
-                        pilot_uid=pilot_id,
-                        unit_description=ud
-                    )
+                # pass the unit to the worker process. in return we
+                # get the unit's object id.
 
+                unit_uids = self._worker.schedule_compute_units(
+                    pilot_uid=pilot_id,
+                    unit_descriptions=uds
+                )
+
+                logger.debug("Scheduled ComputeUnits %s to ComputePilot '%s'."
+                             % (unit_uids, pilot_id))
+
+                assert len(unit_uids) == len(uds)
+
+                for idx in range(0, len(uds)):
                     # create a new ComputeUnit object
                     compute_unit = ComputeUnit._create(
-                        unit_id=unit_uid,
-                        unit_description=ud,
+                        unit_id=unit_uids[idx],
+                        unit_description=uds[idx],
                         unit_manager_obj=self
                     )
                     units.append(compute_unit)
-
-            # the schedule provided by the scheduler is now evaluated -- check
-            # that we didn't lose/gain any units
-            if len(units) + len(unscheduled) != len(unit_descriptions):
-                raise exceptions.SagapilotException(
-                    "Internal error - wrong #units returned from scheduler")
-
-            # keep unscheduled units around for later, out-of-band scheduling
-            #self._unscheduled_units = unscheduled
 
             if len(units) == 1:
                 return units[0]
