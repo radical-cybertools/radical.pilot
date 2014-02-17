@@ -11,17 +11,17 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os 
+import oså
 import time
 
-from sagapilot.compute_unit  import ComputeUnit
-from sagapilot.utils.logger  import logger
+from sagapilot.compute_unit import ComputeUnit
+from sagapilot.utils.logger import logger
 
-from sagapilot.mpworker      import UnitManagerWorker
-from sagapilot.scheduler     import get_scheduler
+from sagapilot.mpworker import UnitManagerWorker
+from sagapilot.scheduler import get_scheduler
 
-import sagapilot.states      as states
-import sagapilot.exceptions  as exceptions
+import sagapilot.states as states
+import sagapilot.exceptions as exceptions
 
 
 # -----------------------------------------------------------------------------
@@ -69,8 +69,8 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__ (self, session, scheduler=None, _reconnect=False) :
-        """Creates a new UnitManager and attaches it to the session. 
+    def __init__(self, session, scheduler=None, _reconnect=False):
+        """Creates a new UnitManager and attaches it to the session.
 
         **Args:**
 
@@ -82,30 +82,30 @@ class UnitManager(object):
             * :class:`sagapilot.SagapilotException`
         """
         self._session = session
-        self._worker  = None
+        self._worker = None
 
         if _reconnect is False:
-            # Start a worker process fo this UnitManager instance. The worker 
+            # Start a worker process fo this UnitManager instance. The worker
             # process encapsulates database access et al.
             self._worker = UnitManagerWorker(
                 unit_manager_uid=None, 
-                unit_manager_data={'scheduler' : scheduler}, 
+                unit_manager_data={'scheduler': scheduler},
                 db_connection=session._dbs)
             self._worker.start()
 
             self._uid = self._worker.unit_manager_uid
             self._scheduler = get_scheduler(name=scheduler)
 
-            # Each pilot manager has a worker thread associated with it. 
-            # The task of the worker thread is to check and update the state 
-            # of pilots, fire callbacks and so on. 
+            # Each pilot manager has a worker thread associated with it.
+            # The task of the worker thread is to check and update the state
+            # of pilots, fire callbacks and so on.
             self._session._process_registry.register(self._uid, self._worker)
 
         else:
             # re-connect. do nothing
             pass
 
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
@@ -118,7 +118,7 @@ class UnitManager(object):
             # Remove worker from registry
             self._session._process_registry.remove(self._uid)
 
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
     @classmethod
     def _reconnect(cls, session, unit_manager_id):

@@ -6,6 +6,22 @@ Developer Documentation
 ***********************
 
 
+Debugging 
+=========
+
+The `SAGAPILOT_VERBOSE` environment variable controls the debug output of 
+a SAGA-Pilot application. Possible values are:
+
+  * `debug`
+  * `info`
+  * `warning`
+  * `error`
+
+You can set `SAGAPILOT_GCDEBUG=1` to enable garbage collection debugging. If 
+garbage collection debugging is enabled, all object destructors (`__del__`)
+write debug messages to the log stream. 
+
+
 SAGA-Pilot Architecture
 =======================
 
