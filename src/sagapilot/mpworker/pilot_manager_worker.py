@@ -3,14 +3,14 @@
 """
 .. module:: sinon.mpworker.pilot_manager_worker
    :platform: Unix
-   :synopsis: Implements a multiprocessing worker backend for 
+   :synopsis: Implements a multiprocessing worker backend for
               the PilotManager class.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__license__ = "MIT"
 
 #pylint: disable=C0301, C0103
 #pylint: disable=W0212
@@ -25,16 +25,15 @@ from Queue import Empty
 
 from radical.utils import which
 
-import sagapilot.states       as     states
-from   sagapilot.credentials  import SSHCredential
-from   sagapilot.utils.logger import logger
+import sagapilot.states as states
+from sagapilot.credentials import SSHCredential
+from sagapilot.utils.logger import logger
 
-from bson import ObjectId
 
 # ----------------------------------------------------------------------------
 #
 class PilotManagerWorker(multiprocessing.Process):
-    """PilotManagerWorker is a multiprocessing worker that handles backend 
+    """PilotManagerWorker is a multiprocessing worker that handles backend
        interaction for the PilotManager and Pilot classes.
     """
 
@@ -46,11 +45,16 @@ class PilotManagerWorker(multiprocessing.Process):
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
-        self.daemon  = True
+        self.daemon = True
 
         # Stop event can be set to terminate the main loop
-        self._stop   = multiprocessing.Event()
+        self._stop = multiprocessing.Event()
         self._stop.clear()
+
+        # Initialized is set, once the run loop has pulled status
+        # at least once. Other functions use it as a guard. 
+        self._initialized = multiprocessing.Event()
+        self._initialized.clear()
 
         # The shard_data_manager handles data exchange between the worker
         # process and the API objects. The communication is unidirectional:
@@ -114,6 +118,35 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
+    def list_pilots(self):
+        """List all known p[ilots.
+        """
+        return self._db.list_pilot_uids(self._pm_id)
+
+    # ------------------------------------------------------------------------
+    #
+    def get_compute_pilot_data(self, pilot_uids):
+        """Returns the raw data (json dicts) of one or more ComputePilots
+           registered with this Worker / PilotManager
+        """
+        # Wait for the initialized event to assert proper operation.
+        self._initialized.wait()
+
+        if pilot_uids is None:
+            data = self._db.get_pilots(pilot_manager_id=self._pm_id)
+            return data
+
+        else:
+            if not isinstance(pilot_uids, list):
+                return self._shared_data[pilot_uids]
+            else:
+                data = list()
+                for pilot_uid in pilot_uids:
+                    data.append(self._shared_data[pilot_uid])
+                return data
+
+    # ------------------------------------------------------------------------
+    #
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
@@ -174,24 +207,20 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 self._shared_data[pilot_id] = pilot
 
+                # After the first iteration, we are officially initialized!
+                if not self._initialized.is_set():
+                    self._initialized.set()
+                    logger.debug("Worker status set to 'initialized'.")
+
             time.sleep(1)
-
-            #for cb in self._callbacks["XXX"]:
-            #    cb("ISDDDD", "BLARGHHHH")
-
-    # ------------------------------------------------------------------------
-    #
-    def list_pilots(self):
-        """List all known p[ilots.
-        """
-        return self._db.list_pilot_uids(self._pm_id)
 
     # ------------------------------------------------------------------------
     #
     def _execute_cancel_pilots(self, pilot_ids):
         """Carries out pilot cancelation.
         """
-        self._db.signal_pilots(pilot_manager_id=self._pm_id, 
+        self._db.signal_pilots(
+            pilot_manager_id=self._pm_id,
             pilot_ids=pilot_ids, cmd="CANCEL")
 
         if pilot_ids is None:
@@ -201,18 +230,19 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _execute_startup_pilot(self, pilot_uid, pilot_description, resource_cfg, session, credentials):
+    def _execute_startup_pilot(self, pilot_uid, pilot_description,
+                               resource_cfg, session, credentials):
         """Carries out pilot cancelation.
         """
         #resource_key = pilot_description['description']['Resource']
         number_cores = pilot_description['Cores']
-        runtime      = pilot_description['Runtime']
-        queue        = pilot_description['Queue']
-        sandbox      = pilot_description['Sandbox']
+        runtime = pilot_description['Runtime']
+        queue = pilot_description['Queue']
+        sandbox = pilot_description['Sandbox']
 
         # At the end of the submission attempt, pilot_logs will contain
         # all log messages.
-        pilot_logs    = []
+        pilot_logs = []
 
         ########################################################
         # Create SAGA Job description and submit the pilot job #
@@ -230,10 +260,10 @@ class PilotManagerWorker(multiprocessing.Process):
                 logger.info("Added credential %s to SAGA job service." % str(cred))
 
             # Create working directory if it doesn't exist and copy
-            # the agent bootstrap script into it. 
+            # the agent bootstrap script into it.
             #
-            # We create a new sub-driectory for each agent. each 
-            # agent will bootstrap its own virtual environment in this 
+            # We create a new sub-driectory for each agent. each
+            # agent will bootstrap its own virtual environment in this
             # directory.
             #
             fs = saga.Url(resource_cfg['filesystem'])
@@ -247,9 +277,10 @@ class PilotManagerWorker(multiprocessing.Process):
                     workdir = os.path.expanduser("~")
                     found_dir_success = True
                 else:
-                    # A horrible hack to get the home directory on the remote machine
+                    # A horrible hack to get the home directory on the
+                    # remote machine.
                     import subprocess
-                    
+
                     usernames = [None]
                     for cred in credentials:
                         usernames.append(cred["user_id"])
@@ -261,8 +292,10 @@ class PilotManagerWorker(multiprocessing.Process):
                         else:
                             url = fs.host
 
-                        p = subprocess.Popen(["ssh", url,  "pwd"], 
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        p = subprocess.Popen(
+                            ["ssh", url,  "pwd"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                        )
                         workdir, err = p.communicate()
 
                         if err != "":
@@ -270,7 +303,7 @@ class PilotManagerWorker(multiprocessing.Process):
                         else:
                             logger.info("Determined remote working directory for %s: %s" % (url, workdir))
                             found_dir_success = True
-                            break 
+                            break
                     
                 if found_dir_success == False:
                     raise Exception("Couldn't determine remote working directory.")
@@ -278,10 +311,10 @@ class PilotManagerWorker(multiprocessing.Process):
                 # At this point we have determined 'pwd'
                 fs.path += "%s/sagapilot.sandbox" % workdir.rstrip()
 
-            agent_dir_url = saga.Url("%s/pilot-%s/" \
-                % (str(fs), str(pilot_uid)))
+            agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
 
-            agent_dir = saga.filesystem.Directory(agent_dir_url, 
+            agent_dir = saga.filesystem.Directory(
+                agent_dir_url,
                 saga.filesystem.CREATE_PARENTS)
 
             log_msg = "Created agent directory '%s'." % str(agent_dir_url)
@@ -294,7 +327,7 @@ class PilotManagerWorker(multiprocessing.Process):
             if bs_script is None:
                 bs_script = os.path.abspath("%s/../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
             # This works for non-installed versions (i.e., python setup.py test)
-            bs_script_url = saga.Url("file://localhost/%s" % bs_script) 
+            bs_script_url = saga.Url("file://localhost/%s" % bs_script)
 
             bs_script = saga.filesystem.File(bs_script_url)
             bs_script.copy(agent_dir_url)
@@ -306,7 +339,7 @@ class PilotManagerWorker(multiprocessing.Process):
             # Copy the agent script
             cwd = os.path.dirname(os.path.abspath(__file__))
             agent_path = os.path.abspath("%s/../agent/sagapilot-agent.py" % cwd)
-            agent_script_url = saga.Url("file://localhost/%s" % agent_path) 
+            agent_script_url = saga.Url("file://localhost/%s" % agent_path)
             agent_script = saga.filesystem.File(agent_script_url)
             agent_script.copy(agent_dir_url)
 
@@ -318,7 +351,7 @@ class PilotManagerWorker(multiprocessing.Process):
             # for the agent:
             database_host = session["database_url"].split("://")[1]
             database_name = session["database_name"]
-            session_uid   = session["uid"]
+            session_uid = session["uid"]
 
             # now that the script is in place and we know where it is,
             # we can launch the agent
@@ -326,14 +359,14 @@ class PilotManagerWorker(multiprocessing.Process):
 
             jd = saga.job.Description()
             jd.working_directory = agent_dir_url.path
-            jd.executable        = "./bootstrap-and-run-agent"
-            jd.arguments         = ["-r", database_host,  # database host (+ port)
-                                    "-d", database_name,  # database name
-                                    "-s", session_uid,    # session uid
-                                    "-p", str(pilot_uid),  # pilot uid
-                                    "-t", runtime,       # agent runtime in minutes
-                                    "-c", number_cores,   # number of cores
-                                    "-C"]                 # clean up by default
+            jd.executable = "./bootstrap-and-run-agent"
+            jd.arguments = ["-r", database_host,   # database host (+ port)
+                            "-d", database_name,   # database name
+                            "-s", session_uid,     # session uid
+                            "-p", str(pilot_uid),  # pilot uid
+                            "-t", runtime,         # agent runtime in minutes
+                            "-c", number_cores,    # number of cores
+                            "-C"]                  # clean up by default
 
             if 'task_launch_mode' in resource_cfg:
                 jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
@@ -353,12 +386,13 @@ class PilotManagerWorker(multiprocessing.Process):
             # if resourc configuration defines a custom 'python_interpreter',
             # we add it to the argument list
             if 'python_interpreter' in resource_cfg:
-                jd.arguments.append("-i %s" % resource_cfg['python_interpreter'])
+                jd.arguments.append(
+                    "-i %s" % resource_cfg['python_interpreter'])
 
-            jd.output            = "STDOUT"
-            jd.error             = "STDERR"
-            jd.total_cpu_count   = number_cores
-            jd.wall_time_limit    = runtime
+            jd.output = "STDOUT"
+            jd.error = "STDERR"
+            jd.total_cpu_count = number_cores
+            jd.wall_time_limit = runtime
 
             pilotjob = js.create_job(jd)
             pilotjob.run()
@@ -376,12 +410,15 @@ class PilotManagerWorker(multiprocessing.Process):
             logger.info(log_msg)
 
             # Submission was successful. We can set the pilot state to 'PENDING'.
-            self._db.update_pilot_state(pilot_uid=str(pilot_uid),
+            self._db.update_pilot_state(
+                pilot_uid=str(pilot_uid),
                 state=states.PENDING, sagajobid=pilotjob_id,
                 submitted=datetime.datetime.utcnow(), logs=pilot_logs)
 
         except Exception, ex:
-            error_msg = "Pilot Job submission failed:\n %s" % (traceback.format_exc())
+            error_msg = "Pilot Job submission failed:\n %s" % (
+                traceback.format_exc())
+
             pilot_logs.append(error_msg)
             logger.error(error_msg)
 
@@ -395,15 +432,8 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_pilot_data(self, pilot_uid):
-        """Retruns the raw data (json dicts) of one or more ComputePilots 
-           registered with this Worker / PilotManager
-        """
-        return self._shared_data[pilot_uid]
-
-    # ------------------------------------------------------------------------
-    #
-    def register_start_pilot_request(self, pilot_description, resource_config, session):
+    def register_start_pilot_request(self, pilot_description, resource_config,
+                                     session):
         """Register a new pilot start request with the worker.
         """
 
@@ -456,5 +486,3 @@ class PilotManagerWorker(multiprocessing.Process):
         """Registers one or more pilots for cancelation.
         """
         self._cancel_pilot_requests.put(pilot_ids)
-
-

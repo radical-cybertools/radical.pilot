@@ -9,7 +9,7 @@
 """
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__license__ = "MIT"
 
 import os
 import time
@@ -24,12 +24,12 @@ from sagapilot.utils.logger import logger
 #
 class ComputePilot (object):
     """A ComputePilot represent a resource overlay on a local or remote
-       resource. 
+       resource.
     """
 
     # -------------------------------------------------------------------------
     #
-    def __init__ (self):
+    def __init__(self):
         """Le constructeur. Not meant to be called directly.
         """
         # 'static' members
@@ -56,7 +56,7 @@ class ComputePilot (object):
 
     # -------------------------------------------------------------------------
     #
-    @staticmethod 
+    @staticmethod
     def _create(pilot_manager_obj, pilot_uid, pilot_description):
         """ PRIVATE: Create a new pilot.
         """
@@ -75,11 +75,12 @@ class ComputePilot (object):
 
     # -------------------------------------------------------------------------
     #
-    @staticmethod 
-    def _get (pilot_manager_obj, pilot_ids) :
+    @staticmethod
+    def _get(pilot_manager_obj, pilot_ids):
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
-        pilots_json = pilot_manager_obj._worker.get_compute_pilot_data(pilot_uid=pilot_ids)
+        pilots_json = pilot_manager_obj._worker.get_compute_pilot_data(
+            pilot_uids=pilot_ids)
 
         # create and return pilot objects
         pilots = []
@@ -91,7 +92,7 @@ class ComputePilot (object):
             pilot._manager = pilot_manager_obj
 
             pilot._worker = pilot._manager._worker
-        
+
             logger.info("Reconnected to existing ComputePilot %s" % str(pilot))
             pilots.append(pilot)
 
@@ -159,12 +160,12 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         return pilot_json['info']['state']
 
     # -------------------------------------------------------------------------
     #
-    @property 
+    @property
     def log(self):
         """Returns the log of the pilot.
 
@@ -174,9 +175,8 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         return pilot_json['info']['log']
-
 
     # -------------------------------------------------------------------------
     #
@@ -188,7 +188,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         resource_details = {
             'nodes':          pilot_json['info']['nodes'],
             'cores_per_node': pilot_json['info']['cores_per_node']
@@ -217,7 +217,6 @@ class ComputePilot (object):
 
         raise exceptions.SagapilotException("Not Implemented")
 
-
     # -------------------------------------------------------------------------
     #
     @property
@@ -240,7 +239,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         return pilot_json['info']['submitted']
 
     # -------------------------------------------------------------------------
@@ -252,7 +251,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         return pilot_json['info']['started']
 
     # -------------------------------------------------------------------------
@@ -264,7 +263,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         return pilot_json['info']['finished']
 
     # -------------------------------------------------------------------------
@@ -276,7 +275,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uid=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         return pilot_json['description']['Resource']
 
     # -------------------------------------------------------------------------
@@ -285,15 +284,12 @@ class ComputePilot (object):
         """Registers a callback function that is triggered every time the
         ComputePilot's state changes.
         """
-
-        # We can't (and don't want to) pass CompuePilot objects to the worker
-        # processes. Instead we create a proxy callback function that we can
-        # pass in lieu. We do this via an anonymous function (lambda).
-        self._worker.register_pilot_state_callback(self._uid, callback_func)
+        self._worker.register_pilot_state_callback(self.uid, callback_func)
 
     # -------------------------------------------------------------------------
     #
-    def wait(self, state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
+    def wait(self, state=[states.DONE, states.FAILED, states.CANCELED],
+             timeout=None):
         """Returns when the pilot reaches a specific state or
         when an optional timeout is reached.
 
@@ -324,17 +320,17 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        if not isinstance (state, list):
+        if not isinstance(state, list):
             state = [state]
 
-        start_wait = time.time ()
+        start_wait = time.time()
         # the self.state property pulls the state from the back end.
         new_state = self.state
         while new_state not in state:
-            time.sleep (1)
+            time.sleep(1)
             new_state = self.state
 
-            if  (timeout is not None) and (timeout <= (time.time() - start_wait)):
+            if (timeout is not None) and (timeout <= (time.time() - start_wait)):
                 break
 
         # done waiting

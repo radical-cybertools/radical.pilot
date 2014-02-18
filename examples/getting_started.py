@@ -22,6 +22,13 @@ if __name__ == "__main__":
             session.destroy()
             sys.exit(1)
 
+    def unit_state_change_cb(unit_uid, state):
+        """unit_state_change_cb is a callback function. It handles ComputeUnit
+        state changes.
+        """
+        print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(unit_uid, state)
+
+
     try:
         # Create a new session. A session is a set of Pilot Managers
         # and Unit Managers (with associated Pilots and ComputeUnits).
@@ -76,7 +83,7 @@ if __name__ == "__main__":
             session=session,
             scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
 
-        print "UnitManager UID  : {0} ".format( umgr.uid )
+        print "UnitManager UID  : {0} ".format(umgr.uid)
 
         # Add the previsouly created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
@@ -84,7 +91,10 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        umgr.submit_units(compute_units)
+        units = umgr.submit_units(compute_units)
+
+        #for unit in units:
+        #    unit.register_state_callback(pilot_state_change_cb)
 
         # # Wait for all compute units to finish.
         umgr.wait_units()

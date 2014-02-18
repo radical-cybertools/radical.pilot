@@ -9,7 +9,7 @@
 """
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__license__ = "MIT"
 
 import os
 import time
@@ -29,7 +29,7 @@ class ComputeUnit(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__ (self):
+    def __init__(self):
         """ Le constructeur. Not meant to be called directly.
         """
         # 'static' members
@@ -46,34 +46,33 @@ class ComputeUnit(object):
         """Le destructeur.
         """
         if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): ComputeUnit '%s'." % self._uid )
+            logger.debug("__del__(): ComputeUnit '%s'." % self._uid)
 
     # -------------------------------------------------------------------------
     #
-    @staticmethod 
-    def _create (unit_manager_obj, unit_id, unit_description):
+    @staticmethod
+    def _create(unit_manager_obj, unit_id, unit_description):
         """ PRIVATE: Create a new compute unit.
         """
         # create and return pilot object
         computeunit = ComputeUnit()
 
-        computeunit._uid         = unit_id
+        computeunit._uid = unit_id
         computeunit._description = unit_description
-        computeunit._manager     = unit_manager_obj
+        computeunit._manager = unit_manager_obj
 
-        computeunit._worker      = unit_manager_obj._worker
+        computeunit._worker = unit_manager_obj._worker
         return computeunit
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
-    @staticmethod 
-    def _get (unit_manager_obj, unit_ids) :
+    @staticmethod
+    def _get(unit_manager_obj, unit_ids):
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
-        # create database entry
-        units_json = unit_manager_obj._session._dbs.get_workunits(
-            workunit_manager_id=unit_manager_obj.uid, 
-            workunit_ids=unit_ids
+        units_json = unit_manager_obj._session._dbs.get_compute_units(
+            unit_manager_id=unit_manager_obj.uid,
+            unit_ids=unit_ids
         )
         # create and return pilot objects
         computeunits = []
@@ -84,7 +83,7 @@ class ComputeUnit(object):
             computeunit._description = u['description']
             computeunit._manager = unit_manager_obj
             computeunit._worker = unit_manager_obj._worker
-        
+
             computeunits.append(computeunit)
 
         return computeunits
@@ -177,7 +176,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json[0]['info']['state']
+        return cu_json['info']['state']
 
     # -------------------------------------------------------------------------
     #
@@ -189,7 +188,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json[0]['info']['log']
+        return cu_json['info']['log']
 
     # -------------------------------------------------------------------------
     #
@@ -201,7 +200,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json[0]['info']['exec_locs']
+        return cu_json['info']['exec_locs']
 
     # -------------------------------------------------------------------------
     #
@@ -213,7 +212,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json[0]['info']['submitted']
+        return cu_json['info']['submitted']
 
     # -------------------------------------------------------------------------
     #
@@ -225,7 +224,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json[0]['info']['started']
+        return cu_json['info']['started']
 
     # -------------------------------------------------------------------------
     #
@@ -237,7 +236,15 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json[0]['info']['finished']
+        return cu_json['info']['finished']
+
+    # -------------------------------------------------------------------------
+    #
+    def register_state_callback(self, callback_func):
+        """Registers a callback function that is triggered every time the
+        ComputePilot's state changes.
+        """
+        self._worker.register_unit_state_callback(self.uid, callback_func)
 
     # -------------------------------------------------------------------------
     #
@@ -279,7 +286,8 @@ class ComputeUnit(object):
             time.sleep(1)
 
             new_state = self.state
-            logger.debug("Compute unit %s in state %s" % (self._uid, new_state))
+            logger.debug(
+                "Compute unit %s in state %s" % (self._uid, new_state))
 
             if(None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
@@ -298,14 +306,16 @@ class ComputeUnit(object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.SagapilotException("Invalid Compute Unit instance.")
+            raise exceptions.SagapilotException(
+                "Invalid Compute Unit instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:
             # nothing to do
             return
 
-        if self.state in [states.UNKNOWN] :
-            raise exceptions.SagapilotException("Compute Unit state is UNKNOWN, cannot cancel")
+        if self.state in [states.UNKNOWN]:
+            raise exceptions.SagapilotException(
+                "Compute Unit state is UNKNOWN, cannot cancel")
 
         # done waiting
         return

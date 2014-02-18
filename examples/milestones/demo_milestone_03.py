@@ -1,4 +1,4 @@
-"""Demo for Milestone 3: 
+"""Demo for Milestone 3:
     * submit 2 Pilot to resource_B and 2 to sierra
     * run 10 bulks of 10 CUs (CUs vary in runtime)
     * after 5 bulks: disconnect / reconnect
@@ -19,21 +19,21 @@ PWD    = os.path.dirname(os.path.abspath(__file__))
 DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 FGCONF = 'file://localhost/%s/../../configs/futuregrid.json' % PWD
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Change these according to your needs 
 CFG_USERNAME      = "oweidner"
 
-CFG_RESOURCE_A    = "alamo.futuregrid.org"    
-CFG_NUMCORES_A    = 32
+CFG_RESOURCE_A    = "localhost"    
+CFG_NUMCORES_A    = 2
 
-CFG_RESOURCE_B    = "india.futuregrid.org"    
-CFG_NUMCORES_B    = 32
+CFG_RESOURCE_B    = "localhost"    
+CFG_NUMCORES_B    = 2
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #
 def demo_milestone_03_part_1():
-    """PART 1: Create two 32-core pilots on resource_A and resource_B, submit 16 bulks 
-    of 32 compute unites and disconnect. 
+    """PART 1: Create two 32-core pilots on resource_A and resource_B, submit
+       16 bulks of 32 compute unites and disconnect.
     """
     try:
         # Create a new session. A session is a set of Pilot Managers
@@ -112,7 +112,7 @@ def demo_milestone_03_part_1():
         print "Error: %s" % ex
         sys.exit(255)
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #
 def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
     """PART 2: Re-connect, print some information about the re-connected
@@ -174,7 +174,7 @@ def demo_milestone_03_part_2(session_id, pmgr_id, umgr_id):
         # cancel the pilots
         pmgr.cancel_pilots()
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
     session_id, pmgr_id, umgr_id = demo_milestone_03_part_1()
@@ -182,8 +182,5 @@ if __name__ == "__main__":
     raw_input("\nPress Enter to reconnect ...\n")
 
     demo_milestone_03_part_2(session_id, pmgr_id, umgr_id)
-    
+
     sys.exit(0)
-
-
-

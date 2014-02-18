@@ -9,7 +9,7 @@
 """
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__license__ = "MIT"
 
 import os
 import time
@@ -29,7 +29,7 @@ from sagapilot.utils.logger import logger
 class PilotManager(object):
     """A PilotManager holds :class:`sagapilot.ComputePilot` instances that are
     submitted via the :func:`sagapilot.PilotManager.submit_pilots` method.
-    
+
     It is possible to attach one or more :ref:`chapter_machconf`
     to a PilotManager to outsource machine specific configuration
     parameters to an external configuration file.
@@ -41,7 +41,7 @@ class PilotManager(object):
     **Example**::
 
         s = sagapilot.Session(database_url=dbURL)
-        
+
         pm1 = sagapilot.PilotManager(session=s, resource_configurations=RESCONF)
         # Re-connect via the 'get()' method.
         pm2 = sagapilot.PilotManager.get(session=s, pilot_manager_id=pm1.uid)
@@ -50,24 +50,24 @@ class PilotManager(object):
         assert pm1.uid == pm2.uid
     """
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
-    def __init__ (self, session, resource_configurations=None): 
-        """Creates a new PilotManager and attaches is to the session. 
+    def __init__(self, session, resource_configurations=None):
+        """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
-                  parameter is currently mandatory for creating a new 
-                  PilotManager instance. 
+                  parameter is currently mandatory for creating a new
+                  PilotManager instance.
 
         **Arguments:**
 
-            * **session** [:class:`sagapilot.Session`]: 
+            * **session** [:class:`sagapilot.Session`]:
               The session instance to use.
 
-            * **resource_configurations** [`string` or `list of strings`]: 
-              A list of URLs pointing to :ref:`chapter_machconf`. Currently 
+            * **resource_configurations** [`string` or `list of strings`]:
+              A list of URLs pointing to :ref:`chapter_machconf`. Currently
               `file://`, `http://` and `https://` URLs are supported.
-              
+
               If one or more resource_configurations are provided, Pilots
               submitted  via this PilotManager can access the configuration
               entries in the  files via the :class:`ComputePilotDescription`.
@@ -90,37 +90,37 @@ class PilotManager(object):
             * :class:`sagapilot.SagapilotException`
         """
         self._session = session
-        self._worker  = None
-        self._uid     = None
+        self._worker = None
+        self._uid = None
 
         if resource_configurations == "~=RECON=~":
-            # When we get the "~=RECON=~" keyword as resource_configurations, we
-            # were called  from the 'get()' class method. In this case object 
-            # instantiation happens there... 
+            # When we get the "~=RECON=~" keyword as resource_configurations,
+            # we were called  from the 'get()' class method. In this case
+            # object instantiation happens there...
             return
 
         ###############################
         # Create a new pilot manager. #
         ###############################
 
-        # Donwload and parse the configuration file(s) and the content to 
+        # Donwload and parse the configuration file(s) and the content to
         # our resource dictionary.
         self._resource_cfgs = {}
 
         # Add 'localhost' as a built-in resource configuration
         self._resource_cfgs["localhost"] = {
-                "URL"                : "fork://localhost",
-                "filesystem"         : "file://localhost",
-                "pre_bootstrap"      : ["hostname", "date"],
-                "task_launch_mode"   : "LOCAL",
+            "URL":              "fork://localhost",
+            "filesystem":       "file://localhost",
+            "pre_bootstrap":    ["hostname", "date"],
+            "task_launch_mode": "LOCAL",
         }
-        
+
         if resource_configurations is not None:
 
             # implicit list conversion
             if not isinstance(resource_configurations, list):
                 resource_configurations = [resource_configurations]
-        
+
             for rcf in resource_configurations:
                 try:
                     # download resource configuration file
@@ -140,28 +140,28 @@ class PilotManager(object):
                 except ValueError, err:
                     raise exceptions.BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
 
-        # Start a worker process fo this PilotManager instance. The worker 
+        # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
         self._worker = PilotManagerWorker(
-            pilot_manager_uid=None, 
-            pilot_manager_data={}, 
+            pilot_manager_uid=None,
+            pilot_manager_data={},
             db_connection=session._dbs)
         self._worker.start()
 
         self._uid = self._worker.pilot_manager_uid
 
-        # Each pilot manager has a worker thread associated with it. The task of the 
-        # worker thread is to check and update the state of pilots, fire callbacks
-        # and so on. 
+        # Each pilot manager has a worker thread associated with it. The task
+        # of the worker thread is to check and update the state of pilots, fire
+        # callbacks and so on.
         self._session._process_registry.register(self._uid, self._worker)
 
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
         """
         if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): PilotManager '%s'." % self._uid )
+            logger.debug("__del__(): PilotManager '%s'." % self._uid)
 
         if self._worker is not None:
             # Stop the worker process
@@ -169,24 +169,24 @@ class PilotManager(object):
             # Remove worker from registry
             self._session._process_registry.remove(self._uid)
 
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
     @classmethod
     def _reconnect(cls, session, pilot_manager_id):
         """PRIVATE: reconnect to an existing pilot manager.
         """
-        uid_exists = PilotManagerWorker.uid_exists(db_connection=session._dbs, 
-            pilot_manager_uid=pilot_manager_id)
+        uid_exists = PilotManagerWorker.uid_exists(
+            db_connection=session._dbs,
+            pilot_manager_uid=pilot_manager_id
+        )
 
         if not uid_exists:
-            raise exceptions.BadParameter ("PilotManager with id '%s' not in database." % pilot_manager_id)
-
-
-
+            raise exceptions.BadParameter(
+                "PilotManager with id '%s' not in database." % pilot_manager_id)
 
         obj = cls(session=session, resource_configurations="~=RECON=~")
-        obj._uid           = pilot_manager_id
-        obj._resource_cfgs = None # TODO: reconnect
+        obj._uid = pilot_manager_id
+        obj._resource_cfgs = None  # TODO: reconnect
 
         # Retrieve or start a worker process fo this PilotManager instance.
         worker = session._process_registry.retrieve(pilot_manager_id)
@@ -194,7 +194,7 @@ class PilotManager(object):
             obj._worker = worker
         else:
             obj._worker = PilotManagerWorker(
-                pilot_manager_uid=pilot_manager_id, 
+                pilot_manager_uid=pilot_manager_id,
                 pilot_manager_data={},
                 db_connection=session._dbs)
             session._process_registry.register(pilot_manager_id, obj._worker)
@@ -205,14 +205,15 @@ class PilotManager(object):
 
         return obj
 
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
     @property
     def uid(self):
         """Returns the PilotManagers's unique identifier.
 
-        The uid identifies the PilotManager within the :class:`sagapilot.Session`
-        and can be used to retrieve an existing PilotManager.
+        The uid identifies the PilotManager within the
+        :class:`sagapilot.Session` and can be used to retrieve an existing
+        PilotManager.
 
         **Returns:**
 
@@ -220,31 +221,31 @@ class PilotManager(object):
         """
         return self._uid
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
         obj_dict = {
-            'uid'   : self.uid
+            'uid': self.uid
         }
         return obj_dict
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def __str__(self):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def submit_pilots(self, pilot_descriptions):
-        """Submits a new :class:`sagapilot.ComputePilot` to a resource. 
+        """Submits a new :class:`sagapilot.ComputePilot` to a resource.
 
         **Returns:**
 
-            * One or more :class:`sagapilot.ComputePilot` instances 
+            * One or more :class:`sagapilot.ComputePilot` instances
               [`list of :class:`sagapilot.ComputePilot`].
 
         **Raises:**
@@ -254,7 +255,7 @@ class PilotManager(object):
         # Check if the object instance is still valid.
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
-        
+
         # Implicit list conversion.
         if not isinstance(pilot_descriptions, list):
             pilot_descriptions = [pilot_descriptions]
@@ -336,20 +337,20 @@ class PilotManager(object):
         # Get the pilot list from the worker
         return self._worker.list_pilots()
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def get_pilots(self, pilot_ids=None):
         """Returns one or more :class:`sagapilot.ComputePilot` instances.
 
         **Arguments:**
 
-            * **pilot_uids** [`list of strings`]: If pilot_uids is set, 
-              only the Pilots with  the specified uids are returned. If 
+            * **pilot_uids** [`list of strings`]: If pilot_uids is set,
+              only the Pilots with  the specified uids are returned. If
               pilot_uids is `None`, all Pilots are returned.
 
         **Returns:**
 
-            * A list of :class:`sagapilot.ComputePilot` objects 
+            * A list of :class:`sagapilot.ComputePilot` objects
               [`list of :class:`sagapilot.ComputePilot`].
 
         **Raises:**
@@ -365,28 +366,29 @@ class PilotManager(object):
         pilots = ComputePilot._get(pilot_ids=pilot_ids, pilot_manager_obj=self)
         return pilots
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
-    def wait_pilots(self, pilot_ids=None, 
-        state=[states.DONE, states.FAILED, states.CANCELED], timeout=None):
-        """Returns when one or more :class:`sagapilot.ComputePilots` reach a 
+    def wait_pilots(self, pilot_ids=None,
+                    state=[states.DONE, states.FAILED, states.CANCELED],
+                    timeout=None):
+        """Returns when one or more :class:`sagapilot.ComputePilots` reach a
         specific state or when an optional timeout is reached.
 
         If `pilot_uids` is `None`, `wait_pilots` returns when **all** Pilots
-        reach the state defined in `state`. 
+        reach the state defined in `state`.
 
         **Arguments:**
 
-            * **pilot_uids** [`string` or `list of strings`] 
+            * **pilot_uids** [`string` or `list of strings`]
               If pilot_uids is set, only the Pilots with the specified uids are
-              considered. If pilot_uids is `None` (default), all Pilots are 
+              considered. If pilot_uids is `None` (default), all Pilots are
               considered.
 
             * **state** [`list of strings`]
               The state(s) that Pilots have to reach in order for the call
-              to return. 
+              to return.
 
-              By default `wait_pilots` waits for the Pilots to reach 
+              By default `wait_pilots` waits for the Pilots to reach
               a **terminal** state, which can be one of the following:
 
               * :data:`sagapilot.DONE`
@@ -394,8 +396,8 @@ class PilotManager(object):
               * :data:`sagapilot.CANCELED`
 
             * **timeout** [`float`]
-              Optional timeout in seconds before the call returns regardless 
-              whether the Pilots have reached the desired state or not. 
+              Optional timeout in seconds before the call returns regardless
+              whether the Pilots have reached the desired state or not.
               The default value **-1.0** never times out.
 
         **Raises:**
@@ -405,14 +407,14 @@ class PilotManager(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
-        if not isinstance (state, list):
+        if not isinstance(state, list):
             state = [state]
 
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
             pilot_ids = [pilot_ids]
 
         start_wait = time.time()
-        all_done   = False
+        all_done = False
         return_states = []
 
         while all_done is False:
@@ -424,12 +426,12 @@ class PilotManager(object):
             for pilot in pilots_json:
                 if pilot['info']['state'] not in state:
                     all_done = False
-                    break # leave for loop
+                    break  # leave for loop
                 else:
                     return_states.append(pilot['info']['state'])
 
             # check timeout
-            if (None != timeout) and (timeout <= (time.time () - start_wait)):
+            if (None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
 
             # wait a bit
@@ -438,7 +440,7 @@ class PilotManager(object):
         # done waiting
         return return_states
 
-    # --------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     def cancel_pilots(self, pilot_ids=None):
         """Cancels one or more ComputePilots.

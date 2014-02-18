@@ -454,15 +454,6 @@ class Task(object):
         else:
             self._stderr_id = stderr_id
 
-    # ------------------------------------------------------------------------
-    #
-    def update_log(self, log):
-        """Updates the task logs
-        """
-        if not isinstance(log, list):
-            log = [log]
-        self._log.extend(log)
-
 
 # ----------------------------------------------------------------------------
 #
@@ -473,8 +464,9 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, mongo_w, task_queue, 
-                 hosts, cores_per_host, launch_method, launch_command, db_handle):
+    def __init__(self, logger, mongo_w, task_queue,
+                 hosts, cores_per_host, launch_method, launch_command, 
+                 db_handle):
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
@@ -485,19 +477,19 @@ class ExecWorker(multiprocessing.Process):
         self._w   = mongo_w
 
         self._db_handle = db_handle
-        
+
         self._task_queue     = task_queue
-        
+
         self._launch_method  = launch_method
         self._launch_command = launch_command
 
-        # Slots represents the internal process management structure. The 
+        # Slots represents the internal process management structure. The
         # structure is as follows:
         # {
         #    'host1': [p_1, p_2, p_3, ... , p_cores_per_host],
         #    'host2': [p_1, p_2, p_3. ... , p_cores_per_host]
         # }
-        # 
+        #
         self._slots = {}
         for host in hosts:
             self._slots[host] = []
@@ -516,15 +508,15 @@ class ExecWorker(multiprocessing.Process):
     def run(self):
         """Starts the process when Process.start() is called.
         """
-        try: 
+        try:
             while self._terminate is False:
 
                 # we iterate over all slots. if slots are emtpy, we try
-                # to run a new process. if they are occupied, we try to 
+                # to run a new process. if they are occupied, we try to
                 # update the state             
                 for host, slots in self._slots.iteritems():
                     
-                    # we update tasks in 'bulk' after each iteration. 
+                    # we update tasks in 'bulk' after each iteration.
                     # all tasks that require DB updates are in update_tasks
                     update_tasks = []
 
@@ -559,7 +551,8 @@ class ExecWorker(multiprocessing.Process):
 
                                 self._slots[host][slot].task.update_state(
                                     start_time=datetime.datetime.utcnow(),
-                                    exec_locs = exec_locs ,
+                                    exec_locs=exec_locs
+                                    ,
                                     state='Running'
                                 )
                                 update_tasks.append(self._slots[host][slot].task)

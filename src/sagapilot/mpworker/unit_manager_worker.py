@@ -13,16 +13,12 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
-import os
 import time
-import saga
-import datetime
 import multiprocessing
 from Queue import Empty
 
 import sagapilot.states as state
 
-from bson.objectid import ObjectId
 from radical.utils import which
 from sagapilot.utils.logger import logger
 
@@ -45,8 +41,32 @@ class UnitManagerWorker(multiprocessing.Process):
         self._stop = multiprocessing.Event()
         self._stop.clear()
 
-        self._um_id = unit_manager_uid
+        # The shard_data_manager handles data exchange between the worker
+        # process and the API objects. The communication is unidirectional:
+        # workers WRITE to _shared_data and API methods READ from _shared_data.
+        # The strucuture of _shared_data is as follows:
+        #
+        # { unit1_uid: MongoDB document (dict),
+        #   unit2_uid: MongoDB document (dict),
+        #   ...
+        # }
+        #
+        shard_data_manager = multiprocessing.Manager()
+        self._shared_data = shard_data_manager.dict()
+
+        # The callback dictionary. The structure is as follows:
+        #
+        # { unit1_uid : [func_ptr, func_ptr, func_ptr, ...],
+        #   unit2_uid : [func_ptr, func_ptr, func_ptr, ...],
+        #   ...
+        # }
+        #
+        self._callbacks = shard_data_manager.dict()
+
+        # The MongoDB database handle.
         self._db = db_connection
+
+        self._um_id = unit_manager_uid
 
         # The different command queues hold pending operations
         # that are passed to the worker. Command queues are inspected during
@@ -91,7 +111,15 @@ class UnitManagerWorker(multiprocessing.Process):
         self._stop.set()
         self.join()
         logger.info("Worker process (PID: %s) for UnitManager %s stopped." %
-            (self.pid, self._um_id))
+                    (self.pid, self._um_id))
+
+    # ------------------------------------------------------------------------
+    #
+    def get_compute_unit_data(self, unit_uid):
+        """Retruns the raw data (json dicts) of one or more ComputeUnits
+           registered with this Worker / UnitManager
+        """
+        return self._shared_data[unit_uid]
 
     # ------------------------------------------------------------------------
     #
@@ -104,19 +132,48 @@ class UnitManagerWorker(multiprocessing.Process):
 
         while not self._stop.is_set():
 
-            # Check if there are any compute_units to start.
-            # try:
-            #     request = self._schedule_compute_unit_requests.get_nowait()
-            #     self._execute_schedule_compute_unit(request)
-            # except Empty:
-            #     pass
+            # Check and update units. This needs to be optimized at
+            # some point, i.e., state pulling should be conditional
+            # or triggered by a tailable MongoDB cursor, etc.
+            unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
 
-            # Check and update pilots:
-            #   * list all pilots and check their state
-            #result = self._db.get_pilots(self._pm_id)
+            for unit in unit_list:
+                unit_id = str(unit["_id"])
+
+                new_state = unit["info"]["state"]
+                if unit_id in self._shared_data:
+                    old_state = self._shared_data[unit_id]["info"]["state"]
+                else:
+                    old_state = None
+
+                if new_state != old_state:
+                    # On a state change, we fire zee callbacks.
+                    logger.info("ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
+                    if unit_id in self._callbacks:
+                        for cb in self._callbacks[unit_id]:
+                            cb(unit_id, new_state)
+
+                self._shared_data[unit_id] = unit
 
             time.sleep(1)
 
+    # ------------------------------------------------------------------------
+    #
+    def register_unit_state_callback(self, unit_uid, callback_func):
+        """Registers a callback function.
+        """
+        if unit_uid not in self._callbacks:
+            # First callback ever registered for pilot_uid.
+            self._callbacks[unit_uid] = [callback_func]
+        else:
+            # Additional callback for unit_uid.
+            self._callbacks[unit_uid].append(callback_func)
+
+        # Callbacks can only be registered when the ComputeAlready has a
+        # state. To address this shortcomming we call the callback with the
+        # current ComputePilot state as soon as it is registered.
+        print self._shared_data[unit_uid]
+        callback_func(unit_uid, self._shared_data[unit_uid]["info"]["state"])
 
     # ------------------------------------------------------------------------
     #
@@ -141,20 +198,11 @@ class UnitManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_unit_data(self, compute_unit_uid):
-        """Returns the UIDs of all WorkUnits registered with the UnitManager.
-        """
-        return self._db.get_workunits(
-            workunit_manager_id=self._um_id, 
-            workunit_ids=[compute_unit_uid]
-        )
-
-    # ------------------------------------------------------------------------
-    #
     def get_compute_unit_states(self, work_unit_uids=None):
         """Returns the states of all WorkUnits registered with the Unitmanager.
         """
-        return self._db.get_workunit_states(self._um_id, workunit_ids=work_unit_uids)
+        return self._db.get_workunit_states(
+            self._um_id, workunit_ids=work_unit_uids)
 
     # ------------------------------------------------------------------------
     #
@@ -175,7 +223,7 @@ class UnitManagerWorker(multiprocessing.Process):
     def add_pilots(self, pilots):
         """Links ComputePilots to the UnitManager.
         """
-        # Extract the uids 
+        # Extract the uids
         pids = []
         for pilot in pilots:
             pids.append(pilot.uid)
@@ -190,18 +238,6 @@ class UnitManagerWorker(multiprocessing.Process):
         """
         self._db.unit_manager_remove_pilots(unit_manager_id=self._um_id,
                                             pilot_ids=pilot_uids)
-
-    # ------------------------------------------------------------------------
-    #
-    # def _execute_schedule_compute_unit(self, request):
-    #     """document me"""
-    #     logger.info("Scheduling ComputeUnit '%s' to ComputePilot '%s'."
-    #                 % (request['compute_unit_uid'], request['pilot_uid']))
-
-    #     self._db.assign_compute_unit_to_pilot(
-    #         compute_unit_uid=request['compute_unit_uid'],
-    #         pilot_uid=request['pilot_uid']
-    #     )
 
     # ------------------------------------------------------------------------
     #
