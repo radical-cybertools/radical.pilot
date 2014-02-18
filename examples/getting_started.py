@@ -6,7 +6,7 @@ import sagapilot
 DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
 
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -18,9 +18,13 @@ if __name__ == "__main__":
         print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(pilot_uid, state)
 
         if state == sagapilot.states.FAILED:
-            print "[Callback]: EXITING.".format(pilot_uid, state)
+            print "[Callback]: Pilot failed. Exiting.".format(pilot_uid, state)
             session.destroy()
             sys.exit(1)
+        elif state == sagapilot.states.DONE:
+            print "[Callback]: Pilot done. Exiting.".format(pilot_uid, state)
+            session.destroy()
+            sys.exit(0)
 
     def unit_state_change_cb(unit_uid, state):
         """unit_state_change_cb is a callback function. It handles ComputeUnit
@@ -68,7 +72,7 @@ if __name__ == "__main__":
         for x in range(0, 8):
             cu = sagapilot.ComputeUnitDescription()
             cu.executable = "/bin/sleep"
-            cu.arguments = ['60']
+            cu.arguments = ['1']
             cu.cores = 1
             compute_units.append(cu)
 
@@ -79,10 +83,10 @@ if __name__ == "__main__":
             cu.arguments   = ["$INPUT1", "$INPUT2"]
             cu.cores       = 1
             cu.input_data  = [ "./file1.dat   > file1.dat",
-                               "./file2.dat   > file2.dat" ]    
+                               "./file2.dat   > file2.dat" ] 
             cu.output_data = [ "result-%s.dat < STDOUT" % unit_count]
-             
-            #compute_units.append(cu)
+
+            compute_units.append(cu)
 
         # Combine the ComputePilot, the workload and a scheduler via
         # a UnitManager object.
@@ -113,19 +117,6 @@ if __name__ == "__main__":
             # Get the stdout and stderr streams of the ComputeUnit.
             print "  STDOUT: {0}".format(unit.stdout)
             print "  STDERR: {0}".format(unit.stderr)
-
-
-            info = {'uid'              : unit.uid,
-                'description'      : unit.description,
-                'state'            : unit.state,
-                'stdout'           : unit.stdout,
-                'stderr'           : unit.stderr,
-                'log'              : unit.log,
-                'execution_details': unit.execution_details,
-                'submission_time'  : unit.submission_time,
-                'start_time'       : unit.start_time,
-                'stop_time'        : unit.stop_time}
-            print info
 
         # Print some information about the pilot before we cancel it.
         print "{0}".format(str(pilot))

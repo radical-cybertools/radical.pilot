@@ -237,14 +237,14 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def get_workunit_stdout(self, workunit_uid):
-        """Returns the WorkUnit's unit's stdout.
+    def get_compute_unit_stdout(self, unit_uid):
+        """Returns the ComputeUnit's unit's stdout.
         """
         if self._s is None:
             raise Exception("No active session.")
 
         cursor = self._w.find(
-            {"_id": ObjectId(workunit_uid)},
+            {"_id": ObjectId(unit_uid)},
             {"info.stdout_id"}
         )
 
@@ -259,14 +259,14 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def get_workunit_stderr(self, workunit_uid):
-        """Returns the WorkUnit's unit's stderr.
+    def get_compute_unit_stderr(self, unit_uid):
+        """Returns the ComputeUnit's unit's stderr.
         """
         if self._s is None:
             raise Exception("No active session.")
 
         cursor = self._w.find(
-            {"_id": ObjectId(workunit_uid)},
+            {"_id": ObjectId(unit_uid)},
             {"info.stderr_id"}
         )
 
@@ -429,7 +429,7 @@ class Session():
     #--------------------------------------------------------------------------
     #
     def get_compute_units(self, unit_manager_id, unit_ids=None):
-        """ Get yerself a bunch of workunit
+        """ Get yerself a bunch of compute units.
         """
         if self._s is None:
             raise Exception("No active session.")
@@ -441,52 +441,64 @@ class Session():
 
         else:
             # convert ids to object ids
-            workunit_oid = []
+            unit_oid = []
             for wid in unit_ids:
-                workunit_oid.append(ObjectId(wid))
+                unit_oid.append(ObjectId(wid))
 
             cursor = self._w.find(
-                {"_id": {"$in": workunit_oid},
+                {"_id": {"$in": unit_oid},
                  "links.unitmanager": unit_manager_id}
             )
 
-        workunits_json = []
+        units_json = []
         for obj in cursor:
-            workunits_json.append(obj)
+            units_json.append(obj)
 
-        return workunits_json
+        return units_json
 
     #--------------------------------------------------------------------------
     #
-    def get_workunit_states(self, workunit_manager_id, workunit_ids=None):
-        """ Get yerself a bunch of workunit
+    def set_compute_unit_state(self, unit_id, state, log):
+        """Update the state and the log of one or more ComputeUnit(s).
         """
         if self._s is None:
             raise Exception("No active session.")
 
-        if workunit_ids is None:
+        self._w.update({"_id": ObjectId(unit_id)},
+                       {"$set":     {"info.state": state},
+                        "$pushAll": {"info.log": log}})
+
+    #--------------------------------------------------------------------------
+    #
+    def get_compute_unit_states(self, unit_manager_id, unit_ids=None):
+        """ Get yerself a bunch of compute units.
+        """
+        if self._s is None:
+            raise Exception("No active session.")
+
+        if unit_ids is None:
             cursor = self._w.find(
-                {"links.unitmanager": workunit_manager_id},
+                {"links.unitmanager": unit_manager_id},
                 {"info.state"}
             )
 
         else:
             # convert ids to object ids
-            workunit_oid = []
-            for wid in workunit_ids:
-                workunit_oid.append(ObjectId(wid))
+            unit_oid = []
+            for wid in unit_ids:
+                unit_oid.append(ObjectId(wid))
 
             cursor = self._w.find(
-                {"_id": {"$in": workunit_oid},
-                 "links.unitmanager": workunit_manager_id},
+                {"_id": {"$in": unit_oid},
+                 "links.unitmanager": unit_manager_id},
                 {"info.state"}
             )
 
-        workunit_states = []
+        unit_states = []
         for obj in cursor:
-            workunit_states.append(obj['info']['state'])
+            unit_states.append(obj['info']['state'])
 
-        return workunit_states
+        return unit_states
 
     #--------------------------------------------------------------------------
     #
@@ -579,7 +591,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def unit_manager_list_work_units(self, unit_manager_uid):
+    def unit_manager_list_compute_units(self, unit_manager_uid):
         """ Lists all work units associated with a unit manager.
         """
         if self._s is None:
@@ -612,7 +624,8 @@ class Session():
     #
     def insert_compute_units(self, pilot_uid, unit_manager_uid,
                              unit_descriptions, unit_log):
-        """ Adds one or more compute units to the database.
+        """ Adds one or more compute units to the database and sets their state
+            to 'PENDING'.
         """
         if self._s is None:
             raise Exception("No active session.")
@@ -632,12 +645,15 @@ class Session():
                     "pilot":       pilot_uid,
                 },
                 "info": {
-                    "submitted": datetime.datetime.utcnow(),
-                    "started":   None,
-                    "finished":  None,
-                    "exec_locs": None,
-                    "state":     states.PENDING,
-                    "log":       unit_log
+                    "state":       states.PENDING,
+                    "submitted":   datetime.datetime.utcnow(),
+                    "started":     None,
+                    "finished":    None,
+                    "exec_locs":   None,
+                    "exit_code":   None,
+                    "stdout_id":   None,
+                    "stderr_id":   None,
+                    "log":         unit_log
                 }
             }
             unit_docs.append(unit)

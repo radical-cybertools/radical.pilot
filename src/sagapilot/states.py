@@ -9,15 +9,23 @@
 """
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__license__ = "MIT"
 
-# ------------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # States
-UNKNOWN             = 'Unknown'
-PENDING             = 'Pending'
-TRANSFERRING_INPUT  = 'TransferringInput'
-RUNNING             = 'Running'
-TRANSFERRING_OUTPUT = 'TransferringOutput' 
-DONE                = 'Done'
-CANCELED            = 'Canceled'
-FAILED              = 'Failed' 
+UNKNOWN                 = 'Unknown'
+PENDING                 = 'Pending'
+
+PENDING_EXECUTION       = 'PendingExecution'
+RUNNING                 = 'Running'
+
+PENDING_INPUT_TRANSFER  = 'PendingInputTransfer'
+TRANSFERRING_INPUT      = 'TransferringInput'
+
+PENDING_OUTPUT_TRANSFER = 'PendingOutputTransfer'
+TRANSFERRING_OUTPUT     = 'TransferringOutput'
+
+DONE                    = 'Done'
+CANCELED                = 'Canceled'
+FAILED                  = 'Failed'

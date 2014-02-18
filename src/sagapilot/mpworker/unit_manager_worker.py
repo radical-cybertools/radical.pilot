@@ -75,11 +75,9 @@ class UnitManagerWorker(multiprocessing.Process):
         self._um_id = unit_manager_uid
 
         # The different command queues hold pending operations
-        # that are passed to the worker. Command queues are inspected during
+        # that are passed to the worker. Queues are inspected during
         # runtime in the run() loop and the worker acts upon them accordingly.
-
-        #self._cancel_pilot_requests  = multiprocessing.Queue()
-        self._schedule_compute_unit_requests = multiprocessing.Queue()
+        self._transfer_requests = multiprocessing.Queue()
 
         if unit_manager_uid is None:
             # Try to register the PilotManager with the database.
@@ -141,6 +139,29 @@ class UnitManagerWorker(multiprocessing.Process):
 
         while not self._stop.is_set():
 
+            # =================================================================
+            #
+            # Process any new transfer requests.
+
+            # Check if there are any pilots to cancel.
+            try:
+                request = self._transfer_requests.get_nowait()
+                self._db.set_compute_unit_state(request["unit_uid"], state.TRANSFERRING_INPUT, ["start transferring"])
+                logger.warning("about to transfer unit %s", request)
+
+                self._db.assign_compute_units_to_pilot(
+                    unit_uids=request["unit_uid"],
+                    pilot_uid=request["pilot_uid"]
+                )
+
+                self._db.set_compute_unit_state(request["unit_uid"], state.PENDING_EXECUTION, ["end transferring"])
+
+                #logger.info("Scheduled ComputeUnits %s for execution on ComputePilot '%s'." % (wu_notransfer.keys(), pilot_uid))
+            except Empty:
+                pass
+
+            # =================================================================
+            #
             # Check and update units. This needs to be optimized at
             # some point, i.e., state pulling should be conditional
             # or triggered by a tailable MongoDB cursor, etc.
@@ -168,7 +189,7 @@ class UnitManagerWorker(multiprocessing.Process):
             if not self._initialized.is_set():
                 self._initialized.set()
                 logger.debug("Worker status set to 'initialized'.")
- 
+
             time.sleep(1)
 
     # ------------------------------------------------------------------------
@@ -206,31 +227,31 @@ class UnitManagerWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def get_compute_unit_uids(self):
-        """Returns the UIDs of all WorkUnits registered with the UnitManager.
+        """Returns the UIDs of all ComputeUnits registered with the UnitManager.
         """
-        return self._db.unit_manager_list_work_units(self._um_id)
+        return self._db.unit_manager_list_compute_units(self._um_id)
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_unit_states(self, work_unit_uids=None):
-        """Returns the states of all WorkUnits registered with the Unitmanager.
+    def get_compute_unit_states(self, unit_uids=None):
+        """Returns the states of all ComputeUnits registered with the Unitmanager.
         """
-        return self._db.get_workunit_states(
-            self._um_id, workunit_ids=work_unit_uids)
+        return self._db.get_compute_unit_states(
+            self._um_id, unit_uids)
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_unit_stdout(self, work_unit_uid):
+    def get_compute_unit_stdout(self, compute_unit_uid):
         """Returns the stdout for a compute unit.
         """
-        return self._db.get_workunit_stdout(work_unit_uid)
+        return self._db.get_compute_unit_stdout(compute_unit_uid)
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_unit_stderr(self, work_unit_uid):
+    def get_compute_unit_stderr(self, compute_unit_uid):
         """Returns the stderr for a compute unit.
         """
-        return self._db.get_workunit_stderr(work_unit_uid)
+        return self._db.get_compute_unit_stderr(compute_unit_uid)
 
     # ------------------------------------------------------------------------
     #
@@ -292,8 +313,14 @@ class UnitManagerWorker(multiprocessing.Process):
         logger.info("Scheduled ComputeUnits %s for execution on ComputePilot '%s'." % (wu_notransfer.keys(), pilot_uid))
 
         # Bulk-add all units that need transfer to the transfer queue.
+        # Add the startup request to the request queue.
+        for unit_id in wu_transfer:
+            self._transfer_requests.put(
+                {"pilot_uid": pilot_uid,
+                 "unit_uid": str(unit_id)}
+            )
 
-        logger.info("Scheduled ComputeUnits %s for data transfer to ComputePilot '%s'." % (wu_transfer.keys(), pilot_uid))
+        logger.info("Data transfer scheduled for ComputeUnits %s to ComputePilot '%s'." % (wu_transfer.keys(), pilot_uid))
 
         # Return UIDs as strings.
         return [str(uid) for uid in wu_uids]
