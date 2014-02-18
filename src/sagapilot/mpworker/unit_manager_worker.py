@@ -38,8 +38,14 @@ class UnitManagerWorker(multiprocessing.Process):
         multiprocessing.Process.__init__(self)
         self.daemon = True
 
+        # Stop event can be set to terminate the main loop
         self._stop = multiprocessing.Event()
         self._stop.clear()
+
+        # Initialized is set, once the run loop has pulled status
+        # at least once. Other functions use it as a guard.
+        self._initialized = multiprocessing.Event()
+        self._initialized.clear()
 
         # The shard_data_manager handles data exchange between the worker
         # process and the API objects. The communication is unidirectional:
@@ -110,7 +116,7 @@ class UnitManagerWorker(multiprocessing.Process):
         """
         self._stop.set()
         self.join()
-        logger.info("Worker process (PID: %s) for UnitManager %s stopped." %
+        logger.debug("Worker process (PID: %s) for UnitManager %s stopped." %
                     (self.pid, self._um_id))
 
     # ------------------------------------------------------------------------
@@ -119,6 +125,9 @@ class UnitManagerWorker(multiprocessing.Process):
         """Retruns the raw data (json dicts) of one or more ComputeUnits
            registered with this Worker / UnitManager
         """
+        # Wait for the initialized event to assert proper operation.
+        self._initialized.wait()
+
         return self._shared_data[unit_uid]
 
     # ------------------------------------------------------------------------
@@ -127,7 +136,7 @@ class UnitManagerWorker(multiprocessing.Process):
         """run() is called when the process is started via
            PilotManagerWorker.start().
         """
-        logger.info("Worker process for UnitManager %s started with PID %s."
+        logger.debug("Worker process for UnitManager %s started with PID %s."
                     % (self._um_id, self.pid))
 
         while not self._stop.is_set():
@@ -155,6 +164,11 @@ class UnitManagerWorker(multiprocessing.Process):
 
                 self._shared_data[unit_id] = unit
 
+            # After the first iteration, we are officially initialized!
+            if not self._initialized.is_set():
+                self._initialized.set()
+                logger.debug("Worker status set to 'initialized'.")
+ 
             time.sleep(1)
 
     # ------------------------------------------------------------------------
@@ -252,10 +266,34 @@ class UnitManagerWorker(multiprocessing.Process):
             unit_log=[]
         )
 
+        # At this point we have added all compute units to database. Now we
+        # sort them in two different lists: the first list contains the CUs
+        # that need file transfer and the second list contains the CUs that
+        # don't. The latter is added to the pilot directly, while the former
+        # is added to the transfer queue.
+
+        assert len(wu_uids) == len(unit_descriptions)
+
+        wu_transfer = dict()
+        wu_notransfer = dict()
+
+        for idx in range(0, len(unit_descriptions)):
+            if unit_descriptions[idx].input_data is None:
+                wu_notransfer[wu_uids[idx]] = unit_descriptions[idx]
+            else:
+                wu_transfer[wu_uids[idx]] = unit_descriptions[idx]
+
+        # Bulk-add all non-transfer units
         self._db.assign_compute_units_to_pilot(
-            unit_uids=wu_uids,
+            unit_uids=wu_notransfer.keys(),
             pilot_uid=pilot_uid
         )
+
+        logger.info("Scheduled ComputeUnits %s for execution on ComputePilot '%s'." % (wu_notransfer.keys(), pilot_uid))
+
+        # Bulk-add all units that need transfer to the transfer queue.
+
+        logger.info("Scheduled ComputeUnits %s for data transfer to ComputePilot '%s'." % (wu_transfer.keys(), pilot_uid))
 
         # Return UIDs as strings.
         return [str(uid) for uid in wu_uids]

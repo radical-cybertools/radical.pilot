@@ -65,6 +65,13 @@ if __name__ == "__main__":
         #
         compute_units = []
 
+        for x in range(0, 8):
+            cu = sagapilot.ComputeUnitDescription()
+            cu.executable = "/bin/sleep"
+            cu.arguments = ['60']
+            cu.cores = 1
+            compute_units.append(cu)
+
         for unit_count in range(0, 8):
             cu = sagapilot.ComputeUnitDescription()
             cu.environment = {"INPUT1" : "file1.dat", "INPUT2" : "file2.dat"}
@@ -75,7 +82,7 @@ if __name__ == "__main__":
                                "./file2.dat   > file2.dat" ]    
             cu.output_data = [ "result-%s.dat < STDOUT" % unit_count]
              
-            compute_units.append(cu)
+            #compute_units.append(cu)
 
         # Combine the ComputePilot, the workload and a scheduler via
         # a UnitManager object.
@@ -106,6 +113,19 @@ if __name__ == "__main__":
             # Get the stdout and stderr streams of the ComputeUnit.
             print "  STDOUT: {0}".format(unit.stdout)
             print "  STDERR: {0}".format(unit.stderr)
+
+
+            info = {'uid'              : unit.uid,
+                'description'      : unit.description,
+                'state'            : unit.state,
+                'stdout'           : unit.stdout,
+                'stderr'           : unit.stderr,
+                'log'              : unit.log,
+                'execution_details': unit.execution_details,
+                'submission_time'  : unit.submission_time,
+                'start_time'       : unit.start_time,
+                'stop_time'        : unit.stop_time}
+            print info
 
         # Print some information about the pilot before we cancel it.
         print "{0}".format(str(pilot))

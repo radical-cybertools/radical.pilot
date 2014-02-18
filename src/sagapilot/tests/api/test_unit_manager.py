@@ -76,10 +76,10 @@ class TestUnitManager(unittest.TestCase):
         pm = sinon.PilotManager(session=session)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource          = "localhost"
-        cpd.cores             = 1
-        cpd.run_time          = 1
-        cpd.working_directory = "/tmp/sagapilot.sandbox.unittests" 
+        cpd.resource = "localhost"
+        cpd.cores = 1
+        cpd.runtime = 1
+        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests" 
 
         p1 = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -99,10 +99,10 @@ class TestUnitManager(unittest.TestCase):
         pilot_list = []
         for x in range(0, 2):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource          = "localhost"
-            cpd.cores             = 1
-            cpd.run_time          = 1
-            cpd.working_directory = "/tmp/sagapilot.sandbox.unittests" 
+            cpd.resource = "localhost"
+            cpd.cores = 1
+            cpd.runtime = 1
+            cpd.sandbox = "/tmp/sagapilot.sandbox.unittests" 
             p = pm.submit_pilots(pilot_descriptions=cpd)
             um.add_pilots(p)
             pilot_list.append(p)

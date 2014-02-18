@@ -44,10 +44,10 @@ class TestUnit(unittest.TestCase):
         pm = sinon.PilotManager(session=session)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource          = "localhost"
-        cpd.cores             = 1
-        cpd.run_time          = 1
-        cpd.working_directory = "/tmp/sagapilot.sandbox.unittests" 
+        cpd.resource = "localhost"
+        cpd.cores = 1
+        cpd.runtime = 1
+        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests" 
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 

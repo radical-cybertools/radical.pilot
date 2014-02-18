@@ -9,8 +9,9 @@ from copy import deepcopy
 from sagapilot.db import Session
 from pymongo import MongoClient
 
-DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
+DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
 DBNAME = 'sinon_test'
+
 
 #-----------------------------------------------------------------------------
 #
@@ -34,20 +35,21 @@ class TestPilot(unittest.TestCase):
     def failIf(self, expr):
         # St00pid speling.
         return self.assertFalse(expr)
+
     #-------------------------------------------------------------------------
     #
     def test__pilot_wait(self):
-        """ Test if we can wait for different pilot states. 
+        """ Test if we can wait for different pilot states.
         """
         session = sinon.Session(database_url=DBURL)
 
         pm = sinon.PilotManager(session=session)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource          = "localhost"
-        cpd.cores             = 1
-        cpd.run_time          = 1
-        cpd.working_directory = "/tmp/sagapilot.sandbox.unittests" 
+        cpd.resource = "localhost"
+        cpd.cores = 1
+        cpd.runtime = 1
+        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -69,17 +71,17 @@ class TestPilot(unittest.TestCase):
     #-------------------------------------------------------------------------
     #
     def test__pilot_cancel(self):
-        """ Test if we can cancel a pilot. 
+        """ Test if we can cancel a pilot.
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 
         pm = sinon.PilotManager(session=session)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource          = "localhost"
-        cpd.cores             = 1
-        cpd.run_time          = 1
-        cpd.working_directory = "/tmp/sagapilot.sandbox.unittests" 
+        cpd.resource = "localhost"
+        cpd.cores = 1
+        cpd.runtime = 1
+        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -98,8 +100,3 @@ class TestPilot(unittest.TestCase):
         pilot.wait(sinon.states.CANCELED)
         assert pilot.state == sinon.states.CANCELED
         assert pilot.stop_time is not None
-
-
-
-
-

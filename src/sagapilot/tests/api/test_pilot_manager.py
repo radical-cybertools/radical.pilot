@@ -82,10 +82,10 @@ class Test_PilotManager(unittest.TestCase):
 
         for i in range(0, 2):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource          = "localhost"
-            cpd.cores             = 1
-            cpd.run_time          = 1
-            cpd.working_directory = "/tmp/sagapilot.sandbox.unittests"
+            cpd.resource = "localhost"
+            cpd.cores = 1
+            cpd.runtime = 1
+            cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
 
             pm1.submit_pilots(pilot_descriptions=cpd)
             pm2.submit_pilots(pilot_descriptions=cpd)
@@ -108,10 +108,10 @@ class Test_PilotManager(unittest.TestCase):
 
         for i in range(0, 2):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource          = "localhost"
-            cpd.cores             = 1
-            cpd.run_time          = 1
-            cpd.working_directory = "/tmp/sagapilot.sandbox.unittests"
+            cpd.resource = "localhost"
+            cpd.cores = 1
+            cpd.runtime = 1
+            cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
 
             pm1.submit_pilots(pilot_descriptions=cpd)
             pm2.submit_pilots(pilot_descriptions=cpd)
@@ -142,10 +142,10 @@ class Test_PilotManager(unittest.TestCase):
 
         for i in range(0, 2):
             cpd = sinon.ComputePilotDescription()
-            cpd.resource          = "localhost"
-            cpd.cores             = 1
-            cpd.run_time          = 1
-            cpd.working_directory = "/tmp/sagapilot.sandbox.unittests"
+            cpd.resource = "localhost"
+            cpd.cores = 1
+            cpd.runtime = 1
+            cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
 
             pilot_pm1 = pm1.submit_pilots(pilot_descriptions=cpd)
             pm1_pilot_uids.append(pilot_pm1.uid)

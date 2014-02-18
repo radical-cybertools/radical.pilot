@@ -52,7 +52,7 @@ class PilotManagerWorker(multiprocessing.Process):
         self._stop.clear()
 
         # Initialized is set, once the run loop has pulled status
-        # at least once. Other functions use it as a guard. 
+        # at least once. Other functions use it as a guard.
         self._initialized = multiprocessing.Event()
         self._initialized.clear()
 
@@ -152,7 +152,7 @@ class PilotManagerWorker(multiprocessing.Process):
         """
         self._stop.set()
         self.join()
-        logger.info("Worker process (PID: %s) for PilotManager %s stopped." % (self.pid, self._pm_id))
+        logger.debug("Worker process (PID: %s) for PilotManager %s stopped." % (self.pid, self._pm_id))
 
     # ------------------------------------------------------------------------
     #
@@ -160,7 +160,7 @@ class PilotManagerWorker(multiprocessing.Process):
         """run() is called when the process is started via
            PilotManagerWorker.start().
         """
-        logger.info("Worker process for PilotManager %s started with PID %s." % (self._pm_id, self.pid))
+        logger.debug("Worker process for PilotManager %s started with PID %s." % (self._pm_id, self.pid))
 
         while not self._stop.is_set():
 
@@ -257,7 +257,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 saga_session.add_context(cred._context)
 
-                logger.info("Added credential %s to SAGA job service." % str(cred))
+                logger.debug("Added credential %s to SAGA job service." % str(cred))
 
             # Create working directory if it doesn't exist and copy
             # the agent bootstrap script into it.
@@ -301,12 +301,14 @@ class PilotManagerWorker(multiprocessing.Process):
                         if err != "":
                             logger.warning("Couldn't determine remote working directory for %s: %s" % (url, err))
                         else:
-                            logger.info("Determined remote working directory for %s: %s" % (url, workdir))
+                            logger.debug("Determined remote working directory for %s: %s" % (url, workdir))
                             found_dir_success = True
                             break
-                    
-                if found_dir_success == False:
-                    raise Exception("Couldn't determine remote working directory.")
+
+                if found_dir_success is False:
+                    error_msg = "Couldn't determine remote working directory."
+                    logger.error(error_msg)
+                    raise Exception(error_msg)
 
                 # At this point we have determined 'pwd'
                 fs.path += "%s/sagapilot.sandbox" % workdir.rstrip()

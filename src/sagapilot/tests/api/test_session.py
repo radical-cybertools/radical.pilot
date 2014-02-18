@@ -69,7 +69,7 @@ class Test_Session(unittest.TestCase):
     #
     def test__credentials_reconnect(self):
         """ Tests if reconnecting to an existing session works as epxected and if
-        credentials are reloaded properly. 
+        credentials are reloaded properly.
         """
         session = sinon.Session(database_url=DBURL, database_name=DBNAME)
 

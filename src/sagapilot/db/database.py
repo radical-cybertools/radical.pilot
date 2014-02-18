@@ -149,13 +149,12 @@ class Session():
 
         self._s = self._db["%s" % sid]
         cursor = self._s.find({"_id": ObjectId(sid)})
-        
+
         self._s.update({"_id"  : ObjectId(sid)},
                        {"$set" : {"info.last_reconnect" : datetime.datetime.utcnow()}}
         )
 
         cursor = self._s.find({"_id": ObjectId(sid)})
-
 
         # cursor -> dict
         #if len(cursor) != 1:

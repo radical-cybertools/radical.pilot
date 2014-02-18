@@ -386,9 +386,6 @@ class UnitManager(object):
                     unit_descriptions=uds
                 )
 
-                logger.debug("Scheduled ComputeUnits %s to ComputePilot '%s'."
-                             % (unit_uids, pilot_id))
-
                 assert len(unit_uids) == len(uds)
 
                 for idx in range(0, len(uds)):
