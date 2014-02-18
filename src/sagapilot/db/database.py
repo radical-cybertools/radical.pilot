@@ -618,7 +618,8 @@ class Session():
             unit_uids = [unit_uids]
 
         self._p.update({"_id": ObjectId(pilot_uid)},
-                       {"$pushAll": {"wu_queue": unit_uids}})
+                       {"$pushAll":
+                           {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
 
     #--------------------------------------------------------------------------
     #
