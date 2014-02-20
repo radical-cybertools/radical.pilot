@@ -27,7 +27,7 @@ class _MPLogger(object):
         """Create or get a new logger instance (singleton).
         """
         self._logger = rul.logger.getLogger ('sagapilot')
-        mp_formatter = Formatter(fmt='%(asctime)s %(processName)-20s %(name)-22s: [%(levelname)-8s] %(message)s', 
+        mp_formatter = Formatter(fmt='%(asctime)s %(processName)s:%(threadName)s %(name)-22s: [%(levelname)-8s] %(message)s', 
                                  datefmt='%Y:%m:%d %H:%M:%S')
 
         for handler in self._logger.handlers:

@@ -57,20 +57,20 @@ class ComputePilot (object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(pilot_manager_obj, pilot_uid, pilot_description):
+    def _create(pilot_manager_obj, pilot_description):
         """ PRIVATE: Create a new pilot.
         """
         # Create and return pilot object.
         pilot = ComputePilot()
 
-        pilot._uid = pilot_uid
+        #pilot._uid = pilot_uid
         pilot._description = pilot_description
         pilot._manager = pilot_manager_obj
 
         # Pilots use the worker of their parent manager.
         pilot._worker = pilot._manager._worker
 
-        logger.info("Created new ComputePilot %s" % str(pilot))
+        #logger.info("Created new ComputePilot %s" % str(pilot))
         return pilot
 
     # -------------------------------------------------------------------------
@@ -135,9 +135,6 @@ class ComputePilot (object):
         **Returns:**
             * A unique identifier (string).
         """
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
-
         return self._uid
 
     # -------------------------------------------------------------------------
@@ -146,9 +143,6 @@ class ComputePilot (object):
     def description(self):
         """Returns the pilot description the pilot was started with.
         """
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
-
         return self._description
 
     # -------------------------------------------------------------------------
@@ -201,9 +195,6 @@ class ComputePilot (object):
     def pilot_manager(self):
         """ Returns the pilot manager object for this pilot.
         """
-        if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
-
         return self._manager
 
     # -------------------------------------------------------------------------
@@ -280,11 +271,11 @@ class ComputePilot (object):
 
     # -------------------------------------------------------------------------
     #
-    def register_state_callback(self, callback_func):
+    def register_callback(self, callback_func):
         """Registers a callback function that is triggered every time the
         ComputePilot's state changes.
         """
-        self._worker.register_pilot_state_callback(self.uid, callback_func)
+        self._worker.register_pilot_callback(self, callback_func)
 
     # -------------------------------------------------------------------------
     #

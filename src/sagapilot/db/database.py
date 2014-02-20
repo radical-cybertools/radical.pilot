@@ -624,7 +624,7 @@ class Session():
     #--------------------------------------------------------------------------
     #
     def insert_compute_units(self, pilot_uid, unit_manager_uid,
-                             unit_descriptions, unit_log):
+                             units, unit_log):
         """ Adds one or more compute units to the database and sets their state
             to 'PENDING'.
         """
@@ -632,15 +632,17 @@ class Session():
             raise Exception("No active session.")
 
         # Make sure we work on a list.
-        if not isinstance(unit_descriptions, list):
-            unit_descriptions = [unit_descriptions]
+        if not isinstance(units, list):
+            units = [units]
 
         unit_docs = list()
+        results = dict()
 
-        for unit_description in unit_descriptions:
+        for unit in units:
 
-            unit = {
-                "description": unit_description.as_dict(),
+            unit_json = {
+                "_id":         ObjectId(unit.uid),
+                "description": unit.description.as_dict(),
                 "links": {
                     "unitmanager": unit_manager_uid,
                     "pilot":       pilot_uid,
@@ -657,8 +659,12 @@ class Session():
                     "log":         unit_log
                 }
             }
-            unit_docs.append(unit)
+            unit_docs.append(unit_json)
+            results[unit.uid] = unit_json
 
         unit_uids = self._w.insert(unit_docs)
 
-        return unit_uids
+        assert len(unit_docs) == len(unit_uids)
+        assert len(results) == len(unit_uids)
+
+        return results

@@ -10,28 +10,32 @@ DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
 #
 if __name__ == "__main__":
 
-    def pilot_state_change_cb(pilot_uid, state):
+    def pilot_state_cb(pilot, state):
         """pilot_state_change_cb is a callback function. It handles ComputePilot
         state changes. Most importantly, it stopps the script if the ComputePilot
         ends up in 'FAILED' state.
         """
-        print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(pilot_uid, state)
+        print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
+            pilot.uid, state)
 
         if state == sagapilot.states.FAILED:
-            print "[Callback]: Pilot failed. Exiting.".format(pilot_uid, state)
+            print "[Callback]: ComputePilot '{0}' failed. Exiting.".format(
+                pilot.uid)
             session.destroy()
             sys.exit(1)
+
         elif state == sagapilot.states.DONE:
-            print "[Callback]: Pilot done. Exiting.".format(pilot_uid, state)
+            print "[Callback]: ComputePilot '{0}' done. Exiting.".format(
+                pilot.uid)
             session.destroy()
             sys.exit(0)
 
-    def unit_state_change_cb(unit_uid, state):
+    def unit_state_change_cb(unit, state):
         """unit_state_change_cb is a callback function. It handles ComputeUnit
         state changes.
         """
-        print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(unit_uid, state)
-
+        print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
+            unit.uid, state)
 
     try:
         # Create a new session. A session is a set of Pilot Managers
@@ -39,22 +43,25 @@ if __name__ == "__main__":
         session = sagapilot.Session(database_url=DBURL)
         print "Session UID      : {0} ".format(session.uid)
 
-        # Add a Pilot Manager 
+        # Add a Pilot Manager
         pmgr = sagapilot.PilotManager(session=session)
-        print "PilotManager UID : {0} ".format( pmgr.uid )
+        print "PilotManager UID : {0} ".format(pmgr.uid)
 
-        # Define a 2-core local pilot in /tmp/sagapilot.sandbox that runs 
+        # Register a callback with the PilotManager. This callback will get
+        # called every time any of the pilots managed by the PilotManager
+        # change their state.
+        pmgr.register_callback(pilot_state_cb)
+
+        # Define a 2-core local pilot in /tmp/sagapilot.sandbox that runs
         # for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
-        pdesc.resource  = "localhost"
-        pdesc.runtime   = 15 # minutes 
-        pdesc.cores     = 2
+        pdesc.resource = "localhost"
+        pdesc.runtime = 15  # minutes
+        pdesc.cores = 2
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
         print "Pilot UID        : {0} ".format( pilot.uid )
-
-        pilot.register_state_callback(pilot_state_change_cb)
 
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
         # uses /bin/cat to concatenate two input files, file1.dat and 
@@ -78,13 +85,13 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 8):
             cu = sagapilot.ComputeUnitDescription()
-            cu.environment = {"INPUT1" : "file1.dat", "INPUT2" : "file2.dat"}
-            cu.executable  = "/bin/cat"
-            cu.arguments   = ["$INPUT1", "$INPUT2"]
-            cu.cores       = 1
-            cu.input_data  = [ "./file1.dat   > file1.dat",
-                               "./file2.dat   > file2.dat" ] 
-            cu.output_data = [ "result-%s.dat < STDOUT" % unit_count]
+            cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
+            cu.executable = "/bin/cat"
+            cu.arguments = ["$INPUT1", "$INPUT2"]
+            cu.cores = 1
+            cu.input_data = ["./file1.dat   > file1.dat",
+                             "./file2.dat   > file2.dat"]
+            cu.output_data = ["result-%s.dat < STDOUT" % unit_count]
 
             compute_units.append(cu)
 
@@ -93,8 +100,12 @@ if __name__ == "__main__":
         umgr = sagapilot.UnitManager(
             session=session,
             scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
-
         print "UnitManager UID  : {0} ".format(umgr.uid)
+
+        # Register a callback with the UnitManager. This callback will get
+        # called every time any of the units managed by the UnitManager
+        # change their state.
+        umgr.register_callback(unit_state_change_cb)
 
         # Add the previsouly created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
@@ -103,9 +114,6 @@ if __name__ == "__main__":
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(compute_units)
-
-        #for unit in units:
-        #    unit.register_state_callback(pilot_state_change_cb)
 
         # # Wait for all compute units to finish.
         umgr.wait_units()

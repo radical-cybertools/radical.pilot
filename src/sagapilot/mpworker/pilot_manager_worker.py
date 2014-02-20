@@ -21,7 +21,10 @@ import saga
 import datetime
 import traceback
 import multiprocessing
-from Queue import Empty
+import threading
+import Queue  # import Empty
+
+import weakref
 
 from radical.utils import which
 
@@ -32,8 +35,8 @@ from sagapilot.utils.logger import logger
 
 # ----------------------------------------------------------------------------
 #
-class PilotManagerWorker(multiprocessing.Process):
-    """PilotManagerWorker is a multiprocessing worker that handles backend
+class PilotManagerWorker(threading.Thread):
+    """PilotManagerWorker is a threading worker that handles backend
        interaction for the PilotManager and Pilot classes.
     """
 
@@ -43,17 +46,18 @@ class PilotManagerWorker(multiprocessing.Process):
         """Le constructeur.
         """
 
-        # Multiprocessing stuff
-        multiprocessing.Process.__init__(self)
+        # Multithreading stuff
+        threading.Thread.__init__(self)
         self.daemon = True
+        self.name = 'PMWThread'
 
         # Stop event can be set to terminate the main loop
-        self._stop = multiprocessing.Event()
+        self._stop = threading.Event()
         self._stop.clear()
 
         # Initialized is set, once the run loop has pulled status
         # at least once. Other functions use it as a guard.
-        self._initialized = multiprocessing.Event()
+        self._initialized = threading.Event()
         self._initialized.clear()
 
         # The shard_data_manager handles data exchange between the worker
@@ -61,31 +65,28 @@ class PilotManagerWorker(multiprocessing.Process):
         # workers WRITE to _shared_data and API methods READ from _shared_data.
         # The strucuture of _shared_data is as follows:
         #
-        # { pilot1_uid: MongoDB document (dict),
-        #   pilot2_uid: MongoDB document (dict),
-        #   ...
-        # }
+        #  self._shared_data[pilot_uid] = {
+        #      'data':          pilot_json,
+        #      'callbacks':     []
+        #      'facade_object': None
+        #  }
         #
-        shard_data_manager = multiprocessing.Manager()
-        self._shared_data = shard_data_manager.dict()
+        self._shared_data = dict()
 
-        # The callback dictionary. The structure is as follows:
+        # The manager-level list.
         #
-        # { pilot1_uid : [func_ptr, func_ptr, func_ptr, ...],
-        #   pilot2_uid : [func_ptr, func_ptr, func_ptr, ...],
-        #   ...
-        # }
-        #
-        self._callbacks = shard_data_manager.dict()
+        self._manager_callbacks = list()
 
         # The MongoDB database handle.
+        #
         self._db = db_connection
 
         # The different command queues hold pending operations
         # that are passed to the worker. Command queues are inspected during
         # runtime in the run() loop and the worker acts upon them accordingly.
-        self._cancel_pilot_requests = multiprocessing.Queue()
-        self._startup_pilot_requests = multiprocessing.Queue()
+        #
+        self._cancel_pilot_requests = Queue.Queue()
+        self._startup_pilot_requests = Queue.Queue()
 
         if pilot_manager_uid is None:
             # Try to register the PilotManager with the database.
@@ -138,11 +139,11 @@ class PilotManagerWorker(multiprocessing.Process):
 
         else:
             if not isinstance(pilot_uids, list):
-                return self._shared_data[pilot_uids]
+                return self._shared_data[pilot_uids]['data']
             else:
                 data = list()
                 for pilot_uid in pilot_uids:
-                    data.append(self._shared_data[pilot_uid])
+                    data.append(self._shared_data[pilot_uid]['data'])
                 return data
 
     # ------------------------------------------------------------------------
@@ -152,7 +153,33 @@ class PilotManagerWorker(multiprocessing.Process):
         """
         self._stop.set()
         self.join()
-        logger.debug("Worker process (PID: %s) for PilotManager %s stopped." % (self.pid, self._pm_id))
+        logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s stopped." %
+                    (self.name, self.ident, self._pm_id))
+
+    # ------------------------------------------------------------------------
+    #
+    def call_callbacks(self, pilot_id, new_state):
+        """Wrapper function to call all all relevant callbacks, on pilot-level
+        as well as manager-level.
+        """
+
+        for cb in self._shared_data[pilot_id]['callbacks']:
+            try:
+                cb(self._shared_data[pilot_id]['facade_object'](),
+                   new_state)
+            except Exception, ex:
+                logger.error(
+                    "Couldn't call callback function %s" % str(ex))
+
+        # If we have any manager-level callbacks registered, we
+        # call those as well!
+        for cb in self._manager_callbacks:
+            try:
+                cb(self._shared_data[pilot_id]['facade_object'](),
+                   new_state)
+            except Exception, ex:
+                logger.error(
+                    "Couldn't call callback function %s" % str(ex))
 
     # ------------------------------------------------------------------------
     #
@@ -160,7 +187,8 @@ class PilotManagerWorker(multiprocessing.Process):
         """run() is called when the process is started via
            PilotManagerWorker.start().
         """
-        logger.debug("Worker process for PilotManager %s started with PID %s." % (self._pm_id, self.pid))
+        logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s started." %
+                    (self.name, self.ident, self._pm_id))
 
         while not self._stop.is_set():
 
@@ -168,7 +196,7 @@ class PilotManagerWorker(multiprocessing.Process):
             try:
                 pilot_ids = self._cancel_pilot_requests.get_nowait()
                 self._execute_cancel_pilots(pilot_ids)
-            except Empty:
+            except Queue.Empty:
                 pass
 
             # Check if there are any pilots to start.
@@ -181,7 +209,7 @@ class PilotManagerWorker(multiprocessing.Process):
                     request["session"],
                     request["credentials"])
 
-            except Empty:
+            except Queue.Empty:
                 pass
 
             # Check and update pilots. This needs to be optimized at
@@ -194,18 +222,24 @@ class PilotManagerWorker(multiprocessing.Process):
 
                 new_state = pilot["info"]["state"]
                 if pilot_id in self._shared_data:
-                    old_state = self._shared_data[pilot_id]["info"]["state"]
+                    old_state = self._shared_data[pilot_id]["data"]["info"]["state"]
                 else:
                     old_state = None
+                    self._shared_data[pilot_id] = {
+                        'data':          pilot,
+                        'callbacks':     [],
+                        'facade_object': None
+                    }
 
                 if new_state != old_state:
                     # On a state change, we fire zee callbacks.
                     logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
-                    if pilot_id in self._callbacks:
-                        for cb in self._callbacks[pilot_id]:
-                            cb(pilot_id, new_state)
 
-                self._shared_data[pilot_id] = pilot
+                    # The state of the pilot has changed, We call all
+                    # pilot-level callbacks to propagate this.
+                    self.call_callbacks(pilot_id, new_state)
+
+                self._shared_data[pilot_id]['data'] = pilot
 
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
@@ -434,8 +468,7 @@ class PilotManagerWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def register_start_pilot_request(self, pilot_description, resource_config,
-                                     session):
+    def register_start_pilot_request(self, pilot, resource_config, session):
         """Register a new pilot start request with the worker.
         """
 
@@ -450,37 +483,51 @@ class PilotManagerWorker(multiprocessing.Process):
         # Create a database entry for the new pilot.
         pilot_uid, pilot_json = self._db.insert_pilot(
             pilot_manager_uid=self._pm_id,
-            pilot_description=pilot_description)
+            pilot_description=pilot.description)
 
         # Create a shared data store entry
-        self._shared_data[pilot_uid] = pilot_json
+        self._shared_data[pilot_uid] = {
+            'data':          pilot_json,
+            'callbacks':     [],
+            'facade_object': weakref.ref(pilot)
+        }
 
         # Add the startup request to the request queue.
         self._startup_pilot_requests.put(
-            {"pilot_uid": pilot_uid,
-             "pilot_description": pilot_description.as_dict(),
-             "resource_config": resource_config,
-             "session": session.as_dict(),
-             "credentials": cred_dict})
+            {"pilot_uid":         pilot_uid,
+             "pilot_description": pilot.description.as_dict(),
+             "resource_config":   resource_config,
+             "session":           session.as_dict(),
+             "credentials":       cred_dict})
 
         return pilot_uid
 
     # ------------------------------------------------------------------------
     #
-    def register_pilot_state_callback(self, pilot_uid, callback_func):
+    def register_pilot_callback(self, pilot, callback_func):
         """Registers a callback function.
         """
-        if pilot_uid not in self._callbacks:
-            # First callback ever registered for pilot_uid.
-            self._callbacks[pilot_uid] = [callback_func]
-        else:
-            # Additional callback for pilot_uid.
-            self._callbacks[pilot_uid].append(callback_func)
+        pilot_uid = pilot.uid
+        self._shared_data[pilot_uid]['callbacks'].append(callback_func)
+
+        # Add the facade object if missing, e.g., after a re-connect.
+        if self._shared_data[pilot_uid]['facade_object'] is None:
+            self._shared_data[pilot_uid]['facade_object'] = weakref.ref(pilot)
 
         # Callbacks can only be registered when the ComputeAlready has a
-        # state. To address this shortcomming we call the callback with the
-        # current ComputePilot state as soon as it is registered.
-        callback_func(pilot_uid, self._shared_data[pilot_uid]["info"]["state"])
+        # state. To partially address this shortcomming we call the callback
+        # with the current ComputePilot state as soon as it is registered.
+        self.call_callbacks(
+            pilot,
+            self._shared_data[pilot_uid]["data"]["info"]["state"]
+        )
+
+    # ------------------------------------------------------------------------
+    #
+    def register_manager_callback(self, callback_func):
+        """Registers a manager-level callback.
+        """
+        self._manager_callbacks.append(callback_func)
 
     # ------------------------------------------------------------------------
     #

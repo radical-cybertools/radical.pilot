@@ -51,13 +51,13 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(unit_manager_obj, unit_id, unit_description):
+    def _create(unit_manager_obj, unit_uid, unit_description):
         """ PRIVATE: Create a new compute unit.
         """
         # create and return pilot object
         computeunit = ComputeUnit()
+        computeunit._uid = unit_uid
 
-        computeunit._uid = unit_id
         computeunit._description = unit_description
         computeunit._manager = unit_manager_obj
 
@@ -126,9 +126,6 @@ class ComputeUnit(object):
         **Returns:**
             * A unique identifier (string).
         """
-        if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
-
         # uid is static and doesn't change over the lifetime
         # of a pilot, hence it can be stored in a member var.
         return self._uid
@@ -141,6 +138,9 @@ class ComputeUnit(object):
 
         .. warning: This can become very inefficient for lare data volumes.
         """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
         return self._worker.get_compute_unit_stdout(self.uid)
 
     # -------------------------------------------------------------------------
@@ -151,6 +151,9 @@ class ComputeUnit(object):
 
         .. warning: This can become very inefficient for lare data volumes.
         """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
         return self._worker.get_compute_unit_stderr(self.uid)
 
     # -------------------------------------------------------------------------
@@ -159,9 +162,6 @@ class ComputeUnit(object):
     def description(self):
         """Returns the pilot description the pilot was started with.
         """
-        if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
-
         # description is static and doesn't change over the lifetime
         # of a pilot, hence it is stored as a member var.
         return self._description
@@ -240,11 +240,11 @@ class ComputeUnit(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_state_callback(self, callback_func):
+    def register_callback(self, callback_func):
         """Registers a callback function that is triggered every time the
         ComputePilot's state changes.
         """
-        self._worker.register_unit_state_callback(self.uid, callback_func)
+        self._worker.register_unit_callback(self, callback_func)
 
     # -------------------------------------------------------------------------
     #

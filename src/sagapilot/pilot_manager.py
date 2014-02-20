@@ -296,17 +296,19 @@ class PilotManager(object):
                         raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (pilot_description.resource, pilot_description.sandbox, resource_cfg["valid_roots"]))
 
             # After the sanity checks have passed, we can register a pilot
-            # startup request with the worker process.
-            pilot_uid = self._worker.register_start_pilot_request(
+            # startup request with the worker process and create a facade
+            # object.
+
+            pilot = ComputePilot._create(
                 pilot_description=pilot_description,
+                pilot_manager_obj=self)
+
+            pilot_uid = self._worker.register_start_pilot_request(
+                pilot=pilot,
                 resource_config=resource_cfg,
                 session=self._session)
 
-            # With the resulting UID we can create a ComputePilot API object.
-            pilot = ComputePilot._create(
-                pilot_uid=pilot_uid,
-                pilot_description=pilot_description,
-                pilot_manager_obj=self)
+            pilot._uid = pilot_uid
 
             pilot_obj_list.append(pilot)
 
@@ -465,3 +467,13 @@ class PilotManager(object):
 
         # Register the cancelation request with the worker.
         self._worker.register_cancel_pilots_request(pilot_ids=pilot_ids)
+
+    # -------------------------------------------------------------------------
+    #
+    def register_callback(self, callback_function):
+        """Registers a new callback function with the PilotManager.
+        Manager-level callbacks get called if any of the ComputePilots managed
+        by the PilotManager change their state.
+
+        """
+        self._worker.register_manager_callback(callback_function)
