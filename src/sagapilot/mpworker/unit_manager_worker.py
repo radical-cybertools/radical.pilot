@@ -14,19 +14,17 @@ __license__ = "MIT"
 
 
 import time
-import multiprocessing
+import Queue
+import weakref
 import threading
 
-#from Queue import Empty
-
-import Queue
+from multiprocessing import Pool
 
 import sagapilot.states as state
 
 from radical.utils import which
 from sagapilot.utils.logger import logger
 
-import weakref
 
 
 # ----------------------------------------------------------------------------
