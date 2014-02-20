@@ -3,7 +3,7 @@ import sagapilot
 
 # DBURL points to a MongoDB server. For installation of a MongoDB server, please
 # refer to the MongoDB website: http://docs.mongodb.org/manual/installation/
-DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
+DBURL = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
 
 
 #------------------------------------------------------------------------------
@@ -78,8 +78,7 @@ if __name__ == "__main__":
 
         for x in range(0, 8):
             cu = sagapilot.ComputeUnitDescription()
-            cu.executable = "/bin/sleep"
-            cu.arguments = ['1']
+            cu.executable = "/bin/date"
             cu.cores = 1
             compute_units.append(cu)
 

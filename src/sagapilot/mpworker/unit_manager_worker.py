@@ -26,6 +26,20 @@ from radical.utils import which
 from sagapilot.utils.logger import logger
 
 
+# ----------------------------------------------------------------------------
+#
+def transfer_func(unit_uid, transfer):
+    """ The transfer func...
+    """
+    logger.warning("about to transfer %s", transfer)
+
+    result = dict()
+
+    result["unit_uid"] = unit_uid
+    result["state"] = state.FAILED
+    result["log"] = ["transfer_func() not implemented"]
+
+    return result
 
 # ----------------------------------------------------------------------------
 #
@@ -43,7 +57,6 @@ class UnitManagerWorker(threading.Thread):
         self.daemon = True
         self.name = 'UMWThread'
 
-
         # Stop event can be set to terminate the main loop
         self._stop = threading.Event()
         self._stop.clear()
@@ -52,6 +65,8 @@ class UnitManagerWorker(threading.Thread):
         # at least once. Other functions use it as a guard.
         self._initialized = threading.Event()
         self._initialized.clear()
+
+        self._transfer_worker_pool = Pool(2)
 
         # The shard_data_manager handles data exchange between the worker
         # process and the API objects. The communication is unidirectional:
@@ -163,32 +178,53 @@ class UnitManagerWorker(threading.Thread):
         logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
                     (self.name, self.ident, self._um_id))
 
+        # transfer results contains the futures to the results of the
+        # asynchronous transfer operations.
+        transfer_results = list()
+
         while not self._stop.is_set():
 
             # =================================================================
             #
             # Process any new transfer requests.
-
-            # Check if there are any pilots to cancel.
             try:
                 request = self._transfer_requests.get_nowait()
                 self._db.set_compute_unit_state(request["unit_uid"], state.TRANSFERRING_INPUT, ["start transferring"])
                 logger.warning("about to transfer unit %s", request)
 
                 description = request["description"]
-                for transfer in description["input_data"]:
-                    logger.warning("about to transfer %s", transfer)
 
-                self._db.assign_compute_units_to_pilot(
-                    unit_uids=request["unit_uid"],
-                    pilot_uid=request["pilot_uid"]
+                transfer_result = self._transfer_worker_pool.apply_async(
+                    transfer_func, args=(request["unit_uid"], description["input_data"])
                 )
+                transfer_results.append(transfer_result)
 
-                self._db.set_compute_unit_state(request["unit_uid"], state.PENDING_EXECUTION, ["end transferring"])
-
-                #logger.info("Scheduled ComputeUnits %s for execution on ComputePilot '%s'." % (wu_notransfer.keys(), pilot_uid))
             except Queue.Empty:
                 pass
+
+            # =================================================================
+            #
+            # Check if any of the asynchronous operations has returned a result
+            new_transfer_results = list()
+
+            for transfer_result in transfer_results:
+                if transfer_result.ready():
+                    result = transfer_result.get()
+
+                    self._db.set_compute_unit_state(
+                        result["unit_uid"],
+                        result["state"],
+                        result["log"]
+                    )
+                    if result["state"] == state.PENDING_EXECUTION:
+                        self._db.assign_compute_units_to_pilot(
+                            unit_uids=request["unit_uid"],
+                            pilot_uid=request["pilot_uid"]
+                        )
+                else:
+                    new_transfer_results.append(transfer_result)
+
+            transfer_results = new_transfer_results
 
             # =================================================================
             #
