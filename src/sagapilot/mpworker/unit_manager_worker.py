@@ -177,6 +177,10 @@ class UnitManagerWorker(threading.Thread):
                 self._db.set_compute_unit_state(request["unit_uid"], state.TRANSFERRING_INPUT, ["start transferring"])
                 logger.warning("about to transfer unit %s", request)
 
+                description = request["description"]
+                for transfer in description["input_data"]:
+                    logger.warning("about to transfer %s", transfer)
+
                 self._db.assign_compute_units_to_pilot(
                     unit_uids=request["unit_uid"],
                     pilot_uid=request["pilot_uid"]
