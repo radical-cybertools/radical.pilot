@@ -41,6 +41,7 @@ def transfer_func(unit_uid, transfer):
 
     return result
 
+
 # ----------------------------------------------------------------------------
 #
 class UnitManagerWorker(threading.Thread):
@@ -78,8 +79,8 @@ class UnitManagerWorker(threading.Thread):
         #   ...
         # }
         #
-        #shard_data_manager = multiprocessing.Manager()
-        self._shared_data = dict()  #shard_data_manager.dict()
+        self._shared_data = dict()
+        self._shared_data_lock = threading.Lock()
 
         # The manager-level list.
         #
@@ -171,6 +172,40 @@ class UnitManagerWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
+    def _set_state(self, unit_uid, state, log):
+
+        if not isinstance(log, list):
+            log = [log]
+
+        # Acquire the shared data lock.
+        self._shared_data_lock.acquire()
+
+        old_state = self._shared_data[unit_uid]["data"]["info"]["state"]
+
+        # Update the database.
+        self._db.set_compute_unit_state(unit_uid, state, log)
+
+        # Update shared data.
+        self._shared_data[unit_uid]["data"]["info"]["state"] = state
+        self._shared_data[unit_uid]["data"]["info"]["log"].extend(log)
+
+        # Call the callbacks
+        if state != old_state:
+            # On a state change, we fire zee callbacks.
+            logger.info(
+                "ComputeUnit '%s' state changed from '%s' to '%s'." %
+                (unit_uid, old_state, state)
+            )
+
+            # The state of the unit has changed, We call all
+            # unit-level callbacks to propagate this.
+            self.call_callbacks(unit_uid, state)
+
+        # Release the shared data lock.
+        self._shared_data_lock.release()
+
+    # ------------------------------------------------------------------------
+    #
     def run(self):
         """run() is called when the process is started via
            PilotManagerWorker.start().
@@ -189,8 +224,11 @@ class UnitManagerWorker(threading.Thread):
             # Process any new transfer requests.
             try:
                 request = self._transfer_requests.get_nowait()
-                self._db.set_compute_unit_state(request["unit_uid"], state.TRANSFERRING_INPUT, ["start transferring"])
-                logger.warning("about to transfer unit %s", request)
+                self._set_state(
+                    request["unit_uid"],
+                    state.TRANSFERRING_INPUT,
+                    ["start transferring %s" % request]
+                )
 
                 description = request["description"]
 
@@ -211,7 +249,7 @@ class UnitManagerWorker(threading.Thread):
                 if transfer_result.ready():
                     result = transfer_result.get()
 
-                    self._db.set_compute_unit_state(
+                    self._set_state(
                         result["unit_uid"],
                         result["state"],
                         result["log"]
@@ -241,11 +279,13 @@ class UnitManagerWorker(threading.Thread):
                     old_state = self._shared_data[unit_id]["data"]["info"]["state"]
                 else:
                     old_state = None
+                    self._shared_data_lock.acquire()
                     self._shared_data[unit_id] = {
                         'data':          unit,
                         'callbacks':     [],
                         'facade_object': None
                     }
+                    self._shared_data_lock.release()
 
                 if new_state != old_state:
                     # On a state change, we fire zee callbacks.
@@ -255,7 +295,9 @@ class UnitManagerWorker(threading.Thread):
                     # unit-level callbacks to propagate this.
                     self.call_callbacks(unit_id, new_state)
 
+                self._shared_data_lock.acquire()
                 self._shared_data[unit_id]["data"] = unit
+                self._shared_data_lock.release()
 
             # After the first iteration, we are officially initialized!
             if not self._initialized.is_set():
@@ -270,11 +312,16 @@ class UnitManagerWorker(threading.Thread):
         """Registers a callback function for a ComputeUnit.
         """
         unit_uid = unit.uid
+
+        self._shared_data_lock.acquire()
         self._shared_data[unit_uid]['callbacks'].append(callback_func)
+        self._shared_data_lock.release()
 
         # Add the facade object if missing, e.g., after a re-connect.
         if self._shared_data[unit_uid]['facade_object'] is None:
+            self._shared_data_lock.acquire()
             self._shared_data[unit_uid]['facade_object'] = weakref.ref(unit)
+            self._shared_data_lock.release()
 
         # Callbacks can only be registered when the ComputeAlready has a
         # state. To partially address this shortcomming we call the callback
@@ -316,7 +363,7 @@ class UnitManagerWorker(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def get_compute_unit_states(self, unit_uids=None):
-        """Returns the states of all ComputeUnits registered with the 
+        """Returns the states of all ComputeUnits registered with the
         Unitmanager.
         """
         return self._db.get_compute_unit_states(
@@ -403,8 +450,14 @@ class UnitManagerWorker(threading.Thread):
             pilot_uid=pilot_uid
         )
 
-        logger.info("Scheduled ComputeUnits %s for execution on ComputePilot '%s'." % 
-            (wu_notransfer, pilot_uid))
+        for unit in wu_notransfer:
+            log = "Scheduled for execution on ComputePilot %s." % pilot_uid
+            self._set_state(unit, state.PENDING_EXECUTION, log)
+
+        logger.info(
+            "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
+            (wu_notransfer, pilot_uid)
+        )
 
         # Bulk-add all units that need transfer to the transfer queue.
         # Add the startup request to the request queue.
@@ -417,6 +470,10 @@ class UnitManagerWorker(threading.Thread):
                      "unit_uid":    unit.uid,
                      "description": unit.description}
                 )
+                log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
+                self._set_state(unit.uid, state.PENDING_INPUT_TRANSFER, log)
 
-            logger.info("Data transfer scheduled for ComputeUnits %s to ComputePilot '%s'." % 
-                (transfer_units, pilot_uid))
+            logger.info(
+                "Data transfer scheduled for ComputeUnits %s to ComputePilot '%s'." % 
+                (transfer_units, pilot_uid)
+            )

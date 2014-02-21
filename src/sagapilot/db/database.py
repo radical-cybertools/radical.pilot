@@ -648,7 +648,7 @@ class Session():
                     "pilot":       pilot_uid,
                 },
                 "info": {
-                    "state":       states.PENDING,
+                    "state":       states.NEW,
                     "submitted":   datetime.datetime.utcnow(),
                     "started":     None,
                     "finished":    None,

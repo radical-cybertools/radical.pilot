@@ -36,38 +36,37 @@ if __name__ == "__main__":
         """
         print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
             unit.uid, state)
+        if state == sagapilot.states.FAILED:
+            print "            Log: %s" % unit.log[-1]
 
     try:
-        # Create a new session. A session is a set of Pilot Managers
-        # and Unit Managers (with associated Pilots and ComputeUnits).
+        # Create a new session. A session is the 'root' object for all other
+        # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
+        # well as security crendetials.
         session = sagapilot.Session(database_url=DBURL)
-        print "Session UID      : {0} ".format(session.uid)
 
-        # Add a Pilot Manager
+        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = sagapilot.PilotManager(session=session)
-        print "PilotManager UID : {0} ".format(pmgr.uid)
 
         # Register a callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 2-core local pilot in /tmp/sagapilot.sandbox that runs
-        # for 10 minutes.
+        # Define a 2-core local pilot that runs for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource = "localhost"
-        pdesc.runtime = 15  # minutes
+        pdesc.runtime = 10
         pdesc.cores = 2
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
-        print "Pilot UID        : {0} ".format( pilot.uid )
 
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and 
-        # file2.dat. The output is written to STDOUT. cu.environment is 
-        # used to demonstrate how to set environment variables withih a 
-        # ComputeUnit - it's not strictly necessary for this example. As 
+        # uses /bin/cat to concatenate two input files, file1.dat and
+        # file2.dat. The output is written to STDOUT. cu.environment is
+        # used to demonstrate how to set environment variables withih a
+        # ComputeUnit - it's not strictly necessary for this example. As
         # a shell script, the ComputeUnits would look something like this:
         #
         #    export INPUT1=file1.dat
@@ -76,30 +75,25 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for x in range(0, 8):
-            cu = sagapilot.ComputeUnitDescription()
-            cu.executable = "/bin/date"
-            cu.cores = 1
-            compute_units.append(cu)
-
         for unit_count in range(0, 8):
             cu = sagapilot.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
             cu.executable = "/bin/cat"
             cu.arguments = ["$INPUT1", "$INPUT2"]
             cu.cores = 1
-            cu.input_data = ["./file1.dat   > file1.dat",
-                             "./file2.dat   > file2.dat"]
-            cu.output_data = ["result-%s.dat < STDOUT" % unit_count]
+            cu.input_data = ["./file1.dat", "./file2.dat"]
 
             compute_units.append(cu)
 
-        # Combine the ComputePilot, the workload and a scheduler via
+        cu2 = sagapilot.ComputeUnitDescription()
+        cu2.executable = "/bin/date"
+        compute_units.append(cu2)
+
+        # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = sagapilot.UnitManager(
             session=session,
             scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
-        print "UnitManager UID  : {0} ".format(umgr.uid)
 
         # Register a callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager

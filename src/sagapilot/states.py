@@ -15,6 +15,8 @@ __license__ = "MIT"
 # -----------------------------------------------------------------------------
 # States
 UNKNOWN                 = 'Unknown'
+NEW                     = 'New'
+
 PENDING                 = 'Pending'
 
 PENDING_EXECUTION       = 'PendingExecution'
