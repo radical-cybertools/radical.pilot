@@ -108,6 +108,7 @@ class ComputePilot (object):
             'uid':             self.uid,
             'state':           self.state,
             'log':             self.log,
+            'sandbox':         self.sandbox,
             'resource':        self.resource,
             'submission_time': self.submission_time,
             'start_time':      self.start_time,
@@ -144,6 +145,21 @@ class ComputePilot (object):
         """Returns the pilot description the pilot was started with.
         """
         return self._description
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def sandbox(self):
+        """Returns the Pilot's 'sandbox' / working directory url.
+
+        **Returns:**
+            * A URL string.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid instance.")
+
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        return pilot_json['info']['sandbox']
 
     # -------------------------------------------------------------------------
     #

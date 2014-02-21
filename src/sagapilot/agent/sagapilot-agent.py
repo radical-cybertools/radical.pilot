@@ -1083,16 +1083,15 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Launch the agent thread
     try:
-        agent = Agent(logger              = logger,
-                      exec_env            = exec_env,
-                      workdir             = options.workdir, 
-                      launch_method       = options.launch_method, 
-                      pilot_id            = options.pilot_id,
-                      pilot_collection    = mongo_p,
-                      workunit_collection = mongo_w,
-                      runtime             = options.runtime,
-                      db_handle           = mongo_db
-        )
+        agent = Agent(logger=logger,
+                      exec_env=exec_env,
+                      workdir=options.workdir,
+                      launch_method=options.launch_method,
+                      pilot_id=options.pilot_id,
+                      pilot_collection=mongo_p,
+                      workunit_collection=mongo_w,
+                      runtime=options.runtime,
+                      db_handle=mongo_db)
 
         agent.start()
         agent.join()
@@ -1108,4 +1107,3 @@ if __name__ == "__main__":
 
         logger.error("Caught keyboard interrupt. EXITING")
         agent.stop()
-
