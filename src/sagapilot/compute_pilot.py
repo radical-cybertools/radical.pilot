@@ -217,7 +217,7 @@ class ComputePilot (object):
     #
     @property
     def unit_managers(self):
-        """ Returns the pilot manager object for this pilot.
+        """ Returns the unit manager object UIDs for this pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
