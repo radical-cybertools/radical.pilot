@@ -97,7 +97,7 @@ class UnitManagerWorker(threading.Thread):
         self._transfer_requests = Queue.Queue()
 
         if unit_manager_uid is None:
-            # Try to register the PilotManager with the database.
+            # Try to register the UnitManager with the database.
             self._um_id = self._db.insert_unit_manager(
                 unit_manager_data=unit_manager_data)
         else:

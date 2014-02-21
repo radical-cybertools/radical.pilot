@@ -283,7 +283,7 @@ class Session():
     #
     def update_pilot_state(self, pilot_uid, started=None, finished=None,
                            submitted=None, state=None, sagajobid=None,
-                           logs=None):
+                           sandbox=None, logs=None):
 
         """Updates the information of a pilot.
         """
@@ -308,6 +308,9 @@ class Session():
 
         if sagajobid is not None:
             set_query["info.sagajobid"] = sagajobid
+
+        if sandbox is not None:
+            set_query["info.sandbox"] = sandbox
 
         if logs is not None:
             push_query["info.log"] = logs
@@ -339,6 +342,8 @@ class Session():
                 "finished":       None,
                 "nodes":          None,
                 "cores_per_node": None,
+                "sagajobid":      None,
+                "sandbox":        None,
                 "state":          states.PENDING,
                 "log":            []
             },

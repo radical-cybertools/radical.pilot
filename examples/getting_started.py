@@ -119,11 +119,11 @@ if __name__ == "__main__":
             print "  STDOUT: {0}".format(unit.stdout)
             print "  STDERR: {0}".format(unit.stderr)
 
-        # Print some information about the pilot before we cancel it.
-        print "{0}".format(str(pilot))
-
         # Cancel all pilots.
         pmgr.cancel_pilots()
+
+        # Print some information about the pilot.
+        print str(pilot)
 
         # Remove session from database
         session.destroy()

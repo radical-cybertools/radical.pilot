@@ -347,13 +347,14 @@ class PilotManagerWorker(threading.Thread):
                 # At this point we have determined 'pwd'
                 fs.path += "%s/sagapilot.sandbox" % workdir.rstrip()
 
+            # This is the base URL / 'sandbox' for the pilot! 
             agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
 
             agent_dir = saga.filesystem.Directory(
                 agent_dir_url,
                 saga.filesystem.CREATE_PARENTS)
 
-            log_msg = "Created agent directory '%s'." % str(agent_dir_url)
+            log_msg = "Created agent sandbox '%s'." % str(agent_dir_url)
             pilot_logs.append(log_msg)
             logger.debug(log_msg)
 
@@ -368,7 +369,7 @@ class PilotManagerWorker(threading.Thread):
             bs_script = saga.filesystem.File(bs_script_url)
             bs_script.copy(agent_dir_url)
 
-            log_msg = "Copied '%s' script to agent directory." % bs_script_url
+            log_msg = "Copied '%s' script to agent sandbox." % bs_script_url
             pilot_logs.append(log_msg)
             logger.debug(log_msg)
 
@@ -379,7 +380,7 @@ class PilotManagerWorker(threading.Thread):
             agent_script = saga.filesystem.File(agent_script_url)
             agent_script.copy(agent_dir_url)
 
-            log_msg = "Copied '%s' script to agent directory." % agent_script_url
+            log_msg = "Copied '%s' script to agent sandbox." % agent_script_url
             pilot_logs.append(log_msg)
             logger.debug(log_msg)
 
@@ -448,8 +449,11 @@ class PilotManagerWorker(threading.Thread):
             # Submission was successful. We can set the pilot state to 'PENDING'.
             self._db.update_pilot_state(
                 pilot_uid=str(pilot_uid),
-                state=states.PENDING, sagajobid=pilotjob_id,
-                submitted=datetime.datetime.utcnow(), logs=pilot_logs)
+                state=states.PENDING,
+                sagajobid=pilotjob_id,
+                sandbox=str(agent_dir_url),
+                submitted=datetime.datetime.utcnow(),
+                logs=pilot_logs)
 
         except Exception, ex:
             error_msg = "Pilot Job submission failed:\n %s" % (
