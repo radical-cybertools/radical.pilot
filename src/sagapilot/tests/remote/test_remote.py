@@ -167,8 +167,8 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(sinon.states.RUNNING, timeout=5.0)
-        assert pilot.state == sinon.states.RUNNING
+        pilot.wait(sinon.states.RUNNING)
+        assert pilot.state == sinon.states.RUNNING, "Expected state 'RUNNING' but got %s" % pilot.state
         assert pilot.submission_time is not None
         assert pilot.start_time is not None
 

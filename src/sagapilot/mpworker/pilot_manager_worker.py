@@ -256,6 +256,10 @@ class PilotManagerWorker(threading.Thread):
 
             time.sleep(1)
 
+        # shut down the pool
+        self._worker_pool.terminate()
+        self._worker_pool.join()
+
     # ------------------------------------------------------------------------
     #
     def register_start_pilot_request(self, pilot, resource_config, session):

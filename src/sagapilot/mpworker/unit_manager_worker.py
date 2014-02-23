@@ -25,21 +25,7 @@ import sagapilot.states as state
 from radical.utils import which
 from sagapilot.utils.logger import logger
 
-
-# ----------------------------------------------------------------------------
-#
-def transfer_func(unit_uid, transfer):
-    """ The transfer func...
-    """
-    logger.warning("about to transfer %s", transfer)
-
-    result = dict()
-
-    result["unit_uid"] = unit_uid
-    result["state"] = state.FAILED
-    result["log"] = ["transfer_func() not implemented"]
-
-    return result
+from sagapilot.mpworker.filetransfer import transfer_input_func
 
 
 # ----------------------------------------------------------------------------
@@ -68,7 +54,7 @@ class UnitManagerWorker(threading.Thread):
 
         # The transfer worker pool is a multiprocessing pool that executes
         # concurrent file transfer requests.
-        self._transfer_worker_pool = Pool(2)
+        self._worker_pool = Pool(2)
 
         # The shard_data_manager handles data exchange between the worker
         # process and the API objects. The communication is unidirectional:
@@ -236,8 +222,8 @@ class UnitManagerWorker(threading.Thread):
 
                 description = request["description"]
 
-                transfer_result = self._transfer_worker_pool.apply_async(
-                    transfer_func, args=(request["unit_uid"], description["input_data"])
+                transfer_result = self._worker_pool.apply_async(
+                    transfer_input_func, args=(request["unit_uid"], description["input_data"])
                 )
                 transfer_results.append(transfer_result)
 
@@ -309,6 +295,10 @@ class UnitManagerWorker(threading.Thread):
                 logger.debug("Worker status set to 'initialized'.")
 
             time.sleep(1)
+
+        # shut down the pool
+        self._worker_pool.terminate()
+        self._worker_pool.join()
 
     # ------------------------------------------------------------------------
     #
