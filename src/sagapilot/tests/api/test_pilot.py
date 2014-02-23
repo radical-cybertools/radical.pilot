@@ -1,7 +1,7 @@
 """ (Compute) Unit tests
 """
 
-import sinon
+import sagapilot
 import unittest
 
 import uuid
@@ -10,7 +10,7 @@ from sagapilot.db import Session
 from pymongo import MongoClient
 
 DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-DBNAME = 'sinon_test'
+DBNAME = 'sagapilot_unittests'
 
 
 #-----------------------------------------------------------------------------
@@ -41,11 +41,11 @@ class TestPilot(unittest.TestCase):
     def test__pilot_wait(self):
         """ Test if we can wait for different pilot states.
         """
-        session = sinon.Session(database_url=DBURL)
+        session = sagapilot.Session(database_url=DBURL)
 
-        pm = sinon.PilotManager(session=session)
+        pm = sagapilot.PilotManager(session=session)
 
-        cpd = sinon.ComputePilotDescription()
+        cpd = sagapilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
         cpd.runtime = 1
@@ -54,18 +54,20 @@ class TestPilot(unittest.TestCase):
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
         assert pilot is not None
-        #assert cu.start_time is None
-        #assert cu.start_time is None
+        assert pilot.start_time is None
+        assert pilot.stop_time is None
 
-        pilot.wait(sinon.states.RUNNING)
+        pilot.wait(sagapilot.states.RUNNING)
         assert pilot.submission_time is not None
-        assert pilot.state == sinon.states.RUNNING
+        assert pilot.state == sagapilot.states.RUNNING
         assert pilot.start_time is not None
+        assert pilot.log is not None
+        assert pilot.sandbox == "file://localhost%s/pilot-%s/" % (cpd.sandbox, pilot.uid)
 
         # the pilot should finish after it has reached run_time
 
-        pilot.wait(sinon.states.DONE)
-        assert pilot.state == sinon.states.DONE
+        pilot.wait(sagapilot.states.DONE)
+        assert pilot.state == sagapilot.states.DONE
         assert pilot.stop_time is not None
 
     #-------------------------------------------------------------------------
@@ -73,11 +75,11 @@ class TestPilot(unittest.TestCase):
     def test__pilot_cancel(self):
         """ Test if we can cancel a pilot.
         """
-        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sinon.PilotManager(session=session)
+        pm = sagapilot.PilotManager(session=session)
 
-        cpd = sinon.ComputePilotDescription()
+        cpd = sagapilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
         cpd.runtime = 1
@@ -86,17 +88,17 @@ class TestPilot(unittest.TestCase):
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
         assert pilot is not None
-        #assert cu.start_time is None
-        #assert cu.start_time is None
+        assert pilot.start_time is None
+        assert pilot.stop_time is None
 
-        pilot.wait(sinon.states.RUNNING)
+        pilot.wait(sagapilot.states.RUNNING)
         assert pilot.submission_time is not None
-        assert pilot.state == sinon.states.RUNNING
+        assert pilot.state == sagapilot.states.RUNNING
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait(sinon.states.CANCELED)
-        assert pilot.state == sinon.states.CANCELED
+        pilot.wait(sagapilot.states.CANCELED)
+        assert pilot.state == sagapilot.states.CANCELED
         assert pilot.stop_time is not None

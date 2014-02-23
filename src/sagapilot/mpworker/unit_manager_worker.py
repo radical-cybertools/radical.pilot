@@ -56,7 +56,6 @@ class UnitManagerWorker(threading.Thread):
         # Multithreading stuff
         threading.Thread.__init__(self)
         self.daemon = True
-        self.name = 'UMWThread'
 
         # Stop event can be set to terminate the main loop
         self._stop = threading.Event()
@@ -67,6 +66,8 @@ class UnitManagerWorker(threading.Thread):
         self._initialized = threading.Event()
         self._initialized.clear()
 
+        # The transfer worker pool is a multiprocessing pool that executes
+        # concurrent file transfer requests.
         self._transfer_worker_pool = Pool(2)
 
         # The shard_data_manager handles data exchange between the worker
@@ -102,6 +103,9 @@ class UnitManagerWorker(threading.Thread):
                 unit_manager_data=unit_manager_data)
         else:
             self._um_id = unit_manager_uid
+
+        self.name = 'UMWThread-%s' % self._um_id
+
 
     # ------------------------------------------------------------------------
     #

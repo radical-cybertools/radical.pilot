@@ -57,15 +57,15 @@ class TestRemoteSubmission(unittest.TestCase):
         cred.user_id  = self.test_ssh_uid
         cred.user_key = self.test_ssh_key
 
-        session.add_credential(cred)
+        #session.add_credential(cred)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
         cpd = sinon.ComputePilotDescription()
-        cpd.resource          = self.test_resource
-        cpd.cores             = self.test_cores
-        cpd.runtime           = 5
-        cpd.sandbox           = self.test_workdir 
+        cpd.resource = self.test_resource
+        cpd.cores = self.test_cores
+        cpd.runtime = 5
+        cpd.sandbox = self.test_workdir
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -87,7 +87,7 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.start_time is None
             assert cu.start_time is None
 
-        um.wait_units(state=[sinon.states.RUNNING], timeout=self.test_timeout)
+        #um.wait_units(state=[sinon.states.RUNNING], timeout=self.test_timeout)
 
         for cu in cus:
             assert cu.state == sinon.states.RUNNING
@@ -95,7 +95,7 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.submission_time is not None
 
 
-        um.wait_units(state=[sinon.states.DONE, sinon.states.FAILED], timeout=self.test_timeout)
+        #um.wait_units(state=[sinon.states.DONE, sinon.states.FAILED], timeout=self.test_timeout)
 
         for cu in cus:
             assert cu.state == sinon.states.DONE
@@ -113,7 +113,7 @@ class TestRemoteSubmission(unittest.TestCase):
         cred.user_id  = self.test_ssh_uid
         cred.user_key = self.test_ssh_key
 
-        session.add_credential(cred)
+        #session.add_credential(cred)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
@@ -151,7 +151,7 @@ class TestRemoteSubmission(unittest.TestCase):
         cred.user_id  = self.test_ssh_uid
         cred.user_key = self.test_ssh_key
 
-        session.add_credential(cred)
+        #session.add_credential(cred)
 
         pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
 
@@ -175,7 +175,7 @@ class TestRemoteSubmission(unittest.TestCase):
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait(sinon.states.CANCELED, timeout=5.0)
+        #pilot.wait(sinon.states.CANCELED, timeout=5.0)
         assert pilot.state == sinon.states.CANCELED
         assert pilot.stop_time is not None
 

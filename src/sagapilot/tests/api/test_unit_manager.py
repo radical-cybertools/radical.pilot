@@ -1,7 +1,7 @@
 """ Unit Manager tests
 """
 
-import sinon
+import sagapilot
 import unittest
 
 import uuid
@@ -9,8 +9,9 @@ from copy import deepcopy
 from sagapilot.db import Session
 from pymongo import MongoClient
 
-DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-DBNAME = 'sinon_test'
+DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
+DBNAME = 'sagapilot_unittests'
+
 
 #-----------------------------------------------------------------------------
 #
@@ -41,14 +42,14 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_create(self):
         """ Test if unit manager creation works as expected.
         """
-        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
 
         assert session.list_unit_managers() == [], "Wrong number of unit managers"
 
-        um1 = sinon.UnitManager(session=session, scheduler='round_robin')
+        um1 = sagapilot.UnitManager(session=session, scheduler='round_robin')
         assert session.list_unit_managers() == [um1.uid], "Wrong list of unit managers"
 
-        um2 = sinon.UnitManager(session=session, scheduler='round_robin')
+        um2 = sagapilot.UnitManager(session=session, scheduler='round_robin')
         assert len(session.list_unit_managers()) == 2, "Wrong number of unit managers"
 
     #-------------------------------------------------------------------------
@@ -56,9 +57,9 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_reconnect(self):
         """ Test if unit manager reconnection works as expected.
         """
-        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        um = sinon.UnitManager(session=session, scheduler='round_robin')
+        um = sagapilot.UnitManager(session=session, scheduler='round_robin')
         assert session.list_unit_managers() == [um.uid], "Wrong list of unit managers"
 
         um_r = session.get_unit_managers(unit_manager_ids=um.uid)
@@ -71,11 +72,11 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_pilot_assoc(self):
         """ Test if unit manager <-> pilot association works as expected. 
         """
-        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
+        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sinon.PilotManager(session=session)
+        pm = sagapilot.PilotManager(session=session)
 
-        cpd = sinon.ComputePilotDescription()
+        cpd = sagapilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
         cpd.runtime = 1
@@ -83,7 +84,7 @@ class TestUnitManager(unittest.TestCase):
 
         p1 = pm.submit_pilots(pilot_descriptions=cpd)
 
-        um = sinon.UnitManager(session=session, scheduler='round_robin')
+        um = sagapilot.UnitManager(session=session, scheduler='round_robin')
         assert um.list_pilots() == [], "Wrong list of pilots"
 
         um.add_pilots(p1)
@@ -98,7 +99,7 @@ class TestUnitManager(unittest.TestCase):
 
         pilot_list = []
         for x in range(0, 2):
-            cpd = sinon.ComputePilotDescription()
+            cpd = sagapilot.ComputePilotDescription()
             cpd.resource = "localhost"
             cpd.cores = 1
             cpd.runtime = 1
