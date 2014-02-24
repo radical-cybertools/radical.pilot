@@ -1,8 +1,12 @@
 import sagapilot
 
-# DBURL points to a MongoDB server. For installation of a MongoDB server, please
-# refer to the MongoDB website: http://docs.mongodb.org/manual/installation/
-DBURL  = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
+# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
+# For the installation of a MongoDB server, refer to the MongoDB website:
+# http://docs.mongodb.org/manual/installation/
+DBURL = os.getenv("SAGAPILOT_DBURL")
+if DBURL is None:
+    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    sys.exit(1)
 
 # RCONF points to the resource configuration files. Read more about resource 
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html

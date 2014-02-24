@@ -1,6 +1,13 @@
 import sagapilot as sp
 
-COORD       = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/"
+# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
+# For the installation of a MongoDB server, refer to the MongoDB website:
+# http://docs.mongodb.org/manual/installation/
+DBURL = os.getenv("SAGAPILOT_DBURL")
+if DBURL is None:
+    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    sys.exit(1)
+
 FG_CONF     = "https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json"
 XSEDE_CONF  = "https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json"
 PILOT_DESCR = {'project':     None, 
@@ -20,7 +27,7 @@ UNIT_DESCR  = {'environment': None,
                'arguments':   ['topol.tpr']}
 
 
-session = sp.Session           (database_url = COORD)
+session = sp.Session           (database_url = DBURL)
 sp_um    = sp.UnitManager      (session      = session, 
                                 scheduler    = 'direct_submission')
 sp_pm    = sp.PilotManager     (session      = session,

@@ -6,9 +6,11 @@ import sys, time
 from pymongo import Connection
 import redis
 
+
+
 # connect to redis & mongodb
-redis = redis.Redis(host='ec2-184-72-89-141.compute-1.amazonaws.com')
-mongo = Connection(host='ec2-184-72-89-141.compute-1.amazonaws.com').test
+redis = redis.Redis(host='localhost')
+mongo = Connection(host='localhost').test
 collection = mongo['test']
 collection.ensure_index('key', unique=True)
 
