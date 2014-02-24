@@ -1,9 +1,14 @@
+import os
 import sys
 import sagapilot
 
-# DBURL points to a MongoDB server. For installation of a MongoDB server, please
-# refer to the MongoDB website: http://docs.mongodb.org/manual/installation/
-DBURL = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
+# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
+# For the installation of a MongoDB server, refer to the MongoDB website:
+# http://docs.mongodb.org/manual/installation/
+DBURL = os.getenv("SAGAPILOT_DBURL")
+if DBURL is None:
+    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    sys.exit(1)
 
 
 #------------------------------------------------------------------------------
@@ -11,28 +16,19 @@ DBURL = "mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017"
 if __name__ == "__main__":
 
     def pilot_state_cb(pilot, state):
-        """pilot_state_change_cb is a callback function. It handles ComputePilot
-        state changes. Most importantly, it stopps the script if the ComputePilot
-        ends up in 'FAILED' state.
+        """pilot_state_change_cb() is a callback function. It gets called very
+        time a ComputePilot changes its state.
         """
         print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
             pilot.uid, state)
 
         if state == sagapilot.states.FAILED:
-            print "[Callback]: ComputePilot '{0}' failed. Exiting.".format(
-                pilot.uid)
-            session.destroy()
-            sys.exit(1)
-
-        elif state == sagapilot.states.DONE:
-            print "[Callback]: ComputePilot '{0}' done. Exiting.".format(
-                pilot.uid)
-            session.destroy()
-            sys.exit(0)
+            raise Exception("ComputePilot '{0}' failed: {1}".format(
+                pilot.uid, pilot.log[-1])
 
     def unit_state_change_cb(unit, state):
-        """unit_state_change_cb is a callback function. It handles ComputeUnit
-        state changes.
+        """unit_state_change_cb() is a callback function. It gets called very
+        time a ComputeUnit changes its state.
         """
         print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
             unit.uid, state)

@@ -72,6 +72,37 @@ class TestPilot(unittest.TestCase):
 
     #-------------------------------------------------------------------------
     #
+    def test__pilot_errors(self):
+        """ Test if pilot errors are raised properly.
+        """
+        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+
+        pm = sagapilot.PilotManager(session=session)
+
+        cpd = sagapilot.ComputePilotDescription()
+        cpd.resource = "localhost"
+        cpd.cores = 1 
+        cpd.runtime = 1
+        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
+
+        try:
+            pilot = pm.submit_pilots(pilot_descriptions=cpd)
+            assert False, "Pilot submission should have failed"
+        except Exception, ex:
+            assert pilot.state == sagapilot.states.FAILED
+
+        cpd = sagapilot.ComputePilotDescription()
+        cpd.resource = "localhost"
+        cpd.cores = 100000000000  # This should fail - at least in 2014 ;-)
+        cpd.runtime = 1
+        cpd.sandbox = "/non-existing/dir/"
+
+        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        pilot.wait(sagapilot.states.FAILED, timeout=2.0*60)
+        assert pilot.state == sagapilot.states.FAILED, ("state should be %s and not %s" (sagapilot.states.FAILED, pilot.state))
+
+    #-------------------------------------------------------------------------
+    #
     def test__pilot_cancel(self):
         """ Test if we can cancel a pilot.
         """

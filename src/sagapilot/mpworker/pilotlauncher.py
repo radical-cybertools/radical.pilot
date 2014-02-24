@@ -227,32 +227,17 @@ def launch_pilot(pilot_uid, pilot_description,
         }
         return result
 
-        # self._db.update_pilot_state(
-        #     pilot_uid=str(pilot_uid),
-        #     state=states.PENDING,
-        #     sagajobid=pilotjob_id,
-        #     sandbox=str(agent_dir_url),
-        #     submitted=datetime.datetime.utcnow(),
-        #     logs=pilot_logs)
-
     except Exception, ex:
-        error_msg = "Pilot Job submission failed:\n %s" % (
-            traceback.format_exc())
+        error_msg = "Pilot Job submission failed:\n %s" % str(ex)
         pilot_logs.append(error_msg)
         logger.error(error_msg)
 
         result = {
             "pilot_uid":   str(pilot_uid),
-            "saga_job_id": pilotjob_id,
+            "saga_job_id": None,
             "state":       states.FAILED,
             "sandbox":     str(agent_dir_url),
             "submitted":   datetime.datetime.utcnow(),
             "logs":        pilot_logs
         }
         return result
-
-        # Submission wasn't successful. Update the pilot's state to 'FAILED'.
-        # self._db.update_pilot_state(pilot_uid=str(pilot_uid),
-        #                             state=states.FAILED,
-        #                             submitted=now,
-        #                             logs=pilot_logs)
