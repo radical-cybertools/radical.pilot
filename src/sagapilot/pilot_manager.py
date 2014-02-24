@@ -475,5 +475,11 @@ class PilotManager(object):
         Manager-level callbacks get called if any of the ComputePilots managed
         by the PilotManager change their state.
 
+        All callback functions need to have the same signature::
+
+            def callback_func(obj, state)
+
+        where ``object`` is a handle to the object that triggered the callback
+        and ``state`` is the new state of that object.
         """
         self._worker.register_manager_callback(callback_function)

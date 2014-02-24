@@ -13,27 +13,30 @@ if DBURL is None:
 
 #------------------------------------------------------------------------------
 #
+def pilot_state_cb(pilot, state):
+    """pilot_state_change_cb() is a callback function. It gets called very
+    time a ComputePilot changes its state.
+    """
+    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
+        pilot.uid, state)
+
+    if state == sagapilot.states.FAILED:
+        sys.exit(1)
+
+#------------------------------------------------------------------------------
+#
+def unit_state_change_cb(unit, state):
+    """unit_state_change_cb() is a callback function. It gets called very
+    time a ComputeUnit changes its state.
+    """
+    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
+        unit.uid, state)
+    if state == sagapilot.states.FAILED:
+        print "            Log: %s" % unit.log[-1]
+
+#------------------------------------------------------------------------------
+#
 if __name__ == "__main__":
-
-    def pilot_state_cb(pilot, state):
-        """pilot_state_change_cb() is a callback function. It gets called very
-        time a ComputePilot changes its state.
-        """
-        print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-            pilot.uid, state)
-
-        if state == sagapilot.states.FAILED:
-            raise Exception("ComputePilot '{0}' failed: {1}".format(
-                pilot.uid, pilot.log[-1])
-
-    def unit_state_change_cb(unit, state):
-        """unit_state_change_cb() is a callback function. It gets called very
-        time a ComputeUnit changes its state.
-        """
-        print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-            unit.uid, state)
-        if state == sagapilot.states.FAILED:
-            print "            Log: %s" % unit.log[-1]
 
     try:
         # Create a new session. A session is the 'root' object for all other
@@ -44,7 +47,7 @@ if __name__ == "__main__":
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = sagapilot.PilotManager(session=session)
 
-        # Register a callback with the PilotManager. This callback will get
+        # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
         # change their state.
         pmgr.register_callback(pilot_state_cb)
@@ -53,7 +56,7 @@ if __name__ == "__main__":
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource = "localhost"
         pdesc.runtime = 10
-        pdesc.cores = 2
+        pdesc.cores = 200
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -81,17 +84,13 @@ if __name__ == "__main__":
 
             compute_units.append(cu)
 
-        cu2 = sagapilot.ComputeUnitDescription()
-        cu2.executable = "/bin/date"
-        compute_units.append(cu2)
-
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = sagapilot.UnitManager(
             session=session,
             scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
 
-        # Register a callback with the UnitManager. This callback will get
+        # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
         # change their state.
         umgr.register_callback(unit_state_change_cb)
@@ -104,12 +103,12 @@ if __name__ == "__main__":
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(compute_units)
 
-        # # Wait for all compute units to finish.
+        # Wait for all compute units to finish.
         umgr.wait_units()
 
         for unit in umgr.get_units():
             # Print some information about the unit.
-            print "{0}".format(str(unit))
+            print "\n{0}".format(str(unit))
 
             # Get the stdout and stderr streams of the ComputeUnit.
             print "  STDOUT: {0}".format(unit.stdout)
@@ -117,9 +116,6 @@ if __name__ == "__main__":
 
         # Cancel all pilots.
         pmgr.cancel_pilots()
-
-        # Print some information about the pilot.
-        print str(pilot)
 
         # Remove session from database
         session.destroy()
