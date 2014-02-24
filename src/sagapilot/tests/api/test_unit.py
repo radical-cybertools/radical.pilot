@@ -1,6 +1,7 @@
 """ (Compute) Unit tests
 """
 
+import os
 import sagapilot
 import unittest
 

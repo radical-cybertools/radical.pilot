@@ -1,6 +1,7 @@
 """API layer tests
 """
 
+import os
 import sagapilot
 import unittest
 

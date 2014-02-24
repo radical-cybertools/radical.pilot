@@ -1,6 +1,7 @@
 """Pilot Manager tests
 """
 
+import os
 import sagapilot
 import unittest
 
