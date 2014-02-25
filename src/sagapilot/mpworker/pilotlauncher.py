@@ -25,7 +25,7 @@ from sagapilot.utils.logger import logger
 # ------------------------------------------------------------------------
 #
 def launch_pilot(pilot_uid, pilot_description,
-                 resource_cfg, session_dict, credentials_dict):
+                 resource_cfg, agent_dir_url, session_dict, credentials_dict):
     """launch_pilot() is a self contained function that launches a SAGA-Pilot
     agent on a local or remote machine according to the provided specification.
 
@@ -33,6 +33,8 @@ def launch_pilot(pilot_uid, pilot_description,
     PilotManager's worker processes. To maintain pickleability et al., no
     facade objects etc. go in an out of this function, just plain dictionaries.
     """
+
+    agent_dir_url = saga.Url(agent_dir_url)
 
     #resource_key = pilot_description['description']['Resource']
     number_cores = pilot_description['Cores']
@@ -58,63 +60,6 @@ def launch_pilot(pilot_uid, pilot_description,
             saga_session.add_context(cred._context)
 
             logger.debug("Added credential %s to SAGA job service." % str(cred))
-
-        # Create working directory if it doesn't exist and copy
-        # the agent bootstrap script into it.
-        #
-        # We create a new sub-driectory for each agent. each
-        # agent will bootstrap its own virtual environment in this
-        # directory.
-        #
-        fs = saga.Url(resource_cfg['filesystem'])
-        if sandbox is not None:
-            fs.path += sandbox
-        else:
-            # No sandbox defined. try to determine
-            found_dir_success = False
-
-            if resource_cfg['filesystem'].startswith("file"):
-                workdir = os.path.expanduser("~")
-                found_dir_success = True
-            else:
-                # A horrible hack to get the home directory on the
-                # remote machine.
-                import subprocess
-
-                usernames = [None]
-                for cred in credentials:
-                    usernames.append(cred["user_id"])
-
-                # We have mutliple usernames we can try... :/
-                for username in usernames:
-                    if username is not None:
-                        url = "%s@%s" % (username, fs.host)
-                    else:
-                        url = fs.host
-
-                    p = subprocess.Popen(
-                        ["ssh", url,  "pwd"],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                    )
-                    workdir, err = p.communicate()
-
-                    if err != "":
-                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, err))
-                    else:
-                        logger.debug("Determined remote working directory for %s: %s" % (url, workdir))
-                        found_dir_success = True
-                        break
-
-            if found_dir_success is False:
-                error_msg = "Couldn't determine remote working directory."
-                logger.error(error_msg)
-                raise Exception(error_msg)
-
-            # At this point we have determined 'pwd'
-            fs.path += "%s/sagapilot.sandbox" % workdir.rstrip()
-
-        # This is the base URL / 'sandbox' for the pilot! 
-        agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
 
         agent_dir = saga.filesystem.Directory(
             agent_dir_url,

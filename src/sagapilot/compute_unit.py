@@ -99,6 +99,7 @@ class ComputeUnit(object):
             'log':               self.log,
             'execution_details': self.execution_details,
             'submission_time':   self.submission_time,
+            'sandbox':           self.sandbox,
             'start_time':        self.start_time,
             'stop_time':         self.stop_time
         }
@@ -133,8 +134,28 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
+    def sandbox(self):
+        """Returns the remote sandbox / working directory of this task.
+
+        This property should only be accessed after the task has reached either
+        'RUNNING' or 'DONE' state, otherwise it will return None.
+
+        .. warning: This can become very inefficient for lare data volumes.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json['info']['sandbox']
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def stdout(self):
         """Returns a snapshot of the executable's STDOUT stream.
+
+        This property should only be accessed after the task has reached
+        'DONE' state, otherwise it will return None.
 
         .. warning: This can become very inefficient for lare data volumes.
         """
@@ -148,6 +169,9 @@ class ComputeUnit(object):
     @property
     def stderr(self):
         """Returns a snapshot of the executable's STDERR stream.
+
+        This property should only be accessed after the task has reached
+        'DONE' state, otherwise it will return None.
 
         .. warning: This can become very inefficient for lare data volumes.
         """

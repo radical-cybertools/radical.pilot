@@ -17,6 +17,8 @@ __license__ = "MIT"
 
 import os
 import time
+import saga
+import bson
 import datetime
 import traceback
 import threading
@@ -271,13 +273,69 @@ class PilotManagerWorker(threading.Thread):
         for cred in session.credentials:
             cred_dict.append(cred.as_dict())
 
+        # create a new UID for the pilot
+        pilot_uid = bson.ObjectId()
+
+        sandbox = pilot.description.sandbox
+        fs = saga.Url(resource_config['filesystem'])
+        if sandbox is not None:
+            fs.path = sandbox
+        else:
+            # No sandbox defined. try to determine
+            found_dir_success = False
+
+            if resource_config['filesystem'].startswith("file"):
+                workdir = os.path.expanduser("~")
+                found_dir_success = True
+            else:
+                # A horrible hack to get the home directory on the
+                # remote machine.
+                import subprocess
+
+                usernames = [None]
+                for cred in cred_dict:
+                    usernames.append(cred["user_id"])
+
+                # We have mutliple usernames we can try... :/
+                for username in usernames:
+                    if username is not None:
+                        url = "%s@%s" % (username, fs.host)
+                    else:
+                        url = fs.host
+
+                    p = subprocess.Popen(
+                        ["ssh", url,  "pwd"],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    )
+                    workdir, err = p.communicate()
+
+                    if err != "":
+                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, err))
+                    else:
+                        logger.debug("Determined remote working directory for %s: %s" % (url, workdir))
+                        found_dir_success = True
+                        break
+
+            if found_dir_success is False:
+                error_msg = "Couldn't determine remote working directory."
+                logger.error(error_msg)
+                raise Exception(error_msg)
+
+            # At this point we have determined 'pwd'
+            fs.path = "%s/sagapilot.sandbox" % workdir.rstrip()
+
+        # This is the base URL / 'sandbox' for the pilot!
+        agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
+
         # Convert the session to dict.
         session_dict = session.as_dict()
 
         # Create a database entry for the new pilot.
         pilot_uid, pilot_json = self._db.insert_pilot(
+            pilot_uid=pilot_uid,
             pilot_manager_uid=self._pm_id,
-            pilot_description=pilot.description)
+            pilot_description=pilot.description,
+            sandbox=str(agent_dir_url))
 
         # Create a shared data store entry
         self._shared_data[pilot_uid] = {
@@ -293,6 +351,7 @@ class PilotManagerWorker(threading.Thread):
                 pilot_uid,
                 pilot.description.as_dict(),
                 resource_config,
+                str(agent_dir_url),
                 session.as_dict(),
                 cred_dict)
         )

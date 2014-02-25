@@ -409,6 +409,10 @@ class UnitManagerWorker(threading.Thread):
         wu_transfer = list()
         wu_notransfer = list()
 
+        # Get some information about the pilot from the database.
+        pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
+        print pilot_info
+
         # Split units into two different lists: the first list contains the CUs
         # that need file transfer and the second list contains the CUs that
         # don't. The latter is added to the pilot directly, while the former
@@ -423,6 +427,7 @@ class UnitManagerWorker(threading.Thread):
         results = self._db.insert_compute_units(
             pilot_uid=pilot_uid,
             unit_manager_uid=self._um_id,
+            #unit_sandbox='SANDBOX_PATH',
             units=units,
             unit_log=[]
         )

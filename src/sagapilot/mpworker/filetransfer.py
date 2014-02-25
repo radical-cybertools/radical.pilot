@@ -24,6 +24,9 @@ from sagapilot.utils.logger import logger
 
 # ----------------------------------------------------------------------------
 #
+# def transfer_input_func(unit_uid, session_dict, target_dir_url, transfer):
+
+
 def transfer_input_func(unit_uid, transfer):
     """ Transfers a set of task input files to a specific pilot.
     """

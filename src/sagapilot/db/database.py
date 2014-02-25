@@ -324,13 +324,12 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot(self, pilot_manager_uid, pilot_description):
+    def insert_pilot(self, pilot_uid, pilot_manager_uid, pilot_description,
+        sandbox):
         """Adds a new pilot document to the database.
         """
         if self._s is None:
             raise Exception("No active session.")
-
-        pilot_uid = ObjectId()
 
         pilot_doc = {
             "_id":            pilot_uid,
@@ -343,7 +342,7 @@ class Session():
                 "nodes":          None,
                 "cores_per_node": None,
                 "sagajobid":      None,
-                "sandbox":        None,
+                "sandbox":        sandbox,
                 "state":          states.PENDING,
                 "log":            []
             },
@@ -382,21 +381,28 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def get_pilots(self, pilot_manager_id, pilot_ids=None):
+    def get_pilots(self, pilot_manager_id=None, pilot_ids=None):
         """ Get a pilot
         """
         if self._s is None:
             raise Exception("No active session.")
 
+        if pilot_manager_id is None and pilot_ids is None:
+            raise Exception(
+                "pilot_manager_id and pilot_ids can't both be None.")
+
         if pilot_ids is None:
             cursor = self._p.find({"links.pilotmanager": pilot_manager_id})
         else:
+
+            if not isinstance(pilot_ids, list):
+                pilot_ids = [pilot_ids]
+
             # convert ids to object ids
             pilot_oid = []
             for pid in pilot_ids:
                 pilot_oid.append(ObjectId(pid))
-            cursor = self._p.find({"_id": {"$in": pilot_oid},
-                                   "links.pilotmanager": pilot_manager_id})
+            cursor = self._p.find({"_id": {"$in": pilot_oid}})
 
         pilots_json = []
         for obj in cursor:
@@ -659,6 +665,7 @@ class Session():
                     "finished":    None,
                     "exec_locs":   None,
                     "exit_code":   None,
+                    "sandbox":     None,
                     "stdout_id":   None,
                     "stderr_id":   None,
                     "log":         unit_log
