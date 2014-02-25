@@ -11,6 +11,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
+import os 
 import datetime
 import gridfs
 from pymongo import *
@@ -634,7 +635,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_compute_units(self, pilot_uid, unit_manager_uid,
+    def insert_compute_units(self, pilot_uid, pilot_sandbox, unit_manager_uid,
                              units, unit_log):
         """ Adds one or more compute units to the database and sets their state
             to 'PENDING'.
@@ -651,6 +652,8 @@ class Session():
 
         for unit in units:
 
+            unit_sandbox = pilot_sandbox+"/unit-"+unit.uid
+
             unit_json = {
                 "_id":         ObjectId(unit.uid),
                 "description": unit.description.as_dict(),
@@ -665,7 +668,7 @@ class Session():
                     "finished":    None,
                     "exec_locs":   None,
                     "exit_code":   None,
-                    "sandbox":     None,
+                    "sandbox":     unit_sandbox,
                     "stdout_id":   None,
                     "stderr_id":   None,
                     "log":         unit_log
