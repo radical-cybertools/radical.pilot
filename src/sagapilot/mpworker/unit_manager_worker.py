@@ -411,7 +411,7 @@ class UnitManagerWorker(threading.Thread):
 
         # Get some information about the pilot from the database.
         pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
-        print pilot_info
+        print "INFO for pilot: %s" % pilot_info[0]['info']['sandbox']
 
         # Split units into two different lists: the first list contains the CUs
         # that need file transfer and the second list contains the CUs that

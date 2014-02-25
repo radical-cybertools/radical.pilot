@@ -96,6 +96,7 @@ class ComputeUnit(object):
         obj_dict = {
             'uid':               self.uid,
             'state':             self.state,
+            'exit_code':         self.exit_code,
             'log':               self.log,
             'execution_details': self.execution_details,
             'submission_time':   self.submission_time,
@@ -135,10 +136,8 @@ class ComputeUnit(object):
     #
     @property
     def sandbox(self):
-        """Returns the remote sandbox / working directory of this task.
-
-        This property should only be accessed after the task has reached either
-        'RUNNING' or 'DONE' state, otherwise it will return None.
+        """Returns the full remote sandbox / working directory URL of this 
+        ComputeUnit.
 
         .. warning: This can become very inefficient for lare data volumes.
         """
@@ -154,10 +153,10 @@ class ComputeUnit(object):
     def stdout(self):
         """Returns a snapshot of the executable's STDOUT stream.
 
-        This property should only be accessed after the task has reached
-        'DONE' state, otherwise it will return None.
+        If this property is queried before the ComputeUnit has reached
+        'DONE' or 'FAILED' state it will return None.
 
-        .. warning: This can become very inefficient for lare data volumes.
+        .. warning: This can become very inefficient for lareg data volumes.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -170,10 +169,10 @@ class ComputeUnit(object):
     def stderr(self):
         """Returns a snapshot of the executable's STDERR stream.
 
-        This property should only be accessed after the task has reached
-        'DONE' state, otherwise it will return None.
+        If this property is queried before the ComputeUnit has reached
+        'DONE' or 'FAILED' state it will return None.
 
-        .. warning: This can become very inefficient for lare data volumes.
+        .. warning: This can become very inefficient for large data volumes.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -184,7 +183,7 @@ class ComputeUnit(object):
     #
     @property
     def description(self):
-        """Returns the pilot description the pilot was started with.
+        """Returns the pilot description the ComputeUnit was started with.
         """
         # description is static and doesn't change over the lifetime
         # of a pilot, hence it is stored as a member var.
@@ -194,7 +193,7 @@ class ComputeUnit(object):
     #
     @property
     def state(self):
-        """Returns the current state of the pilot.
+        """Returns the current state of the ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -205,8 +204,23 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
+    def exit_code(self):
+        """Returns the exit code of the ComputeUnit.
+
+        If this property is queried before the ComputeUnit has reached
+        'DONE' or 'FAILED' state it will return None.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json['info']['exit_code']
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def log(self):
-        """Returns the logs of the pilot.
+        """Returns the logs of the ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -218,7 +232,7 @@ class ComputeUnit(object):
     #
     @property
     def execution_details(self):
-        """Returns the exeuction location(s) of the pilot.
+        """Returns the exeuction location(s) of the ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -230,7 +244,7 @@ class ComputeUnit(object):
     #
     @property
     def submission_time(self):
-        """ Returns the time the compute unit was submitted.
+        """ Returns the time the ComputeUnit was submitted.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -242,7 +256,7 @@ class ComputeUnit(object):
     #
     @property
     def start_time(self):
-        """ Returns the time the compute unit was started on the backend.
+        """ Returns the time the ComputeUnit was started on the backend.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -254,7 +268,7 @@ class ComputeUnit(object):
     #
     @property
     def stop_time(self):
-        """ Returns the time the compute unit was stopped.
+        """ Returns the time the ComputeUnit was stopped.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -266,7 +280,7 @@ class ComputeUnit(object):
     #
     def register_callback(self, callback_func):
         """Registers a callback function that is triggered every time the
-        ComputePilot's state changes.
+        ComputeUnit's state changes.
 
         All callback functions need to have the same signature::
 
@@ -281,7 +295,7 @@ class ComputeUnit(object):
     #
     def wait(self, state=[states.DONE, states.FAILED, states.CANCELED],
              timeout=None):
-        """Returns when the compute unit reaches a specific state or
+        """Returns when the ComputeUnit reaches a specific state or
         when an optional timeout is reached.
 
         **Arguments:**
@@ -329,7 +343,7 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     def cancel(self):
-        """Terminates the compute unit.
+        """Terminates the ComputeUnit.
 
         **Raises:**
 

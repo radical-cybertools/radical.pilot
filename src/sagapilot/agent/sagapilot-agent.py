@@ -590,7 +590,6 @@ class ExecWorker(multiprocessing.Process):
                                         stdout_id = fs.put(stdout_f.read(), filename=stdout)
                                         self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
 
-
                                 stderr = "%s/STDERR" % workdir
                                 if os.path.isfile(stderr):
                                     fs = gridfs.GridFS(self._db_handle)
