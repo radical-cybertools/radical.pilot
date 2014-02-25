@@ -57,9 +57,9 @@ if __name__ == "__main__":
 
         # Define a 2-core local pilot that runs for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
-        pdesc.resource = "alamo.futuregrid.org"
+        pdesc.resource = "localhost"
         pdesc.runtime = 10
-        pdesc.cores = 8
+        pdesc.cores = 2
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -114,16 +114,8 @@ if __name__ == "__main__":
             print "\n{0}".format(str(unit))
 
             # Get the stdout and stderr streams of the ComputeUnit.
-            #print "  STDOUT: {0}".format(unit.stdout)
-            #print "  STDERR: {0}".format(unit.stderr)
-
-        print "argn"
-
-        print "\n\n\n"
-        print str(pilot)
-        print "\n\n\n"
-        print str(units[0])
-        print "\n\n\n"
+            print "  STDOUT: {0}".format(unit.stdout)
+            print "  STDERR: {0}".format(unit.stderr)
 
         # Cancel all pilots.
         pmgr.cancel_pilots()

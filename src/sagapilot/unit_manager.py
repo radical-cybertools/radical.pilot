@@ -393,7 +393,8 @@ class UnitManager(object):
 
                 self._worker.schedule_compute_units(
                     pilot_uid=pilot_id,
-                    units=units
+                    units=units,
+                    session=self._session
                 )
 
                 assert len(units) == len(uds)
@@ -485,7 +486,6 @@ class UnitManager(object):
             all_done = True
 
             for wu_state in self._worker.get_compute_unit_states():
-                #print "state: %s -- waiting for %s" % (wu_state, state)
                 if wu_state not in state:
                     all_done = False
                     break  # leave for loop

@@ -27,19 +27,66 @@ from sagapilot.utils.logger import logger
 # def transfer_input_func(unit_uid, session_dict, target_dir_url, transfer):
 
 
-def transfer_input_func(unit_uid, unit_sandbox, transfer):
+def transfer_input_func(pilot_uid, unit_uid, credentials, unit_sandbox, transfer):
     """ Transfers a set of task input files to a specific pilot.
     """
-    logger.warning("about to transfer %s to %s" % (transfer, unit_sandbox))
+    #logger.warning("about to transfer %s to %s (cred: %s)" % (transfer, unit_sandbox, credentials))
 
-    result = dict()
+    saga_session = saga.Session()
 
-    result["unit_uid"] = unit_uid
-    result["state"] = states.FAILED
-    result["log"] = ["transfer_input_func() not implemented"]
+    for cred_dict in credentials:
+        cred = SSHCredential.from_dict(cred_dict)
+        saga_session.add_context(cred._context)
+
+    logger.debug(
+        "Using credentials %s for input file transfer." % str(saga_session))
+
+    try:
+        log = []
+        # First, we need to create the WU's directory in case it doesn't exist yet.
+        wu_dir = saga.filesystem.Directory(
+            unit_sandbox,
+            flags=saga.filesystem.CREATE_PARENTS,
+            session=saga_session)
+        wu_dir.close()
+
+        logger.debug(
+            "Created/opened WorkUnit sandbox dir %s." % unit_sandbox)
+
+        # Next we copy all input files to the target machine
+        for t in transfer:
+            abs_t = os.path.abspath(t)
+
+            input_file_url = saga.Url("file://localhost/%s" % abs_t)
+            input_file = saga.filesystem.File(
+                input_file_url,
+                session=saga_session)
+            input_file.copy(unit_sandbox)
+            input_file.close()
+
+            log_msg = "Copied input file %s to %s" % (
+                input_file_url, unit_sandbox)
+
+            log.append(log_msg)
+            logger.debug(log_msg)
+
+        result = dict()
+        result["unit_uid"] = unit_uid
+        result["pilot_uid"] = pilot_uid
+        result["state"] = states.PENDING_EXECUTION
+        result["log"] = log
+
+    except Exception, ex:
+        log.append(str(ex))
+        logger.error("Couldn't transfer input file(s): %s", str(ex))
+
+        result = dict()
+        result["unit_uid"] = unit_uid
+        result["pilot_uid"] = pilot_uid
+        result["state"] = states.FAILED
+        result["log"] = log
 
     return result
-
 
 # ----------------------------------------------------------------------------
 #

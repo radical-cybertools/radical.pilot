@@ -63,7 +63,7 @@ def launch_pilot(pilot_uid, pilot_description,
 
         agent_dir = saga.filesystem.Directory(
             agent_dir_url,
-            saga.filesystem.CREATE_PARENTS)
+            saga.filesystem.CREATE_PARENTS, session=saga_session)
 
         agent_dir.close()
 

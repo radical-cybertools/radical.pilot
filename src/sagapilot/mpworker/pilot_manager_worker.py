@@ -327,9 +327,6 @@ class PilotManagerWorker(threading.Thread):
         # This is the base URL / 'sandbox' for the pilot!
         agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
 
-        # Convert the session to dict.
-        session_dict = session.as_dict()
-
         # Create a database entry for the new pilot.
         pilot_uid, pilot_json = self._db.insert_pilot(
             pilot_uid=pilot_uid,

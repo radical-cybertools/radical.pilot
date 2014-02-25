@@ -223,7 +223,12 @@ class UnitManagerWorker(threading.Thread):
                 description = request["description"]
 
                 transfer_result = self._worker_pool.apply_async(
-                    transfer_input_func, args=(request["unit_uid"], request["unit_sandbox"], description["input_data"])
+                    transfer_input_func, args=(
+                        request["pilot_uid"],
+                        request["unit_uid"],
+                        request["credentials"],
+                        request["unit_sandbox"],
+                        description["input_data"])
                 )
                 transfer_results.append(transfer_result)
 
@@ -246,8 +251,8 @@ class UnitManagerWorker(threading.Thread):
                     )
                     if result["state"] == state.PENDING_EXECUTION:
                         self._db.assign_compute_units_to_pilot(
-                            unit_uids=request["unit_uid"],
-                            pilot_uid=request["pilot_uid"]
+                            unit_uids=result["unit_uid"],
+                            pilot_uid=result["pilot_uid"]
                         )
                 else:
                     new_transfer_results.append(transfer_result)
@@ -400,10 +405,15 @@ class UnitManagerWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def schedule_compute_units(self, pilot_uid, units):
+    def schedule_compute_units(self, pilot_uid, units, session):
         """Request the scheduling of one or more ComputeUnits on a
            ComputePilot.
         """
+
+        # Get the credentials from the session.
+        cred_dict = []
+        for cred in session.credentials:
+            cred_dict.append(cred.as_dict())
 
         unit_descriptions = list()
         wu_transfer = list()
@@ -467,6 +477,7 @@ class UnitManagerWorker(threading.Thread):
                 self._transfer_requests.put(
                     {"pilot_uid":    pilot_uid,
                      "unit_uid":     unit.uid,
+                     "credentials":  cred_dict,
                      "unit_sandbox": results[unit.uid]["info"]["sandbox"],
                      "description":  unit.description}
                 )
