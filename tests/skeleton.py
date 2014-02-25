@@ -57,9 +57,10 @@ if __name__ == "__main__":
 
         # Define a 2-core local pilot that runs for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
-        pdesc.resource = "alamo.futuregrid.org"
+        pdesc.resource = "localhost"
         pdesc.runtime = 10
         pdesc.cores = 2
+        pdesc.sandbox = "/NON_EXISTING/tmp/SPPPPP"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

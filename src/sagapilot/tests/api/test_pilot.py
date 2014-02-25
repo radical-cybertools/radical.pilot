@@ -88,9 +88,9 @@ class TestPilot(unittest.TestCase):
 
         cpd = sagapilot.ComputePilotDescription()
         cpd.resource = "localhost"
-        cpd.cores = 1 
+        cpd.cores = 1
         cpd.runtime = 1
-        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
+        cpd.sandbox = "/non-/existing/directory..."
 
         try:
             pilot = pm.submit_pilots(pilot_descriptions=cpd)
@@ -102,7 +102,7 @@ class TestPilot(unittest.TestCase):
         cpd.resource = "localhost"
         cpd.cores = 100000000000  # This should fail - at least in 2014 ;-)
         cpd.runtime = 1
-        cpd.sandbox = "/non-existing/dir/"
+        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
         pilot.wait(sagapilot.states.FAILED, timeout=2.0*60)
