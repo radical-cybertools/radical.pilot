@@ -223,7 +223,7 @@ class UnitManagerWorker(threading.Thread):
                 description = request["description"]
 
                 transfer_result = self._worker_pool.apply_async(
-                    transfer_input_func, args=(request["unit_uid"], description["input_data"])
+                    transfer_input_func, args=(request["unit_uid"], request["unit_sandbox"], description["input_data"])
                 )
                 transfer_results.append(transfer_result)
 
@@ -465,9 +465,10 @@ class UnitManagerWorker(threading.Thread):
             for unit in wu_transfer:
                 transfer_units.append(pilot_uid)
                 self._transfer_requests.put(
-                    {"pilot_uid":   pilot_uid,
-                     "unit_uid":    unit.uid,
-                     "description": unit.description}
+                    {"pilot_uid":    pilot_uid,
+                     "unit_uid":     unit.uid,
+                     "unit_sandbox": results[unit.uid]["info"]["sandbox"],
+                     "description":  unit.description}
                 )
                 log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
                 self._set_state(unit.uid, state.PENDING_INPUT_TRANSFER, log)

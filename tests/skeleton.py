@@ -83,7 +83,7 @@ if __name__ == "__main__":
             cu.executable = "/bin/cat"
             cu.arguments = ["$INPUT1", "$INPUT2"]
             cu.cores = 1
-            #cu.input_data = ["./file1.dat", "./file2.dat"]
+            cu.input_data = ["./file1.dat", "./file2.dat"]
 
             compute_units.append(cu)
 
