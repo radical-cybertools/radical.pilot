@@ -127,7 +127,7 @@ setup_args = {
     'install_requires' : ['setuptools',
                           'saga-python',
                           'radical.utils',
-                          'motor',
+                          'pymongo>=2.5',
                           'python-hostlist'],
     'tests_require'    : ['setuptools', 'nose'],
     'test_suite'       : 'sagapilot.tests',
