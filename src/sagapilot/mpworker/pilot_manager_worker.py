@@ -307,22 +307,20 @@ class PilotManagerWorker(threading.Thread):
                     else:
                         url = fs.host
 
-                    #p = subprocess.Popen(
-                    #    ["ssh", url,  "pwd"],
-                    #    stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                    #)
-                    #workdir, err = p.communicate()
+                    p = subprocess.Popen(
+                        ["ssh", url,  "echo -n PWD: && pwd"],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    )
+                    out, err = p.communicate()
 
-                    shell = sups.PTYShell (saga.Url(fs), saga_session)
-                    ret, out, _ = shell.run_sync('pwd')
-
-                    if ret != 0:
-                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, out))
-                    else:
-                        workdir = out
+                    if 'PWD:' in out:
+                        workdir = out.split(":")[1]
                         logger.debug("Determined remote working directory for %s: %s" % (url, workdir))
                         found_dir_success = True
-                        break
+                        break 
+                    else:
+                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, out))
+
 
             if found_dir_success is False:
                 error_msg = "Couldn't determine remote working directory."

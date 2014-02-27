@@ -24,16 +24,16 @@ def cu_bulk_submit_test():
     print "Test: Adding CUs in bulks"
 
     try:
-        session = sagapilot.Session(database_url=DBURL)
-        pm = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
-        um = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN) 
-
         for i in [8, 16]:
 
             time_to_submission = []
             time_from_sub_to_start = []
             runtime = []
             for j in range(0, 1):
+
+                session = sagapilot.Session(database_url=DBURL)
+                pm = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
+                um = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN) 
 
                 compute_units = []
                 print "submitting %d CUs to pilot" % ( i*2 )
@@ -49,7 +49,7 @@ def cu_bulk_submit_test():
                 pd.resource = "hotel.futuregrid.org"
                 pd.cores = i
                 pd.runtime = 10
-                pd.cleanup = True
+                #pd.cleanup = True
                 pilot.append(pd)
 
                 pilot_object = pm.submit_pilots(pilot)
@@ -60,6 +60,8 @@ def cu_bulk_submit_test():
                     print " * [OK] Pilot %s submitted successfully" % (pilot_object)
 
                 um.add_pilots(pilot_object)
+
+                print "submitting CUS %s" % compute_units
                 um.submit_units(compute_units)
 
                 print "* Waiting for all compute units to finish..."
@@ -67,7 +69,7 @@ def cu_bulk_submit_test():
 
                 print "  FINISHED"
                 pm.cancel_pilots(pilot_object.uid)       
-                time.sleep(30)
+                time.sleep(1)
 
     except sagapilot.SagapilotException, ex:
         print "Error: %s" % ex
