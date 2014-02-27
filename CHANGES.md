@@ -1,3 +1,18 @@
+0.7 Release                                             Feb. 25. 2014
+---------------------------------------------------------------------
+
+* Added support for callbacks 
+* Added support for input file transfer !
+* Closed tickets:
+  - https://github.com/saga-project/saga-pilot/issues?milestone=8&page=1&state=closed
+
+
+0.6 Release                                             Feb. 24. 2014
+---------------------------------------------------------------------
+
+* BROKEN RELEASE
+
+
 0.5 Release                                             Feb. 06. 2014
 ---------------------------------------------------------------------
 
@@ -6,6 +21,7 @@
 * Support for CU stdout and stderr transfer via MongoDB GridFS
 * Closed tickets:
   - https://github.com/saga-project/saga-pilot/issues?milestone=7&page=1&state=closed
+
 
 0.4 Release 
 ---------------------------------------------------------------------

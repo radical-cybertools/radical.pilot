@@ -6,7 +6,6 @@ Unit Scheduler
 **************
 
 .. toctree::
-   :numbered:
 
 Introduction
 ------------

@@ -51,13 +51,13 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(unit_manager_obj, unit_id, unit_description):
+    def _create(unit_manager_obj, unit_uid, unit_description):
         """ PRIVATE: Create a new compute unit.
         """
         # create and return pilot object
         computeunit = ComputeUnit()
+        computeunit._uid = unit_uid
 
-        computeunit._uid = unit_id
         computeunit._description = unit_description
         computeunit._manager = unit_manager_obj
 
@@ -96,9 +96,11 @@ class ComputeUnit(object):
         obj_dict = {
             'uid':               self.uid,
             'state':             self.state,
+            'exit_code':         self.exit_code,
             'log':               self.log,
             'execution_details': self.execution_details,
             'submission_time':   self.submission_time,
+            'sandbox':           self.sandbox,
             'start_time':        self.start_time,
             'stop_time':         self.stop_time
         }
@@ -126,9 +128,6 @@ class ComputeUnit(object):
         **Returns:**
             * A unique identifier (string).
         """
-        if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
-
         # uid is static and doesn't change over the lifetime
         # of a pilot, hence it can be stored in a member var.
         return self._uid
@@ -136,11 +135,32 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
-    def stdout(self):
-        """Returns a snapshot of the executable's STDOUT stream.
+    def sandbox(self):
+        """Returns the full remote sandbox / working directory URL of this 
+        ComputeUnit.
 
         .. warning: This can become very inefficient for lare data volumes.
         """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json['info']['sandbox']
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def stdout(self):
+        """Returns a snapshot of the executable's STDOUT stream.
+
+        If this property is queried before the ComputeUnit has reached
+        'DONE' or 'FAILED' state it will return None.
+
+        .. warning: This can become very inefficient for lareg data volumes.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
         return self._worker.get_compute_unit_stdout(self.uid)
 
     # -------------------------------------------------------------------------
@@ -149,19 +169,22 @@ class ComputeUnit(object):
     def stderr(self):
         """Returns a snapshot of the executable's STDERR stream.
 
-        .. warning: This can become very inefficient for lare data volumes.
+        If this property is queried before the ComputeUnit has reached
+        'DONE' or 'FAILED' state it will return None.
+
+        .. warning: This can become very inefficient for large data volumes.
         """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
         return self._worker.get_compute_unit_stderr(self.uid)
 
     # -------------------------------------------------------------------------
     #
     @property
     def description(self):
-        """Returns the pilot description the pilot was started with.
+        """Returns the pilot description the ComputeUnit was started with.
         """
-        if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
-
         # description is static and doesn't change over the lifetime
         # of a pilot, hence it is stored as a member var.
         return self._description
@@ -170,7 +193,7 @@ class ComputeUnit(object):
     #
     @property
     def state(self):
-        """Returns the current state of the pilot.
+        """Returns the current state of the ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -181,8 +204,23 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
+    def exit_code(self):
+        """Returns the exit code of the ComputeUnit.
+
+        If this property is queried before the ComputeUnit has reached
+        'DONE' or 'FAILED' state it will return None.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState("Invalid instance.")
+
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json['info']['exit_code']
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def log(self):
-        """Returns the logs of the pilot.
+        """Returns the logs of the ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -194,7 +232,7 @@ class ComputeUnit(object):
     #
     @property
     def execution_details(self):
-        """Returns the exeuction location(s) of the pilot.
+        """Returns the exeuction location(s) of the ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -206,7 +244,7 @@ class ComputeUnit(object):
     #
     @property
     def submission_time(self):
-        """ Returns the time the compute unit was submitted.
+        """ Returns the time the ComputeUnit was submitted.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -218,7 +256,7 @@ class ComputeUnit(object):
     #
     @property
     def start_time(self):
-        """ Returns the time the compute unit was started on the backend.
+        """ Returns the time the ComputeUnit was started on the backend.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -230,7 +268,7 @@ class ComputeUnit(object):
     #
     @property
     def stop_time(self):
-        """ Returns the time the compute unit was stopped.
+        """ Returns the time the ComputeUnit was stopped.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -240,17 +278,24 @@ class ComputeUnit(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_state_callback(self, callback_func):
+    def register_callback(self, callback_func):
         """Registers a callback function that is triggered every time the
-        ComputePilot's state changes.
+        ComputeUnit's state changes.
+
+        All callback functions need to have the same signature::
+
+            def callback_func(obj, state)
+
+        where ``object`` is a handle to the object that triggered the callback
+        and ``state`` is the new state of that object.
         """
-        self._worker.register_unit_state_callback(self.uid, callback_func)
+        self._worker.register_unit_callback(self, callback_func)
 
     # -------------------------------------------------------------------------
     #
     def wait(self, state=[states.DONE, states.FAILED, states.CANCELED],
              timeout=None):
-        """Returns when the compute unit reaches a specific state or
+        """Returns when the ComputeUnit reaches a specific state or
         when an optional timeout is reached.
 
         **Arguments:**
@@ -298,7 +343,7 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     def cancel(self):
-        """Terminates the compute unit.
+        """Terminates the ComputeUnit.
 
         **Raises:**
 

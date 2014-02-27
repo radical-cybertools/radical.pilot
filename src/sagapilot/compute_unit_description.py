@@ -94,8 +94,8 @@ class ComputeUnitDescription (attributes.Attributes) :
 
         # I/O
         self._attributes_register(WORKING_DIRECTORY_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(INPUT_DATA,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(OUTPUT_DATA,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(INPUT_DATA,             None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(OUTPUT_DATA,            None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
         self._attributes_register(CORES,                  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)

@@ -1,5 +1,3 @@
-merzky@thinkie:~/saga/saga-pilot/benchmark (sp1 *%>) $ ruby redis_vs_mongodb.rb -h ec2-184-72-89-141.compute-1.amazonaws.com
-Running benchmarks against host ec2-184-72-89-141.compute-1.amazonaws.com
 Each benchmark iterates 100 times for each operation
 
 Redis

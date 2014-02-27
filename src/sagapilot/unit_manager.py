@@ -1,4 +1,4 @@
-#pylint: disable=C0301, C0103, W0212
+    #pylint: disable=C0301, C0103, W0212
 
 """
 .. module:: sagapilot.unit_manager
@@ -22,6 +22,8 @@ from sagapilot.scheduler import get_scheduler
 
 import sagapilot.states as states
 import sagapilot.exceptions as exceptions
+
+from bson import ObjectId
 
 
 # -----------------------------------------------------------------------------
@@ -348,7 +350,6 @@ class UnitManager(object):
                 raise exceptions.SagapilotException(
                     "Internal error - unit scheduler failed: %s" % e)
 
-            units = list()  # compute unit instances to return
             unscheduled = list()  # unscheduled unit descriptions
 
             # we copy all unit descriptions into unscheduled, and then remove
@@ -357,6 +358,8 @@ class UnitManager(object):
 
             # submit to all pilots which got something submitted to
             for pilot_id in schedule.keys():
+
+                units = list()  # compute unit instances to return
 
                 # sanity check on scheduler provided information
                 if not pilot_id in self.list_pilots():
@@ -378,27 +381,23 @@ class UnitManager(object):
                     # this unit is not unscheduled anymore...
                     unscheduled.remove(ud)
 
-                # pass the unit to the worker process. in return we
-                # get the unit's object id.
+                    unit_uid = str(ObjectId())
 
-                unit_uids = self._worker.schedule_compute_units(
-                    pilot_uid=pilot_id,
-                    unit_descriptions=uds
-                )
-
-                logger.debug("Scheduled ComputeUnits %s to ComputePilot '%s'."
-                             % (unit_uids, pilot_id))
-
-                assert len(unit_uids) == len(uds)
-
-                for idx in range(0, len(uds)):
                     # create a new ComputeUnit object
                     compute_unit = ComputeUnit._create(
-                        unit_id=unit_uids[idx],
-                        unit_description=uds[idx],
+                        unit_uid=unit_uid,
+                        unit_description=ud,
                         unit_manager_obj=self
                     )
                     units.append(compute_unit)
+
+                self._worker.schedule_compute_units(
+                    pilot_uid=pilot_id,
+                    units=units,
+                    session=self._session
+                )
+
+                assert len(units) == len(uds)
 
             if len(units) == 1:
                 return units[0]
@@ -487,7 +486,6 @@ class UnitManager(object):
             all_done = True
 
             for wu_state in self._worker.get_compute_unit_states():
-                #print "state: %s -- waiting for %s" % (wu_state, state)
                 if wu_state not in state:
                     all_done = False
                     break  # leave for loop
@@ -523,3 +521,19 @@ class UnitManager(object):
             unit_ids = [unit_ids]
 
         raise Exception("Not implemented")
+
+    # -------------------------------------------------------------------------
+    #
+    def register_callback(self, callback_function):
+        """Registers a new callback function with the UnitManager.
+        Manager-level callbacks get called if any of the ComputeUnits managed
+        by the PilotManager change their state.
+
+        All callback functions need to have the same signature::
+
+            def callback_func(obj, state)
+
+        where ``object`` is a handle to the object that triggered the callback
+        and ``state`` is the new state of that object.
+        """
+        self._worker.register_manager_callback(callback_function)

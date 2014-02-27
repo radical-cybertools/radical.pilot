@@ -183,7 +183,6 @@ ComputePilot also has a unique identifier (``uid``)
         *Knowing where to find these files might come in handy for
         debugging  purposes but it is not required for regular SAGA-Pilot usage.*
 
-
 Creating ComputeUnits (Tasks)
 -----------------------------
 
@@ -220,6 +219,72 @@ For example, you can create a workload of 8 '/bin/sleep' ComputeUnits like this:
           however possible to run multiple commands in one ComputeUnit. This is described
           in :ref:`chapter_example_multiple_commands`. If you want to run multi-core 
           executables, like for example MPI programs, check out :ref:`chapter_example_multicore`.
+
+
+Input- / Output-File Transfer
+-----------------------------
+
+Often, a computational tasks doesn't just consist of an executable with some 
+arguments but also needs some input data. For this reason, a 
+:class:`sagapilot.ComputeUnitDescription` allows the definition of ``input_data``
+and ``output_data``:
+
+    * ``input_data`` defines a list of local files that need to be transferred 
+      to the execution resource before a ComputeUnit can start running. 
+
+    * ``output_data`` defines a list of remote files that need to be
+      transferred back to the local machine after a ComputeUnit has finished
+      execution. 
+
+Furthermore, a ComputeUnit provides two properties 
+:data:`sagapilot.ComputeUnit.stdout` and :data:`sagapilot.ComputeUnit.stderr`
+that can be used to access a ComputeUnit's STDOUT and STDERR files after it
+has finished execution. 
+
+Example: 
+
+.. code-block:: python
+
+      cu = sagapilot.ComputeUnitDescription()
+      cu.executable = "/bin/cat"
+      cu.arguments = ["file1.dat", "file2.dat"]
+      cu.cores = 1
+      cu.input_data = ["./file1.dat", "./file2.dat"]
+
+
+Adding Callbacks 
+----------------
+
+Events in SAGA-Pilot are mostly asynchronous as they happen one one or more
+distributed components, namely the ComputePilot agents. At any time during the 
+execution of a workload, ComputePilots and ComputeUnits can begin or finish 
+execution or fail with an error. 
+
+SAGA-Pilot provides callbacks as a method to react to these event
+asynchronously when they occur. CommputePilots, PilotManagers, ComputeUnits
+and UnitManagers all have a ``register_callbacks`` method:
+
+  * :func:`sagapilot.UnitManager.register_callback`
+  * :func:`sagapilot.PilotManager.register_callback`
+  * :func:`sagapilot.ComputePilot.register_callback`
+  * :func:`sagapilot.ComputeUnit.register_callback`
+
+A simple callback that prints the state of all pilots would look something 
+like this:
+
+.. code-block:: python
+
+      def pilot_state_cb(pilot, state):
+          print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(pilot.uid, state)
+
+      pmgr = sagapilot.PilotManager(session=session)
+      pmgr.register_callback(pilot_state_cb)
+
+
+.. note:: Using callbacks can greatly improve the performance of an application
+          since it eradicates the  necessity for global / blocking ``wait()`` 
+          calls and state polling. More about callbacks can be read in 
+          :ref:`chapter_programming_with_callbacks`.
 
 
 Scheduling ComputeUnits 
@@ -336,7 +401,7 @@ Now that you understand the basic mechanics of SAGA-Python, it's time to dive in
 The Complete Example
 --------------------
 
-After putting it all together, your first SAGA-Pilot application will look somewhat 
-like the script below.
+Below is a complete and working example that puts together everything we
+discussed in this section. You can download the sources from :download:`here <../../../examples/getting_started.py>`.
 
 .. literalinclude:: ../../../examples/getting_started.py

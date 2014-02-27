@@ -590,7 +590,6 @@ class ExecWorker(multiprocessing.Process):
                                         stdout_id = fs.put(stdout_f.read(), filename=stdout)
                                         self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
 
-
                                 stderr = "%s/STDERR" % workdir
                                 if os.path.isfile(stderr):
                                     fs = gridfs.GridFS(self._db_handle)
@@ -817,7 +816,7 @@ class Agent(threading.Thread):
                             if wu["description"]["working_directory_priv"] is not None:
                                 task_dir_name = wu["description"]["working_directory_priv"]
                             else:
-                                task_dir_name = "%s/task-%s" % (self._workdir, str(wu["_id"]))
+                                task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
                             task = Task(uid         =str(wu["_id"]), 
                                         executable  = wu["description"]["executable"], 
@@ -1083,16 +1082,15 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Launch the agent thread
     try:
-        agent = Agent(logger              = logger,
-                      exec_env            = exec_env,
-                      workdir             = options.workdir, 
-                      launch_method       = options.launch_method, 
-                      pilot_id            = options.pilot_id,
-                      pilot_collection    = mongo_p,
-                      workunit_collection = mongo_w,
-                      runtime             = options.runtime,
-                      db_handle           = mongo_db
-        )
+        agent = Agent(logger=logger,
+                      exec_env=exec_env,
+                      workdir=options.workdir,
+                      launch_method=options.launch_method,
+                      pilot_id=options.pilot_id,
+                      pilot_collection=mongo_p,
+                      workunit_collection=mongo_w,
+                      runtime=options.runtime,
+                      db_handle=mongo_db)
 
         agent.start()
         agent.join()
@@ -1108,4 +1106,3 @@ if __name__ == "__main__":
 
         logger.error("Caught keyboard interrupt. EXITING")
         agent.stop()
-

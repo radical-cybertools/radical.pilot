@@ -10,6 +10,9 @@ if DBURL is None:
     print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
+          "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
+
 
 #------------------------------------------------------------------------------
 #
@@ -45,7 +48,7 @@ if __name__ == "__main__":
         session = sagapilot.Session(database_url=DBURL)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = sagapilot.PilotManager(session=session)
+        pmgr = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -56,7 +59,8 @@ if __name__ == "__main__":
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource = "localhost"
         pdesc.runtime = 10
-        pdesc.cores = 200
+        pdesc.cores = 2
+        pdesc.sandbox = "/NON_EXISTING/tmp/SPPPPP"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

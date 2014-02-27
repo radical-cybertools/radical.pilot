@@ -6,7 +6,6 @@ API Reference
 *************
 
 .. toctree::
-   :numbered:
 
 Sessions and Security Contexts
 ==============================

@@ -57,20 +57,20 @@ class ComputePilot (object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(pilot_manager_obj, pilot_uid, pilot_description):
+    def _create(pilot_manager_obj, pilot_description):
         """ PRIVATE: Create a new pilot.
         """
         # Create and return pilot object.
         pilot = ComputePilot()
 
-        pilot._uid = pilot_uid
+        #pilot._uid = pilot_uid
         pilot._description = pilot_description
         pilot._manager = pilot_manager_obj
 
         # Pilots use the worker of their parent manager.
         pilot._worker = pilot._manager._worker
 
-        logger.info("Created new ComputePilot %s" % str(pilot))
+        #logger.info("Created new ComputePilot %s" % str(pilot))
         return pilot
 
     # -------------------------------------------------------------------------
@@ -108,6 +108,7 @@ class ComputePilot (object):
             'uid':             self.uid,
             'state':           self.state,
             'log':             self.log,
+            'sandbox':         self.sandbox,
             'resource':        self.resource,
             'submission_time': self.submission_time,
             'start_time':      self.start_time,
@@ -135,9 +136,6 @@ class ComputePilot (object):
         **Returns:**
             * A unique identifier (string).
         """
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
-
         return self._uid
 
     # -------------------------------------------------------------------------
@@ -146,10 +144,22 @@ class ComputePilot (object):
     def description(self):
         """Returns the pilot description the pilot was started with.
         """
+        return self._description
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def sandbox(self):
+        """Returns the Pilot's 'sandbox' / working directory url.
+
+        **Returns:**
+            * A URL string.
+        """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
-        return self._description
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        return pilot_json['info']['sandbox']
 
     # -------------------------------------------------------------------------
     #
@@ -201,16 +211,13 @@ class ComputePilot (object):
     def pilot_manager(self):
         """ Returns the pilot manager object for this pilot.
         """
-        if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
-
         return self._manager
 
     # -------------------------------------------------------------------------
     #
     @property
     def unit_managers(self):
-        """ Returns the pilot manager object for this pilot.
+        """ Returns the unit manager object UIDs for this pilot.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
@@ -280,11 +287,18 @@ class ComputePilot (object):
 
     # -------------------------------------------------------------------------
     #
-    def register_state_callback(self, callback_func):
+    def register_callback(self, callback_func):
         """Registers a callback function that is triggered every time the
         ComputePilot's state changes.
+
+        All callback functions need to have the same signature::
+
+            def callback_func(obj, state)
+
+        where ``object`` is a handle to the object that triggered the callback
+        and ``state`` is the new state of that object.
         """
-        self._worker.register_pilot_state_callback(self.uid, callback_func)
+        self._worker.register_pilot_callback(self, callback_func)
 
     # -------------------------------------------------------------------------
     #
@@ -326,6 +340,7 @@ class ComputePilot (object):
         start_wait = time.time()
         # the self.state property pulls the state from the back end.
         new_state = self.state
+
         while new_state not in state:
             time.sleep(1)
             new_state = self.state

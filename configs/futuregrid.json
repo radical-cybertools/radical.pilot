@@ -27,7 +27,6 @@
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
         "task_launch_mode"   : "MPIRUN",
         "valid_roots"        : ["/N"]
-
     },
 
     "hotel.futuregrid.org": {
