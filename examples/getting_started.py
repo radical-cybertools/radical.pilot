@@ -55,8 +55,8 @@ if __name__ == "__main__":
         # Define a 2-core local pilot that runs for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource = "localhost"
-        pdesc.runtime = 10
-        pdesc.cores = 200
+        pdesc.runtime = 5
+        pdesc.cores = 2
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
