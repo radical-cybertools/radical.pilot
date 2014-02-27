@@ -27,6 +27,7 @@ import weakref
 from multiprocessing import Pool
 
 from radical.utils import which
+import saga.utils.pty_shell as sups
 
 import sagapilot.states as states
 from sagapilot.credentials import SSHCredential
@@ -268,10 +269,13 @@ class PilotManagerWorker(threading.Thread):
         """Register a new pilot start request with the worker.
         """
 
+        saga_session = saga.Session()
+
         # Get the credentials from the session.
         cred_dict = []
         for cred in session.credentials:
             cred_dict.append(cred.as_dict())
+            saga_session.add_context(cred._context)
 
         # create a new UID for the pilot
         pilot_uid = bson.ObjectId()
@@ -303,15 +307,19 @@ class PilotManagerWorker(threading.Thread):
                     else:
                         url = fs.host
 
-                    p = subprocess.Popen(
-                        ["ssh", url,  "pwd"],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                    )
-                    workdir, err = p.communicate()
+                    #p = subprocess.Popen(
+                    #    ["ssh", url,  "pwd"],
+                    #    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    #)
+                    #workdir, err = p.communicate()
 
-                    if err != "":
-                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, err))
+                    shell = sups.PTYShell (saga.Url(fs), saga_session)
+                    ret, out, _ = shell.run_sync('pwd')
+
+                    if ret != 0:
+                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, out))
                     else:
+                        workdir = out
                         logger.debug("Determined remote working directory for %s: %s" % (url, workdir))
                         found_dir_success = True
                         break
