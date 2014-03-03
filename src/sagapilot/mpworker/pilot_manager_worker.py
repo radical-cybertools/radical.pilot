@@ -12,9 +12,6 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-#pylint: disable=C0301, C0103
-#pylint: disable=W0212
-
 import os
 import time
 import saga
@@ -383,7 +380,7 @@ class PilotManagerWorker(threading.Thread):
         # state. To partially address this shortcomming we call the callback
         # with the current ComputePilot state as soon as it is registered.
         self.call_callbacks(
-            pilot,
+            pilot.uid,
             self._shared_data[pilot_uid]["data"]["info"]["state"]
         )
 
