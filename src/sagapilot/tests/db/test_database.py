@@ -4,6 +4,7 @@
 import unittest
 
 import os
+import sys
 import uuid
 from copy import deepcopy
 from sagapilot.db import Session
