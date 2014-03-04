@@ -51,7 +51,7 @@ def transfer_input_func(pilot_uid, unit_uid, credentials, unit_sandbox, transfer
         wu_dir.close()
 
         logger.debug(
-            "Created/opened WorkUnit sandbox dir %s." % unit_sandbox)
+            "Created/opened ComputeUnit sandbox dir %s." % unit_sandbox)
 
         # Next we copy all input files to the target machine
         for t in transfer:
