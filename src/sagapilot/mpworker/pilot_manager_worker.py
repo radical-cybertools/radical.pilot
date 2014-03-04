@@ -293,9 +293,10 @@ class PilotManagerWorker(threading.Thread):
                 # remote machine.
                 import subprocess
 
-                usernames = [None]
+                usernames = list()
                 for cred in cred_dict:
                     usernames.append(cred["user_id"])
+                usernames.append(None) # last but not least, we test without a user name.
 
                 # We have mutliple usernames we can try... :/
                 for username in usernames:
