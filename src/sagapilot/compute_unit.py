@@ -100,7 +100,7 @@ class ComputeUnit(object):
             'log':               self.log,
             'execution_details': self.execution_details,
             'submission_time':   self.submission_time,
-            'sandbox':           self.sandbox,
+            'working_directory': self.working_directory,
             'start_time':        self.start_time,
             'stop_time':         self.stop_time
         }
@@ -135,11 +135,8 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
-    def sandbox(self):
-        """Returns the full remote sandbox / working directory URL of this 
-        ComputeUnit.
-
-        .. warning: This can become very inefficient for lare data volumes.
+    def working_directory(self):
+        """Returns the full working directory URL of this ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")

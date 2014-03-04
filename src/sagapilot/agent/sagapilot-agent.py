@@ -16,6 +16,7 @@ import ast
 import sys
 import time
 import errno
+import pipes
 import Queue
 import signal
 import gridfs
@@ -576,7 +577,7 @@ class ExecWorker(multiprocessing.Process):
                                 else:
                                     state = 'Done'
 
-                                # upload stdout and stderr to GridFF
+                                # upload stdout and stderr to GridFS
                                 workdir = self._slots[host][slot].task.workdir
                                 task_id = self._slots[host][slot].task.uid
 
@@ -818,6 +819,8 @@ class Agent(threading.Thread):
                             else:
                                 task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
+                            self._log.error("setting task workdir to %s" % task_dir_name)
+
                             task = Task(uid         =str(wu["_id"]), 
                                         executable  = wu["description"]["executable"], 
                                         arguments   = wu["description"]["arguments"],
@@ -864,7 +867,6 @@ class _Process(subprocess.Popen):
         self._task = task
         self._log  = logger
 
-        # Assemble command line
         cmdline = str()
 
         # Based on the launch method we use different, well, launch methods
@@ -873,7 +875,7 @@ class _Process(subprocess.Popen):
             pass
 
         if launch_method == LAUNCH_METHOD_MPIRUN:
-            cmdline =  launch_command
+            cmdline = launch_command
             cmdline += " -np %s -host %s" % (str(task.numcores), host)
 
         elif launch_method == launch_command:
@@ -885,10 +887,13 @@ class _Process(subprocess.Popen):
             cmdline += " %s " % host
 
         # task executable and arguments
-        cmdline += " %s " % task.executable
+        payload = str(" cd %s && " % task.workdir)
+        payload += " %s " % task.executable
         if task.arguments is not None:
             for arg in task.arguments:
-                cmdline += " %s " % arg
+                payload += " %s " % arg
+        
+        cmdline += "%s" % payload
 
         self.stdout_filename = task.stdout
         self._stdout_file_h  = open(self.stdout_filename, "w")
@@ -896,7 +901,7 @@ class _Process(subprocess.Popen):
         self.stderr_filename = task.stderr
         self._stderr_file_h  = open(self.stderr_filename, "w")
 
-        self._log.info("Launching task %s via %s (env: %s)" % (task.uid, cmdline, task.environment))
+        self._log.info("Launching task %s via %s (env: %s) in %s" % (task.uid, cmdline, task.environment, task.workdir))
 
         super(_Process, self).__init__(args=cmdline,
                                        bufsize=0,
@@ -1082,9 +1087,14 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Launch the agent thread
     try:
+        if options.workdir is '.':
+            workdir = os.getcwd()
+        else:
+            workdir = options.workdir
+
         agent = Agent(logger=logger,
                       exec_env=exec_env,
-                      workdir=options.workdir,
+                      workdir=workdir,
                       launch_method=options.launch_method,
                       pilot_id=options.pilot_id,
                       pilot_collection=mongo_p,
