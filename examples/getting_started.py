@@ -55,8 +55,8 @@ if __name__ == "__main__":
         # Define a 2-core local pilot that runs for 10 minutes.
         pdesc = sagapilot.ComputePilotDescription()
         pdesc.resource = "localhost"
-        pdesc.runtime = 10
-        pdesc.cores = 200
+        pdesc.runtime = 5
+        pdesc.cores = 2
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -78,7 +78,7 @@ if __name__ == "__main__":
             cu = sagapilot.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
             cu.executable = "/bin/cat"
-            cu.arguments = ["$INPUT1", "$INPUT2"]
+            cu.arguments = ["file1.dat", "file2.dat"]
             cu.cores = 1
             cu.input_data = ["./file1.dat", "./file2.dat"]
 

@@ -12,9 +12,6 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-#pylint: disable=C0301, C0103
-#pylint: disable=W0212
-
 import os
 import time
 import saga
@@ -27,6 +24,7 @@ import weakref
 from multiprocessing import Pool
 
 from radical.utils import which
+import saga.utils.pty_shell as sups
 
 import sagapilot.states as states
 from sagapilot.credentials import SSHCredential
@@ -268,10 +266,13 @@ class PilotManagerWorker(threading.Thread):
         """Register a new pilot start request with the worker.
         """
 
+        saga_session = saga.Session()
+
         # Get the credentials from the session.
         cred_dict = []
         for cred in session.credentials:
             cred_dict.append(cred.as_dict())
+            saga_session.add_context(cred._context)
 
         # create a new UID for the pilot
         pilot_uid = bson.ObjectId()
@@ -304,17 +305,19 @@ class PilotManagerWorker(threading.Thread):
                         url = fs.host
 
                     p = subprocess.Popen(
-                        ["ssh", url,  "pwd"],
+                        ["ssh", url,  "echo -n PWD: && pwd"],
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     )
-                    workdir, err = p.communicate()
+                    out, err = p.communicate()
 
-                    if err != "":
-                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, err))
-                    else:
+                    if 'PWD:' in out:
+                        workdir = out.split(":")[1]
                         logger.debug("Determined remote working directory for %s: %s" % (url, workdir))
                         found_dir_success = True
-                        break
+                        break 
+                    else:
+                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, out))
+
 
             if found_dir_success is False:
                 error_msg = "Couldn't determine remote working directory."
@@ -377,7 +380,7 @@ class PilotManagerWorker(threading.Thread):
         # state. To partially address this shortcomming we call the callback
         # with the current ComputePilot state as soon as it is registered.
         self.call_callbacks(
-            pilot,
+            pilot.uid,
             self._shared_data[pilot_uid]["data"]["info"]["state"]
         )
 

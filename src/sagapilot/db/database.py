@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import os 
+import saga
 import datetime
 import gridfs
 from pymongo import *
@@ -652,7 +653,12 @@ class Session():
 
         for unit in units:
 
-            unit_sandbox = pilot_sandbox+"/unit-"+unit.uid
+            working_directory = saga.Url(pilot_sandbox)
+
+            if unit.description.working_directory_priv is not None:
+                working_directory.path = unit.description.working_directory_priv
+            else:
+                working_directory.path += "/unit-"+unit.uid
 
             unit_json = {
                 "_id":         ObjectId(unit.uid),
@@ -668,7 +674,7 @@ class Session():
                     "finished":    None,
                     "exec_locs":   None,
                     "exit_code":   None,
-                    "sandbox":     unit_sandbox,
+                    "sandbox":     str(working_directory),
                     "stdout_id":   None,
                     "stderr_id":   None,
                     "log":         unit_log
