@@ -78,7 +78,7 @@ if __name__ == "__main__":
             cu = sagapilot.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
             cu.executable = "/bin/cat"
-            cu.arguments = ["file1.dat", "file2.dat"]
+            cu.arguments = ["$INPUT1", "$INPUT2"]
             cu.cores = 1
             cu.input_data = ["./file1.dat", "./file2.dat"]
 

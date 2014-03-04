@@ -786,55 +786,62 @@ class Agent(threading.Thread):
                 try: 
                     p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
 
-                    # Check if there's a command waiting
-                    command = p_cursor[0]['command']
-                    if command is not None:
-                        self._log.info("Received new command: %s" % command)
-                        if command.lower() == "cancel":
-                            # if we receive 'cancel', we terminate the loop.
-                            self._p.update(
-                                {"_id": ObjectId(self._pilot_id)}, 
-                                {"$set": {"info.state"     : "Canceled",
-                                          "info.finished"   : datetime.datetime.utcnow()}})
-                            return # leave loop immediatedly
+                    if p_cursor.count() != 1:
+                        self._log.info("Pilot entry %s has disappeared from the database." % self._pilot_id)
+                        self._p.update(
+                            {"_id": ObjectId(self._pilot_id)}, 
+                            {"$set": {"info.state"     : "Done",
+                                      "info.finished"   : datetime.datetime.utcnow()}})
+                        break
 
-                    # Check the pilot's workunit queue
-                    new_wu_ids = p_cursor[0]['wu_queue']
+                    else:
+                        # Check if there's a command waiting
+                        command = p_cursor[0]['command']
+                        if command is not None:
+                            self._log.info("Received new command: %s" % command)
+                            if command.lower() == "cancel":
+                                # if we receive 'cancel', we terminate the loop.
+                                self._p.update(
+                                    {"_id": ObjectId(self._pilot_id)}, 
+                                    {"$set": {"info.state"     : "Canceled",
+                                              "info.finished"   : datetime.datetime.utcnow()}})
+                                break
 
-                    # There are new work units in the wu_queue on the database.
-                    # Get the corresponding wu entries
-                    if len(new_wu_ids) > 0:
-                        self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
-                        wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
-                        for wu in wu_cursor:
-                            # Create new task objects and put them into the 
-                            # task queue
+                        # Check the pilot's workunit queue
+                        new_wu_ids = p_cursor[0]['wu_queue']
 
-                            # WorkingDirectoryPriv is defined, we override the 
-                            # standard working directory schema. 
-                            # NOTE: this is not a good idea and just implemented
-                            #       to support some last minute TROY experiments.
-                            if wu["description"]["working_directory_priv"] is not None:
-                                task_dir_name = wu["description"]["working_directory_priv"]
-                            else:
-                                task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
+                        # There are new work units in the wu_queue on the database.
+                        # Get the corresponding wu entries
+                        if len(new_wu_ids) > 0:
+                            self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
+                            wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
+                            for wu in wu_cursor:
+                                # Create new task objects and put them into the 
+                                # task queue
 
-                            self._log.error("setting task workdir to %s" % task_dir_name)
+                                # WorkingDirectoryPriv is defined, we override the 
+                                # standard working directory schema. 
+                                # NOTE: this is not a good idea and just implemented
+                                #       to support some last minute TROY experiments.
+                                if wu["description"]["working_directory_priv"] is not None:
+                                    task_dir_name = wu["description"]["working_directory_priv"]
+                                else:
+                                    task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
-                            task = Task(uid         =str(wu["_id"]), 
-                                        executable  = wu["description"]["executable"], 
-                                        arguments   = wu["description"]["arguments"],
-                                        environment = wu["description"]["environment"],
-                                        workdir     = task_dir_name, 
-                                        stdout      = task_dir_name+'/STDOUT', 
-                                        stderr      = task_dir_name+'/STDERR')
+                                task = Task(uid         =str(wu["_id"]), 
+                                            executable  = wu["description"]["executable"], 
+                                            arguments   = wu["description"]["arguments"],
+                                            environment = wu["description"]["environment"],
+                                            workdir     = task_dir_name, 
+                                            stdout      = task_dir_name+'/STDOUT', 
+                                            stderr      = task_dir_name+'/STDERR')
 
-                            self._task_queue.put(task)
+                                self._task_queue.put(task)
 
-                        # now we can remove the entries from the pilot's wu_queue
-                        # PRINT TODO
-                        self._p.update({"_id": ObjectId(self._pilot_id)}, 
-                                       {"$pullAll": { "wu_queue": new_wu_ids}})
+                            # now we can remove the entries from the pilot's wu_queue
+                            # PRINT TODO
+                            self._p.update({"_id": ObjectId(self._pilot_id)}, 
+                                           {"$pullAll": { "wu_queue": new_wu_ids}})
 
                 except Exception, ex:
                     self._log.error("Error while checking for new work units: %s. \n%s" % (ex, traceback.format_exc()))
