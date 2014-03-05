@@ -25,6 +25,20 @@ from sagapilot.utils.logger import logger
 class ComputePilot (object):
     """A ComputePilot represent a resource overlay on a local or remote
        resource.
+
+    .. note:: A ComputePilot cannot be created directly. The factory method
+              :meth:`sagapilot.PilotManager.submit_pilots` has to be used instead.
+
+                **Example**::
+
+                      pm = sagapilot.PilotManager(session=s)
+
+                      pd = sagapilot.ComputePilotDescription()
+                      pd.resource = "localhost"
+                      pd.cores    = 2
+                      pd.runtime  = 5 # minutes
+
+                      pilot = pm.submit_pilots(pd)
     """
 
     # -------------------------------------------------------------------------

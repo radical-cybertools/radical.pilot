@@ -25,6 +25,19 @@ import sagapilot.exceptions as exceptions
 class ComputeUnit(object):
     """A ComputeUnit represent a 'task' that is executed on a ComputePilot.
     ComputeUnits allow to control and query the state of this task.
+
+    .. note:: A ComputeUnit cannot be created directly. The factory method
+              :meth:`sagapilot.UnitManager.submit_units` has to be used instead.
+
+                **Example**::
+
+                      umgr = sagapilot.UnitManager(session=s)
+
+                      ud = sagapilot.ComputeUnitDescription()
+                      ud.executable = "/bin/date"
+                      ud.cores      = 1
+
+                      unit = umgr.submit_units(ud)
     """
 
     # -------------------------------------------------------------------------
