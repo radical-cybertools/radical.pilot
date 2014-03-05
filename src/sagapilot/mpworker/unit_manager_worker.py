@@ -141,10 +141,9 @@ class UnitManagerWorker(threading.Thread):
         """Wrapper function to call all all relevant callbacks, on unit-level
         as well as manager-level.
         """
-
         for cb in self._shared_data[unit_id]['callbacks']:
             try:
-                cb(self._shared_data[unit_id]['facade_object'](),
+                cb(self._shared_data[unit_id]['facade_object'],
                    new_state)
             except Exception, ex:
                 logger.error(
@@ -154,7 +153,7 @@ class UnitManagerWorker(threading.Thread):
         # call those as well!
         for cb in self._manager_callbacks:
             try:
-                cb(self._shared_data[unit_id]['facade_object'](),
+                cb(self._shared_data[unit_id]['facade_object'],
                    new_state)
             except Exception, ex:
                 logger.error(
@@ -319,7 +318,7 @@ class UnitManagerWorker(threading.Thread):
         # Add the facade object if missing, e.g., after a re-connect.
         if self._shared_data[unit_uid]['facade_object'] is None:
             self._shared_data_lock.acquire()
-            self._shared_data[unit_uid]['facade_object'] = weakref.ref(unit)
+            self._shared_data[unit_uid]['facade_object'] = unit #weakref.ref(unit)
             self._shared_data_lock.release()
 
         # Callbacks can only be registered when the ComputeAlready has a
@@ -450,7 +449,7 @@ class UnitManagerWorker(threading.Thread):
             self._shared_data[unit.uid] = {
                 'data':          results[unit.uid],
                 'callbacks':     [],
-                'facade_object': weakref.ref(unit)
+                'facade_object': unit #weakref.ref(unit)
             }
 
         # Bulk-add all non-transfer units-
