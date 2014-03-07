@@ -281,6 +281,10 @@ class UnitManagerWorker(threading.Thread):
                     }
                     self._shared_data_lock.release()
 
+                self._shared_data_lock.acquire()
+                self._shared_data[unit_id]["data"] = unit
+                self._shared_data_lock.release()
+
                 if new_state != old_state:
                     # On a state change, we fire zee callbacks.
                     logger.info("ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
@@ -288,10 +292,6 @@ class UnitManagerWorker(threading.Thread):
                     # The state of the unit has changed, We call all
                     # unit-level callbacks to propagate this.
                     self.call_callbacks(unit_id, new_state)
-
-                self._shared_data_lock.acquire()
-                self._shared_data[unit_id]["data"] = unit
-                self._shared_data_lock.release()
 
             # After the first iteration, we are officially initialized!
             if not self._initialized.is_set():
