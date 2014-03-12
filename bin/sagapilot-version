@@ -7,4 +7,6 @@
 #
 # This script returns the version.
 #
+
 python -c "import sagapilot; print sagapilot.version"
+
