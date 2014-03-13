@@ -5,7 +5,7 @@
 # Copyright 2013-2014, radical@rutgers.edu
 # License under the MIT License
 #
-# This script launches a SAGA-Pilot compute pilot.
+# This script launches a radical.pilot compute pilot.
 #
 
 # -----------------------------------------------------------------------------
