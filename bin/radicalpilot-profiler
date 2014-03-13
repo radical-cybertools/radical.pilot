@@ -1,0 +1,171 @@
+#!/usr/bin/env python
+
+"""
+.. module:: sagapilot-profiler
+   :platform: Unix
+   :synopsis: A simple runtime profiler for SAGA-Pilot.
+
+.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+"""
+
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+import sys
+import sagapilot
+import logging
+import optparse
+import pprint
+
+def get_data(logger, session_id, database_url, database_name):
+    """Returns timing data for pilots and compute units.
+    """
+    # pilot data is a list of dictionaries for each pilot:
+    #[
+    #    {  'id'     : <ID>,
+    #       'name'   : <NAME>,
+    #       'cores'  : <CORES_PER_NODE>
+    #       'nodes'  : ['node1', 'node2', 'node3'], 
+    #       'timing' : { 
+    #           'scheduled': <TIME>, 
+    #           'started'  : <TIME>, 
+    #           'stopped'  : <TIME>
+    #        } 
+    #    }
+    #]
+    pilot_info = []
+
+    task_data  = []
+
+
+    try: 
+        session = sagapilot.Session(
+            session_uid   = session_id,
+            database_url  = database_url,
+            database_name = database_name
+        )
+        logger.info("Connected to session %s" % session)
+
+        # ------------------------------------------------------------
+        # PILOTS
+        for pmgr in session.get_pilot_managers():
+            for pilot in pmgr.get_pilots():
+                #logger.info("Found pilot: %s" % pilot)
+
+                res_details = pilot.resource_details
+
+                pilot_info.append({
+                    'id'             : pilot.uid,
+                    'description'    : pilot.description,
+                    'cores_per_node' : res_details['cores_per_node'],
+                    'nodes'          : res_details['nodes'],
+                    'timing'         : {
+                          'scheduled'    : pilot.submission_time,
+                          'started'      : pilot.start_time,
+                          'stopped'      : pilot.stop_time,
+                    } 
+                })
+
+        #pp = pprint.PrettyPrinter(indent=4)
+        #pp.pprint(pilot_info)
+
+        # ------------------------------------------------------------
+        # TASKS
+        for umgr in session.get_unit_managers():
+            tasks = umgr.get_units()
+            #logger.info("Found %s compute units." % len(tasks))
+            for task in tasks:
+
+                task_data.append({
+                    'id'          : task.uid,
+                    'description' : task.description,
+
+                    'locations': task.execution_details,
+                    'timing'   : {
+                        'scheduled' : task.submission_time,
+                        'started'   : task.start_time,
+                        'stopped'   : task.stop_time,
+                    }
+
+                })
+
+
+        alldata = {"ComputePilots" : pilot_info, "ComputeUnits" : task_data}
+        pprint.pprint(alldata)
+
+
+    except sagapilot.SagapilotException, ex:
+            logger.error(ex)
+            sys.exit(255)
+
+#-----------------------------------------------------------------------------
+#
+def setup_logger():
+    """Configures the logging facility.
+
+    Since this is a command line tool, we simply log to the console. 
+    """
+    logger = logging.getLogger('sagapilot-profiler')
+
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+
+    format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    formatter = logging.Formatter(format_string)
+    
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+    return logger
+
+#-----------------------------------------------------------------------------
+#
+def parse_commandline():
+
+    usage = "usage: %prog -d -s [-n]"
+    parser = optparse.OptionParser(usage=usage)
+
+    parser.add_option('-d', '--mongodb-url',
+                      metavar='URL',
+                      dest='database_url',
+                      help='specifies the url of the MongoDB database.')
+
+    parser.add_option('-n', '--database-name',
+                      metavar='URL',
+                      dest='database_name',
+                      default='sagapilot',
+                      help='specifies the name of the database [default: %default].')
+
+    parser.add_option('-s', '--session-id',
+                      metavar='SID',
+                      dest='session_id',
+                      help='specifies the id of the session you want to inspect.')
+
+    # parse the whole shebang
+    (options, args) = parser.parse_args()
+
+    if options.database_url is None:
+        parser.error("You must define MongoDB URL (-d/--mongodb-url). Try --help for help.")
+    elif options.database_name is None:
+        parser.error("You must define a database name (-n/--database-name). Try --help for help.")
+    elif options.session_id is None:
+        parser.error("You must define a session id (-s/--session-id). Try --help for help.")
+
+    return options
+
+#-----------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    options = parse_commandline()
+    logger  = setup_logger()
+
+    get_data(
+        logger        = logger, 
+        session_id    = options.session_id, 
+        database_url  = options.database_url, 
+        database_name = options.database_name
+    )
+
+    sys.exit(0)
