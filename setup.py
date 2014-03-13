@@ -1,4 +1,3 @@
-
 __author__    = "RADICAL Team"
 __copyright__ = "Copyright 2013, RADICAL Research, Rutgers University"
 __license__   = "MIT"
@@ -13,8 +12,8 @@ import subprocess as sp
 
 from setuptools import setup, find_packages, Command
 
-name     = 'sagapilot'
-mod_root = 'src/sagapilot'
+name     = 'radical.pilot'
+mod_root = 'src/radical'
 
 #-----------------------------------------------------------------------------
 #
@@ -112,13 +111,13 @@ def read(*rnames):
 setup_args = {
     'name'             : name,
     'version'          : version,
-    'description'      : "A SAGA-based pilot job framework",
+    'description'      : "The RADICAL pilot job framework",
     'long_description' : (read('README.md') + '\n\n' + read('CHANGES.md')),
     'author'           : 'RADICAL Group at Rutgers University',
     'author_email'     : "radical@rutgers.edu",
     'maintainer'       : "Ole Weidner", 
     'maintainer_email' : "ole.weidner@rutgers.edu",
-    'url'              : "https://github.com/saga-project/saga-pilot",
+    'url'              : "https://github.com/radical-cybertools/radical.pilot",
     'license'          : "MIT",
     'keywords'         : "radical pilot job saga",
     'classifiers'      : [
@@ -137,11 +136,12 @@ setup_args = {
         'Operating System :: POSIX',
         'Operating System :: Unix'
     ],
+    
+    'namespace_packages': ['radical'],
     'packages'    : find_packages('src'),
     'package_dir' : {'': 'src'},    
-    'scripts'          : ['bin/sinon-version', 
-                          'bin/sagapilot-version',
-                          'bin/sagapilot-profiler',
+    'scripts'          : ['bin/radicalpilot-version',
+                          'bin/radicalpilot-profiler',
                           'bin/bootstrap-and-run-agent',
                          ],
     'package_data'     : {'': ['*.sh', 'VERSION', 'VERSION.git', ]},
@@ -151,7 +151,7 @@ setup_args = {
                           'pymongo>=2.5',
                           'python-hostlist'],
     'tests_require'    : ['setuptools', 'nose'],
-    'test_suite'       : 'sagapilot.tests',
+    #'test_suite'       : 'sagapilot.tests',
     'zip_safe'         : False,
 }
 

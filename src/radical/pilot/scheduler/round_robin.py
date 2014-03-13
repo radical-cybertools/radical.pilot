@@ -13,8 +13,8 @@ __license__   = "MIT"
 
 import os 
 
-from sagapilot.utils.logger        import logger
-from sagapilot.scheduler.interface import Scheduler 
+from radical.pilot.utils.logger        import logger
+from radical.pilot.scheduler.interface import Scheduler 
 
 # -----------------------------------------------------------------------------
 # 

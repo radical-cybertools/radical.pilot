@@ -13,14 +13,14 @@ __license__   = "MIT"
 
 import os 
 
-from sagapilot.unit_manager  import UnitManager
-from sagapilot.pilot_manager import PilotManager
-from sagapilot.credentials   import SSHCredential
-from sagapilot.utils.logger  import logger
-from sagapilot               import exceptions
+from radical.pilot.unit_manager  import UnitManager
+from radical.pilot.pilot_manager import PilotManager
+from radical.pilot.credentials   import SSHCredential
+from radical.pilot.utils.logger  import logger
+from radical.pilot               import exceptions
 
-from sagapilot.db            import Session as dbSession
-from sagapilot.db            import DBException
+from radical.pilot.db            import Session as dbSession
+from radical.pilot.db            import DBException
 
 from bson.objectid import ObjectId
 

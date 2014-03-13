@@ -14,14 +14,14 @@ __license__ = "MIT"
 import os
 import time
 
-from sagapilot.compute_unit import ComputeUnit
-from sagapilot.utils.logger import logger
+from radical.pilot.compute_unit import ComputeUnit
+from radical.pilot.utils.logger import logger
 
-from sagapilot.mpworker import UnitManagerWorker
-from sagapilot.scheduler import get_scheduler
+from radical.pilot.mpworker import UnitManagerWorker
+from radical.pilot.scheduler import get_scheduler
 
-import sagapilot.states as states
-import sagapilot.exceptions as exceptions
+from radical.pilot.states import *
+from radical.pilot.exceptions import *
 
 from bson import ObjectId
 
@@ -434,7 +434,7 @@ class UnitManager(object):
     # -------------------------------------------------------------------------
     #
     def wait_units(self, unit_ids=None,
-                   state=[states.DONE, states.FAILED, states.CANCELED],
+                   state=[DONE, FAILED, CANCELED],
                    timeout=None):
         """Returns when one or more :class:`sagapilot.ComputeUnits` reach a
         specific state.

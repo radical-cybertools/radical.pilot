@@ -17,9 +17,9 @@ import traceback
 
 from radical.utils import which
 
-from sagapilot import states
-from sagapilot.credentials import SSHCredential
-from sagapilot.utils.logger import logger
+from radical.pilot import states
+from radical.pilot.credentials import SSHCredential
+from radical.pilot.utils.logger import logger
 
 
 # ----------------------------------------------------------------------------

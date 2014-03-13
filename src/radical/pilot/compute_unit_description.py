@@ -11,7 +11,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sagapilot.attributes as attributes
+import saga.attributes as attributes
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -26,7 +26,7 @@ WORKING_DIRECTORY_PRIV = 'working_directory_priv'
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnitDescription (attributes.Attributes) :
+class ComputeUnitDescription(attributes.Attributes) :
     """A ComputeUnitDescription object describes the requirements and 
     properties of a :class:`sagapilot.ComputeUnit` and is passed as a parameter to
     :meth:`sagapilot.UnitManager.submit_units` to instantiate and run a new 

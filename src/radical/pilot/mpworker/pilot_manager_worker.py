@@ -26,11 +26,10 @@ from multiprocessing import Pool
 from radical.utils import which
 import saga.utils.pty_shell as sups
 
-import sagapilot.states as states
-from sagapilot.credentials import SSHCredential
-from sagapilot.utils.logger import logger
+from radical.pilot.credentials import SSHCredential
+from radical.pilot.utils.logger import logger
 
-from sagapilot.mpworker.pilotlauncher import launch_pilot
+from radical.pilot.mpworker.pilotlauncher import launch_pilot
 
 
 # ----------------------------------------------------------------------------

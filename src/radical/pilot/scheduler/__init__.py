@@ -11,8 +11,8 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sagapilot.scheduler.direct_submission import DirectSubmissionScheduler
-from sagapilot.scheduler.round_robin       import RoundRobinScheduler
+from direct_submission import DirectSubmissionScheduler
+from round_robin import RoundRobinScheduler
 
 # -----------------------------------------------------------------------------
 # Constants

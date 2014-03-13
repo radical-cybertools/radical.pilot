@@ -9,5 +9,5 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from sagapilot.mpworker.unit_manager_worker  import UnitManagerWorker
-from sagapilot.mpworker.pilot_manager_worker import PilotManagerWorker
+from unit_manager_worker  import UnitManagerWorker
+from pilot_manager_worker import PilotManagerWorker

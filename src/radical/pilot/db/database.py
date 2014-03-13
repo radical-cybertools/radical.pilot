@@ -18,7 +18,7 @@ import gridfs
 from pymongo import *
 from bson.objectid import ObjectId
 
-from sagapilot import states
+from radical.pilot.states import *
 
 
 # -----------------------------------------------------------------------------
@@ -345,7 +345,7 @@ class Session():
                 "cores_per_node": None,
                 "sagajobid":      None,
                 "sandbox":        sandbox,
-                "state":          states.PENDING,
+                "state":          PENDING,
                 "log":            []
             },
             "links":
@@ -668,7 +668,7 @@ class Session():
                     "pilot":       pilot_uid,
                 },
                 "info": {
-                    "state":       states.NEW,
+                    "state":       NEW,
                     "submitted":   datetime.datetime.utcnow(),
                     "started":     None,
                     "finished":    None,

@@ -14,10 +14,10 @@ __license__ = "MIT"
 import os
 import time
 
-import sagapilot.states as states
-import sagapilot.exceptions as exceptions
+from radical.pilot.states import *
+from radical.pilot.exceptions import *
 
-from sagapilot.utils.logger import logger
+from radical.pilot.utils.logger import logger
 
 
 # -----------------------------------------------------------------------------
@@ -316,7 +316,7 @@ class ComputePilot (object):
 
     # -------------------------------------------------------------------------
     #
-    def wait(self, state=[states.DONE, states.FAILED, states.CANCELED],
+    def wait(self, state=[DONE, FAILED, CANCELED],
              timeout=None):
         """Returns when the pilot reaches a specific state or
         when an optional timeout is reached.
@@ -379,12 +379,12 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
-        if self.state in [states.DONE, states.FAILED, states.CANCELED]:
+        if self.state in [DONE, FAILED, CANCELED]:
             # nothing to do as we are already in a terminal state
             return
 
-        if self.state == states.UNKNOWN:
-            msg = "Invalid pilot state: '%s'" % states.UNKNOWN
+        if self.state == UNKNOWN:
+            msg = "Invalid pilot state: '%s'" % UNKNOWN
             raise exceptions.BadParameter(msg=msg)
 
         # now we can send a 'cancel' command to the pilot.
