@@ -6,7 +6,6 @@ __license__   = "MIT"
 
 """ Setup script. Used by easy_install and pip. """
 
-import re
 import os
 import sys
 import subprocess as sp
@@ -46,6 +45,8 @@ def get_version (mod_root):
 
         # get version from './VERSION'
         src_root = os.path.dirname (__file__)
+        if  not src_root :
+            src_root = '.'
 
         with open (src_root + "/VERSION", "r") as f :
             version = f.readline ().strip()
