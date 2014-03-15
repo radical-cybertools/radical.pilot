@@ -16,12 +16,12 @@ import time
 import json
 import urllib2
 
-import sagapilot.states as states
-import sagapilot.exceptions as exceptions
+from radical.pilot.states import *
+from radical.pilot.exceptions import *
 
-from sagapilot.mpworker import PilotManagerWorker
-from sagapilot.compute_pilot import ComputePilot
-from sagapilot.utils.logger import logger
+from radical.pilot.mpworker import PilotManagerWorker
+from radical.pilot.compute_pilot import ComputePilot
+from radical.pilot.utils.logger import logger
 
 
 # -----------------------------------------------------------------------------
@@ -371,7 +371,7 @@ class PilotManager(object):
     # -------------------------------------------------------------------------
     #
     def wait_pilots(self, pilot_ids=None,
-                    state=[states.DONE, states.FAILED, states.CANCELED],
+                    state=[DONE, FAILED, CANCELED],
                     timeout=None):
         """Returns when one or more :class:`sagapilot.ComputePilots` reach a
         specific state or when an optional timeout is reached.

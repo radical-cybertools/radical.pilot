@@ -11,7 +11,9 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sagapilot.attributes as attributes
+#from radical.pilot.attributes import Attributes
+import saga.attributes  as attributes
+
 
 # -----------------------------------------------------------------------------
 # Attribute description keys

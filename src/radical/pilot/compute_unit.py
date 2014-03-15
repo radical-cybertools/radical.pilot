@@ -14,10 +14,10 @@ __license__ = "MIT"
 import os
 import time
 
-from sagapilot.utils.logger import logger
+from radical.pilot.utils.logger import logger
 
-import sagapilot.states as states
-import sagapilot.exceptions as exceptions
+import states
+import exceptions
 
 
 # -----------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.exceptions
+.. module:: radical.pilot.exceptions
    :platform: Unix
    :synopsis: Implementation of the exception classes.
 
@@ -13,7 +13,7 @@ __license__   = "MIT"
 
 # ------------------------------------------------------------------------------
 #
-class SagapilotException(Exception):
+class PilotException(Exception):
     """
     :param msg: Error message, indicating the cause for the exception
                 being raised.
@@ -70,7 +70,7 @@ class SagapilotException(Exception):
 
 # ------------------------------------------------------------------------------
 #
-class DatabaseError (SagapilotException) :
+class DatabaseError (PilotException) :
     """
     TODO: Document me!
     """
@@ -79,17 +79,7 @@ class DatabaseError (SagapilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectURL (SagapilotException) :
-    """
-    TODO: Document me!
-    """
-    def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
-
-
-# ------------------------------------------------------------------------------
-#
-class BadParameter (SagapilotException) :
+class IncorrectURL (PilotException) :
     """
     TODO: Document me!
     """
@@ -99,7 +89,7 @@ class BadParameter (SagapilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class DoesNotExist (SagapilotException) :
+class BadParameter (PilotException) :
     """
     TODO: Document me!
     """
@@ -109,7 +99,7 @@ class DoesNotExist (SagapilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class IncorrectState (SagapilotException) :
+class DoesNotExist (PilotException) :
     """
     TODO: Document me!
     """
@@ -119,7 +109,7 @@ class IncorrectState (SagapilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class PermissionDenied (SagapilotException) :
+class IncorrectState (PilotException) :
     """
     TODO: Document me!
     """
@@ -129,7 +119,7 @@ class PermissionDenied (SagapilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class AuthorizationFailed (SagapilotException) :
+class PermissionDenied (PilotException) :
     """
     TODO: Document me!
     """
@@ -139,7 +129,7 @@ class AuthorizationFailed (SagapilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class AuthenticationFailed (SagapilotException) :
+class AuthorizationFailed (PilotException) :
     """
     TODO: Document me!
     """
@@ -149,7 +139,7 @@ class AuthenticationFailed (SagapilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class Timeout (SagapilotException) :
+class AuthenticationFailed (PilotException) :
     """
     TODO: Document me!
     """
@@ -159,7 +149,17 @@ class Timeout (SagapilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class NoSuccess (SagapilotException) :
+class Timeout (PilotException) :
+    """
+    TODO: Document me!
+    """
+    def __init__ (self, msg, obj=None) :
+        SagapilotException.__init__(self, msg, obj)
+
+
+# ------------------------------------------------------------------------------
+#
+class NoSuccess (PilotException) :
     """
     TODO: Document me!
     """

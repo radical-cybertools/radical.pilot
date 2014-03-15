@@ -20,12 +20,12 @@ import threading
 
 from multiprocessing import Pool
 
-import sagapilot.states as state
+from radical.pilot.states import *
 
 from radical.utils import which
-from sagapilot.utils.logger import logger
+from radical.pilot.utils.logger import logger
 
-from sagapilot.mpworker.filetransfer import transfer_input_func
+from radical.pilot.mpworker.filetransfer import transfer_input_func
 
 
 # ----------------------------------------------------------------------------
@@ -215,7 +215,7 @@ class UnitManagerWorker(threading.Thread):
                 request = self._transfer_requests.get_nowait()
                 self._set_state(
                     request["unit_uid"],
-                    state.TRANSFERRING_INPUT,
+                    TRANSFERRING_INPUT,
                     ["start transferring %s" % request]
                 )
 
@@ -248,7 +248,7 @@ class UnitManagerWorker(threading.Thread):
                         result["state"],
                         result["log"]
                     )
-                    if result["state"] == state.PENDING_EXECUTION:
+                    if result["state"] == PENDING_EXECUTION:
                         self._db.assign_compute_units_to_pilot(
                             unit_uids=result["unit_uid"],
                             pilot_uid=result["pilot_uid"]
@@ -460,7 +460,7 @@ class UnitManagerWorker(threading.Thread):
 
         for unit in wu_notransfer:
             log = "Scheduled for execution on ComputePilot %s." % pilot_uid
-            self._set_state(unit, state.PENDING_EXECUTION, log)
+            self._set_state(unit, PENDING_EXECUTION, log)
 
         logger.info(
             "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
@@ -481,7 +481,7 @@ class UnitManagerWorker(threading.Thread):
                      "description":  unit.description}
                 )
                 log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
-                self._set_state(unit.uid, state.PENDING_INPUT_TRANSFER, log)
+                self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)
 
             logger.info(
                 "Data transfer scheduled for ComputeUnits %s to ComputePilot '%s'." % 
