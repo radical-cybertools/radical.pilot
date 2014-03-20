@@ -69,7 +69,7 @@ class Test_Session(unittest.TestCase):
             session_ids.append(session.uid)
 
         for sid in session_ids:
-            session_r = radical.pilot.Session(database_url=DBURL, session_uid=sid, database_name=DBNAME)
+            session_r = radical.pilot.Session(database_url=DBURL, database_name=DBNAME, session_uid=sid)
             assert session_r.uid == sid, "Session IDs don't match"
 
         session.destroy()
@@ -94,7 +94,7 @@ class Test_Session(unittest.TestCase):
 
         assert len(session.credentials) == 2
 
-        session2 = radical.pilot.Session(database_url=DBURL, session_uid=session.uid)
+        session2 = radical.pilot.Session(database_url=DBURL, database_name=DBNAME, session_uid=session.uid)
         print "Session: {0} ".format(session2)
 
         assert len(session2.credentials) == 2
