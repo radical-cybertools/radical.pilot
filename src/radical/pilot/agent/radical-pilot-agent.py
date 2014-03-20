@@ -75,8 +75,10 @@ def pilot_FAILED(mongo_p, pilot_uid, message):
         {"$push": {"info.log" : message}})
                   
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"info.state" : 'Failed'}})
+        {"$set": {"info.state": 'Failed',
+                 "info.finished": datetime.datetime.utcnow()
 
+        }})
 #---------------------------------------------------------------------------
 #
 def pilot_CANCELED(mongo_p, pilot_uid, message):
@@ -86,7 +88,10 @@ def pilot_CANCELED(mongo_p, pilot_uid, message):
         {"$push": {"info.log" : message}})
                   
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"info.state" : 'Canceled'}})
+        {"$set": {"info.state": 'Canceled',
+                 "info.finished": datetime.datetime.utcnow()
+
+        }})
 
 #---------------------------------------------------------------------------
 #
@@ -94,7 +99,11 @@ def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"info.state" : 'Done'}})
+        {"$set": {"info.state": 'Done',
+                  "info.finished": datetime.datetime.utcnow()
+
+        }})
+
 
 #-----------------------------------------------------------------------------
 #
@@ -757,12 +766,9 @@ class Agent(threading.Thread):
 
         self._starttime = time.time()
 
-        try:
+        while True:
 
-            while not self._terminate.isSet():
-
-                # Make sure that we haven't exceeded the agent runtime. if 
-                # we have, terminate. 
+            try:
 
                 # Check the workers periodically. If they have died, we 
                 # exit as well. this can happen, e.g., if the worker 
@@ -771,15 +777,19 @@ class Agent(threading.Thread):
                     if ew.is_alive() is False:
                         self.stop()
 
-                if time.time() >= self._starttime + (int(self._runtime) * 60):
-                    self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
-                    self._p.update(
-                        {"_id": ObjectId(self._pilot_id)}, 
-                        {"$set": {"info.state"     : "Done",
-                                  "info.finished"   : datetime.datetime.utcnow()}})
+                # Exit the main loop if terminate is set. 
+                if self._terminate.isSet():
+                    pilot_CANCELED(self._p, self._pilot_id, "Terminated (_terminate set.")
                     break
 
-                # try to get new tasks from the database. for this, we check the 
+                # Make sure that we haven't exceeded the agent runtime. if 
+                # we have, terminate. 
+                if time.time() >= self._starttime + (int(self._runtime) * 60):
+                    self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
+                    pilot_DONE(self._p, self._pilot_id)
+                    break
+
+                # Try to get new tasks from the database. for this, we check the 
                 # wu_queue of the pilot. if there are new entries, we get them,
                 # get the actual pilot entries for them and remove them from 
                 # the wu_queue. 
@@ -788,10 +798,7 @@ class Agent(threading.Thread):
 
                     if p_cursor.count() != 1:
                         self._log.info("Pilot entry %s has disappeared from the database." % self._pilot_id)
-                        self._p.update(
-                            {"_id": ObjectId(self._pilot_id)}, 
-                            {"$set": {"info.state"     : "Done",
-                                      "info.finished"   : datetime.datetime.utcnow()}})
+                        pilot_DONE(self._p, self._pilot_id)
                         break
 
                     else:
@@ -800,11 +807,7 @@ class Agent(threading.Thread):
                         if command is not None:
                             self._log.info("Received new command: %s" % command)
                             if command.lower() == "cancel":
-                                # if we receive 'cancel', we terminate the loop.
-                                self._p.update(
-                                    {"_id": ObjectId(self._pilot_id)}, 
-                                    {"$set": {"info.state"     : "Canceled",
-                                              "info.finished"   : datetime.datetime.utcnow()}})
+                                pilot_CANCELED(self._p, self._pilot_id, "CANCEL received. Terminating.")
                                 break
 
                         # Check the pilot's workunit queue
@@ -844,24 +847,17 @@ class Agent(threading.Thread):
                                            {"$pullAll": { "wu_queue": new_wu_ids}})
 
                 except Exception, ex:
-                    self._log.error("Error while checking for new work units: %s. \n%s" % (ex, traceback.format_exc()))
-                    #self._p.update(
-                    #    {"_id": ObjectId(self._pilot_id)}, 
-                    #    {"$set": {"info.state"     : "Failed",
-                    #              "info.finished"   : datetime.datetime.utcnow()}})
-                    #break
                     raise
 
                 time.sleep(1)
 
-            # If we arrive here, the main loop has finished properly.
-            pilot_DONE(self._p, self._pilot_id)
-            self._log.info("FINISHED. Exiting agent main loop.")
+            except Exception, ex:
+                # If we arrive here, there was an exception in the main loop.
+                pilot_FAILED(self._p, self._pilot_id, str(ex))
+                self._log.error("ERROR in agent main loop. EXITING: \n%s", traceback.format_exc())
 
-        except Exception, ex:
-            # If we arrive here, there was an exception in the main loop.
-            pilot_FAILED(self._p, self._pilot_id, str(ex))
-            self._log.error("ERROR in agent main loop. EXITING: \n%s", traceback.format_exc())
+        # MAIN LOOP TERMINATED
+        return
 
 #-----------------------------------------------------------------------------
 #
@@ -1056,20 +1052,6 @@ if __name__ == "__main__":
         logger.warning(msg)
         sys.exit(0)
     signal.signal(signal.SIGALRM, sigalarm_handler)
-
-    #def sigkill_handler(signal, frame):
-    #    msg = 'Caught SIGKILL. EXITING'
-    #    pilot_CANCELED(mongo_p, options.pilot_id, msg)
-    #    logger.warning(msg)
-    #    sys.exit(0)
-    #signal.signal(signal.SIGKILL, sigkill_handler)
-
-    #def sigterm_handler(signal, frame):
-    #    msg = 'Caught SIGTERM. EXITING'
-    #    pilot_CANCELED(mongo_p, options.pilot_id, msg)
-    #    logger.warning(msg)
-    #    sys.exit(0)
-    #signal.signal(signal.SIGTERM, sigterm_handler)
 
     #--------------------------------------------------------------------------
     # Discover environment, mpirun, cores, etc.
