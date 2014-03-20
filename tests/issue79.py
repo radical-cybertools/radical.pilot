@@ -8,8 +8,8 @@ if DBURL is None:
     print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-FG_CONF     = "https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json"
-XSEDE_CONF  = "https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json"
+FG_CONF     = "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"
+XSEDE_CONF  = "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json"
 PILOT_DESCR = {'project':     None, 
                'resource':    'india.futuregrid.org', 
                'queue':       'interactive', 

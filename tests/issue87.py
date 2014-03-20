@@ -10,8 +10,8 @@ if DBURL is None:
     print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
-          "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
+RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/xsede.json",
+          "https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/futuregrid.json"]
 
 
 #------------------------------------------------------------------------------
