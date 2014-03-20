@@ -152,7 +152,7 @@ setup_args = {
                           'pymongo>=2.5',
                           'python-hostlist'],
     'tests_require'    : ['setuptools', 'nose'],
-    #'test_suite'       : 'sagapilot.tests',
+    'test_suite'       : 'radical.pilot.tests',
     'zip_safe'         : False,
 }
 

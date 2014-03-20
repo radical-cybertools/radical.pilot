@@ -1,7 +1,7 @@
 """
 .. module:: sinon.mpworker
    :platform: Unix
-   :synopsis: The multiprocessing workers for SAGA-Pilot.
+   :synopsis: The multiprocessing workers for RADICAL-Pilot.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """

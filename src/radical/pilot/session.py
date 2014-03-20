@@ -61,15 +61,15 @@ class _ProcessRegistry(object):
 # ------------------------------------------------------------------------------
 #
 class Session(object):
-    """A Session encapsulates a SAGA-Pilot instance and is the *root* object
-    for all other SAGA-Pilot objects. 
+    """A Session encapsulates a RADICAL-Pilot instance and is the *root* object
+    for all other RADICAL-Pilot objects. 
 
     A Session holds :class:`radical.pilot.PilotManager` and :class:`radical.pilot.UnitManager`
     instances which in turn hold  :class:`radical.pilot.Pilot` and
     :class:`radical.pilot.ComputeUnit` instances.
 
     Each Session has a unique identifier :data:`radical.pilot.Session.uid` that can be
-    used to re-connect to a SAGA-Pilot instance in the database.
+    used to re-connect to a RADICAL-Pilot instance in the database.
 
     **Example**::
 

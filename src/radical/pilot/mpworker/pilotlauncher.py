@@ -26,7 +26,7 @@ from radical.pilot.utils.logger import logger
 #
 def launch_pilot(pilot_uid, pilot_description,
                  resource_cfg, agent_dir_url, session_dict, credentials_dict):
-    """launch_pilot() is a self contained function that launches a SAGA-Pilot
+    """launch_pilot() is a self contained function that launches a RADICAL-Pilot
     agent on a local or remote machine according to the provided specification.
 
     This function is called asynchronously and attached to one of the
@@ -72,7 +72,7 @@ def launch_pilot(pilot_uid, pilot_description,
         logger.debug(log_msg)
 
         # Copy the bootstrap shell script
-        # This works for installed versions of saga-pilot
+        # This works for installed versions of RADICAL-Pilot
         bs_script = which('bootstrap-and-run-agent')
         if bs_script is None:
             bs_script = os.path.abspath("%s/../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))

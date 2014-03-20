@@ -18,12 +18,12 @@ class PilotException(Exception):
     :param msg: Error message, indicating the cause for the exception
                 being raised.
     :type  msg: string
-    :param obj: SAGA-Pilot object on whose activity the exception was raised.
+    :param obj: RADICAL-Pilot object on whose activity the exception was raised.
     :type  obj: object
     :raises:    --
 
-    The base class for all  SAGA-Pilot Exception classes -- this exception type is
-    never raised directly, but can be used to catch all SAGA-Pilot exceptions within
+    The base class for all  RADICAL-Pilot Exception classes -- this exception type is
+    never raised directly, but can be used to catch all RADICAL-Pilot exceptions within
     a single `except` clause.
 
     The exception message and originating object are also accessable as class

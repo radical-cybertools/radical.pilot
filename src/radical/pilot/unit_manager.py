@@ -30,9 +30,9 @@ from bson import ObjectId
 #
 class UnitManager(object):
     """A UnitManager manages :class:`radical.pilot.ComputeUnit` instances which
-    represent the **executable** workload in SAGA-Pilot. A UnitManager connects
+    represent the **executable** workload in RADICAL-Pilot. A UnitManager connects
     the ComputeUnits with one or more :class:`Pilot` instances (which represent
-    the workload **executors** in SAGA-Pilot) and a **scheduler** which
+    the workload **executors** in RADICAL-Pilot) and a **scheduler** which
     determines which :class:`ComputeUnit` gets executed on which
     :class:`Pilot`.
 

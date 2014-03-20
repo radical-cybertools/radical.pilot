@@ -15,14 +15,14 @@ from pymongo import MongoClient
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("radical.pilot_DBURL")
+DBURL = os.getenv("RADICALPILOT_DBURL")
 if DBURL is None:
     print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
 DBNAME = 'radical.pilot_unittests'
 
-RESCFG = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
+RESCFG = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
 
 #-----------------------------------------------------------------------------
 #
@@ -34,13 +34,13 @@ class TestRemoteSubmission(unittest.TestCase):
         client = MongoClient(DBURL)
         client.drop_database(DBNAME)
 
-        self.test_resource = os.getenv('radical.pilot_TEST_REMOTE_RESOURCE',     "localhost")
-        self.test_ssh_uid  = os.getenv('radical.pilot_TEST_REMOTE_SSH_USER_ID',  None)
-        self.test_ssh_key  = os.getenv('radical.pilot_TEST_REMOTE_SSH_USER_KEY', None)
-        self.test_workdir  = os.getenv('radical.pilot_TEST_REMOTE_WORKDIR',      "/tmp/radical.pilot.sandbox.unittests")
-        self.test_cores    = os.getenv('radical.pilot_TEST_REMOTE_CORES',        "1")
-        self.test_num_cus  = os.getenv('radical.pilot_TEST_REMOTE_NUM_CUS',      "2")
-        self.test_timeout  = os.getenv('radical.pilot_TEST_TIMEOUT',             "5")
+        self.test_resource = os.getenv('RADICALPILOT_TEST_REMOTE_RESOURCE',     "localhost")
+        self.test_ssh_uid  = os.getenv('RADICALPILOT_TEST_REMOTE_SSH_USER_ID',  None)
+        self.test_ssh_key  = os.getenv('RADICALPILOT_TEST_REMOTE_SSH_USER_KEY', None)
+        self.test_workdir  = os.getenv('RADICALPILOT_TEST_REMOTE_WORKDIR',      "/tmp/radical.pilot.sandbox.unittests")
+        self.test_cores    = os.getenv('RADICALPILOT_TEST_REMOTE_CORES',        "1")
+        self.test_num_cus  = os.getenv('RADICALPILOT_TEST_REMOTE_NUM_CUS',      "2")
+        self.test_timeout  = os.getenv('RADICALPILOT_TEST_TIMEOUT',             "5")
 
     def tearDown(self):
         # clean up after ourselves 

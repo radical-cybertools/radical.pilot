@@ -73,7 +73,7 @@ class PilotManager(object):
               entries in the  files via the :class:`ComputePilotDescription`.
               For example::
 
-                  pm = radical.pilot.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+                  pm = radical.pilot.PilotManager(session=s, resource_configurations="https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json")
 
                   pd = radical.pilot.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
