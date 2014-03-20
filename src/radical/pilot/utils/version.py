@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212, E1101, R0903
 
 """
-.. module:: sagapilot.utils.version
+.. module:: radical.pilot.utils.version
    :platform: Unix
    :synopsis: Implementation of the version extractor.
 

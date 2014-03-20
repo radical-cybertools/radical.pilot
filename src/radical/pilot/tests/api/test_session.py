@@ -3,23 +3,23 @@
 
 import os
 import sys
-import sagapilot
+import radical.pilot
 import unittest
 
 import uuid
 from copy import deepcopy
-from sagapilot.db import Session
+from radical.pilot.db import Session
 from pymongo import MongoClient
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
+DBURL = os.getenv("radical.pilot_DBURL")
 if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'sagapilot_unittests'
+DBNAME = 'radical.pilot_unittests'
 
 #-----------------------------------------------------------------------------
 #
@@ -50,7 +50,7 @@ class Test_Session(unittest.TestCase):
         """ Tests if creating a new session works as epxected.
         """
         for _ in range(1, 4):
-            session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+            session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
             
         client = MongoClient(DBURL)
         collections = client[DBNAME].collection_names()
@@ -65,11 +65,11 @@ class Test_Session(unittest.TestCase):
         """
         session_ids = []
         for _ in range(1, 4):
-            session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+            session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
             session_ids.append(session.uid)
 
         for sid in session_ids:
-            session_r = sagapilot.Session(database_url=DBURL, session_uid=sid, database_name=DBNAME)
+            session_r = radical.pilot.Session(database_url=DBURL, session_uid=sid, database_name=DBNAME)
             assert session_r.uid == sid, "Session IDs don't match"
 
         session.destroy()
@@ -80,21 +80,21 @@ class Test_Session(unittest.TestCase):
         """ Tests if reconnecting to an existing session works as epxected and if
         credentials are reloaded properly.
         """
-        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
         # Add an ssh identity to the session.
-        cred1 = sagapilot.SSHCredential()
+        cred1 = radical.pilot.SSHCredential()
         cred1.user_id = "tg802352"
         session.add_credential(cred1)
 
         # Add an ssh identity to the session.
-        cred2 = sagapilot.SSHCredential()
+        cred2 = radical.pilot.SSHCredential()
         cred2.user_id = "abcedesds"
         session.add_credential(cred2)
 
         assert len(session.credentials) == 2
 
-        session2 = sagapilot.Session(database_url=DBURL, session_uid=session.uid)
+        session2 = radical.pilot.Session(database_url=DBURL, session_uid=session.uid)
         print "Session: {0} ".format(session2)
 
         assert len(session2.credentials) == 2

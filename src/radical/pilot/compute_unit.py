@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.compute_unit
+.. module:: radical.pilot.compute_unit
    :platform: Unix
    :synopsis: Implementation of the ComputeUnit class.
 
@@ -27,13 +27,13 @@ class ComputeUnit(object):
     ComputeUnits allow to control and query the state of this task.
 
     .. note:: A ComputeUnit cannot be created directly. The factory method
-              :meth:`sagapilot.UnitManager.submit_units` has to be used instead.
+              :meth:`radical.pilot.UnitManager.submit_units` has to be used instead.
 
                 **Example**::
 
-                      umgr = sagapilot.UnitManager(session=s)
+                      umgr = radical.pilot.UnitManager(session=s)
 
-                      ud = sagapilot.ComputeUnitDescription()
+                      ud = radical.pilot.ComputeUnitDescription()
                       ud.executable = "/bin/date"
                       ud.cores      = 1
 
@@ -58,7 +58,7 @@ class ComputeUnit(object):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
             logger.debug("__del__(): ComputeUnit '%s'." % self._uid)
 
     # -------------------------------------------------------------------------
@@ -317,9 +317,9 @@ class ComputeUnit(object):
               By default `wait` waits for the compute unit to reach
               a **terminal** state, which can be one of the following:
 
-              * :data:`sagapilot.states.DONE`
-              * :data:`sagapilot.states.FAILED`
-              * :data:`sagapilot.states.CANCELED`
+              * :data:`radical.pilot.states.DONE`
+              * :data:`radical.pilot.states.FAILED`
+              * :data:`radical.pilot.states.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless
@@ -357,11 +357,11 @@ class ComputeUnit(object):
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.SagapilotException(
+            raise exceptions.radical.pilotException(
                 "Invalid Compute Unit instance.")
 
         if self.state in [states.DONE, states.FAILED, states.CANCELED]:
@@ -369,7 +369,7 @@ class ComputeUnit(object):
             return
 
         if self.state in [states.UNKNOWN]:
-            raise exceptions.SagapilotException(
+            raise exceptions.radical.pilotException(
                 "Compute Unit state is UNKNOWN, cannot cancel")
 
         # done waiting

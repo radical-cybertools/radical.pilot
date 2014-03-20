@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.context
+.. module:: radical.pilot.context
    :platform: Unix
    :synopsis: Implementation of the Context class(es).
 

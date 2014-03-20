@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.types
+.. module:: radical.pilot.types
    :platform: Unix
    :synopsis: Type constants.
 

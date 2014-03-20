@@ -1,6 +1,6 @@
 #pylint: disable=C0301, C0103, W0212
 """
-.. module:: sagapilot.scheduler.Interface
+.. module:: radical.pilot.scheduler.Interface
    :platform: Unix
    :synopsis: The abstract interface class for all schedulers.
 

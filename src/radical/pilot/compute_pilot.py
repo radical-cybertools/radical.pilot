@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.compute_pilot
+.. module:: radical.pilot.compute_pilot
    :platform: Unix
    :synopsis: Provides the interface for the ComputePilot class.
 
@@ -27,13 +27,13 @@ class ComputePilot (object):
        resource.
 
     .. note:: A ComputePilot cannot be created directly. The factory method
-              :meth:`sagapilot.PilotManager.submit_pilots` has to be used instead.
+              :meth:`radical.pilot.PilotManager.submit_pilots` has to be used instead.
 
                 **Example**::
 
-                      pm = sagapilot.PilotManager(session=s)
+                      pm = radical.pilot.PilotManager(session=s)
 
-                      pd = sagapilot.ComputePilotDescription()
+                      pd = radical.pilot.ComputePilotDescription()
                       pd.resource = "localhost"
                       pd.cores    = 2
                       pd.runtime  = 5 # minutes
@@ -65,7 +65,7 @@ class ComputePilot (object):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
             logger.debug("__del__(): ComputePilot '%s'." % self._uid)
 
     # -------------------------------------------------------------------------
@@ -236,7 +236,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        raise exceptions.SagapilotException("Not Implemented")
+        raise exceptions.radical.pilotException("Not Implemented")
 
     # -------------------------------------------------------------------------
     #
@@ -248,7 +248,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        raise exceptions.SagapilotException("Not Implemented")
+        raise exceptions.radical.pilotException("Not Implemented")
 
     # -------------------------------------------------------------------------
     #
@@ -330,9 +330,9 @@ class ComputePilot (object):
               By default `wait` waits for the Pilot to reach
               a **terminal** state, which can be one of the following:
 
-              * :data:`sagapilot.states.DONE`
-              * :data:`sagapilot.states.FAILED`
-              * :data:`sagapilot.states.CANCELED`
+              * :data:`radical.pilot.states.DONE`
+              * :data:`radical.pilot.states.FAILED`
+              * :data:`radical.pilot.states.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless
@@ -341,7 +341,7 @@ class ComputePilot (object):
 
         **Raises:**
 
-            * :class:`sagapilot.exceptions.SagapilotException` if the state of
+            * :class:`radical.pilot.exceptions.radical.pilotException` if the state of
               the pilot cannot be determined.
         """
         # Check if this instance is valid
@@ -372,7 +372,7 @@ class ComputePilot (object):
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException` if the termination
+            * :class:`radical.pilot.radical.pilotException` if the termination
               request cannot be fulfilled.
         """
         # Check if this instance is valid

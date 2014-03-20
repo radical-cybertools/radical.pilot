@@ -3,23 +3,23 @@
 
 import os
 import sys
-import sagapilot
+import radical.pilot
 import unittest
 
 import uuid
 from copy import deepcopy
-from sagapilot.db import Session
+from radical.pilot.db import Session
 from pymongo import MongoClient
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
+DBURL = os.getenv("radical.pilot_DBURL")
 if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'sagapilot_unittests'
+DBNAME = 'radical.pilot_unittests'
 
 
 #-----------------------------------------------------------------------------
@@ -50,25 +50,25 @@ class TestUnit(unittest.TestCase):
     def test__unit_wait(self):
         """ Test if we can wait for different unit states.
         """
-        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sagapilot.PilotManager(session=session)
+        pm = radical.pilot.PilotManager(session=session)
 
-        cpd = sagapilot.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
         cpd.runtime = 1
-        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
+        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
-        um = sagapilot.UnitManager(
+        um = radical.pilot.UnitManager(
             session=session,
-            scheduler=sagapilot.SCHED_DIRECT_SUBMISSION
+            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
-        cudesc = sagapilot.ComputeUnitDescription()
+        cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores = 1
         cudesc.executable = "/bin/sleep"
         cudesc.arguments = ['10']
@@ -80,12 +80,12 @@ class TestUnit(unittest.TestCase):
         assert cu.start_time is None
         assert cu.start_time is None
 
-        cu.wait(sagapilot.states.RUNNING)
-        assert cu.state == sagapilot.states.RUNNING
+        cu.wait(radical.pilot.states.RUNNING)
+        assert cu.state == radical.pilot.states.RUNNING
         assert cu.start_time is not None
 
-        cu.wait(sagapilot.states.DONE)
-        assert cu.state == sagapilot.states.DONE
+        cu.wait(radical.pilot.states.DONE)
+        assert cu.state == radical.pilot.states.DONE
         assert cu.stop_time is not None
 
         pm.cancel_pilots()

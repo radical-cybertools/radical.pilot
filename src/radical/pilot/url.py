@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212, R0903, W0232
 
 """
-.. module:: sagapilot.url
+.. module:: radical.pilot.url
    :platform: Unix
    :synopsis: Implementation of the Url class (forwarded from SAGA-Python).
 

@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212, E1101, R0903
 
 """
-.. module:: sagapilot.compute_pilot_description
+.. module:: radical.pilot.compute_pilot_description
    :platform: Unix
    :synopsis: Provides the interface for the ComputePilotDescription class.
 
@@ -34,8 +34,8 @@ PROJECT           = 'Project'
 #
 class ComputePilotDescription(attributes.Attributes):
     """A ComputePilotDescription object describes the requirements and
-    properties of a :class:`sagapilot.Pilot` and is passed as a parameter to
-    :meth:`sagapilot.PilotManager.submit_pilots` to instantiate a new pilot.
+    properties of a :class:`radical.pilot.Pilot` and is passed as a parameter to
+    :meth:`radical.pilot.PilotManager.submit_pilots` to instantiate a new pilot.
 
     .. note:: A ComputePilotDescription **MUST** define at least
               :data:`resource` and the number of :data:`cores` to allocate on
@@ -43,9 +43,9 @@ class ComputePilotDescription(attributes.Attributes):
 
     **Example**::
 
-          pm = sagapilot.PilotManager(session=s)
+          pm = radical.pilot.PilotManager(session=s)
 
-          pd = sagapilot.ComputePilotDescription()
+          pd = radical.pilot.ComputePilotDescription()
           pd.resource = "localhost"  # defined in futuregrid.json
           pd.cores    = 16
           pd.runtime  = 5 # minutes
@@ -58,8 +58,8 @@ class ComputePilotDescription(attributes.Attributes):
        :ref:`chapter_machconf` entry.
        If the key exists, the machine-specifc configuration is loaded from the
        configuration once the ComputePilotDescription is passed to
-       :meth:`sagapilot.PilotManager.submit_pilots`. If the key doesn't exist,
-       a :class:`sagapilot.SagapilotException` is thrown.
+       :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't exist,
+       a :class:`radical.pilot.radical.pilotException` is thrown.
 
     .. data:: runtime
 
@@ -75,7 +75,7 @@ class ComputePilotDescription(attributes.Attributes):
 
        [Type: `string`] [optional] The working ("sandbox") directory  of the
        ComputePilot agent. This parameter is optional. If not set, it defaults
-       to `sagapilot.sandox` in your home or login directory.
+       to `radical.pilot.sandox` in your home or login directory.
 
        .. warning:: If you define a ComputePilot on an HPC cluster and you want
                  to set `sandbox` manually, make sure that it points to a

@@ -1,7 +1,7 @@
     #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.unit_manager
+.. module:: radical.pilot.unit_manager
    :platform: Unix
    :synopsis: Implementation of the UnitManager class.
 
@@ -29,24 +29,24 @@ from bson import ObjectId
 # -----------------------------------------------------------------------------
 #
 class UnitManager(object):
-    """A UnitManager manages :class:`sagapilot.ComputeUnit` instances which
+    """A UnitManager manages :class:`radical.pilot.ComputeUnit` instances which
     represent the **executable** workload in SAGA-Pilot. A UnitManager connects
     the ComputeUnits with one or more :class:`Pilot` instances (which represent
     the workload **executors** in SAGA-Pilot) and a **scheduler** which
     determines which :class:`ComputeUnit` gets executed on which
     :class:`Pilot`.
 
-    Each UnitManager has a unique identifier :data:`sagapilot.UnitManager.uid`
+    Each UnitManager has a unique identifier :data:`radical.pilot.UnitManager.uid`
     that can be used to re-connect to previoulsy created UnitManager in a
-    given :class:`sagapilot.Session`.
+    given :class:`radical.pilot.Session`.
 
     **Example**::
 
-        s = sagapilot.Session(database_url=DBURL)
+        s = radical.pilot.Session(database_url=DBURL)
 
-        pm = sagapilot.PilotManager(session=s)
+        pm = radical.pilot.PilotManager(session=s)
 
-        pd = sagapilot.ComputePilotDescription()
+        pd = radical.pilot.ComputePilotDescription()
         pd.resource = "futuregrid.alamo"
         pd.cores = 16
 
@@ -56,15 +56,15 @@ class UnitManager(object):
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
         for unit_count in range(0, 128):
-            cu = sagapilot.ComputeUnitDescription()
+            cu = radical.pilot.ComputeUnitDescription()
             cu.executable = "/bin/sleep"
             cu.arguments = ['60']
             compute_units.append(cu)
 
         # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
-        um = sagapilot.UnitManager(session=session,
-                                   scheduler=sagapilot.SCHED_ROUND_ROBIN)
+        um = radical.pilot.UnitManager(session=session,
+                                   scheduler=radical.pilot.SCHED_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
     """
@@ -81,7 +81,7 @@ class UnitManager(object):
             * scheduler (`string`): The name of the scheduler plug-in to use.
 
         **Raises:**
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         self._session = session
         self._worker = None
@@ -112,7 +112,7 @@ class UnitManager(object):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
             logger.debug("__del__(): UnitManager '%s'." % self._uid)
 
         if self._worker is not None:
@@ -219,13 +219,13 @@ class UnitManager(object):
 
         **Arguments:**
 
-            * **pilots** [:class:`sagapilot.ComputePilot` or list of
-              :class:`sagapilot.ComputePilot`]: The pilot objects that will be
+            * **pilots** [:class:`radical.pilot.ComputePilot` or list of
+              :class:`radical.pilot.ComputePilot`]: The pilot objects that will be
               added to the unit manager.
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -243,11 +243,11 @@ class UnitManager(object):
 
         **Returns:**
 
-              * A list of :class:`sagapilot.ComputePilot` UIDs [`string`].
+              * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -274,7 +274,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -287,12 +287,12 @@ class UnitManager(object):
     # -------------------------------------------------------------------------
     #
     def list_units(self):
-        """Returns the UIDs of the :class:`sagapilot.ComputeUnit` managed by
+        """Returns the UIDs of the :class:`radical.pilot.ComputeUnit` managed by
         this unit manager.
 
         **Returns:**
 
-              * A list of :class:`sagapilot.ComputeUnit` UIDs [`string`].
+              * A list of :class:`radical.pilot.ComputeUnit` UIDs [`string`].
 
         """
         if not self._uid:
@@ -303,22 +303,22 @@ class UnitManager(object):
     # -------------------------------------------------------------------------
     #
     def submit_units(self, unit_descriptions):
-        """Submits on or more :class:`sagapilot.ComputeUnit` instances to the
+        """Submits on or more :class:`radical.pilot.ComputeUnit` instances to the
         unit manager.
 
         **Arguments:**
 
-            * **unit_descriptions** [:class:`sagapilot.ComputeUnitDescription`
-              or list of :class:`sagapilot.ComputeUnitDescription`]: The
+            * **unit_descriptions** [:class:`radical.pilot.ComputeUnitDescription`
+              or list of :class:`radical.pilot.ComputeUnitDescription`]: The
               description of the compute unit instance(s) to create.
 
         **Returns:**
 
-              * A list of :class:`sagapilot.ComputeUnit` objects.
+              * A list of :class:`radical.pilot.ComputeUnit` objects.
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -329,7 +329,7 @@ class UnitManager(object):
         # always use the scheduler for now...
         if True:
            # if not self._scheduler :
-           #     raise exceptions.SagapilotException("Internal error - no unit scheduler")
+           #     raise exceptions.radical.pilotException("Internal error - no unit scheduler")
 
             # the scheduler will return a dictionary of the form:
             #   {
@@ -347,7 +347,7 @@ class UnitManager(object):
                     unit_descriptions=unit_descriptions)
 
             except Exception as e:
-                raise exceptions.SagapilotException(
+                raise exceptions.radical.pilotException(
                     "Internal error - unit scheduler failed: %s" % e)
 
             unscheduled = list()  # unscheduled unit descriptions
@@ -363,7 +363,7 @@ class UnitManager(object):
 
                 # sanity check on scheduler provided information
                 if not pilot_id in self.list_pilots():
-                    raise exceptions.SagapilotException(
+                    raise exceptions.radical.pilotException(
                         "Internal error - invalid scheduler reply, "
                         "no such pilot %s" % pilot_id)
 
@@ -374,7 +374,7 @@ class UnitManager(object):
                 for ud in uds:
                     # sanity check on scheduler provided information
                     if not ud in unscheduled:
-                        raise exceptions.SagapilotException(
+                        raise exceptions.radical.pilotException(
                             "Internal error - invalid scheduler reply, "
                             "no such unit description %s" % ud)
 
@@ -416,11 +416,11 @@ class UnitManager(object):
 
         **Returns:**
 
-              * A list of :class:`sagapilot.ComputeUnit` objects.
+              * A list of :class:`radical.pilot.ComputeUnit` objects.
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -436,7 +436,7 @@ class UnitManager(object):
     def wait_units(self, unit_ids=None,
                    state=[DONE, FAILED, CANCELED],
                    timeout=None):
-        """Returns when one or more :class:`sagapilot.ComputeUnits` reach a
+        """Returns when one or more :class:`radical.pilot.ComputeUnits` reach a
         specific state.
 
         If `unit_uids` is `None`, `wait_units` returns when **all**
@@ -460,9 +460,9 @@ class UnitManager(object):
               By default `wait_units` waits for the ComputeUnits to
               reach a terminal state, which can be one of the following:
 
-              * :data:`sagapilot.DONE`
-              * :data:`sagapilot.FAILED`
-              * :data:`sagapilot.CANCELED`
+              * :data:`radical.pilot.DONE`
+              * :data:`radical.pilot.FAILED`
+              * :data:`radical.pilot.CANCELED`
 
             * **timeout** [`float`]
               Timeout in seconds before the call returns regardless of Pilot
@@ -470,7 +470,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -503,7 +503,7 @@ class UnitManager(object):
     # -------------------------------------------------------------------------
     #
     def cancel_units(self, unit_ids=None):
-        """Cancel one or more :class:`sagapilot.ComputeUnits`.
+        """Cancel one or more :class:`radical.pilot.ComputeUnits`.
 
         **Arguments:**
 
@@ -512,7 +512,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")

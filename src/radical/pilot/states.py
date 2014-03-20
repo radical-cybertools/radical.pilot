@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.states
+.. module:: radical.pilot.states
    :platform: Unix
    :synopsis: State constants.
 

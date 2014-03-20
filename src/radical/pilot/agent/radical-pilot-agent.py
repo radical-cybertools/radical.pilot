@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 """
-.. module:: sagapilot.agent
+.. module:: radical.pilot.agent
    :platform: Unix
-   :synopsis: An agent for SAGA-Pilot.
+   :synopsis: An agent for RADICAL-Pilot.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
@@ -1021,7 +1021,7 @@ if __name__ == "__main__":
     options = parse_commandline()
 
     # configure the agent logger
-    logger = logging.getLogger('sagapilot.agent')
+    logger = logging.getLogger('radical.pilot.agent')
     logger.setLevel(logging.INFO)
     ch = logging.FileHandler("AGENT.LOG")
     ch.setLevel(logging.INFO)

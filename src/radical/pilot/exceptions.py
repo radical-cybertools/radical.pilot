@@ -75,7 +75,7 @@ class DatabaseError (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 # ------------------------------------------------------------------------------
 #
@@ -84,7 +84,7 @@ class IncorrectURL (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ class BadParameter (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ class DoesNotExist (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ class IncorrectState (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ class PermissionDenied (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ class AuthorizationFailed (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ class AuthenticationFailed (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -154,7 +154,7 @@ class Timeout (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)
 
 
 # ------------------------------------------------------------------------------
@@ -164,4 +164,4 @@ class NoSuccess (PilotException) :
     TODO: Document me!
     """
     def __init__ (self, msg, obj=None) :
-        SagapilotException.__init__(self, msg, obj)
+        radical.pilotException.__init__(self, msg, obj)

@@ -3,23 +3,23 @@
 
 import os
 import sys
-import sagapilot
+import radical.pilot
 import unittest
 
 import uuid
 from copy import deepcopy
-from sagapilot.db import Session
+from radical.pilot.db import Session
 from pymongo import MongoClient
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
+DBURL = os.getenv("radical.pilot_DBURL")
 if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'sagapilot_unittests'
+DBNAME = 'radical.pilot_unittests'
 
 
 #-----------------------------------------------------------------------------
@@ -51,14 +51,14 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_create(self):
         """ Test if unit manager creation works as expected.
         """
-        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
         assert session.list_unit_managers() == [], "Wrong number of unit managers"
 
-        um1 = sagapilot.UnitManager(session=session, scheduler='round_robin')
+        um1 = radical.pilot.UnitManager(session=session, scheduler='round_robin')
         assert session.list_unit_managers() == [um1.uid], "Wrong list of unit managers"
 
-        um2 = sagapilot.UnitManager(session=session, scheduler='round_robin')
+        um2 = radical.pilot.UnitManager(session=session, scheduler='round_robin')
         assert len(session.list_unit_managers()) == 2, "Wrong number of unit managers"
 
     #-------------------------------------------------------------------------
@@ -66,9 +66,9 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_reconnect(self):
         """ Test if unit manager reconnection works as expected.
         """
-        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        um = sagapilot.UnitManager(session=session, scheduler='round_robin')
+        um = radical.pilot.UnitManager(session=session, scheduler='round_robin')
         assert session.list_unit_managers() == [um.uid], "Wrong list of unit managers"
 
         um_r = session.get_unit_managers(unit_manager_ids=um.uid)
@@ -81,19 +81,19 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_pilot_assoc(self):
         """ Test if unit manager <-> pilot association works as expected. 
         """
-        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sagapilot.PilotManager(session=session)
+        pm = radical.pilot.PilotManager(session=session)
 
-        cpd = sagapilot.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
         cpd.runtime = 1
-        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests" 
+        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests" 
 
         p1 = pm.submit_pilots(pilot_descriptions=cpd)
 
-        um = sagapilot.UnitManager(session=session, scheduler='round_robin')
+        um = radical.pilot.UnitManager(session=session, scheduler='round_robin')
         assert um.list_pilots() == [], "Wrong list of pilots"
 
         um.add_pilots(p1)
@@ -108,11 +108,11 @@ class TestUnitManager(unittest.TestCase):
 
         pilot_list = []
         for x in range(0, 2):
-            cpd = sagapilot.ComputePilotDescription()
+            cpd = radical.pilot.ComputePilotDescription()
             cpd.resource = "localhost"
             cpd.cores = 1
             cpd.runtime = 1
-            cpd.sandbox = "/tmp/sagapilot.sandbox.unittests" 
+            cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests" 
             p = pm.submit_pilots(pilot_descriptions=cpd)
             um.add_pilots(p)
             pilot_list.append(p)

@@ -3,7 +3,7 @@
 """
 .. module:: pilot
    :platform: Unix
-   :synopsis: SAGA-Pilot (a.k.a SAGA-Pilot) is a distributed Pilot-Job framework.
+   :synopsis: RADICAL-Pilot is a distributed Pilot-Job framework.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """

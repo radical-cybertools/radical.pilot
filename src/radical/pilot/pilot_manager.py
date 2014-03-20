@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.pilot_manager
+.. module:: radical.pilot.pilot_manager
    :platform: Unix
    :synopsis: Provides the interface for the PilotManager class.
 
@@ -27,24 +27,24 @@ from radical.pilot.utils.logger import logger
 # -----------------------------------------------------------------------------
 #
 class PilotManager(object):
-    """A PilotManager holds :class:`sagapilot.ComputePilot` instances that are
-    submitted via the :func:`sagapilot.PilotManager.submit_pilots` method.
+    """A PilotManager holds :class:`radical.pilot.ComputePilot` instances that are
+    submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
     It is possible to attach one or more :ref:`chapter_machconf`
     to a PilotManager to outsource machine specific configuration
     parameters to an external configuration file.
 
-    Each PilotManager has a unique identifier :data:`sagapilot.PilotManager.uid`
+    Each PilotManager has a unique identifier :data:`radical.pilot.PilotManager.uid`
     that can be used to re-connect to previoulsy created PilotManager in a
-    given :class:`sagapilot.Session`.
+    given :class:`radical.pilot.Session`.
 
     **Example**::
 
-        s = sagapilot.Session(database_url=dbURL)
+        s = radical.pilot.Session(database_url=dbURL)
 
-        pm1 = sagapilot.PilotManager(session=s, resource_configurations=RESCONF)
+        pm1 = radical.pilot.PilotManager(session=s, resource_configurations=RESCONF)
         # Re-connect via the 'get()' method.
-        pm2 = sagapilot.PilotManager.get(session=s, pilot_manager_id=pm1.uid)
+        pm2 = radical.pilot.PilotManager.get(session=s, pilot_manager_id=pm1.uid)
 
         # pm1 and pm2 are pointing to the same PilotManager
         assert pm1.uid == pm2.uid
@@ -61,7 +61,7 @@ class PilotManager(object):
 
         **Arguments:**
 
-            * **session** [:class:`sagapilot.Session`]:
+            * **session** [:class:`radical.pilot.Session`]:
               The session instance to use.
 
             * **resource_configurations** [`string` or `list of strings`]:
@@ -73,9 +73,9 @@ class PilotManager(object):
               entries in the  files via the :class:`ComputePilotDescription`.
               For example::
 
-                  pm = sagapilot.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
+                  pm = radical.pilot.PilotManager(session=s, resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json")
 
-                  pd = sagapilot.ComputePilotDescription()
+                  pd = radical.pilot.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
                   pd.cores    = 16
                   pd.runtime  = 5 # minutes
@@ -84,10 +84,10 @@ class PilotManager(object):
 
         **Returns:**
 
-            * A new `PilotManager` object [:class:`sagapilot.PilotManager`].
+            * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
 
         **Raises:**
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         self._session = session
         self._worker = None
@@ -160,7 +160,7 @@ class PilotManager(object):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
             logger.debug("__del__(): PilotManager '%s'." % self._uid)
 
         if self._worker is not None:
@@ -212,7 +212,7 @@ class PilotManager(object):
         """Returns the PilotManagers's unique identifier.
 
         The uid identifies the PilotManager within the
-        :class:`sagapilot.Session` and can be used to retrieve an existing
+        :class:`radical.pilot.Session` and can be used to retrieve an existing
         PilotManager.
 
         **Returns:**
@@ -241,16 +241,16 @@ class PilotManager(object):
     # -------------------------------------------------------------------------
     #
     def submit_pilots(self, pilot_descriptions):
-        """Submits a new :class:`sagapilot.ComputePilot` to a resource.
+        """Submits a new :class:`radical.pilot.ComputePilot` to a resource.
 
         **Returns:**
 
-            * One or more :class:`sagapilot.ComputePilot` instances
-              [`list of :class:`sagapilot.ComputePilot`].
+            * One or more :class:`radical.pilot.ComputePilot` instances
+              [`list of :class:`radical.pilot.ComputePilot`].
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         # Check if the object instance is still valid.
         if not self._uid:
@@ -321,16 +321,16 @@ class PilotManager(object):
     # -------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """Lists the unique identifiers of all :class:`sagapilot.ComputePilot`
+        """Lists the unique identifiers of all :class:`radical.pilot.ComputePilot`
         instances associated with this PilotManager
 
         **Returns:**
 
-            * A list of :class:`sagapilot.ComputePilot` uids [`string`].
+            * A list of :class:`radical.pilot.ComputePilot` uids [`string`].
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         # Check if the object instance is still valid.
         if not self._uid:
@@ -342,7 +342,7 @@ class PilotManager(object):
     # -------------------------------------------------------------------------
     #
     def get_pilots(self, pilot_ids=None):
-        """Returns one or more :class:`sagapilot.ComputePilot` instances.
+        """Returns one or more :class:`radical.pilot.ComputePilot` instances.
 
         **Arguments:**
 
@@ -352,12 +352,12 @@ class PilotManager(object):
 
         **Returns:**
 
-            * A list of :class:`sagapilot.ComputePilot` objects
-              [`list of :class:`sagapilot.ComputePilot`].
+            * A list of :class:`radical.pilot.ComputePilot` objects
+              [`list of :class:`radical.pilot.ComputePilot`].
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -373,7 +373,7 @@ class PilotManager(object):
     def wait_pilots(self, pilot_ids=None,
                     state=[DONE, FAILED, CANCELED],
                     timeout=None):
-        """Returns when one or more :class:`sagapilot.ComputePilots` reach a
+        """Returns when one or more :class:`radical.pilot.ComputePilots` reach a
         specific state or when an optional timeout is reached.
 
         If `pilot_uids` is `None`, `wait_pilots` returns when **all** Pilots
@@ -393,9 +393,9 @@ class PilotManager(object):
               By default `wait_pilots` waits for the Pilots to reach
               a **terminal** state, which can be one of the following:
 
-              * :data:`sagapilot.DONE`
-              * :data:`sagapilot.FAILED`
-              * :data:`sagapilot.CANCELED`
+              * :data:`radical.pilot.DONE`
+              * :data:`radical.pilot.FAILED`
+              * :data:`radical.pilot.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless
@@ -404,7 +404,7 @@ class PilotManager(object):
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -455,7 +455,7 @@ class PilotManager(object):
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException`
+            * :class:`radical.pilot.radical.pilotException`
         """
         # Check if the object instance is still valid.
         if not self._uid:

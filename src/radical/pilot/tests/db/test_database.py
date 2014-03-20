@@ -7,18 +7,18 @@ import os
 import sys
 import uuid
 from copy import deepcopy
-from sagapilot.db import Session
+from radical.pilot.db import Session
 from pymongo import MongoClient
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
+DBURL = os.getenv("radical.pilot_DBURL")
 if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'sagapilot_unittests'
+DBNAME = 'radical.pilot_unittests'
 
 #-----------------------------------------------------------------------------
 #

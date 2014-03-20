@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.session
+.. module:: radical.pilot.session
    :platform: Unix
    :synopsis: Implementation of the Session class.
 
@@ -64,17 +64,17 @@ class Session(object):
     """A Session encapsulates a SAGA-Pilot instance and is the *root* object
     for all other SAGA-Pilot objects. 
 
-    A Session holds :class:`sagapilot.PilotManager` and :class:`sagapilot.UnitManager`
-    instances which in turn hold  :class:`sagapilot.Pilot` and
-    :class:`sagapilot.ComputeUnit` instances.
+    A Session holds :class:`radical.pilot.PilotManager` and :class:`radical.pilot.UnitManager`
+    instances which in turn hold  :class:`radical.pilot.Pilot` and
+    :class:`radical.pilot.ComputeUnit` instances.
 
-    Each Session has a unique identifier :data:`sagapilot.Session.uid` that can be
+    Each Session has a unique identifier :data:`radical.pilot.Session.uid` that can be
     used to re-connect to a SAGA-Pilot instance in the database.
 
     **Example**::
 
-        s1 = sagapilot.Session(database_url=DBURL)
-        s2 = sagapilot.Session(database_url=DBURL, session_uid=s1.uid)
+        s1 = radical.pilot.Session(database_url=DBURL)
+        s2 = radical.pilot.Session(database_url=DBURL, session_uid=s1.uid)
 
         # s1 and s2 are pointing to the same session
         assert s1.uid == s2.uid
@@ -85,7 +85,7 @@ class Session(object):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
             logger.debug("__del__(): Session '%s'." % self._session_uid )
 
         if len(self._process_registry.keys()) > 0:
@@ -93,7 +93,7 @@ class Session(object):
 
     #---------------------------------------------------------------------------
     #
-    def __init__ (self, database_url, database_name="sagapilot", session_uid=None):
+    def __init__ (self, database_url, database_name="radicalpilot", session_uid=None):
         """Creates a new or reconnects to an exising session.
 
         If called without a session_uid, a new Session instance is created and 
@@ -104,7 +104,7 @@ class Session(object):
             * **database_url** (`string`): The MongoDB URL. 
 
             * **database_name** (`string`): An alternative database name 
-              (default: 'sagapilot').
+              (default: 'radical.pilot').
 
             * **session_uid** (`string`): If session_uid is set, we try 
               re-connect to an existing session instead of creating a new one.
@@ -113,7 +113,7 @@ class Session(object):
             * A new Session instance.
 
         **Raises:**
-            * :class:`sagapilot.DatabaseError`
+            * :class:`radical.pilot.DatabaseError`
 
         """
 
@@ -164,7 +164,7 @@ class Session(object):
                 logger.info("Reconnected to existing Session %s." % str(self))
 
         except DBException, ex:
-            raise exceptions.SagapilotException("Database Error: %s" % ex)        
+            raise exceptions.radical.pilotException("Database Error: %s" % ex)        
 
     #---------------------------------------------------------------------------
     #
@@ -197,7 +197,7 @@ class Session(object):
             * A unique identifier (`string`).
 
         **Raises:**
-            * :class:`sagapilot.IncorrectState` if the session is closed
+            * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
 
         """
@@ -267,7 +267,7 @@ class Session(object):
         an error.
 
         **Raises:**
-            * :class:`sagapilot.IncorrectState` if the session is closed
+            * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
         if not self._session_uid:
@@ -282,20 +282,20 @@ class Session(object):
     #---------------------------------------------------------------------------
     #
     def list_pilot_managers(self):
-        """Lists the unique identifiers of all :class:`sagapilot.PilotManager` 
+        """Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
         instances associated with this session.
 
         **Example**::
 
-            s = sagapilot.Session(database_url=DBURL)
+            s = radical.pilot.Session(database_url=DBURL)
             for pm_uid in s.list_pilot_managers():
-                pm = sagapilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
+                pm = radical.pilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of :class:`sagapilot.PilotManager` uids (`list` oif strings`).
+            * A list of :class:`radical.pilot.PilotManager` uids (`list` oif strings`).
 
         **Raises:**
-            * :class:`sagapilot.IncorrectState` if the session is closed
+            * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
         if not self._session_uid:
@@ -312,7 +312,7 @@ class Session(object):
 
         **Arguments:**
 
-            * **session** [:class:`sagapilot.Session`]: 
+            * **session** [:class:`radical.pilot.Session`]: 
               The session instance to use.
 
             * **pilot_manager_uid** [`string`]: 
@@ -321,11 +321,11 @@ class Session(object):
 
         **Returns:**
 
-            * One or more new [:class:`sagapilot.PilotManager`] objects.
+            * One or more new [:class:`radical.pilot.PilotManager`] objects.
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException` if a PilotManager with 
+            * :class:`radical.pilot.radical.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         if not self._session_uid:
@@ -356,20 +356,20 @@ class Session(object):
     #---------------------------------------------------------------------------
     #
     def list_unit_managers(self):
-        """Lists the unique identifiers of all :class:`sagapilot.UnitManager` 
+        """Lists the unique identifiers of all :class:`radical.pilot.UnitManager` 
         instances associated with this session.
 
         **Example**::
 
-            s = sagapilot.Session(database_url=DBURL)
+            s = radical.pilot.Session(database_url=DBURL)
             for pm_uid in s.list_unit_managers():
-                pm = sagapilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
+                pm = radical.pilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of :class:`sagapilot.UnitManager` uids (`list` of `strings`).
+            * A list of :class:`radical.pilot.UnitManager` uids (`list` of `strings`).
 
         **Raises:**
-            * :class:`sagapilot.IncorrectState` if the session is closed
+            * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
         if not self._session_uid:
@@ -385,7 +385,7 @@ class Session(object):
 
         **Arguments:**
 
-            * **session** [:class:`sagapilot.Session`]: 
+            * **session** [:class:`radical.pilot.Session`]: 
               The session instance to use.
 
             * **pilot_manager_uid** [`string`]: 
@@ -394,11 +394,11 @@ class Session(object):
 
         **Returns:**
 
-            * One or more new [:class:`sagapilot.PilotManager`] objects.
+            * One or more new [:class:`radical.pilot.PilotManager`] objects.
 
         **Raises:**
 
-            * :class:`sagapilot.SagapilotException` if a PilotManager with 
+            * :class:`radical.pilot.radical.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         if not self._session_uid:

@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212, E1101, R0903
 
 """
-.. module:: sagapilot.compute_unit_description
+.. module:: radical.pilot.compute_unit_description
    :platform: Unix
    :synopsis: Implementation of the ComputeUnitDescription class.
 
@@ -28,8 +28,8 @@ WORKING_DIRECTORY_PRIV = 'working_directory_priv'
 #
 class ComputeUnitDescription(attributes.Attributes) :
     """A ComputeUnitDescription object describes the requirements and 
-    properties of a :class:`sagapilot.ComputeUnit` and is passed as a parameter to
-    :meth:`sagapilot.UnitManager.submit_units` to instantiate and run a new 
+    properties of a :class:`radical.pilot.ComputeUnit` and is passed as a parameter to
+    :meth:`radical.pilot.UnitManager.submit_units` to instantiate and run a new 
     ComputeUnit.
 
     .. note:: A ComputeUnitDescription **MUST** define at least an :data:`executable`.

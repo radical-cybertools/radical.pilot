@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.scheduler
+.. module:: radical.pilot.scheduler
    :platform: Unix
    :synopsis: Scheduler implementations.
 

@@ -325,7 +325,7 @@ class PilotManagerWorker(threading.Thread):
                 raise Exception(error_msg)
 
             # At this point we have determined 'pwd'
-            fs.path = "%s/sagapilot.sandbox" % workdir.rstrip()
+            fs.path = "%s/radical.pilot.sandbox" % workdir.rstrip()
 
         # This is the base URL / 'sandbox' for the pilot!
         agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))

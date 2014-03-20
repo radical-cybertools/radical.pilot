@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sagapilot.scheduler.DirectSubmissionScheduler
+.. module:: radical.pilot.scheduler.DirectSubmissionScheduler
    :platform: Unix
    :synopsis: A single-pilot, direct submission scheduler.
 
@@ -36,7 +36,7 @@ class DirectSubmissionScheduler(Scheduler):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("SAGAPILOT_GCDEBUG", None) is not None:
+        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
             logger.debug("__del__(): %s." % self.name)
 
     # -------------------------------------------------------------------------

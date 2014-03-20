@@ -2,23 +2,23 @@
 """
 import os
 import sys
-import sagapilot
+import radical.pilot
 import unittest
 
 import uuid
 from copy import deepcopy
-from sagapilot.db import Session
+from radical.pilot.db import Session
 from pymongo import MongoClient
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
+DBURL = os.getenv("radical.pilot_DBURL")
 if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'sagapilot_unittests'
+DBNAME = 'radical.pilot_unittests'
 
 
 #-----------------------------------------------------------------------------
@@ -49,15 +49,15 @@ class TestPilot(unittest.TestCase):
     def test__pilot_wait(self):
         """ Test if we can wait for different pilot states.
         """
-        session = sagapilot.Session(database_url=DBURL)
+        session = radical.pilot.Session(database_url=DBURL)
 
-        pm = sagapilot.PilotManager(session=session)
+        pm = radical.pilot.PilotManager(session=session)
 
-        cpd = sagapilot.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
         cpd.runtime = 1
-        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
+        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -65,17 +65,17 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait(sagapilot.states.RUNNING)
+        pilot.wait(radical.pilot.states.RUNNING)
         assert pilot.submission_time is not None
-        assert pilot.state == sagapilot.states.RUNNING
+        assert pilot.state == radical.pilot.states.RUNNING
         assert pilot.start_time is not None
         assert pilot.log is not None
         assert pilot.sandbox == "file://localhost%s/pilot-%s/" % (cpd.sandbox, pilot.uid)
 
         # the pilot should finish after it has reached run_time
 
-        pilot.wait(sagapilot.states.DONE)
-        assert pilot.state == sagapilot.states.DONE
+        pilot.wait(radical.pilot.states.DONE)
+        assert pilot.state == radical.pilot.states.DONE
         assert pilot.stop_time is not None
 
     #-------------------------------------------------------------------------
@@ -83,11 +83,11 @@ class TestPilot(unittest.TestCase):
     def test__pilot_errors(self):
         """ Test if pilot errors are raised properly.
         """
-        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sagapilot.PilotManager(session=session)
+        pm = radical.pilot.PilotManager(session=session)
 
-        cpd = sagapilot.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
         cpd.runtime = 1
@@ -97,32 +97,32 @@ class TestPilot(unittest.TestCase):
             pilot = pm.submit_pilots(pilot_descriptions=cpd)
             assert False, "Pilot submission should have failed"
         except Exception, ex:
-            assert pilot.state == sagapilot.states.FAILED
+            assert pilot.state == radical.pilot.states.FAILED
 
-        cpd = sagapilot.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 100000000000  # This should fail - at least in 2014 ;-)
         cpd.runtime = 1
-        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
+        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
-        pilot.wait(sagapilot.states.FAILED, timeout=2.0*60)
-        assert pilot.state == sagapilot.states.FAILED, ("state should be %s and not %s" (sagapilot.states.FAILED, pilot.state))
+        pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
+        assert pilot.state == radical.pilot.states.FAILED, ("state should be %s and not %s" (radical.pilot.states.FAILED, pilot.state))
 
     #-------------------------------------------------------------------------
     #
     def test__pilot_cancel(self):
         """ Test if we can cancel a pilot.
         """
-        session = sagapilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = sagapilot.PilotManager(session=session)
+        pm = radical.pilot.PilotManager(session=session)
 
-        cpd = sagapilot.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
         cpd.runtime = 1
-        cpd.sandbox = "/tmp/sagapilot.sandbox.unittests"
+        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -130,14 +130,14 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait(sagapilot.states.RUNNING)
+        pilot.wait(radical.pilot.states.RUNNING)
         assert pilot.submission_time is not None
-        assert pilot.state == sagapilot.states.RUNNING
+        assert pilot.state == radical.pilot.states.RUNNING
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait(sagapilot.states.CANCELED)
-        assert pilot.state == sagapilot.states.CANCELED
+        pilot.wait(radical.pilot.states.CANCELED)
+        assert pilot.state == radical.pilot.states.CANCELED
         assert pilot.stop_time is not None
