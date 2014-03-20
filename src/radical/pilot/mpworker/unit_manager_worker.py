@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sinon.mpworker.unit_manager_worker
+.. module:: radical.pilot.mpworker.unit_manager_worker
    :platform: Unix
    :synopsis: Implements a multiprocessing worker backend for
               the UnitManager class.

@@ -1,5 +1,5 @@
 """
-.. module:: sinon.mpworker.pilotlauncher
+.. module:: radical.pilot.mpworker.pilotlauncher
    :platform: Unix
    :synopsis: Implements the pilot laumcher functionality.
 

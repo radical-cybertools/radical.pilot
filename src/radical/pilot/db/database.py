@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: sinon.database
+.. module:: radical.pilot.database
    :platform: Unix
    :synopsis: Database functions.
 
@@ -53,7 +53,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, db_url, db_name="sinon"):
+    def __init__(self, db_url, db_name="radical.pilot"):
         """ Le constructeur. Should not be called directrly, but rather
             via the static methods new() or reconnect().
         """
@@ -73,7 +73,7 @@ class Session():
     #--------------------------------------------------------------------------
     #
     @staticmethod
-    def new(sid, db_url, db_name="sinon"):
+    def new(sid, db_url, db_name="radical.pilot"):
         """ Creates a new session (factory method).
         """
         creation_time = datetime.datetime.utcnow()
@@ -90,11 +90,11 @@ class Session():
             A session is a distinct collection with three sub-collections
             in MongoDB:
 
-            sinon.<sid>    | Base collection. Holds some metadata.   | self._s
-            sinon.<sid>.w  | Collection holding all work units.      | self._w
-            sinon.<sid>.wm | Collection holding all unit managers.   | self._um
-            sinon.<sid>.p  | Collection holding all pilots.          | self._p
-            sinon.<sid>.pm | Collection holding all pilot managers.  | self._pm
+            radical.pilot.<sid>    | Base collection. Holds some metadata.   | self._s
+            radical.pilot.<sid>.w  | Collection holding all work units.      | self._w
+            radical.pilot.<sid>.wm | Collection holding all unit managers.   | self._um
+            radical.pilot.<sid>.p  | Collection holding all pilots.          | self._p
+            radical.pilot.<sid>.pm | Collection holding all pilot managers.  | self._pm
 
             All collections are created with a new session. Since MongoDB
             uses lazy-create, they only appear in the database after the
@@ -131,10 +131,10 @@ class Session():
     #--------------------------------------------------------------------------
     #
     @staticmethod
-    def reconnect(sid, db_url, db_name="sinon"):
+    def reconnect(sid, db_url, db_name="radical.pilot"):
         """ Reconnects to an existing session.
 
-            Here we simply check if a sinon.<sid> collection exists.
+            Here we simply check if a radical.pilot.<sid> collection exists.
         """
         dbs = Session(db_url, db_name)
         session_info = dbs._reconnect(sid)

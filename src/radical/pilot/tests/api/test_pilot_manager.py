@@ -19,7 +19,7 @@ if DBURL is None:
     print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radical.pilot_unittests'
+DBNAME = 'radicalpilot_unittests'
 
 
 #-----------------------------------------------------------------------------

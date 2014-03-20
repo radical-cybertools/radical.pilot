@@ -1,7 +1,7 @@
 """ Test resources
 """
 
-import sinon
+import radical.pilot
 
 import os
 import uuid
@@ -20,7 +20,7 @@ if DBURL is None:
     print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radical.pilot_unittests'
+DBNAME = 'radicalpilot_unittests'
 
 RESCFG = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
 
@@ -60,16 +60,16 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_simple_submission(self):
         """ Test simple remote submission with one pilot.
         """
-        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
-        cred = sinon.SSHCredential()
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        cred = radical.pilot.SSHCredential()
         cred.user_id  = self.test_ssh_uid
         cred.user_key = self.test_ssh_key
 
         session.add_credential(cred)
 
-        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = radical.pilot.PilotManager(session=session, resource_configurations=RESCFG)
 
-        cpd = sinon.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = self.test_resource
         cpd.cores = self.test_cores
         cpd.runtime = 5
@@ -77,12 +77,12 @@ class TestRemoteSubmission(unittest.TestCase):
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
-        um = sinon.UnitManager(session=session, scheduler='round_robin')
+        um = radical.pilot.UnitManager(session=session, scheduler='round_robin')
         um.add_pilots(pilot)
 
         cudescs = []
         for _ in range(0,int(self.test_num_cus)):
-            cudesc = sinon.ComputeUnitDescription()
+            cudesc = radical.pilot.ComputeUnitDescription()
             cudesc.cores = 1
             cudesc.executable = "/bin/sleep"
             cudesc.arguments = ['10']
@@ -95,10 +95,10 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.start_time is None
             assert cu.start_time is None
 
-        um.wait_units(state=[sinon.states.DONE, sinon.states.FAILED], timeout=self.test_timeout)
+        um.wait_units(state=[radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=self.test_timeout)
 
         for cu in cus:
-            assert cu.state == sinon.states.DONE
+            assert cu.state == radical.pilot.states.DONE
             assert cu.stop_time is not None
 
         pm.cancel_pilots()
@@ -108,16 +108,16 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_pilot_wait(self):
         """ Test if we can wait for different pilot states. 
         """
-        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
-        cred = sinon.SSHCredential()
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        cred = radical.pilot.SSHCredential()
         cred.user_id  = self.test_ssh_uid
         cred.user_key = self.test_ssh_key
 
         session.add_credential(cred)
 
-        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = radical.pilot.PilotManager(session=session, resource_configurations=RESCFG)
 
-        cpd = sinon.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource          = self.test_resource
         cpd.cores             = self.test_cores
         cpd.runtime           = 2
@@ -129,15 +129,15 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(sinon.states.RUNNING, timeout=5.0*60)
-        assert pilot.state == sinon.states.RUNNING
+        pilot.wait(radical.pilot.states.RUNNING, timeout=5.0*60)
+        assert pilot.state == radical.pilot.states.RUNNING
         assert pilot.start_time is not None
         assert pilot.submission_time is not None
 
 
         # the pilot should finish after it has reached run_time
-        pilot.wait(sinon.states.DONE, timeout=5.0*60)
-        assert pilot.state == sinon.states.DONE
+        pilot.wait(radical.pilot.states.DONE, timeout=5.0*60)
+        assert pilot.state == radical.pilot.states.DONE
         assert pilot.stop_time is not None
 
     #-------------------------------------------------------------------------
@@ -145,16 +145,16 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_pilot_cancel(self):
         """ Test if we can cancel a pilot. 
         """
-        session = sinon.Session(database_url=DBURL, database_name=DBNAME)
-        cred = sinon.SSHCredential()
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        cred = radical.pilot.SSHCredential()
         cred.user_id  = self.test_ssh_uid
         cred.user_key = self.test_ssh_key
 
         session.add_credential(cred)
 
-        pm = sinon.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = radical.pilot.PilotManager(session=session, resource_configurations=RESCFG)
 
-        cpd = sinon.ComputePilotDescription()
+        cpd = radical.pilot.ComputePilotDescription()
         cpd.resource          = self.test_resource
         cpd.cores             = self.test_cores
         cpd.runtime           = 2
@@ -166,15 +166,15 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(sinon.states.RUNNING)
-        assert pilot.state == sinon.states.RUNNING, "Expected state 'RUNNING' but got %s" % pilot.state
+        pilot.wait(radical.pilot.states.RUNNING)
+        assert pilot.state == radical.pilot.states.RUNNING, "Expected state 'RUNNING' but got %s" % pilot.state
         assert pilot.submission_time is not None
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait(sinon.states.CANCELED, timeout=5.0*60)
-        assert pilot.state == sinon.states.CANCELED
+        pilot.wait(radical.pilot.states.CANCELED, timeout=5.0*60)
+        assert pilot.state == radical.pilot.states.CANCELED
         assert pilot.stop_time is not None
 

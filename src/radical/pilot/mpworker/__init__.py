@@ -1,5 +1,5 @@
 """
-.. module:: sinon.mpworker
+.. module:: radical.pilot.mpworker
    :platform: Unix
    :synopsis: The multiprocessing workers for RADICAL-Pilot.
 
