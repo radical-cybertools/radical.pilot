@@ -160,7 +160,7 @@ class PilotManager(object):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
+        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
             logger.debug("__del__(): PilotManager '%s'." % self._uid)
 
         if self._worker is not None:

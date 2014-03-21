@@ -12,7 +12,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-
+import os
 import time
 import Queue
 import weakref
@@ -92,6 +92,15 @@ class UnitManagerWorker(threading.Thread):
 
         self.name = 'UMWThread-%s' % self._um_id
 
+        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
+            logger.debug("GCDEBUG __init__(): UnitManagerWorker '%s'." % self._um_id)
+
+
+    # ------------------------------------------------------------------------
+    #
+    def __del__(self):
+        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
+            logger.debug("GCDEBUG __del__(): UnitManagerWorker '%s'." % self._um_id)
 
     # ------------------------------------------------------------------------
     #
@@ -318,7 +327,7 @@ class UnitManagerWorker(threading.Thread):
         # Add the facade object if missing, e.g., after a re-connect.
         if self._shared_data[unit_uid]['facade_object'] is None:
             self._shared_data_lock.acquire()
-            self._shared_data[unit_uid]['facade_object'] = unit #weakref.ref(unit)
+            self._shared_data[unit_uid]['facade_object'] = unit # weakref.ref(unit)
             self._shared_data_lock.release()
 
         # Callbacks can only be registered when the ComputeAlready has a
@@ -449,7 +458,7 @@ class UnitManagerWorker(threading.Thread):
             self._shared_data[unit.uid] = {
                 'data':          results[unit.uid],
                 'callbacks':     [],
-                'facade_object': unit #weakref.ref(unit)
+                'facade_object': unit # weakref.ref(unit)
             }
 
         # Bulk-add all non-transfer units-

@@ -13,6 +13,7 @@ __license__ = "MIT"
 
 import os
 import time
+import weakref
 
 from radical.pilot.compute_unit import ComputeUnit
 from radical.pilot.utils.logger import logger
@@ -112,7 +113,7 @@ class UnitManager(object):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
+        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
             logger.debug("__del__(): UnitManager '%s'." % self._uid)
 
         if self._worker is not None:
@@ -428,8 +429,8 @@ class UnitManager(object):
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
             unit_ids = [unit_ids]
 
-        pilots = ComputeUnit._get(unit_ids=unit_ids, unit_manager_obj=self)
-        return pilots
+        units = ComputeUnit._get(unit_ids=unit_ids, unit_manager_obj=self)
+        return units
 
     # -------------------------------------------------------------------------
     #

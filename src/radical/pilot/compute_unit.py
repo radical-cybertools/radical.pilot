@@ -19,7 +19,6 @@ from radical.pilot.utils.logger import logger
 import states
 import exceptions
 
-
 # -----------------------------------------------------------------------------
 #
 class ComputeUnit(object):
@@ -53,13 +52,16 @@ class ComputeUnit(object):
         # handle to the manager's worker
         self._worker = None
 
+        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
+            logger.debug("GCDEBUG __init__(): ComputeUnit [object id: %s]." % id(self))
+
     #--------------------------------------------------------------------------
     #
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("radical.pilot_GCDEBUG", None) is not None:
-            logger.debug("__del__(): ComputeUnit '%s'." % self._uid)
+        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
+            logger.debug("GCDEBUG __del__(): ComputeUnit [object id: %s]." % id(self))
 
     # -------------------------------------------------------------------------
     #
