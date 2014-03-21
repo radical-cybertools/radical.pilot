@@ -25,8 +25,8 @@ mod_root = 'src/radical'
 #   - version_detail is derived from the git tag, and only available when
 #     installed from git -- this is stored in VERSION.git, in the same
 #     locations, on install.
-#   - both files, VERSION and VERSION.git are used to provide the runtime 
-#     version information. 
+#   - both files, VERSION and VERSION.git are used to provide the runtime
+#     version information.
 #
 def get_version (mod_root):
     """
@@ -69,7 +69,7 @@ def get_version (mod_root):
         path = "%s/%s" % (src_root, mod_root)
         print 'creating %s/VERSION' % path
 
-        with open (path + "/VERSION",     "w") as f : f.write (version        + "\n") 
+        with open (path + "/VERSION",     "w") as f : f.write (version        + "\n")
         with open (path + "/VERSION.git", "w") as f : f.write (version_detail + "\n")
 
         return version, version_detail
@@ -116,7 +116,7 @@ setup_args = {
     'long_description' : (read('README.md') + '\n\n' + read('CHANGES.md')),
     'author'           : 'RADICAL Group at Rutgers University',
     'author_email'     : "radical@rutgers.edu",
-    'maintainer'       : "Ole Weidner", 
+    'maintainer'       : "Ole Weidner",
     'maintainer_email' : "ole.weidner@rutgers.edu",
     'url'              : "https://github.com/radical-cybertools/radical.pilot",
     'license'          : "MIT",
@@ -137,10 +137,10 @@ setup_args = {
         'Operating System :: POSIX',
         'Operating System :: Unix'
     ],
-    
+
     'namespace_packages': ['radical'],
     'packages'    : find_packages('src'),
-    'package_dir' : {'': 'src'},    
+    'package_dir' : {'': 'src'},
     'scripts'          : ['bin/radicalpilot-version',
                           'bin/radicalpilot-profiler',
                           'bin/bootstrap-and-run-agent',
@@ -161,4 +161,3 @@ setup_args = {
 setup (**setup_args)
 
 #-----------------------------------------------------------------------------
-

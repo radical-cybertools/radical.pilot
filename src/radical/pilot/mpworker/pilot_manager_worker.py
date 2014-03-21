@@ -128,7 +128,7 @@ class PilotManagerWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_pilot_data(self, pilot_uids):
+    def get_compute_pilot_data(self, pilot_uids=None):
         """Returns the raw data (json dicts) of one or more ComputePilots
            registered with this Worker / PilotManager
         """

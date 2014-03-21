@@ -175,3 +175,34 @@ class Test_PilotManager(unittest.TestCase):
             assert pilot[0].uid in pm2_pilot_uids, "Wrong pilot ID %s" % pilot[0].uid
 
         assert len(pm2.get_pilots()) == 2, "Wrong number of pilots."
+
+
+    #-------------------------------------------------------------------------
+    #
+    def test__pilotmanager_wait(self):
+        """Test if wait() waits until all (2) pilots have reached 'DONE' state.
+        """
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+
+        pmgr = radical.pilot.PilotManager(session=session)
+        
+        cpd1 = radical.pilot.ComputePilotDescription()
+        cpd1.resource = "localhost"
+        cpd1.cores = 1
+        cpd1.runtime = 1
+        cpd1.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+
+        cpd2 = radical.pilot.ComputePilotDescription()
+        cpd2.resource = "localhost"
+        cpd2.cores = 1
+        cpd2.runtime = 2
+        cpd2.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+
+        pilots = pmgr.submit_pilots([cpd1, cpd2])
+
+        pmgr.wait_pilots()
+        
+        for pilot in pilots:
+            assert pilot.state == radical.pilot.states.DONE
+            assert pilot.stop_time is not None
+            assert pilot.start_time is not None
