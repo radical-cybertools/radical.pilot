@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-.. module:: sagapilot-profiler
+.. module:: radical.pilot.profiler
    :platform: Unix
    :synopsis: A simple benchmark executor for SAGA-Pilot.
 
@@ -12,7 +12,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
-import sagapilot
+import s
 import logging
 import optparse
 import pprint
@@ -21,10 +21,9 @@ import uuid
 EXECUTABLE = "/bin/sleep"
 ARGUMENTS = ["0"]
 
-# RCONF points to the resource configuration files. Read more about resource 
-# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
-          "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
+# RCONF points to the resource configuration files. 
+RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
+          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 
 #------------------------------------------------------------------------------
 #
@@ -35,7 +34,7 @@ def pilot_state_cb(pilot, state):
     print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
 
-    if state == sagapilot.states.FAILED:
+    if state == radical.pilot.states.FAILED:
         sys.exit(1)
 
 #------------------------------------------------------------------------------
@@ -46,7 +45,7 @@ def unit_state_change_cb(unit, state):
     """
     print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
         unit.uid, state)
-    if state == sagapilot.states.FAILED:
+    if state == radical.pilot.states.FAILED:
         print "            Log: %s" % unit.log[-1]
 
 #-----------------------------------------------------------------------------
@@ -64,19 +63,19 @@ def run_benchmark(database_url, resource, pilot_runtime, pilot_size,
 
 
     try: 
-        session = sagapilot.Session(database_url=database_url)
+        session = radical.pilot.Session(database_url=database_url)
         print "\n============================================================"
         print "| Session UID for this benchmark: %s | " % session.uid 
         print "============================================================\n"
 
-        pilot_desc = sagapilot.ComputePilotDescription()
+        pilot_desc = radical.pilot.ComputePilotDescription()
         pilot_desc.resource = resource
         pilot_desc.cores = pilot_size
         pilot_desc.runtime = pilot_runtime
 
         all_cus = list()
         for cu_num in range(0, number_of_cus):
-          cu_descr = sagapilot.ComputeUnitDescription()
+          cu_descr = radical.pilot.ComputeUnitDescription()
           cu_descr.executable = EXECUTABLE
           cu_descr.arguments = ARGUMENTS
           cu_descr.cores = 1
@@ -88,11 +87,11 @@ def run_benchmark(database_url, resource, pilot_runtime, pilot_size,
 
           all_cus.append(cu_descr)
 
-        pilot_mgr = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
+        pilot_mgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
         pilot_mgr.register_callback(pilot_state_cb)
         pilot = pilot_mgr.submit_pilots(pilot_desc)
 
-        unit_mgr = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+        unit_mgr = radical.pilot.UnitManager(session=session, scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
         unit_mgr.register_callback(unit_state_change_cb)
         unit_mgr.add_pilots(pilot)
         unit_mgr.submit_units(all_cus)

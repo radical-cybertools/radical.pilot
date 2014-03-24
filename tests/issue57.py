@@ -14,8 +14,8 @@ if DBURL is None:
 
 # RCONF points to the resource configuration files. Read more about resource 
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
-          "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
+RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/xsede.json",
+          "https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/futuregrid.json"]
 
 #-------------------------------------------------------------------------------
 

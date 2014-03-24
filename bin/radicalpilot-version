@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# -----------------------------------------------------------------------------
+# Author: Ole Weidner (ole.weidner@rutgers.edu)
+# Copyright 2013, radical@rutgers.edu
+# License under the MIT License
+#
+# This script returns the version.
+#
+
+python -c "import radical.pilot; print radical.pilot.version"
+

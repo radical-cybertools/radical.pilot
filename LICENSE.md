@@ -1,7 +1,7 @@
-saga-python is licensed under the MIT License (MIT)
----------------------------------------------------
+radical.pilot is licensed under the MIT License (MIT)
+-----------------------------------------------------
 
-Copyright (C) 2011-2013 by The SAGA Project 
+Copyright (C) 2013-2014 by The RADICAL Group at Rutgers University 
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
