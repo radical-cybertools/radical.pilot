@@ -19,6 +19,7 @@ import urllib2
 from radical.pilot.states import *
 from radical.pilot.exceptions import *
 
+from radical.pilot.object import Object
 from radical.pilot.mpworker import PilotManagerWorker
 from radical.pilot.compute_pilot import ComputePilot
 from radical.pilot.utils.logger import logger
@@ -26,7 +27,7 @@ from radical.pilot.utils.logger import logger
 
 # -----------------------------------------------------------------------------
 #
-class PilotManager(object):
+class PilotManager(Object):
     """A PilotManager holds :class:`radical.pilot.ComputePilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
@@ -153,15 +154,8 @@ class PilotManager(object):
         # Each pilot manager has a worker thread associated with it. The task
         # of the worker thread is to check and update the state of pilots, fire
         # callbacks and so on.
+        self._session._pilot_manager_objects.append(self)
         self._session._process_registry.register(self._uid, self._worker)
-
-    #--------------------------------------------------------------------------
-    #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): PilotManager '%s'." % self._uid)
 
     #--------------------------------------------------------------------------
     #
@@ -169,11 +163,18 @@ class PilotManager(object):
         """Shuts down the PilotManager and its background workers in a 
         coordinated fashion.
         """
+        if not self._uid:
+            logger.warning("PilotManager object already closed.")
+            return
+
         if self._worker is not None:
             # Stop the worker process
             self._worker.stop()
             # Remove worker from registry
             self._session._process_registry.remove(self._uid)
+
+        logger.info("Closed PilotManager %s." % str(self._uid))
+        self._uid = None
 
     #--------------------------------------------------------------------------
     #
@@ -211,31 +212,17 @@ class PilotManager(object):
 
         return obj
 
-    #--------------------------------------------------------------------------
-    #
-    @property
-    def uid(self):
-        """Returns the PilotManagers's unique identifier.
-
-        The uid identifies the PilotManager within the
-        :class:`radical.pilot.Session` and can be used to retrieve an existing
-        PilotManager.
-
-        **Returns:**
-
-            * A unique identifier [`string`].
-        """
-        return self._uid
-
     # -------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
-        obj_dict = {
+        self._assert_obj_is_valid()
+
+        object_dict = {
             'uid': self.uid
         }
-        return obj_dict
+        return object_dict
 
     # -------------------------------------------------------------------------
     #
@@ -259,8 +246,7 @@ class PilotManager(object):
             * :class:`radical.pilot.radical.pilotException`
         """
         # Check if the object instance is still valid.
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+        self._assert_obj_is_valid()
 
         # Implicit list conversion.
         if not isinstance(pilot_descriptions, list):
@@ -339,8 +325,7 @@ class PilotManager(object):
             * :class:`radical.pilot.radical.pilotException`
         """
         # Check if the object instance is still valid.
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+        self._assert_obj_is_valid()
 
         # Get the pilot list from the worker
         return self._worker.list_pilots()
@@ -365,8 +350,7 @@ class PilotManager(object):
 
             * :class:`radical.pilot.radical.pilotException`
         """
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+        self._assert_obj_is_valid()
 
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
             pilot_ids = [pilot_ids]
@@ -412,8 +396,7 @@ class PilotManager(object):
 
             * :class:`radical.pilot.radical.pilotException`
         """
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+        self._assert_obj_is_valid()
 
         if not isinstance(state, list):
             state = [state]
@@ -464,8 +447,7 @@ class PilotManager(object):
             * :class:`radical.pilot.radical.pilotException`
         """
         # Check if the object instance is still valid.
-        if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+        self._assert_obj_is_valid()
 
         # Implicit list conversion.
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
@@ -488,4 +470,6 @@ class PilotManager(object):
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.
         """
+        self._assert_obj_is_valid()
+
         self._worker.register_manager_callback(callback_function)

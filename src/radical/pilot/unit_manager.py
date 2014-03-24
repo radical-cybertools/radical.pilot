@@ -102,6 +102,7 @@ class UnitManager(object):
             # Each pilot manager has a worker thread associated with it.
             # The task of the worker thread is to check and update the state
             # of pilots, fire callbacks and so on.
+            self._session._unit_manager_objects.append(self)
             self._session._process_registry.register(self._uid, self._worker)
 
         else:
@@ -110,24 +111,21 @@ class UnitManager(object):
 
     #--------------------------------------------------------------------------
     #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): UnitManager '%s'." % self._uid)
-
-
-
-    #--------------------------------------------------------------------------
-    #
     def close(self):
-        """Shuts down the PilotManager and its background workers in a 
+        """Shuts down the UnitManager and its background workers in a 
         coordinated fashion.
         """
+        if not self._uid:
+            logger.warning("UnitManager object already closed.")
+            return
+
         if self._worker is not None:
             self._worker.stop()
             # Remove worker from registry
             self._session._process_registry.remove(self._uid)
+
+        logger.info("Closed UnitManager %s." % str(self._uid))
+        self._uid = None
 
     #--------------------------------------------------------------------------
     #

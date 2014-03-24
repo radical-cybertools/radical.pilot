@@ -36,7 +36,7 @@ class Object(object):
         **Returns:**
             * A unique identifier (`string`).
 
-        **Raises:**
+        **Raises:**fg
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
 

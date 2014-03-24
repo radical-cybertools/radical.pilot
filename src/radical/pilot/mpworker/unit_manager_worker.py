@@ -309,7 +309,7 @@ class UnitManagerWorker(threading.Thread):
         self._worker_pool.terminate()
         self._worker_pool.join()
 
-        logger.info("Main loop terminated")
+        logger.debug("Thread main loop terminated")
 
     # ------------------------------------------------------------------------
     #

@@ -108,8 +108,8 @@ class Session(Object):
         """
 
         # Dictionaries holding all manager objects created during the session.
-        self._pilot_manager_objects = dict()
-        self._unit_manager_objects = dict()
+        self._pilot_manager_objects = list()
+        self._unit_manager_objects = list()
 
         # Create a new process registry. All objects belonging to this 
         # session will register their worker processes (if they have any)
@@ -161,17 +161,6 @@ class Session(Object):
 
     #---------------------------------------------------------------------------
     #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): Session '%s'." % self._uid )
-
-        if len(self._process_registry.keys()) > 0:
-            logger.warning("Active workers left in registry: %s." % self._process_registry.keys())      
-
-    #---------------------------------------------------------------------------
-    #
     def close(self, delete=True):
         """Closes the session.
 
@@ -186,25 +175,35 @@ class Session(Object):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
-        for pmngr in self._pilot_manager_objects.values():
+        if not self._uid:
+            logger.warning("Session object already closed.")
+
+        for pmngr in self._pilot_manager_objects:
             pmngr.close()
 
-        for umngr in self._unit_manager_objects.values():
+        for umngr in self._unit_manager_objects:
             umngr.close()
 
         if delete is True:
             self._destroy_db_entry()
+
+        logger.info("Closed Session %s." % str(self._uid))
+        self._uid = None
+
 
     #---------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
-        return {"uid": self._uid,
-                "created": self._created,
-                "last_reconnect": self._last_reconnect,
-                "database_name": self._database_name,
-                "database_url": self._database_url}
+        object_dict = {
+            "uid": self._uid,
+            "created": self._created,
+            "last_reconnect": self._last_reconnect,
+            "database_name": self._database_name,
+            "database_url": self._database_url
+        }
+        return object_dict
 
     #---------------------------------------------------------------------------
     #
@@ -334,6 +333,7 @@ class Session(Object):
             pilot_manager = PilotManager._reconnect(session=self, pilot_manager_id=pilot_manager_id)
             pilot_manager_objects.append(pilot_manager)
 
+            self._pilot_manager_objects.append(pilot_manager)
 
         if return_scalar is True:
             pilot_manager_objects = pilot_manager_objects[0]
@@ -400,6 +400,8 @@ class Session(Object):
         for unit_manager_id in unit_manager_ids:
             unit_manager = UnitManager._reconnect(session=self, unit_manager_id=unit_manager_id)
             unit_manager_objects.append(unit_manager)
+
+            self._unit_manager_objects.append(unit_manager)
 
         if return_scalar is True:
             unit_manager_objects = unit_manager_objects[0]
