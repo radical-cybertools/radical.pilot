@@ -179,7 +179,7 @@ class Session(Object):
             logger.warning("Session object already closed.")
 
         for pmngr in self._pilot_manager_objects:
-            pmngr.close()
+            pmngr.close(terminate=delete)
 
         for umngr in self._unit_manager_objects:
             umngr.close()

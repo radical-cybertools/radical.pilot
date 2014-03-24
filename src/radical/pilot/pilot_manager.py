@@ -88,7 +88,7 @@ class PilotManager(Object):
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
 
         **Raises:**
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         self._session = session
         self._worker = None
@@ -159,14 +159,27 @@ class PilotManager(Object):
 
     #--------------------------------------------------------------------------
     #
-    def close(self):
+    def close(self, terminate=False):
         """Shuts down the PilotManager and its background workers in a 
         coordinated fashion.
+
+        **Arguments:**
+
+            * **terminate** [`bool`]: If set to True, all active pilots will 
+              get canceled (default: False).
+
         """
+        # Spit out a warning in case the object was already closed.
         if not self._uid:
             logger.warning("PilotManager object already closed.")
             return
 
+        # If terminate is set, we cancel all pilots. 
+        if terminate is True:
+            self.cancel_pilots()
+
+        # Shut down all worker processes if still active. stop() returns
+        # only after a successful join(). 
         if self._worker is not None:
             # Stop the worker process
             self._worker.stop()

@@ -114,13 +114,7 @@ if __name__ == "__main__":
             print "  STDOUT: {0}".format(unit.stdout)
             print "  STDERR: {0}".format(unit.stderr)
 
-        # Cancel all pilots.
-        pmgr.cancel_pilots()
-
-        pmgr.close()
-        umgr.close()
-
-        session.close(delete=True)
+        session.close()
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex
