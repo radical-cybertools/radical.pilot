@@ -92,10 +92,6 @@ class UnitManagerWorker(threading.Thread):
 
         self.name = 'UMWThread-%s' % self._um_id
 
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("GCDEBUG __init__(): UnitManagerWorker '%s'." % self._um_id)
-
-
     # ------------------------------------------------------------------------
     #
     def __del__(self):
@@ -312,6 +308,8 @@ class UnitManagerWorker(threading.Thread):
         # shut down the pool
         self._worker_pool.terminate()
         self._worker_pool.join()
+
+        logger.info("Main loop terminated")
 
     # ------------------------------------------------------------------------
     #

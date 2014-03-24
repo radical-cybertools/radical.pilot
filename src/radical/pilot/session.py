@@ -13,6 +13,7 @@ __license__   = "MIT"
 
 import os 
 
+from radical.pilot.object        import Object
 from radical.pilot.unit_manager  import UnitManager
 from radical.pilot.pilot_manager import PilotManager
 from radical.pilot.credentials   import SSHCredential
@@ -60,7 +61,7 @@ class _ProcessRegistry(object):
 
 # ------------------------------------------------------------------------------
 #
-class Session(object):
+class Session(Object):
     """A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
 
@@ -79,17 +80,6 @@ class Session(object):
         # s1 and s2 are pointing to the same session
         assert s1.uid == s2.uid
     """
-
-    #---------------------------------------------------------------------------
-    #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): Session '%s'." % self._session_uid )
-
-        if len(self._process_registry.keys()) > 0:
-            logger.warning("Active workers left in registry: %s." % self._process_registry.keys())
 
     #---------------------------------------------------------------------------
     #
@@ -117,6 +107,10 @@ class Session(object):
 
         """
 
+        # Dictionaries holding all manager objects created during the session.
+        self._pilot_manager_objects = dict()
+        self._unit_manager_objects = dict()
+
         # Create a new process registry. All objects belonging to this 
         # session will register their worker processes (if they have any)
         # in this registry. This makes it easier to shut down things in 
@@ -125,7 +119,6 @@ class Session(object):
 
         # List of credentials registered with this session.
         self._credentials = []
-
 
         try:
             self._database_url  = database_url
@@ -136,10 +129,10 @@ class Session(object):
             ##########################
             if session_uid is None:
 
-                self._session_uid    = str(ObjectId())
+                self._uid = str(ObjectId())
                 self._last_reconnect = None
 
-                self._dbs, self._created = dbSession.new(sid=self._session_uid, 
+                self._dbs, self._created = dbSession.new(sid=self._uid, 
                                                          db_url=database_url, 
                                                          db_name=database_name)
 
@@ -154,8 +147,8 @@ class Session(object):
                                                               db_url=database_url, 
                                                               db_name=database_name)
 
-                self._session_uid    = session_uid
-                self._created        = session_info["info"]["created"]
+                self._uid = session_uid
+                self._created = session_info["info"]["created"]
                 self._last_reconnect = session_info["info"]["last_reconnect"]
 
                 for cred_dict in session_info["credentials"]:
@@ -164,18 +157,54 @@ class Session(object):
                 logger.info("Reconnected to existing Session %s." % str(self))
 
         except DBException, ex:
-            raise exceptions.radical.pilotException("Database Error: %s" % ex)        
+            raise exceptions.radical.pilotException("Database Error: %s" % ex)  
+
+    #---------------------------------------------------------------------------
+    #
+    def __del__(self):
+        """Le destructeur.
+        """
+        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
+            logger.debug("__del__(): Session '%s'." % self._uid )
+
+        if len(self._process_registry.keys()) > 0:
+            logger.warning("Active workers left in registry: %s." % self._process_registry.keys())      
+
+    #---------------------------------------------------------------------------
+    #
+    def close(self, delete=True):
+        """Closes the session.
+
+        All subsequent attempts access objects attached to the session will 
+        result in an error. If delete is set to True (default) the session
+        data is removed from the database.
+
+        **Arguments:**
+            * **delete** (`bool`): Remove session data from MongoDB. 
+
+        **Raises:**
+            * :class:`radical.pilot.IncorrectState` if the session is closed
+              or doesn't exist. 
+        """
+        for pmngr in self._pilot_manager_objects.values():
+            pmngr.close()
+
+        for umngr in self._unit_manager_objects.values():
+            umngr.close()
+
+        if delete is True:
+            self._destroy_db_entry()
 
     #---------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
-        return {"uid"            : self._session_uid,
-                "created"        : self._created,
-                "last_reconnect" : self._last_reconnect,
-                "database_url"   : self._database_url,
-                "database_name"  : self._database_name}
+        return {"uid": self._uid,
+                "created": self._created,
+                "last_reconnect": self._last_reconnect,
+                "database_name": self._database_name,
+                "database_url": self._database_url}
 
     #---------------------------------------------------------------------------
     #
@@ -187,36 +216,10 @@ class Session(object):
     #---------------------------------------------------------------------------
     #
     @property
-    def uid(self):
-        """Returns the session's unique identifier.
-
-       The uid identifies the session in the database and can be used to 
-       re-connect to an existing session. 
-
-        **Returns:**
-            * A unique identifier (`string`).
-
-        **Raises:**
-            * :class:`radical.pilot.IncorrectState` if the session is closed
-              or doesn't exist. 
-
-        """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
-
-        return self._session_uid
-
-    #---------------------------------------------------------------------------
-    #
-    @property
     def created(self):
         """Returns the UTC date and time the session was created.
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
-
+        self._assert_obj_is_valid()
         return self._created
 
     #---------------------------------------------------------------------------
@@ -226,10 +229,7 @@ class Session(object):
         """Returns the most recent UTC date and time the session was
         reconnected to.
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
-
+        self._assert_obj_is_valid()
         return self._last_reconnect
 
     #---------------------------------------------------------------------------
@@ -237,9 +237,7 @@ class Session(object):
     def add_credential(self, credential):
         """Adds a new security credential to the session.
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
+        self._assert_obj_is_valid()
 
         self._dbs.session_add_credential(credential.as_dict())
         self._credentials.append(credential)
@@ -251,15 +249,12 @@ class Session(object):
     def credentials(self):
         """Returns the security credentials of the session.
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
-
+        self._assert_obj_is_valid()
         return self._credentials
 
     #---------------------------------------------------------------------------
     #
-    def destroy(self):
+    def _destroy_db_entry(self):
         """Terminates the session and removes it from the database.
 
         All subsequent attempts access objects attached to the session and 
@@ -270,14 +265,11 @@ class Session(object):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
+        self._assert_obj_is_valid()
 
         self._dbs.delete()
-        logger.info("Deleted session %s from database." % self._session_uid)
-        self._session_uid = None
-
+        logger.info("Deleted session %s from database." % self._uid)
+        self._uid = None
 
     #---------------------------------------------------------------------------
     #
@@ -298,10 +290,7 @@ class Session(object):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
-
+        self._assert_obj_is_valid()
         return self._dbs.list_pilot_manager_uids()
 
 
@@ -328,9 +317,7 @@ class Session(object):
             * :class:`radical.pilot.radical.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
+        self._assert_obj_is_valid()
 
         return_scalar = False
 
@@ -372,10 +359,7 @@ class Session(object):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
-
+        self._assert_obj_is_valid()
         return self._dbs.list_unit_manager_uids()
 
     # --------------------------------------------------------------------------
@@ -401,9 +385,7 @@ class Session(object):
             * :class:`radical.pilot.radical.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
-        if not self._session_uid:
-            msg = "Invalid session instance: closed or doesn't exist."
-            raise exceptions.IncorrectState(msg=msg)
+        self._assert_obj_is_valid()
 
         return_scalar = False
         if unit_manager_ids is None:

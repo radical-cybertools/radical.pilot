@@ -116,6 +116,14 @@ class UnitManager(object):
         if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
             logger.debug("__del__(): UnitManager '%s'." % self._uid)
 
+
+
+    #--------------------------------------------------------------------------
+    #
+    def close(self):
+        """Shuts down the PilotManager and its background workers in a 
+        coordinated fashion.
+        """
         if self._worker is not None:
             self._worker.stop()
             # Remove worker from registry

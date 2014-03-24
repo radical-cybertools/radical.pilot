@@ -117,8 +117,10 @@ if __name__ == "__main__":
         # Cancel all pilots.
         pmgr.cancel_pilots()
 
-        # Remove session from database
-        session.destroy()
+        pmgr.close()
+        umgr.close()
+
+        session.close(delete=True)
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex

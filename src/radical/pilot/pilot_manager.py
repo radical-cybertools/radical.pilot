@@ -163,6 +163,12 @@ class PilotManager(object):
         if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
             logger.debug("__del__(): PilotManager '%s'." % self._uid)
 
+    #--------------------------------------------------------------------------
+    #
+    def close(self):
+        """Shuts down the PilotManager and its background workers in a 
+        coordinated fashion.
+        """
         if self._worker is not None:
             # Stop the worker process
             self._worker.stop()

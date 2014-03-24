@@ -98,15 +98,6 @@ class PilotManagerWorker(threading.Thread):
 
         self.name = 'PMWThread-%s' % self._pm_id
 
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("GCDEBUG __init__(): PilotManagerWorker '%s'." % self._pm_id)
-
-    # ------------------------------------------------------------------------
-    #
-    def __del__(self):
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("GCDEBUG __del__(): PilotManagerWorker '%s'." % self._pm_id)
-
     # ------------------------------------------------------------------------
     #
     @classmethod
@@ -267,6 +258,8 @@ class PilotManagerWorker(threading.Thread):
         # shut down the pool
         self._worker_pool.terminate()
         self._worker_pool.join()
+
+        logger.debug("Thread main loop terminated")
 
     # ------------------------------------------------------------------------
     #
