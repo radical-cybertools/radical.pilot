@@ -1,3 +1,9 @@
+0.8 Release                                             Mar. 24. 2014
+---------------------------------------------------------------------
+
+* Renamed codebase from sagapilot to radical.pilot
+* Added explicit close() calls to PM, UM and Session.
+
 0.7 Release                                             Feb. 25. 2014
 ---------------------------------------------------------------------
 
