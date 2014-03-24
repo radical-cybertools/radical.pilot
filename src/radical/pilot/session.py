@@ -179,6 +179,9 @@ class Session(Object):
             logger.warning("Session object already closed.")
 
         for pmngr in self._pilot_manager_objects:
+            # If delete is true, we also set the terminate flag in the 
+            # pilot manager's close method, which causes it to send a 
+            # CANCEL request to all pilots.
             pmngr.close(terminate=delete)
 
         for umngr in self._unit_manager_objects:

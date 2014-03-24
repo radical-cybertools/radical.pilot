@@ -61,6 +61,8 @@ class TestUnitManager(unittest.TestCase):
         um2 = radical.pilot.UnitManager(session=session, scheduler='round_robin')
         assert len(session.list_unit_managers()) == 2, "Wrong number of unit managers"
 
+        session.close()
+
     #-------------------------------------------------------------------------
     #
     def test__unitmanager_reconnect(self):
@@ -75,6 +77,8 @@ class TestUnitManager(unittest.TestCase):
         assert session.list_unit_managers() == [um_r.uid], "Wrong list of unit managers"
 
         assert um.uid == um_r.uid, "Unit Manager IDs not matching!"
+
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -125,5 +129,4 @@ class TestUnitManager(unittest.TestCase):
 
         assert um.list_pilots() == [], "Wrong list of pilots"
 
-
-
+        session.close()

@@ -78,6 +78,8 @@ class TestPilot(unittest.TestCase):
         assert pilot.state == radical.pilot.states.DONE
         assert pilot.stop_time is not None
 
+        session.close()
+
     #-------------------------------------------------------------------------
     #
     def test__pilot_errors(self):
@@ -108,6 +110,8 @@ class TestPilot(unittest.TestCase):
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
         pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
         assert pilot.state == radical.pilot.states.FAILED, ("state should be %s and not %s" (radical.pilot.states.FAILED, pilot.state))
+
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -141,3 +145,5 @@ class TestPilot(unittest.TestCase):
         pilot.wait(radical.pilot.states.CANCELED)
         assert pilot.state == radical.pilot.states.CANCELED
         assert pilot.stop_time is not None
+
+        session.close()

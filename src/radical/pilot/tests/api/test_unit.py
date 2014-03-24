@@ -88,12 +88,4 @@ class TestUnit(unittest.TestCase):
         assert cu.state == radical.pilot.states.DONE
         assert cu.stop_time is not None
 
-        pm.cancel_pilots()
-
-
-
-
-
-
-
-
+        session.close()

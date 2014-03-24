@@ -56,7 +56,7 @@ class Test_Session(unittest.TestCase):
         collections = client[DBNAME].collection_names()
         assert len(collections) == 4, "Wrong number of sessions in database"
 
-        session.destroy()
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -72,7 +72,7 @@ class Test_Session(unittest.TestCase):
             session_r = radical.pilot.Session(database_url=DBURL, database_name=DBNAME, session_uid=sid)
             assert session_r.uid == sid, "Session IDs don't match"
 
-        session.destroy()
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -102,8 +102,4 @@ class Test_Session(unittest.TestCase):
         for cred in session2.credentials:
             assert cred.as_dict() in [cred1.as_dict(), cred2.as_dict()]
 
-        session.destroy()
-
-
-        
-
+        session.close()

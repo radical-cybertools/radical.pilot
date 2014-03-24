@@ -60,6 +60,7 @@ class Test_PilotManager(unittest.TestCase):
         pm = radical.pilot.PilotManager(session=session)
         assert len(session.list_pilot_managers()) == 2, "Wrong number of pilot managers"
 
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -76,6 +77,8 @@ class Test_PilotManager(unittest.TestCase):
         assert session.list_pilot_managers() == [pm_r.uid], "Wrong list of pilot managers"
 
         assert pm.uid == pm_r.uid, "Pilot Manager IDs not matching!"
+
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -102,6 +105,8 @@ class Test_PilotManager(unittest.TestCase):
 
         assert len(pm1.list_pilots()) == 2, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 2, "Wrong number of pilots returned."
+
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -135,6 +140,7 @@ class Test_PilotManager(unittest.TestCase):
         assert len(pm1_r.list_pilots()) == 2, "Wrong number of pilots returned."
         assert len(pm2_r.list_pilots()) == 2, "Wrong number of pilots returned."
 
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -176,6 +182,7 @@ class Test_PilotManager(unittest.TestCase):
 
         assert len(pm2.get_pilots()) == 2, "Wrong number of pilots."
 
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -206,3 +213,5 @@ class Test_PilotManager(unittest.TestCase):
             assert pilot.state == radical.pilot.states.DONE
             assert pilot.stop_time is not None
             assert pilot.start_time is not None
+
+        session.close()
