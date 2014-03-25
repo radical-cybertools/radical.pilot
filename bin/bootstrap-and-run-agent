@@ -5,7 +5,7 @@
 # Copyright 2013-2014, radical@rutgers.edu
 # License under the MIT License
 #
-# This script launches a SAGA-Pilot compute pilot.
+# This script launches a radical.pilot compute pilot.
 #
 
 # -----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ usage()
 cat << EOF
 usage: $0 options
 
-This script launches a SAGA-Pilot compute pilot.
+This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
    -r      Address and port of the coordination service host (MongoDB)
@@ -158,12 +158,12 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python sagapilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE"
+AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE"
 echo ""
 echo "################################################################################"
-echo "## Launching sagapilot-agent for $CORES cores."
+echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python sagapilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE
+           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE
 }
 
 # -----------------------------------------------------------------------------

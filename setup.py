@@ -1,5 +1,4 @@
-
-__author__    = "Andre Merzky, Ole Weidner"
+__author__    = "RADICAL Team"
 __copyright__ = "Copyright 2013, RADICAL Research, Rutgers University"
 __license__   = "MIT"
 
@@ -8,129 +7,152 @@ __license__   = "MIT"
 
 import os
 import sys
-import subprocess
+import subprocess as sp
 
 from setuptools import setup, find_packages, Command
 
+name     = 'radical.pilot'
+mod_root = 'src/radical'
 
 #-----------------------------------------------------------------------------
 #
 # versioning mechanism:
 #
-#   - short_version:  1.2.3 - is used for installation
-#   - long_version:  v1.2.3-9-g0684b06  - is used as runtime (ru.version)
-#   - both are derived from the last git tag
-#   - the file sagapilot/VERSION is created with the long_version, und used
-#     by ru.__init__.py to provide the runtime version information. 
+#   - version:          1.2.3            - is used for installation
+#   - version_detail:  v1.2.3-9-g0684b06 - is used for debugging
+#   - version is read from VERSION file in src root, which is on installation
+#     copied into the module dir.
+#   - version_detail is derived from the git tag, and only available when
+#     installed from git -- this is stored in VERSION.git, in the same
+#     locations, on install.
+#   - both files, VERSION and VERSION.git are used to provide the runtime
+#     version information.
 #
-def get_version():
+def get_version (mod_root):
+    """
+    mod_root
+        a VERSION and VERSION.git file containing the version strings is created
+        in mod_root, during installation.  Those files are used at runtime to
+        get the version information.
 
-    short_version = None  # 0.4.0
-    long_version  = None  # 0.4.0-9-g0684b06
+    """
 
     try:
-        import subprocess as sp
-        import re
 
-        srcroot       = os.path.dirname (os.path.abspath (__file__))
-        VERSION_MATCH = re.compile (r'(([\d\.]+)\D.*)')
+        version        = None
+        version_detail = None
 
-        # attempt to get version information from git
-        p   = sp.Popen ('cd %s && git describe --tags --always' % srcroot,
+        # get version from './VERSION'
+        src_root = os.path.dirname (__file__)
+        if  not src_root :
+            src_root = '.'
+
+        with open (src_root + "/VERSION", "r") as f :
+            version = f.readline ().strip()
+
+
+        # attempt to get version detail information from git
+        p   = sp.Popen ('cd %s ; '\
+                        'tag=`git describe --tags --always` ; '\
+                        'branch=`git branch | grep -e "^*" | cut -f 2 -d " "` ; '\
+                        'echo $tag@$branch'  % src_root,
                         stdout=sp.PIPE, stderr=sp.STDOUT, shell=True)
-        out = p.communicate()[0]
+        version_detail = p.communicate()[0].strip()
 
+        if  p.returncode != 0 and out :
+            version_detail = None
 
-        if  p.returncode != 0 or not out :
-
-            # the git check failed -- its likely that we are called from
-            # a tarball, so use ./VERSION instead
-            out=open ("%s/VERSION" % srcroot, 'r').read().strip()
-
-
-        # from the full string, extract short and long versions
-        v = VERSION_MATCH.search (out)
-        if v:
-            long_version  = v.groups ()[0]
-            short_version = v.groups ()[1]
-
-
-        # sanity check if we got *something*
-        if  not short_version or not long_version :
-            sys.stderr.write ("Cannot determine version from git or ./VERSION\n")
-            import sys
-            sys.exit (-1)
+        print 'version: %s (%s)'  % (version, version_detail)
 
 
         # make sure the version files exist for the runtime version inspection
-        open (              '%s/VERSION' % srcroot, 'w').write (long_version+"\n")
-        open ('%s/src/sagapilot/VERSION' % srcroot, 'w').write (long_version+"\n")
+        path = "%s/%s" % (src_root, mod_root)
+        print 'creating %s/VERSION' % path
 
+        with open (path + "/VERSION",     "w") as f : f.write (version        + "\n")
+        with open (path + "/VERSION.git", "w") as f : f.write (version_detail + "\n")
+
+        return version, version_detail
 
     except Exception as e :
-        print 'Could not extract/set version: %s' % e
-        import sys
-        sys.exit (-1)
-
-    return short_version, long_version
+        raise RuntimeError ("Could not extract/set version: %s" % e)
 
 
-short_version, long_version = get_version ()
+#-----------------------------------------------------------------------------
+# get version info -- this will create VERSION and srcroot/VERSION
+version, version_detail = get_version (mod_root)
+
 
 #-----------------------------------------------------------------------------
 # check python version. we need > 2.5, <3.x
 if  sys.hexversion < 0x02050000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError("Sinon requires Python 2.x (2.5 or higher)")
+    raise RuntimeError("%s requires Python 2.x (2.5 or higher)" % name)
+
+
+#-----------------------------------------------------------------------------
+class our_test(Command):
+    user_options = []
+    def initialize_options (self) : pass
+    def finalize_options   (self) : pass
+    def run (self) :
+        testdir = "%s/tests/" % os.path.dirname(os.path.realpath(__file__))
+        retval  = sp.call([sys.executable,
+                          '%s/run_tests.py'               % testdir,
+                          '%s/configs/workload_input.cfg' % testdir])
+        raise SystemExit(retval)
+
 
 #-----------------------------------------------------------------------------
 #
 def read(*rnames):
     return open(os.path.join(os.path.dirname(__file__), *rnames)).read()
 
+
 #-----------------------------------------------------------------------------
 setup_args = {
-    'name'             : 'sagapilot',
-    'version'          : short_version,
-    'description'      : "A SAGA-based pilot job framework",
+    'name'             : name,
+    'version'          : version,
+    'description'      : "The RADICAL pilot job framework",
     'long_description' : (read('README.md') + '\n\n' + read('CHANGES.md')),
     'author'           : 'RADICAL Group at Rutgers University',
-    'author_email'     : 'ole.weidner@rutgers.edu',
-    'maintainer'       : "Ole Weidner", 
-    'maintainer_email' : 'ole.weidner@rutgers.edu',
-    'url'              : 'https://github.com/saga-project/saga-pilot',
-    'license'          : 'MIT',
+    'author_email'     : "radical@rutgers.edu",
+    'maintainer'       : "Ole Weidner",
+    'maintainer_email' : "ole.weidner@rutgers.edu",
+    'url'              : "https://github.com/radical-cybertools/radical.pilot",
+    'license'          : "MIT",
     'keywords'         : "radical pilot job saga",
-    'classifiers'      :  [
-        'Development Status   :: 5 - Production/Stable',
-        'Intended Audience    :: Developers',
-        'Environment          :: Console',
-        'License              :: OSI Approved :: MIT',
+    'classifiers'      : [
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'Environment :: Console',
+        'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.5',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
-        'Topic                :: Utilities',
-        'Topic                :: System :: Distributed Computing',
-        'Operating System     :: MacOS :: MacOS X',
-        'Operating System     :: POSIX',
-        'Operating System     :: Unix',
+        'Topic :: Utilities',
+        'Topic :: System :: Distributed Computing',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: POSIX',
+        'Operating System :: Unix'
     ],
+
+    'namespace_packages': ['radical'],
     'packages'    : find_packages('src'),
-    'package_dir' : {'': 'src'},    
-    'scripts'          : ['bin/sinon-version', 
-                          'bin/sagapilot-version',
-                          'bin/sagapilot-profiler',
+    'package_dir' : {'': 'src'},
+    'scripts'          : ['bin/radicalpilot-version',
+                          'bin/radicalpilot-profiler',
                           'bin/bootstrap-and-run-agent',
                          ],
-    'package_data'     : {'': ['*.sh', 'VERSION', ]},
+    'package_data'     : {'': ['*.sh', 'VERSION', 'VERSION.git', ]},
     'install_requires' : ['setuptools',
                           'saga-python',
                           'radical.utils',
                           'pymongo>=2.5',
                           'python-hostlist'],
     'tests_require'    : ['setuptools', 'nose'],
-    'test_suite'       : 'sagapilot.tests',
+    'test_suite'       : 'radical.pilot.tests',
     'zip_safe'         : False,
 }
 
@@ -139,4 +161,3 @@ setup_args = {
 setup (**setup_args)
 
 #-----------------------------------------------------------------------------
-

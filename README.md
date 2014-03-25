@@ -1,5 +1,5 @@
-saga-pilot
-==========
+#radical.pilot
 
-Documentation: http://saga-pilot.readthedocs.org/en/latest/
+
+Documentation: http://radicalpilot.readthedocs.org/en/latest/
 

@@ -1,13 +1,13 @@
 import os
 import sys
-import sagapilot
+import radical.pilot
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
+DBURL = os.getenv("RADICALPILOT_DBURL")
 if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICALPILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
 
@@ -20,7 +20,7 @@ def pilot_state_cb(pilot, state):
     print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
 
-    if state == sagapilot.states.FAILED:
+    if state == radical.pilot.states.FAILED:
         sys.exit(1)
 
 #------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ def unit_state_change_cb(unit, state):
     """
     print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
         unit.uid, state)
-    if state == sagapilot.states.FAILED:
+    if state == radical.pilot.states.FAILED:
         print "            Log: %s" % unit.log[-1]
 
 #------------------------------------------------------------------------------
@@ -40,12 +40,12 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
+        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
-        session = sagapilot.Session(database_url=DBURL)
+        session = radical.pilot.Session(database_url=DBURL)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = sagapilot.PilotManager(session=session)
+        pmgr = radical.pilot.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -53,10 +53,10 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         # Define a 2-core local pilot that runs for 10 minutes.
-        pdesc = sagapilot.ComputePilotDescription()
+        pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "localhost"
-        pdesc.runtime = 10
-        pdesc.cores = 200
+        pdesc.runtime = 5
+        pdesc.cores = 2
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         compute_units = []
 
         for unit_count in range(0, 8):
-            cu = sagapilot.ComputeUnitDescription()
+            cu = radical.pilot.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
             cu.executable = "/bin/cat"
             cu.arguments = ["$INPUT1", "$INPUT2"]
@@ -86,9 +86,9 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = sagapilot.UnitManager(
+        umgr = radical.pilot.UnitManager(
             session=session,
-            scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -114,11 +114,7 @@ if __name__ == "__main__":
             print "  STDOUT: {0}".format(unit.stdout)
             print "  STDERR: {0}".format(unit.stderr)
 
-        # Cancel all pilots.
-        pmgr.cancel_pilots()
+        session.close()
 
-        # Remove session from database
-        session.destroy()
-
-    except sagapilot.SagapilotException, ex:
+    except radical.pilot.PilotException, ex:
         print "Error: %s" % ex

@@ -102,12 +102,12 @@ configuration files. The following types of URLs are supported:
   * ``http://host/...`` A remote configuration file accessible via HTTP.
   * ``https://host/...`` A remote configuration file accessible via HTTPS.
 
-So if for example you want to launch a ComputePilot on `stampede <https://www.tacc.utexas.edu/stampede/>`_, one of the XSEDE clusters, you can use the `xsede.json <https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json>`_ configuration file directly from our repository:
+So if for example you want to launch a ComputePilot on `stampede <https://www.tacc.utexas.edu/stampede/>`_, one of the XSEDE clusters, you can use the `xsede.json <https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json>`_ configuration file directly from our repository:
 
 .. code-block:: python
 
     pmgr = sagapilot.PilotManager(session=session,
-        resource_configurations="https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json")
+        resource_configurations="https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json")
 
 Once you have attached one or more resource configuration files to a
 PilotManager, you can use any of the **resource keys** from those files to

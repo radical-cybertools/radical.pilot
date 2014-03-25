@@ -15,15 +15,15 @@ resource configration files.
 Machine configuration files can be passed to a :class:`sagapilot.PilotManager` 
 instance::
 
-    FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
+    FGCONF = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
     
     s = sagapilot.Session(database_url=DBURL)
     pm = sagapilot.PilotManager(session=s, resource_configurations=FGCONF)
 
 Multiple configuration files can be passed as a list::
 
-    FGCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
-    XSCONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json'
+    FGCONF = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
+    XSCONF = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json'
 
     s = sagapilot.Session(database_url=DBURL)
     pm = sagapilot.PilotManager(session=s, resource_configurations=[FGCONF, XSCONF])
@@ -31,7 +31,7 @@ Multiple configuration files can be passed as a list::
 Resource configuration file URLs can either be `https(s)://` URLs to point to 
 a remote location, or `file://localhost` URLs to point to a local file. ::
 
-    REMOTE_CONF = 'https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json'
+    REMOTE_CONF = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
     LOCAL_CONF  = 'file://localhost/home/project/cfgs/mycustomconfig.json'
 
 A resource configuration uses the JSON format and has the following layout::
@@ -67,13 +67,13 @@ FutureGrid
 ----------
 
 * Homepage: `http://www.futuregrid.org <http://www.futuregrid.org>`_
-* Resource file URL: `https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json <https://raw.github.com/saga-project/saga-pilot/master/configs/futuregrid.json>`_
+* Resource file URL: `https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json <https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json>`_
 
 XSEDE
 -----
 
 * Homepage: `http://www.xsede.org <http://www.xsede.org>`_
-* Resource file URL: `https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json <https://raw.github.com/saga-project/saga-pilot/master/configs/xsede.json>`_
+* Resource file URL: `https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json <https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json>`_
 
 Writing a Custom Resource Configuration File
 ============================================
