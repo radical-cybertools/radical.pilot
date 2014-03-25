@@ -12,7 +12,7 @@ import subprocess as sp
 from setuptools import setup, find_packages, Command
 
 name     = 'radical.pilot'
-mod_root = 'src/radical'
+mod_root = 'src/radical/pilot/'
 
 #-----------------------------------------------------------------------------
 #
