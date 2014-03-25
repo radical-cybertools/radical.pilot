@@ -57,9 +57,9 @@ copyright = u'2013, The RADICAL Group at Rutgers University'
 # The short X.Y version - get this directly from SAGA !
 
 try:
-    import sagapilot
-    version = sagapilot.version
-    release = sagapilot.version
+    import import radical.pilot
+    version = radical.pilot.version
+    release = radical.pilot.version
 except Exception, ex:
     version = "UNKNOWN"
     release = "UNKNOWN"
