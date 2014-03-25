@@ -12,13 +12,13 @@ Sessions and Security Contexts
 
 Sessions
 --------
-.. autoclass:: sagapilot.Session
+.. autoclass:: radical.pilot.Session
    :members: Session
    :special-members: __init__
 
 SSHCredentials
 --------------
-.. autoclass:: sagapilot.SSHCredential
+.. autoclass:: radical.pilot.SSHCredential
    :members: SSHCredential
    :special-members: __init__
 
@@ -27,18 +27,18 @@ Pilots and PilotManagers
 
 PilotManagers
 -------------
-.. autoclass:: sagapilot.PilotManager
+.. autoclass:: radical.pilot.PilotManager
    :members: PilotManager
    :special-members: __init__
 
 ComputePilotDescription
 -----------------------
-.. autoclass:: sagapilot.ComputePilotDescription
+.. autoclass:: radical.pilot.ComputePilotDescription
    :members: ComputePilotDescription
 
 Pilots
 ------
-.. autoclass:: sagapilot.ComputePilot
+.. autoclass:: radical.pilot.ComputePilot
    :members: ComputePilot
 
 ComputeUnits and UnitManagers
@@ -46,26 +46,26 @@ ComputeUnits and UnitManagers
 
 UnitManager
 -----------
-.. autoclass:: sagapilot.UnitManager
+.. autoclass:: radical.pilot.UnitManager
    :members: UnitManager
    :special-members: __init__
 
 ComputeUnitDescription
 -----------------------
-.. autoclass:: sagapilot.ComputeUnitDescription
+.. autoclass:: radical.pilot.ComputeUnitDescription
    :members: ComputeUnitDescription
 
 ComputeUnit
 -----------
-.. autoclass:: sagapilot.ComputeUnit
+.. autoclass:: radical.pilot.ComputeUnit
    :members: ComputeUnit
 
 Exceptions
 ==========
 
-.. autoclass:: sagapilot.SagapilotException
-   :members: SagapilotException
+.. autoclass:: radical.pilot.PilotException
+   :members: PilotException
 
-.. autoclass:: sagapilot.DatabaseError
+.. autoclass:: radical.pilot.DatabaseError
    :members: DatabaseError
 
