@@ -52,7 +52,8 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 2-core local pilot that runs for 10 minutes.
+        # Define a 2-core local pilot that runs for 10 minutes and cleans up
+        # after itself.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "localhost"
         pdesc.runtime = 5
