@@ -94,6 +94,13 @@ class ComputePilotDescription(attributes.Attributes):
        configuration (:data:`resource`), defining `allocation` will
        override it explicitly.
 
+    .. data:: cleanup
+
+       [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
+       delete its entire sandbox upon termination. This includes individual
+       ComputeUnit sandboxes and all generated output data. Only log files will 
+       remain in the sandbox directory. 
+
     """
 
     # -------------------------------------------------------------------------

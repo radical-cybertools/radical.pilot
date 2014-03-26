@@ -41,6 +41,7 @@ def launch_pilot(pilot_uid, pilot_description,
     runtime = pilot_description['Runtime']
     queue = pilot_description['Queue']
     sandbox = pilot_description['Sandbox']
+    cleanup = pilot_description['Cleanup']
 
     # At the end of the submission attempt, pilot_logs will contain
     # all log messages.
@@ -120,8 +121,10 @@ def launch_pilot(pilot_uid, pilot_description,
                         "-s", session_uid,     # session uid
                         "-p", str(pilot_uid),  # pilot uid
                         "-t", runtime,         # agent runtime in minutes
-                        "-c", number_cores,    # number of cores
-                        "-C"]                  # clean up by default
+                        "-c", number_cores] 
+
+        if cleanup is True:
+            jd.arguments.append("-C")
 
         if 'task_launch_mode' in resource_cfg:
             jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
@@ -148,6 +151,8 @@ def launch_pilot(pilot_uid, pilot_description,
         jd.error = "STDERR"
         jd.total_cpu_count = number_cores
         jd.wall_time_limit = runtime
+
+        logger.debug("Starting pilot agent with description: %s" % str(jd))
 
         pilotjob = js.create_job(jd)
         pilotjob.run()
