@@ -23,7 +23,7 @@ from radical.pilot.object import Object
 from radical.pilot.mpworker import PilotManagerWorker
 from radical.pilot.compute_pilot import ComputePilot
 from radical.pilot.utils.logger import logger
-
+from radical.pilot.exceptions import * 
 
 # -----------------------------------------------------------------------------
 #
@@ -129,17 +129,17 @@ class PilotManager(Object):
                     rcf_content = response.read()
                 except urllib2.URLError, err:
                     msg = "Couln't open/download resource configuration file '%s': %s." % (rcf, str(err))
-                    raise exceptions.BadParameter(msg=msg)
+                    raise BadParameter(msg=msg)
 
                 try:
                     # convert JSON string to dictionary and append
                     rcf_dict = json.loads(rcf_content)
                     for key, val in rcf_dict.iteritems():
                         if key in self._resource_cfgs:
-                            raise exceptions.BadParameter("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
+                            raise BadParameter("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
                         self._resource_cfgs[key] = val
                 except ValueError, err:
-                    raise exceptions.BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
+                    raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
 
         # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
@@ -201,7 +201,7 @@ class PilotManager(Object):
         )
 
         if not uid_exists:
-            raise exceptions.BadParameter(
+            raise BadParameter(
                 "PilotManager with id '%s' not in database." % pilot_manager_id)
 
         obj = cls(session=session, resource_configurations="~=RECON=~")
@@ -273,20 +273,20 @@ class PilotManager(Object):
 
             if pilot_description.resource is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'resource'."
-                raise exceptions.BadParameter(error_msg)
+                raise BadParameter(error_msg)
 
             elif pilot_description.runtime is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'runtime'."
-                raise exceptions.BadParameter(error_msg)
+                raise BadParameter(error_msg)
 
             elif pilot_description.cores is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
-                raise exceptions.BadParameter(error_msg)
+                raise BadParameter(error_msg)
 
             # Make sure resource key is known.
             if pilot_description.resource not in self._resource_cfgs:
                 error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % pilot_description.resource
-                raise exceptions.BadParameter(error_msg)
+                raise BadParameter(error_msg)
             else:
                 resource_cfg = self._resource_cfgs[pilot_description.resource]
 
@@ -298,7 +298,7 @@ class PilotManager(Object):
                         if pilot_description.sandbox.startswith(vr):
                             is_valid = True
                     if is_valid is False:
-                        raise exceptions.BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (pilot_description.resource, pilot_description.sandbox, resource_cfg["valid_roots"]))
+                        raise BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (pilot_description.resource, pilot_description.sandbox, resource_cfg["valid_roots"]))
 
             # After the sanity checks have passed, we can register a pilot
             # startup request with the worker process and create a facade
