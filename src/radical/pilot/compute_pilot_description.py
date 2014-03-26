@@ -87,11 +87,11 @@ class ComputePilotDescription(attributes.Attributes):
        get submitted to . If `queue` is defined in the resource configuration
        (:data:`resource`) defining `queue` will override it explicitly.
 
-    .. data:: allocation
+    .. data:: project
 
        [Type: `string`] [optional] The name of the project / allocation to
-       charge for used CPU time. If `allocation` is defined in the machine
-       configuration (:data:`resource`), defining `allocation` will
+       charge for used CPU time. If `project` is defined in the machine
+       configuration (:data:`resource`), defining `project` will
        override it explicitly.
 
     .. data:: cleanup
