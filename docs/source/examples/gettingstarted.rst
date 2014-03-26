@@ -222,7 +222,7 @@ For example, you can create a workload of 8 '/bin/sleep' ComputeUnits like this:
 Input- / Output-File Transfer
 -----------------------------
 
-Often, a computational tasks doesn't just consist of an executable with some 
+Often, a computational task doesn't just consist of an executable with some 
 arguments but also needs some input data. For this reason, a 
 :class:`radical.pilot.ComputeUnitDescription` allows the definition of ``input_data``
 and ``output_data``:
@@ -253,13 +253,13 @@ Example:
 Adding Callbacks 
 ----------------
 
-Events in RADICAL-Pilot are mostly asynchronous as they happen one one or more
+Events in RADICAL-Pilot are mostly asynchronous as they happen at one or more
 distributed components, namely the ComputePilot agents. At any time during the 
 execution of a workload, ComputePilots and ComputeUnits can begin or finish 
 execution or fail with an error. 
 
 RADICAL-Pilot provides callbacks as a method to react to these event
-asynchronously when they occur. CommputePilots, PilotManagers, ComputeUnits
+asynchronously when they occur. ComputePilots, PilotManagers, ComputeUnits
 and UnitManagers all have a ``register_callbacks`` method:
 
   * :func:`radical.pilot.UnitManager.register_callback`
