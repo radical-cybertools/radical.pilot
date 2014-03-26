@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-.. module:: sagapilot-profiler
+.. module:: radical.pilot-profiler
    :platform: Unix
    :synopsis: A simple runtime profiler for SAGA-Pilot.
 
@@ -12,10 +12,11 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
-import sagapilot
 import logging
 import optparse
 import pprint
+
+import radical.pilot
 
 def get_data(logger, session_id, database_url, database_name):
     """Returns timing data for pilots and compute units.
@@ -39,7 +40,7 @@ def get_data(logger, session_id, database_url, database_name):
 
 
     try: 
-        session = sagapilot.Session(
+        session = radical.pilot.Session(
             session_uid   = session_id,
             database_url  = database_url,
             database_name = database_name
@@ -52,7 +53,7 @@ def get_data(logger, session_id, database_url, database_name):
             for pilot in pmgr.get_pilots():
                 #logger.info("Found pilot: %s" % pilot)
 
-                res_details = pilot.resource_details
+                res_details = pilot.resource_detail
 
                 pilot_info.append({
                     'id'             : pilot.uid,
@@ -94,7 +95,7 @@ def get_data(logger, session_id, database_url, database_name):
         pprint.pprint(alldata)
 
 
-    except sagapilot.SagapilotException, ex:
+    except radical.pilot.PilotException, ex:
             logger.error(ex)
             sys.exit(255)
 
@@ -105,7 +106,7 @@ def setup_logger():
 
     Since this is a command line tool, we simply log to the console. 
     """
-    logger = logging.getLogger('sagapilot-profiler')
+    logger = logging.getLogger('radicalpilot-profiler')
 
     logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
@@ -134,7 +135,7 @@ def parse_commandline():
     parser.add_option('-n', '--database-name',
                       metavar='URL',
                       dest='database_name',
-                      default='sagapilot',
+                      default='radical.pilot',
                       help='specifies the name of the database [default: %default].')
 
     parser.add_option('-s', '--session-id',
