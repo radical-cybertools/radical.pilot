@@ -363,10 +363,10 @@ class UnitManager(object):
             # the scheduled ones...
             unscheduled = unit_descriptions[:]  # python semi-deep-copy magic
 
+            units = list()  # compute unit instances to return
+
             # submit to all pilots which got something submitted to
             for pilot_id in schedule.keys():
-
-                units = list()  # compute unit instances to return
 
                 # sanity check on scheduler provided information
                 if not pilot_id in self.list_pilots():

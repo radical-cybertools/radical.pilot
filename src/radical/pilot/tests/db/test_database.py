@@ -15,7 +15,7 @@ from pymongo import MongoClient
 # http://docs.mongodb.org/manual/installation/
 DBURL = os.getenv("RADICALPILOT_DBURL")
 if DBURL is None:
-    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICALPILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
 DBNAME = 'radical.pilot_unittests'

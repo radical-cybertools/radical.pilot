@@ -240,9 +240,14 @@ installvenv
 launchagent
 
 # cleanup
+rm -rf $WORKDIR/virtualenv*
+rm -rf bootstrap-and-run-agent
+rm -rf radical-pilot-agent.py
+
 if [[ $CLEANUP ]]
 then
-    rm -rf $WORKDIR/virtualenv*
+    # if cleanup is set, we delete all CU sandboxes !!
+    rm -rf $WORKDIR/unit-*
 fi
 
 # ... and exit

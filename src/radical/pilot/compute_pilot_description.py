@@ -87,12 +87,19 @@ class ComputePilotDescription(attributes.Attributes):
        get submitted to . If `queue` is defined in the resource configuration
        (:data:`resource`) defining `queue` will override it explicitly.
 
-    .. data:: allocation
+    .. data:: project
 
        [Type: `string`] [optional] The name of the project / allocation to
-       charge for used CPU time. If `allocation` is defined in the machine
-       configuration (:data:`resource`), defining `allocation` will
+       charge for used CPU time. If `project` is defined in the machine
+       configuration (:data:`resource`), defining `project` will
        override it explicitly.
+
+    .. data:: cleanup
+
+       [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
+       delete its entire sandbox upon termination. This includes individual
+       ComputeUnit sandboxes and all generated output data. Only log files will 
+       remain in the sandbox directory. 
 
     """
 

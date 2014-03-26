@@ -58,31 +58,26 @@ if __name__ == "__main__":
         pdesc.resource = "localhost"
         pdesc.runtime = 5
         pdesc.cores = 2
-        pdesc.cleanup = True
+        #pdesc.cleanup = True
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
         # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables withih a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
+        # file2.dat. The output is written to result.dat.
         #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
+        #    /bin/bash -lc "/bin/cat file1.dat file2.dat > result.dat"
         #
         compute_units = []
 
         for unit_count in range(0, 8):
             cu = radical.pilot.ComputeUnitDescription()
-            cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-            cu.executable = "/bin/cat"
-            cu.arguments = ["$INPUT1", "$INPUT2"]
+            cu.executable = "/bin/bash"
+            cu.arguments = ["-l", "-c", "'cat ./file1.dat ./file2.dat > result.dat'"]
             cu.cores = 1
             cu.input_data = ["./file1.dat", "./file2.dat"]
+            cu.output_data = ["result.dat"]
 
             compute_units.append(cu)
 
