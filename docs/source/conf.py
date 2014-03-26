@@ -54,7 +54,6 @@ copyright = u'2013, The RADICAL Group at Rutgers University'
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-# The short X.Y version - get this directly from SAGA !
 
 try:
     import radical.pilot
