@@ -104,6 +104,16 @@ def pilot_DONE(mongo_p, pilot_uid):
 
         }})
 
+#---------------------------------------------------------------------------
+#
+def pilot_PENDING_OUTPUT_TRANSFER(mongo_p, pilot_uid):
+    """Updates the state of one or more pilots.
+    """
+    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+        {"$set": {"info.state": 'PendingOutputTransfer',
+                  "info.finished": datetime.datetime.utcnow()
+        }})
+
 
 #-----------------------------------------------------------------------------
 #
@@ -118,13 +128,13 @@ class ExecutionEnvironment(object):
         """
         eenv = cls(logger)
         # detect nodes, cores and memory available
-        eenv._detect_nodes()
-        eenv._detect_cores_and_memory()
+        eenv.detect_nodes()
+        eenv.detect_cores_and_memory()
 
         # check for 'mpirun'
-        eenv._mpirun_location = which('mpirun')
-        eenv._aprun_location  = which('aprun')
-        eenv._ssh_location    = which('ssh')
+        eenv.mpirun_location = which('mpirun')
+        eenv.aprun_location  = which('aprun')
+        eenv.ssh_location    = which('ssh')
 
         # suggest a launch method. the current precendce is 
         # aprun, mpirun, ssh, fork. this can be overrdden 
@@ -132,64 +142,64 @@ class ExecutionEnvironment(object):
 
         if launch_method == LAUNCH_METHOD_AUTO:
             # Try to autodetect launch method
-            if eenv._aprun_location is not None:
-                eenv._launch_method = LAUNCH_METHOD_APRUN
-                eenv._launch_command = eenv._aprun_location
-            elif eenv._mpirun_location is not None:
-                eenv._launch_method = LAUNCH_METHOD_MPIRUN
-                eenv._launch_command = eenv._mpirun_location
-            elif eenv._ssh_location is not None:
-                eenv._launch_method = LAUNCH_METHOD_SSH
-                eenv._launch_command = eenv._ssh_location
+            if eenv.aprun_location is not None:
+                eenv.launch_method = LAUNCH_METHOD_APRUN
+                eenv.launch_command = eenv.aprun_location
+            elif eenv.mpirun_location is not None:
+                eenv.launch_method = LAUNCH_METHOD_MPIRUN
+                eenv.launch_command = eenv.mpirun_location
+            elif eenv.ssh_location is not None:
+                eenv.launch_method = LAUNCH_METHOD_SSH
+                eenv.launch_command = eenv.ssh_location
             else:
-                eenv._launch_method = LAUNCH_METHOD_LOCAL
-                eenv._launch_command = None
+                eenv.launch_method = LAUNCH_METHOD_LOCAL
+                eenv.launch_command = None
 
         elif launch_method == LAUNCH_METHOD_SSH:
-            if eenv._ssh_location is None:
+            if eenv.ssh_location is None:
                 raise Exception("Launch method set to %s but 'ssh' not found in path." % launch_method)
             else:
-                eenv._launch_method = LAUNCH_METHOD_SSH
-                eenv._launch_command = eenv._ssh_location   
+                eenv.launch_method = LAUNCH_METHOD_SSH
+                eenv.launch_command = eenv.ssh_location   
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
-            if eenv._mpirun_location is None:
+            if eenv.mpirun_location is None:
                 raise Exception("Launch method set to %s but 'mpirun' not found in path." % launch_method)
             else:
-                eenv._launch_method = LAUNCH_METHOD_MPIRUN
-                eenv._launch_command = eenv._mpirun_location       
+                eenv.launch_method = LAUNCH_METHOD_MPIRUN
+                eenv.launch_command = eenv.mpirun_location       
 
         elif launch_method == LAUNCH_METHOD_APRUN:
-            if eenv._aprun_location is None:
+            if eenv.aprun_location is None:
                 raise Exception("Launch method set to %s but 'aprun' not found in path." % launch_method)
             else:
-                eenv._launch_method = LAUNCH_METHOD_APRUN
-                eenv._launch_command = eenv._aprun_location      
+                eenv.launch_method = LAUNCH_METHOD_APRUN
+                eenv.launch_command = eenv.aprun_location      
 
         elif launch_method == LAUNCH_METHOD_LOCAL:
-            eenv._launch_method = LAUNCH_METHOD_LOCAL
-            eenv._launch_command = None
+            eenv.launch_method = LAUNCH_METHOD_LOCAL
+            eenv.launch_command = None
 
         # create node dictionary
-        for rn in eenv._raw_nodes:
-            if rn not in eenv._nodes:
-                eenv._nodes[rn] = {#'_count': 1,
-                                   'cores': eenv._cores_per_node,
-                                   'memory': eenv._memory_per_node}
+        for rn in eenv.raw_nodes:
+            if rn not in eenv.nodes:
+                eenv.nodes[rn] = {#'_count': 1,
+                                   'cores': eenv.cores_per_node,
+                                   'memory': eenv.memory_per_node}
             #else:
-            #    eenv._nodes[rn]['_count'] += 1
+            #    eenv.nodes[rn]['_count'] += 1
 
-        logger.info("Discovered execution environment: %s" % eenv._nodes)
-        logger.info("Discovered launch method: %s (%s)" % (eenv._launch_method, eenv._launch_command))
+        logger.info("Discovered execution environment: %s" % eenv.nodes)
+        logger.info("Discovered launch method: %s (%s)" % (eenv.launch_method, eenv.launch_command))
 
-        cores_avail = len(eenv._nodes) * int(eenv._cores_per_node)
+        cores_avail = len(eenv.nodes) * int(eenv.cores_per_node)
         if cores_avail < int(requested_cores):
             raise Exception("Not enought cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
 
         if launch_method == LAUNCH_METHOD_LOCAL:
             # make sure that we don't hog all cores with a local
             # pilot but only the number of cores that were allocated 
-            eenv._cores_per_node = int(requested_cores)
+            eenv.cores_per_node = int(requested_cores)
 
         return eenv
 
@@ -198,105 +208,47 @@ class ExecutionEnvironment(object):
     def __init__(self, logger=None):
         '''le constructeur
         '''
-        self._log = logger
+        self.log = logger
 
-        self._nodes = dict()
-        self._raw_nodes = list()
-        self._cores_per_node = 0
-        self._memory_per_node = 0
+        self.nodes = dict()
+        self.raw_nodes = list()
+        self.cores_per_node = 0
+        self.memory_per_node = 0
 
-        self._launch_method  = None
-        self._launch_command = None
+        self.launch_method  = None
+        self.launch_command = None
 
-        self._aprun_location  = None
-        self._mpirun_location = None
-        self._ssh_location    = None
-
-    #-------------------------------------------------------------------------
-    #
-    @property
-    def raw_nodes(self):
-        return self._raw_nodes
+        self.aprun  = 'aprun'
+        self.mpirun = 'mpirun'
+        self.ssh    = 'ssh'
 
     #-------------------------------------------------------------------------
     #
-    @property
-    def nodes(self):
-        return self._nodes
-
-    #-------------------------------------------------------------------------
-    #
-    @property
-    def cores_per_node(self):
-        return self._cores_per_node
-
-    #-------------------------------------------------------------------------
-    #
-    @property
-    def launch_method(self):
-        return self._launch_method
-
-    #-------------------------------------------------------------------------
-    #
-    @property
-    def launch_command(self):
-        return self._launch_command
-
-    #-------------------------------------------------------------------------
-    #
-    @property
-    def mpirun(self):
-        if self._mpirun_location is None:
-            return 'mpirun'
-        else:
-            return self._mpirun_location
-
-    #-------------------------------------------------------------------------
-    #
-    @property
-    def aprun(self): 
-        if self._aprun_location is None:
-            return 'aprun'
-        else:
-            return self._aprun_location
-
-    #-------------------------------------------------------------------------
-    #
-    @property
-    def ssh(self):
-        if self._ssh_location is None:
-            return 'ssh'
-        else:
-            return self._ssh_location
-
-    #-------------------------------------------------------------------------
-    #
-    def _detect_cores_and_memory(self):
-        self._cores_per_node = multiprocessing.cpu_count() #psutil.NUM_CPUS
+    def detect_cores_and_memory(self):
+        self.cores_per_node = multiprocessing.cpu_count() #psutil.NUM_CPUS
         #mem_in_megabyte = int(psutil.virtual_memory().total/1024/1024)
         #self._memory_per_node = mem_in_megabyte
 
     #-------------------------------------------------------------------------
     #
-    def _detect_nodes(self):
+    def detect_nodes(self):
         # see if we have a PBS_NODEFILE
         pbs_nodefile = os.environ.get('PBS_NODEFILE')
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
 
         if pbs_nodefile is not None:
             # parse PBS the nodefile
-            self._raw_nodes = [line.strip() for line in open(pbs_nodefile)]
-            self._log.info("Found PBS_NODEFILE %s: %s" % (pbs_nodefile, self._raw_nodes))
+            self.raw_nodes = [line.strip() for line in open(pbs_nodefile)]
+            self.log.info("Found PBS_NODEFILE %s: %s" % (pbs_nodefile, self.raw_nodes))
 
         elif slurm_nodelist is not None:
             # parse SLURM nodefile
-            self._raw_nodes = hostlist.expand_hostlist(slurm_nodelist)
-            self._log.info("Found SLURM_NODELIST %s. Expanded to: %s" % (slurm_nodelist, self._raw_nodes))
+            self.raw_nodes = hostlist.expand_hostlist(slurm_nodelist)
+            self.log.info("Found SLURM_NODELIST %s. Expanded to: %s" % (slurm_nodelist, self.raw_nodes))
 
         else:
-            self._raw_nodes = ['localhost']
-            self._log.info("No PBS_NODEFILE or SLURM_NODELIST found. Using hosts: %s" % (self._raw_nodes))
-
+            self.raw_nodes = ['localhost']
+            self.log.info("No PBS_NODEFILE or SLURM_NODELIST found. Using hosts: %s" % (self.raw_nodes))
 
 # ----------------------------------------------------------------------------
 #
@@ -304,165 +256,34 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr):
+    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr, output_data):
 
         self._log         = None
         self._description = None
 
         # static task properties
-        self._uid            = uid
-        self._environment    = environment
-        self._executable     = executable
-        self._arguments      = arguments
-        self._workdir        = workdir
-        self._stdout         = stdout
-        self._stderr         = stdout
-        self._numcores       = 1
-
+        self.uid            = uid
+        self.environment    = environment
+        self.executable     = executable
+        self.arguments      = arguments
+        self.workdir        = workdir
+        self.stdout         = stdout
+        self.stderr         = stdout
+        self.output_data    = output_data
+        self.numcores       = 1
 
         # dynamic task properties
-        self._start_time     = None
-        self._end_time       = None
+        self.started        = None
+        self.finished       = None
 
-        self._state          = None
-        self._exit_code      = None
-        self._exec_locs      = None
+        self.state          = None
+        self.exit_code      = None
+        self.exec_locs      = None
 
-        self._stdout_id      = None
-        self._stderr_id      = None
+        self.stdout_id      = None
+        self.stderr_id      = None
 
         self._log            = []
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def uid(self):
-        return self._uid
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def numcores(self):
-        return self._numcores
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def executable(self):
-        return self._executable
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def environment(self):
-        return self._environment
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def arguments(self):
-        return self._arguments
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def workdir(self):
-        return self._workdir
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def stdout(self):
-        return self._stdout
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def stderr(self):
-        return self._stderr
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def started(self):
-        return self._start_time
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def finished(self):
-        return self._end_time
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def state(self):
-        return self._state
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def exit_code(self):
-        return self._exit_code
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def exec_locs(self):
-        return self._exec_locs
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def stdout_id(self):
-        return self._stdout_id
-
-    # ------------------------------------------------------------------------
-    #
-    @property
-    def stderr_id(self):
-        return self._stderr_id
-
-    # ------------------------------------------------------------------------
-    #
-    def update_state(self, start_time=None, end_time=None, state=None, 
-                     exit_code=None, exec_locs=None, stdout_id=None, stderr_id=None):
-        """Updates one or more of the task's dynamic properties
-        """
-        if start_time is None:
-            start_time = self._start_time
-        else:
-            self._start_time = start_time
-
-        if end_time is None:
-            end_time = self._end_time
-        else:
-            self._end_time = end_time
-
-        if state is None:
-            state = self._state
-        else:
-            self._state = state
-
-        if exit_code is None:
-            exit_code = self._exit_code
-        else:
-            self._exit_code = exit_code
-
-        if exec_locs is None:
-            exec_locs = self._exec_locs
-        else:
-            self._exec_locs = exec_locs
-
-        if stdout_id is None:
-            stdout_id = self._stdout_id
-        else:
-            self._stdout_id = stdout_id
-
-        if stderr_id is None:
-            stderr_id = self._stderr_id
-        else:
-            self._stderr_id = stderr_id
 
 
 # ----------------------------------------------------------------------------
@@ -559,12 +380,10 @@ class ExecWorker(multiprocessing.Process):
 
                                 exec_locs = ["%s:%s" % (host, slot)]
 
-                                self._slots[host][slot].task.update_state(
-                                    start_time=datetime.datetime.utcnow(),
-                                    exec_locs=exec_locs
-                                    ,
-                                    state='Running'
-                                )
+                                self._slots[host][slot].task.start_time=datetime.datetime.utcnow()
+                                self._slots[host][slot].task.exec_locs=exec_locs
+                                self._slots[host][slot].task.state='Running'
+
                                 update_tasks.append(self._slots[host][slot].task)
 
                             except Queue.Empty:
@@ -584,7 +403,10 @@ class ExecWorker(multiprocessing.Process):
                                 if rc != 0:
                                     state = 'Failed'
                                 else:
-                                    state = 'Done'
+                                    if self._slots[host][slot].task.output_data is not None:
+                                        state = 'PendingOutputTransfer'
+                                    else:
+                                        state = 'Done'
 
                                 # upload stdout and stderr to GridFS
                                 workdir = self._slots[host][slot].task.workdir
@@ -607,13 +429,12 @@ class ExecWorker(multiprocessing.Process):
                                         stderr_id = fs.put(stderr_f.read(), filename=stderr)
                                         self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
 
-                                self._slots[host][slot].task.update_state(
-                                    end_time=datetime.datetime.utcnow(),
-                                    exit_code=rc,
-                                    state=state,
-                                    stdout_id=stdout_id,
-                                    stderr_id=stderr_id
-                                )
+                                self._slots[host][slot].task.end_time=datetime.datetime.utcnow()
+                                self._slots[host][slot].task.exit_code=rc
+                                self._slots[host][slot].task.state=state
+                                self._slots[host][slot].task.stdout_id=stdout_id
+                                self._slots[host][slot].task.stderr_id=stderr_id
+
                                 update_tasks.append(self._slots[host][slot].task)
 
                                 # mark slot as available
@@ -837,7 +658,8 @@ class Agent(threading.Thread):
                                             environment = wu["description"]["environment"],
                                             workdir     = task_dir_name, 
                                             stdout      = task_dir_name+'/STDOUT', 
-                                            stderr      = task_dir_name+'/STDERR')
+                                            stderr      = task_dir_name+'/STDERR',
+                                            output_data = wu["description"]["output_data"])
 
                                 self._task_queue.put(task)
 

@@ -101,7 +101,7 @@ if __name__ == "__main__":
         units = umgr.submit_units(compute_units)
 
         # Wait for all compute units to finish.
-        umgr.wait_units()
+        umgr.wait_units(state=[radical.pilot.DONE, radical.pilot.PENDING_OUTPUT_TRANSFER])
 
         for unit in umgr.get_units():
             # Print some information about the unit.

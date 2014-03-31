@@ -339,8 +339,12 @@ class Session():
             "info":
             {
                 "submitted":      datetime.datetime.utcnow(),
+                "input_transfer_started": None,
+                "input_transfer_finished": None,
                 "started":        None,
                 "finished":       None,
+                "output_transfer_started": None,
+                "output_transfer_finished": None,
                 "nodes":          None,
                 "cores_per_node": None,
                 "sagajobid":      None,
