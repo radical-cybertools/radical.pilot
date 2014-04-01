@@ -519,7 +519,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_unit_manager(self, unit_manager_data):
+    def insert_unit_manager(self, scheduler):
         """ Adds a unit managers to the list of unit managers.
 
             Unit manager IDs are just kept for book-keeping.
@@ -527,7 +527,10 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        result = self._um.insert(unit_manager_data)
+        result = self._um.insert(
+            {"scheduler": scheduler, 
+             "output_transfer_queue": []
+            })
 
         # return the object id as a string
         return str(result)

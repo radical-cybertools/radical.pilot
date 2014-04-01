@@ -37,7 +37,7 @@ class UnitManagerWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, unit_manager_data, db_connection):
+    def __init__(self, unit_manager_uid, scheduler, db_connection):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -86,7 +86,7 @@ class UnitManagerWorker(threading.Thread):
         if unit_manager_uid is None:
             # Try to register the UnitManager with the database.
             self._um_id = self._db.insert_unit_manager(
-                unit_manager_data=unit_manager_data)
+                scheduler=scheduler)
         else:
             self._um_id = unit_manager_uid
 

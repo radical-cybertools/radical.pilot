@@ -484,6 +484,9 @@ class ExecWorker(multiprocessing.Process):
                       "info.stdout_id"     : task.stdout_id,
                       "info.stderr_id"     : task.stderr_id}})
 
+            #if task.state == "PendingOutputTransfer":
+            #    self._wm.update
+
 
 # ----------------------------------------------------------------------------
 #
@@ -492,7 +495,7 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, launch_method, workdir, 
-        pilot_id, pilot_collection, workunit_collection, runtime, db_handle):
+        pilot_id, pilot_collection, workunit_collection, unit_manager_collection, runtime, db_handle):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -519,6 +522,7 @@ class Agent(threading.Thread):
 
         self._p         = pilot_collection
         self._w         = workunit_collection
+        self._wm        = unit_manager_collection
 
         self._db_handle = db_handle
 
@@ -786,6 +790,11 @@ def parse_commandline():
                       dest='pilot_id',
                       help='Specifies the Pilot ID.')
 
+    parser.add_option('-u', '--unitmanager-id',
+                      metavar='UMID',
+                      dest='unitmanager_id',
+                      help='Specifies the UnitManager ID.')
+
     parser.add_option('-w', '--workdir',
                       metavar='DIRECTORY',
                       dest='workdir',
@@ -819,6 +828,8 @@ def parse_commandline():
         parser.error("You must define a session id (-s/--session-id). Try --help for help.")
     elif options.pilot_id is None:
         parser.error("You must define a pilot id (-p/--pilot-id). Try --help for help.")
+    elif options.unitmanager_id is None:
+        parser.error("You must define a UnitManger ID (-u/--unitmanager-id). Try --help for help.")
     elif options.cores is None:
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
     elif options.runtime is None:
@@ -854,6 +865,7 @@ if __name__ == "__main__":
         mongo_db     = mongo_client[options.database_name]
         mongo_p      = mongo_db["%s.p"  % options.session_id]
         mongo_w      = mongo_db["%s.w"  % options.session_id]
+        mongo_wm     = mongo_db["%s.wm" % options.session_id]
 
     except Exception, ex:
         logger.error("Couldn't establish database connection: %s" % str(ex))
@@ -910,6 +922,7 @@ if __name__ == "__main__":
                       pilot_id=options.pilot_id,
                       pilot_collection=mongo_p,
                       workunit_collection=mongo_w,
+                      unit_manager_collection=mongo_wm,
                       runtime=options.runtime,
                       db_handle=mongo_db)
 
