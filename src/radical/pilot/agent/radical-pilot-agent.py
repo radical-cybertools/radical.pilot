@@ -380,7 +380,7 @@ class ExecWorker(multiprocessing.Process):
 
                                 exec_locs = ["%s:%s" % (host, slot)]
 
-                                self._slots[host][slot].task.start_time=datetime.datetime.utcnow()
+                                self._slots[host][slot].task.started=datetime.datetime.utcnow()
                                 self._slots[host][slot].task.exec_locs=exec_locs
                                 self._slots[host][slot].task.state='Running'
 
