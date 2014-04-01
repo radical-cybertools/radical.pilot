@@ -18,6 +18,7 @@ CORES=
 RUNTIME=
 DBNAME=
 PILOTID=
+UNITMANAGERID=
 SESSIONID=
 WORKDIR=`pwd`
 PYTHON=`which python`
@@ -41,6 +42,8 @@ OPTIONS:
    -s      The unique identifier (uid) of the session
 
    -p      The unique identifier (uid) of the pilot
+
+   -u      The unique identifier (uid) of the unit manager
 
    -w      The working (base) directory of the pilot
            (default is '.')
@@ -158,19 +161,19 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE"
+AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -u $UNITMANAGERID -c $CORES -t $RUNTIME -l $LAUNCH_MODE"
 echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE
+           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -u $UNITMANAGERID -c $CORES -t $RUNTIME -l $LAUNCH_MODE
 }
 
 # -----------------------------------------------------------------------------
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:l:e:t:c:C” OPTION
+while getopts “hr:d:s:p:u:w:i:l:e:t:c:C” OPTION
 do
      case $OPTION in
          h)
@@ -188,6 +191,9 @@ do
              ;;
          p)
              PILOTID=$OPTARG
+             ;;
+         u)
+             UNITMANAGERID=$OPTARG
              ;;
          w)
              WORKDIR=$OPTARG
@@ -227,7 +233,7 @@ do
      esac
 done
 
-if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]]
+if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $UNITMANAGERID ]]  || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]]
 then
      usage
      exit 1

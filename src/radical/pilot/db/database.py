@@ -339,8 +339,12 @@ class Session():
             "info":
             {
                 "submitted":      datetime.datetime.utcnow(),
+                "input_transfer_started": None,
+                "input_transfer_finished": None,
                 "started":        None,
                 "finished":       None,
+                "output_transfer_started": None,
+                "output_transfer_finished": None,
                 "nodes":          None,
                 "cores_per_node": None,
                 "sagajobid":      None,
@@ -515,7 +519,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_unit_manager(self, unit_manager_data):
+    def insert_unit_manager(self, scheduler):
         """ Adds a unit managers to the list of unit managers.
 
             Unit manager IDs are just kept for book-keeping.
@@ -523,7 +527,10 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        result = self._um.insert(unit_manager_data)
+        result = self._um.insert(
+            {"scheduler": scheduler, 
+             "output_transfer_queue": []
+            })
 
         # return the object id as a string
         return str(result)

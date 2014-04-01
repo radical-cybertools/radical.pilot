@@ -92,7 +92,7 @@ class UnitManager(object):
             # process encapsulates database access et al.
             self._worker = UnitManagerWorker(
                 unit_manager_uid=None, 
-                unit_manager_data={'scheduler': scheduler},
+                scheduler=scheduler,
                 db_connection=session._dbs)
             self._worker.start()
 
