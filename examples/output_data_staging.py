@@ -74,9 +74,9 @@ if __name__ == "__main__":
         for unit_count in range(0, 8):
             cu = radical.pilot.ComputeUnitDescription()
             cu.executable = "/bin/bash"
-            cu.arguments = ["-l", "-c", "'cat ./file1.dat ./file2.dat > result.dat'"]
+            cu.arguments = ["-l", "-c", "'cat ./file1.txt ./file2.dat > result.dat'"]
             cu.cores = 1
-            cu.input_data = ["./file1.dat", "./file2.dat"]
+            cu.input_data = ["./file1.dat > file1.txt", "./file2.dat"]
             cu.output_data = ["result.dat"]
 
             compute_units.append(cu)
