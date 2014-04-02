@@ -57,7 +57,6 @@ def transfer_input_func(pilot_uid, unit_uid, credentials, unit_sandbox, transfer
         for t in transfer:
 
             st = t.split(">")
-
             abs_t = os.path.abspath(st[0].strip())
 
             input_file_url = saga.Url("file://localhost/%s" % abs_t)
