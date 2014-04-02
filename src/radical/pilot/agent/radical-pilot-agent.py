@@ -295,7 +295,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, mongo_w, task_queue,
+    def __init__(self, logger, mongo_w, mongo_wm, task_queue,
                  hosts, cores_per_host, launch_method, launch_command, 
                  db_handle):
         """Le Constructeur creates a new ExecWorker instance.
@@ -306,6 +306,7 @@ class ExecWorker(multiprocessing.Process):
 
         self._log = logger
         self._w   = mongo_w
+        self._wm  = mongo_wm
 
         self._db_handle = db_handle
 
@@ -494,8 +495,8 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, launch_method, workdir, 
-        pilot_id, pilot_collection, workunit_collection, unit_manager_collection, runtime, db_handle):
+    def __init__(self, logger, exec_env, workdir, runtime, launch_method, 
+                 mongodb_url, pilot_id, session_id, unit_manager_id):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -513,6 +514,12 @@ class Agent(threading.Thread):
         self._runtime    = runtime
         self._starttime  = None
 
+        mongo_client = pymongo.MongoClient(mongodb_url)
+        mongo_db = mongo_client[options.database_name]
+        self._p = mongo_db["%s.p"  % session_id]
+        self._w = mongo_db["%s.w"  % session_id]
+        self._wm = mongo_db["%s.wm" % session_id]
+
         # launch method is determined by the execution environment,
         # but can be overridden if the 'launch_method' flag is set 
         if launch_method.lower() == "auto":
@@ -520,11 +527,11 @@ class Agent(threading.Thread):
         else:
             self._launch_method = launch_method
 
-        self._p         = pilot_collection
-        self._w         = workunit_collection
-        self._wm        = unit_manager_collection
+        #self._p         = pilot_collection
+        #self._w         = workunit_collection
+        #self._wm        = unit_manager_collection
 
-        self._db_handle = db_handle
+        self._db_handle = mongo_db
 
         # the task queue holds the tasks that are pulled from the MongoDB 
         # server. The ExecWorkers compete for the tasks in the queue. 
@@ -551,6 +558,7 @@ class Agent(threading.Thread):
                 logger         = self._log,
                 task_queue     = self._task_queue,
                 mongo_w        = self._w,
+                mongo_wm       = self._wm,
                 launch_method  = self._exec_env.launch_method,
                 launch_command = self._exec_env.launch_command,
                 hosts          = hp,
@@ -858,18 +866,18 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-    #--------------------------------------------------------------------------
-    # Establish database connection
-    try:
-        mongo_client = pymongo.MongoClient(options.mongodb_url)
-        mongo_db     = mongo_client[options.database_name]
-        mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.w"  % options.session_id]
-        mongo_wm     = mongo_db["%s.wm" % options.session_id]
+    # #--------------------------------------------------------------------------
+    # # Establish database connection
+    # try:
+    #     #mongo_client = pymongo.MongoClient(options.mongodb_url)
+    #     #mongo_db     = mongo_client[options.database_name]
+    #     #mongo_p      = mongo_db["%s.p"  % options.session_id]
+    #     #mongo_w      = mongo_db["%s.w"  % options.session_id]
+    #     #mongo_wm     = mongo_db["%s.wm" % options.session_id]
 
-    except Exception, ex:
-        logger.error("Couldn't establish database connection: %s" % str(ex))
-        sys.exit(1)
+    # except Exception, ex:
+    #     logger.error("Couldn't establish database connection: %s" % str(ex))
+    #     sys.exit(1)
 
     #--------------------------------------------------------------------------
     # Some singal handling magic 
@@ -918,13 +926,12 @@ if __name__ == "__main__":
         agent = Agent(logger=logger,
                       exec_env=exec_env,
                       workdir=workdir,
-                      launch_method=options.launch_method,
-                      pilot_id=options.pilot_id,
-                      pilot_collection=mongo_p,
-                      workunit_collection=mongo_w,
-                      unit_manager_collection=mongo_wm,
                       runtime=options.runtime,
-                      db_handle=mongo_db)
+                      launch_method=options.launch_method,
+                      mongodb_url=options.mongodb_url,
+                      pilot_id=options.pilot_id,
+                      session_id=options.session_id,
+                      unit_manager_id=options.unitmanager_id)
 
         agent.start()
         agent.join()
