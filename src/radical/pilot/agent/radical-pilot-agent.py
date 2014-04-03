@@ -295,9 +295,10 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, mongo_w, mongo_wm, task_queue,
-                 hosts, cores_per_host, launch_method, launch_command, 
-                 db_handle):
+    def __init__(self, logger, task_queue, hosts, cores_per_host, 
+                 launch_method, launch_command, mongodb_url, mongodb_name,
+                 pilot_id, session_id, unitmanager_id):
+
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
@@ -305,10 +306,12 @@ class ExecWorker(multiprocessing.Process):
         self._terminate  = False
 
         self._log = logger
-        self._w   = mongo_w
-        self._wm  = mongo_wm
 
-        self._db_handle = db_handle
+        mongo_client = pymongo.MongoClient(mongodb_url)
+        self._mongo_db = mongo_client[mongodb_name]
+        self._p = mongo_db["%s.p"  % session_id]
+        self._w = mongo_db["%s.w"  % session_id]
+        self._wm = mongo_db["%s.wm" % session_id]
 
         self._task_queue     = task_queue
 
@@ -418,14 +421,14 @@ class ExecWorker(multiprocessing.Process):
 
                                 stdout = "%s/STDOUT" % workdir
                                 if os.path.isfile(stdout):
-                                    fs = gridfs.GridFS(self._db_handle)
+                                    fs = gridfs.GridFS(self._mongo_db)
                                     with open(stdout, 'r') as stdout_f:
                                         stdout_id = fs.put(stdout_f.read(), filename=stdout)
                                         self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
 
                                 stderr = "%s/STDERR" % workdir
                                 if os.path.isfile(stderr):
-                                    fs = gridfs.GridFS(self._db_handle)
+                                    fs = gridfs.GridFS(self._mongo_db)
                                     with open(stderr, 'r') as stderr_f:
                                         stderr_id = fs.put(stderr_f.read(), filename=stderr)
                                         self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
@@ -496,7 +499,7 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, workdir, runtime, launch_method, 
-                 mongodb_url, pilot_id, session_id, unit_manager_id):
+                 mongodb_url, mongodb_name, pilot_id, session_id, unitmanager_id):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -515,7 +518,7 @@ class Agent(threading.Thread):
         self._starttime  = None
 
         mongo_client = pymongo.MongoClient(mongodb_url)
-        mongo_db = mongo_client[options.database_name]
+        mongo_db = mongo_client[mongodb_name]
         self._p = mongo_db["%s.p"  % session_id]
         self._w = mongo_db["%s.w"  % session_id]
         self._wm = mongo_db["%s.wm" % session_id]
@@ -526,12 +529,6 @@ class Agent(threading.Thread):
             self._launch_method = exec_env.launch_method
         else:
             self._launch_method = launch_method
-
-        #self._p         = pilot_collection
-        #self._w         = workunit_collection
-        #self._wm        = unit_manager_collection
-
-        self._db_handle = mongo_db
 
         # the task queue holds the tasks that are pulled from the MongoDB 
         # server. The ExecWorkers compete for the tasks in the queue. 
@@ -555,21 +552,22 @@ class Agent(threading.Thread):
         self._exec_workers = []
         for hp in self._host_partitions:
             exec_worker = ExecWorker(
-                logger         = self._log,
-                task_queue     = self._task_queue,
-                mongo_w        = self._w,
-                mongo_wm       = self._wm,
-                launch_method  = self._exec_env.launch_method,
-                launch_command = self._exec_env.launch_command,
-                hosts          = hp,
-                cores_per_host = self._exec_env.cores_per_node,
-                db_handle      = self._db_handle
+                logger          = self._log,
+                task_queue      = self._task_queue,
+                hosts           = hp,
+                cores_per_host  = self._exec_env.cores_per_node,
+                launch_method   = self._exec_env.launch_method,
+                launch_command  = self._exec_env.launch_command,
+                mongodb_url     = mongodb_url,
+                mongodb_name    = mongodb_name,
+                pilot_id        = pilot_id,
+                session_id      = session_id,
+                unitmanager_id = unitmanager_id
             )
             exec_worker.start()
             self._log.info("Started up %s serving hosts %s", 
                 exec_worker, hp)
             self._exec_workers.append(exec_worker)
-
 
     # ------------------------------------------------------------------------
     #
@@ -868,16 +866,16 @@ if __name__ == "__main__":
 
     # #--------------------------------------------------------------------------
     # # Establish database connection
-    # try:
-    #     #mongo_client = pymongo.MongoClient(options.mongodb_url)
-    #     #mongo_db     = mongo_client[options.database_name]
-    #     #mongo_p      = mongo_db["%s.p"  % options.session_id]
-    #     #mongo_w      = mongo_db["%s.w"  % options.session_id]
-    #     #mongo_wm     = mongo_db["%s.wm" % options.session_id]
+    try:
+        mongo_client = pymongo.MongoClient(options.mongodb_url)
+        mongo_db     = mongo_client[options.database_name]
+        mongo_p      = mongo_db["%s.p"  % options.session_id]
+        mongo_w      = mongo_db["%s.w"  % options.session_id]
+        mongo_wm     = mongo_db["%s.wm" % options.session_id]
 
-    # except Exception, ex:
-    #     logger.error("Couldn't establish database connection: %s" % str(ex))
-    #     sys.exit(1)
+    except Exception, ex:
+        logger.error("Couldn't establish database connection: %s" % str(ex))
+        sys.exit(1)
 
     #--------------------------------------------------------------------------
     # Some singal handling magic 
@@ -929,9 +927,10 @@ if __name__ == "__main__":
                       runtime=options.runtime,
                       launch_method=options.launch_method,
                       mongodb_url=options.mongodb_url,
+                      mongodb_name=options.database_name,
                       pilot_id=options.pilot_id,
                       session_id=options.session_id,
-                      unit_manager_id=options.unitmanager_id)
+                      unitmanager_id=options.unitmanager_id)
 
         agent.start()
         agent.join()
