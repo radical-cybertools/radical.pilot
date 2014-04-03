@@ -404,6 +404,9 @@ class ExecWorker(multiprocessing.Process):
                                 self._slots[host][slot].close_and_flush_filehandles()
 
                                 # update database, set task state and notify.
+                                uid = self._slots[host][slot].task.uid
+                                self._log.info("Task %s terminated with return code %s." % (uid, rc))
+
                                 if rc != 0:
                                     state = 'Failed'
                                 else:
@@ -488,8 +491,11 @@ class ExecWorker(multiprocessing.Process):
                       "info.stdout_id"     : task.stdout_id,
                       "info.stderr_id"     : task.stderr_id}})
 
-            #if task.state == "PendingOutputTransfer":
-            #    self._wm.update
+            # If the state is set to PendingOutputTransfer, we 
+            # add the task to the UnitManager's output transfer queue. 
+            if task.state == "PendingOutputTransfer":
+                print "UPDATTING !!"
+
 
 
 # ----------------------------------------------------------------------------
