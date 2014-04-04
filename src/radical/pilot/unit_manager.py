@@ -85,7 +85,8 @@ class UnitManager(object):
             * :class:`radical.pilot.radical.pilotException`
         """
         self._session = session
-        self._worker = None
+        self._worker = None 
+        self._pilots = []
 
         if _reconnect is False:
             # Start a worker process fo this UnitManager instance. The worker
@@ -241,6 +242,9 @@ class UnitManager(object):
             pilots = [pilots]
 
         self._worker.add_pilots(pilots)
+
+        for pilot in pilots:
+            self._pilots.append(pilot.uid)
 
     # -------------------------------------------------------------------------
     #

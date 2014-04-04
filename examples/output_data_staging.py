@@ -58,7 +58,7 @@ if __name__ == "__main__":
         pdesc.resource = "localhost"
         pdesc.runtime = 5
         pdesc.cores = 2
-        #pdesc.cleanup = True
+        pdesc.cleanup = True
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             print "  STDOUT: {0}".format(unit.stdout)
             print "  STDERR: {0}".format(unit.stderr)
 
-        session.close()
+        session.close(delete=False)
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex

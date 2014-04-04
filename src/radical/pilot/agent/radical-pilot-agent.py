@@ -68,9 +68,10 @@ def which(program):
 
 #---------------------------------------------------------------------------
 #
-def pilot_FAILED(mongo_p, pilot_uid, message):
+def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
+    logger.error(message)
     mongo_p.update({"_id": ObjectId(pilot_uid)},
         {"$push": {"info.log" : message}})
                   
@@ -81,9 +82,10 @@ def pilot_FAILED(mongo_p, pilot_uid, message):
         }})
 #---------------------------------------------------------------------------
 #
-def pilot_CANCELED(mongo_p, pilot_uid, message):
+def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
+    logger.warning(message)
     mongo_p.update({"_id": ObjectId(pilot_uid)},
         {"$push": {"info.log" : message}})
                   
@@ -101,7 +103,6 @@ def pilot_DONE(mongo_p, pilot_uid):
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$set": {"info.state": 'Done',
                   "info.finished": datetime.datetime.utcnow()
-
         }})
 
 #---------------------------------------------------------------------------
@@ -307,6 +308,9 @@ class ExecWorker(multiprocessing.Process):
 
         self._log = logger
 
+        self._unitmanager_id = None
+        self._pilot_id = pilot_id
+
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
         self._p = mongo_db["%s.p"  % session_id]
@@ -481,6 +485,15 @@ class ExecWorker(multiprocessing.Process):
         """Updates the database entries for one or more tasks, inlcuding 
         task state, log, etc.
         """
+
+        # We need to know which unit manager we are working with. We can pull
+        # this informattion here:
+
+        if self._unitmanager_id is None:
+            cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
+                                    {"links.unitmanager": 1})
+            self._unitmanager_id = cursor_p[0]["links"]["unitmanager"]
+
         for task in tasks:
             self._w.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"info.state"         : task.state,
@@ -494,8 +507,8 @@ class ExecWorker(multiprocessing.Process):
             # If the state is set to PendingOutputTransfer, we 
             # add the task to the UnitManager's output transfer queue. 
             if task.state == "PendingOutputTransfer":
-                print "UPDATTING !!"
-
+                self._wm.update({"_id": ObjectId(self._unitmanager_id)}, 
+                                {"$push": {"output_transfer_queue": task.uid}})
 
 
 # ----------------------------------------------------------------------------
@@ -610,13 +623,17 @@ class Agent(threading.Thread):
                 # Check the workers periodically. If they have died, we 
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
+                exit = False
                 for ew in self._exec_workers:
                     if ew.is_alive() is False:
-                        self.stop()
+                        pilot_FAILED(self._p, self._pilot_id, self._log, "Execution worker %s died." % str(ew))
+                        exit = True
+                if exit:
+                    break
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
-                    pilot_CANCELED(self._p, self._pilot_id, "Terminated (_terminate set.")
+                    pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set.")
                     break
 
                 # Make sure that we haven't exceeded the agent runtime. if 
@@ -644,7 +661,7 @@ class Agent(threading.Thread):
                         if command is not None:
                             self._log.info("Received new command: %s" % command)
                             if command.lower() == "cancel":
-                                pilot_CANCELED(self._p, self._pilot_id, "CANCEL received. Terminating.")
+                                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
                                 break
 
                         # Check the pilot's workunit queue
@@ -691,8 +708,8 @@ class Agent(threading.Thread):
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.
-                pilot_FAILED(self._p, self._pilot_id, str(ex))
-                self._log.error("ERROR in agent main loop. EXITING: \n%s", traceback.format_exc())
+                pilot_FAILED(self._p, self._pilot_id, self._log, 
+                    "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
 
         # MAIN LOOP TERMINATED
         return
@@ -887,15 +904,13 @@ if __name__ == "__main__":
     # Some singal handling magic 
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
-        pilot_CANCELED(mongo_p, options.pilot_id, msg)
-        logger.warning(msg)
+        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)
 
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
-        pilot_CANCELED(mongo_p, options.pilot_id, msg)
-        logger.warning(msg)
+        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(0)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
@@ -910,13 +925,13 @@ if __name__ == "__main__":
         if exec_env is None:
             msg = "Couldn't set up execution environment."
             logger.error(msg)
-            pilot_FAILED(mongo_p, options.pilot_id, msg)
+            pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
             sys.exit(1)
 
     except Exception, ex:
         msg = "Error setting up execution environment: %s" % str(ex)
         logger.error(msg)
-        pilot_FAILED(mongo_p, options.pilot_id, msg)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(1)
 
     #--------------------------------------------------------------------------
@@ -944,7 +959,7 @@ if __name__ == "__main__":
     except Exception, ex:
         msg = "Error running agent: %s" % str(ex)
         logger.error(msg)
-        pilot_FAILED(mongo_p, options.pilot_id, msg)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         agent.stop()
         sys.exit(1)
 
