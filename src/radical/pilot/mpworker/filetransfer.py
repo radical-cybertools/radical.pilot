@@ -55,17 +55,28 @@ def transfer_input_func(pilot_uid, unit_uid, credentials, unit_sandbox, transfer
 
         # Next we copy all input files to the target machine
         for t in transfer:
-            abs_t = os.path.abspath(t)
+
+            st = t.split(">")
+            abs_t = os.path.abspath(st[0].strip())
 
             input_file_url = saga.Url("file://localhost/%s" % abs_t)
             input_file = saga.filesystem.File(
                 input_file_url,
                 session=saga_session)
-            input_file.copy(unit_sandbox)
+
+            if len(st) == 1:
+                target = unit_sandbox
+                input_file.copy(target)
+            elif len(st) == 2:
+                target = "%s/%s" % (unit_sandbox, st[1].strip()) 
+                input_file.copy(target)
+            else:
+                input_file.close()
+                raise Exception("Invalid transfer directive: %s" % t)
+
             input_file.close()
 
-            log_msg = "Copied input file %s to %s" % (
-                input_file_url, unit_sandbox)
+            log_msg = "Copied input file %s to %s" % (input_file_url, target)
 
             log.append(log_msg)
             logger.debug(log_msg)
