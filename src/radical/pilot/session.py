@@ -18,6 +18,7 @@ from radical.pilot.unit_manager  import UnitManager
 from radical.pilot.pilot_manager import PilotManager
 from radical.pilot.credentials   import SSHCredential
 from radical.pilot.utils.logger  import logger
+from radical.pilot.utils         import DBConnectionInfo
 from radical.pilot               import exceptions
 
 from radical.pilot.db            import Session as dbSession
@@ -158,6 +159,12 @@ class Session(Object):
 
         except DBException, ex:
             raise exceptions.radical.pilotException("Database Error: %s" % ex)  
+
+        self._connection_info = DBConnectionInfo(
+            session_id=self._uid,
+            dbname=database_name,
+            url=database_url
+        )
 
     #---------------------------------------------------------------------------
     #

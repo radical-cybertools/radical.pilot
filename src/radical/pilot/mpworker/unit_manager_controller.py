@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: radical.pilot.mpworker.unit_manager_worker
+.. module:: radical.pilot.mpworker.unit_manager_controller
    :platform: Unix
    :synopsis: Implements a multiprocessing worker backend for
               the UnitManager class.
@@ -28,16 +28,18 @@ from radical.pilot.utils.logger import logger
 from radical.pilot.mpworker.filetransfer import transfer_input_func
 
 
+from radical.pilot.mpworker.output_file_transfer_worker import OutputFileTransferWorker
+
 # ----------------------------------------------------------------------------
 #
-class UnitManagerWorker(threading.Thread):
-    """UnitManagerWorker is a threading worker that handles backend
-       interaction for the UnitManager class.
+class UnitManagerController(threading.Thread):
+    """UnitManagerController handles backend interaction for the UnitManager 
+    class. It is threaded and manages background worker processes. 
     """
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, scheduler, db_connection):
+    def __init__(self, unit_manager_uid, scheduler, db_connection, db_connection_info):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -52,9 +54,9 @@ class UnitManagerWorker(threading.Thread):
         self._initialized = threading.Event()
         self._initialized.clear()
 
-        # The transfer worker pool is a multiprocessing pool that executes
-        # concurrent file transfer requests.
-        self._worker_pool = Pool(2)
+        # The INPUT transfer worker pool is a multiprocessing pool that
+        # executes concurrent input file transfer requests.
+        self._input_tranfers_worker_pool = Pool(2)
 
         # The shard_data_manager handles data exchange between the worker
         # process and the API objects. The communication is unidirectional:
@@ -76,8 +78,6 @@ class UnitManagerWorker(threading.Thread):
         # The MongoDB database handle.
         self._db = db_connection
 
-        self._um_id = unit_manager_uid
-
         # The different command queues hold pending operations
         # that are passed to the worker. Queues are inspected during
         # runtime in the run() loop and the worker acts upon them accordingly.
@@ -90,13 +90,15 @@ class UnitManagerWorker(threading.Thread):
         else:
             self._um_id = unit_manager_uid
 
-        self.name = 'UMWThread-%s' % self._um_id
+        # The OUTPUT transfer worker pool is a multiprocessing pool that
+        # executes concurrent OUTPUT file transfer requests.
+        self._output_file_transfer_worker = OutputFileTransferWorker(
+            db_connection_info=db_connection_info, 
+            unit_manager_id=self._um_id
+        )
+        self._output_file_transfer_worker.start()
 
-    # ------------------------------------------------------------------------
-    #
-    def __del__(self):
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("GCDEBUG __del__(): UnitManagerWorker '%s'." % self._um_id)
+        self.name = 'UMWThread-%s' % self._um_id
 
     # ------------------------------------------------------------------------
     #
@@ -226,7 +228,7 @@ class UnitManagerWorker(threading.Thread):
 
                 description = request["description"]
 
-                transfer_result = self._worker_pool.apply_async(
+                transfer_result = self._input_tranfers_worker_pool.apply_async(
                     transfer_input_func, args=(
                         request["pilot_uid"],
                         request["unit_uid"],
@@ -305,9 +307,12 @@ class UnitManagerWorker(threading.Thread):
 
             time.sleep(1)
 
-        # shut down the pool
-        self._worker_pool.terminate()
-        self._worker_pool.join()
+        # shut down the pool(s)
+        self._input_tranfers_worker_pool.terminate()
+        self._input_tranfers_worker_pool.join()
+
+        self._output_file_transfer_worker.terminate()
+        self._output_file_transfer_worker.join()
 
         logger.debug("Thread main loop terminated")
 
