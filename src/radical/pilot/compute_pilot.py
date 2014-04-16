@@ -200,7 +200,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_jsonself._input_tranfers_worker_pool['log']
+        return pilot_json['log']
 
     # -------------------------------------------------------------------------
     #
@@ -214,8 +214,8 @@ class ComputePilot (object):
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         resource_details = {
-            'nodes':          pilot_jsonself._input_tranfers_worker_pool['nodes'],
-            'cores_per_node': pilot_jsonself._input_tranfers_worker_pool['cores_per_node']
+            'nodes':          pilot_json['nodes'],
+            'cores_per_node': pilot_json['cores_per_node']
         }
         return resource_details
 
@@ -261,7 +261,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_jsonself._input_tranfers_worker_pool['submitted']
+        return pilot_json['submitted']
 
     # -------------------------------------------------------------------------
     #
@@ -273,7 +273,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_jsonself._input_tranfers_worker_pool['started']
+        return pilot_json['started']
 
     # -------------------------------------------------------------------------
     #
@@ -285,7 +285,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_jsonself._input_tranfers_worker_pool['finished']
+        return pilot_json['finished']
 
     # -------------------------------------------------------------------------
     #

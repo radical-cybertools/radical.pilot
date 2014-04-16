@@ -135,7 +135,7 @@ class UnitManager(object):
     def _reconnect(cls, session, unit_manager_id):
         """PRIVATE: Reconnect to an existing UnitManager.
         """
-        uid_exists = UnitManagerWorker.uid_exists(
+        uid_exists = UnitManagerController.uid_exists(
             db_connection=session._dbs,
             unit_manager_uid=unit_manager_id)
 

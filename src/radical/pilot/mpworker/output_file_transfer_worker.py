@@ -6,6 +6,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
+import os
 import time
 import multiprocessing
 
@@ -50,26 +51,44 @@ class OutputFileTransferWorker(multiprocessing.Process):
             return
 
         while True:
-
             time.sleep(1)
 
-            transfer = None
+            compute_unit = None
 
-            # See if we can find a new transfer request.
-            transfer = um_col.find_and_modify(
+            # See if we can find a ComputeUnit that is waiting for 
+            # output file transfer.
+            compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id, 
                        "state": "PendingOutputTransfer"},
                 update={"$set": {"state": "TransferringOutput"}},
                 limit=BULK_LIMIT
             )
 
-            if transfer is not None:
-                logger.info("Transferring: %s" % transfer["description"]["output_data"])
-                time.sleep(3)
+            if compute_unit is not None:
+                # We have found one. Now we can process the transfer
+                # directive(s) wit SAGA.
+                compute_unit_id = str(compute_unit["_id"])
+                remote_sandbox = compute_unit["sandbox"]
+                transfer_directives = compute_unit["description"]["output_data"]
+
+                abs_directives = []
+
+                for td in transfer_directives:
+                    source = td.split(">")
+                    abs_source = "%s/%s" % (remote_sandbox, source[0].strip())
+                    if len(td) > 1:
+                        abs_target = os.path.abspath(source[1].strip())
+                    else:
+                        abs_target = os.getcwd()
+
+                    abs_directives.append({"src": abs_source, "target" : abs_target})
+
+                logger.info("Processing output data transfer for ComputeUnit %s: %s" \
+                    % (compute_unit_id, abs_directives))
 
                 # Update the CU's state to 'DONE' if transfer was successfull, 
                 # to 'FAILED' otherwise. 
                 um_col.update(
-                    {"_id": transfer["_id"]},
+                    {"_id": ObjectId(compute_unit_id)},
                     {"$set": {"state": "Done"}}
                 )
