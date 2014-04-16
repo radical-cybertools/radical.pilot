@@ -519,9 +519,8 @@ class Session():
             raise Exception("No active session.")
 
         result = self._um.insert(
-            {"scheduler": scheduler, 
-             "output_transfer_queue": []
-            })
+            {"scheduler": scheduler}
+        )
 
         # return the object id as a string
         return str(result)

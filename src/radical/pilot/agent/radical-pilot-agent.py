@@ -504,17 +504,6 @@ class ExecWorker(multiprocessing.Process):
                       "stdout_id"     : task.stdout_id,
                       "stderr_id"     : task.stderr_id}})
 
-            # If the state is set to PendingOutputTransfer, we 
-            # add the task to the UnitManager's output transfer queue. 
-            if task.state == "PendingOutputTransfer":
-                self._wm.update({"_id": ObjectId(self._unitmanager_id)}, 
-                                {"$push": {"output_transfer_queue": 
-                                  {
-                                    "wu_id": task.uid,
-                                    "td":    task.output_data}}
-                                   }
-                                )
-
 
 # ----------------------------------------------------------------------------
 #

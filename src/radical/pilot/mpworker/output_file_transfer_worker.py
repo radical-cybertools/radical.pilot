@@ -12,6 +12,9 @@ import multiprocessing
 from bson.objectid import ObjectId
 from radical.pilot.utils.logger import logger
 
+# BULK_LIMIT defines the max. number of transfer requests to pull from DB.
+BULK_LIMIT=1
+
 # ----------------------------------------------------------------------------
 #
 class OutputFileTransferWorker(multiprocessing.Process):
@@ -40,7 +43,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
         try: 
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
-            um_col = db["%s.wm" % self.db_connection_info.session_id] 
+            um_col = db["%s.w" % self.db_connection_info.session_id] 
             logger.debug("Connected to database %s." % db.host)
         except Exception, ex: 
             logger.error("Connection error: %s" % str(ex))
@@ -50,21 +53,23 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
             time.sleep(1)
 
+            transfer = None
+
             # See if we can find a new transfer request.
             transfer = um_col.find_and_modify(
-                {"_id": ObjectId(self.unit_manager_id)},
-                {"$pop": { "output_transfer_queue": -1 } },
-                limit=1,
+                query={"unitmanager": self.unit_manager_id, 
+                       "state": "PendingOutputTransfer"},
+                update={"$set": {"state": "TransferringOutput"}},
+                limit=BULK_LIMIT
             )
 
-            # if transfer.count() != 1:
-            #     logger.warning("Can't find DB entry for UnitManager %s", 
-            #         self.unit_manager_id)
-            #     continue
+            if transfer is not None:
+                logger.info("Transferring: %s" % transfer["description"]["output_data"])
+                time.sleep(3)
 
-            logger.error("TF: %s" % transfer)
-
-
-            # Extract the transfer queue.
-            #output_transfer_queue = treqs[0]["output_transfer_queue"]
-            #logger.error("TF: %s" % output_transfer_queue)
+                # Update the CU's state to 'DONE' if transfer was successfull, 
+                # to 'FAILED' otherwise. 
+                um_col.update(
+                    {"_id": transfer["_id"]},
+                    {"$set": {"state": "Done"}}
+                )
