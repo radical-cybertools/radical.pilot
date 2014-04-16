@@ -65,30 +65,46 @@ class OutputFileTransferWorker(multiprocessing.Process):
             )
 
             if compute_unit is not None:
-                # We have found one. Now we can process the transfer
-                # directive(s) wit SAGA.
-                compute_unit_id = str(compute_unit["_id"])
-                remote_sandbox = compute_unit["sandbox"]
-                transfer_directives = compute_unit["description"]["output_data"]
 
-                abs_directives = []
+                try:
+                    # We have found one. Now we can process the transfer
+                    # directive(s) wit SAGA.
+                    compute_unit_id = str(compute_unit["_id"])
+                    remote_sandbox = compute_unit["sandbox"]
+                    transfer_directives = compute_unit["description"]["output_data"]
 
-                for td in transfer_directives:
-                    source = td.split(">")
-                    abs_source = "%s/%s" % (remote_sandbox, source[0].strip())
-                    if len(td) > 1:
-                        abs_target = os.path.abspath(source[1].strip())
-                    else:
-                        abs_target = os.getcwd()
+                    abs_directives = []
 
-                    abs_directives.append({"src": abs_source, "target" : abs_target})
+                    for td in transfer_directives:
+                        source = td.split(">")
+                        abs_source = "%s/%s" % (remote_sandbox, source[0].strip())
+                        if len(td) > 1:
+                            abs_target = os.path.abspath(source[1].strip())
+                        else:
+                            abs_target = os.getcwd()
 
-                logger.info("Processing output data transfer for ComputeUnit %s: %s" \
-                    % (compute_unit_id, abs_directives))
+                        abs_directives.append({"source": abs_source, "target" : abs_target})
 
-                # Update the CU's state to 'DONE' if transfer was successfull, 
-                # to 'FAILED' otherwise. 
-                um_col.update(
-                    {"_id": ObjectId(compute_unit_id)},
-                    {"$set": {"state": "Done"}}
-                )
+                    logger.info("Processing output data transfer for ComputeUnit %s: %s" \
+                        % (compute_unit_id, abs_directives))
+
+                    log_messages = []
+                    for atd in abs_directives:
+                        log_messages.append("Successfully transferred output file %s -> %s" \
+                            % (atd["source"], atd["target"]))
+
+                    # Update the CU's state to 'DONE' if all transfers were successfull.
+                    um_col.update(
+                        {"_id": ObjectId(compute_unit_id)},
+                        {"$set": {"state": "Done"},
+                         "$pushAll": {"log": log_messages}}                    
+                    )
+
+                except Exception, ex:
+                    # Update the CU's state 'FAILED'.
+                    log_messages = "Output transfer failed: %s" % str(ex)
+                    um_col.update(
+                        {"_id": ObjectId(compute_unit_id)},
+                        {"$set": {"state": "Failed"},
+                         "$push": {"log": log_messages}}
+                    )
