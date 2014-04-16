@@ -8,6 +8,7 @@ __license__ = "MIT"
 
 import os
 import time
+import saga
 import multiprocessing
 
 from bson.objectid import ObjectId
@@ -90,6 +91,11 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
                     log_messages = []
                     for atd in abs_directives:
+
+                        output_file = saga.filesystem.File(saga.Url(atd["source"]))
+                        output_file.copy(saga.Url(atd["target"]))
+                        output_file.close()
+
                         log_messages.append("Successfully transferred output file %s -> %s" \
                             % (atd["source"], atd["target"]))
 
