@@ -157,7 +157,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['sandbox']
+        return cu_json['sandbox']
 
     # -------------------------------------------------------------------------
     #
@@ -211,7 +211,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['state']
+        return cu_json['state']
 
     # -------------------------------------------------------------------------
     #
@@ -226,7 +226,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['exit_code']
+        return cu_json['exit_code']
 
     # -------------------------------------------------------------------------
     #
@@ -238,7 +238,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['log']
+        return cu_json['log']
 
     # -------------------------------------------------------------------------
     #
@@ -250,7 +250,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['exec_locs']
+        return cu_json['exec_locs']
 
     # -------------------------------------------------------------------------
     #
@@ -262,7 +262,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['submitted']
+        return cu_json['submitted']
 
     # -------------------------------------------------------------------------
     #
@@ -274,7 +274,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['started']
+        return cu_json['started']
 
     # -------------------------------------------------------------------------
     #
@@ -286,7 +286,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['finished']
+        return cu_json['finished']
 
     # -------------------------------------------------------------------------
     #

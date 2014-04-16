@@ -173,7 +173,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['info']['sandbox']
+        return pilot_json['sandbox']
 
     # -------------------------------------------------------------------------
     #
@@ -185,7 +185,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['info']['state']
+        return pilot_json['state']
 
     # -------------------------------------------------------------------------
     #
@@ -200,7 +200,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['info']['log']
+        return pilot_jsonself._input_tranfers_worker_pool['log']
 
     # -------------------------------------------------------------------------
     #
@@ -214,8 +214,8 @@ class ComputePilot (object):
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
         resource_details = {
-            'nodes':          pilot_json['info']['nodes'],
-            'cores_per_node': pilot_json['info']['cores_per_node']
+            'nodes':          pilot_jsonself._input_tranfers_worker_pool['nodes'],
+            'cores_per_node': pilot_jsonself._input_tranfers_worker_pool['cores_per_node']
         }
         return resource_details
 
@@ -261,7 +261,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['info']['submitted']
+        return pilot_jsonself._input_tranfers_worker_pool['submitted']
 
     # -------------------------------------------------------------------------
     #
@@ -273,7 +273,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['info']['started']
+        return pilot_jsonself._input_tranfers_worker_pool['started']
 
     # -------------------------------------------------------------------------
     #
@@ -285,7 +285,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['info']['finished']
+        return pilot_jsonself._input_tranfers_worker_pool['finished']
 
     # -------------------------------------------------------------------------
     #

@@ -111,7 +111,7 @@ class Test_Database():
         pilots = s.get_raw_pilots()
         assert len(pilots) == 1, "Wrong number of pilots"
         assert pilots[0]["description"]["X"] == "foo", "Missing / wrong key."
-        assert pilots[0]["info"]["state"] == "UNKNOWN", "Missing / wrong key."
+        assert pilots[0]["state"] == "UNKNOWN", "Missing / wrong key."
         assert pilots[0]["wu_queue"] == [], "Missing / wrong key."
 
     #-------------------------------------------------------------------------
@@ -138,7 +138,7 @@ class Test_Database():
         for i in range(0,32):
             assert len(pilots) == 32, "Wrong number of pilots"
             assert pilots[i]["description"]["X"] == "foo", "Missing / wrong key."
-            assert pilots[i]["info"]["state"] == "UNKNOWN", "Missing / wrong key."
+            assert pilots[i]["state"] == "UNKNOWN", "Missing / wrong key."
             assert pilots[i]["wu_queue"] == [], "Missing / wrong key."
 
     #-------------------------------------------------------------------------
@@ -166,7 +166,7 @@ class Test_Database():
         assert len(workunits) == 1, "Wrong number of workunits"
         assert workunits[0]["description"]["A"] == "foo", "Missing / wrong key."
         assert workunits[0]["assignment"]["pilot"] == p_ids[0], "Missing / wrong key."
-        assert workunits[0]["info"]["state"] == "UNKNOWN", "Missing / wrong key."
+        assert workunits[0]["state"] == "UNKNOWN", "Missing / wrong key."
 
         # make sure that the work units have been appended to the pilot's queue
         p = s.get_raw_pilots(p_ids)
@@ -202,7 +202,7 @@ class Test_Database():
 
         assert workunits[0]["description"]["A"] == "foo", "Missing / wrong key."
         assert workunits[0]["assignment"]["pilot"] == p_ids[0], "Missing / wrong key."
-        assert workunits[0]["info"]["state"] == "UNKNOWN", "Missing / wrong key."
+        assert workunits[0]["state"] == "UNKNOWN", "Missing / wrong key."
 
         # make sure that the work units have been appended to the pilot's queue
         p = s.get_raw_pilots(p_ids)

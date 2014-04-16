@@ -50,26 +50,21 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
             time.sleep(1)
 
-            # See if we can find any transfer requests
-            treqs = um_col.find(
-                {"_id": ObjectId(self.unit_manager_id)}, 
-                {"output_transfer_queue": 1}
+            # See if we can find a new transfer request.
+            transfer = um_col.find_and_modify(
+                {"_id": ObjectId(self.unit_manager_id)},
+                {"$pop": { "output_transfer_queue": -1 } },
+                limit=1,
             )
 
-            if treqs.count() != 1:
-                logger.warning("Can't find DB entry for UnitManager %s", 
-                    self.unit_manager_id)
-                continue
+            # if transfer.count() != 1:
+            #     logger.warning("Can't find DB entry for UnitManager %s", 
+            #         self.unit_manager_id)
+            #     continue
+
+            logger.error("TF: %s" % transfer)
+
 
             # Extract the transfer queue.
-            output_transfer_queue = treqs[0]["output_transfer_queue"]
-            logger.error("TF: %s" % output_transfer_queue)
-
-            # Remove work unit ids from transfer queue
-            um_col.update(
-                {"_id": ObjectId(self.unit_manager_id)}, 
-                {"$pullAll": { "output_transfer_queue": output_transfer_queue}}
-            )
-
-
-
+            #output_transfer_queue = treqs[0]["output_transfer_queue"]
+            #logger.error("TF: %s" % output_transfer_queue)

@@ -428,11 +428,11 @@ class PilotManager(Object):
             pilots_json = self._worker.get_compute_pilot_data()
 
             for pilot in pilots_json:
-                if pilot['info']['state'] not in state:
+                if pilotself._input_tranfers_worker_pool['state'] not in state:
                     all_done = False
                     break  # leave for loop
                 else:
-                    return_states.append(pilot['info']['state'])
+                    return_states.append(pilotself._input_tranfers_worker_pool['state'])
 
             # check timeout
             if (None != timeout) and (timeout <= (time.time() - start_wait)):

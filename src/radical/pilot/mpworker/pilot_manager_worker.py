@@ -227,9 +227,9 @@ class PilotManagerWorker(threading.Thread):
             for pilot in pilot_list:
                 pilot_id = str(pilot["_id"])
 
-                new_state = pilot["info"]["state"]
+                new_state = pilot["state"]
                 if pilot_id in self._shared_data:
-                    old_state = self._shared_data[pilot_id]["data"]["info"]["state"]
+                    old_state = self._shared_data[pilot_id]["data"]["state"]
                 else:
                     old_state = None
                     self._shared_data[pilot_id] = {
@@ -383,7 +383,7 @@ class PilotManagerWorker(threading.Thread):
         # with the current ComputePilot state as soon as it is registered.
         self.call_callbacks(
             pilot.uid,
-            self._shared_data[pilot_uid]["data"]["info"]["state"]
+            self._shared_data[pilot_uid]["data"]["state"]
         )
 
     # ------------------------------------------------------------------------

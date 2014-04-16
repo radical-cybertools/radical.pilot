@@ -149,8 +149,8 @@ class Session(Object):
                                                               db_name=database_name)
 
                 self._uid = session_uid
-                self._created = session_info["info"]["created"]
-                self._last_reconnect = session_info["info"]["last_reconnect"]
+                self._created = session_info["created"]
+                self._last_reconnect = session_info["last_reconnect"]
 
                 for cred_dict in session_info["credentials"]:
                     self._credentials.append(SSHCredential.from_dict(cred_dict))

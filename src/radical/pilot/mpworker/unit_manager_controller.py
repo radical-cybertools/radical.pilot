@@ -176,14 +176,14 @@ class UnitManagerController(threading.Thread):
         # Acquire the shared data lock.
         self._shared_data_lock.acquire()
 
-        old_state = self._shared_data[unit_uid]["data"]["info"]["state"]
+        old_state = self._shared_data[unit_uid]["data"]["state"]
 
         # Update the database.
         self._db.set_compute_unit_state(unit_uid, state, log)
 
         # Update shared data.
-        self._shared_data[unit_uid]["data"]["info"]["state"] = state
-        self._shared_data[unit_uid]["data"]["info"]["log"].extend(log)
+        self._shared_data[unit_uid]["data"]["state"] = state
+        self._shared_data[unit_uid]["data"]["log"].extend(log)
 
         # Call the callbacks
         if state != old_state:
@@ -275,9 +275,9 @@ class UnitManagerController(threading.Thread):
             for unit in unit_list:
                 unit_id = str(unit["_id"])
 
-                new_state = unit["info"]["state"]
+                new_state = unit["state"]
                 if unit_id in self._shared_data:
-                    old_state = self._shared_data[unit_id]["data"]["info"]["state"]
+                    old_state = self._shared_data[unit_id]["data"]["state"]
                 else:
                     old_state = None
                     self._shared_data_lock.acquire()
@@ -338,7 +338,7 @@ class UnitManagerController(threading.Thread):
         # with the current ComputePilot state as soon as it is registered.
         self.call_callbacks(
             unit_uid,
-            self._shared_data[unit_uid]["data"]["info"]["state"]
+            self._shared_data[unit_uid]["data"]["state"]
         )
 
     # ------------------------------------------------------------------------
@@ -432,7 +432,7 @@ class UnitManagerController(threading.Thread):
 
         # Get some information about the pilot sandbox from the database.
         pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
-        pilot_sandbox = pilot_info[0]['info']['sandbox']
+        pilot_sandbox = pilot_info[0]['sandbox']
 
         # Split units into two different lists: the first list contains the CUs
         # that need file transfer and the second list contains the CUs that
@@ -489,7 +489,7 @@ class UnitManagerController(threading.Thread):
                     {"pilot_uid":    pilot_uid,
                      "unit_uid":     unit.uid,
                      "credentials":  cred_dict,
-                     "unit_sandbox": results[unit.uid]["info"]["sandbox"],
+                     "unit_sandbox": results[unit.uid]["sandbox"],
                      "description":  unit.description}
                 )
                 log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
