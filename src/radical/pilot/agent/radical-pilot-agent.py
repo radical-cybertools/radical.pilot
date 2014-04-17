@@ -269,7 +269,7 @@ class Task(object):
         self.arguments      = arguments
         self.workdir        = workdir
         self.stdout         = stdout
-        self.stderr         = stdout
+        self.stderr         = stderr
         self.output_data    = output_data
         self.numcores       = 1
 
