@@ -9,10 +9,12 @@ __license__ = "MIT"
 import os
 import time
 import saga
+import traceback
 import multiprocessing
 
 from bson.objectid import ObjectId
 from radical.pilot.utils.logger import logger
+from radical.pilot.credentials import SSHCredential
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
@@ -21,7 +23,7 @@ BULK_LIMIT=1
 #
 class OutputFileTransferWorker(multiprocessing.Process):
     """OutputFileTransferWorker handles the staging of the output files
-    for a UnitManagerController. 
+    for a UnitManagerController.
     """
 
     # ------------------------------------------------------------------------
@@ -41,14 +43,30 @@ class OutputFileTransferWorker(multiprocessing.Process):
         """Starts the process when Process.start() is called.
         """
 
+        # saga_session holds the SSH context infos.
+        saga_session = saga.Session()
+
         # Try to connect to the database and create a tailable cursor.
-        try: 
+        try:
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
-            um_col = db["%s.w" % self.db_connection_info.session_id] 
+            um_col = db["%s.w" % self.db_connection_info.session_id]
             logger.debug("Connected to database %s." % db.host)
-        except Exception, ex: 
-            logger.error("Connection error: %s" % str(ex))
+
+            session_col = db["%s" % self.db_connection_info.session_id]
+            session = session_col.find(
+                {"_id": ObjectId(self.db_connection_info.session_id)},
+                {"credentials": 1}
+            )
+
+            for cred_dict in session[0]["credentials"]:
+                cred = SSHCredential.from_dict(cred_dict)
+                saga_session.add_context(cred._context)
+                logger.debug("Added SSH context info: %s." % cred._context)
+
+        except Exception, ex:
+            tb = traceback.format_exc()
+            logger.error("Connection error: %s. %s" % (str(ex), tb))
             return
 
         while True:
@@ -56,10 +74,10 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
             compute_unit = None
 
-            # See if we can find a ComputeUnit that is waiting for 
+            # See if we can find a ComputeUnit that is waiting for
             # output file transfer.
             compute_unit = um_col.find_and_modify(
-                query={"unitmanager": self.unit_manager_id, 
+                query={"unitmanager": self.unit_manager_id,
                        "state": "PendingOutputTransfer"},
                 update={"$set": {"state": "TransferringOutput"}},
                 limit=BULK_LIMIT
@@ -80,9 +98,9 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         source = td.split(">")
                         abs_source = "%s/%s" % (remote_sandbox, source[0].strip())
                         if len(td) > 1:
-                            abs_target = os.path.abspath(source[1].strip())
+                            abs_target = "file://localhost/%s" % os.path.abspath(source[1].strip())
                         else:
-                            abs_target = os.getcwd()
+                            abs_target = "file://localhost/%s" % os.getcwd()
 
                         abs_directives.append({"source": abs_source, "target" : abs_target})
 
@@ -92,7 +110,8 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     log_messages = []
                     for atd in abs_directives:
 
-                        output_file = saga.filesystem.File(saga.Url(atd["source"]))
+                        output_file = saga.filesystem.File(saga.Url(atd["source"]),
+                            session=saga_session)
                         output_file.copy(saga.Url(atd["target"]))
                         output_file.close()
 
