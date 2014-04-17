@@ -9,5 +9,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from unit_manager_worker  import UnitManagerWorker
+from unit_manager_controller  import UnitManagerController
 from pilot_manager_worker import PilotManagerWorker
+
+from output_file_transfer_worker import OutputFileTransferWorker

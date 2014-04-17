@@ -76,7 +76,7 @@ def transfer_input_func(pilot_uid, unit_uid, credentials, unit_sandbox, transfer
 
             input_file.close()
 
-            log_msg = "Copied input file %s to %s" % (input_file_url, target)
+            log_msg = "Successfully transferred input file %s -> %s" % (input_file_url, target)
 
             log.append(log_msg)
             logger.debug(log_msg)

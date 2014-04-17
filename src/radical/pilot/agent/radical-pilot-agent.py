@@ -73,11 +73,11 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """
     logger.error(message)
     mongo_p.update({"_id": ObjectId(pilot_uid)},
-        {"$push": {"info.log" : message}})
+        {"$push": {"log" : message}})
                   
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"info.state": 'Failed',
-                 "info.finished": datetime.datetime.utcnow()
+        {"$set": {"state": 'Failed',
+                  "finished": datetime.datetime.utcnow()
 
         }})
 #---------------------------------------------------------------------------
@@ -87,11 +87,11 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """
     logger.warning(message)
     mongo_p.update({"_id": ObjectId(pilot_uid)},
-        {"$push": {"info.log" : message}})
+        {"$push": {"log" : message}})
                   
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"info.state": 'Canceled',
-                 "info.finished": datetime.datetime.utcnow()
+        {"$set": {"state": 'Canceled',
+                  "finished": datetime.datetime.utcnow()
 
         }})
 
@@ -101,8 +101,8 @@ def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"info.state": 'Done',
-                  "info.finished": datetime.datetime.utcnow()
+        {"$set": {"state": 'Done',
+                  "finished": datetime.datetime.utcnow()
         }})
 
 #---------------------------------------------------------------------------
@@ -111,8 +111,8 @@ def pilot_PENDING_OUTPUT_TRANSFER(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"info.state": 'PendingOutputTransfer',
-                  "info.finished": datetime.datetime.utcnow()
+        {"$set": {"state": 'PendingOutputTransfer',
+                  "finished": datetime.datetime.utcnow()
         }})
 
 
@@ -491,24 +491,18 @@ class ExecWorker(multiprocessing.Process):
 
         if self._unitmanager_id is None:
             cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
-                                    {"links.unitmanager": 1})
-            self._unitmanager_id = cursor_p[0]["links"]["unitmanager"]
+                                    {"unitmanager": 1})
+            self._unitmanager_id = cursor_p[0]["unitmanager"]
 
         for task in tasks:
             self._w.update({"_id": ObjectId(task.uid)}, 
-            {"$set": {"info.state"         : task.state,
-                      "info.started"       : task.started,
-                      "info.finished"      : task.finished,
-                      "info.exec_locs"     : task.exec_locs,
-                      "info.exit_code"     : task.exit_code,
-                      "info.stdout_id"     : task.stdout_id,
-                      "info.stderr_id"     : task.stderr_id}})
-
-            # If the state is set to PendingOutputTransfer, we 
-            # add the task to the UnitManager's output transfer queue. 
-            if task.state == "PendingOutputTransfer":
-                self._wm.update({"_id": ObjectId(self._unitmanager_id)}, 
-                                {"$push": {"output_transfer_queue": task.uid}})
+            {"$set": {"state"         : task.state,
+                      "started"       : task.started,
+                      "finished"      : task.finished,
+                      "exec_locs"     : task.exec_locs,
+                      "exit_code"     : task.exit_code,
+                      "stdout_id"     : task.stdout_id,
+                      "stderr_id"     : task.stderr_id}})
 
 
 # ----------------------------------------------------------------------------
@@ -609,10 +603,10 @@ class Agent(threading.Thread):
         self._log.info("Agent started. Database updated.")
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"info.state"          : "Running",
-                      "info.nodes"          : self._exec_env.nodes.keys(),
-                      "info.cores_per_node" : self._exec_env.cores_per_node,
-                      "info.started"        : datetime.datetime.utcnow()}})
+            {"$set": {"state"          : "Running",
+                      "nodes"          : self._exec_env.nodes.keys(),
+                      "cores_per_node" : self._exec_env.cores_per_node,
+                      "started"        : datetime.datetime.utcnow()}})
 
         self._starttime = time.time()
 

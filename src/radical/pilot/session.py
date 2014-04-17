@@ -18,6 +18,7 @@ from radical.pilot.unit_manager  import UnitManager
 from radical.pilot.pilot_manager import PilotManager
 from radical.pilot.credentials   import SSHCredential
 from radical.pilot.utils.logger  import logger
+from radical.pilot.utils         import DBConnectionInfo
 from radical.pilot               import exceptions
 
 from radical.pilot.db            import Session as dbSession
@@ -148,8 +149,8 @@ class Session(Object):
                                                               db_name=database_name)
 
                 self._uid = session_uid
-                self._created = session_info["info"]["created"]
-                self._last_reconnect = session_info["info"]["last_reconnect"]
+                self._created = session_info["created"]
+                self._last_reconnect = session_info["last_reconnect"]
 
                 for cred_dict in session_info["credentials"]:
                     self._credentials.append(SSHCredential.from_dict(cred_dict))
@@ -158,6 +159,12 @@ class Session(Object):
 
         except DBException, ex:
             raise exceptions.radical.pilotException("Database Error: %s" % ex)  
+
+        self._connection_info = DBConnectionInfo(
+            session_id=self._uid,
+            dbname=database_name,
+            url=database_url
+        )
 
     #---------------------------------------------------------------------------
     #

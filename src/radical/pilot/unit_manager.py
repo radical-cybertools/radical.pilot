@@ -18,7 +18,7 @@ import weakref
 from radical.pilot.compute_unit import ComputeUnit
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.mpworker import UnitManagerWorker
+from radical.pilot.mpworker import UnitManagerController
 from radical.pilot.scheduler import get_scheduler
 
 from radical.pilot.states import *
@@ -91,10 +91,11 @@ class UnitManager(object):
         if _reconnect is False:
             # Start a worker process fo this UnitManager instance. The worker
             # process encapsulates database access et al.
-            self._worker = UnitManagerWorker(
+            self._worker = UnitManagerController(
                 unit_manager_uid=None, 
                 scheduler=scheduler,
-                db_connection=session._dbs)
+                db_connection=session._dbs,
+                db_connection_info=session._connection_info)
             self._worker.start()
 
             self._uid = self._worker.unit_manager_uid
@@ -134,7 +135,7 @@ class UnitManager(object):
     def _reconnect(cls, session, unit_manager_id):
         """PRIVATE: Reconnect to an existing UnitManager.
         """
-        uid_exists = UnitManagerWorker.uid_exists(
+        uid_exists = UnitManagerController.uid_exists(
             db_connection=session._dbs,
             unit_manager_uid=unit_manager_id)
 

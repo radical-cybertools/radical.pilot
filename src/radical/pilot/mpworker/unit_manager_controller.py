@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: radical.pilot.mpworker.unit_manager_worker
+.. module:: radical.pilot.mpworker.unit_manager_controller
    :platform: Unix
    :synopsis: Implements a multiprocessing worker backend for
               the UnitManager class.
@@ -28,16 +28,18 @@ from radical.pilot.utils.logger import logger
 from radical.pilot.mpworker.filetransfer import transfer_input_func
 
 
+from radical.pilot.mpworker.output_file_transfer_worker import OutputFileTransferWorker
+
 # ----------------------------------------------------------------------------
 #
-class UnitManagerWorker(threading.Thread):
-    """UnitManagerWorker is a threading worker that handles backend
-       interaction for the UnitManager class.
+class UnitManagerController(threading.Thread):
+    """UnitManagerController handles backend interaction for the UnitManager 
+    class. It is threaded and manages background worker processes. 
     """
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, scheduler, db_connection):
+    def __init__(self, unit_manager_uid, scheduler, db_connection, db_connection_info):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -52,9 +54,9 @@ class UnitManagerWorker(threading.Thread):
         self._initialized = threading.Event()
         self._initialized.clear()
 
-        # The transfer worker pool is a multiprocessing pool that executes
-        # concurrent file transfer requests.
-        self._worker_pool = Pool(2)
+        # The INPUT transfer worker pool is a multiprocessing pool that
+        # executes concurrent input file transfer requests.
+        self._input_tranfers_worker_pool = Pool(2)
 
         # The shard_data_manager handles data exchange between the worker
         # process and the API objects. The communication is unidirectional:
@@ -76,8 +78,6 @@ class UnitManagerWorker(threading.Thread):
         # The MongoDB database handle.
         self._db = db_connection
 
-        self._um_id = unit_manager_uid
-
         # The different command queues hold pending operations
         # that are passed to the worker. Queues are inspected during
         # runtime in the run() loop and the worker acts upon them accordingly.
@@ -90,13 +90,15 @@ class UnitManagerWorker(threading.Thread):
         else:
             self._um_id = unit_manager_uid
 
-        self.name = 'UMWThread-%s' % self._um_id
+        # The OUTPUT transfer worker pool is a multiprocessing pool that
+        # executes concurrent OUTPUT file transfer requests.
+        self._output_file_transfer_worker = OutputFileTransferWorker(
+            db_connection_info=db_connection_info, 
+            unit_manager_id=self._um_id
+        )
+        self._output_file_transfer_worker.start()
 
-    # ------------------------------------------------------------------------
-    #
-    def __del__(self):
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("GCDEBUG __del__(): UnitManagerWorker '%s'." % self._um_id)
+        self.name = 'UMWThread-%s' % self._um_id
 
     # ------------------------------------------------------------------------
     #
@@ -174,14 +176,14 @@ class UnitManagerWorker(threading.Thread):
         # Acquire the shared data lock.
         self._shared_data_lock.acquire()
 
-        old_state = self._shared_data[unit_uid]["data"]["info"]["state"]
+        old_state = self._shared_data[unit_uid]["data"]["state"]
 
         # Update the database.
         self._db.set_compute_unit_state(unit_uid, state, log)
 
         # Update shared data.
-        self._shared_data[unit_uid]["data"]["info"]["state"] = state
-        self._shared_data[unit_uid]["data"]["info"]["log"].extend(log)
+        self._shared_data[unit_uid]["data"]["state"] = state
+        self._shared_data[unit_uid]["data"]["log"].extend(log)
 
         # Call the callbacks
         if state != old_state:
@@ -226,7 +228,7 @@ class UnitManagerWorker(threading.Thread):
 
                 description = request["description"]
 
-                transfer_result = self._worker_pool.apply_async(
+                transfer_result = self._input_tranfers_worker_pool.apply_async(
                     transfer_input_func, args=(
                         request["pilot_uid"],
                         request["unit_uid"],
@@ -273,9 +275,9 @@ class UnitManagerWorker(threading.Thread):
             for unit in unit_list:
                 unit_id = str(unit["_id"])
 
-                new_state = unit["info"]["state"]
+                new_state = unit["state"]
                 if unit_id in self._shared_data:
-                    old_state = self._shared_data[unit_id]["data"]["info"]["state"]
+                    old_state = self._shared_data[unit_id]["data"]["state"]
                 else:
                     old_state = None
                     self._shared_data_lock.acquire()
@@ -305,9 +307,12 @@ class UnitManagerWorker(threading.Thread):
 
             time.sleep(1)
 
-        # shut down the pool
-        self._worker_pool.terminate()
-        self._worker_pool.join()
+        # shut down the pool(s)
+        self._input_tranfers_worker_pool.terminate()
+        self._input_tranfers_worker_pool.join()
+
+        self._output_file_transfer_worker.terminate()
+        self._output_file_transfer_worker.join()
 
         logger.debug("Thread main loop terminated")
 
@@ -333,7 +338,7 @@ class UnitManagerWorker(threading.Thread):
         # with the current ComputePilot state as soon as it is registered.
         self.call_callbacks(
             unit_uid,
-            self._shared_data[unit_uid]["data"]["info"]["state"]
+            self._shared_data[unit_uid]["data"]["state"]
         )
 
     # ------------------------------------------------------------------------
@@ -427,7 +432,7 @@ class UnitManagerWorker(threading.Thread):
 
         # Get some information about the pilot sandbox from the database.
         pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
-        pilot_sandbox = pilot_info[0]['info']['sandbox']
+        pilot_sandbox = pilot_info[0]['sandbox']
 
         # Split units into two different lists: the first list contains the CUs
         # that need file transfer and the second list contains the CUs that
@@ -484,7 +489,7 @@ class UnitManagerWorker(threading.Thread):
                     {"pilot_uid":    pilot_uid,
                      "unit_uid":     unit.uid,
                      "credentials":  cred_dict,
-                     "unit_sandbox": results[unit.uid]["info"]["sandbox"],
+                     "unit_sandbox": results[unit.uid]["sandbox"],
                      "description":  unit.description}
                 )
                 log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
