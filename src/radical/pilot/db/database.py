@@ -244,7 +244,7 @@ class Session():
 
         cursor = self._w.find(
             {"_id": ObjectId(unit_uid)},
-            {"stdout_id"}
+            {"stdout_id": 1}
         )
 
         stdout_id = cursor[0]['stdout_id']
@@ -266,7 +266,7 @@ class Session():
 
         cursor = self._w.find(
             {"_id": ObjectId(unit_uid)},
-            {"stderr_id"}
+            {"stderr_id": 1}
         )
 
         stderr_id = cursor[0]['stderr_id']
@@ -487,7 +487,7 @@ class Session():
         if unit_ids is None:
             cursor = self._w.find(
                 {"unitmanager": unit_manager_id},
-                {"state"}
+                {"state": 1}
             )
 
         else:
@@ -499,7 +499,7 @@ class Session():
             cursor = self._w.find(
                 {"_id": {"$in": unit_oid},
                  "unitmanager": unit_manager_id},
-                {"state"}
+                {"state": 1}
             )
 
         unit_states = []
