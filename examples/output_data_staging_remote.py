@@ -85,7 +85,7 @@ if __name__ == "__main__":
             cu.arguments = ["-l", "-c", "'cat ./file1.txt ./file2.dat > result.dat'"]
             cu.cores = 1
             cu.input_data = ["./file1.dat > file1.txt", "./file2.dat"]
-            cu.output_data = ["result.dat > result-%s.dat" % unit_count]
+            cu.output_data = ["result.dat"]
 
             compute_units.append(cu)
 

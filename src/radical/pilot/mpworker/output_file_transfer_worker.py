@@ -70,8 +70,6 @@ class OutputFileTransferWorker(multiprocessing.Process):
             return
 
         while True:
-            time.sleep(1)
-
             compute_unit = None
 
             # See if we can find a ComputeUnit that is waiting for
@@ -83,8 +81,10 @@ class OutputFileTransferWorker(multiprocessing.Process):
                 limit=BULK_LIMIT
             )
 
-            if compute_unit is not None:
-
+            if compute_unit is None:
+                # Sleep a bit if no new units are available.
+                time.sleep(1)
+            else:
                 try:
                     # We have found one. Now we can process the transfer
                     # directive(s) wit SAGA.
@@ -97,7 +97,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     for td in transfer_directives:
                         source = td.split(">")
                         abs_source = "%s/%s" % (remote_sandbox, source[0].strip())
-                        if len(td) > 1:
+                        if len(source) > 1:
                             abs_target = "file://localhost/%s" % os.path.abspath(source[1].strip())
                         else:
                             abs_target = "file://localhost/%s" % os.getcwd()
