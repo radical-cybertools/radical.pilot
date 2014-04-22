@@ -210,7 +210,7 @@ class Test_PilotManager(unittest.TestCase):
         pmgr.wait_pilots()
         
         for pilot in pilots:
-            assert pilot.state == radical.pilot.states.DONE
+            assert (pilot.state == radical.pilot.states.DONE, "expected DONE, GOT %s" % pilot.state)
             assert pilot.stop_time is not None
             assert pilot.start_time is not None
 

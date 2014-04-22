@@ -92,7 +92,6 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$set": {"state": 'Canceled',
                   "finished": datetime.datetime.utcnow()
-
         }})
 
 #---------------------------------------------------------------------------
@@ -440,7 +439,7 @@ class ExecWorker(multiprocessing.Process):
                                         stderr_id = fs.put(stderr_f.read(), filename=stderr)
                                         self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
 
-                                self._slots[host][slot].task.end_time=datetime.datetime.utcnow()
+                                self._slots[host][slot].task.finished=datetime.datetime.utcnow()
                                 self._slots[host][slot].task.exit_code=rc
                                 self._slots[host][slot].task.state=state
                                 self._slots[host][slot].task.stdout_id=stdout_id

@@ -93,7 +93,7 @@ class TestRemoteSubmission(unittest.TestCase):
         for cu in cus:
             assert cu is not None
             assert cu.start_time is None
-            assert cu.start_time is None
+            assert cu.stop_time is None
 
         um.wait_units(state=[radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=self.test_timeout)
 
@@ -102,6 +102,8 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.stop_time is not None
 
         pm.cancel_pilots()
+
+        session.close()
 
     #-------------------------------------------------------------------------
     #
@@ -140,6 +142,8 @@ class TestRemoteSubmission(unittest.TestCase):
         assert pilot.state == radical.pilot.states.DONE
         assert pilot.stop_time is not None
 
+        session.close()
+
     #-------------------------------------------------------------------------
     #
     def test__remote_pilot_cancel(self):
@@ -177,4 +181,6 @@ class TestRemoteSubmission(unittest.TestCase):
         pilot.wait(radical.pilot.states.CANCELED, timeout=5.0*60)
         assert pilot.state == radical.pilot.states.CANCELED
         assert pilot.stop_time is not None
+
+        session.close()
 
