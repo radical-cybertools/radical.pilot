@@ -76,32 +76,30 @@ def launch_pilot(pilot_uid, pilot_description,
         # This works for installed versions of RADICAL-Pilot
         bs_script = which('bootstrap-and-run-agent')
         if bs_script is None:
-            bs_script = os.path.abspath("%s/../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
+            bs_script = os.path.abspath("%s/../../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
         # This works for non-installed versions (i.e., python setup.py test)
         bs_script_url = saga.Url("file://localhost/%s" % bs_script)
 
-        bs_script = saga.filesystem.File(bs_script_url)
-
-        bs_script.copy(agent_dir_url)
-
-        bs_script.close()
-
-        log_msg = "Copied '%s' script to agent sandbox." % bs_script_url
+        log_msg = "Copying '%s' script to agent sandbox." % bs_script_url
         pilot_logs.append(log_msg)
         logger.debug(log_msg)
+
+        bs_script = saga.filesystem.File(bs_script_url)
+        bs_script.copy(agent_dir_url)
+        bs_script.close()
 
         # Copy the agent script
         cwd = os.path.dirname(os.path.abspath(__file__))
         agent_path = os.path.abspath("%s/../agent/radical-pilot-agent.py" % cwd)
         agent_script_url = saga.Url("file://localhost/%s" % agent_path)
-        agent_script = saga.filesystem.File(agent_script_url)
-        agent_script.copy(agent_dir_url)
 
-        agent_script.close()
-
-        log_msg = "Copied '%s' script to agent sandbox." % agent_script_url
+        log_msg = "Copying '%s' to agent sandbox." % agent_script_url
         pilot_logs.append(log_msg)
         logger.debug(log_msg)
+
+        agent_script = saga.filesystem.File(agent_script_url)
+        agent_script.copy(agent_dir_url)
+        agent_script.close()
 
         # extract the required connection parameters and uids
         # for the agent:
