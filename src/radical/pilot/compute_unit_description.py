@@ -20,7 +20,8 @@ EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
-STAGING_DIRECTIVES     = 'staging_directives'
+INPUT_STAGING          = 'input_staging'
+OUTPUT_STAGING         = 'output_staging'
 WORKING_DIRECTORY_PRIV = 'working_directory_priv'
 
 # ------------------------------------------------------------------------------
@@ -57,12 +58,17 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        (`Attribute`) Environment variables to set in the execution environment (`dict`) [`optional`].
 
-    .. data:: staging_directive
+    .. data:: input_staging
 
-       (`Attribute`) The files that need to be staged before and after execution (`list` of `staging directives`) [`optional`].
+       (`Attribute`) The files that need to be staged before execution (`list` of `staging directives`) [`optional`].
 
-       .. note:: TODO: Explain staging directives.
+       .. note:: TODO: Explain input staging.
 
+    .. data:: output_staging
+
+       (`Attribute`) The files that need to be staged after execution (`list` of `staging directives`) [`optional`].
+
+       .. note:: TODO: Explain output staging.
 
     """
     def __init__(self):
@@ -89,7 +95,8 @@ class ComputeUnitDescription(attributes.Attributes) :
 
         # I/O
         self._attributes_register(WORKING_DIRECTORY_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(STAGING_DIRECTIVES,      None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(INPUT_STAGING,          None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(OUTPUT_STAGING,         None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
 
         # resource requirements
         self._attributes_register(CORES,                  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
@@ -117,7 +124,8 @@ class ComputeUnitDescription(attributes.Attributes) :
             ENVIRONMENT            : self.environment,
             CORES                  : self.cores,
             WORKING_DIRECTORY_PRIV : self.working_directory_priv, 
-            STAGING_DIRECTIVES     : self.staging_directives
+            INPUT_STAGING          : self.input_staging,
+            OUTPUT_STAGING         : self.output_staging
         }
         return obj_dict
 

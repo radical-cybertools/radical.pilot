@@ -57,7 +57,6 @@ if __name__ == "__main__":
         sd_shared.source = 'srm://srm.se.opensciencegrid.org/srm/vo/osg/marksant/staging_area/shared_input_file.txt'
         sd_shared.target = 'shared_input_file.txt' # Could be left empty
         sd_shared.action = radical.pilot.StagingDirectives.TRANSFER
-        sd_shared.moment = radical.pilot.StagingDirectives.BEGIN
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -82,20 +81,19 @@ if __name__ == "__main__":
             sd_input.source = 'srm://srm.se.opensciencegrid.org/srm/vo/osg/marksant/staging_area/input_file-%d.txt' % unit_count
             sd_input.target = 'input_file-%d.txt' % unit_count # Could be left empty
             sd_input.action = radical.pilot.StagingDirectives.TRANSFER
-            sd_input.moment = radical.pilot.StagingDirectives.BEGIN
 
             # Configure the staging directive for output file.
             sd_output = radical.pilot.StagingDirectives()
             sd_output.source = 'output_file-%d.txt' % unit_count
             sd_output.target = 'srm://srm.se.opensciencegrid.org/srm/vo/osg/marksant/staging_area/output_file-%d.txt' % unit_count
             sd_output.action = radical.pilot.StagingDirectives.TRANSFER
-            sd_output.moment = radical.pilot.StagingDirectives.END
 
             cu = radical.pilot.ComputeUnitDescription()
             cu.executable = '/bin/cat'
             cu.arguments = ('shared_input_file.txt input_file-%d.txt > output_file-%d.txt' % (unit_count, unit_count)).split()
             cu.cores = 1
-            cu.input_staging = [sd_shared, sd_input, sd_output]
+            cu.input_staging = [sd_shared, sd_input]
+            cu.output_staging = sd_output
 
             compute_units.append(cu)
 

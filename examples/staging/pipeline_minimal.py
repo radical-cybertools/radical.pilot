@@ -60,25 +60,24 @@ if __name__ == "__main__":
         # Add the previsouly created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
-        # Configure the staging directive for input data
+        # Configure the staging directive for input file from local directory to working directory
         sd_input = radical.pilot.StagingDirectives()
         sd_input.source = 'input_file.txt'
         sd_input.target = 'input_file.txt' # Could be left empty if filename is same
         sd_input.action = radical.pilot.StagingDirectives.TRANSFER
-        sd_input.moment = radical.pilot.StagingDirectives.BEGIN
 
         # Configure the staging directive for intermediate data
         sd_inter_out = radical.pilot.StagingDirectives()
         sd_inter_out.source = 'intermediate_file.txt'
         sd_inter_out.target = INDIA_STAGING
         sd_inter_out.action = radical.pilot.StagingDirectives.COPY
-        sd_inter_out.moment = radical.pilot.StagingDirectives.END_SUCCESS
 
         # Task 1: Sort the input file and output to intermediate file
         cud1 = radical.pilot.ComputeUnitDescription()
         cud1.executable = '/usr/bin/sort'
         cud1.arguments = 'input_file.txt > intermediate_file.txt'.split()
-        cud1.staging_directives = [sd_input, sd_inter_out]
+        cud1.input_staging = sd_input
+        cud1.output_staging = sd_inter_out
         cud1.cores = 1
 
         # Submit the first task for execution.
@@ -92,20 +91,19 @@ if __name__ == "__main__":
         sd_inter_in.source = INDIA_STAGING
         sd_inter_in.target = 'intermediate_file.txt'
         sd_inter_in.action = radical.pilot.StagingDirectives.LINK
-        sd_inter_in.moment = radical.pilot.StagingDirectives.BEGIN
 
         # Configure the staging directive for output data
         sd_output = radical.pilot.StagingDirectives()
         sd_output.source = 'output_file.txt'
         sd_output.target = 'output_file.txt' # Could be left out if same as source
         sd_output.action = radical.pilot.StagingDirectives.TRANSFER
-        sd_output.moment = radical.pilot.StagingDirectives.END
 
         # Task 2: Take the first line of the sort intermediate file and write to output
         cud2 = radical.pilot.ComputeUnitDescription()
         cud2.executable = '/usr/bin/head'
         cud2.arguments = ('-n1 intermediate_file.txt > output_file.txt').split()
-        cud2.staging_directives = [sd_inter_in, sd_output]
+        cud2.input_staging = sd_inter_in
+        cud2.output_staging = sd_output
         cud2.cores = 1
 
         # Submit the second CU for execution.
