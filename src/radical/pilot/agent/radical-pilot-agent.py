@@ -25,7 +25,6 @@ import logging
 import datetime
 import hostlist
 import traceback
-import optparse
 import threading 
 import subprocess
 import multiprocessing
@@ -891,8 +890,8 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-    # #--------------------------------------------------------------------------
-    # # Establish database connection
+    #--------------------------------------------------------------------------
+    # Establish database connection
     try:
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
