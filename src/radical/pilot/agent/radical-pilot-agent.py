@@ -21,6 +21,7 @@ import Queue
 import signal
 import gridfs
 import pymongo
+import optparse
 import logging
 import datetime
 import hostlist
@@ -490,7 +491,7 @@ class ExecWorker(multiprocessing.Process):
         """Updates the database entries for one or more tasks, inlcuding 
         task state, log, etc.
         """
-
+        ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
         # this informattion here:
 
@@ -507,7 +508,10 @@ class ExecWorker(multiprocessing.Process):
                       "exec_locs"     : task.exec_locs,
                       "exit_code"     : task.exit_code,
                       "stdout_id"     : task.stdout_id,
-                      "stderr_id"     : task.stderr_id}})
+                      "stderr_id"     : task.stderr_id},
+             "$push": {"statehistory": {"state": task.state, "timestamp": task.finished}}
+
+                      })
 
 
 # ----------------------------------------------------------------------------
@@ -614,7 +618,6 @@ class Agent(threading.Thread):
                       "cores_per_node" : self._exec_env.cores_per_node,
                       "started"        : ts},
              "$push": {"statehistory": {"state": 'Running', "timestamp": ts}}
-
             })
 
         self._starttime = time.time()

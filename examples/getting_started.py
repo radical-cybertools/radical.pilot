@@ -114,9 +114,12 @@ if __name__ == "__main__":
         time.sleep(5)
 
         for state in pilot.state_history:
-            print "%s: %s" % (state.timestamp, state.state   )
+            print "Pilot %s: %s" % (state.timestamp, state.state)
 
-        # for unit in umgr.get_units():
+        for unit in umgr.get_units():
+            for state in unit.state_history:
+                print "CU %s: %s" % (state.timestamp, state.state)
+
         #     # Print some information about the unit.
         #     print "\n{0}".format(str(unit))
 

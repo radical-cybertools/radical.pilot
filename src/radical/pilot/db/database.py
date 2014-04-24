@@ -660,20 +660,21 @@ class Session():
                 working_directory.path += "/unit-"+unit.uid
 
             unit_json = {
-                "_id":         ObjectId(unit.uid),
-                "description": unit.description.as_dict(),
-                "unitmanager": unit_manager_uid,
-                "pilot":       pilot_uid,
-                "state":       NEW,
-                "submitted":   datetime.datetime.utcnow(),
-                "started":     None,
-                "finished":    None,
-                "exec_locs":   None,
-                "exit_code":   None,
-                "sandbox":     str(working_directory),
-                "stdout_id":   None,
-                "stderr_id":   None,
-                "log":         unit_log
+                "_id":          ObjectId(unit.uid),
+                "description":  unit.description.as_dict(),
+                "unitmanager":  unit_manager_uid,
+                "pilot":        pilot_uid,
+                "state":        NEW,
+                "statehistory": [],
+                "submitted":    datetime.datetime.utcnow(),
+                "started":      None,
+                "finished":     None,
+                "exec_locs":    None,
+                "exit_code":    None,
+                "sandbox":      str(working_directory),
+                "stdout_id":    None,
+                "stderr_id":    None,
+                "log":          unit_log
             }
             unit_docs.append(unit_json)
             results[unit.uid] = unit_json
