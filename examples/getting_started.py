@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import radical.pilot
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
@@ -108,13 +109,21 @@ if __name__ == "__main__":
         # Wait for all compute units to finish.
         umgr.wait_units()
 
-        for unit in umgr.get_units():
-            # Print some information about the unit.
-            print "\n{0}".format(str(unit))
+        pmgr.cancel_pilots()
 
-            # Get the stdout and stderr streams of the ComputeUnit.
-            print "  STDOUT: {0}".format(unit.stdout)
-            print "  STDERR: {0}".format(unit.stderr)
+        time.sleep(5)
+
+        for state in pilot.state_history:
+            print "%s: %s" % (state.timestamp, state.state   )
+
+        # for unit in umgr.get_units():
+        #     # Print some information about the unit.
+        #     print "\n{0}".format(str(unit))
+
+        #     # Get the stdout and stderr streams of the ComputeUnit.
+        #     print "  STDOUT: {0}".format(unit.stdout)
+        #     print "  STDERR: {0}".format(unit.stderr)
+
 
         session.close()
 

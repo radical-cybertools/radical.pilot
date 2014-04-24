@@ -295,6 +295,7 @@ class Session():
 
         if state is not None:
             set_query["state"] = state
+            push_query["statehistory"] = [{'state': state, 'timestamp': datetime.datetime.utcnow()}]
 
         if started is not None:
             set_query["started"] = started
@@ -345,6 +346,7 @@ class Session():
             "sagajobid":      None,
             "sandbox":        sandbox,
             "state":          PENDING,
+            "statehistory":   [],
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,

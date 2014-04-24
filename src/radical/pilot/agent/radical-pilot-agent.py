@@ -71,38 +71,45 @@ def which(program):
 def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
-    logger.error(message)
-    mongo_p.update({"_id": ObjectId(pilot_uid)},
-        {"$push": {"log" : message}})
-                  
-    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"state": 'Failed',
-                  "finished": datetime.datetime.utcnow()
+    logger.error(message)      
+    ts = datetime.datetime.utcnow()
 
-        }})
+    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+        {"$push": {"log" : message,
+                   "statehistory": {"state": 'Failed', "timestamp": ts}},
+         "$set":  {"state": 'Failed',
+                   "finished": ts}
+
+        })
+
 #---------------------------------------------------------------------------
 #
 def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.warning(message)
-    mongo_p.update({"_id": ObjectId(pilot_uid)},
-        {"$push": {"log" : message}})
-                  
+    ts = datetime.datetime.utcnow()
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"state": 'Canceled',
-                  "finished": datetime.datetime.utcnow()
-        }})
+        {"$push": {"log" : message,
+                   "statehistory": {"state": 'Canceled', "timestamp": ts}},
+         "$set":  {"state": 'Canceled',
+                   "finished": ts}
+        })
 
 #---------------------------------------------------------------------------
 #
 def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
+    ts = datetime.datetime.utcnow()
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"state": 'Done',
-                  "finished": datetime.datetime.utcnow()
-        }})
+        {"$push": {"statehistory": {"state": 'Done', "timestamp": ts}},
+         "$set": {"state": 'Done',
+                  "finished": ts}
+
+        })
 
 #---------------------------------------------------------------------------
 #
@@ -600,12 +607,16 @@ class Agent(threading.Thread):
         """
         # first order of business: set the start time and state of the pilot
         self._log.info("Agent started. Database updated.")
+        ts = datetime.datetime.utcnow()
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : "Running",
                       "nodes"          : self._exec_env.nodes.keys(),
                       "cores_per_node" : self._exec_env.cores_per_node,
-                      "started"        : datetime.datetime.utcnow()}})
+                      "started"        : ts},
+             "$push": {"statehistory": {"state": 'Running', "timestamp": ts}}
+
+            })
 
         self._starttime = time.time()
 
