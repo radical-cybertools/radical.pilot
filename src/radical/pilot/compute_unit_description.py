@@ -20,8 +20,7 @@ EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
-INPUT_DATA             = 'input_data'
-OUTPUT_DATA            = 'output_data'
+STAGING_DIRECTIVES     = 'staging_directives'
 WORKING_DIRECTORY_PRIV = 'working_directory_priv'
 
 # ------------------------------------------------------------------------------
@@ -58,17 +57,12 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        (`Attribute`) Environment variables to set in the execution environment (`dict`) [`optional`].
 
-    .. data:: input_data 
+    .. data:: staging_directive
 
-       (`Attribute`) The input files that need to be transferred before execution (`transfer directive string`) [`optional`].
+       (`Attribute`) The files that need to be staged before and after execution (`list` of `staging directives`) [`optional`].
 
-       .. note:: TODO: Explain transfer directives.
+       .. note:: TODO: Explain staging directives.
 
-    .. data:: output_data 
-
-       (`Attribute`) The output files that need to be transferred back after execution (`transfer directive string`) [`optional`].
-
-       .. note:: TODO: Explain transfer directives.
 
     """
     def __init__(self):
@@ -81,6 +75,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
+        attributes.
 
         # register properties with the attribute interface
         # action description
@@ -94,8 +89,7 @@ class ComputeUnitDescription(attributes.Attributes) :
 
         # I/O
         self._attributes_register(WORKING_DIRECTORY_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(INPUT_DATA,             None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(OUTPUT_DATA,            None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(STAGING_DIRECTIVES,      None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
 
         # resource requirements
         self._attributes_register(CORES,                  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
@@ -123,10 +117,10 @@ class ComputeUnitDescription(attributes.Attributes) :
             ENVIRONMENT            : self.environment,
             CORES                  : self.cores,
             WORKING_DIRECTORY_PRIV : self.working_directory_priv, 
-            INPUT_DATA             : self.input_data, 
-            OUTPUT_DATA            : self.output_data
+            STAGING_DIRECTIVES     : self.staging_directives
         }
         return obj_dict
+
 
     #------------------------------------------------------------------------------
     #
