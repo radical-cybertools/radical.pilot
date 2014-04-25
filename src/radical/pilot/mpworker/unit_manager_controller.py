@@ -183,6 +183,7 @@ class UnitManagerController(threading.Thread):
 
         # Update shared data.
         self._shared_data[unit_uid]["data"]["state"] = state
+        self._shared_data[unit_uid]["data"]["statehistory"] = state
         self._shared_data[unit_uid]["data"]["log"].extend(log)
 
         # Call the callbacks

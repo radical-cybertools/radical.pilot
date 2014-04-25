@@ -471,11 +471,14 @@ class Session():
     def set_compute_unit_state(self, unit_id, state, log):
         """Update the state and the log of one or more ComputeUnit(s).
         """
+        ts = datetime.datetime.utcnow()
+
         if self._s is None:
             raise Exception("No active session.")
 
         self._w.update({"_id": ObjectId(unit_id)},
                        {"$set":     {"state": state},
+                        "$push": {"statehistory": {"state": state, "timestamp": ts}},
                         "$pushAll": {"log": log}})
 
     #--------------------------------------------------------------------------
