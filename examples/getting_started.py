@@ -117,8 +117,9 @@ if __name__ == "__main__":
             print "Pilot %s: %s" % (state.timestamp, state.state)
 
         for unit in umgr.get_units():
+            print "CU %s:" % unit.uid
             for state in unit.state_history:
-                print "CU %s: %s" % (state.timestamp, state.state)
+                print "  * %s: %s" % (state.timestamp, state.state)
 
         #     # Print some information about the unit.
         #     print "\n{0}".format(str(unit))

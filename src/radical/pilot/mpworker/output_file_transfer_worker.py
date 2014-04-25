@@ -9,6 +9,7 @@ __license__ = "MIT"
 import os
 import time
 import saga
+import datetime
 import traceback
 import multiprocessing
 
@@ -74,10 +75,12 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
             # See if we can find a ComputeUnit that is waiting for
             # output file transfer.
+            ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "state": "PendingOutputTransfer"},
-                update={"$set": {"state": "TransferringOutput"}},
+                       "state" : "PendingOutputTransfer"},
+                update={"$set" : {"state": "TransferringOutput"},
+                        "$push": {"statehistory": {"state": "TransferringOutput", "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
 
@@ -118,18 +121,22 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         log_messages.append("Successfully transferred output file %s -> %s" \
                             % (atd["source"], atd["target"]))
 
-                    # Update the CU's state to 'DONE' if all transfers were successfull.
+                    # Update the CU's state to 'DONE' if all transfers were successfull.            ts = datetime.datetime.utcnow()
+                    ts = datetime.datetime.utcnow()
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
                         {"$set": {"state": "Done"},
+                         "$push": {"statehistory": {"state": "Done", "timestamp": ts}},
                          "$pushAll": {"log": log_messages}}                    
                     )
 
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
+                    ts = datetime.datetime.utcnow()
                     log_messages = "Output transfer failed: %s" % str(ex)
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
                         {"$set": {"state": "Failed"},
+                         "$push": {"statehistory": {"state": "Failed", "timestamp": ts}},
                          "$push": {"log": log_messages}}
                     )
