@@ -20,7 +20,7 @@ from radical.pilot.states import *
 from radical.pilot.exceptions import *
 
 from radical.pilot.object import Object
-from radical.pilot.mpworker import PilotManagerWorker
+from radical.pilot.controller import PilotManagerController
 from radical.pilot.compute_pilot import ComputePilot
 from radical.pilot.utils.logger import logger
 from radical.pilot.exceptions import * 
@@ -143,7 +143,7 @@ class PilotManager(Object):
 
         # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
-        self._worker = PilotManagerWorker(
+        self._worker = PilotManagerController(
             pilot_manager_uid=None,
             pilot_manager_data={},
             db_connection=session._dbs)
@@ -195,7 +195,7 @@ class PilotManager(Object):
     def _reconnect(cls, session, pilot_manager_id):
         """PRIVATE: reconnect to an existing pilot manager.
         """
-        uid_exists = PilotManagerWorker.uid_exists(
+        uid_exists = PilotManagerController.uid_exists(
             db_connection=session._dbs,
             pilot_manager_uid=pilot_manager_id
         )
@@ -213,7 +213,7 @@ class PilotManager(Object):
         if worker is not None:
             obj._worker = worker
         else:
-            obj._worker = PilotManagerWorker(
+            obj._worker = PilotManagerController(
                 pilot_manager_uid=pilot_manager_id,
                 pilot_manager_data={},
                 db_connection=session._dbs)

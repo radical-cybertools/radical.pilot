@@ -18,7 +18,7 @@ import weakref
 from radical.pilot.compute_unit import ComputeUnit
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.mpworker import UnitManagerController
+from radical.pilot.controller import UnitManagerController
 from radical.pilot.scheduler import get_scheduler
 
 from radical.pilot.states import *

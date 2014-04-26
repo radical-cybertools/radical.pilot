@@ -1,5 +1,5 @@
 """
-.. module:: radical.pilot.mpworker.input_file_transfer_worker
+.. module:: radical.pilot.controller.output_file_transfer_worker
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
@@ -23,8 +23,8 @@ BULK_LIMIT=1
 
 # ----------------------------------------------------------------------------
 #
-class InputFileTransferWorker(multiprocessing.Process):
-    """InputFileTransferWorker handles the staging of input files
+class OutputFileTransferWorker(multiprocessing.Process):
+    """OutputFileTransferWorker handles the staging of the output files
     for a UnitManagerController.
     """
 
@@ -72,16 +72,16 @@ class InputFileTransferWorker(multiprocessing.Process):
             return
 
         while True:
-            # See if we can find a ComputeUnit that is waiting for
-            # output file transfer.
             compute_unit = None
 
+            # See if we can find a ComputeUnit that is waiting for
+            # output file transfer.
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "state" : PENDING_INPUT_TRANSFER},
-                update={"$set" : {"state": "TransferringInput"},
-                        "$push": {"statehistory": {"state": TRANSFERRING_INPUT, "timestamp": ts}}},
+                       "state" : PENDING_OUTPUT_TRANSFER},
+                update={"$set" : {"state": TRANSFERRING_OUTPUT},
+                        "$push": {"statehistory": {"state": TRANSFERRING_OUTPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
 
@@ -90,66 +90,51 @@ class InputFileTransferWorker(multiprocessing.Process):
                 time.sleep(1)
             else:
                 try:
-                    # Contains all log messages
-                    log_messages = []
-
                     # We have found one. Now we can process the transfer
                     # directive(s) wit SAGA.
                     compute_unit_id = str(compute_unit["_id"])
                     remote_sandbox = compute_unit["sandbox"]
-                    transfer_directives = compute_unit["description"]["input_data"]
+                    transfer_directives = compute_unit["description"]["output_data"]
 
-                    # We need to create the WU's directory in case it doesn't exist yet.
-                    log_msg = "Creating ComputeUnit sandbox directory %s." % remote_sandbox
-                    log_messages.append(log_msg)
-                    logger.info(log_msg)
+                    abs_directives = []
 
-                    # Creating the sandbox directory.
-                    wu_dir = saga.filesystem.Directory(
-                        remote_sandbox,
-                        flags=saga.filesystem.CREATE_PARENTS,
-                        session=saga_session)
-                    wu_dir.close()
-
-                    # Loop over all transfer directives and execute them.
                     for td in transfer_directives:
-                        st = td.split(">")
-                        abs_t = os.path.abspath(st[0].strip())
-                        input_file_url = saga.Url("file://localhost/%s" % abs_t)
-
-                        if len(st) == 1:
-                            target = remote_sandbox
-                        elif len(st) == 2:
-                            target = "%s/%s" % (remote_sandbox, st[1].strip()) 
+                        source = td.split(">")
+                        abs_source = "%s/%s" % (remote_sandbox, source[0].strip())
+                        if len(source) > 1:
+                            abs_target = "file://localhost/%s" % os.path.abspath(source[1].strip())
                         else:
-                            raise Exception("Invalid transfer directive: %s" % td)
+                            abs_target = "file://localhost/%s" % os.getcwd()
 
-                        log_msg = "Transferring input file %s -> %s" % (input_file_url, target)
-                        log_messages.append(log_msg)
-                        logger.info(log_msg)
+                        abs_directives.append({"source": abs_source, "target" : abs_target})
 
-                        # Execute the transfer.
-                        input_file = saga.filesystem.File(
-                            input_file_url,
-                            session=saga_session
-                        )
-                        input_file.copy(target)
-                        input_file.close()
-                    
-                    # Update the CU's state to 'PENDING_EXECUTION' if all 
-                    # transfers were successfull.            
+                    logger.info("Processing output data transfer for ComputeUnit %s: %s" \
+                        % (compute_unit_id, abs_directives))
+
+                    log_messages = []
+                    for atd in abs_directives:
+
+                        output_file = saga.filesystem.File(saga.Url(atd["source"]),
+                            session=saga_session)
+                        output_file.copy(saga.Url(atd["target"]))
+                        output_file.close()
+
+                        log_messages.append("Successfully transferred output file %s -> %s" \
+                            % (atd["source"], atd["target"]))
+
+                    # Update the CU's state to 'DONE' if all transfers were successfull.            ts = datetime.datetime.utcnow()
                     ts = datetime.datetime.utcnow()
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
-                        {"$set": {"state": PENDING_EXECUTION},
-                         "$push": {"statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}},
+                        {"$set": {"state": DONE},
+                         "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
                          "$pushAll": {"log": log_messages}}                    
                     )
 
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
-                    log_messages = "Input transfer failed: %s" % str(ex)
+                    log_messages = "Output transfer failed: %s" % str(ex)
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
                         {"$set": {"state": FAILED},

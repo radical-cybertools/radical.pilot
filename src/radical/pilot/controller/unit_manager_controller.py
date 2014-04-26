@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: radical.pilot.mpworker.unit_manager_controller
+.. module:: radical.pilot.controller.unit_manager_controller
    :platform: Unix
    :synopsis: Implements a multiprocessing worker backend for
               the UnitManager class.
@@ -25,11 +25,8 @@ from radical.pilot.states import *
 from radical.utils import which
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.mpworker.filetransfer import transfer_input_func
-
-
-from radical.pilot.mpworker.input_file_transfer_worker import InputFileTransferWorker
-from radical.pilot.mpworker.output_file_transfer_worker import OutputFileTransferWorker
+from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
+from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
 
 
 # ----------------------------------------------------------------------------
@@ -215,7 +212,7 @@ class UnitManagerController(threading.Thread):
     #
     def run(self):
         """run() is called when the process is started via
-           PilotManagerWorker.start().
+           PilotManagerController.start().
         """
         logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
                     (self.name, self.ident, self._um_id))
