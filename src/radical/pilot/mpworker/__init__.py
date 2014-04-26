@@ -12,4 +12,5 @@ __license__   = "MIT"
 from unit_manager_controller  import UnitManagerController
 from pilot_manager_worker import PilotManagerWorker
 
+from input_file_transfer_worker import InputFileTransferWorker
 from output_file_transfer_worker import OutputFileTransferWorker

@@ -652,14 +652,17 @@ class Agent(threading.Thread):
                 # Try to get new tasks from the database. for this, we check the 
                 # wu_queue of the pilot. if there are new entries, we get them,
                 # get the actual pilot entries for them and remove them from 
-                # the wu_queue. 
-                try: 
+                # the wu_queue.
+                try:
+                    logger.error("checking %s" % self._pilot_id) 
                     p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
 
-                    if p_cursor.count() != 1:
-                        self._log.info("Pilot entry %s has disappeared from the database." % self._pilot_id)
-                        pilot_DONE(self._p, self._pilot_id)
-                        break
+                    #if p_cursor.count() != 1:
+                    #    self._log.info("Pilot entry %s has disappeared from the database." % self._pilot_id)
+                    #    pilot_FAILED(self._p, self._pilot_id)
+                    #    break
+                    if False:
+                        pass
 
                     else:
                         # Check if there's a command waiting
@@ -671,14 +674,31 @@ class Agent(threading.Thread):
                                 break
 
                         # Check the pilot's workunit queue
-                        new_wu_ids = p_cursor[0]['wu_queue']
+                        #new_wu_ids = p_cursor[0]['wu_queue']
+
+                        # Check if there are work units waiting for execution
+                        ts = datetime.datetime.utcnow()
+
+                        wu_cursor = self._w.find_and_modify(
+                        query={"pilot" : self._pilot_id,
+                               "state" : "PendingExecution"},
+                        update={"$set" : {"state": "Running"},
+                        "$push": {"statehistory": {"state": "RunningX", "timestamp": ts}}}#,
+                        #limit=BULK_LIMIT
+                        )
+
+                        logger.error("FIND_A_M result: %s" % wu_cursor)
 
                         # There are new work units in the wu_queue on the database.
                         # Get the corresponding wu entries
-                        if len(new_wu_ids) > 0:
-                            self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
-                            wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
+                        if wu_cursor is not None:
+                        #    self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
+                        #    wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
+                            if not isinstance(wu_cursor, list):
+                                wu_cursor = [wu_cursor]
+
                             for wu in wu_cursor:
+                                logger.error("about to process: %s" % wu)
                                 # Create new task objects and put them into the 
                                 # task queue
 
@@ -691,7 +711,7 @@ class Agent(threading.Thread):
                                 else:
                                     task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
-                                task = Task(uid         =str(wu["_id"]), 
+                                task = Task(uid         = str(wu["_id"]), 
                                             executable  = wu["description"]["executable"], 
                                             arguments   = wu["description"]["arguments"],
                                             environment = wu["description"]["environment"],
@@ -702,10 +722,10 @@ class Agent(threading.Thread):
 
                                 self._task_queue.put(task)
 
-                            # now we can remove the entries from the pilot's wu_queue
-                            # PRINT TODO
-                            self._p.update({"_id": ObjectId(self._pilot_id)}, 
-                                           {"$pullAll": { "wu_queue": new_wu_ids}})
+                                # now we can remove the entries from the pilot's wu_queue
+                                # PRINT TODO
+                                #self._p.update({"_id": ObjectId(self._pilot_id)}, 
+                                #               {"$pullAll": { "wu_queue": new_wu_ids}})
 
                 except Exception, ex:
                     raise
@@ -863,8 +883,6 @@ def parse_commandline():
         parser.error("You must define a session id (-s/--session-id). Try --help for help.")
     elif options.pilot_id is None:
         parser.error("You must define a pilot id (-p/--pilot-id). Try --help for help.")
-    elif options.unitmanager_id is None:
-        parser.error("You must define a UnitManger ID (-u/--unitmanager-id). Try --help for help.")
     elif options.cores is None:
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
     elif options.runtime is None:

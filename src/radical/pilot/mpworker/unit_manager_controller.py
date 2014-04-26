@@ -28,7 +28,9 @@ from radical.pilot.utils.logger import logger
 from radical.pilot.mpworker.filetransfer import transfer_input_func
 
 
+from radical.pilot.mpworker.input_file_transfer_worker import InputFileTransferWorker
 from radical.pilot.mpworker.output_file_transfer_worker import OutputFileTransferWorker
+
 
 # ----------------------------------------------------------------------------
 #
@@ -90,13 +92,21 @@ class UnitManagerController(threading.Thread):
         else:
             self._um_id = unit_manager_uid
 
-        # The OUTPUT transfer worker pool is a multiprocessing pool that
-        # executes concurrent OUTPUT file transfer requests.
+        # The OUTPUT transfer worker(s) are autonomous processes that
+        # execute output file transfer requests concurrently.
         self._output_file_transfer_worker = OutputFileTransferWorker(
             db_connection_info=db_connection_info, 
             unit_manager_id=self._um_id
         )
         self._output_file_transfer_worker.start()
+
+        # The INPUT transfer worker(s) are autonomous processes that
+        # execute input file transfer requests concurrently.
+        self._input_file_transfer_worker = InputFileTransferWorker(
+            db_connection_info=db_connection_info, 
+            unit_manager_id=self._um_id
+        )
+        self._input_file_transfer_worker.start()
 
         self.name = 'UMWThread-%s' % self._um_id
 
@@ -218,56 +228,6 @@ class UnitManagerController(threading.Thread):
 
             # =================================================================
             #
-            # Process any new transfer requests.
-            try:
-                request = self._transfer_requests.get_nowait()
-                self._set_state(
-                    request["unit_uid"],
-                    TRANSFERRING_INPUT,
-                    ["start transferring %s" % request]
-                )
-
-                description = request["description"]
-
-                transfer_result = self._input_tranfers_worker_pool.apply_async(
-                    transfer_input_func, args=(
-                        request["pilot_uid"],
-                        request["unit_uid"],
-                        request["credentials"],
-                        request["unit_sandbox"],
-                        description["input_data"])
-                )
-                transfer_results.append(transfer_result)
-
-            except Queue.Empty:
-                pass
-
-            # =================================================================
-            #
-            # Check if any of the asynchronous operations has returned a result
-            new_transfer_results = list()
-
-            for transfer_result in transfer_results:
-                if transfer_result.ready():
-                    result = transfer_result.get()
-
-                    self._set_state(
-                        result["unit_uid"],
-                        result["state"],
-                        result["log"]
-                    )
-                    if result["state"] == PENDING_EXECUTION:
-                        self._db.assign_compute_units_to_pilot(
-                            unit_uids=result["unit_uid"],
-                            pilot_uid=result["pilot_uid"]
-                        )
-                else:
-                    new_transfer_results.append(transfer_result)
-
-            transfer_results = new_transfer_results
-
-            # =================================================================
-            #
             # Check and update units. This needs to be optimized at
             # some point, i.e., state pulling should be conditional
             # or triggered by a tailable MongoDB cursor, etc.
@@ -308,12 +268,12 @@ class UnitManagerController(threading.Thread):
 
             time.sleep(1)
 
-        # shut down the pool(s)
-        self._input_tranfers_worker_pool.terminate()
-        self._input_tranfers_worker_pool.join()
-
+        # shut down the autonomous worker(s)
         self._output_file_transfer_worker.terminate()
         self._output_file_transfer_worker.join()
+
+        self._input_file_transfer_worker.terminate()
+        self._input_file_transfer_worker.join()
 
         logger.debug("Thread main loop terminated")
 
