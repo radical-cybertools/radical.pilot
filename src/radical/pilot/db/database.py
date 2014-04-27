@@ -515,7 +515,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_unit_manager(self, scheduler):
+    def insert_unit_manager(self, scheduler, input_transfer_workers, output_transfer_workers):
         """ Adds a unit managers to the list of unit managers.
 
             Unit manager IDs are just kept for book-keeping.
@@ -524,7 +524,9 @@ class Session():
             raise Exception("No active session.")
 
         result = self._um.insert(
-            {"scheduler": scheduler}
+            {"scheduler": scheduler,
+             "input_transfer_workers": input_transfer_workers,
+             "output_transfer_workers": output_transfer_workers }
         )
 
         # return the object id as a string

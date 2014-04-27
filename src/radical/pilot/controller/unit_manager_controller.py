@@ -38,7 +38,8 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, scheduler, db_connection, db_connection_info):
+    def __init__(self, unit_manager_uid, scheduler, input_transfer_workers,
+        output_transfer_workers, db_connection, db_connection_info):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -52,10 +53,6 @@ class UnitManagerController(threading.Thread):
         # at least once. Other functions use it as a guard.
         self._initialized = threading.Event()
         self._initialized.clear()
-
-        # The INPUT transfer worker pool is a multiprocessing pool that
-        # executes concurrent input file transfer requests.
-        self._input_tranfers_worker_pool = Pool(2)
 
         # The shard_data_manager handles data exchange between the worker
         # process and the API objects. The communication is unidirectional:
@@ -85,27 +82,40 @@ class UnitManagerController(threading.Thread):
         if unit_manager_uid is None:
             # Try to register the UnitManager with the database.
             self._um_id = self._db.insert_unit_manager(
-                scheduler=scheduler)
+                scheduler=scheduler,
+                input_transfer_workers=input_transfer_workers,
+                output_transfer_workers=output_transfer_workers)
+            self._num_input_transfer_workers = input_transfer_workers
+            self._num_output_transfer_workers = output_transfer_workers
         else:
+            um_json = self._db.get_unit_manager(unit_manager_id=unit_manager_id)
             self._um_id = unit_manager_uid
-
-        # The OUTPUT transfer worker(s) are autonomous processes that
-        # execute output file transfer requests concurrently.
-        self._output_file_transfer_worker = OutputFileTransferWorker(
-            db_connection_info=db_connection_info, 
-            unit_manager_id=self._um_id
-        )
-        self._output_file_transfer_worker.start()
+            self._num_input_transfer_workers = um_json["input_transfer_workers"]
+            self._num_output_transfer_workers = um_json["output_transfer_workers"]
 
         # The INPUT transfer worker(s) are autonomous processes that
         # execute input file transfer requests concurrently.
-        self._input_file_transfer_worker = InputFileTransferWorker(
-            db_connection_info=db_connection_info, 
-            unit_manager_id=self._um_id
-        )
-        self._input_file_transfer_worker.start()
+        self._input_file_transfer_worker_pool = []
+        for x in range(0, self._num_input_transfer_workers):
+            worker = InputFileTransferWorker(
+                db_connection_info=db_connection_info, 
+                unit_manager_id=self._um_id
+            )
+            self._input_file_transfer_worker_pool.append(worker)
+            worker.start()
 
-        self.name = 'UMWThread-%s' % self._um_id
+        # The OUTPUT transfer worker(s) are autonomous processes that
+        # execute output file transfer requests concurrently.
+        self._output_file_transfer_worker_pool = []
+        for x in range(0, self._num_output_transfer_workers):
+            worker = OutputFileTransferWorker(
+                db_connection_info=db_connection_info, 
+                unit_manager_id=self._um_id
+            )
+            self._output_file_transfer_worker_pool.append(worker)
+            worker.start()
+
+        #self.name = 'UMWThread-%s' % self._um_id
 
     # ------------------------------------------------------------------------
     #
@@ -265,14 +275,16 @@ class UnitManagerController(threading.Thread):
 
             time.sleep(1)
 
-        # shut down the autonomous worker(s)
-        self._output_file_transfer_worker.terminate()
-        self._output_file_transfer_worker.join()
+        # shut down the autonomous input / output transfer worker(s)
+        for worker in self._input_file_transfer_worker_pool:
+            worker.terminate()
+            worker.join()
+            logger.debug("UnitManager.close(): %s terminated." % worker.name)
 
-        self._input_file_transfer_worker.terminate()
-        self._input_file_transfer_worker.join()
-
-        logger.debug("Thread main loop terminated")
+        for worker in self._output_file_transfer_worker_pool:
+            worker.terminate()
+            worker.join()
+            logger.debug("UnitManager.close(): %s terminated." % worker.name)
 
     # ------------------------------------------------------------------------
     #
