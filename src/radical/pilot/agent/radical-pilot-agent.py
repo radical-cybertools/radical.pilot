@@ -654,7 +654,6 @@ class Agent(threading.Thread):
                 # get the actual pilot entries for them and remove them from 
                 # the wu_queue.
                 try:
-                    logger.error("checking %s" % self._pilot_id) 
                     p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
 
                     #if p_cursor.count() != 1:
@@ -686,8 +685,6 @@ class Agent(threading.Thread):
                         "$push": {"statehistory": {"state": "RunningX", "timestamp": ts}}}#,
                         #limit=BULK_LIMIT
                         )
-
-                        logger.error("FIND_A_M result: %s" % wu_cursor)
 
                         # There are new work units in the wu_queue on the database.
                         # Get the corresponding wu entries

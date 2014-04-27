@@ -74,11 +74,6 @@ class UnitManagerController(threading.Thread):
         # The MongoDB database handle.
         self._db = db_connection
 
-        # The different command queues hold pending operations
-        # that are passed to the worker. Queues are inspected during
-        # runtime in the run() loop and the worker acts upon them accordingly.
-        self._transfer_requests = Queue.Queue()
-
         if unit_manager_uid is None:
             # Try to register the UnitManager with the database.
             self._um_id = self._db.insert_unit_manager(
@@ -96,10 +91,11 @@ class UnitManagerController(threading.Thread):
         # The INPUT transfer worker(s) are autonomous processes that
         # execute input file transfer requests concurrently.
         self._input_file_transfer_worker_pool = []
-        for x in range(0, self._num_input_transfer_workers):
+        for x in range(1, self._num_input_transfer_workers+1):
             worker = InputFileTransferWorker(
                 db_connection_info=db_connection_info, 
-                unit_manager_id=self._um_id
+                unit_manager_id=self._um_id,
+                number=x
             )
             self._input_file_transfer_worker_pool.append(worker)
             worker.start()
@@ -107,15 +103,14 @@ class UnitManagerController(threading.Thread):
         # The OUTPUT transfer worker(s) are autonomous processes that
         # execute output file transfer requests concurrently.
         self._output_file_transfer_worker_pool = []
-        for x in range(0, self._num_output_transfer_workers):
+        for x in range(1, self._num_output_transfer_workers+1):
             worker = OutputFileTransferWorker(
                 db_connection_info=db_connection_info, 
-                unit_manager_id=self._um_id
+                unit_manager_id=self._um_id,
+                number=x
             )
             self._output_file_transfer_worker_pool.append(worker)
             worker.start()
-
-        #self.name = 'UMWThread-%s' % self._um_id
 
     # ------------------------------------------------------------------------
     #
@@ -452,20 +447,6 @@ class UnitManagerController(threading.Thread):
         # Bulk-add all units that need transfer to the transfer queue.
         # Add the startup request to the request queue.
         if len(wu_transfer) > 0:
-            transfer_units = list()
             for unit in wu_transfer:
-                transfer_units.append(pilot_uid)
-                self._transfer_requests.put(
-                    {"pilot_uid":    pilot_uid,
-                     "unit_uid":     unit.uid,
-                     "credentials":  cred_dict,
-                     "unit_sandbox": results[unit.uid]["sandbox"],
-                     "description":  unit.description}
-                )
                 log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
                 self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)
-
-            logger.info(
-                "Data transfer scheduled for ComputeUnits %s to ComputePilot '%s'." % 
-                (transfer_units, pilot_uid)
-            )

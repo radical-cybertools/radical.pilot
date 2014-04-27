@@ -30,7 +30,7 @@ class InputFileTransferWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, db_connection_info, unit_manager_id):
+    def __init__(self, db_connection_info, unit_manager_id, number=None):
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
@@ -38,6 +38,8 @@ class InputFileTransferWorker(multiprocessing.Process):
 
         self.db_connection_info = db_connection_info
         self.unit_manager_id = unit_manager_id
+
+        self.name = "InputFileTransferWorker-%s" % str(number)
 
     # ------------------------------------------------------------------------
     #
