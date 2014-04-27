@@ -20,14 +20,11 @@ class State(object):
 
     # ----------------------------------------
     #
-    def __init__(self, state, timestamp=None):
+    def __init__(self, state, timestamp):
         """Le constructeur.
         """
         self.state = state
-        if timestamp is None:
-            self.timestamp = datetime.datetime.utcnow()
-        else:
-            self.timestamp = timestamp
+        self.timestamp = timestamp
 
     # ----------------------------------------
     #

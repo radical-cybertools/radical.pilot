@@ -58,7 +58,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "localhost"
         pdesc.runtime = 5
-        pdesc.cores = 2
+        pdesc.cores = 8
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 1024):
             cu = radical.pilot.ComputeUnitDescription()
             cu.executable = "/bin/bash"
             cu.arguments = ["-l", "-c", "'cat ./file1.txt ./file2.dat > result.dat'"]

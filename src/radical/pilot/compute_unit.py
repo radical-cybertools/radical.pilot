@@ -211,7 +211,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return State(state=cu_json['state'])
+        return cu_json['state']
 
     # -------------------------------------------------------------------------
     #
