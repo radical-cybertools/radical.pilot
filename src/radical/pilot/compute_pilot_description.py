@@ -16,17 +16,16 @@ import saga.attributes  as attributes
 
 # -----------------------------------------------------------------------------
 # Attribute description keys
-RESOURCE          = 'Resource'
-QUEUE             = 'Queue'
-CORES             = 'Cores'
-WORKING_DIRECTORY = 'WorkingDirectory'
-SANDBOX           = 'Sandbox'
-OUTPUT            = 'Output'
-ERROR             = 'Error'
-RUN_TIME          = 'RunTime'
-RUNTIME           = 'Runtime'
-CLEANUP           = 'Cleanup'
-PROJECT           = 'Project'
+RESOURCE          = 'resource'
+QUEUE             = 'queue'
+CORES             = 'cores'
+SANDBOX           = 'sandbox'
+OUTPUT            = 'output'
+ERROR             = 'error'
+RUNTIME           = 'runtime'
+CLEANUP           = 'cleanup'
+PROJECT           = 'project'
+PILOT_AGENT_PRIV  = 'pilot_agent_priv'
 
 
 # -----------------------------------------------------------------------------
@@ -116,17 +115,18 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_camelcasing (True)
 
         self._attributes_register            (RUNTIME, None, attributes.INT, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register_deprecated (RUN_TIME, RUNTIME, flow='_down')
 
         self._attributes_register            (CLEANUP, None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register            (PROJECT, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         self._attributes_register            (SANDBOX, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register_deprecated (WORKING_DIRECTORY, SANDBOX, flow='_down')
 
         self._attributes_register             (RESOURCE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register             (CORES, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register             (QUEUE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+
+        # Allows to select a different pilot agent - for DEVELOPMENT purposes only !!
+        self._attributes_register            (PILOT_AGENT_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
     #--------------------------------------------------------------------------
     #
@@ -157,6 +157,9 @@ class ComputePilotDescription(attributes.Attributes):
 
         if QUEUE not in d:
             d[QUEUE] = None
+
+        if PILOT_AGENT_PRIV not in d:
+            d[PILOT_AGENT_PRIV] = None
 
         return d
 

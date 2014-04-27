@@ -722,11 +722,6 @@ class Agent(threading.Thread):
 
                                 self._task_queue.put(task)
 
-                                # now we can remove the entries from the pilot's wu_queue
-                                # PRINT TODO
-                                #self._p.update({"_id": ObjectId(self._pilot_id)}, 
-                                #               {"$pullAll": { "wu_queue": new_wu_ids}})
-
                 except Exception, ex:
                     raise
 
