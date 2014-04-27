@@ -59,8 +59,6 @@ if __name__ == "__main__":
         pdesc.resource = "localhost"
         pdesc.runtime = 5
         pdesc.cores = 2
-        pdesc.cleanup = False
-        pdesc.pilot_agent_priv = "radical-pilot-agent.py"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -105,27 +103,15 @@ if __name__ == "__main__":
         # Wait for all compute units to finish.
         umgr.wait_units()
 
-        pmgr.cancel_pilots()
-
-        time.sleep(5)
-
-        for state in pilot.state_history:
-            print "Pilot %s: %s" % (state.timestamp, state.state)
-
         for unit in umgr.get_units():
-            print "CU %s:" % unit.uid
-            for state in unit.state_history:
-                print "  * %s: %s" % (state.timestamp, state.state)
+            # Print some information about the unit.
+            print "\n{0}".format(str(unit))
 
-        #     # Print some information about the unit.
-        #     print "\n{0}".format(str(unit))
+            # Get the stdout and stderr streams of the ComputeUnit.
+            print "  STDOUT: {0}".format(unit.stdout)
+            print "  STDERR: {0}".format(unit.stderr)
 
-        #     # Get the stdout and stderr streams of the ComputeUnit.
-        #     print "  STDOUT: {0}".format(unit.stdout)
-        #     print "  STDERR: {0}".format(unit.stderr)
-
-
-        session.close(delete=False)
+        session.close()
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex
