@@ -90,10 +90,9 @@ class InputFileTransferWorker(multiprocessing.Process):
                 time.sleep(1)
             else:
                 try:
-                    # Contains all log messages
                     log_messages = []
 
-                    # We have found one. Now we can process the transfer
+                    # We have found a new CU. Now we can process the transfer
                     # directive(s) wit SAGA.
                     compute_unit_id = str(compute_unit["_id"])
                     remote_sandbox = compute_unit["sandbox"]
@@ -111,12 +110,13 @@ class InputFileTransferWorker(multiprocessing.Process):
                         session=saga_session)
                     wu_dir.close()
 
+                    logger.info("Processing input file transfers for ComputeUnit %s" % compute_unit_id)
                     # Loop over all transfer directives and execute them.
                     for td in transfer_directives:
+                        
                         st = td.split(">")
                         abs_t = os.path.abspath(st[0].strip())
                         input_file_url = saga.Url("file://localhost/%s" % abs_t)
-
                         if len(st) == 1:
                             target = remote_sandbox
                         elif len(st) == 2:
@@ -126,7 +126,7 @@ class InputFileTransferWorker(multiprocessing.Process):
 
                         log_msg = "Transferring input file %s -> %s" % (input_file_url, target)
                         log_messages.append(log_msg)
-                        logger.info(log_msg)
+                        logger.debug(log_msg)
 
                         # Execute the transfer.
                         input_file = saga.filesystem.File(

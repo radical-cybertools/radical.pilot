@@ -90,39 +90,39 @@ class OutputFileTransferWorker(multiprocessing.Process):
                 time.sleep(1)
             else:
                 try:
-                    # We have found one. Now we can process the transfer
+                    log_messages = []
+
+                    # We have found a new CU. Now we can process the transfer
                     # directive(s) wit SAGA.
                     compute_unit_id = str(compute_unit["_id"])
                     remote_sandbox = compute_unit["sandbox"]
                     transfer_directives = compute_unit["description"]["output_data"]
 
-                    abs_directives = []
-
+                    logger.info("Processing output file transfers for ComputeUnit %s" % compute_unit_id)
+                    # Loop over all transfer directives and execute them.
                     for td in transfer_directives:
-                        source = td.split(">")
-                        abs_source = "%s/%s" % (remote_sandbox, source[0].strip())
-                        if len(source) > 1:
-                            abs_target = "file://localhost/%s" % os.path.abspath(source[1].strip())
-                        else:
+
+                        st = td.split(">")
+                        abs_source = "%s/%s" % (remote_sandbox, st[0].strip())
+
+                        if len(st) == 1:
                             abs_target = "file://localhost/%s" % os.getcwd()
+                        elif len(st) == 2:
+                            abs_target = "file://localhost/%s" % os.path.abspath(st[1].strip())
+                        else:
+                            raise Exception("Invalid transfer directive: %s" % td)
 
-                        abs_directives.append({"source": abs_source, "target" : abs_target})
+                        log_msg = "Transferring output file %s -> %s" % (abs_source, abs_target)
+                        log_messages.append(log_msg)
+                        logger.debug(log_msg)
 
-                    logger.info("Processing output data transfer for ComputeUnit %s: %s" \
-                        % (compute_unit_id, abs_directives))
-
-                    log_messages = []
-                    for atd in abs_directives:
-
-                        output_file = saga.filesystem.File(saga.Url(atd["source"]),
-                            session=saga_session)
-                        output_file.copy(saga.Url(atd["target"]))
+                        output_file = saga.filesystem.File(saga.Url(abs_source),
+                            session=saga_session
+                        )
+                        output_file.copy(saga.Url(abs_target))
                         output_file.close()
 
-                        log_messages.append("Successfully transferred output file %s -> %s" \
-                            % (atd["source"], atd["target"]))
-
-                    # Update the CU's state to 'DONE' if all transfers were successfull.            ts = datetime.datetime.utcnow()
+                    # Update the CU's state to 'DONE' if all transfers were successfull.
                     ts = datetime.datetime.utcnow()
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
