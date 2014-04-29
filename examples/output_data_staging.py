@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import radical.pilot
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
@@ -58,7 +59,6 @@ if __name__ == "__main__":
         pdesc.resource = "localhost"
         pdesc.runtime = 5
         pdesc.cores = 2
-        pdesc.cleanup = True
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

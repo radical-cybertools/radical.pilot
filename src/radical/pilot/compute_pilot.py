@@ -40,7 +40,6 @@ class ComputePilot (object):
 
                       pilot = pm.submit_pilots(pd)
     """
-
     # -------------------------------------------------------------------------
     #
     def __init__(self):
@@ -59,14 +58,6 @@ class ComputePilot (object):
 
         # list of callback functions
         self._callback_list = []
-
-    # -------------------------------------------------------------------------
-    #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): ComputePilot '%s'." % self._uid)
 
     # -------------------------------------------------------------------------
     #
@@ -185,7 +176,24 @@ class ComputePilot (object):
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['state']
+        return State(state=pilot_json['state'])
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def state_history(self):
+        """Returns the complete state history of the pilot.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid instance.")
+
+        states = []
+
+        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        for state in pilot_json['statehistory']:
+            states.append(State(state=state["state"], timestamp=state["timestamp"]))
+
+        return states
 
     # -------------------------------------------------------------------------
     #
@@ -297,7 +305,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['description']['Resource']
+        return pilot_json['description']['resource']
 
     # -------------------------------------------------------------------------
     #

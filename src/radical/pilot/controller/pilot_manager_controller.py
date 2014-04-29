@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: radical.pilot.mpworker.pilot_manager_worker
+.. module:: radical.pilot.controller.pilot_manager_worker
    :platform: Unix
    :synopsis: Implements a multiprocessing worker backend for
               the PilotManager class.
@@ -29,13 +29,13 @@ import saga.utils.pty_shell as sups
 from radical.pilot.credentials import SSHCredential
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.mpworker.pilotlauncher import launch_pilot
+from radical.pilot.controller.pilotlauncher import launch_pilot
 
 
 # ----------------------------------------------------------------------------
 #
-class PilotManagerWorker(threading.Thread):
-    """PilotManagerWorker is a threading worker that handles backend
+class PilotManagerController(threading.Thread):
+    """PilotManagerController is a threading worker that handles backend
        interaction for the PilotManager and Pilot classes.
     """
 
@@ -187,7 +187,7 @@ class PilotManagerWorker(threading.Thread):
     #
     def run(self):
         """run() is called when the process is started via
-           PilotManagerWorker.start().
+           PilotManagerController.start().
         """
         logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s started." %
                     (self.name, self.ident, self._pm_id))

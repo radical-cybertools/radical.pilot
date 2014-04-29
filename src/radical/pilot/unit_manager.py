@@ -18,7 +18,7 @@ import weakref
 from radical.pilot.compute_unit import ComputeUnit
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.mpworker import UnitManagerController
+from radical.pilot.controller import UnitManagerController
 from radical.pilot.scheduler import get_scheduler
 
 from radical.pilot.states import *
@@ -72,7 +72,8 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, scheduler=None, _reconnect=False):
+    def __init__(self, session, scheduler=None, input_transfer_workers=1,
+                 output_transfer_workers=1, _reconnect=False):
         """Creates a new UnitManager and attaches it to the session.
 
         **Args:**
@@ -80,6 +81,17 @@ class UnitManager(object):
             * session (`string`): The session instance to use.
 
             * scheduler (`string`): The name of the scheduler plug-in to use.
+
+            * input_transfer_workers (`int`): The number of input file transfer 
+              worker processes to launch in the background (default: 1). 
+
+            * output_transfer_workers (`int`): The number of output file transfer 
+              worker processes to launch in the background (default: 1). 
+
+        .. note:: `input_transfer_workers` and `output_transfer_workers` can be
+                  used to tune RADICAL-Pilot's file transfer performance. 
+                  However, you should only change the default values if you 
+                  know what you are doing.
 
         **Raises:**
             * :class:`radical.pilot.radical.pilotException`
@@ -94,6 +106,8 @@ class UnitManager(object):
             self._worker = UnitManagerController(
                 unit_manager_uid=None, 
                 scheduler=scheduler,
+                input_transfer_workers=input_transfer_workers,
+                output_transfer_workers=output_transfer_workers,
                 db_connection=session._dbs,
                 db_connection_info=session._connection_info)
             self._worker.start()

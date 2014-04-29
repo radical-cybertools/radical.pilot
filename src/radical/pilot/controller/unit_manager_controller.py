@@ -1,7 +1,7 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: radical.pilot.mpworker.unit_manager_controller
+.. module:: radical.pilot.controller.unit_manager_controller
    :platform: Unix
    :synopsis: Implements a multiprocessing worker backend for
               the UnitManager class.
@@ -25,10 +25,9 @@ from radical.pilot.states import *
 from radical.utils import which
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.mpworker.filetransfer import transfer_input_func
+from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
+from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
 
-
-from radical.pilot.mpworker.output_file_transfer_worker import OutputFileTransferWorker
 
 # ----------------------------------------------------------------------------
 #
@@ -39,7 +38,8 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, scheduler, db_connection, db_connection_info):
+    def __init__(self, unit_manager_uid, scheduler, input_transfer_workers,
+        output_transfer_workers, db_connection, db_connection_info):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -53,10 +53,6 @@ class UnitManagerController(threading.Thread):
         # at least once. Other functions use it as a guard.
         self._initialized = threading.Event()
         self._initialized.clear()
-
-        # The INPUT transfer worker pool is a multiprocessing pool that
-        # executes concurrent input file transfer requests.
-        self._input_tranfers_worker_pool = Pool(2)
 
         # The shard_data_manager handles data exchange between the worker
         # process and the API objects. The communication is unidirectional:
@@ -78,27 +74,43 @@ class UnitManagerController(threading.Thread):
         # The MongoDB database handle.
         self._db = db_connection
 
-        # The different command queues hold pending operations
-        # that are passed to the worker. Queues are inspected during
-        # runtime in the run() loop and the worker acts upon them accordingly.
-        self._transfer_requests = Queue.Queue()
-
         if unit_manager_uid is None:
             # Try to register the UnitManager with the database.
             self._um_id = self._db.insert_unit_manager(
-                scheduler=scheduler)
+                scheduler=scheduler,
+                input_transfer_workers=input_transfer_workers,
+                output_transfer_workers=output_transfer_workers)
+            self._num_input_transfer_workers = input_transfer_workers
+            self._num_output_transfer_workers = output_transfer_workers
         else:
+            um_json = self._db.get_unit_manager(unit_manager_id=unit_manager_id)
             self._um_id = unit_manager_uid
+            self._num_input_transfer_workers = um_json["input_transfer_workers"]
+            self._num_output_transfer_workers = um_json["output_transfer_workers"]
 
-        # The OUTPUT transfer worker pool is a multiprocessing pool that
-        # executes concurrent OUTPUT file transfer requests.
-        self._output_file_transfer_worker = OutputFileTransferWorker(
-            db_connection_info=db_connection_info, 
-            unit_manager_id=self._um_id
-        )
-        self._output_file_transfer_worker.start()
+        # The INPUT transfer worker(s) are autonomous processes that
+        # execute input file transfer requests concurrently.
+        self._input_file_transfer_worker_pool = []
+        for x in range(1, self._num_input_transfer_workers+1):
+            worker = InputFileTransferWorker(
+                db_connection_info=db_connection_info, 
+                unit_manager_id=self._um_id,
+                number=x
+            )
+            self._input_file_transfer_worker_pool.append(worker)
+            worker.start()
 
-        self.name = 'UMWThread-%s' % self._um_id
+        # The OUTPUT transfer worker(s) are autonomous processes that
+        # execute output file transfer requests concurrently.
+        self._output_file_transfer_worker_pool = []
+        for x in range(1, self._num_output_transfer_workers+1):
+            worker = OutputFileTransferWorker(
+                db_connection_info=db_connection_info, 
+                unit_manager_id=self._um_id,
+                number=x
+            )
+            self._output_file_transfer_worker_pool.append(worker)
+            worker.start()
 
     # ------------------------------------------------------------------------
     #
@@ -183,6 +195,7 @@ class UnitManagerController(threading.Thread):
 
         # Update shared data.
         self._shared_data[unit_uid]["data"]["state"] = state
+        self._shared_data[unit_uid]["data"]["statehistory"] = state
         self._shared_data[unit_uid]["data"]["log"].extend(log)
 
         # Call the callbacks
@@ -204,7 +217,7 @@ class UnitManagerController(threading.Thread):
     #
     def run(self):
         """run() is called when the process is started via
-           PilotManagerWorker.start().
+           PilotManagerController.start().
         """
         logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
                     (self.name, self.ident, self._um_id))
@@ -214,56 +227,6 @@ class UnitManagerController(threading.Thread):
         transfer_results = list()
 
         while not self._stop.is_set():
-
-            # =================================================================
-            #
-            # Process any new transfer requests.
-            try:
-                request = self._transfer_requests.get_nowait()
-                self._set_state(
-                    request["unit_uid"],
-                    TRANSFERRING_INPUT,
-                    ["start transferring %s" % request]
-                )
-
-                description = request["description"]
-
-                transfer_result = self._input_tranfers_worker_pool.apply_async(
-                    transfer_input_func, args=(
-                        request["pilot_uid"],
-                        request["unit_uid"],
-                        request["credentials"],
-                        request["unit_sandbox"],
-                        description["input_data"])
-                )
-                transfer_results.append(transfer_result)
-
-            except Queue.Empty:
-                pass
-
-            # =================================================================
-            #
-            # Check if any of the asynchronous operations has returned a result
-            new_transfer_results = list()
-
-            for transfer_result in transfer_results:
-                if transfer_result.ready():
-                    result = transfer_result.get()
-
-                    self._set_state(
-                        result["unit_uid"],
-                        result["state"],
-                        result["log"]
-                    )
-                    if result["state"] == PENDING_EXECUTION:
-                        self._db.assign_compute_units_to_pilot(
-                            unit_uids=result["unit_uid"],
-                            pilot_uid=result["pilot_uid"]
-                        )
-                else:
-                    new_transfer_results.append(transfer_result)
-
-            transfer_results = new_transfer_results
 
             # =================================================================
             #
@@ -307,14 +270,16 @@ class UnitManagerController(threading.Thread):
 
             time.sleep(1)
 
-        # shut down the pool(s)
-        self._input_tranfers_worker_pool.terminate()
-        self._input_tranfers_worker_pool.join()
+        # shut down the autonomous input / output transfer worker(s)
+        for worker in self._input_file_transfer_worker_pool:
+            worker.terminate()
+            worker.join()
+            logger.debug("UnitManager.close(): %s terminated." % worker.name)
 
-        self._output_file_transfer_worker.terminate()
-        self._output_file_transfer_worker.join()
-
-        logger.debug("Thread main loop terminated")
+        for worker in self._output_file_transfer_worker_pool:
+            worker.terminate()
+            worker.join()
+            logger.debug("UnitManager.close(): %s terminated." % worker.name)
 
     # ------------------------------------------------------------------------
     #
@@ -482,20 +447,6 @@ class UnitManagerController(threading.Thread):
         # Bulk-add all units that need transfer to the transfer queue.
         # Add the startup request to the request queue.
         if len(wu_transfer) > 0:
-            transfer_units = list()
             for unit in wu_transfer:
-                transfer_units.append(pilot_uid)
-                self._transfer_requests.put(
-                    {"pilot_uid":    pilot_uid,
-                     "unit_uid":     unit.uid,
-                     "credentials":  cred_dict,
-                     "unit_sandbox": results[unit.uid]["sandbox"],
-                     "description":  unit.description}
-                )
                 log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
                 self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)
-
-            logger.info(
-                "Data transfer scheduled for ComputeUnits %s to ComputePilot '%s'." % 
-                (transfer_units, pilot_uid)
-            )
