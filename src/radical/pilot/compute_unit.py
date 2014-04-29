@@ -272,6 +272,15 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
+    def execution_locations(self):
+        """Returns the exeuction location(s) of the ComputeUnit.
+           This is just an alias for execution_details.
+        """
+        return self.execution_details
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def submission_time(self):
         """ Returns the time the ComputeUnit was submitted.
         """
