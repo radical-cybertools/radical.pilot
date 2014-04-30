@@ -81,7 +81,6 @@ class ComputeUnitDescription(attributes.Attributes) :
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
-        attributes.
 
         # register properties with the attribute interface
         # action description
@@ -124,9 +123,17 @@ class ComputeUnitDescription(attributes.Attributes) :
             ENVIRONMENT            : self.environment,
             CORES                  : self.cores,
             WORKING_DIRECTORY_PRIV : self.working_directory_priv, 
-            INPUT_STAGING          : self.input_staging,
-            OUTPUT_STAGING         : self.output_staging
         }
+        if not isinstance(self.input_staging, list):
+            obj_dict[INPUT_STAGING] = [self.input_staging.as_dict()]
+        else:
+            obj_dict[INPUT_STAGING] = [x.as_dict() for x in self.input_staging]
+
+        if not isinstance(self.output_staging, list):
+            obj_dict[OUTPUT_STAGING] = [self.output_staging.as_dict()]
+        else:
+            obj_dict[OUTPUT_STAGING] = [x.as_dict() for x in self.input_staging]
+
         return obj_dict
 
 
