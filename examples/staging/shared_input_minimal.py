@@ -14,7 +14,7 @@ if DBURL is None:
 # RCONF points to the resource configuration files. Read more about resource
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
 RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
+         "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 
 INDIA_STAGING = '///N/u/marksant/staging_area/'
 INDIA_HOST = 'india.futuregrid.org'
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         sd_shared = radical.pilot.StagingDirectives()
         sd_shared.source = os.path.join(INDIA_STAGING, SHARED_INPUT_FILE)
         sd_shared.target = SHARED_INPUT_FILE
-        sd_shared.action = radical.pilot.StagingDirectives.LINK
+        sd_shared.action = radical.pilot.LINK
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -73,19 +73,19 @@ if __name__ == "__main__":
 
         compute_units = []
 
-        for unit_count in range(4):
+        for unit_count in range(1):
 
             # Configure the staging directive for input file.
             sd_input = radical.pilot.StagingDirectives()
-            sd_input.source = 'input_file-%d' % unit_count
-            sd_input.target = 'input_file-%d' % unit_count
-            sd_input.action = radical.pilot.StagingDirectives.TRANSFER
+            sd_input.source = 'input_file-%d.txt' % unit_count
+            sd_input.target = 'input_file-%d.txt' % unit_count
+            sd_input.action = radical.pilot.TRANSFER
 
             # Configure the staging directive for output file.
             sd_output = radical.pilot.StagingDirectives()
-            sd_output.source = 'output_file-%d' % unit_count
-            sd_output.target = 'output_file-%d' % unit_count
-            sd_output.action = radical.pilot.StagingDirectives.TRANSFER
+            sd_output.source = 'output_file-%d.txt' % unit_count
+            sd_output.target = 'output_file-%d.txt' % unit_count
+            sd_output.action = radical.pilot.TRANSFER
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
