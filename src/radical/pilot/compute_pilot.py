@@ -305,7 +305,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['description']['Resource']
+        return pilot_json['description']['resource']
 
     # -------------------------------------------------------------------------
     #
