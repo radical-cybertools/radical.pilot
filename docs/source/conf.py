@@ -47,8 +47,8 @@ rst_epilog = """
 master_doc = 'index'
 
 # General information about the project.
-project = u'SAGA-Pilot'
-copyright = u'2013, The RADICAL Group at Rutgers University'
+project = u'RADICAL-Pilot'
+copyright = u'2014, The RADICAL Group at Rutgers University'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -229,7 +229,7 @@ latex_show_pagerefs = True
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'sagapilot', u'SAGA-Pilot Documentation',
+    ('index', 'radical.pilot', u'RADICAL-Pilot Documentation',
      [u'The RADICAL Group at Rutgers University'], 1)
 ]
 
