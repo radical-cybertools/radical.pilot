@@ -1,5 +1,16 @@
-0.10 Release                                            
+0.11 Release                                            Apr. 29. 2014
 ---------------------------------------------------------------------
+
+* Fixes error in state history reporting
+
+0.10 Release                                            Apr. 29. 2014
+---------------------------------------------------------------------
+
+* Support for state transition introspection via CU/Pilot state_history
+* Cleaned up an streamlined Input and Outpout file transfer workers
+* Support for interchangeable pilot agents
+* Closed tickets:
+  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=11&state=closed
 
 
 0.9 Release                                             Apr. 16. 2014

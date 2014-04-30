@@ -516,7 +516,7 @@ class ExecWorker(multiprocessing.Process):
                       "exit_code"     : task.exit_code,
                       "stdout_id"     : task.stdout_id,
                       "stderr_id"     : task.stderr_id},
-             "$push": {"statehistory": {"state": task.state, "timestamp": task.finished}}
+             "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
 
                       })
 
@@ -768,7 +768,7 @@ class _Process(subprocess.Popen):
             
         elif launch_method == LAUNCH_METHOD_SSH:
             cmdline = launch_command
-            cmdline += " %s " % host
+            cmdline += " -o StrictHostKeyChecking=no %s " % host
 
         # task executable and arguments
         payload = str(" cd %s && " % task.workdir)

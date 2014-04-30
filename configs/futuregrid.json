@@ -5,7 +5,7 @@
         "default_queue"      : "short",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "MPIRUN",
+        "task_launch_mode"   : "SSH",
         "valid_roots"        : ["/N", "/home"]
     },
 
@@ -15,7 +15,7 @@
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "MPIRUN",
+        "task_launch_mode"   : "SSH",
         "valid_roots"        : ["/N"]
     },
 
@@ -25,7 +25,7 @@
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "MPIRUN",
+        "task_launch_mode"   : "SSH",
         "valid_roots"        : ["/N"]
     },
 
@@ -35,7 +35,7 @@
         "default_queue"      : "batch",
         "python_interpreter" : "/soft/python/gnu-4.1/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "MPIRUN",
+        "task_launch_mode"   : "SSH",
         "valid_roots"        : ["/N", "/gpfs"]
     }
 }

@@ -72,8 +72,8 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, scheduler=None, input_transfer_workers=1,
-                 output_transfer_workers=1, _reconnect=False):
+    def __init__(self, session, scheduler=None, input_transfer_workers=2,
+                 output_transfer_workers=2, _reconnect=False):
         """Creates a new UnitManager and attaches it to the session.
 
         **Args:**
@@ -83,10 +83,10 @@ class UnitManager(object):
             * scheduler (`string`): The name of the scheduler plug-in to use.
 
             * input_transfer_workers (`int`): The number of input file transfer 
-              worker processes to launch in the background (default: 1). 
+              worker processes to launch in the background (default: 2). 
 
             * output_transfer_workers (`int`): The number of output file transfer 
-              worker processes to launch in the background (default: 1). 
+              worker processes to launch in the background (default: 2). 
 
         .. note:: `input_transfer_workers` and `output_transfer_workers` can be
                   used to tune RADICAL-Pilot's file transfer performance. 

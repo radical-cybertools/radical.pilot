@@ -211,7 +211,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return State(state=cu_json['state'])
+        return cu_json['state']
 
     # -------------------------------------------------------------------------
     #
@@ -268,6 +268,15 @@ class ComputeUnit(object):
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['exec_locs']
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def execution_locations(self):
+        """Returns the exeuction location(s) of the ComputeUnit.
+           This is just an alias for execution_details.
+        """
+        return self.execution_details
 
     # -------------------------------------------------------------------------
     #
