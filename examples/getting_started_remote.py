@@ -2,14 +2,30 @@ import os
 import sys
 import radical.pilot
 
+# READ: The RADICAL-Pilot documentation: 
+#   http://radicalpilot.readthedocs.org/en/latest
+#
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# you want to see what happens behind the scences!
+#
+# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
+# easiest way to make this work seamlessly is to set up ssh key-based
+# authentication and add the key to your keychain so you won't be 
+# prompted for a password. The following article explains how to set 
+# this up on Linux:
+#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
+
+
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICALPILOT_DBURL")
+# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
+DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: RADICALPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+# RCONF points to the resource configuration files.
+RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
+          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 
 #------------------------------------------------------------------------------
 #
@@ -44,21 +60,26 @@ if __name__ == "__main__":
         # well as security crendetials.
         session = radical.pilot.Session(database_url=DBURL)
 
+        # Add an ssh identity to the session.
+        cred = radical.pilot.SSHCredential()
+        cred.user_id = "tg802352"
+        session.add_credential(cred)
+
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session)
+        pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 2-core local pilot that runs for 10 minutes and cleans up
-        # after itself.
+        # Define a 32-core on stamped that runs for 15 mintutes and 
+        # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "localhost"
-        pdesc.runtime = 5
-        pdesc.cores = 2
-        pdesc.cleanup = True
+        pdesc.resource  = "stampede.tacc.utexas.edu"
+        pdesc.runtime   = 15 # minutes
+        pdesc.cores     = 32 
+        pdesc.cleanup   = True
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -76,13 +97,13 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 16):
             cu = radical.pilot.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-            cu.executable = "/bin/cat"
-            cu.arguments = ["$INPUT1", "$INPUT2"]
-            cu.cores = 1
-            cu.input_data = ["./file1.dat", "./file2.dat"]
+            cu.executable  = "/bin/cat"
+            cu.arguments   = ["$INPUT1", "$INPUT2"]
+            cu.cores       = 1
+            cu.input_data  = ["./file1.dat", "./file2.dat"]
 
             compute_units.append(cu)
 
@@ -105,18 +126,20 @@ if __name__ == "__main__":
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(compute_units)
 
-        # Wait for all compute units to finish.
+        # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
-        for unit in umgr.get_units():
-            # Print some information about the unit.
-            print "\n{0}".format(str(unit))
+        for unit in units:
+            print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
+                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
+                   unit.description.output_data[0].split(">")[1].strip())
 
-            # Get the stdout and stderr streams of the ComputeUnit.
-            print "  STDOUT: {0}".format(unit.stdout)
-            print "  STDERR: {0}".format(unit.stderr)
-
+        # Close automatically cancels the pilot(s).
         session.close()
+        sys.exit(0)
 
     except radical.pilot.PilotException, ex:
-        print "Error: %s" % ex
+        # Catch all exceptions and exit with and error.
+        print "Error during execution: %s" % ex
+        sys.exit(1)
+

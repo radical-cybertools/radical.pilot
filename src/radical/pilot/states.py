@@ -11,6 +11,58 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
+import datetime
+
+# -----------------------------------------------------------------------------
+# The state "struct" encapsulates a state and its timestamp.
+class State(object):
+    __slots__ = ('state', 'timestamp')
+
+    # ----------------------------------------
+    #
+    def __init__(self, state, timestamp):
+        """Le constructeur.
+        """
+        self.state = state
+        self.timestamp = timestamp
+
+    # ----------------------------------------
+    #
+    def __eq__(self, other):
+        """Comparison operator for 'equal'. Compares 'State' as well 
+           as 'str' types.
+        """
+        if type(other) == str:
+            return self.state == other
+        else:
+            return self.state == other.state
+
+    # ----------------------------------------
+    #
+    def __ne__(self, other):
+        """Comparison operator for 'not equal'. Compares 'State' as well 
+           as 'str' types.
+        """
+        if type(other) == str:
+            return not self.__eq__(other)
+        else:
+            return not self.__eq(other.state)
+
+    # ----------------------------------------
+    #
+    def as_dict(self):
+        """Returns the state and its timestamp as a Python dictionary.
+        """
+        return {"state": self.state, "timestamp": self.timestamp}
+
+    # ----------------------------------------
+    #
+    def __str__(self):
+        """Returns the string representation of the state. The string 
+           representation is just the state as string without its timestamp.
+        """
+        return self.state
+
 
 # -----------------------------------------------------------------------------
 # States

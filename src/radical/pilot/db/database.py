@@ -112,12 +112,9 @@ class Session():
         self._s.insert( 
             {
                 "_id"  : ObjectId(sid),
-                "info" : 
-                {
-                    "created"        : creation_time,
-                    "last_reconnect" : None
-                },
-                "credentials" : []
+                "created"        : creation_time,
+                "last_reconnect" : None,
+                "credentials"    : []
             }
         )
 
@@ -153,7 +150,7 @@ class Session():
         cursor = self._s.find({"_id": ObjectId(sid)})
 
         self._s.update({"_id"  : ObjectId(sid)},
-                       {"$set" : {"info.last_reconnect" : datetime.datetime.utcnow()}}
+                       {"$set" : {"last_reconnect" : datetime.datetime.utcnow()}}
         )
 
         cursor = self._s.find({"_id": ObjectId(sid)})
@@ -247,10 +244,10 @@ class Session():
 
         cursor = self._w.find(
             {"_id": ObjectId(unit_uid)},
-            {"info.stdout_id"}
+            {"stdout_id": 1}
         )
 
-        stdout_id = cursor[0]['info']['stdout_id']
+        stdout_id = cursor[0]['stdout_id']
 
         if stdout_id is None:
             return None
@@ -269,10 +266,10 @@ class Session():
 
         cursor = self._w.find(
             {"_id": ObjectId(unit_uid)},
-            {"info.stderr_id"}
+            {"stderr_id": 1}
         )
 
-        stderr_id = cursor[0]['info']['stderr_id']
+        stderr_id = cursor[0]['stderr_id']
 
         if stderr_id is None:
             return None
@@ -297,25 +294,26 @@ class Session():
         push_query = dict()
 
         if state is not None:
-            set_query["info.state"] = state
+            set_query["state"] = state
+            push_query["statehistory"] = [{'state': state, 'timestamp': datetime.datetime.utcnow()}]
 
         if started is not None:
-            set_query["info.started"] = started
+            set_query["started"] = started
 
         if finished is not None:
-            set_query["info.finished"] = finished
+            set_query["finished"] = finished
 
         if submitted is not None:
-            set_query["info.submitted"] = submitted
+            set_query["submitted"] = submitted
 
         if sagajobid is not None:
-            set_query["info.sagajobid"] = sagajobid
+            set_query["sagajobid"] = sagajobid
 
         if sandbox is not None:
-            set_query["info.sandbox"] = sandbox
+            set_query["sandbox"] = sandbox
 
         if logs is not None:
-            push_query["info.log"] = logs
+            push_query["log"] = logs
 
         # update pilot entry.
         self._p.update(
@@ -333,30 +331,27 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
+        ts = datetime.datetime.utcnow()
+
         pilot_doc = {
             "_id":            pilot_uid,
             "description":    pilot_description.as_dict(),
-            "info":
-            {
-                "submitted":      datetime.datetime.utcnow(),
-                "input_transfer_started": None,
-                "input_transfer_finished": None,
-                "started":        None,
-                "finished":       None,
-                "output_transfer_started": None,
-                "output_transfer_finished": None,
-                "nodes":          None,
-                "cores_per_node": None,
-                "sagajobid":      None,
-                "sandbox":        sandbox,
-                "state":          PENDING,
-                "log":            []
-            },
-            "links":
-            {
-                "pilotmanager":   pilot_manager_uid,
-                "unitmanager":    None
-            },
+            "submitted":      datetime.datetime.utcnow(),
+            "input_transfer_started": None,
+            "input_transfer_finished": None,
+            "started":        None,
+            "finished":       None,
+            "output_transfer_started": None,
+            "output_transfer_finished": None,
+            "nodes":          None,
+            "cores_per_node": None,
+            "sagajobid":      None,
+            "sandbox":        sandbox,
+            "state":          PENDING,
+            "statehistory":   [{"state": "Pending", "timestamp": ts}],
+            "log":            [],
+            "pilotmanager":   pilot_manager_uid,
+            "unitmanager":    None,
             "wu_queue":       [],
             "command":        None,
         }
@@ -376,7 +371,7 @@ class Session():
         pilot_ids = []
 
         if pilot_manager_uid is not None:
-            cursor = self._p.find({"links.pilotmanager": pilot_manager_uid})
+            cursor = self._p.find({"pilotmanager": pilot_manager_uid})
         else:
             cursor = self._p.find()
 
@@ -398,7 +393,7 @@ class Session():
                 "pilot_manager_id and pilot_ids can't both be None.")
 
         if pilot_ids is None:
-            cursor = self._p.find({"links.pilotmanager": pilot_manager_id})
+            cursor = self._p.find({"pilotmanager": pilot_manager_id})
         else:
 
             if not isinstance(pilot_ids, list):
@@ -428,7 +423,7 @@ class Session():
             # send command to all pilots that are known to the
             # pilot manager.
             self._p.update(
-                {"links.pilotmanager": pilot_manager_id},
+                {"pilotmanager": pilot_manager_id},
                 {"$set": {"command": cmd}},
                 multi=True
             )
@@ -453,7 +448,7 @@ class Session():
 
         if unit_ids is None:
             cursor = self._w.find(
-                {"links.unitmanager": unit_manager_id}
+                {"unitmanager": unit_manager_id}
             )
 
         else:
@@ -464,7 +459,7 @@ class Session():
 
             cursor = self._w.find(
                 {"_id": {"$in": unit_oid},
-                 "links.unitmanager": unit_manager_id}
+                 "unitmanager": unit_manager_id}
             )
 
         units_json = []
@@ -478,12 +473,15 @@ class Session():
     def set_compute_unit_state(self, unit_id, state, log):
         """Update the state and the log of one or more ComputeUnit(s).
         """
+        ts = datetime.datetime.utcnow()
+
         if self._s is None:
             raise Exception("No active session.")
 
         self._w.update({"_id": ObjectId(unit_id)},
-                       {"$set":     {"info.state": state},
-                        "$pushAll": {"info.log": log}})
+                       {"$set":     {"state": state},
+                        "$push": {"statehistory": {"state": state, "timestamp": ts}},
+                        "$pushAll": {"log": log}})
 
     #--------------------------------------------------------------------------
     #
@@ -495,8 +493,8 @@ class Session():
 
         if unit_ids is None:
             cursor = self._w.find(
-                {"links.unitmanager": unit_manager_id},
-                {"info.state"}
+                {"unitmanager": unit_manager_id},
+                {"state": 1}
             )
 
         else:
@@ -507,19 +505,19 @@ class Session():
 
             cursor = self._w.find(
                 {"_id": {"$in": unit_oid},
-                 "links.unitmanager": unit_manager_id},
-                {"info.state"}
+                 "unitmanager": unit_manager_id},
+                {"state": 1}
             )
 
         unit_states = []
         for obj in cursor:
-            unit_states.append(obj['info']['state'])
+            unit_states.append(obj['state'])
 
         return unit_states
 
     #--------------------------------------------------------------------------
     #
-    def insert_unit_manager(self, scheduler):
+    def insert_unit_manager(self, scheduler, input_transfer_workers, output_transfer_workers):
         """ Adds a unit managers to the list of unit managers.
 
             Unit manager IDs are just kept for book-keeping.
@@ -528,9 +526,10 @@ class Session():
             raise Exception("No active session.")
 
         result = self._um.insert(
-            {"scheduler": scheduler, 
-             "output_transfer_queue": []
-            })
+            {"scheduler": scheduler,
+             "input_transfer_workers": input_transfer_workers,
+             "output_transfer_workers": output_transfer_workers }
+        )
 
         # return the object id as a string
         return str(result)
@@ -577,7 +576,7 @@ class Session():
 
         for pilot_id in pilot_ids:
             self._p.update({"_id": ObjectId(pilot_id)},
-                           {"$set": {"links.unitmanager": unit_manager_id}},
+                           {"$set": {"unitmanager": unit_manager_id}},
                            True)
 
     #--------------------------------------------------------------------------
@@ -591,7 +590,7 @@ class Session():
         # Add the ids to the pilot's queue
         for pilot_id in pilot_ids:
             self._p.update({"_id": ObjectId(pilot_id)},
-                           {"$set": {"links.unitmanager": None}}, True)
+                           {"$set": {"unitmanager": None}}, True)
 
     #--------------------------------------------------------------------------
     #
@@ -601,7 +600,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._p.find({"links.unitmanager": unit_manager_uid})
+        cursor = self._p.find({"unitmanager": unit_manager_uid})
 
         # cursor -> dict
         pilot_ids = []
@@ -617,7 +616,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._w.find({"links.unitmanager": unit_manager_uid})
+        cursor = self._w.find({"unitmanager": unit_manager_uid})
 
         # cursor -> dict
         unit_ids = []
@@ -667,25 +666,24 @@ class Session():
             else:
                 working_directory.path += "/unit-"+unit.uid
 
+            ts = datetime.datetime.utcnow()
+
             unit_json = {
-                "_id":         ObjectId(unit.uid),
-                "description": unit.description.as_dict(),
-                "links": {
-                    "unitmanager": unit_manager_uid,
-                    "pilot":       pilot_uid,
-                },
-                "info": {
-                    "state":       NEW,
-                    "submitted":   datetime.datetime.utcnow(),
-                    "started":     None,
-                    "finished":    None,
-                    "exec_locs":   None,
-                    "exit_code":   None,
-                    "sandbox":     str(working_directory),
-                    "stdout_id":   None,
-                    "stderr_id":   None,
-                    "log":         unit_log
-                }
+                "_id":          ObjectId(unit.uid),
+                "description":  unit.description.as_dict(),
+                "unitmanager":  unit_manager_uid,
+                "pilot":        pilot_uid,
+                "state":        NEW,
+                "statehistory": [{"state": "New", "timestamp": ts}],
+                "submitted":    datetime.datetime.utcnow(),
+                "started":      None,
+                "finished":     None,
+                "exec_locs":    None,
+                "exit_code":    None,
+                "sandbox":      str(working_directory),
+                "stdout_id":    None,
+                "stderr_id":    None,
+                "log":          unit_log
             }
             unit_docs.append(unit_json)
             results[unit.uid] = unit_json

@@ -16,8 +16,8 @@ import time
 
 from radical.pilot.utils.logger import logger
 
-import states
-import exceptions
+from radical.pilot.states import *
+from radical.pilot.exceptions import *
 
 # -----------------------------------------------------------------------------
 #
@@ -157,7 +157,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['sandbox']
+        return cu_json['sandbox']
 
     # -------------------------------------------------------------------------
     #
@@ -208,10 +208,27 @@ class ComputeUnit(object):
         """Returns the current state of the ComputeUnit.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise exceptions.IncorrectState(msg="Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['state']
+        return cu_json['state']
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def state_history(self):
+        """Returns the complete state history of the pilot.
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid instance.")
+
+        states = []
+
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        for state in cu_json['statehistory']:
+            states.append(State(state=state["state"], timestamp=state["timestamp"]))
+
+        return states
 
     # -------------------------------------------------------------------------
     #
@@ -226,7 +243,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['exit_code']
+        return cu_json['exit_code']
 
     # -------------------------------------------------------------------------
     #
@@ -238,7 +255,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['log']
+        return cu_json['log']
 
     # -------------------------------------------------------------------------
     #
@@ -250,7 +267,16 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['exec_locs']
+        return cu_json['exec_locs']
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def execution_locations(self):
+        """Returns the exeuction location(s) of the ComputeUnit.
+           This is just an alias for execution_details.
+        """
+        return self.execution_details
 
     # -------------------------------------------------------------------------
     #
@@ -262,7 +288,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['submitted']
+        return cu_json['submitted']
 
     # -------------------------------------------------------------------------
     #
@@ -274,7 +300,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['started']
+        return cu_json['started']
 
     # -------------------------------------------------------------------------
     #
@@ -286,7 +312,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['info']['finished']
+        return cu_json['finished']
 
     # -------------------------------------------------------------------------
     #
@@ -305,7 +331,7 @@ class ComputeUnit(object):
 
     # -------------------------------------------------------------------------
     #
-    def wait(self, state=[states.DONE, states.FAILED, states.CANCELED],
+    def wait(self, state=[DONE, FAILED, CANCELED],
              timeout=None):
         """Returns when the ComputeUnit reaches a specific state or
         when an optional timeout is reached.
@@ -366,11 +392,11 @@ class ComputeUnit(object):
             raise exceptions.radical.pilotException(
                 "Invalid Compute Unit instance.")
 
-        if self.state in [states.DONE, states.FAILED, states.CANCELED]:
+        if self.state in [DONE, FAILED, CANCELED]:
             # nothing to do
             return
 
-        if self.state in [states.UNKNOWN]:
+        if self.state in [UNKNOWN]:
             raise exceptions.radical.pilotException(
                 "Compute Unit state is UNKNOWN, cannot cancel")
 

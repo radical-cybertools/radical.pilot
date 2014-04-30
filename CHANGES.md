@@ -1,8 +1,36 @@
+0.11 Release                                            Apr. 29. 2014
+---------------------------------------------------------------------
+
+* Fixes error in state history reporting
+
+0.10 Release                                            Apr. 29. 2014
+---------------------------------------------------------------------
+
+* Support for state transition introspection via CU/Pilot state_history
+* Cleaned up an streamlined Input and Outpout file transfer workers
+* Support for interchangeable pilot agents
+* Closed tickets:
+  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=11&state=closed
+
+
+0.9 Release                                             Apr. 16. 2014
+---------------------------------------------------------------------
+
+* Support for output file staging
+* Streamlines data model
+* More loosely coupled components connected via DB queues
+* Closed tickets:
+  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=10&state=closed
+
+
 0.8 Release                                             Mar. 24. 2014
 ---------------------------------------------------------------------
 
 * Renamed codebase from sagapilot to radical.pilot
 * Added explicit close() calls to PM, UM and Session.
+* Cloesed tickets:
+  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=9&state=closed
+
 
 0.7 Release                                             Feb. 25. 2014
 ---------------------------------------------------------------------
@@ -10,7 +38,7 @@
 * Added support for callbacks 
 * Added support for input file transfer !
 * Closed tickets:
-  - https://github.com/saga-project/saga-pilot/issues?milestone=8&page=1&state=closed
+  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=8&state=closed
 
 
 0.6 Release                                             Feb. 24. 2014

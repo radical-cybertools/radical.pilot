@@ -21,6 +21,7 @@ from scheduler import *
 
 # ------------------------------------------------------------------------------
 #
+from url import Url
 from exceptions import *
 from session import Session 
 from credentials import SSHCredential 

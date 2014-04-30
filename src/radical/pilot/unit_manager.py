@@ -18,7 +18,7 @@ import weakref
 from radical.pilot.compute_unit import ComputeUnit
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.mpworker import UnitManagerWorker
+from radical.pilot.controller import UnitManagerController
 from radical.pilot.scheduler import get_scheduler
 
 from radical.pilot.states import *
@@ -72,7 +72,8 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, scheduler=None, _reconnect=False):
+    def __init__(self, session, scheduler=None, input_transfer_workers=2,
+                 output_transfer_workers=2, _reconnect=False):
         """Creates a new UnitManager and attaches it to the session.
 
         **Args:**
@@ -81,19 +82,34 @@ class UnitManager(object):
 
             * scheduler (`string`): The name of the scheduler plug-in to use.
 
+            * input_transfer_workers (`int`): The number of input file transfer 
+              worker processes to launch in the background (default: 2). 
+
+            * output_transfer_workers (`int`): The number of output file transfer 
+              worker processes to launch in the background (default: 2). 
+
+        .. note:: `input_transfer_workers` and `output_transfer_workers` can be
+                  used to tune RADICAL-Pilot's file transfer performance. 
+                  However, you should only change the default values if you 
+                  know what you are doing.
+
         **Raises:**
             * :class:`radical.pilot.radical.pilotException`
         """
         self._session = session
-        self._worker = None
+        self._worker = None 
+        self._pilots = []
 
         if _reconnect is False:
             # Start a worker process fo this UnitManager instance. The worker
             # process encapsulates database access et al.
-            self._worker = UnitManagerWorker(
+            self._worker = UnitManagerController(
                 unit_manager_uid=None, 
                 scheduler=scheduler,
-                db_connection=session._dbs)
+                input_transfer_workers=input_transfer_workers,
+                output_transfer_workers=output_transfer_workers,
+                db_connection=session._dbs,
+                db_connection_info=session._connection_info)
             self._worker.start()
 
             self._uid = self._worker.unit_manager_uid
@@ -133,7 +149,7 @@ class UnitManager(object):
     def _reconnect(cls, session, unit_manager_id):
         """PRIVATE: Reconnect to an existing UnitManager.
         """
-        uid_exists = UnitManagerWorker.uid_exists(
+        uid_exists = UnitManagerController.uid_exists(
             db_connection=session._dbs,
             unit_manager_uid=unit_manager_id)
 
@@ -241,6 +257,9 @@ class UnitManager(object):
             pilots = [pilots]
 
         self._worker.add_pilots(pilots)
+
+        for pilot in pilots:
+            self._pilots.append(pilot.uid)
 
     # -------------------------------------------------------------------------
     #
