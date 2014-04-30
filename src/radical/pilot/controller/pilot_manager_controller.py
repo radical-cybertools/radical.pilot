@@ -30,6 +30,7 @@ from radical.pilot.credentials import SSHCredential
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.pilotlauncher import launch_pilot
+from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
 
 
 # ----------------------------------------------------------------------------
@@ -41,7 +42,8 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, pilot_manager_uid, pilot_manager_data, db_connection):
+    def __init__(self, pilot_manager_uid, pilot_manager_data, 
+        pilot_launcher_workers, db_connection, db_connection_info):
         """Le constructeur.
         """
         # The MongoDB database handle.
@@ -91,12 +93,26 @@ class PilotManagerController(threading.Thread):
         if pilot_manager_uid is None:
             # Try to register the PilotManager with the database.
             self._pm_id = self._db.insert_pilot_manager(
-                pilot_manager_data=pilot_manager_data
+                pilot_manager_data=pilot_manager_data,
+                pilot_launcher_workers=pilot_launcher_workers
             )
+            self._num_pilot_launcher_workers = pilot_launcher_workers
         else:
+            pm_json = self._db.get_pilot_manager(pilot_manager_id=pilot_manager_uid)
             self._pm_id = pilot_manager_uid
+            self._num_pilot_launcher_workers = um_json["pilot_launcher_workers"]
 
-        self.name = 'PMWThread-%s' % self._pm_id
+        # The pilot launcher worker(s) are autonomous processes that
+        # execute pilot bootstrap / launcher requests concurrently.
+        self._pilot_launcher_worker_pool = []
+        for worker_number in range(1, self._num_pilot_launcher_workers+1):
+            worker = PilotLauncherWorker(
+                db_connection_info=db_connection_info, 
+                pilot_manager_id=self._pm_id,
+                number=worker_number
+            )
+            self._pilot_launcher_worker_pool.append(worker)
+            worker.start()
 
     # ------------------------------------------------------------------------
     #
@@ -259,7 +275,11 @@ class PilotManagerController(threading.Thread):
         self._worker_pool.terminate()
         self._worker_pool.join()
 
-        logger.debug("Thread main loop terminated")
+        # shut down the autonomous pilot launcher worker(s)
+        for worker in self._pilot_launcher_worker_pool:
+            worker.terminate()
+            worker.join()
+            logger.debug("PilotManager.close(): %s terminated." % worker.name)
 
     # ------------------------------------------------------------------------
     #

@@ -55,7 +55,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
             um_col = db["%s.w" % self.db_connection_info.session_id]
-            logger.debug("Connected to MongoDB. Serving requests for UnitManager %s" % self.unit_manager_id)
+            logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
             session_col = db["%s" % self.db_connection_info.session_id]
             session = session_col.find(

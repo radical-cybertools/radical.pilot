@@ -53,7 +53,7 @@ class PilotManager(Object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, resource_configurations=None):
+    def __init__(self, session, resource_configurations=None, pilot_launcher_workers=1):
         """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -82,6 +82,13 @@ class PilotManager(Object):
                   pd.runtime  = 5 # minutes
 
                   pilot = pm.submit_pilots(pd)
+
+            * pilot_launcher_workers (`int`): The number of pilot launcher 
+              worker processes to start in the background. 
+
+        .. note:: `pilot_launcher_workers` can be used to tune RADICAL-Pilot's 
+                  performance. However, you should only change the default values 
+                  if you know what you are doing.
 
         **Returns:**
 
@@ -146,7 +153,9 @@ class PilotManager(Object):
         self._worker = PilotManagerController(
             pilot_manager_uid=None,
             pilot_manager_data={},
-            db_connection=session._dbs)
+            pilot_launcher_workers=pilot_launcher_workers,
+            db_connection=session._dbs,
+            db_connection_info=session._connection_info)
         self._worker.start()
 
         self._uid = self._worker.pilot_manager_uid

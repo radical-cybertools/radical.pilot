@@ -204,7 +204,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot_manager(self, pilot_manager_data):
+    def insert_pilot_manager(self, pilot_manager_data, pilot_launcher_workers):
         """ Adds a pilot managers to the list of pilot managers.
 
             Pilot manager IDs are just kept for book-keeping.
@@ -212,7 +212,8 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_manager_json = {"data": pilot_manager_data}
+        pilot_manager_json = {"data": pilot_manager_data,
+                              "pilot_launcher_workers": pilot_launcher_workers}
         result = self._pm.insert(pilot_manager_json)
 
         # return the object id as a string
