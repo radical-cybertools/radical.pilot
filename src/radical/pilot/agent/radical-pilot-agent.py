@@ -117,7 +117,7 @@ def pilot_PENDING_OUTPUT_TRANSFER(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"state": 'PendingOutputTransfer',
+        {"$set": {"state": 'PendingOutputStaging',
                   "finished": datetime.datetime.utcnow()
         }})
 
@@ -263,7 +263,7 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr, output_data):
+    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr, input_staging, output_staging):
 
         self._log         = None
         self._description = None
@@ -276,7 +276,8 @@ class Task(object):
         self.workdir        = workdir
         self.stdout         = stdout
         self.stderr         = stderr
-        self.output_data    = output_data
+        self.input_staging  = input_staging
+        self.output_staging = output_staging
         self.numcores       = 1
 
         # dynamic task properties
@@ -384,6 +385,9 @@ class ExecWorker(multiprocessing.Process):
                                     else : 
                                         raise
 
+                                # Perform input staging
+                                self._log.info('Task input staging directives: %s' % task.input_staging)
+
                                 # RUN THE TASK
                                 self._slots[host][slot] = _Process(
                                     task=task, 
@@ -404,6 +408,7 @@ class ExecWorker(multiprocessing.Process):
                                 # do nothing if we don't have any queued tasks
                                 self._slots[host][slot] = None
 
+                        # slot not free
                         else:
 
                             rc = self._slots[host][slot].poll()
@@ -417,11 +422,13 @@ class ExecWorker(multiprocessing.Process):
                                 uid = self._slots[host][slot].task.uid
                                 self._log.info("Task %s terminated with return code %s." % (uid, rc))
 
+
                                 if rc != 0:
                                     state = 'Failed'
                                 else:
-                                    if self._slots[host][slot].task.output_data is not None:
-                                        state = 'PendingOutputTransfer'
+                                    if self._slots[host][slot].task.output_staging is not None:
+                                        self._log.info('Task output staging directives: %s' % self._slots[host][slot].task.output_staging)
+                                        state = 'PendingOutputStaging'
                                     else:
                                         state = 'Done'
 
@@ -715,7 +722,8 @@ class Agent(threading.Thread):
                                             workdir     = task_dir_name, 
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
-                                            output_data = wu["description"]["output_data"])
+                                            input_staging = wu['description']['input_staging'],
+                                            output_staging = wu['description']['output_staging'])
 
                                 self._task_queue.put(task)
 
