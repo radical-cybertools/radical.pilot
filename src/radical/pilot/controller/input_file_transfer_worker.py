@@ -17,6 +17,7 @@ from bson.objectid import ObjectId
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
 from radical.pilot.credentials import SSHCredential
+from radical.pilot.staging_directives import TRANSFER
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
@@ -47,6 +48,10 @@ class InputFileTransferWorker(multiprocessing.Process):
         """Starts the process when Process.start() is called.
         """
 
+        logger.info("Starting InputFileTransferWorker")
+        #return
+
+
         # saga_session holds the SSH context infos.
         saga_session = saga.Session()
 
@@ -75,15 +80,15 @@ class InputFileTransferWorker(multiprocessing.Process):
 
         while True:
             # See if we can find a ComputeUnit that is waiting for
-            # output file transfer.
+            # input file transfer.
             compute_unit = None
 
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "state" : PENDING_INPUT_TRANSFER},
-                update={"$set" : {"state": "TransferringInput"},
-                        "$push": {"statehistory": {"state": TRANSFERRING_INPUT, "timestamp": ts}}},
+                       "state" : PENDING_INPUT_STAGING},
+                update={"$set" : {"state": STAGING_INPUT},
+                        "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
 
@@ -98,7 +103,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                     # directive(s) wit SAGA.
                     compute_unit_id = str(compute_unit["_id"])
                     remote_sandbox = compute_unit["sandbox"]
-                    transfer_directives = compute_unit["description"]["input_data"]
+                    input_staging = compute_unit["description"]["input_staging"]
 
                     # We need to create the WU's directory in case it doesn't exist yet.
                     log_msg = "Creating ComputeUnit sandbox directory %s." % remote_sandbox
@@ -106,25 +111,33 @@ class InputFileTransferWorker(multiprocessing.Process):
                     logger.info(log_msg)
 
                     # Creating the sandbox directory.
-                    wu_dir = saga.filesystem.Directory(
-                        remote_sandbox,
-                        flags=saga.filesystem.CREATE_PARENTS,
-                        session=saga_session)
-                    wu_dir.close()
+                    try:
+                        wu_dir = saga.filesystem.Directory(
+                            remote_sandbox,
+                            flags=saga.filesystem.CREATE_PARENTS,
+                            session=saga_session)
+                        wu_dir.close()
+                    except Exception, ex:
+                        tb = traceback.format_exc()
+                        logger.info('Error: %s. %s' % (str(ex), tb))
+
 
                     logger.info("Processing input file transfers for ComputeUnit %s" % compute_unit_id)
                     # Loop over all transfer directives and execute them.
-                    for td in transfer_directives:
-                        
-                        st = td.split(">")
-                        abs_t = os.path.abspath(st[0].strip())
-                        input_file_url = saga.Url("file://localhost/%s" % abs_t)
-                        if len(st) == 1:
+                    for sd in input_staging:
+
+                        # Only deal with TRANSFER, all the other actions are taken care of by the agent.
+                        if sd['action'] != TRANSFER:
+                            logger.info("Action != Transfer, skipping ...")
+                            continue
+                        logger.info("Action == Transfer, let the games begin!")
+
+                        abs_src = os.path.abspath(sd['source'])
+                        input_file_url = saga.Url("file://localhost/%s" % abs_src)
+                        if not sd['target']:
                             target = remote_sandbox
-                        elif len(st) == 2:
-                            target = "%s/%s" % (remote_sandbox, st[1].strip()) 
                         else:
-                            raise Exception("Invalid transfer directive: %s" % td)
+                            target = "%s/%s" % (remote_sandbox, sd['target'])
 
                         log_msg = "Transferring input file %s -> %s" % (input_file_url, target)
                         log_messages.append(log_msg)
@@ -135,11 +148,19 @@ class InputFileTransferWorker(multiprocessing.Process):
                             input_file_url,
                             session=saga_session
                         )
-                        input_file.copy(target)
+                        logger.info("File object instantiated")
+                        try:
+                            input_file.copy(target)
+                        except Exception, ex:
+                            tb = traceback.format_exc()
+                            logger.info('Error: %s. %s' % (str(ex), tb))
+
+                        logger.info("File copied")
                         input_file.close()
-                    
+                        logger.info("File closed")
+
                     # Update the CU's state to 'PENDING_EXECUTION' if all 
-                    # transfers were successfull.            
+                    # transfers were successful.
                     ts = datetime.datetime.utcnow()
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
@@ -152,9 +173,10 @@ class InputFileTransferWorker(multiprocessing.Process):
                     # Update the CU's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
                     log_messages = "Input transfer failed: %s" % str(ex)
-                    um_col.update(
-                        {"_id": ObjectId(compute_unit_id)},
-                        {"$set": {"state": FAILED},
-                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                         "$push": {"log": log_messages}}
-                    )
+                    logger.debug(log_msg)
+                    # um_col.update(
+                    #     {"_id": ObjectId(compute_unit_id)},
+                    #     {"$set": {"state": FAILED},
+                    #      "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                    #      "$push": {"log": log_messages}}
+                    # )
