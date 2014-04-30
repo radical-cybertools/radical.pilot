@@ -2,12 +2,22 @@ import os
 import sys
 import radical.pilot
 
+# READ: The RADICAL-Pilot documentation: 
+#   http://radicalpilot.readthedocs.org/en/latest/machconf.html
+#
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!
+#
+# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
+# easiest way to make this work seamlessly is to set up ssh key-based
+# authentication and add the key to your keychain so you won't be 
+# prompted for a password. The following article explains how to set 
+# this up on Linux:
+#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
+
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
+# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."

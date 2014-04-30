@@ -760,7 +760,7 @@ class _Process(subprocess.Popen):
             
         elif launch_method == LAUNCH_METHOD_SSH:
             cmdline = launch_command
-            cmdline += " %s " % host
+            cmdline += " -o StrictHostKeyChecking=no %s " % host
 
         # task executable and arguments
         payload = str(" cd %s && " % task.workdir)

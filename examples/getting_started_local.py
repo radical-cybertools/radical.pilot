@@ -4,7 +4,7 @@ import time
 import radical.pilot
 
 # READ: The RADICAL-Pilot documentation: 
-#   http://saga-pilot.readthedocs.org/en/latest/machconf.html
+#   http://radicalpilot.readthedocs.org/en/latest/machconf.html
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!

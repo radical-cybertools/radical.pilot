@@ -3,7 +3,7 @@ import sys
 import radical.pilot
 
 # READ: The RADICAL-Pilot documentation: 
-#   http://saga-pilot.readthedocs.org/en/latest/machconf.html
+#   http://radicalpilot.readthedocs.org/en/latest/machconf.html
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!
@@ -12,7 +12,7 @@ import radical.pilot
 # easiest way to make this work seamlessly is to set up ssh key-based
 # authentication and add the key to your keychain so you won't be 
 # prompted for a password. The following article explains how to set 
-# this up un Linux:
+# this up on Linux:
 #   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
 
 
