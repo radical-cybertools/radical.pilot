@@ -47,6 +47,9 @@ class OutputFileTransferWorker(multiprocessing.Process):
         """Starts the process when Process.start() is called.
         """
 
+        # TODO: Temporarily disabled
+        return
+
         # saga_session holds the SSH context infos.
         saga_session = saga.Session()
 
@@ -81,9 +84,9 @@ class OutputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "state" : PENDING_OUTPUT_TRANSFER},
-                update={"$set" : {"state": TRANSFERRING_OUTPUT},
-                        "$push": {"statehistory": {"state": TRANSFERRING_OUTPUT, "timestamp": ts}}},
+                       "state" : PENDING_OUTPUT_STAGING},
+                update={"$set" : {"state": STAGING_OUTPUT},
+                        "$push": {"statehistory": {"state": STAGING_OUTPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
 
