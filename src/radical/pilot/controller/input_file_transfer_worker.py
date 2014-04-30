@@ -55,7 +55,7 @@ class InputFileTransferWorker(multiprocessing.Process):
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
             um_col = db["%s.w" % self.db_connection_info.session_id]
-            logger.debug("Connected to database %s." % db.host)
+            logger.debug("Connected to MongoDB. Serving requests for UnitManager %s" % self.unit_manager_id)
 
             session_col = db["%s" % self.db_connection_info.session_id]
             session = session_col.find(
@@ -66,7 +66,7 @@ class InputFileTransferWorker(multiprocessing.Process):
             for cred_dict in session[0]["credentials"]:
                 cred = SSHCredential.from_dict(cred_dict)
                 saga_session.add_context(cred._context)
-                logger.debug("Added SSH context info: %s." % cred._context)
+                logger.debug("Found SSH context info: %s." % cred._context)
 
         except Exception, ex:
             tb = traceback.format_exc()

@@ -113,10 +113,17 @@ if __name__ == "__main__":
         import time
         time.sleep(2)
 
+        print "\n== UNIT STATE HISTORY==\n"
+
         for unit in umgr.get_units():
             # Print some information about the unit.
             for state in unit.state_history:
-                print "%s: %s" % (state.timestamp, state.state)
+                print " * %s: %s\n" % (state.timestamp, state.state)
+
+        print "\n== PILOT STATE HISTORY==\n"
+
+        for state in pilot.state_history:
+            print " * %s: %s\n" % (state.timestamp, state.state)
 
         # Remove session from database
         session.close()

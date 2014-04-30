@@ -70,6 +70,8 @@ UNKNOWN                 = 'Unknown'
 NEW                     = 'New'
 
 PENDING                 = 'Pending'
+PENDING_BOOTSTRAP       = 'PendingBootstrap'
+BOOTSTRAPPING           = 'Bootstrapping'
 
 PENDING_EXECUTION       = 'PendingExecution'
 RUNNING                 = 'Running'
