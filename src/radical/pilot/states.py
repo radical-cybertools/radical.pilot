@@ -77,11 +77,11 @@ PENDING                 = 'Pending'
 PENDING_EXECUTION       = 'PendingExecution'
 RUNNING                 = 'Running'
 
-PENDING_INPUT_TRANSFER  = 'PendingInputTransfer'
-TRANSFERRING_INPUT      = 'TransferringInput'
+PENDING_INPUT_STAGING   = 'PendingInputStaging'
+STAGING_INPUT           = 'StagingInput'
 
-PENDING_OUTPUT_TRANSFER = 'PendingOutputTransfer'
-TRANSFERRING_OUTPUT     = 'TransferringOutput'
+PENDING_OUTPUT_STAGING  = 'PendingOutputStaging'
+STAGING_OUTPUT          = 'StagingOutput'
 
 DONE                    = 'Done'
 CANCELED                = 'Canceled'
