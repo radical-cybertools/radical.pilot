@@ -90,7 +90,9 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION,
+            output_transfer_workers=4,
+            input_transfer_workers=4)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
