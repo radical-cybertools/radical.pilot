@@ -404,7 +404,9 @@ class UnitManagerController(threading.Thread):
         # don't. The latter is added to the pilot directly, while the former
         # is added to the transfer queue.
         for unit in units:
-            if unit.description.input_data is None:
+            # TODO: change test to find real transfers only
+            #if unit.description.input_data is None:
+            if True:
                 wu_notransfer.append(unit.uid)
             else:
                 wu_transfer.append(unit)
@@ -449,4 +451,4 @@ class UnitManagerController(threading.Thread):
         if len(wu_transfer) > 0:
             for unit in wu_transfer:
                 log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
-                self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)
+                self._set_state(unit.uid, PENDING_INPUT_STAGING, log)
