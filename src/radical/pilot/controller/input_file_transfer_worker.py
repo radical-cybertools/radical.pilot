@@ -82,7 +82,7 @@ class InputFileTransferWorker(multiprocessing.Process):
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
                        "state" : PENDING_INPUT_TRANSFER},
-                update={"$set" : {"state": "TransferringInput"},
+                update={"$set" : {"state": TRANSFERRING_INPUT},
                         "$push": {"statehistory": {"state": TRANSFERRING_INPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )

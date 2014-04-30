@@ -331,6 +331,8 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
+        ts = datetime.datetime.utcnow()
+
         pilot_doc = {
             "_id":            pilot_uid,
             "description":    pilot_description.as_dict(),
@@ -346,7 +348,7 @@ class Session():
             "sagajobid":      None,
             "sandbox":        sandbox,
             "state":          PENDING,
-            "statehistory":   [],
+            "statehistory":   [{"state": "Pending", "timestamp": ts}],
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
@@ -664,13 +666,15 @@ class Session():
             else:
                 working_directory.path += "/unit-"+unit.uid
 
+            ts = datetime.datetime.utcnow()
+
             unit_json = {
                 "_id":          ObjectId(unit.uid),
                 "description":  unit.description.as_dict(),
                 "unitmanager":  unit_manager_uid,
                 "pilot":        pilot_uid,
                 "state":        NEW,
-                "statehistory": [],
+                "statehistory": [{"state": "New", "timestamp": ts}],
                 "submitted":    datetime.datetime.utcnow(),
                 "started":      None,
                 "finished":     None,
