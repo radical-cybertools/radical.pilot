@@ -266,7 +266,6 @@ class UnitManagerController(threading.Thread):
             # After the first iteration, we are officially initialized!
             if not self._initialized.is_set():
                 self._initialized.set()
-                logger.debug("Worker status set to 'initialized'.")
 
             time.sleep(1)
 

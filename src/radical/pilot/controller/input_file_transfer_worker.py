@@ -158,3 +158,4 @@ class InputFileTransferWorker(multiprocessing.Process):
                          "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
                          "$push": {"log": log_messages}}
                     )
+                    logger.error(log_messages)

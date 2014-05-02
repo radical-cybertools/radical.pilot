@@ -79,7 +79,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
             # See if we can find a ComputePilot that is waiting to be launched.
             ts = datetime.datetime.utcnow()
-            compute_unit = pilot_col.find_and_modify(
+            compute_pilot = pilot_col.find_and_modify(
                 query={"pilotmanager": self.pilot_manager_id,
                        "state" : PENDING_BOOTSTRAP},
                 update={"$set" : {"state": BOOTSTRAPPING},
@@ -92,8 +92,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                 time.sleep(1)
             else:
                 try:
+                    log_messages = []
+
                     # LAUNCH HERE
-                    compute_pilot_id = str(compute_piplot["_id"])
+                    compute_pilot_id = str(compute_pilot["_id"])
                     logger.info("Launching ComputePilot %s" % compute_pilot_id)
                     time.sleep(2)
 
@@ -116,3 +118,4 @@ class PilotLauncherWorker(multiprocessing.Process):
                          "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
                          "$push": {"log": log_messages}}
                     )
+                    logger.error(log_messages)

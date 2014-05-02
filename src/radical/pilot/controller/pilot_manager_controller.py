@@ -26,10 +26,10 @@ from multiprocessing import Pool
 from radical.utils import which
 import saga.utils.pty_shell as sups
 
+from radical.pilot.states import *
 from radical.pilot.credentials import SSHCredential
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.controller.pilotlauncher import launch_pilot
 from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
 
 
@@ -61,10 +61,6 @@ class PilotManagerController(threading.Thread):
         # at least once. Other functions use it as a guard.
         self._initialized = threading.Event()
         self._initialized.clear()
-
-        # The transfer worker pool is a multiprocessing pool that executes
-        # concurrent pilot startup requests.
-        self._worker_pool = Pool(2)
 
         # Startup results contains a list of asynchronous startup results.
         self.startup_results = list()
@@ -210,30 +206,30 @@ class PilotManagerController(threading.Thread):
 
         while not self._stop.is_set():
 
-            # Check if one or more startup requests have finished.
-            self.startup_results_lock.acquire()
+            # # Check if one or more startup requests have finished.
+            # self.startup_results_lock.acquire()
 
-            new_startup_results = list()
+            # new_startup_results = list()
 
-            for transfer_result in self.startup_results:
-                if transfer_result.ready():
-                    result = transfer_result.get()
+            # for transfer_result in self.startup_results:
+            #     if transfer_result.ready():
+            #         result = transfer_result.get()
 
-                    self._db.update_pilot_state(
-                        pilot_uid=result["pilot_uid"],
-                        state=result["state"],
-                        sagajobid=result["saga_job_id"],
-                        sandbox=result["sandbox"],
-                        submitted=result["submitted"],
-                        logs=result["logs"]
-                    )
+            #         self._db.update_pilot_state(
+            #             pilot_uid=result["pilot_uid"],
+            #             state=result["state"],
+            #             sagajobid=result["saga_job_id"],
+            #             sandbox=result["sandbox"],
+            #             submitted=result["submitted"],
+            #             logs=result["logs"]
+            #         )
 
-                else:
-                    new_startup_results.append(transfer_result)
+            #     else:
+            #         new_startup_results.append(transfer_result)
 
-            self.startup_results = new_startup_results
+            # self.startup_results = new_startup_results
 
-            self.startup_results_lock.release()
+            # self.startup_results_lock.release()
 
             # Check and update pilots. This needs to be optimized at
             # some point, i.e., state pulling should be conditional
@@ -267,13 +263,8 @@ class PilotManagerController(threading.Thread):
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
                     self._initialized.set()
-                    logger.debug("Worker status set to 'initialized'.")
 
             time.sleep(1)
-
-        # shut down the pool
-        self._worker_pool.terminate()
-        self._worker_pool.join()
 
         # shut down the autonomous pilot launcher worker(s)
         for worker in self._pilot_launcher_worker_pool:
@@ -366,23 +357,29 @@ class PilotManagerController(threading.Thread):
             'facade_object': weakref.ref(pilot)
         }
 
+        # Call the callbacks manually.
+        #self.call_callbacks(
+        #    pilot_uid,
+        #    PENDING_BOOTSTRAP
+        #)
+
         # Launch the pilot startup function asynchronously. Result will get
         # added to a list and checked periodically in the run loop.
-        startup_result = self._worker_pool.apply_async(
-            launch_pilot, args=(
-                pilot_uid,
-                pilot.description.as_dict(),
-                resource_config,
-                str(agent_dir_url),
-                session.as_dict(),
-                cred_dict)
-        )
+        #startup_result = self._worker_pool.apply_async(
+        #    launch_pilot, args=(
+        #        pilot_uid,
+        #        pilot.description.as_dict(),
+        #        resource_config,
+        #        str(agent_dir_url),
+        #        session.as_dict(),
+        #        cred_dict)
+        #)
 
         # Append the startup result future to the list of results. The list is
         # checked for results periodiacally in the thread's run() loop.
-        self.startup_results_lock.acquire()
-        self.startup_results.append(startup_result)
-        self.startup_results_lock.release()
+        #self.startup_results_lock.acquire()
+        #self.startup_results.append(startup_result)
+        #self.startup_results_lock.release()
 
         return pilot_uid
 
@@ -423,6 +420,6 @@ class PilotManagerController(threading.Thread):
             pilot_ids=pilot_ids, cmd="CANCEL")
 
         if pilot_ids is None:
-            logger.info("Sent 'CANCEL' to all pilots.")
+            logger.info("Sent 'CANCEL' command to all pilots.")
         else:
-            logger.info("Sent 'CANCEL' to pilots %s.", pilot_ids)
+            logger.info("Sent 'CANCEL' command to pilots %s.", pilot_ids)
