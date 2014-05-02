@@ -32,7 +32,8 @@ class PilotLauncherWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, db_connection_info, pilot_manager_id, number=None):
+    def __init__(self, db_connection_info, pilot_manager_id, 
+        resource_configurations, number=None):
         """Creates a new pilot launcher background process.
         """
         # Multiprocessing stuff
@@ -41,6 +42,8 @@ class PilotLauncherWorker(multiprocessing.Process):
 
         self.db_connection_info = db_connection_info
         self.pilot_manager_id = pilot_manager_id
+
+        self.resource_configurations = resource_configurations
 
         self.name = "PilotLauncherWorker-%s" % str(number)
 
@@ -109,6 +112,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     pilot_agent  = compute_pilot['description']['pilot_agent_priv']
 
                     sandbox      = compute_pilot['sandbox']
+                    resource_cfg = self.resource_configurations[compute_pilot['description']['resource']]
 
                     database_host = self.db_connection_info.url.split("://")[1], 
                     database_name = self.db_connection_info.dbname
@@ -171,7 +175,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd.arguments = ["-r", database_host,   # database host (+ port)
                                     "-d", database_name,   # database name
                                     "-s", session_uid,     # session uid
-                                    "-p", str(pilot_uid),  # pilot uid
+                                    "-p", str(compute_pilot_id),  # pilot uid
                                     "-t", runtime,         # agent runtime in minutes
                                     "-c", number_cores] 
 

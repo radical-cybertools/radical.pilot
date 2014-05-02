@@ -154,6 +154,7 @@ class PilotManager(Object):
             pilot_manager_uid=None,
             pilot_manager_data={},
             pilot_launcher_workers=pilot_launcher_workers,
+            resource_configurations=self._resource_cfgs,
             db_connection=session._dbs,
             db_connection_info=session._connection_info)
         self._worker.start()
