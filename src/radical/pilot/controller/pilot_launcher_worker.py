@@ -114,7 +114,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     sandbox      = compute_pilot['sandbox']
                     resource_cfg = self.resource_configurations[compute_pilot['description']['resource']]
 
-                    database_host = self.db_connection_info.url.split("://")[1], 
+                    database_host = self.db_connection_info.url.split("://")[1] 
                     database_name = self.db_connection_info.dbname
                     session_uid   = self.db_connection_info.session_id
 
@@ -138,7 +138,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     # This works for non-installed versions (i.e., python setup.py test)
                     bs_script_url = saga.Url("file://localhost/%s" % bs_script)
 
-                    log_msg = "Copying '%s' script to agent sandbox." % bs_script_url
+                    log_msg = "Copying '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
 
@@ -157,7 +157,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     agent_script_url = saga.Url("file://localhost/%s" % agent_path)
 
-                    log_msg = "Copying '%s' to agent sandbox." % agent_script_url
+                    log_msg = "Copying '%s' to agent sandbox (%s)." % (agent_script_url, sandbox)
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
 
@@ -208,7 +208,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd.total_cpu_count = number_cores
                     jd.wall_time_limit = runtime
 
-                    log_msg = "Starting SAGA job with description: %s" % str(jd)
+                    log_msg = "Submitting SAGA job with description: %s" % str(jd)
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
 
@@ -216,6 +216,9 @@ class PilotLauncherWorker(multiprocessing.Process):
                     pilotjob.run()
 
                     saga_job_id = pilotjob.id
+                    log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
+                    log_messages.append(log_msg)
+                    logger.debug(log_msg)
 
                     js.close()                    
                     ##
