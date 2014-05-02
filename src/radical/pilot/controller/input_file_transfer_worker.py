@@ -69,8 +69,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                 logger.debug("Found SSH context info: %s." % cred._context)
 
         except Exception, ex:
-            tb = traceback.format_exc()
-            logger.error("Connection error: %s. %s" % (str(ex), tb))
+            logger.error("Connection error: %s. %s" % (str(ex), traceback.format_exc()))
             return
 
         while True:
@@ -151,7 +150,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
-                    log_messages = "Input transfer failed: %s" % str(ex)
+                    log_messages = "Input transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
                         {"$set": {"state": FAILED},
