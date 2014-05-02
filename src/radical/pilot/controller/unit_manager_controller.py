@@ -1,11 +1,5 @@
-#pylint: disable=C0301, C0103, W0212
-
 """
-.. module:: radical.pilot.controller.unit_manager_controller
-   :platform: Unix
-   :synopsis: Implements a multiprocessing worker backend for
-              the UnitManager class.
-
+.. module:: radical.pilot.controller.pilot_launcher_worker
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
