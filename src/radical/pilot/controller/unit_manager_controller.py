@@ -1,11 +1,5 @@
-#pylint: disable=C0301, C0103, W0212
-
 """
-.. module:: radical.pilot.controller.unit_manager_controller
-   :platform: Unix
-   :synopsis: Implements a multiprocessing worker backend for
-              the UnitManager class.
-
+.. module:: radical.pilot.controller.pilot_launcher_worker
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 
@@ -91,11 +85,11 @@ class UnitManagerController(threading.Thread):
         # The INPUT transfer worker(s) are autonomous processes that
         # execute input file transfer requests concurrently.
         self._input_file_transfer_worker_pool = []
-        for x in range(1, self._num_input_transfer_workers+1):
+        for worker_number in range(1, self._num_input_transfer_workers+1):
             worker = InputFileTransferWorker(
                 db_connection_info=db_connection_info, 
                 unit_manager_id=self._um_id,
-                number=x
+                number=worker_number
             )
             self._input_file_transfer_worker_pool.append(worker)
             worker.start()
@@ -103,11 +97,11 @@ class UnitManagerController(threading.Thread):
         # The OUTPUT transfer worker(s) are autonomous processes that
         # execute output file transfer requests concurrently.
         self._output_file_transfer_worker_pool = []
-        for x in range(1, self._num_output_transfer_workers+1):
+        for worker_number in range(1, self._num_output_transfer_workers+1):
             worker = OutputFileTransferWorker(
                 db_connection_info=db_connection_info, 
                 unit_manager_id=self._um_id,
-                number=x
+                number=worker_number
             )
             self._output_file_transfer_worker_pool.append(worker)
             worker.start()
@@ -266,7 +260,6 @@ class UnitManagerController(threading.Thread):
             # After the first iteration, we are officially initialized!
             if not self._initialized.is_set():
                 self._initialized.set()
-                logger.debug("Worker status set to 'initialized'.")
 
             time.sleep(1)
 

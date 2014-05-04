@@ -204,7 +204,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot_manager(self, pilot_manager_data):
+    def insert_pilot_manager(self, pilot_manager_data, pilot_launcher_workers):
         """ Adds a pilot managers to the list of pilot managers.
 
             Pilot manager IDs are just kept for book-keeping.
@@ -212,7 +212,8 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_manager_json = {"data": pilot_manager_data}
+        pilot_manager_json = {"data": pilot_manager_data,
+                              "pilot_launcher_workers": pilot_launcher_workers}
         result = self._pm.insert(pilot_manager_json)
 
         # return the object id as a string
@@ -331,6 +332,8 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
+        ts = datetime.datetime.utcnow()
+
         pilot_doc = {
             "_id":            pilot_uid,
             "description":    pilot_description.as_dict(),
@@ -345,8 +348,8 @@ class Session():
             "cores_per_node": None,
             "sagajobid":      None,
             "sandbox":        sandbox,
-            "state":          PENDING,
-            "statehistory":   [],
+            "state":          PENDING_BOOTSTRAP,
+            "statehistory":   [{"state": PENDING_BOOTSTRAP, "timestamp": ts}],
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
@@ -664,13 +667,15 @@ class Session():
             else:
                 working_directory.path += "/unit-"+unit.uid
 
+            ts = datetime.datetime.utcnow()
+
             unit_json = {
                 "_id":          ObjectId(unit.uid),
                 "description":  unit.description.as_dict(),
                 "unitmanager":  unit_manager_uid,
                 "pilot":        pilot_uid,
                 "state":        NEW,
-                "statehistory": [],
+                "statehistory": [{"state": "New", "timestamp": ts}],
                 "submitted":    datetime.datetime.utcnow(),
                 "started":      None,
                 "finished":     None,

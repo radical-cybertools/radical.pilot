@@ -3,12 +3,19 @@ import sys
 import time
 import radical.pilot
 
+# READ: The RADICAL-Pilot documentation: 
+#   http://radicalpilot.readthedocs.org/en/latest
+#
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# you want to see what happens behind the scences!
+#
+
+
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICALPILOT_DBURL")
+# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
+DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: RADICALPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
 
@@ -57,9 +64,9 @@ if __name__ == "__main__":
         # after itself.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "localhost"
-        pdesc.runtime = 5
-        pdesc.cores = 2
-        pdesc.cleanup = True
+        pdesc.runtime  = 5 # minutes
+        pdesc.cores    = 2
+        pdesc.cleanup  = True
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -77,13 +84,13 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 16):
             cu = radical.pilot.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-            cu.executable = "/bin/cat"
-            cu.arguments = ["$INPUT1", "$INPUT2"]
-            cu.cores = 1
-            cu.input_data = ["./file1.dat", "./file2.dat"]
+            cu.executable  = "/bin/cat"
+            cu.arguments   = ["$INPUT1", "$INPUT2"]
+            cu.cores       = 1
+            cu.input_data  = ["./file1.dat", "./file2.dat"]
 
             compute_units.append(cu)
 
@@ -106,30 +113,18 @@ if __name__ == "__main__":
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(compute_units)
 
-        # Wait for all compute units to finish.
+        # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
-        pmgr.cancel_pilots()
+        for unit in units:
+            print "* Task %s (executed @ %s) state %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
+                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
-        time.sleep(5)
-
-        for state in pilot.state_history:
-            print "Pilot %s: %s" % (state.timestamp, state.state)
-
-        for unit in umgr.get_units():
-            print "CU %s:" % unit.uid
-            for state in unit.state_history:
-                print "  * %s: %s" % (state.timestamp, state.state)
-
-        #     # Print some information about the unit.
-        #     print "\n{0}".format(str(unit))
-
-        #     # Get the stdout and stderr streams of the ComputeUnit.
-        #     print "  STDOUT: {0}".format(unit.stdout)
-        #     print "  STDERR: {0}".format(unit.stderr)
-
-
+        # Close automatically cancels the pilot(s).
         session.close()
+        sys.exit(0)
 
     except radical.pilot.PilotException, ex:
-        print "Error: %s" % ex
+        # Catch all exceptions and exit with and error.
+        print "Error during execution: %s" % ex
+        sys.exit(1)

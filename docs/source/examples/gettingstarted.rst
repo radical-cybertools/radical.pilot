@@ -395,6 +395,6 @@ The Complete Example
 --------------------
 
 Below is a complete and working example that puts together everything we
-discussed in this section. You can download the sources from :download:`here <../../../examples/getting_started.py>`.
+discussed in this section. You can download the sources from :download:`here <../../../examples/getting_started_local.py>`.
 
-.. literalinclude:: ../../../examples/getting_started.py
+.. literalinclude:: ../../../examples/getting_started_local.py
