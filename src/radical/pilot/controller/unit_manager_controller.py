@@ -14,9 +14,8 @@ import threading
 
 from multiprocessing import Pool
 
-from radical.pilot.states import *
-
 from radical.utils import which
+from radical.pilot.states import *
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
@@ -174,38 +173,38 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def _set_state(self, unit_uid, state, log):
+    # def _set_state(self, unit_uid, state, log):
 
-        if not isinstance(log, list):
-            log = [log]
+    #     if not isinstance(log, list):
+    #         log = [log]
 
-        # Acquire the shared data lock.
-        self._shared_data_lock.acquire()
+    #     # Acquire the shared data lock.
+    #     self._shared_data_lock.acquire()
 
-        old_state = self._shared_data[unit_uid]["data"]["state"]
+    #     old_state = self._shared_data[unit_uid]["data"]["state"]
 
-        # Update the database.
-        self._db.set_compute_unit_state(unit_uid, state, log)
+    #     # Update the database.
+    #     self._db.set_compute_unit_state(unit_uid, state, log)
 
-        # Update shared data.
-        self._shared_data[unit_uid]["data"]["state"] = state
-        self._shared_data[unit_uid]["data"]["statehistory"] = state
-        self._shared_data[unit_uid]["data"]["log"].extend(log)
+    #     # Update shared data.
+    #     self._shared_data[unit_uid]["data"]["state"] = state
+    #     self._shared_data[unit_uid]["data"]["statehistory"].append(state)
+    #     self._shared_data[unit_uid]["data"]["log"].extend(log)
 
-        # Call the callbacks
-        if state != old_state:
-            # On a state change, we fire zee callbacks.
-            logger.info(
-                "ComputeUnit '%s' state changed from '%s' to '%s'." %
-                (unit_uid, old_state, state)
-            )
+    #     # Call the callbacks
+    #     if state != old_state:
+    #         # On a state change, we fire zee callbacks.
+    #         logger.info(
+    #             "XX ComputeUnit '%s' state changed from '%s' to '%s'." %
+    #             (unit_uid, old_state, state)
+    #         )
 
-            # The state of the unit has changed, We call all
-            # unit-level callbacks to propagate this.
-            self.call_callbacks(unit_uid, state)
+    #         # The state of the unit has changed, We call all
+    #         # unit-level callbacks to propagate this.
+    #         self.call_callbacks(unit_uid, state)
 
-        # Release the shared data lock.
-        self._shared_data_lock.release()
+    #     # Release the shared data lock.
+    #     self._shared_data_lock.release()
 
     # ------------------------------------------------------------------------
     #
@@ -251,7 +250,7 @@ class UnitManagerController(threading.Thread):
 
                 if new_state != old_state:
                     # On a state change, we fire zee callbacks.
-                    logger.info("ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
+                    logger.info("RUN ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
 
                     # The state of the unit has changed, We call all
                     # unit-level callbacks to propagate this.
@@ -429,8 +428,9 @@ class UnitManagerController(threading.Thread):
         )
 
         for unit in wu_notransfer:
-            log = "Scheduled for execution on ComputePilot %s." % pilot_uid
-            self._set_state(unit, PENDING_EXECUTION, log)
+            log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
+            self._db.set_compute_unit_state(unit_uid, WAITING_FOR_EXECUTION, log)
+            #self._set_state(unit, WAITING_FOR_EXECUTION, log)
 
         logger.info(
             "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
@@ -441,5 +441,6 @@ class UnitManagerController(threading.Thread):
         # Add the startup request to the request queue.
         if len(wu_transfer) > 0:
             for unit in wu_transfer:
-                log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
-                self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)
+                log = ["Scheduled for data tranfer to ComputePilot %s." % pilot_uid]
+                self._db.set_compute_unit_state(unit.uid, WAITING_FOR_INPUT_TRANSFER, log)
+                #self._set_state(unit.uid, WAITING_FOR_INPUT_TRANSFER, log)

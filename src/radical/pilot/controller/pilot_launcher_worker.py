@@ -16,8 +16,9 @@ import multiprocessing
 from radical.utils import which
 from bson.objectid import ObjectId
 
-from radical.pilot.utils.version import version as VERSION
 from radical.pilot.states import * 
+
+from radical.pilot.utils.version import version as VERSION
 from radical.pilot.utils.logger import logger
 from radical.pilot.credentials import SSHCredential
 
@@ -95,7 +96,7 @@ class PilotLauncherWorker(multiprocessing.Process):
             if last_job_check + JOB_CHECK_INTERVAL < time.time():
                 pending_pilots = pilot_col.find(
                     {"pilotmanager": self.pilot_manager_id,
-                     "state"       : PENDING_EXECUTION}
+                     "state"       : WAITING_FOR_EXECUTION}
                 )
 
                 for pending_pilot in pending_pilots:
@@ -148,9 +149,9 @@ class PilotLauncherWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_pilot = pilot_col.find_and_modify(
                 query={"pilotmanager": self.pilot_manager_id,
-                       "state" : PENDING_BOOTSTRAP},
-                update={"$set" : {"state": BOOTSTRAPPING},
-                        "$push": {"statehistory": {"state": BOOTSTRAPPING, "timestamp": ts}}},
+                       "state" : WAITING_FOR_LAUNCH},
+                update={"$set" : {"state": LAUNCHING},
+                        "$push": {"statehistory": {"state": LAUNCHING, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
 
@@ -292,9 +293,9 @@ class PilotLauncherWorker(multiprocessing.Process):
                     ts = datetime.datetime.utcnow()
                     pilot_col.update(
                         {"_id": ObjectId(compute_pilot_id)},
-                        {"$set": {"state": PENDING_EXECUTION,
+                        {"$set": {"state": WAITING_FOR_RUN,
                                   "saga_job_id": saga_job_id},
-                         "$push": {"statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}},
+                         "$push": {"statehistory": {"state": WAITING_FOR_RUN, "timestamp": ts}},
                          "$pushAll": {"log": log_messages}}                    
                     )
 

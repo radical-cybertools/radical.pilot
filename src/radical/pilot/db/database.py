@@ -20,7 +20,6 @@ from bson.objectid import ObjectId
 
 from radical.pilot.states import *
 
-
 # -----------------------------------------------------------------------------
 #
 class DBException(Exception):
@@ -348,8 +347,8 @@ class Session():
             "cores_per_node": None,
             "sagajobid":      None,
             "sandbox":        sandbox,
-            "state":          PENDING_BOOTSTRAP,
-            "statehistory":   [{"state": PENDING_BOOTSTRAP, "timestamp": ts}],
+            "state":          WAITING_FOR_LAUNCH,
+            "statehistory":   [{"state": WAITING_FOR_LAUNCH, "timestamp": ts}],
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
@@ -675,7 +674,7 @@ class Session():
                 "unitmanager":  unit_manager_uid,
                 "pilot":        pilot_uid,
                 "state":        NEW,
-                "statehistory": [{"state": "New", "timestamp": ts}],
+                "statehistory": [{"state": NEW, "timestamp": ts}],
                 "submitted":    datetime.datetime.utcnow(),
                 "started":      None,
                 "finished":     None,

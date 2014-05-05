@@ -391,9 +391,5 @@ class ComputePilot (object):
             # nothing to do as we are already in a terminal state
             return
 
-        if self.state == UNKNOWN:
-            msg = "Invalid pilot state: '%s'" % UNKNOWN
-            raise exceptions.BadParameter(msg=msg)
-
         # now we can send a 'cancel' command to the pilot.
         self._manager.cancel_pilots(self.uid)

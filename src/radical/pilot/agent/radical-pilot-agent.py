@@ -111,17 +111,6 @@ def pilot_DONE(mongo_p, pilot_uid):
 
         })
 
-#---------------------------------------------------------------------------
-#
-def pilot_PENDING_OUTPUT_TRANSFER(mongo_p, pilot_uid):
-    """Updates the state of one or more pilots.
-    """
-    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"state": 'PendingOutputTransfer',
-                  "finished": datetime.datetime.utcnow()
-        }})
-
-
 #-----------------------------------------------------------------------------
 #
 class ExecutionEnvironment(object):
@@ -396,7 +385,7 @@ class ExecWorker(multiprocessing.Process):
 
                                 self._slots[host][slot].task.started=datetime.datetime.utcnow()
                                 self._slots[host][slot].task.exec_locs=exec_locs
-                                self._slots[host][slot].task.state='Running'
+                                self._slots[host][slot].task.state='Executing'
 
                                 update_tasks.append(self._slots[host][slot].task)
 
@@ -421,7 +410,7 @@ class ExecWorker(multiprocessing.Process):
                                     state = 'Failed'
                                 else:
                                     if self._slots[host][slot].task.output_data is not None:
-                                        state = 'PendingOutputTransfer'
+                                        state = 'WaitingForOutputTransfer'
                                     else:
                                         state = 'Done'
 
@@ -680,9 +669,9 @@ class Agent(threading.Thread):
 
                         wu_cursor = self._w.find_and_modify(
                         query={"pilot" : self._pilot_id,
-                               "state" : "PendingExecution"},
-                        update={"$set" : {"state": "Running"},
-                        "$push": {"statehistory": {"state": "RunningX", "timestamp": ts}}}#,
+                               "state" : "WaitingForExecution"},
+                        update={"$set" : {"state": "Executing"},
+                        "$push": {"statehistory": {"state": "PulledByAgent", "timestamp": ts}}}#,
                         #limit=BULK_LIMIT
                         )
 

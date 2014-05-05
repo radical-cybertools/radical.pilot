@@ -80,7 +80,7 @@ class InputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "state" : PENDING_INPUT_TRANSFER},
+                       "state" : WAITING_FOR_INPUT_TRANSFER},
                 update={"$set" : {"state": TRANSFERRING_INPUT},
                         "$push": {"statehistory": {"state": TRANSFERRING_INPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
@@ -142,8 +142,8 @@ class InputFileTransferWorker(multiprocessing.Process):
                     ts = datetime.datetime.utcnow()
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
-                        {"$set": {"state": PENDING_EXECUTION},
-                         "$push": {"statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}},
+                        {"$set": {"state": WAITING_FOR_EXECUTION},
+                         "$push": {"statehistory": {"state": WAITING_FOR_EXECUTION, "timestamp": ts}},
                          "$pushAll": {"log": log_messages}}                    
                     )
 

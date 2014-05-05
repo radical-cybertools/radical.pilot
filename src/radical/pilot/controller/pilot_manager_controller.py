@@ -18,9 +18,7 @@ import weakref
 from multiprocessing import Pool
 
 from radical.utils import which
-import saga.utils.pty_shell as sups
 
-from radical.pilot.states import *
 from radical.pilot.credentials import SSHCredential
 from radical.pilot.utils.logger import logger
 
@@ -354,30 +352,6 @@ class PilotManagerController(threading.Thread):
             'callbacks':     [],
             'facade_object': weakref.ref(pilot)
         }
-
-        # Call the callbacks manually.
-        #self.call_callbacks(
-        #    pilot_uid,
-        #    PENDING_BOOTSTRAP
-        #)
-
-        # Launch the pilot startup function asynchronously. Result will get
-        # added to a list and checked periodically in the run loop.
-        #startup_result = self._worker_pool.apply_async(
-        #    launch_pilot, args=(
-        #        pilot_uid,
-        #        pilot.description.as_dict(),
-        #        resource_config,
-        #        str(agent_dir_url),
-        #        session.as_dict(),
-        #        cred_dict)
-        #)
-
-        # Append the startup result future to the list of results. The list is
-        # checked for results periodiacally in the thread's run() loop.
-        #self.startup_results_lock.acquire()
-        #self.startup_results.append(startup_result)
-        #self.startup_results_lock.release()
 
         return pilot_uid
 

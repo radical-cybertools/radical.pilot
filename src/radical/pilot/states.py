@@ -63,25 +63,28 @@ class State(object):
         """
         return self.state
 
+# -----------------------------------------------------------------------------
+# Common  States
+DONE                        = 'Done'
+CANCELED                    = 'Canceled'
+FAILED                      = 'Failed'
 
 # -----------------------------------------------------------------------------
-# States
-UNKNOWN                 = 'Unknown'
-NEW                     = 'New'
+# ComputePilot States
+WAITING_FOR_LAUNCH          = 'WaitingForLaunch'
+LAUNCHING                   = 'Launching'
+WAITING_FOR_RUN             = 'WaitingForRun'
+RUNNING                     = 'Running'
 
-PENDING                 = 'Pending'
-PENDING_BOOTSTRAP       = 'PendingBootstrap'
-BOOTSTRAPPING           = 'Bootstrapping'
+# -----------------------------------------------------------------------------
+# ComputeUnit States
+NEW                         = 'New'
+WAITING_FOR_INPUT_TRANSFER  = 'WaitingForInputTransfer'
+TRANSFERRING_INPUT          = 'TransferringInput'
 
-PENDING_EXECUTION       = 'PendingExecution'
-RUNNING                 = 'Running'
+WAITING_FOR_EXECUTION       = 'WaitingForExecution'
+EXECUTING                   = 'Executing'
 
-PENDING_INPUT_TRANSFER  = 'PendingInputTransfer'
-TRANSFERRING_INPUT      = 'TransferringInput'
+WAITING_FOR_OUTPUT_TRANSFER = 'WaitingForOutputTransfer'
+TRANSFERRING_OUTPUT         = 'TransferringOutput'
 
-PENDING_OUTPUT_TRANSFER = 'PendingOutputTransfer'
-TRANSFERRING_OUTPUT     = 'TransferringOutput'
-
-DONE                    = 'Done'
-CANCELED                = 'Canceled'
-FAILED                  = 'Failed'
