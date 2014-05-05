@@ -429,7 +429,7 @@ class UnitManagerController(threading.Thread):
 
         for unit in wu_notransfer:
             log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
-            self._db.set_compute_unit_state(unit_uid, WAITING_FOR_EXECUTION, log)
+            self._db.set_compute_unit_state(unit, WAITING_FOR_EXECUTION, log)
             #self._set_state(unit, WAITING_FOR_EXECUTION, log)
 
         logger.info(
