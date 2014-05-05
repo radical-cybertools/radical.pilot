@@ -296,6 +296,11 @@ def parse_commandline():
                       help='Enforce a specific launch method (AUTO, LOCAL, SSH, MPIRUN, APRUN). [default: %default]',
                       default="AUTO")
 
+    parser.add_option('-V', '--version', 
+                      metavar='VERSION ',
+                      dest='package_version',
+                      help='The RADICAL-Pilot package version.')
+
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
@@ -311,6 +316,9 @@ def parse_commandline():
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
     elif options.runtime is None:
         parser.error("You must define the agent runtime (-t/--runtime). Try --help for help.")
+    elif options.package_version is None:
+        parser.error("You must pass the RADICAL-Pilot package version (-v/--version). Try --help for help.")
+
 
     #if options.launch_method is not None: 
     #    valid_options = [LAUNCH_METHOD_AUTO, LAUNCH_METHOD_LOCAL, LAUNCH_METHOD_SSH, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_APRUN]
@@ -325,6 +333,9 @@ if __name__ == "__main__":
 
     # parse command line options
     options = parse_commandline()
+
+    logger.info("RADICAL-Pilot agent (radical-pilot-agent-skeleton.py) for package/API version %s" % options.package_version)
+
 
     #--------------------------------------------------------------------------
     # Establish database connection
