@@ -16,12 +16,17 @@ import multiprocessing
 from radical.utils import which
 from bson.objectid import ObjectId
 
+from radical.pilot.utils.version import version as VERSION
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
 from radical.pilot.credentials import SSHCredential
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
+
+# The interval at which we check 
+# the saga jobs.
+JOB_CHECK_INTERVAL=10 # seconds
 
 # ----------------------------------------------------------------------------
 #
@@ -79,10 +84,67 @@ class PilotLauncherWorker(multiprocessing.Process):
             logger.error("Connection error: %s. %s" % (str(ex), tb))
             return
 
+        last_job_check = time.time()
+
         while True:
-            compute_pilot = None
+            # Periodically, we pull up all ComputePilots that are pending 
+            # execution and check if the corresponding  SAGA
+            # job is still pending in the queue. If that is not the case, 
+            # we assume that the job has failed for some reasons and update
+            # the state of the ComputePilot accordingly.
+            if last_job_check + JOB_CHECK_INTERVAL < time.time():
+                pending_pilots = pilot_col.find(
+                    {"pilotmanager": self.pilot_manager_id,
+                     "state"       : PENDING_EXECUTION}
+                )
+
+                for pending_pilot in pending_pilots:
+                    pilot_id    = pending_pilot["_id"]
+                    saga_job_id = pending_pilot["saga_job_id"]
+                    logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
+
+                    log_message = None
+
+                    # Create a job service object:
+                    try: 
+                        js_url = saga_job_id.split("]-[")[0][1:]
+                        js = saga.job.Service(js_url, session=saga_session)
+                        saga_job = js.get_job(saga_job_id)
+                        if saga.job.state == saga.job.FAILED:
+                            log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
+
+                            ts = datetime.datetime.utcnow()
+                            pilot_col.update(
+                                {"_id": pilot_id},
+                                {"$set": {"state": FAILED},
+                                 "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                                 "$push": {"log": log_message}}
+                            )
+                            logger.error(log_message)
+                        js.close()
+
+                    except Exception, ex:
+                        log_message = "Couldn't determine SAGA job state for ComputePilot %s. Assuming it failed to launch." % pilot_id
+
+                        ts = datetime.datetime.utcnow()
+                        pilot_col.update(
+                            {"_id": pilot_id},
+                            {"$set": {"state": FAILED},
+                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                             "$push": {"log": log_message}}
+                        )
+                        logger.error(log_message)
+
+                # Update timer
+                last_job_check = time.time()
 
             # See if we can find a ComputePilot that is waiting to be launched.
+            # If we find one, we use SAGA to create a job service, a job 
+            # description and a job that is then send to the local or remote
+            # queueing system. If this succedes, we set the ComputePilot's 
+            # state to pending, otherwise to failed.
+            compute_pilot = None
+
             ts = datetime.datetime.utcnow()
             compute_pilot = pilot_col.find_and_modify(
                 query={"pilotmanager": self.pilot_manager_id,
@@ -177,7 +239,8 @@ class PilotLauncherWorker(multiprocessing.Process):
                                     "-s", session_uid,     # session uid
                                     "-p", str(compute_pilot_id),  # pilot uid
                                     "-t", runtime,         # agent runtime in minutes
-                                    "-c", number_cores] 
+                                    "-c", number_cores,
+                                    "-V", VERSION] 
 
                     if cleanup is True:
                         jd.arguments.append("-C")

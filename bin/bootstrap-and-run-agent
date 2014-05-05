@@ -11,6 +11,7 @@
 # -----------------------------------------------------------------------------
 # global variables
 #
+VERSION=
 PREBOOTSTRAP=
 CLEANUP=
 REMOTE=
@@ -58,6 +59,8 @@ OPTIONS:
    -c      Number of requested cores
 
    -C      Cleanup - delete virtualenv after execution
+
+   -V      Version - the RADICAL-Pilot package version
 
    -h      Show this message
 
@@ -159,19 +162,19 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE"
+AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION"
 echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE
+           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION
 }
 
 # -----------------------------------------------------------------------------
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:l:e:t:c:C” OPTION
+while getopts “hr:d:s:p:w:i:l:e:t:c:V:C” OPTION
 do
      case $OPTION in
          h)
@@ -221,6 +224,9 @@ do
          C)
              CLEANUP=true
              ;;
+         V)  
+             VERSION=$OPTARG
+             ;;
          ?)
              usage
              exit
@@ -228,7 +234,7 @@ do
      esac
 done
 
-if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]]
+if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]] || [[ -z $VERSION ]]
 then
      usage
      exit 1
