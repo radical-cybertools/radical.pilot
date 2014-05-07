@@ -602,11 +602,11 @@ class Agent(threading.Thread):
         ts = datetime.datetime.utcnow()
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"state"          : "Running",
+            {"$set": {"state"          : "Active",
                       "nodes"          : self._exec_env.nodes.keys(),
                       "cores_per_node" : self._exec_env.cores_per_node,
                       "started"        : ts},
-             "$push": {"statehistory": {"state": 'Running', "timestamp": ts}}
+             "$push": {"statehistory": {"state": 'Active', "timestamp": ts}}
             })
 
         self._starttime = time.time()

@@ -296,7 +296,7 @@ class UnitManager(object):
             * **drain** [`boolean`]: Drain determines what happens to the units
               which are managed by the removed pilot(s). If `True`, all units
               currently assigned to the pilot are allowed to finish execution.
-              If `False` (the default), then `RUNNING` units will be canceled.
+              If `False` (the default), then `ACTIVE` units will be canceled.
 
         **Raises:**
 

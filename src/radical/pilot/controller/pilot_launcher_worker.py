@@ -293,9 +293,9 @@ class PilotLauncherWorker(multiprocessing.Process):
                     ts = datetime.datetime.utcnow()
                     pilot_col.update(
                         {"_id": ObjectId(compute_pilot_id)},
-                        {"$set": {"state": PENDING_RUN,
+                        {"$set": {"state": PENDING_ACTIVE,
                                   "saga_job_id": saga_job_id},
-                         "$push": {"statehistory": {"state": PENDING_RUN, "timestamp": ts}},
+                         "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                          "$pushAll": {"log": log_messages}}                    
                     )
 

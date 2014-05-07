@@ -65,9 +65,9 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait(radical.pilot.states.RUNNING)
+        pilot.wait(radical.pilot.states.ACTIVE)
         assert pilot.submission_time is not None
-        assert pilot.state == radical.pilot.states.RUNNING
+        assert pilot.state == radical.pilot.states.ACTIVE
         assert pilot.start_time is not None
         assert pilot.log is not None
         assert pilot.sandbox == "file://localhost%s/pilot-%s/" % (cpd.sandbox, pilot.uid)
@@ -134,9 +134,9 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait(radical.pilot.states.RUNNING)
+        pilot.wait(radical.pilot.states.ACTIVE)
         assert pilot.submission_time is not None
-        assert pilot.state == radical.pilot.states.RUNNING
+        assert pilot.state == radical.pilot.states.ACTIVE
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time

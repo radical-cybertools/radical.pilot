@@ -73,8 +73,8 @@ FAILED                      = 'Failed'
 # ComputePilot States
 PENDING_LAUNCH              = 'PendingLaunch'
 LAUNCHING                   = 'Launching'
-PENDING_RUN                 = 'PendingRun'
-RUNNING                     = 'Running'
+PENDING_ACTIVE              = 'PendingActive'
+ACTIVE                      = 'Active'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
