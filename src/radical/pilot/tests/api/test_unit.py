@@ -80,8 +80,8 @@ class TestUnit(unittest.TestCase):
         assert cu.start_time is None
         assert cu.start_time is None
 
-        cu.wait(radical.pilot.states.RUNNING)
-        assert cu.state == radical.pilot.states.RUNNING
+        cu.wait(radical.pilot.states.EXECUTING)
+        assert cu.state == radical.pilot.states.EXECUTING
         assert cu.start_time is not None
 
         cu.wait(radical.pilot.states.DONE)
