@@ -58,8 +58,8 @@ if __name__ == "__main__":
         # Define a 2-core local pilot that runs for 10 minutes.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "hotel.futuregrid.org-local"
-        pdesc.runtime = 30
-        pdesc.cores = 4096
+        pdesc.runtime  = 5
+        pdesc.cores    = 8
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
