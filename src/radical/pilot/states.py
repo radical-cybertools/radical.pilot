@@ -71,20 +71,20 @@ FAILED                      = 'Failed'
 
 # -----------------------------------------------------------------------------
 # ComputePilot States
-WAITING_FOR_LAUNCH          = 'WaitingForLaunch'
+PENDING_LAUNCH              = 'PendingLaunch'
 LAUNCHING                   = 'Launching'
-WAITING_FOR_RUN             = 'WaitingForRun'
+PENDING_RUN                 = 'PendingRun'
 RUNNING                     = 'Running'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
 NEW                         = 'New'
-WAITING_FOR_INPUT_TRANSFER  = 'WaitingForInputTransfer'
+PENDING_INPUT_TRANSFER      = 'PendingInputTransfer'
 TRANSFERRING_INPUT          = 'TransferringInput'
 
-WAITING_FOR_EXECUTION       = 'WaitingForExecution'
+PENDING_EXECUTION           = 'PendingExecution'
 EXECUTING                   = 'Executing'
 
-WAITING_FOR_OUTPUT_TRANSFER = 'WaitingForOutputTransfer'
+PENDING_OUTPUT_TRANSFER     = 'PendingOutputTransfer'
 TRANSFERRING_OUTPUT         = 'TransferringOutput'
 

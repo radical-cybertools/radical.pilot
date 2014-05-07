@@ -429,8 +429,8 @@ class UnitManagerController(threading.Thread):
 
         for unit in wu_notransfer:
             log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
-            self._db.set_compute_unit_state(unit, WAITING_FOR_EXECUTION, log)
-            #self._set_state(unit, WAITING_FOR_EXECUTION, log)
+            self._db.set_compute_unit_state(unit, PENDING_EXECUTION, log)
+            #self._set_state(unit, PENDING_EXECUTION, log)
 
         logger.info(
             "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
@@ -442,5 +442,5 @@ class UnitManagerController(threading.Thread):
         if len(wu_transfer) > 0:
             for unit in wu_transfer:
                 log = ["Scheduled for data tranfer to ComputePilot %s." % pilot_uid]
-                self._db.set_compute_unit_state(unit.uid, WAITING_FOR_INPUT_TRANSFER, log)
-                #self._set_state(unit.uid, WAITING_FOR_INPUT_TRANSFER, log)
+                self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_TRANSFER, log)
+                #self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)

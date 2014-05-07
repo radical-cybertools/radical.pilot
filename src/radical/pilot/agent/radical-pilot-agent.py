@@ -410,7 +410,7 @@ class ExecWorker(multiprocessing.Process):
                                     state = 'Failed'
                                 else:
                                     if self._slots[host][slot].task.output_data is not None:
-                                        state = 'WaitingForOutputTransfer'
+                                        state = 'PendingOutputTransfer'
                                     else:
                                         state = 'Done'
 
@@ -669,7 +669,7 @@ class Agent(threading.Thread):
 
                         wu_cursor = self._w.find_and_modify(
                         query={"pilot" : self._pilot_id,
-                               "state" : "WaitingForExecution"},
+                               "state" : "PendingExecution"},
                         update={"$set" : {"state": "Executing"},
                         "$push": {"statehistory": {"state": "PulledByAgent", "timestamp": ts}}}#,
                         #limit=BULK_LIMIT

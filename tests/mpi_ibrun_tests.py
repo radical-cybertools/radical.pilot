@@ -78,9 +78,9 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "stampede.tacc.utexas.edu"
-        pdesc.runtime          = 15 # minutes
+        pdesc.runtime          = 60 # minutes
         pdesc.cores            = 32 
-        pdesc.pilot_agent_priv = "radical-pilot-agent-mpi.py"
+        pdesc.pilot_agent_priv = "radical-pilot-agent-ibrun-tests.py"
         pdesc.cleanup          = True
 
 

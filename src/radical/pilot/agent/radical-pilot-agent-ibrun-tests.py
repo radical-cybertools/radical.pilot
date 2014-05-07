@@ -216,8 +216,11 @@ class Agent(threading.Thread):
                     for cu in computeunits:
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
 
+                        from subprocess import call
+                        call(["ibrun", "-n 1", "namd2 ./eq0.inp"], shell=True)
+
                         if cu['description']['output_data'] is not None:
-                            state = "PendingOutputTranfsfer"
+                            state = "PendingOutputTransfer"
                         else:
                             state = "Done"
 
@@ -334,7 +337,7 @@ if __name__ == "__main__":
     # parse command line options
     options = parse_commandline()
 
-    logger.info("RADICAL-Pilot agent (radical-pilot-agent-skeleton.py) for package/API version %s" % options.package_version)
+    LOGGER.info("RADICAL-Pilot agent (radical-pilot-agent-skeleton.py) for package/API version %s" % options.package_version)
 
 
     #--------------------------------------------------------------------------

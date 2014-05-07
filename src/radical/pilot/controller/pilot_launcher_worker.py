@@ -96,7 +96,7 @@ class PilotLauncherWorker(multiprocessing.Process):
             if last_job_check + JOB_CHECK_INTERVAL < time.time():
                 pending_pilots = pilot_col.find(
                     {"pilotmanager": self.pilot_manager_id,
-                     "state"       : WAITING_FOR_EXECUTION}
+                     "state"       : PENDING_EXECUTION}
                 )
 
                 for pending_pilot in pending_pilots:
@@ -149,7 +149,7 @@ class PilotLauncherWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_pilot = pilot_col.find_and_modify(
                 query={"pilotmanager": self.pilot_manager_id,
-                       "state" : WAITING_FOR_LAUNCH},
+                       "state" : PENDING_LAUNCH},
                 update={"$set" : {"state": LAUNCHING},
                         "$push": {"statehistory": {"state": LAUNCHING, "timestamp": ts}}},
                 limit=BULK_LIMIT
@@ -293,9 +293,9 @@ class PilotLauncherWorker(multiprocessing.Process):
                     ts = datetime.datetime.utcnow()
                     pilot_col.update(
                         {"_id": ObjectId(compute_pilot_id)},
-                        {"$set": {"state": WAITING_FOR_RUN,
+                        {"$set": {"state": PENDING_RUN,
                                   "saga_job_id": saga_job_id},
-                         "$push": {"statehistory": {"state": WAITING_FOR_RUN, "timestamp": ts}},
+                         "$push": {"statehistory": {"state": PENDING_RUN, "timestamp": ts}},
                          "$pushAll": {"log": log_messages}}                    
                     )
 
