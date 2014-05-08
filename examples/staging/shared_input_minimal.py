@@ -16,10 +16,10 @@ if DBURL is None:
 RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 
-REMOTE_STAGING = '///N/u/merzky/staging_area/'
+REMOTE_STAGING = '///N/u/marksant/staging_area/'
 REMOTE_HOST = 'india.futuregrid.org'
 
-# REMOTE_STAGING = '///tmp/merzky/staging_area/'
+# REMOTE_STAGING = '///tmp/marksant/staging_area/'
 # REMOTE_HOST = 'localhost'
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
