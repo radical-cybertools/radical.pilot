@@ -23,7 +23,7 @@ def pilot_state_cb(pilot, state):
     print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
 
-    if state == radical.pilot.states.FAILED:
+    if state == radical.pilot.FAILED:
         sys.exit(1)
 
 #------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ def unit_state_change_cb(unit, state):
     """
     print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
         unit.uid, state)
-    if state == radical.pilot.states.FAILED:
+    if state == radical.pilot.FAILED:
         print "            Log: %s" % unit.log[-1]
 
 #------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
+        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
         session = radical.pilot.Session(database_url=DBURL)
 
@@ -57,9 +57,9 @@ if __name__ == "__main__":
 
         # Define a 2-core local pilot that runs for 10 minutes.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "localhost"
-        pdesc.runtime = 10
-        pdesc.cores = 2
+        pdesc.resource = "hotel.futuregrid.org-local"
+        pdesc.runtime  = 5
+        pdesc.cores    = 8
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -77,12 +77,10 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 16):
             cu = radical.pilot.ComputeUnitDescription()
             cu.executable = "/bin/date"
             cu.cores = 1
-            cu.input_data = ["skeleton.py"]
-            cu.output_data = ["STDOUT"]
 
             compute_units.append(cu)
 
@@ -90,9 +88,7 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION,
-            output_transfer_workers=4,
-            input_transfer_workers=4)
+            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -110,20 +106,9 @@ if __name__ == "__main__":
         # Wait for all compute units to finish.
         umgr.wait_units()
 
-        import time
-        time.sleep(2)
-
-        print "\n== UNIT STATE HISTORY==\n"
-
         for unit in umgr.get_units():
             # Print some information about the unit.
-            for state in unit.state_history:
-                print " * %s: %s\n" % (state.timestamp, state.state)
-
-        print "\n== PILOT STATE HISTORY==\n"
-
-        for state in pilot.state_history:
-            print " * %s: %s\n" % (state.timestamp, state.state)
+            print "\n{0}".format(str(unit))
 
         # Remove session from database
         session.close()

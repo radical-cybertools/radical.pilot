@@ -305,7 +305,7 @@ class ComputePilot (object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
-        return pilot_json['description']['Resource']
+        return pilot_json['description']['resource']
 
     # -------------------------------------------------------------------------
     #
@@ -390,10 +390,6 @@ class ComputePilot (object):
         if self.state in [DONE, FAILED, CANCELED]:
             # nothing to do as we are already in a terminal state
             return
-
-        if self.state == UNKNOWN:
-            msg = "Invalid pilot state: '%s'" % UNKNOWN
-            raise exceptions.BadParameter(msg=msg)
 
         # now we can send a 'cancel' command to the pilot.
         self._manager.cancel_pilots(self.uid)

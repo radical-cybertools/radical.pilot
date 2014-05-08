@@ -20,7 +20,6 @@ from bson.objectid import ObjectId
 
 from radical.pilot.states import *
 
-
 # -----------------------------------------------------------------------------
 #
 class DBException(Exception):
@@ -204,7 +203,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot_manager(self, pilot_manager_data):
+    def insert_pilot_manager(self, pilot_manager_data, pilot_launcher_workers):
         """ Adds a pilot managers to the list of pilot managers.
 
             Pilot manager IDs are just kept for book-keeping.
@@ -212,7 +211,8 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_manager_json = {"data": pilot_manager_data}
+        pilot_manager_json = {"data": pilot_manager_data,
+                              "pilot_launcher_workers": pilot_launcher_workers}
         result = self._pm.insert(pilot_manager_json)
 
         # return the object id as a string
@@ -347,8 +347,8 @@ class Session():
             "cores_per_node": None,
             "sagajobid":      None,
             "sandbox":        sandbox,
-            "state":          PENDING,
-            "statehistory":   [{"state": "Pending", "timestamp": ts}],
+            "state":          PENDING_LAUNCH,
+            "statehistory":   [{"state": PENDING_LAUNCH, "timestamp": ts}],
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
@@ -674,7 +674,7 @@ class Session():
                 "unitmanager":  unit_manager_uid,
                 "pilot":        pilot_uid,
                 "state":        NEW,
-                "statehistory": [{"state": "New", "timestamp": ts}],
+                "statehistory": [{"state": NEW, "timestamp": ts}],
                 "submitted":    datetime.datetime.utcnow(),
                 "started":      None,
                 "finished":     None,

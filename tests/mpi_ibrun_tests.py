@@ -2,17 +2,31 @@ import os
 import sys
 import radical.pilot
 
+# READ: The RADICAL-Pilot documentation: 
+#   http://radicalpilot.readthedocs.org/en/latest
+#
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# you want to see what happens behind the scences!
+#
+# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
+# easiest way to make this work seamlessly is to set up ssh key-based
+# authentication and add the key to your keychain so you won't be 
+# prompted for a password. The following article explains how to set 
+# this up on Linux:
+#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
+
+
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
+# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/futuregrid.json"]
-
+# RCONF points to the resource configuration files. Read more about resource 
+# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
+RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
+          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 
 #------------------------------------------------------------------------------
 #
@@ -43,9 +57,14 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
+        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
         session = radical.pilot.Session(database_url=DBURL)
+
+        # Add an ssh identity to the session.
+        cred = radical.pilot.SSHCredential()
+        cred.user_id = "tg802352"
+        session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
@@ -55,11 +74,15 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 2-core local pilot that runs for 10 minutes.
+        # Define a 32-core on stamped that runs for 15 mintutes and 
+        # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "localhost"
-        pdesc.runtime = 10
-        pdesc.cores = 2
+        pdesc.resource         = "stampede.tacc.utexas.edu"
+        pdesc.runtime          = 60 # minutes
+        pdesc.cores            = 32 
+        pdesc.pilot_agent_priv = "radical-pilot-agent-ibrun-tests.py"
+        pdesc.cleanup          = True
+
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -73,26 +96,28 @@ if __name__ == "__main__":
         #
         #    export INPUT1=file1.dat
         #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
+        #    /bin/cat $INPUT1  $INPUT2
         #
         compute_units = []
 
-        for unit_count in range(0, 8):
-            cu = radical.pilot.ComputeUnitDescription()
-            cu.executable = "/bin/date"
-            cu.cores = 1
-            cu.input_data = ["skeleton.py"]
-            cu.output_data = ["STDOUT"]
+        for unit_count in range(0, 1):
 
-            compute_units.append(cu)
+            mpi_test_task = radical.pilot.ComputeUnitDescription()
+            mpi_test_task.executable  = "/bin/bash"
+            mpi_test_task.arguments   = ["-l", "-c", "\"module load namd/2.9 && namd2 ./eq0.inp \""]
+            mpi_test_task.cores       = 8
+            mpi_test_task.input_data  = ["/%s/complex.pdb" % os.getcwd(),
+                                         "/%s/complex.top" % os.getcwd(),
+                                         "/%s/cons.pdb" % os.getcwd(),
+                                         "/%s/eq0.inp" % os.getcwd()]
+            mpi_test_task.output_data = ["STDOUT"]
+            compute_units.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION,
-            output_transfer_workers=4,
-            input_transfer_workers=4)
+            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -107,26 +132,18 @@ if __name__ == "__main__":
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(compute_units)
 
-        # Wait for all compute units to finish.
+        # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
-        import time
-        time.sleep(2)
+        for unit in units:
+            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
+                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
-        print "\n== UNIT STATE HISTORY==\n"
-
-        for unit in umgr.get_units():
-            # Print some information about the unit.
-            for state in unit.state_history:
-                print " * %s: %s\n" % (state.timestamp, state.state)
-
-        print "\n== PILOT STATE HISTORY==\n"
-
-        for state in pilot.state_history:
-            print " * %s: %s\n" % (state.timestamp, state.state)
-
-        # Remove session from database
         session.close()
+        sys.exit(0)
 
     except radical.pilot.PilotException, ex:
-        print "Error: %s" % ex
+        # Catch all exceptions and exit with and error.
+        print "Error during execution: %s" % ex
+        sys.exit(1)
+

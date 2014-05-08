@@ -34,8 +34,8 @@ def unit_state_change_cb(unit, state):
     """
     print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
         unit.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % unit.log[-1]
+    #if state == radical.pilot.states.FAILED:
+    #    print "            Log: %s" % unit.log[-1]
 
 #------------------------------------------------------------------------------
 #
@@ -109,6 +109,8 @@ if __name__ == "__main__":
 
         # Wait for all compute units to finish.
         umgr.wait_units()
+
+        pmgr.cancel_pilots()
 
         import time
         time.sleep(2)

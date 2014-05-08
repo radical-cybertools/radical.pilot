@@ -55,7 +55,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
             um_col = db["%s.w" % self.db_connection_info.session_id]
-            logger.debug("Connected to database %s." % db.host)
+            logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
             session_col = db["%s" % self.db_connection_info.session_id]
             session = session_col.find(
@@ -66,11 +66,10 @@ class OutputFileTransferWorker(multiprocessing.Process):
             for cred_dict in session[0]["credentials"]:
                 cred = SSHCredential.from_dict(cred_dict)
                 saga_session.add_context(cred._context)
-                logger.debug("Added SSH context info: %s." % cred._context)
+                logger.debug("Found SSH context info: %s." % cred._context)
 
         except Exception, ex:
-            tb = traceback.format_exc()
-            logger.error("Connection error: %s. %s" % (str(ex), tb))
+            logger.error("Connection error: %s. %s" % (str(ex), traceback.format_exc()))
             return
 
         while True:
@@ -136,10 +135,12 @@ class OutputFileTransferWorker(multiprocessing.Process):
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
-                    log_messages = "Output transfer failed: %s" % str(ex)
+                    log_messages = "Output transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
                         {"$set": {"state": FAILED},
                          "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
                          "$push": {"log": log_messages}}
                     )
+                    logger.error(log_messages)
+

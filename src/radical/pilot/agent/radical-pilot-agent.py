@@ -111,17 +111,6 @@ def pilot_DONE(mongo_p, pilot_uid):
 
         })
 
-#---------------------------------------------------------------------------
-#
-def pilot_PENDING_OUTPUT_TRANSFER(mongo_p, pilot_uid):
-    """Updates the state of one or more pilots.
-    """
-    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$set": {"state": 'PendingOutputTransfer',
-                  "finished": datetime.datetime.utcnow()
-        }})
-
-
 #-----------------------------------------------------------------------------
 #
 class ExecutionEnvironment(object):
@@ -396,7 +385,7 @@ class ExecWorker(multiprocessing.Process):
 
                                 self._slots[host][slot].task.started=datetime.datetime.utcnow()
                                 self._slots[host][slot].task.exec_locs=exec_locs
-                                self._slots[host][slot].task.state='Running'
+                                self._slots[host][slot].task.state='Executing'
 
                                 update_tasks.append(self._slots[host][slot].task)
 
@@ -613,11 +602,11 @@ class Agent(threading.Thread):
         ts = datetime.datetime.utcnow()
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"state"          : "Running",
+            {"$set": {"state"          : "Active",
                       "nodes"          : self._exec_env.nodes.keys(),
                       "cores_per_node" : self._exec_env.cores_per_node,
                       "started"        : ts},
-             "$push": {"statehistory": {"state": 'Running', "timestamp": ts}}
+             "$push": {"statehistory": {"state": 'Active', "timestamp": ts}}
             })
 
         self._starttime = time.time()
@@ -681,8 +670,8 @@ class Agent(threading.Thread):
                         wu_cursor = self._w.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : "PendingExecution"},
-                        update={"$set" : {"state": "Running"},
-                        "$push": {"statehistory": {"state": "RunningX", "timestamp": ts}}}#,
+                        update={"$set" : {"state": "Executing"},
+                        "$push": {"statehistory": {"state": "PulledByAgent", "timestamp": ts}}}#,
                         #limit=BULK_LIMIT
                         )
 
@@ -864,6 +853,11 @@ def parse_commandline():
                       help='Enforce a specific launch method (AUTO, LOCAL, SSH, MPIRUN, APRUN). [default: %default]',
                       default=LAUNCH_METHOD_AUTO)
 
+    parser.add_option('-V', '--version', 
+                      metavar='VERSION ',
+                      dest='package_version',
+                      help='The RADICAL-Pilot package version.')
+
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
@@ -879,6 +873,9 @@ def parse_commandline():
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
     elif options.runtime is None:
         parser.error("You must define the agent runtime (-t/--runtime). Try --help for help.")
+    elif options.package_version is None:
+        parser.error("You must pass the RADICAL-Pilot package version (-v/--version). Try --help for help.")
+
 
     if options.launch_method is not None: 
         valid_options = [LAUNCH_METHOD_AUTO, LAUNCH_METHOD_LOCAL, LAUNCH_METHOD_SSH, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_APRUN]
@@ -902,6 +899,7 @@ if __name__ == "__main__":
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
+    logger.info("RADICAL-Pilot agent for package/API version %s" % options.package_version)
 
     #--------------------------------------------------------------------------
     # Establish database connection

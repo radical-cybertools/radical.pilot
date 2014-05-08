@@ -83,10 +83,10 @@ class UnitManager(object):
             * scheduler (`string`): The name of the scheduler plug-in to use.
 
             * input_transfer_workers (`int`): The number of input file transfer 
-              worker processes to launch in the background (default: 2). 
+              worker processes to launch in the background. 
 
             * output_transfer_workers (`int`): The number of output file transfer 
-              worker processes to launch in the background (default: 2). 
+              worker processes to launch in the background. 
 
         .. note:: `input_transfer_workers` and `output_transfer_workers` can be
                   used to tune RADICAL-Pilot's file transfer performance. 
@@ -296,7 +296,7 @@ class UnitManager(object):
             * **drain** [`boolean`]: Drain determines what happens to the units
               which are managed by the removed pilot(s). If `True`, all units
               currently assigned to the pilot are allowed to finish execution.
-              If `False` (the default), then `RUNNING` units will be canceled.
+              If `False` (the default), then `ACTIVE` units will be canceled.
 
         **Raises:**
 
