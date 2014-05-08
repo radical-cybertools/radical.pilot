@@ -16,8 +16,11 @@ if DBURL is None:
 RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 
-INDIA_STAGING = '///N/u/marksant/staging_area/'
-INDIA_HOST = 'india.futuregrid.org'
+REMOTE_STAGING = '///N/u/merzky/staging_area/'
+REMOTE_HOST = 'india.futuregrid.org'
+
+# REMOTE_STAGING = '///tmp/merzky/staging_area/'
+# REMOTE_HOST = 'localhost'
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
 
@@ -37,7 +40,7 @@ if __name__ == "__main__":
         # Define a 32-core on stamped that runs for 15 mintutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "india.futuregrid.org"
+        pdesc.resource = REMOTE_HOST
         pdesc.runtime = 15 # minutes
         pdesc.cores = 8
 
@@ -47,8 +50,8 @@ if __name__ == "__main__":
         # Define and open staging directory on the remote machine
         remote_dir_url = saga.Url()
         remote_dir_url.scheme = 'sftp'
-        remote_dir_url.host = INDIA_HOST
-        remote_dir_url.path = INDIA_STAGING
+        remote_dir_url.host = REMOTE_HOST
+        remote_dir_url.path = REMOTE_STAGING
         remote_dir = saga.filesystem.Directory(remote_dir_url)
 
         # Define the url of the local file in the local directory
@@ -58,7 +61,7 @@ if __name__ == "__main__":
 
         # Configure the staging directive for shared input file.
         sd_shared = radical.pilot.StagingDirectives()
-        sd_shared.source = os.path.join(INDIA_STAGING, SHARED_INPUT_FILE)
+        sd_shared.source = os.path.join(REMOTE_STAGING, SHARED_INPUT_FILE)
         sd_shared.target = SHARED_INPUT_FILE
         sd_shared.action = radical.pilot.LINK
 
