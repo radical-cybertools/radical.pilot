@@ -36,7 +36,7 @@ class DirectSubmissionScheduler(Scheduler):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
+        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
             logger.debug("__del__(): %s." % self.name)
 
     # -------------------------------------------------------------------------
