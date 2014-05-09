@@ -661,10 +661,10 @@ class Session():
 
             working_directory = saga.Url(pilot_sandbox)
 
-            if unit.description.working_directory_priv is not None:
-                working_directory.path = unit.description.working_directory_priv
-            else:
-                working_directory.path += "/unit-"+unit.uid
+            #if unit.description.working_directory_priv is not None:
+            #    working_directory.path = unit.description.working_directory_priv
+            #else:
+            working_directory.path += "/unit-"+unit.uid
 
             ts = datetime.datetime.utcnow()
 
