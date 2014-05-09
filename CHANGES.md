@@ -1,3 +1,12 @@
+0.12 Release                                            May. 09. 2014
+---------------------------------------------------------------------
+
+* Updated resource files
+* Updated state model
+* Closed tickets: 
+  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=12&state=closed
+
+
 0.11 Release                                            Apr. 29. 2014
 ---------------------------------------------------------------------
 
