@@ -80,7 +80,7 @@ if __name__ == "__main__":
         pdesc.resource         = "stampede.tacc.utexas.edu"
         pdesc.runtime          = 60 # minutes
         pdesc.cores            = 32 
-        pdesc.pilot_agent_priv = "radical-pilot-test-agent.py"
+        pdesc.pilot_agent_priv = "radical-pilot-test-agent-mpi.py"
         pdesc.cleanup          = True
 
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, 1):
+        for unit_count in range(0, 2):
 
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.executable  = "/bin/bash"
@@ -110,7 +110,7 @@ if __name__ == "__main__":
                                          "/%s/complex.top" % os.getcwd(),
                                          "/%s/cons.pdb" % os.getcwd(),
                                          "/%s/eq0.inp" % os.getcwd()]
-            mpi_test_task.output_data = ["STDOUT"]
+            #mpi_test_task.output_data = ["STDOUT"]
             compute_units.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
 
         session.close()
         sys.exit(0)
