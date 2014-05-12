@@ -77,7 +77,9 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
-        pdesc.runtime          = 60 # minutes
+        pdesc.project          = "e290"  # archer 'project group'
+        pdesc.queue            = "debug" # debug queue.
+        pdesc.runtime          = 10      # minutes - 10 minutes limit for 'debug' queue
         pdesc.cores            = 16 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
         pdesc.cleanup          = False

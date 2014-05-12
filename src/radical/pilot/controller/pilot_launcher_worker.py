@@ -171,6 +171,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     number_cores = compute_pilot['description']['cores']
                     runtime      = compute_pilot['description']['runtime']
                     queue        = compute_pilot['description']['queue']
+                    project      = compute_pilot['description']['project']
                     cleanup      = compute_pilot['description']['cleanup']
                     pilot_agent  = compute_pilot['description']['pilot_agent_priv']
 
@@ -255,6 +256,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                     elif 'default_queue' in resource_cfg:
                         jd.queue = resource_cfg['default_queue']
 
+                    # process the project / allocation 
+                    if project is not None:
+                        jd.project = project
+
                     # if resource config defines 'pre_bootstrap' commands,
                     # we add those to the argument list
                     if 'pre_bootstrap' in resource_cfg:
@@ -271,6 +276,8 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd.error = "STDERR"
                     jd.total_cpu_count = number_cores
                     jd.wall_time_limit = runtime
+
+
 
                     log_msg = "Submitting SAGA job with description: %s" % str(jd)
                     log_messages.append(log_msg)
