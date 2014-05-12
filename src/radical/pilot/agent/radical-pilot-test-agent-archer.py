@@ -216,8 +216,12 @@ class Agent(threading.Thread):
                     for cu in computeunits:
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
 
-                        from subprocess import call
-                        call(["/bin/bash -l -c \" module load namd; ibrun namd2 ./eq0.inp\""], shell=True)
+                        ###################
+                        # APRUN ........ 
+                        ###################
+                        
+                        #from subprocess import call
+                        #call(["/bin/bash -l -c \" module load namd; ibrun namd2 ./eq0.inp\""], shell=True)
 
                         if cu['description']['output_data'] is not None:
                             state = "PendingOutputTransfer"
