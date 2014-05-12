@@ -79,7 +79,7 @@ if __name__ == "__main__":
         pdesc.resource         = "archer.ac.uk"
         pdesc.runtime          = 60 # minutes
         pdesc.cores            = 16 
-        pdesc.pilot_agent_priv = "radical-pilot-agent-archer-tests.py"
+        pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
         pdesc.cleanup          = False
 
 
