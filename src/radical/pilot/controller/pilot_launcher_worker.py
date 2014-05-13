@@ -235,7 +235,13 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
-                    jd.executable = "./bootstrap-and-run-agent"
+
+                    if 'bootstrap_script_name' in resource_cfg:
+                        jd.executable = "./%s" 
+                    else:
+                        jd.executable = "./bootstrap-and-run-agent"
+
+
                     jd.arguments = ["-r", database_host,   # database host (+ port)
                                     "-d", database_name,   # database name
                                     "-s", session_uid,     # session uid
