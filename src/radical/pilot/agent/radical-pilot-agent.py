@@ -44,6 +44,14 @@ LAUNCH_METHOD_APRUN  = 'APRUN'
 LAUNCH_METHOD_LOCAL  = 'LOCAL'
 LAUNCH_METHOD_MPIRUN = 'MPIRUN'
 
+#
+# Staging Action operators
+#
+COPY     = 'Copy'     # local cp
+LINK     = 'Link'     # local ln -s
+MOVE     = 'Move'     # local mv
+TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+
 #-----------------------------------------------------------------------------
 #
 def which(program):
@@ -385,9 +393,6 @@ class ExecWorker(multiprocessing.Process):
                                     else : 
                                         raise
 
-                                # Perform input staging
-                                self._log.info('Task input staging directives: %s' % task.input_staging)
-
                                 # RUN THE TASK
                                 self._slots[host][slot] = _Process(
                                     task=task, 
@@ -520,6 +525,99 @@ class ExecWorker(multiprocessing.Process):
 
                       })
 
+# ----------------------------------------------------------------------------
+#
+class StagingWorker(multiprocessing.Process):
+    """A StagingWorker performs the agent side staging directives
+       and writes the results back to MongoDB.
+    """
+
+    # ------------------------------------------------------------------------
+    #
+    def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
+                 pilot_id, session_id, unitmanager_id):
+
+        """ Creates a new StagingWorker instance.
+        """
+        multiprocessing.Process.__init__(self)
+        self.daemon      = True
+        self._terminate  = False
+
+        self._log = logger
+
+        self._unitmanager_id = None
+        self._pilot_id = pilot_id
+
+        mongo_client = pymongo.MongoClient(mongodb_url)
+        self._mongo_db = mongo_client[mongodb_name]
+        self._p = mongo_db["%s.p"  % session_id]
+        self._w = mongo_db["%s.w"  % session_id]
+        self._wm = mongo_db["%s.wm" % session_id]
+
+        self._staging_queue = staging_queue
+
+
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """Terminates the process' main loop.
+        """
+        self._terminate = True
+
+    # ------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info('StagingWorker started ...')
+
+        try:
+            while self._terminate is False:
+
+                try:
+                    staging = self._staging_queue.get_nowait()
+
+                    # create working directory in case it
+                    # doesn't exist
+                    try :
+                        os.makedirs(staging['sandbox'])
+                    except OSError as e :
+                        # ignore failure on existing directory
+                        if  e.errno == errno.EEXIST and os.path.isdir (staging['sandbox']) :
+                            pass
+                        else :
+                            raise
+
+                    # Perform input staging
+                    directive = staging['directive']
+                    if isinstance(directive, tuple):
+                        self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
+                        directive = directive[0] # TODO: Why is it a fscking tuple?!?!
+
+                    sandbox = staging['sandbox']
+                    wu_id = staging ['wu_id']
+                    self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
+
+                    source = directive['source']
+                    target = os.path.join(sandbox, directive['target'])
+                    if directive['action'] == LINK:
+                        self._log.info('Going to link %s to %s' % (source, target))
+                        os.symlink(source, target)
+                    elif directive['action'] == COPY:
+                        self._log.info('Going to copy %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                    elif directive['action'] == TRANSFER:
+                        self._log.info('Going to transfer %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                    else:
+                        self._log.error('Action %s not supported' % directive['action'])
+
+
+                except Queue.Empty:
+                    # do nothing and sleep if we don't have any queued staging
+                    time.sleep(1)
+
+        except Exception, ex:
+            self._log.error("Error in StagingWorker loop: %s", traceback.format_exc())
+            raise
 
 # ----------------------------------------------------------------------------
 #
@@ -563,6 +661,9 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
+        # The staging queue holds the staging directives to be performed
+        self._staging_queue = multiprocessing.Queue()
+
         # we devide up the host list into maximum MAX_EXEC_WORKERS host 
         # partitions and assign them to the exec workers. asignment is 
         # round robin
@@ -594,9 +695,23 @@ class Agent(threading.Thread):
                 unitmanager_id = unitmanager_id
             )
             exec_worker.start()
-            self._log.info("Started up %s serving hosts %s", 
+            self._log.info("Started up %s serving hosts %s",  # TODO: doesnt this need a %
                 exec_worker, hp)
             self._exec_workers.append(exec_worker)
+
+        # Start staging worker
+        staging_worker = StagingWorker(
+            logger          = self._log,
+            staging_queue   = self._staging_queue,
+            mongodb_url     = mongodb_url,
+            mongodb_name    = mongodb_name,
+            pilot_id        = pilot_id,
+            session_id      = session_id,
+            unitmanager_id  = unitmanager_id
+        )
+        staging_worker.start()
+        self._log.info("Started up %s." % staging_worker)
+        self._staging_worker = staging_worker
 
     # ------------------------------------------------------------------------
     #
@@ -606,6 +721,9 @@ class Agent(threading.Thread):
         # First, we need to shut down all the workers
         for ew in self._exec_workers:
             ew.terminate()
+
+        # Shut down the staging worker
+        self._staging_worker.terminate()
 
         # Next, we set our own termination signal
         self._terminate.set()
@@ -682,7 +800,9 @@ class Agent(threading.Thread):
                         # Check the pilot's workunit queue
                         #new_wu_ids = p_cursor[0]['wu_queue']
 
+                        #
                         # Check if there are work units waiting for execution
+                        #
                         ts = datetime.datetime.utcnow()
 
                         wu_cursor = self._w.find_and_modify(
@@ -726,6 +846,39 @@ class Agent(threading.Thread):
                                             output_staging = wu['description']['output_staging'])
 
                                 self._task_queue.put(task)
+                        #
+                        # Check if there are work units waiting for input staging
+                        #
+                        ts = datetime.datetime.utcnow()
+
+                        wu_cursor = self._w.find_and_modify(
+                            query={'pilot' : self._pilot_id,
+                                   'staging.Agent_Input': 'Pending'},
+                            update={'$set' : {'staging.Agent_Input': 'Busy'},
+                                    '$push': {'statehistory': {'state': 'AgentStagingInput', 'timestamp': ts}}}#,
+                            #limit=BULK_LIMIT
+                        )
+
+                        # There are new work units in the wu_queue on the database.
+                        # Get the corresponding wu entries
+                        if wu_cursor is not None:
+                            #    self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
+                            #    wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
+                            if not isinstance(wu_cursor, list):
+                                wu_cursor = [wu_cursor]
+
+                            for wu in wu_cursor:
+                                logger.info("About to process input staging directives of: %s" % wu)
+
+                                for directive in wu['description']['input_staging']:
+                                    input_staging = {
+                                        'directive': directive,
+                                        'sandbox': '%s/unit-%s' % (self._workdir, str(wu['_id'])),
+                                        'wu_id': str(wu['_id'])
+                                    }
+
+                                    # Put the input staging directives in the queue
+                                    self._staging_queue.put(input_staging)
 
                 except Exception, ex:
                     raise

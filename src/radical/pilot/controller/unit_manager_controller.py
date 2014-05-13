@@ -406,7 +406,14 @@ class UnitManagerController(threading.Thread):
         for unit in units:
             # TODO: change test to find real transfers only
             #if unit.description.input_data is None:
-            if True:
+
+            unit.staging = {
+                'PM_Input': 'Pending',
+                'Agent_Input': 'Pending',
+                'PM_Output': 'Pending',
+                'Agent_Output': 'Pending'
+            }
+            if False:
                 wu_notransfer.append(unit.uid)
             else:
                 wu_transfer.append(unit)
@@ -450,5 +457,5 @@ class UnitManagerController(threading.Thread):
         # Add the startup request to the request queue.
         if len(wu_transfer) > 0:
             for unit in wu_transfer:
-                log = "Scheduled for data tranfer to ComputePilot %s." % pilot_uid
+                log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
                 self._set_state(unit.uid, PENDING_INPUT_STAGING, log)

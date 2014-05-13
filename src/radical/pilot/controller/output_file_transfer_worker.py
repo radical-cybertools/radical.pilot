@@ -47,9 +47,6 @@ class OutputFileTransferWorker(multiprocessing.Process):
         """Starts the process when Process.start() is called.
         """
 
-        # TODO: Temporarily disabled
-        return
-
         # saga_session holds the SSH context infos.
         saga_session = saga.Session()
 
@@ -101,21 +98,26 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     # directive(s) wit SAGA.
                     compute_unit_id = str(compute_unit["_id"])
                     remote_sandbox = compute_unit["sandbox"]
-                    transfer_directives = compute_unit["description"]["output_data"]
+                    staging_directives = compute_unit["description"]["output_staging"]
 
                     logger.info("Processing output file transfers for ComputeUnit %s" % compute_unit_id)
-                    # Loop over all transfer directives and execute them.
-                    for td in transfer_directives:
+                    # Loop over all staging directives and execute them.
+                    for sd in staging_directives:
 
-                        st = td.split(">")
-                        abs_source = "%s/%s" % (remote_sandbox, st[0].strip())
+                        action = sd['action']
+                        source = sd['source']
+                        target = sd['target']
 
-                        if len(st) == 1:
-                            abs_target = "file://localhost/%s" % os.getcwd()
-                        elif len(st) == 2:
-                            abs_target = "file://localhost/%s" % os.path.abspath(st[1].strip())
+                        if action != 'Transfer':
+                            logger.info("Skipping output file staging for action %s." % action)
+                            continue
+
+                        abs_source = "%s/%s" % (remote_sandbox, source)
+
+                        if os.path.basename(target) == target:
+                            abs_target = "file://localhost%s" % os.path.join(os.getcwd(), target)
                         else:
-                            raise Exception("Invalid transfer directive: %s" % td)
+                            abs_target = "file://localhost%s" % os.path.abspath(target)
 
                         log_msg = "Transferring output file %s -> %s" % (abs_source, abs_target)
                         log_messages.append(log_msg)
