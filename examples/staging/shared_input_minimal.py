@@ -91,7 +91,7 @@ if __name__ == "__main__":
             # Concatenate the shared input and the task specific input.
             cu = radical.pilot.ComputeUnitDescription()
             cu.executable = '/bin/cat'
-            cu.arguments = ('shared_input_file.txt input_file-%d.txt > output-file-%d.txt' % (unit_count, unit_count)).split()
+            cu.arguments = ('shared_input_file.txt input_file-%d.txt > output_file-%d.txt' % (unit_count, unit_count)).split()
             cu.cores = 1
             cu.input_staging = [sd_shared, sd_input]
             cu.output_staging = sd_output
@@ -114,7 +114,7 @@ if __name__ == "__main__":
             print " STDOUT: {0}".format(unit.stdout)
             print " STDERR: {0}".format(unit.stderr)
 
-        session.close()
+        session.close(delete=False)
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex
