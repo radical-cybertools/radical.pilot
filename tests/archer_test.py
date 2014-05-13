@@ -2,19 +2,21 @@ import os
 import sys
 import radical.pilot
 
-# READ: The RADICAL-Pilot documentation: 
-#   http://radicalpilot.readthedocs.org/en/latest
+# ARCHER:
+# =======
+# 
+# You can use radical.pilot only locally since compute nodes can't dial out at all.
+# You also need to install a local MongoDB database:
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scences!
+#   wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
+#   tar xzf mongodb-linux-x86_64-2.6.1.tgz
+#   mkdir $HOME/mongodata
+#   ./mongodb-linux-x86_64-2.6.1/bin/mongod --dbpath=$HOME/mongodata
 #
-# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
-# easiest way to make this work seamlessly is to set up ssh key-based
-# authentication and add the key to your keychain so you won't be 
-# prompted for a password. The following article explains how to set 
-# this up on Linux:
-#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
-
+# Next, you can download and install RADICAL-Pilot: 
+#   git clone https://github.com/radical-cybertools/radical.pilot.git
+#   cd radical.pilot
+#   checkout devel
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
@@ -77,7 +79,7 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
-        pdesc.project          = "e290"  # archer 'project group'
+        #pdesc.project          = "e290"  # archer 'project group'
         pdesc.runtime          = 10
         pdesc.cores            = 16 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
