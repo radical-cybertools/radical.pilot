@@ -1,6 +1,6 @@
 {
     "archer.ac.uk": {
-        "URL"                : "pbs://localhost?craytype=archer",
+        "URL"                : "fork://localhost",
         "filesystem"         : "file://localhost/",
         "default_queue"      : "standard",
         "python_interpreter" : "/work/y07/y07/cse/python/2.7.6/bin/python",
