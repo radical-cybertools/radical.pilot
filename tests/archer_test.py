@@ -104,7 +104,7 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
-        #pdesc.project          = "e290"  # archer 'project group'
+        pdesc.project          = "e290"  # archer 'project group'
         pdesc.runtime          = 10
         pdesc.cores            = 16 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"

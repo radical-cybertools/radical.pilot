@@ -6,6 +6,7 @@
         "python_interpreter" : "/work/y07/y07/cse/python/2.7.6/bin/python",
         "pre_bootstrap"      : [],
         "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/home"]
+        "valid_roots"        : ["/home"],
+        "bootstrap_script"   : "bootstrap-and-run-cray-agent"
     }
 }
