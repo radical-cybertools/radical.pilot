@@ -459,3 +459,4 @@ class UnitManagerController(threading.Thread):
             for unit in wu_transfer:
                 log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
                 self._set_state(unit.uid, PENDING_INPUT_STAGING, log)
+
