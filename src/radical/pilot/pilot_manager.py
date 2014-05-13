@@ -121,6 +121,7 @@ class PilotManager(Object):
             "filesystem":       "file://localhost",
             "pre_bootstrap":    ["hostname", "date"],
             "task_launch_mode": "LOCAL",
+            "bootstrap_script_name": "default_bootstrapper.sh"
         }
 
         if resource_configurations is not None:
