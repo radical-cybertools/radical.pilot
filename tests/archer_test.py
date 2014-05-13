@@ -13,10 +13,35 @@ import radical.pilot
 #   mkdir $HOME/mongodata
 #   ./mongodb-linux-x86_64-2.6.1/bin/mongod --dbpath=$HOME/mongodata
 #
+# Create a virtualenv
+#
+#   wget --no-check-certificate https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.10.tar.gz
+#   tar xzf virtualenv-1.10.tar.gz
+#   python virtualenv-1.10/virtualenv.py $HOME/RP
+#   source $HOME/RP/bin/activate
+#
+# Install SAGA-Python 'devel' branch as we need the latest dev. version of the PBS adaptor
+#
+#   git clone https://github.com/radical-cybertools/saga-python.git
+#   cd saga-python
+#   git checkout devel
+#   easy_install .
+#
 # Next, you can download and install RADICAL-Pilot: 
+#
 #   git clone https://github.com/radical-cybertools/radical.pilot.git
 #   cd radical.pilot
-#   checkout devel
+#   git checkout devel
+#   easy_install .
+# 
+# Run this script with the local MongoDB server. The hostname in the 
+# mongodb URL is the hostname of the login node on which you started
+# the server, *not* localhost. 
+#
+#   cd examples
+#   export RADICAL_PILOT_DBURL=mongodb://eslogin007:27017
+#   RADICAL_PILOT_VERBOSE=info python archer_test.py
+#
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
