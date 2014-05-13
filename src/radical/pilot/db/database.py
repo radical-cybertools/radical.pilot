@@ -683,7 +683,9 @@ class Session():
                 "sandbox":      str(working_directory),
                 "stdout_id":    None,
                 "stderr_id":    None,
-                "log":          unit_log
+                "log":          unit_log,
+                "staging":      unit.staging
+
             }
             unit_docs.append(unit_json)
             results[unit.uid] = unit_json
