@@ -142,8 +142,7 @@ setup_args = {
     'packages'    : find_packages('src'),
     'package_dir' : {'': 'src'},
     'scripts'          : ['bin/radicalpilot-version',
-                          'bin/radicalpilot-profiler',
-                          'bin/bootstrap-and-run-agent',
+                          'bin/radicalpilot-profiler'
                          ],
     'package_data'     : {'': ['*.sh', 'VERSION', 'VERSION.git', ]},
     'install_requires' : ['setuptools',

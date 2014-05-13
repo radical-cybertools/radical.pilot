@@ -185,6 +185,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     ########################################################
                     # Create SAGA Job description and submit the pilot job #
                     ########################################################
+
                     log_msg = "Creating agent sandbox '%s'." % str(sandbox)
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
@@ -196,11 +197,8 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     # Copy the bootstrap shell script
                     # This works for installed versions of RADICAL-Pilot
-                    bs_script = which('bootstrap-and-run-agent')
-                    if bs_script is None:
-                        bs_script = os.path.abspath("%s/../../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
-                    # This works for non-installed versions (i.e., python setup.py test)
-                    bs_script_url = saga.Url("file://localhost/%s" % bs_script)
+                    bs_script_full = os.path.abspath("%s/../bootstrapper/%s" % (os.path.dirname(os.path.abspath(__file__)), resource_cfg['bootstrap_script_name']))
+                    bs_script_url = saga.Url("file://localhost/%s" % bs_script_full)
 
                     log_msg = "Copying '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
                     log_messages.append(log_msg)
@@ -237,7 +235,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd.working_directory = saga.Url(sandbox).path
 
                     if 'bootstrap_script_name' in resource_cfg:
-                        jd.executable = "./%s" 
+                        jd.executable = "./%s" % resource_cfg['bootstrap_script_name']
                     else:
                         jd.executable = "./bootstrap-and-run-agent"
 

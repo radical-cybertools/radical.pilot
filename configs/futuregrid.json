@@ -2,41 +2,49 @@
     "alamo.futuregrid.org": {
         "URL"                : "pbs+ssh://alamo.futuregrid.org",
         "filesystem"         : "sftp://alamo.futuregrid.org/",
+        "URL_local"          : "pbs://localhost",
+        "filesystem_local"   : "file://localhost/",
         "default_queue"      : "short",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/N", "/home"]
+        "valid_roots"        : ["/N", "/home"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "india.futuregrid.org": {
         "URL"                : "pbs+ssh://india.futuregrid.org",
         "filesystem"         : "sftp://india.futuregrid.org/",
+        "URL_local"          : "pbs://localhost",
+        "filesystem_local"   : "file://localhost/",
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/N"]
+        "valid_roots"        : ["/N"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "sierra.futuregrid.org": {
         "URL"                : "pbs+ssh://sierra.futuregrid.org",
         "filesystem"         : "sftp://sierra.futuregrid.org/",
+        "URL_local"          : "pbs://localhost",
+        "filesystem_local"   : "file://localhost/",
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/N"]
+        "valid_roots"        : ["/N"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "hotel.futuregrid.org": {
         "URL"                : "pbs+ssh://hotel.futuregrid.org",
         "filesystem"         : "sftp://hotel.futuregrid.org/",
+        "URL_local"          : "pbs://localhost",
+        "filesystem_local"   : "file://localhost/",
         "default_queue"      : "batch",
         "python_interpreter" : "/soft/python/gnu-4.1/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/N", "/gpfs"]
+        "valid_roots"        : ["/N", "/gpfs"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "alamo.futuregrid.org-local": {
@@ -45,8 +53,8 @@
         "default_queue"      : "short",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/N", "/home"]
+        "valid_roots"        : ["/N", "/home"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "india.futuregrid.org-local": {
@@ -55,8 +63,8 @@
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/N"]
+        "valid_roots"        : ["/N"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "sierra.futuregrid.org-local": {
@@ -65,8 +73,8 @@
         "default_queue"      : "batch",
         "python_interpreter" : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/N"]
+        "valid_roots"        : ["/N"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "hotel.futuregrid.org-local": {
@@ -75,8 +83,8 @@
         "default_queue"      : "batch",
         "python_interpreter" : "/soft/python/gnu-4.1/2.7/bin/python",
         "pre_bootstrap"      : ["module purge", "module load python", "module load openmpi"],
-        "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/N", "/gpfs"]
+        "valid_roots"        : ["/N", "/gpfs"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     }
 }
 
