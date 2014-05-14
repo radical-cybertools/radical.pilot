@@ -620,7 +620,7 @@ class StagingWorker(multiprocessing.Process):
                     # If all went fine, update the state of this StagingDirective to Done
                     self._w.find_and_modify(
                         query={"_id" : ObjectId(wu_id),
-                               'Agent_Input_Status': 'Busy',
+                               'Agent_Input_Status': 'Running',
                                'Agent_Input_Directives.state': 'Pending',
                                'Agent_Input_Directives.source': source,
                                'Agent_Input_Directives.target': target,
@@ -877,7 +877,7 @@ class Agent(threading.Thread):
                             query={'pilot' : self._pilot_id,
                                    'Agent_Input_Status': 'Pending'},
                             # TODO: Also set the CU status to staging
-                            update={'$set' : {'Agent_Input_Status': 'Busy',
+                            update={'$set' : {'Agent_Input_Status': 'Running',
                                               'state': 'StagingInput'},
                                     '$push': {'statehistory': {'state': 'StagingInput', 'timestamp': ts}}}#,
                             #limit=BULK_LIMIT

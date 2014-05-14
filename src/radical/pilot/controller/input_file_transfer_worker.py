@@ -86,8 +86,8 @@ class InputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "FTW_Input_Status": "Pending"},
-                update={"$set" : {"FTW_Input_Status": "Busy",
+                       "FTW_Input_Status": PENDING},
+                update={"$set" : {"FTW_Input_Status": RUNNING,
                                   "state": STAGING_INPUT},
                         "$push": {"statehistory": {"state": "InputStaging", "timestamp": ts}}},
                 limit=BULK_LIMIT # TODO: bulklimit is probably not the best way to ensure there is just one
@@ -95,7 +95,7 @@ class InputFileTransferWorker(multiprocessing.Process):
 
             if compute_unit is None:
                 # Sleep a bit if no new units are available.
-                time.sleep(1)
+                time.sleep(1) # TODO: Probably need better sleep logic as we also have the logic on the end now
             else:
                 try:
                     log_messages = []
@@ -159,8 +159,8 @@ class InputFileTransferWorker(multiprocessing.Process):
                         # If all went fine, update the state of this StagingDirective to Done
                         um_col.find_and_modify(
                             query={"_id" : ObjectId(compute_unit_id),
-                                   'FTW_Input_Status': 'Busy',
-                                   'FTW_Input_Directives.state': 'Pending',
+                                   'FTW_Input_Status': RUNNING,
+                                   'FTW_Input_Directives.state': PENDING,
                                    'FTW_Input_Directives.source': sd['source'],
                                    'FTW_Input_Directives.target': sd['target'],
                                    },
@@ -181,31 +181,32 @@ class InputFileTransferWorker(multiprocessing.Process):
                          "$push": {"log": log_messages}}
                     )
 
-            logger.info('Do we reach here?')
-
             #
             # Check to see if there are more pending Directives, if not, we are Done
             #
             cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
-                                    "$or": [ {"Agent_Input_Status": "Busy"},
-                                             {"FTW_Input_Status": "Busy"}]})
+                                    "$or": [ {"Agent_Input_Status": RUNNING},
+                                             {"FTW_Input_Status": RUNNING}
+                                           ]
+                                    }
+                                   )
             # Iterate over all the returned CUs (if any)
             for wu in cursor_w:
-                logger.info('Inside loop that finds busy statuses, with wu: %s' % wu)
+                logger.info('Inside loop that finds RUNNING statuses, with wu: %s' % wu)
                 # See if there are any FTW Input Directives still pending
-                if not any(d['state'] == 'Pending' for d in wu['FTW_Input_Directives']):
+                if not any(d['state'] == PENDING for d in wu['FTW_Input_Directives']):
                     # All Input Directives for this FTW are done, mark the WU accordingly
                     logger.info('Updating state of FTWInputStatus to Done')
                     um_col.update({"_id": ObjectId(wu["_id"])},
-                                  {'$set': {'FTW_Input_Status': 'Done'},
+                                  {'$set': {'FTW_Input_Status': DONE},
                                    '$push': {'log': 'All FTW input staging directives done.'}})
 
                 # See if there are any Agent Input Directives still pending
-                if not any(d['state'] == 'Pending' for d in wu['Agent_Input_Directives']):
+                if not any(d['state'] == PENDING for d in wu['Agent_Input_Directives']):
                     # All Input Directives for this Agent are done, mark the WU accordingly
                     logger.info('Updating state of AgentInputStatus to Done')
                     um_col.update({"_id": ObjectId(wu["_id"])},
-                                   {'$set': {'Agent_Input_Status': 'Done'},
+                                   {'$set': {'Agent_Input_Status': DONE},
                                     '$push': {'log': 'All Agent Input Staging Directives done.'}
                                    })
 
@@ -215,12 +216,12 @@ class InputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "Agent_Input_Status": "Done",
-                       "FTW_Input_Status": "Done",
+                       "Agent_Input_Status": DONE,
+                       "FTW_Input_Status": DONE,
                        "state": STAGING_INPUT
                 },
                 update={"$set": {
-                            "FTW_Input_Status": "Busy",
+                            "FTW_Input_Status": RUNNING,
                             "state": PENDING_EXECUTION
                         },
                         "$push": {
