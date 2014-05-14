@@ -229,36 +229,30 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     # now that the script is in place and we know where it is,
                     # we can launch the agent
-                    js = saga.job.Service(resource_cfg['URL'], session=saga_session)
+                    job_service_url = saga.Url(resource_cfg['URL'])
+                    js = saga.job.Service(job_service_url, session=saga_session)
 
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
 
                     jd.executable = "./%s" % resource_cfg['bootstrapper']
 
-                    jd.arguments = ["-r", database_host,   # database host (+ port)
-                                    "-d", database_name,   # database name
-                                    "-s", session_uid,     # session uid
-                                    "-p", str(compute_pilot_id),  # pilot uid
-                                    "-t", runtime,         # agent runtime in minutes
-                                    "-c", number_cores,
-                                    "-V", VERSION] 
-
+                    jd.arguments = [        "-r", database_host,          # database host (+ port)
+                                            "-d", database_name,          # database name
+                                            "-s", session_uid,            # session uid
+                                            "-p", str(compute_pilot_id),  # pilot uid
+                                            "-t", runtime,                # agent runtime in minutes
+                                            "-c", number_cores,           # number of cores
+                                            "-V", VERSION                 # the radical pilot version
+                    ]
                     if cleanup is True:
-                        jd.arguments.append("-C")
+                        jd.arguments.append("-C")                         # the cleanup flag    
 
-                    if 'task_launch_mode' in resource_cfg:
-                        jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
-
-                    # process the 'queue' attribute
                     if queue is not None:
-                        jd.queue = queue
-                    elif 'default_queue' in resource_cfg:
-                        jd.queue = resource_cfg['default_queue']
+                        js.arguments.append("-q %s", queue)               # the queue name
 
-                    # process the project / allocation 
                     if project is not None:
-                        jd.project = project
+                        js.arguments.append("-a %s", project)             # the project / allocation name
 
                     # if resource config defines 'pre_bootstrap' commands,
                     # we add those to the argument list
@@ -272,12 +266,24 @@ class PilotLauncherWorker(multiprocessing.Process):
                         jd.arguments.append(
                             "-i %s" % resource_cfg['python_interpreter'])
 
-                    jd.output = "STDOUT"
-                    jd.error = "STDERR"
+                    # fork:// and ssh:// don't support 'queue' and 'project'
+                    if (job_service_url.schema != "fork://") and (job_service_url.schema != "ssh://"):
+
+
+                        # process the 'queue' attribute
+                        if queue is not None:
+                            jd.queue = queue
+                        elif 'default_queue' in resource_cfg:
+                            jd.queue = resource_cfg['default_queue']
+
+                        # process the project / allocation 
+                        if project is not None:
+                            jd.project = project
+
+                    jd.output = "AGENT.STDOUT"
+                    jd.error  = "AGENT.STDERR"
                     jd.total_cpu_count = number_cores
                     jd.wall_time_limit = runtime
-
-
 
                     log_msg = "Submitting SAGA job with description: %s" % str(jd)
                     log_messages.append(log_msg)
