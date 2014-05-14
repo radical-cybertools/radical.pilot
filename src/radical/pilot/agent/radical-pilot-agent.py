@@ -271,7 +271,7 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr, input_staging, output_staging):
+    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr, output_staging):
 
         self._log         = None
         self._description = None
@@ -284,7 +284,7 @@ class Task(object):
         self.workdir        = workdir
         self.stdout         = stdout
         self.stderr         = stderr
-        self.input_staging  = input_staging
+        #self.input_staging  = input_staging
         self.output_staging = output_staging
         self.numcores       = 1
 
@@ -431,6 +431,7 @@ class ExecWorker(multiprocessing.Process):
                                 if rc != 0:
                                     state = 'Failed'
                                 else:
+                                    # TODO: Verify the correctness of this test
                                     if self._slots[host][slot].task.output_staging is not None:
                                         self._log.info('Task output staging directives: %s' % self._slots[host][slot].task.output_staging)
                                         state = 'PendingOutputStaging'
@@ -505,7 +506,7 @@ class ExecWorker(multiprocessing.Process):
         """
         ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
-        # this informattion here:
+        # this information from here:
 
         if self._unitmanager_id is None:
             cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
@@ -573,20 +574,8 @@ class StagingWorker(multiprocessing.Process):
 
         try:
             while self._terminate is False:
-
                 try:
                     staging = self._staging_queue.get_nowait()
-
-                    # create working directory in case it
-                    # doesn't exist
-                    try :
-                        os.makedirs(staging['sandbox'])
-                    except OSError as e :
-                        # ignore failure on existing directory
-                        if  e.errno == errno.EEXIST and os.path.isdir (staging['sandbox']) :
-                            pass
-                        else :
-                            raise
 
                     # Perform input staging
                     directive = staging['directive']
@@ -598,22 +587,68 @@ class StagingWorker(multiprocessing.Process):
                     wu_id = staging ['wu_id']
                     self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
 
+                    # Create working directory in case it doesn't exist yet
+                    try :
+                        os.makedirs(sandbox)
+                    except OSError as e:
+                        # ignore failure on existing directory
+                        if e.errno == errno.EEXIST and os.path.isdir(sandbox):
+                            pass
+                        else:
+                            raise
+
                     source = directive['source']
-                    target = os.path.join(sandbox, directive['target'])
+                    target = directive['target']
+                    abs_target = os.path.join(sandbox, target)
                     if directive['action'] == LINK:
-                        self._log.info('Going to link %s to %s' % (source, target))
-                        os.symlink(source, target)
+                        self._log.info('Going to link %s to %s' % (source, abs_target))
+                        logmessage = 'Linked %s to %s' % (source, abs_target)
+                        os.symlink(source, abs_target)
                     elif directive['action'] == COPY:
                         self._log.info('Going to copy %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                        logmessage = 'Copy %s to %s' % (source, abs_target)
+                        # TODO: COPY
                     elif directive['action'] == TRANSFER:
                         self._log.info('Going to transfer %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                        logmessage = 'Transferred %s to %s' % (source, abs_target)
+                        # TODO: SAGA REMOTE TRANSFER
                     else:
+                        # TODO: raise
                         self._log.error('Action %s not supported' % directive['action'])
 
+                    logger.info('Updating state of AgentInputDirective to Done')
+                    # If all went fine, update the state of this StagingDirective to Done
+                    self._w.find_and_modify(
+                        query={"_id" : ObjectId(wu_id),
+                               'Agent_Input_Status': 'Busy',
+                               'Agent_Input_Directives.state': 'Pending',
+                               'Agent_Input_Directives.source': source,
+                               'Agent_Input_Directives.target': target,
+                               },
+                        update={'$set': {'Agent_Input_Directives.$.state': 'Done'},
+                                '$push': {'log': logmessage}
+                                }
+                    )
 
                 except Queue.Empty:
                     # do nothing and sleep if we don't have any queued staging
                     time.sleep(1)
+
+                # Check to see if there are more pending Directives, if not, we are Done
+                cursor_w = self._w.find({'pilot': self._pilot_id,
+                                         'Agent_Input_Status': 'Busy'}
+                )
+                # Iterate over all the returned CUs (if any)
+                for wu in cursor_w:
+                    logger.info('Whats up with this wu!? %s' % wu)
+                    # See if there are any Directives still pending
+                    if not any(d['state'] == 'Pending' for d in wu['Agent_Input_Directives']):
+                        # All Input Directives for this Agent are done, mark the WU accordingly
+                        logger.info('Updating state of AgentInputStatus to Done')
+                        self._w.update({"_id": ObjectId(wu_id)},
+                            {'$set': {'Agent_Input_Status': 'Done'},
+                             '$push': {'log': 'All Agent Input Staging Directives done.'}
+                            })
 
         except Exception, ex:
             self._log.error("Error in StagingWorker loop: %s", traceback.format_exc())
@@ -842,8 +877,10 @@ class Agent(threading.Thread):
                                             workdir     = task_dir_name, 
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
-                                            input_staging = wu['description']['input_staging'],
-                                            output_staging = wu['description']['output_staging'])
+                                            #input_staging = wu['description']['input_staging'], # TODO: Dont think we need these in the task
+                                            #output_staging = wu['description']['output_staging']
+                                            output_staging = wu['Agent_Output_Directives']
+                                            )
 
                                 self._task_queue.put(task)
                         #
@@ -853,9 +890,11 @@ class Agent(threading.Thread):
 
                         wu_cursor = self._w.find_and_modify(
                             query={'pilot' : self._pilot_id,
-                                   'staging.Agent_Input': 'Pending'},
-                            update={'$set' : {'staging.Agent_Input': 'Busy'},
-                                    '$push': {'statehistory': {'state': 'AgentStagingInput', 'timestamp': ts}}}#,
+                                   'Agent_Input_Status': 'Pending'},
+                            # TODO: Also set the CU status to staging
+                            update={'$set' : {'Agent_Input_Status': 'Busy',
+                                              'state': 'StagingInput'},
+                                    '$push': {'statehistory': {'state': 'StagingInput', 'timestamp': ts}}}#,
                             #limit=BULK_LIMIT
                         )
 
@@ -870,7 +909,9 @@ class Agent(threading.Thread):
                             for wu in wu_cursor:
                                 logger.info("About to process input staging directives of: %s" % wu)
 
-                                for directive in wu['description']['input_staging']:
+                                # TODO: Get these from the unit structure and not from the description
+                                #for directive in wu['description']['input_staging']:
+                                for directive in wu['Agent_Input_Directives']:
                                     input_staging = {
                                         'directive': directive,
                                         'sandbox': '%s/unit-%s' % (self._workdir, str(wu['_id'])),

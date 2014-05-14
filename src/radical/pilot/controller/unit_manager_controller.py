@@ -24,6 +24,7 @@ from radical.pilot.states import *
 
 from radical.utils import which
 from radical.pilot.utils.logger import logger
+from radical.utils import Url
 
 from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
 from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
@@ -404,19 +405,86 @@ class UnitManagerController(threading.Thread):
         # don't. The latter is added to the pilot directly, while the former
         # is added to the transfer queue.
         for unit in units:
-            # TODO: change test to find real transfers only
-            #if unit.description.input_data is None:
 
-            unit.staging = {
-                'PM_Input': 'Pending',
-                'Agent_Input': 'Pending',
-                'PM_Output': 'Pending',
-                'Agent_Output': 'Pending'
-            }
-            if False:
-                wu_notransfer.append(unit.uid)
-            else:
+            # Create object for staging status tracking
+            unit.FTW_Input_Status = None,
+            unit.FTW_Input_Directives = []
+            unit.Agent_Input_Status = None
+            unit.Agent_Input_Directives = []
+            unit.FTW_Output_Status = None
+            unit.FTW_Output_Directives = []
+            unit.Agent_Output_Status = None
+            unit.Agent_Output_Directives = []
+
+            # Split the input staging directives over the transfer worker and the agent
+            inp_sd = unit.description.input_staging
+            if not isinstance(inp_sd, list):
+                # Ugly, but is a workaround for iterating on att iface
+                inp_sd = [inp_sd]
+            for sd_obj in inp_sd:
+                sd = sd_obj.as_dict()
+
+                logger.info('SD of input_staging: %s' % sd)
+                action = sd['action']
+                source = Url(sd['source'])
+                target = Url(sd['target'])
+
+                # Add a field to maintain the state of this individual directive
+                sd['state'] = 'Pending'
+
+                if action == 'Link' or action == 'Copy' or action == 'Move':
+                    unit.Agent_Input_Directives.append(sd)
+                    unit.Agent_Input_Status = 'Pending'
+                elif action == 'Transfer':
+                    if source.schema and source.schema != 'file':
+                        # If there is a schema and it is different than "file",
+                        # assume a remote pull from the agent
+                        unit.Agent_Input_Directives.append(sd)
+                        unit.Agent_Input_Status = 'Pending'
+                    else:
+                        # Transfer from local to sandbox
+                        unit.FTW_Input_Directives.append(sd)
+                        unit.FTW_Input_Status = 'Pending'
+                else:
+                    logger.error('Not sure if action %s makes sense for input staging' % action)
+
+            logger.info('BLA: %s' % unit.description.output_staging)
+
+            # Split the output staging directives over the transfer worker and the agent
+            outp_sd = unit.description.output_staging
+            if not isinstance(outp_sd, list):
+                # Ugly, but is a workaround for iterating on att iface
+                outp_sd = [outp_sd]
+            for sd_obj in outp_sd:
+                sd = sd_obj.as_dict()
+                logger.info('SD of output_staging: %s' % sd)
+                action = sd['action']
+                source = Url(sd['source'])
+                target = Url(sd['target'])
+
+                # Add a field to maintain the state of this individual directive
+                sd['state'] = 'Pending'
+
+                if action == 'Link' or action == 'Copy' or action == 'Move':
+                    unit.Agent_Output_Directives.append(sd)
+                    unit.Agent_Output_Status = 'New'
+                elif action == 'Transfer':
+                    if target.schema and target.schema != 'file':
+                        # If there is a schema and it is different than "file",
+                        # assume a remote push from the agent
+                        unit.Agent_Output_Directives.append(sd)
+                        unit.Agent_Output_Status = 'New'
+                    else:
+                        # Transfer from sandbox back to local
+                        unit.FTW_Output_Directives.append(sd)
+                        unit.FTW_Output_Status = 'New'
+                else:
+                    logger.error('Not sure if action %s makes sense for output staging' % action)
+
+            if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
                 wu_transfer.append(unit)
+            else:
+                wu_notransfer.append(unit.uid)
 
         # Add all units to the database.
         results = self._db.insert_compute_units(
@@ -455,8 +523,6 @@ class UnitManagerController(threading.Thread):
 
         # Bulk-add all units that need transfer to the transfer queue.
         # Add the startup request to the request queue.
-        if len(wu_transfer) > 0:
-            for unit in wu_transfer:
-                log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
-                self._set_state(unit.uid, PENDING_INPUT_STAGING, log)
-
+        for unit in wu_transfer:
+            log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
+            self._set_state(unit.uid, PENDING_INPUT_STAGING, log)

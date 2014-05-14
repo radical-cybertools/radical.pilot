@@ -86,9 +86,10 @@ class InputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "state" : PENDING_INPUT_STAGING},
-                update={"$set" : {"state": STAGING_INPUT},
-                        "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}},
+                       "FTW_Input_Status": "Pending"},
+                update={"$set" : {"FTW_Input_Status": "Busy",
+                                  "state": STAGING_INPUT},
+                        "$push": {"statehistory": {"state": "InputStaging", "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
 
@@ -103,7 +104,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                     # directive(s) wit SAGA.
                     compute_unit_id = str(compute_unit["_id"])
                     remote_sandbox = compute_unit["sandbox"]
-                    input_staging = compute_unit["description"]["input_staging"]
+                    input_staging = compute_unit["FTW_Input_Directives"]
 
                     # We need to create the WU's directory in case it doesn't exist yet.
                     log_msg = "Creating ComputeUnit sandbox directory %s." % remote_sandbox
@@ -126,12 +127,6 @@ class InputFileTransferWorker(multiprocessing.Process):
                     # Loop over all transfer directives and execute them.
                     for sd in input_staging:
 
-                        # Only deal with TRANSFER, all the other actions are taken care of by the agent.
-                        if sd['action'] != TRANSFER:
-                            logger.info("Action != Transfer, skipping ...")
-                            continue
-                        logger.info("Action == Transfer, let the games begin!")
-
                         abs_src = os.path.abspath(sd['source'])
                         input_file_url = saga.Url("file://localhost/%s" % abs_src)
                         if not sd['target']:
@@ -140,6 +135,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                             target = "%s/%s" % (remote_sandbox, sd['target'])
 
                         log_msg = "Transferring input file %s -> %s" % (input_file_url, target)
+                        logmessage = "Transferred input file %s -> %s" % (input_file_url, target)
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
@@ -159,24 +155,50 @@ class InputFileTransferWorker(multiprocessing.Process):
                         input_file.close()
                         logger.info("File closed")
 
+                        logger.info('Updating state of FTWInputDirective to Done')
+                        # If all went fine, update the state of this StagingDirective to Done
+                        um_col.find_and_modify(
+                            query={"_id" : ObjectId(compute_unit_id),
+                                   'FTW_Input_Status': 'Busy',
+                                   'FTW_Input_Directives.state': 'Pending',
+                                   'FTW_Input_Directives.source': sd['source'],
+                                   'FTW_Input_Directives.target': sd['target'],
+                                   },
+                            update={'$set': {'FTW_Input_Directives.$.state': 'Done'},
+                                    '$push': {'log': logmessage}
+                            }
+                        )
+                    # Check to see if there are more pending Directives, if not, we are Done
+                    cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
+                                            "FTW_Input_Status": "Busy"})
+                    # Iterate over all the returned CUs (if any)
+                    for wu in cursor_w:
+                        # See if there are any Directives still pending
+                        if not any(d['state'] == 'Pending' for d in wu['FTW_Input_Directives']):
+                            # All Input Directives for this FTW are done, mark the WU accordingly
+                            logger.info('Updating state of FTWInputStatus to Done')
+                            um_col.update({"_id": ObjectId(compute_unit_id)},
+                                          {'$set': {'FTW_Input_Status': 'Done'},
+                                           '$push': {'log': 'All FTW input staging directives done.'}})
+
                     # Update the CU's state to 'PENDING_EXECUTION' if all 
                     # transfers were successful.
-                    ts = datetime.datetime.utcnow()
-                    um_col.update(
-                        {"_id": ObjectId(compute_unit_id)},
-                        {"$set": {"state": PENDING_EXECUTION},
-                         "$push": {"statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}},
-                         "$pushAll": {"log": log_messages}}                    
-                    )
+                    #ts = datetime.datetime.utcnow()
+                    #um_col.update(
+                    #    {"_id": ObjectId(compute_unit_id)},
+                    #    {"$set": {"state": PENDING_EXECUTION},
+                    #     "$push": {"statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}},
+                    #     "$pushAll": {"log": log_messages}}
+                    #)
 
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
                     log_messages = "Input transfer failed: %s" % str(ex)
                     logger.debug(log_msg)
-                    # um_col.update(
-                    #     {"_id": ObjectId(compute_unit_id)},
-                    #     {"$set": {"state": FAILED},
-                    #      "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                    #      "$push": {"log": log_messages}}
-                    # )
+                    um_col.update(
+                        {"_id": ObjectId(compute_unit_id)},
+                        {"$set": {"state": FAILED},
+                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                         "$push": {"log": log_messages}}
+                    )

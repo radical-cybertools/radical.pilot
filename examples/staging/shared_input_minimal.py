@@ -71,12 +71,12 @@ if __name__ == "__main__":
             session=session,
             scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
+        # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
         compute_units = []
 
-        for unit_count in range(1):
+        for unit_count in range(4):
 
             # Configure the staging directive for input file.
             sd_input = radical.pilot.StagingDirectives()

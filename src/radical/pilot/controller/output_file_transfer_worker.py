@@ -81,9 +81,10 @@ class OutputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "state" : PENDING_OUTPUT_STAGING},
-                update={"$set" : {"state": STAGING_OUTPUT},
-                        "$push": {"statehistory": {"state": STAGING_OUTPUT, "timestamp": ts}}},
+                       "FTW_Output_Status" : "Pending"},
+                update={"$set" : {"FTW_Output_Status": "Busy",
+                                  "state": STAGING_OUTPUT},
+                        "$push": {"statehistory": {"state": "FTWStagingOutput", "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
 
