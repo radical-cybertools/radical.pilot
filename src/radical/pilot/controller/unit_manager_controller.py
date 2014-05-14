@@ -424,7 +424,6 @@ class UnitManagerController(threading.Thread):
             for sd_obj in inp_sd:
                 sd = sd_obj.as_dict()
 
-                logger.info('SD of input_staging: %s' % sd)
                 action = sd['action']
                 source = Url(sd['source'])
                 target = Url(sd['target'])
@@ -448,8 +447,6 @@ class UnitManagerController(threading.Thread):
                 else:
                     logger.error('Not sure if action %s makes sense for input staging' % action)
 
-            logger.info('BLA: %s' % unit.description.output_staging)
-
             # Split the output staging directives over the transfer worker and the agent
             outp_sd = unit.description.output_staging
             if not isinstance(outp_sd, list):
@@ -457,7 +454,6 @@ class UnitManagerController(threading.Thread):
                 outp_sd = [outp_sd]
             for sd_obj in outp_sd:
                 sd = sd_obj.as_dict()
-                logger.info('SD of output_staging: %s' % sd)
                 action = sd['action']
                 source = Url(sd['source'])
                 target = Url(sd['target'])

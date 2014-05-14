@@ -427,7 +427,6 @@ class ExecWorker(multiprocessing.Process):
                                 uid = self._slots[host][slot].task.uid
                                 self._log.info("Task %s terminated with return code %s." % (uid, rc))
 
-
                                 if rc != 0:
                                     state = 'Failed'
                                 else:
@@ -628,7 +627,6 @@ class StagingWorker(multiprocessing.Process):
                         # TODO: raise
                         self._log.error('Action %s not supported' % directive['action'])
 
-                    logger.info('Updating state of AgentInputDirective to Done')
                     # If all went fine, update the state of this StagingDirective to Done
                     self._w.find_and_modify(
                         query={"_id" : ObjectId(wu_id),
@@ -854,8 +852,7 @@ class Agent(threading.Thread):
                                 wu_cursor = [wu_cursor]
 
                             for wu in wu_cursor:
-                                logger.error("about to process: %s" % wu)
-                                # Create new task objects and put them into the 
+                                # Create new task objects and put them into the
                                 # task queue
 
                                 # WorkingDirectoryPriv is defined, we override the 
@@ -903,7 +900,6 @@ class Agent(threading.Thread):
                                 wu_cursor = [wu_cursor]
 
                             for wu in wu_cursor:
-                                logger.info("About to process input staging directives of: %s" % wu)
 
                                 # TODO: Get these from the unit structure and not from the description
                                 #for directive in wu['description']['input_staging']:

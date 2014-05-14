@@ -142,18 +142,14 @@ class InputFileTransferWorker(multiprocessing.Process):
                             input_file_url,
                             session=saga_session
                         )
-                        logger.info("File object instantiated")
                         try:
                             input_file.copy(target)
                         except Exception, ex:
                             tb = traceback.format_exc()
                             logger.info('Error: %s. %s' % (str(ex), tb))
 
-                        logger.info("File copied")
                         input_file.close()
-                        logger.info("File closed")
 
-                        logger.info('Updating state of FTWInputDirective to Done')
                         # If all went fine, update the state of this StagingDirective to Done
                         um_col.find_and_modify(
                             query={"_id" : ObjectId(compute_unit_id),
@@ -193,7 +189,6 @@ class InputFileTransferWorker(multiprocessing.Process):
                 # See if there are any FTW Input Directives still pending
                 if not any(d['state'] == PENDING for d in wu['FTW_Input_Directives']):
                     # All Input Directives for this FTW are done, mark the WU accordingly
-                    logger.info('Updating state of FTWInputStatus to Done')
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                   {'$set': {'FTW_Input_Status': DONE},
                                    '$push': {'log': 'All FTW input staging directives done.'}})
@@ -201,7 +196,6 @@ class InputFileTransferWorker(multiprocessing.Process):
                 # See if there are any Agent Input Directives still pending
                 if not any(d['state'] == PENDING for d in wu['Agent_Input_Directives']):
                     # All Input Directives for this Agent are done, mark the WU accordingly
-                    logger.info('Updating state of AgentInputStatus to Done')
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                    {'$set': {'Agent_Input_Status': DONE},
                                     '$push': {'log': 'All Agent Input Staging Directives done.'}
