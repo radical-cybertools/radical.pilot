@@ -22,7 +22,6 @@ ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
-WORKING_DIRECTORY_PRIV = 'working_directory_priv'
 
 # ------------------------------------------------------------------------------
 #
@@ -93,7 +92,6 @@ class ComputeUnitDescription(attributes.Attributes) :
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
-        self._attributes_register(WORKING_DIRECTORY_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(INPUT_STAGING,          None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(OUTPUT_STAGING,         None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
 
@@ -121,8 +119,7 @@ class ComputeUnitDescription(attributes.Attributes) :
             EXECUTABLE             : self.executable,
             ARGUMENTS              : self.arguments,
             ENVIRONMENT            : self.environment,
-            CORES                  : self.cores,
-            WORKING_DIRECTORY_PRIV : self.working_directory_priv, 
+            CORES                  : self.cores
         }
         if not isinstance(self.input_staging, list):
             obj_dict[INPUT_STAGING] = [self.input_staging.as_dict()]

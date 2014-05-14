@@ -4,6 +4,7 @@
 import radical.pilot
 
 import os
+import sys
 import uuid
 import getpass
 import unittest
@@ -15,9 +16,9 @@ from pymongo import MongoClient
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICALPILOT_DBURL")
+DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: RADICALPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
 DBNAME = 'radicalpilot_unittests'
@@ -34,13 +35,13 @@ class TestRemoteSubmission(unittest.TestCase):
         client = MongoClient(DBURL)
         client.drop_database(DBNAME)
 
-        self.test_resource = os.getenv('RADICALPILOT_TEST_REMOTE_RESOURCE',     "localhost")
-        self.test_ssh_uid  = os.getenv('RADICALPILOT_TEST_REMOTE_SSH_USER_ID',  None)
-        self.test_ssh_key  = os.getenv('RADICALPILOT_TEST_REMOTE_SSH_USER_KEY', None)
-        self.test_workdir  = os.getenv('RADICALPILOT_TEST_REMOTE_WORKDIR',      "/tmp/radical.pilot.sandbox.unittests")
-        self.test_cores    = os.getenv('RADICALPILOT_TEST_REMOTE_CORES',        "1")
-        self.test_num_cus  = os.getenv('RADICALPILOT_TEST_REMOTE_NUM_CUS',      "2")
-        self.test_timeout  = os.getenv('RADICALPILOT_TEST_TIMEOUT',             "5")
+        self.test_resource = os.getenv('RADICAL_PILOT_TEST_REMOTE_RESOURCE',     "localhost")
+        self.test_ssh_uid  = os.getenv('RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID',  None)
+        self.test_ssh_key  = os.getenv('RADICAL_PILOT_TEST_REMOTE_SSH_USER_KEY', None)
+        self.test_workdir  = os.getenv('RADICAL_PILOT_TEST_REMOTE_WORKDIR',      "/tmp/radical.pilot.sandbox.unittests")
+        self.test_cores    = os.getenv('RADICAL_PILOT_TEST_REMOTE_CORES',        "1")
+        self.test_num_cus  = os.getenv('RADICAL_PILOT_TEST_REMOTE_NUM_CUS',      "2")
+        self.test_timeout  = os.getenv('RADICAL_PILOT_TEST_TIMEOUT',             "5")
 
     def tearDown(self):
         # clean up after ourselves 
@@ -131,8 +132,8 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(radical.pilot.states.RUNNING, timeout=5.0*60)
-        assert pilot.state == radical.pilot.states.RUNNING
+        pilot.wait(radical.pilot.states.ACTIVE, timeout=5.0*60)
+        assert pilot.state == radical.pilot.states.ACTIVE
         assert pilot.start_time is not None
         assert pilot.submission_time is not None
 
@@ -170,8 +171,8 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(radical.pilot.states.RUNNING)
-        assert pilot.state == radical.pilot.states.RUNNING, "Expected state 'RUNNING' but got %s" % pilot.state
+        pilot.wait(radical.pilot.states.ACTIVE)
+        assert pilot.state == radical.pilot.states.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
         assert pilot.submission_time is not None
         assert pilot.start_time is not None
 

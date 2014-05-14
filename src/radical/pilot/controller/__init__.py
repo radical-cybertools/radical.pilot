@@ -1,8 +1,5 @@
 """
-.. module:: radical.pilot.controller
-   :platform: Unix
-   :synopsis: The multiprocessing workers for RADICAL-Pilot.
-
+.. module:: radical.pilot.controller.pilot_launcher_worker
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
 

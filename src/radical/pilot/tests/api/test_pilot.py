@@ -13,7 +13,7 @@ from pymongo import MongoClient
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICALPILOT_DBURL")
+DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
     print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
@@ -65,9 +65,9 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait(radical.pilot.states.RUNNING)
+        pilot.wait(radical.pilot.states.ACTIVE)
         assert pilot.submission_time is not None
-        assert pilot.state == radical.pilot.states.RUNNING
+        assert pilot.state == radical.pilot.states.ACTIVE
         assert pilot.start_time is not None
         assert pilot.log is not None
         assert pilot.sandbox == "file://localhost%s/pilot-%s/" % (cpd.sandbox, pilot.uid)
@@ -134,9 +134,9 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait(radical.pilot.states.RUNNING)
+        pilot.wait(radical.pilot.states.ACTIVE)
         assert pilot.submission_time is not None
-        assert pilot.state == radical.pilot.states.RUNNING
+        assert pilot.state == radical.pilot.states.ACTIVE
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time

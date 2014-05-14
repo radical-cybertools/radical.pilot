@@ -9,7 +9,7 @@ Developer Documentation
 Debugging 
 =========
 
-The `RADICALPILOT_VERBOSE` environment variable controls the debug output of 
+The `RADICAL_PILOT_VERBOSE` environment variable controls the debug output of 
 a RADICAL-Pilot application. Possible values are:
 
   * `debug`

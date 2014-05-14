@@ -63,23 +63,26 @@ class State(object):
         """
         return self.state
 
+# -----------------------------------------------------------------------------
+# Common States
+NEW                         = 'New'
+PENDING                     = 'Pending'
+DONE                        = 'Done'
+CANCELED                    = 'Canceled'
+FAILED                      = 'Failed'
 
 # -----------------------------------------------------------------------------
-# States
-UNKNOWN                 = 'Unknown'
-NEW                     = 'New'
+# ComputePilot States
+PENDING_LAUNCH              = 'PendingLaunch'
+LAUNCHING                   = 'Launching'
+PENDING_ACTIVE              = 'PendingActive'
+ACTIVE                      = 'Active'
 
-PENDING                 = 'Pending'
-
-PENDING_EXECUTION       = 'PendingExecution'
-RUNNING                 = 'Running'
-
-PENDING_INPUT_STAGING   = 'PendingInputStaging'
-STAGING_INPUT           = 'StagingInput'
-
-PENDING_OUTPUT_STAGING  = 'PendingOutputStaging'
-STAGING_OUTPUT          = 'StagingOutput'
-
-DONE                    = 'Done'
-CANCELED                = 'Canceled'
-FAILED                  = 'Failed'
+# -----------------------------------------------------------------------------
+# ComputeUnit States
+PENDING_INPUT_STAGING       = 'PendingInputStaging'
+STAGING_INPUT               = 'StagingInput'
+PENDING_EXECUTION           = 'PendingExecution'
+EXECUTING                   = 'Executing'
+PENDING_OUTPUT_STAGING      = 'PendingOutputStaging'
+STAGING_OUTPUT              = 'StagingOutput'

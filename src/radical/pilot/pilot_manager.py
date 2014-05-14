@@ -53,7 +53,7 @@ class PilotManager(Object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, resource_configurations=None):
+    def __init__(self, session, resource_configurations=None, pilot_launcher_workers=1):
         """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -83,6 +83,13 @@ class PilotManager(Object):
 
                   pilot = pm.submit_pilots(pd)
 
+            * pilot_launcher_workers (`int`): The number of pilot launcher 
+              worker processes to start in the background. 
+
+        .. note:: `pilot_launcher_workers` can be used to tune RADICAL-Pilot's 
+                  performance. However, you should only change the default values 
+                  if you know what you are doing.
+
         **Returns:**
 
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
@@ -110,10 +117,11 @@ class PilotManager(Object):
 
         # Add 'localhost' as a built-in resource configuration
         self._resource_cfgs["localhost"] = {
-            "URL":              "fork://localhost",
-            "filesystem":       "file://localhost",
-            "pre_bootstrap":    ["hostname", "date"],
-            "task_launch_mode": "LOCAL",
+            "URL"              : "fork://localhost",
+            "filesystem"       : "file://localhost",
+            "pre_bootstrap"    : ["hostname", "date"],
+            "task_launch_mode" : "LOCAL",
+            "bootstrapper"     : "default_bootstrapper.sh"
         }
 
         if resource_configurations is not None:
@@ -146,7 +154,10 @@ class PilotManager(Object):
         self._worker = PilotManagerController(
             pilot_manager_uid=None,
             pilot_manager_data={},
-            db_connection=session._dbs)
+            pilot_launcher_workers=pilot_launcher_workers,
+            resource_configurations=self._resource_cfgs,
+            db_connection=session._dbs,
+            db_connection_info=session._connection_info)
         self._worker.start()
 
         self._uid = self._worker.pilot_manager_uid

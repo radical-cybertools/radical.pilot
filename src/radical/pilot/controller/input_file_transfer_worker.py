@@ -58,7 +58,7 @@ class InputFileTransferWorker(multiprocessing.Process):
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
             um_col = db["%s.w" % self.db_connection_info.session_id]
-            logger.debug("Connected to database %s." % db.host)
+            logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
             session_col = db["%s" % self.db_connection_info.session_id]
             session = session_col.find(
@@ -69,11 +69,10 @@ class InputFileTransferWorker(multiprocessing.Process):
             for cred_dict in session[0]["credentials"]:
                 cred = SSHCredential.from_dict(cred_dict)
                 saga_session.add_context(cred._context)
-                logger.debug("Added SSH context info: %s." % cred._context)
+                logger.debug("Found SSH context info: %s." % cred._context)
 
         except Exception, ex:
-            tb = traceback.format_exc()
-            logger.error("Connection error: %s. %s" % (str(ex), tb))
+            logger.error("Connection error: %s. %s" % (str(ex), traceback.format_exc()))
             return
 
         while True:
@@ -85,7 +84,7 @@ class InputFileTransferWorker(multiprocessing.Process):
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
                        "FTW_Input_Status": PENDING},
-                update={"$set" : {"FTW_Input_Status": RUNNING,
+                update={"$set" : {"FTW_Input_Status": EXECUTING,
                                   "state": STAGING_INPUT},
                         "$push": {"statehistory": {"state": "InputStaging", "timestamp": ts}}},
                 limit=BULK_LIMIT # TODO: bulklimit is probably not the best way to ensure there is just one
@@ -153,7 +152,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                         # If all went fine, update the state of this StagingDirective to Done
                         um_col.find_and_modify(
                             query={"_id" : ObjectId(compute_unit_id),
-                                   'FTW_Input_Status': RUNNING,
+                                   'FTW_Input_Status': EXECUTING,
                                    'FTW_Input_Directives.state': PENDING,
                                    'FTW_Input_Directives.source': sd['source'],
                                    'FTW_Input_Directives.target': sd['target'],
@@ -166,8 +165,8 @@ class InputFileTransferWorker(multiprocessing.Process):
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
-                    log_messages = "Input transfer failed: %s" % str(ex)
-                    logger.debug(log_msg)
+                    log_messages = "Input transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
+                    logger.error(log_messages)
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
                         {"$set": {"state": FAILED},
@@ -179,8 +178,8 @@ class InputFileTransferWorker(multiprocessing.Process):
             # Check to see if there are more pending Directives, if not, we are Done
             #
             cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
-                                    "$or": [ {"Agent_Input_Status": RUNNING},
-                                             {"FTW_Input_Status": RUNNING}
+                                    "$or": [ {"Agent_Input_Status": EXECUTING},
+                                             {"FTW_Input_Status": EXECUTING}
                                            ]
                                     }
                                    )
@@ -212,7 +211,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                        "state": STAGING_INPUT
                 },
                 update={"$set": {
-                            "FTW_Input_Status": RUNNING,
+                            "FTW_Input_Status": EXECUTING,
                             "state": PENDING_EXECUTION
                         },
                         "$push": {
