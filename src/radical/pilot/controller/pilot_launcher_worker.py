@@ -245,6 +245,9 @@ class PilotLauncherWorker(multiprocessing.Process):
                                             "-c", number_cores,           # number of cores
                                             "-V", VERSION                 # the radical pilot version
                     ]
+                    if 'task_launch_mode' in resource_cfg:
+                        jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
+
                     if cleanup is True:
                         jd.arguments.append("-C")                         # the cleanup flag    
 

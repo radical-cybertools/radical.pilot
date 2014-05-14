@@ -23,6 +23,7 @@ UNITMANAGERID=
 SESSIONID=
 WORKDIR=`pwd`
 PYTHON=`which python`
+LAUNCH_MODE=SSH
 QUEUE=
 ALLOCATION=
 
@@ -50,6 +51,8 @@ OPTIONS:
 
    -i      The Python interpreter to use, e.g., python2.6
            (default is '/usr/bin/python')
+
+   -l      Task lauch mode, AUTO, LOCAL, MPIRUN, APRUN
 
    -e      List of commands to run before botstrapping
 
@@ -165,19 +168,19 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION"
+AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION"
 echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION
+           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION
 }
 
 # -----------------------------------------------------------------------------
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:e:t:c:q:a:V:C” OPTION
+while getopts “hr:d:s:p:w:i:l:e:t:c:V:C” OPTION
 do
      case $OPTION in
          h)
@@ -201,6 +204,9 @@ do
              ;;
          i)
              PYTHON=$OPTARG
+             ;;
+         l)
+             LAUNCH_MODE=$OPTARG
              ;;
          e)
              PREBOOTSTRAP=$OPTARG
