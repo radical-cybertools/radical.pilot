@@ -197,7 +197,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     # Copy the bootstrap shell script
                     # This works for installed versions of RADICAL-Pilot
-                    bs_script_full = os.path.abspath("%s/../bootstrapper/%s" % (os.path.dirname(os.path.abspath(__file__)), resource_cfg['bootstrap_script_name']))
+                    bs_script_full = os.path.abspath("%s/../bootstrapper/%s" % (os.path.dirname(os.path.abspath(__file__)), resource_cfg['bootstrapper']))
                     bs_script_url = saga.Url("file://localhost/%s" % bs_script_full)
 
                     log_msg = "Copying '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
@@ -234,11 +234,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
 
-                    if 'bootstrap_script_name' in resource_cfg:
-                        jd.executable = "./%s" % resource_cfg['bootstrap_script_name']
-                    else:
-                        jd.executable = "./bootstrap-and-run-agent"
-
+                    jd.executable = "./%s" % resource_cfg['bootstrapper']
 
                     jd.arguments = ["-r", database_host,   # database host (+ port)
                                     "-d", database_name,   # database name

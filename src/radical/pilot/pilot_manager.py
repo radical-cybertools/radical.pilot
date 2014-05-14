@@ -117,11 +117,11 @@ class PilotManager(Object):
 
         # Add 'localhost' as a built-in resource configuration
         self._resource_cfgs["localhost"] = {
-            "URL":              "fork://localhost",
-            "filesystem":       "file://localhost",
-            "pre_bootstrap":    ["hostname", "date"],
-            "task_launch_mode": "LOCAL",
-            "bootstrap_script_name": "default_bootstrapper.sh"
+            "URL"              : "fork://localhost",
+            "filesystem"       : "file://localhost",
+            "pre_bootstrap"    : ["hostname", "date"],
+            "task_launch_mode" : "LOCAL",
+            "bootstrapper"     : "default_bootstrapper.sh"
         }
 
         if resource_configurations is not None:
