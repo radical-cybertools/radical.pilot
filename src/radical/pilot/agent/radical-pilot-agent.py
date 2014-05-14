@@ -634,21 +634,6 @@ class StagingWorker(multiprocessing.Process):
                     # do nothing and sleep if we don't have any queued staging
                     time.sleep(1)
 
-                # Check to see if there are more pending Directives, if not, we are Done
-                cursor_w = self._w.find({'pilot': self._pilot_id,
-                                         'Agent_Input_Status': 'Busy'}
-                )
-                # Iterate over all the returned CUs (if any)
-                for wu in cursor_w:
-                    logger.info('Whats up with this wu!? %s' % wu)
-                    # See if there are any Directives still pending
-                    if not any(d['state'] == 'Pending' for d in wu['Agent_Input_Directives']):
-                        # All Input Directives for this Agent are done, mark the WU accordingly
-                        logger.info('Updating state of AgentInputStatus to Done')
-                        self._w.update({"_id": ObjectId(wu_id)},
-                            {'$set': {'Agent_Input_Status': 'Done'},
-                             '$push': {'log': 'All Agent Input Staging Directives done.'}
-                            })
 
         except Exception, ex:
             self._log.error("Error in StagingWorker loop: %s", traceback.format_exc())

@@ -90,7 +90,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                 update={"$set" : {"FTW_Input_Status": "Busy",
                                   "state": STAGING_INPUT},
                         "$push": {"statehistory": {"state": "InputStaging", "timestamp": ts}}},
-                limit=BULK_LIMIT
+                limit=BULK_LIMIT # TODO: bulklimit is probably not the best way to ensure there is just one
             )
 
             if compute_unit is None:
@@ -168,28 +168,6 @@ class InputFileTransferWorker(multiprocessing.Process):
                                     '$push': {'log': logmessage}
                             }
                         )
-                    # Check to see if there are more pending Directives, if not, we are Done
-                    cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
-                                            "FTW_Input_Status": "Busy"})
-                    # Iterate over all the returned CUs (if any)
-                    for wu in cursor_w:
-                        # See if there are any Directives still pending
-                        if not any(d['state'] == 'Pending' for d in wu['FTW_Input_Directives']):
-                            # All Input Directives for this FTW are done, mark the WU accordingly
-                            logger.info('Updating state of FTWInputStatus to Done')
-                            um_col.update({"_id": ObjectId(compute_unit_id)},
-                                          {'$set': {'FTW_Input_Status': 'Done'},
-                                           '$push': {'log': 'All FTW input staging directives done.'}})
-
-                    # Update the CU's state to 'PENDING_EXECUTION' if all 
-                    # transfers were successful.
-                    #ts = datetime.datetime.utcnow()
-                    #um_col.update(
-                    #    {"_id": ObjectId(compute_unit_id)},
-                    #    {"$set": {"state": PENDING_EXECUTION},
-                    #     "$push": {"statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}},
-                    #     "$pushAll": {"log": log_messages}}
-                    #)
 
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
@@ -202,3 +180,51 @@ class InputFileTransferWorker(multiprocessing.Process):
                          "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
                          "$push": {"log": log_messages}}
                     )
+
+            logger.info('Do we reach here?')
+
+            #
+            # Check to see if there are more pending Directives, if not, we are Done
+            #
+            cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
+                                    "$or": [ {"Agent_Input_Status": "Busy"},
+                                             {"FTW_Input_Status": "Busy"}]})
+            # Iterate over all the returned CUs (if any)
+            for wu in cursor_w:
+                logger.info('Inside loop that finds busy statuses, with wu: %s' % wu)
+                # See if there are any FTW Input Directives still pending
+                if not any(d['state'] == 'Pending' for d in wu['FTW_Input_Directives']):
+                    # All Input Directives for this FTW are done, mark the WU accordingly
+                    logger.info('Updating state of FTWInputStatus to Done')
+                    um_col.update({"_id": ObjectId(wu["_id"])},
+                                  {'$set': {'FTW_Input_Status': 'Done'},
+                                   '$push': {'log': 'All FTW input staging directives done.'}})
+
+                # See if there are any Agent Input Directives still pending
+                if not any(d['state'] == 'Pending' for d in wu['Agent_Input_Directives']):
+                    # All Input Directives for this Agent are done, mark the WU accordingly
+                    logger.info('Updating state of AgentInputStatus to Done')
+                    um_col.update({"_id": ObjectId(wu["_id"])},
+                                   {'$set': {'Agent_Input_Status': 'Done'},
+                                    '$push': {'log': 'All Agent Input Staging Directives done.'}
+                                   })
+
+            #
+            # Check for all CUs if both Agent and FTW staging is done, we can then mark the CU PendingExecution
+            #
+            ts = datetime.datetime.utcnow()
+            um_col.find_and_modify(
+                query={"unitmanager": self.unit_manager_id,
+                       "Agent_Input_Status": "Done",
+                       "FTW_Input_Status": "Done",
+                       "state": STAGING_INPUT
+                },
+                update={"$set": {
+                            "FTW_Input_Status": "Busy",
+                            "state": PENDING_EXECUTION
+                        },
+                        "$push": {
+                            "statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}
+                        }
+                }
+            )
