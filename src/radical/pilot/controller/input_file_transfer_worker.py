@@ -49,8 +49,6 @@ class InputFileTransferWorker(multiprocessing.Process):
         """
 
         logger.info("Starting InputFileTransferWorker")
-        #return
-
 
         # saga_session holds the SSH context infos.
         saga_session = saga.Session()
@@ -192,7 +190,6 @@ class InputFileTransferWorker(multiprocessing.Process):
                                    )
             # Iterate over all the returned CUs (if any)
             for wu in cursor_w:
-                logger.info('Inside loop that finds RUNNING statuses, with wu: %s' % wu)
                 # See if there are any FTW Input Directives still pending
                 if not any(d['state'] == PENDING for d in wu['FTW_Input_Directives']):
                     # All Input Directives for this FTW are done, mark the WU accordingly
