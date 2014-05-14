@@ -22,7 +22,6 @@ ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
 INPUT_DATA             = 'input_data'
 OUTPUT_DATA            = 'output_data'
-WORKING_DIRECTORY_PRIV = 'working_directory_priv'
 
 # ------------------------------------------------------------------------------
 #
@@ -93,7 +92,6 @@ class ComputeUnitDescription(attributes.Attributes) :
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
-        self._attributes_register(WORKING_DIRECTORY_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(INPUT_DATA,             None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(OUTPUT_DATA,            None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
@@ -122,7 +120,6 @@ class ComputeUnitDescription(attributes.Attributes) :
             ARGUMENTS              : self.arguments,
             ENVIRONMENT            : self.environment,
             CORES                  : self.cores,
-            WORKING_DIRECTORY_PRIV : self.working_directory_priv, 
             INPUT_DATA             : self.input_data, 
             OUTPUT_DATA            : self.output_data
         }
