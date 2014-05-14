@@ -81,7 +81,7 @@ if __name__ == "__main__":
         pdesc.runtime          = 60 # minutes
         pdesc.cores            = 32 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-mpi.py"
-        pdesc.cleanup          = True
+        pdesc.cleanup          = False
 
 
         # Launch the pilot.

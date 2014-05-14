@@ -30,6 +30,7 @@ import threading
 import subprocess
 import multiprocessing
 
+from urlparse import urlparse
 from bson.objectid import ObjectId
 
 #--------------------------------------------------------------------------
@@ -216,8 +217,23 @@ class Agent(threading.Thread):
                     for cu in computeunits:
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
 
+                        # create working directory in case it doesn't exist
+                        task_workdir = urlparse(cu['sandbox']).path
+                        task_cores   = cu['description']['cores']
+
+                        try :
+                            os.makedirs(task_workdir)
+                        except OSError as e :
+                            # ignore failure on existing directory
+                            if  e.errno == errno.EEXIST and os.path.isdir (task_workdir) :
+                                pass
+                            else : 
+                                raise
+
+                        exec_string = "cd  %s && module load namd; ibrun -n %s namd ./eq0.inp" % (task_workdir, task_cores)
+
                         from subprocess import call
-                        call(["/bin/bash -l -c \" module load namd; ibrun namd2 ./eq0.inp\""], shell=True)
+                        call(["/bin/bash -l -c \" %s \"" % exec_string], shell=True)
 
                         if cu['description']['output_data'] is not None:
                             state = "PendingOutputTransfer"
