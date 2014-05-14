@@ -13,9 +13,9 @@ if DBURL is None:
 
 # RCONF points to the resource configuration files. Read more about resource
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-#RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-#         "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
-RCONF="file://localhost/Users/mark/proj/radical.pilot/configs/futuregrid.json"
+RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
+         "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
+#RCONF="file://localhost/Users/mark/proj/radical.pilot/configs/futuregrid.json"
 
 REMOTE_STAGING = '///N/u/marksant/staging_area/'
 REMOTE_HOST = 'india.futuregrid.org'
