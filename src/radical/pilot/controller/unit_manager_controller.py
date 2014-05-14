@@ -430,21 +430,21 @@ class UnitManagerController(threading.Thread):
                 target = Url(sd['target'])
 
                 # Add a field to maintain the state of this individual directive
-                sd['state'] = 'Pending'
+                sd['state'] = PENDING
 
                 if action == 'Link' or action == 'Copy' or action == 'Move':
                     unit.Agent_Input_Directives.append(sd)
-                    unit.Agent_Input_Status = 'Pending'
+                    unit.Agent_Input_Status = PENDING
                 elif action == 'Transfer':
                     if source.schema and source.schema != 'file':
                         # If there is a schema and it is different than "file",
                         # assume a remote pull from the agent
                         unit.Agent_Input_Directives.append(sd)
-                        unit.Agent_Input_Status = 'Pending'
+                        unit.Agent_Input_Status = PENDING
                     else:
                         # Transfer from local to sandbox
                         unit.FTW_Input_Directives.append(sd)
-                        unit.FTW_Input_Status = 'Pending'
+                        unit.FTW_Input_Status = PENDING
                 else:
                     logger.error('Not sure if action %s makes sense for input staging' % action)
 
@@ -463,7 +463,7 @@ class UnitManagerController(threading.Thread):
                 target = Url(sd['target'])
 
                 # Add a field to maintain the state of this individual directive
-                sd['state'] = 'Pending'
+                sd['state'] = PENDING
 
                 if action == 'Link' or action == 'Copy' or action == 'Move':
                     unit.Agent_Output_Directives.append(sd)
