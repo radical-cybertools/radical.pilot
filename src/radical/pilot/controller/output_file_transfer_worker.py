@@ -81,10 +81,10 @@ class OutputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "FTW_Output_Status" : "Pending"},
-                update={"$set" : {"FTW_Output_Status": "Busy",
+                       "FTW_Output_Status": PENDING},
+                update={"$set" : {"FTW_Output_Status": RUNNING,
                                   "state": STAGING_OUTPUT},
-                        "$push": {"statehistory": {"state": "FTWStagingOutput", "timestamp": ts}}},
+                        "$push": {"statehistory": {"state": STAGING_OUTPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
 
@@ -130,7 +130,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         output_file.copy(saga.Url(abs_target))
                         output_file.close()
 
-                    # Update the CU's state to 'DONE' if all transfers were successfull.
+                    # Update the CU's state to 'DONE' if all transfers were successful.
                     ts = datetime.datetime.utcnow()
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},

@@ -271,7 +271,7 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr, output_staging):
+    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr, agent_output_staging, ftw_output_staging):
 
         self._log         = None
         self._description = None
@@ -284,8 +284,8 @@ class Task(object):
         self.workdir        = workdir
         self.stdout         = stdout
         self.stderr         = stderr
-        #self.input_staging  = input_staging
-        self.output_staging = output_staging
+        self.agent_output_staging = agent_output_staging
+        self.ftw_output_staging = ftw_output_staging
         self.numcores       = 1
 
         # dynamic task properties
@@ -431,10 +431,22 @@ class ExecWorker(multiprocessing.Process):
                                 if rc != 0:
                                     state = 'Failed'
                                 else:
-                                    # TODO: Verify the correctness of this test
-                                    if self._slots[host][slot].task.output_staging is not None:
-                                        self._log.info('Task output staging directives: %s' % self._slots[host][slot].task.output_staging)
+
+                                    # Check if there is either Agent or FTW output staging required
+                                    if self._slots[host][slot].task.agent_output_staging or \
+                                            self._slots[host][slot].task.ftw_output_staging:
                                         state = 'PendingOutputStaging'
+
+                                        if self._slots[host][slot].task.agent_output_staging:
+                                            self._w.update(
+                                                {"_id": ObjectId(uid)},
+                                                {"$set": {"Agent_Output_Status": 'Pending'}}
+                                            )
+                                        if self._slots[host][slot].task.ftw_output_staging:
+                                            self._w.update(
+                                                {"_id": ObjectId(uid)},
+                                                {"$set": {"FTW_Output_Status": 'Pending'}}
+                                            )
                                     else:
                                         state = 'Done'
 
@@ -855,16 +867,15 @@ class Agent(threading.Thread):
                                 else:
                                     task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
-                                task = Task(uid         = str(wu["_id"]), 
+                                task = Task(uid         = str(wu["_id"]),
                                             executable  = wu["description"]["executable"], 
                                             arguments   = wu["description"]["arguments"],
                                             environment = wu["description"]["environment"],
                                             workdir     = task_dir_name, 
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
-                                            #input_staging = wu['description']['input_staging'], # TODO: Dont think we need these in the task
-                                            #output_staging = wu['description']['output_staging']
-                                            output_staging = wu['Agent_Output_Directives']
+                                            agent_output_staging = True if wu['Agent_Output_Directives'] else False,
+                                            ftw_output_staging   = True if wu['FTW_Output_Directives'] else False
                                             )
 
                                 self._task_queue.put(task)
@@ -876,7 +887,7 @@ class Agent(threading.Thread):
                         wu_cursor = self._w.find_and_modify(
                             query={'pilot' : self._pilot_id,
                                    'Agent_Input_Status': 'Pending'},
-                            # TODO: Also set the CU status to staging
+                            # TODO: This might/will create double state history for StagingInput
                             update={'$set' : {'Agent_Input_Status': 'Running',
                                               'state': 'StagingInput'},
                                     '$push': {'statehistory': {'state': 'StagingInput', 'timestamp': ts}}}#,
