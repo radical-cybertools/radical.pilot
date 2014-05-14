@@ -230,10 +230,10 @@ class Agent(threading.Thread):
                             else : 
                                 raise
 
-                        exec_string = "cd  %s && module load namd; ibrun -n %s namd ./eq0.inp" % (task_workdir, task_cores)
+                        exec_string = "cd  %s && module load namd; ibrun -n %s -o namd ./eq0.inp" % (task_workdir, task_cores)
 
                         from subprocess import call
-                        call(["/bin/bash -l -c \" %s \"" % exec_string], shell=True)
+                        call(["/bin/bash -l -c ' %s '" % exec_string], shell=True)
 
                         if cu['description']['output_data'] is not None:
                             state = "PendingOutputTransfer"
