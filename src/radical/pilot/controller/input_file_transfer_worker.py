@@ -40,7 +40,8 @@ class InputFileTransferWorker(multiprocessing.Process):
         self.db_connection_info = db_connection_info
         self.unit_manager_id = unit_manager_id
 
-        self.name = "InputFileTransferWorker-%s" % str(number)
+        self._worker_number = number
+        self.name = "InputFileTransferWorker-%s" % str(self._worker_number)
 
     # ------------------------------------------------------------------------
     #
@@ -174,6 +175,10 @@ class InputFileTransferWorker(multiprocessing.Process):
                          "$push": {"log": log_messages}}
                     )
 
+            # Code below is only to be run by the "first" or only worker
+            if self._worker_number > 1:
+                continue
+
             #
             # Check to see if there are more pending Directives, if not, we are Done
             #
@@ -192,7 +197,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                     #wu['FTW_Input_Status'] = DONE # TODO: Is this changing of the "local" copy required?
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                   {'$set': {'FTW_Input_Status': DONE},
-                                   '$push': {'log': 'All FTW Input Staging Directives done.'}})
+                                   '$push': {'log': 'All FTW Input Staging Directives done - %d.' % self._worker_number}})
 
                 # See if there are any Agent Input Directives still pending
                 if wu['Agent_Input_Status'] == EXECUTING and \
@@ -201,7 +206,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                     #wu['Agent_Input_Status'] = DONE # TODO: Is this changing of the "local" copy required?
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                    {'$set': {'Agent_Input_Status': DONE},
-                                    '$push': {'log': 'All Agent Input Staging Directives done.'}
+                                    '$push': {'log': 'All Agent Input Staging Directives done - %d.' % self._worker_number}
                                    })
 
             #

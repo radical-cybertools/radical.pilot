@@ -39,7 +39,8 @@ class OutputFileTransferWorker(multiprocessing.Process):
         self.db_connection_info = db_connection_info
         self.unit_manager_id = unit_manager_id
 
-        self.name = "OutputFileTransferWorker-%s" % str(number)
+        self._worker_number = number
+        self.name = "OutputFileTransferWorker-%s" % str(self._worker_number)
 
     # ------------------------------------------------------------------------
     #
@@ -120,7 +121,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                                    'FTW_Output_Directives.target': sd['target'],
                                    },
                             update={'$set': {'FTW_Output_Directives.$.state': EXECUTING},
-                                    '$push': {'log': 'Staring transfer of %s' % source}
+                                    '$push': {'log': 'Starting transfer of %s' % source}
                             }
                         )
 
@@ -169,6 +170,9 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     )
                     logger.error(log_messages)
 
+            # Code below is only to be run by the "first" or only worker
+            if self._worker_number > 1:
+                continue
 
             #
             # Check to see if there are more active Directives, if not, we are Done
@@ -187,7 +191,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     # All Output Directives for this FTW are done, mark the WU accordingly
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                   {'$set': {'FTW_Output_Status': DONE},
-                                   '$push': {'log': 'All FTW output staging directives done.'}})
+                                   '$push': {'log': 'All FTW output staging directives done - %d.' % self._worker_number}})
 
                 # See if there are any Agent Output Directives still pending
                 if wu['Agent_Output_Status'] == EXECUTING and \
@@ -195,7 +199,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     # All Output Directives for this Agent are done, mark the WU accordingly
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                   {'$set': {'Agent_Output_Status': DONE},
-                                   '$push': {'log': 'All Agent Output Staging Directives done.'}
+                                   '$push': {'log': 'All Agent Output Staging Directives done-%d.' % self._worker_number}
                                   })
 
             #
