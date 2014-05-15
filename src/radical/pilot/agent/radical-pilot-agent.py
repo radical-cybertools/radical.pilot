@@ -629,12 +629,16 @@ class InputStagingWorker(multiprocessing.Process):
                         os.symlink(source, abs_target)
                     elif directive['action'] == COPY:
                         self._log.info('Going to copy %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                        shutil.copyfile(source, abs_target)
                         logmessage = 'Copy %s to %s' % (source, abs_target)
-                        # TODO: COPY
+                    elif directive['action'] == MOVE:
+                        self._log.info('Going to move %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                        shutil.move(source, abs_target)
+                        logmessage = 'Moved %s to %s' % (source, abs_target)
                     elif directive['action'] == TRANSFER:
                         self._log.info('Going to transfer %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
-                        logmessage = 'Transferred %s to %s' % (source, abs_target)
                         # TODO: SAGA REMOTE TRANSFER
+                        logmessage = 'Transferred %s to %s' % (source, abs_target)
                     else:
                         # TODO: raise
                         self._log.error('Action %s not supported' % directive['action'])
@@ -731,12 +735,16 @@ class OutputStagingWorker(multiprocessing.Process):
                         logmessage = 'Linked %s to %s' % (abs_source, target)
                     elif directive['action'] == COPY:
                         self._log.info('Going to copy %s to %s' % (abs_source, target))
-                        shutil.copyfile (abs_source, target)
+                        shutil.copyfile(abs_source, target)
                         logmessage = 'Copied %s to %s' % (abs_source, target)
+                    elif directive['action'] == MOVE:
+                        self._log.info('Going to move %s to %s' % (abs_source, target))
+                        shutil.move(abs_source, target)
+                        logmessage = 'Moved %s to %s' % (abs_source, target)
                     elif directive['action'] == TRANSFER:
                         self._log.info('Going to transfer %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
-                        logmessage = 'Transferred %s to %s' % (abs_source, target)
                         # TODO: SAGA REMOTE TRANSFER
+                        logmessage = 'Transferred %s to %s' % (abs_source, target)
                     else:
                         # TODO: raise
                         self._log.error('Action %s not supported' % directive['action'])
