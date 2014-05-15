@@ -134,10 +134,6 @@ if [ $OUT -ne 0 ];then
    exit 1
 fi
 
-# for now we use development version directly from git
-# this blows up the virtualenv (and agent bootstrap time) significantly
-# at some point we will bootstrap everything directly from PyPi.
-# maybe a flag would be good to switch between 'production' and 'deve' ? 
 PIP_CMD="pip install python-hostlist"
 echo ""
 echo "################################################################################"
