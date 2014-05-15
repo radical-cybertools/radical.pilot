@@ -13,6 +13,7 @@ __license__   = "MIT"
 
 import os
 import ast
+import saga
 import sys
 import time
 import errno
@@ -1244,6 +1245,8 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     logger.info("RADICAL-Pilot agent for package/API version %s" % options.package_version)
+
+    logger.info("Using SAGA version %s" % saga.version)
 
     #--------------------------------------------------------------------------
     # Establish database connection
