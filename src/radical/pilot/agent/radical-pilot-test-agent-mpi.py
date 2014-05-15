@@ -218,8 +218,15 @@ class Agent(threading.Thread):
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
 
                         # create working directory in case it doesn't exist
-                        task_workdir = urlparse(cu['sandbox']).path
-                        task_cores   = cu['description']['cores']
+                        task_workdir    = urlparse(cu['sandbox']).path
+                        task_cores      = cu['description']['cores']
+                        
+                        # executable and arguments
+                        task_executable = cu['description']['executable']
+                        task_arguments  = cu['description']['arguments'] 
+                        task_exec_string = task_executable
+                        for arg in task_arguments:
+                          task_exec_string += " %s" % arg
 
                         try :
                             os.makedirs(task_workdir)
@@ -230,10 +237,10 @@ class Agent(threading.Thread):
                             else : 
                                 raise
 
-                        exec_string = "cd  %s && module load namd; ibrun -n %s -o namd ./eq0.inp" % (task_workdir, task_cores)
+                        ibrun_exec_string = "cd  %s ibrun -n %s -o 0 %s" % (task_workdir, task_cores, task_exec_string)
 
                         from subprocess import call
-                        call(["/bin/bash -l -c ' %s '" % exec_string], shell=True)
+                        call(["/bin/bash -l -c ' %s '" % ibrun_exec_string], shell=True)
 
                         if cu['description']['output_data'] is not None:
                             state = "PendingOutputTransfer"

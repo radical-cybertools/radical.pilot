@@ -15,6 +15,11 @@ import radical.pilot
 # this up on Linux:
 #   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
 
+# You need to have 
+#    module load namd/2.9
+# in your bashrc on stampede in order for this to work.
+#
+#
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
@@ -103,8 +108,8 @@ if __name__ == "__main__":
         for unit_count in range(0, 2):
 
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.executable  = "/bin/bash"
-            mpi_test_task.arguments   = ["-l", "-c", "\"module load namd/2.9 && namd2 ./eq0.inp \""]
+            mpi_test_task.executable  = "namd2"
+            mpi_test_task.arguments   = ["./eq0.inp"]
             mpi_test_task.cores       = 8
             mpi_test_task.input_data  = ["/%s/complex.pdb" % os.getcwd(),
                                          "/%s/complex.top" % os.getcwd(),
