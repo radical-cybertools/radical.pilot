@@ -81,9 +81,10 @@ ACTIVE                      = 'Active'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
-PENDING_INPUT_STAGING       = 'PendingInputStaging'
-STAGING_INPUT               = 'StagingInput'
 PENDING_EXECUTION           = 'PendingExecution'
 EXECUTING                   = 'Executing'
-PENDING_OUTPUT_STAGING      = 'PendingOutputStaging'
-STAGING_OUTPUT              = 'StagingOutput'
+
+PENDING_INPUT_STAGING       = 'PendingInputStaging'  # These last 4 are not really states,
+STAGING_INPUT               = 'StagingInput'         # as there are distributed entities enacting on them.
+PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just go,
+STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
