@@ -87,10 +87,13 @@ class OutputFileTransferWorker(multiprocessing.Process):
                 limit=BULK_LIMIT
             )
 
+            logger.info("OFTW after finding pending wus")
             if compute_unit is None:
+                logger.info("OFTW no wus, sleep")
                 # Sleep a bit if no new units are available.
                 time.sleep(1)
             else:
+                logger.info("OFTW wu found, progressing ...")
                 try:
                     log_messages = []
 
@@ -108,9 +111,18 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         source = sd['source']
                         target = sd['target']
 
-                        if action != 'Transfer':
-                            logger.info("Skipping output file staging for action %s." % action)
-                            continue
+                        # Mark the beginning of transfer this StagingDirective
+                        um_col.find_and_modify(
+                            query={"_id" : ObjectId(compute_unit_id),
+                                   'FTW_Output_Status': EXECUTING,
+                                   'FTW_Output_Directives.state': PENDING,
+                                   'FTW_Output_Directives.source': sd['source'],
+                                   'FTW_Output_Directives.target': sd['target'],
+                                   },
+                            update={'$set': {'FTW_Output_Directives.$.state': EXECUTING},
+                                    '$push': {'log': 'Staring transfer of %s' % source}
+                            }
+                        )
 
                         abs_source = "%s/%s" % (remote_sandbox, source)
 
@@ -134,19 +146,21 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         um_col.find_and_modify(
                             query={"_id" : ObjectId(compute_unit_id),
                                    'FTW_Output_Status': EXECUTING,
-                                   'FTW_Output_Directives.state': PENDING,
+                                   'FTW_Output_Directives.state': EXECUTING,
                                    'FTW_Output_Directives.source': sd['source'],
                                    'FTW_Output_Directives.target': sd['target'],
                                    },
-                            update={'$set': {'FTW_Output_Directives.$.state': 'Done'},
+                            update={'$set': {'FTW_Output_Directives.$.state': DONE},
                                     '$push': {'log': logmessage}
                             }
                         )
+
 
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
                     log_messages = "Output transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
+                    # TODO: not only mark the CU as failed, but also the specific Directive
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
                         {"$set": {"state": FAILED},
@@ -157,7 +171,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
 
             #
-            # Check to see if there are more pending Directives, if not, we are Done
+            # Check to see if there are more active Directives, if not, we are Done
             #
             cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
                                     "$or": [ {"Agent_Output_Status": EXECUTING},
@@ -168,14 +182,16 @@ class OutputFileTransferWorker(multiprocessing.Process):
             # Iterate over all the returned CUs (if any)
             for wu in cursor_w:
                 # See if there are any FTW Output Directives still pending
-                if not any(d['state'] == PENDING for d in wu['FTW_Output_Directives']):
+                if wu['FTW_Output_Status'] == EXECUTING and \
+                        not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['FTW_Output_Directives']):
                     # All Output Directives for this FTW are done, mark the WU accordingly
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                   {'$set': {'FTW_Output_Status': DONE},
                                    '$push': {'log': 'All FTW output staging directives done.'}})
 
                 # See if there are any Agent Output Directives still pending
-                if not any(d['state'] == PENDING for d in wu['Agent_Output_Directives']):
+                if wu['Agent_Output_Status'] == EXECUTING and \
+                        not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['Agent_Output_Directives']):
                     # All Output Directives for this Agent are done, mark the WU accordingly
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                   {'$set': {'Agent_Output_Status': DONE},
@@ -188,8 +204,8 @@ class OutputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "Agent_Output_Status": DONE,
-                       "FTW_Output_Status": DONE,
+                       "Agent_Output_Status": { "$in": [ NULL, DONE ] },
+                       "FTW_Output_Status": { "$in": [ NULL, DONE ] },
                        "state": STAGING_OUTPUT
                 },
                 update={"$set": {

@@ -186,15 +186,19 @@ class InputFileTransferWorker(multiprocessing.Process):
             # Iterate over all the returned CUs (if any)
             for wu in cursor_w:
                 # See if there are any FTW Input Directives still pending
-                if not any(d['state'] == PENDING for d in wu['FTW_Input_Directives']):
+                if wu['FTW_Input_Status'] == EXECUTING and \
+                        not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['FTW_Input_Directives']):
                     # All Input Directives for this FTW are done, mark the WU accordingly
+                    #wu['FTW_Input_Status'] = DONE # TODO: Is this changing of the "local" copy required?
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                   {'$set': {'FTW_Input_Status': DONE},
-                                   '$push': {'log': 'All FTW input staging directives done.'}})
+                                   '$push': {'log': 'All FTW Input Staging Directives done.'}})
 
                 # See if there are any Agent Input Directives still pending
-                if not any(d['state'] == PENDING for d in wu['Agent_Input_Directives']):
+                if wu['Agent_Input_Status'] == EXECUTING and \
+                        not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['Agent_Input_Directives']):
                     # All Input Directives for this Agent are done, mark the WU accordingly
+                    #wu['Agent_Input_Status'] = DONE # TODO: Is this changing of the "local" copy required?
                     um_col.update({"_id": ObjectId(wu["_id"])},
                                    {'$set': {'Agent_Input_Status': DONE},
                                     '$push': {'log': 'All Agent Input Staging Directives done.'}
@@ -206,8 +210,8 @@ class InputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "Agent_Input_Status": DONE,
-                       "FTW_Input_Status": DONE,
+                       "Agent_Input_Status": { "$in": [ NULL, DONE ] },
+                       "FTW_Input_Status": { "$in": [ NULL, DONE ] },
                        "state": STAGING_INPUT
                 },
                 update={"$set": {

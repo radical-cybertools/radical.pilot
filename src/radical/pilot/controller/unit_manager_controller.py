@@ -399,13 +399,13 @@ class UnitManagerController(threading.Thread):
         for unit in units:
 
             # Create object for staging status tracking
-            unit.FTW_Input_Status = None,
+            unit.FTW_Input_Status = NULL
             unit.FTW_Input_Directives = []
-            unit.Agent_Input_Status = None
+            unit.Agent_Input_Status = NULL
             unit.Agent_Input_Directives = []
-            unit.FTW_Output_Status = None
+            unit.FTW_Output_Status = NULL
             unit.FTW_Output_Directives = []
-            unit.Agent_Output_Status = None
+            unit.Agent_Output_Status = NULL
             unit.Agent_Output_Directives = []
 
             # Split the input staging directives over the transfer worker and the agent
@@ -455,17 +455,17 @@ class UnitManagerController(threading.Thread):
 
                 if action == 'Link' or action == 'Copy' or action == 'Move':
                     unit.Agent_Output_Directives.append(sd)
-                    unit.Agent_Output_Status = 'New'
+                    unit.Agent_Output_Status = NEW
                 elif action == 'Transfer':
                     if target.schema and target.schema != 'file':
                         # If there is a schema and it is different than "file",
                         # assume a remote push from the agent
                         unit.Agent_Output_Directives.append(sd)
-                        unit.Agent_Output_Status = 'New'
+                        unit.Agent_Output_Status = NEW
                     else:
                         # Transfer from sandbox back to local
                         unit.FTW_Output_Directives.append(sd)
-                        unit.FTW_Output_Status = 'New'
+                        unit.FTW_Output_Status = NEW
                 else:
                     logger.error('Not sure if action %s makes sense for output staging' % action)
 

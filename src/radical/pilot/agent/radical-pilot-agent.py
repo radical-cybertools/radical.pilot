@@ -425,11 +425,12 @@ class ExecWorker(multiprocessing.Process):
                                     if self._slots[host][slot].task.agent_output_staging or \
                                             self._slots[host][slot].task.ftw_output_staging:
 
+                                        state = 'StagingOutput' # TODO: this should ideally be PendingOutputStaging,
+                                                                # but that introduces a race condition currently
 
                                         # Check if there are Directives that need to be performed
                                         # by the Agent.
                                         if self._slots[host][slot].task.agent_output_staging:
-                                            state = 'StagingOutput'
 
                                             wu = self._w.find_one({"_id": ObjectId(uid)})
                                             for directive in wu['Agent_Output_Directives']:
@@ -453,7 +454,7 @@ class ExecWorker(multiprocessing.Process):
                                         # but we need this code to set the state so that the FTW
                                         # gets notified that it can start its work.
                                         if self._slots[host][slot].task.ftw_output_staging:
-                                            state = 'PendingOutputStaging'
+
                                             self._w.update(
                                                 {"_id": ObjectId(uid)},
                                                 {"$set": {"FTW_Output_Status": 'Pending'}}
@@ -524,7 +525,7 @@ class ExecWorker(multiprocessing.Process):
     #
 
     def _update_tasks(self, tasks):
-        """Updates the database entries for one or more tasks, inlcuding 
+        """Updates the database entries for one or more tasks, including
         task state, log, etc.
         """
         ts = datetime.datetime.utcnow()
@@ -533,7 +534,7 @@ class ExecWorker(multiprocessing.Process):
 
         if self._unitmanager_id is None:
             cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
-                                    {"unitmanager": 1})
+                                    {"unitmanager": 1}) # TODO: Dont understand this query
             self._unitmanager_id = cursor_p[0]["unitmanager"]
 
         for task in tasks:
