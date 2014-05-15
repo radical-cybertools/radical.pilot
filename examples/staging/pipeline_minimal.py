@@ -16,10 +16,12 @@ if DBURL is None:
 RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
           "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 
-INDIA_STAGING = '///N/u/marksant/staging_area/'
+INDIA_STAGING = '/N/u/marksant/staging_area'
 INDIA_HOST = 'india.futuregrid.org'
 
-SHARED_INPUT_FILE = 'shared_input_file.txt'
+INPUT_FILE = 'input_file.txt'
+INTERMEDIATE_FILE = 'intermediate_file.txt'
+OUTPUT_FILE = 'output_file.txt'
 
 #------------------------------------------------------------------------------
 #
@@ -62,20 +64,20 @@ if __name__ == "__main__":
 
         # Configure the staging directive for input file from local directory to working directory
         sd_input = radical.pilot.StagingDirectives()
-        sd_input.source = 'input_file.txt'
-        sd_input.target = 'input_file.txt' # Could be left empty if filename is same
-        sd_input.action = radical.pilot.StagingDirectives.TRANSFER
+        sd_input.source = INPUT_FILE
+        sd_input.target = INPUT_FILE # Could be left empty if filename is same
+        sd_input.action = radical.pilot.TRANSFER
 
         # Configure the staging directive for intermediate data
         sd_inter_out = radical.pilot.StagingDirectives()
-        sd_inter_out.source = 'intermediate_file.txt'
-        sd_inter_out.target = INDIA_STAGING
-        sd_inter_out.action = radical.pilot.StagingDirectives.COPY
+        sd_inter_out.source = INTERMEDIATE_FILE
+        sd_inter_out.target = '%s/%s' % (INDIA_STAGING, INTERMEDIATE_FILE)
+        sd_inter_out.action = radical.pilot.COPY
 
         # Task 1: Sort the input file and output to intermediate file
         cud1 = radical.pilot.ComputeUnitDescription()
-        cud1.executable = '/usr/bin/sort'
-        cud1.arguments = 'input_file.txt > intermediate_file.txt'.split()
+        cud1.executable = '/bin/sort'
+        cud1.arguments = ('%s > %s' % (INPUT_FILE, INTERMEDIATE_FILE)).split()
         cud1.input_staging = sd_input
         cud1.output_staging = sd_inter_out
         cud1.cores = 1
@@ -88,20 +90,20 @@ if __name__ == "__main__":
 
         # Configure the staging directive for input intermediate data
         sd_inter_in = radical.pilot.StagingDirectives()
-        sd_inter_in.source = INDIA_STAGING
-        sd_inter_in.target = 'intermediate_file.txt'
-        sd_inter_in.action = radical.pilot.StagingDirectives.LINK
+        sd_inter_in.source = '%s/%s' % (INDIA_STAGING, INTERMEDIATE_FILE)
+        sd_inter_in.target = INTERMEDIATE_FILE
+        sd_inter_in.action = radical.pilot.LINK
 
         # Configure the staging directive for output data
         sd_output = radical.pilot.StagingDirectives()
-        sd_output.source = 'output_file.txt'
-        sd_output.target = 'output_file.txt' # Could be left out if same as source
-        sd_output.action = radical.pilot.StagingDirectives.TRANSFER
+        sd_output.source = OUTPUT_FILE
+        sd_output.target = OUTPUT_FILE # Could be left out if same as source
+        sd_output.action = radical.pilot.TRANSFER
 
         # Task 2: Take the first line of the sort intermediate file and write to output
         cud2 = radical.pilot.ComputeUnitDescription()
         cud2.executable = '/usr/bin/head'
-        cud2.arguments = ('-n1 intermediate_file.txt > output_file.txt').split()
+        cud2.arguments = ('-n1 %s > %s' % (INTERMEDIATE_FILE, OUTPUT_FILE)).split()
         cud2.input_staging = sd_inter_in
         cud2.output_staging = sd_output
         cud2.cores = 1
