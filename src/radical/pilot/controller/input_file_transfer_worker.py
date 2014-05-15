@@ -87,7 +87,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                        "FTW_Input_Status": PENDING},
                 update={"$set" : {"FTW_Input_Status": EXECUTING,
                                   "state": STAGING_INPUT},
-                        "$push": {"statehistory": {"state": "InputStaging", "timestamp": ts}}},
+                        "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT # TODO: bulklimit is probably not the best way to ensure there is just one
             )
 
