@@ -120,6 +120,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                             abs_target = "file://localhost%s" % os.path.abspath(target)
 
                         log_msg = "Transferring output file %s -> %s" % (abs_source, abs_target)
+                        logmessage = "Transferred output file %s -> %s" % (abs_source, abs_target)
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
@@ -129,14 +130,18 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         output_file.copy(saga.Url(abs_target))
                         output_file.close()
 
-                    # Update the CU's state to 'DONE' if all transfers were successful.
-                    ts = datetime.datetime.utcnow()
-                    um_col.update(
-                        {"_id": ObjectId(compute_unit_id)},
-                        {"$set": {"state": DONE},
-                         "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
-                         "$pushAll": {"log": log_messages}}                    
-                    )
+                        # If all went fine, update the state of this StagingDirective to Done
+                        um_col.find_and_modify(
+                            query={"_id" : ObjectId(compute_unit_id),
+                                   'FTW_Output_Status': EXECUTING,
+                                   'FTW_Output_Directives.state': PENDING,
+                                   'FTW_Output_Directives.source': sd['source'],
+                                   'FTW_Output_Directives.target': sd['target'],
+                                   },
+                            update={'$set': {'FTW_Output_Directives.$.state': 'Done'},
+                                    '$push': {'log': logmessage}
+                            }
+                        )
 
                 except Exception, ex:
                     # Update the CU's state 'FAILED'.
@@ -149,4 +154,50 @@ class OutputFileTransferWorker(multiprocessing.Process):
                          "$push": {"log": log_messages}}
                     )
                     logger.error(log_messages)
+
+
+            #
+            # Check to see if there are more pending Directives, if not, we are Done
+            #
+            cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
+                                    "$or": [ {"Agent_Output_Status": EXECUTING},
+                                             {"FTW_Output_Status": EXECUTING}
+                                    ]
+            }
+            )
+            # Iterate over all the returned CUs (if any)
+            for wu in cursor_w:
+                # See if there are any FTW Output Directives still pending
+                if not any(d['state'] == PENDING for d in wu['FTW_Output_Directives']):
+                    # All Output Directives for this FTW are done, mark the WU accordingly
+                    um_col.update({"_id": ObjectId(wu["_id"])},
+                                  {'$set': {'FTW_Output_Status': DONE},
+                                   '$push': {'log': 'All FTW output staging directives done.'}})
+
+                # See if there are any Agent Output Directives still pending
+                if not any(d['state'] == PENDING for d in wu['Agent_Output_Directives']):
+                    # All Output Directives for this Agent are done, mark the WU accordingly
+                    um_col.update({"_id": ObjectId(wu["_id"])},
+                                  {'$set': {'Agent_Output_Status': DONE},
+                                   '$push': {'log': 'All Agent Output Staging Directives done.'}
+                                  })
+
+            #
+            # Check for all CUs if both Agent and FTW staging is done, we can then mark the CU Done
+            #
+            ts = datetime.datetime.utcnow()
+            um_col.find_and_modify(
+                query={"unitmanager": self.unit_manager_id,
+                       "Agent_Output_Status": DONE,
+                       "FTW_Output_Status": DONE,
+                       "state": STAGING_OUTPUT
+                },
+                update={"$set": {
+                    "state": DONE
+                },
+                        "$push": {
+                            "statehistory": {"state": DONE, "timestamp": ts}
+                        }
+                }
+            )
 

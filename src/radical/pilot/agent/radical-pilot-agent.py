@@ -18,6 +18,7 @@ import time
 import errno
 import pipes
 import Queue
+import shutil
 import signal
 import gridfs
 import pymongo
@@ -29,7 +30,6 @@ import traceback
 import threading 
 import subprocess
 import multiprocessing
-
 from bson.objectid import ObjectId
 
 
@@ -300,7 +300,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, task_queue, hosts, cores_per_host, 
+    def __init__(self, logger, task_queue, output_staging_queue, hosts, cores_per_host,
                  launch_method, launch_command, mongodb_url, mongodb_name,
                  pilot_id, session_id, unitmanager_id):
 
@@ -322,6 +322,7 @@ class ExecWorker(multiprocessing.Process):
         self._wm = mongo_db["%s.wm" % session_id]
 
         self._task_queue     = task_queue
+        self._output_staging_queue = output_staging_queue
 
         self._launch_method  = launch_method
         self._launch_command = launch_command
@@ -423,14 +424,36 @@ class ExecWorker(multiprocessing.Process):
                                     # Check if there is either Agent or FTW output staging required
                                     if self._slots[host][slot].task.agent_output_staging or \
                                             self._slots[host][slot].task.ftw_output_staging:
-                                        state = 'PendingOutputStaging'
 
+
+                                        # Check if there are Directives that need to be performed
+                                        # by the Agent.
                                         if self._slots[host][slot].task.agent_output_staging:
-                                            self._w.update(
-                                                {"_id": ObjectId(uid)},
-                                                {"$set": {"Agent_Output_Status": 'Pending'}}
-                                            )
+                                            state = 'StagingOutput'
+
+                                            wu = self._w.find_one({"_id": ObjectId(uid)})
+                                            for directive in wu['Agent_Output_Directives']:
+                                                output_staging = {
+                                                    'directive': directive,
+                                                    'sandbox': self._slots[host][slot].task.workdir,
+                                                    'wu_id': uid
+                                                }
+
+                                                # Put the output staging directives in the queue
+                                                self._output_staging_queue.put(output_staging)
+
+                                                self._w.update(
+                                                    {"_id": ObjectId(uid)},
+                                                    {"$set": {"Agent_Output_Status": 'Executing'}}
+                                                )
+
+                                        # Check if there are Directives that need to be performed
+                                        # by the FTW.
+                                        # Obviously these are not executed here (by the Agent),
+                                        # but we need this code to set the state so that the FTW
+                                        # gets notified that it can start its work.
                                         if self._slots[host][slot].task.ftw_output_staging:
+                                            state = 'PendingOutputStaging'
                                             self._w.update(
                                                 {"_id": ObjectId(uid)},
                                                 {"$set": {"FTW_Output_Status": 'Pending'}}
@@ -528,8 +551,8 @@ class ExecWorker(multiprocessing.Process):
 
 # ----------------------------------------------------------------------------
 #
-class StagingWorker(multiprocessing.Process):
-    """A StagingWorker performs the agent side staging directives
+class InputStagingWorker(multiprocessing.Process):
+    """An InputStagingWorker performs the agent side staging directives
        and writes the results back to MongoDB.
     """
 
@@ -538,7 +561,7 @@ class StagingWorker(multiprocessing.Process):
     def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
                  pilot_id, session_id, unitmanager_id):
 
-        """ Creates a new StagingWorker instance.
+        """ Creates a new InputStagingWorker instance.
         """
         multiprocessing.Process.__init__(self)
         self.daemon      = True
@@ -570,7 +593,7 @@ class StagingWorker(multiprocessing.Process):
     #
     def run(self):
 
-        self._log.info('StagingWorker started ...')
+        self._log.info('InputStagingWorker started ...')
 
         try:
             while self._terminate is False:
@@ -584,7 +607,7 @@ class StagingWorker(multiprocessing.Process):
                         directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
                     sandbox = staging['sandbox']
-                    wu_id = staging ['wu_id']
+                    wu_id = staging['wu_id']
                     self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
 
                     # Create working directory in case it doesn't exist yet
@@ -626,6 +649,108 @@ class StagingWorker(multiprocessing.Process):
                                },
                         update={'$set': {'Agent_Input_Directives.$.state': 'Done'},
                                 '$push': {'log': logmessage}
+                        }
+                    )
+
+                except Queue.Empty:
+                    # do nothing and sleep if we don't have any queued staging
+                    time.sleep(1)
+
+
+        except Exception, ex:
+            self._log.error("Error in InputStagingWorker loop: %s", traceback.format_exc())
+            raise
+
+# ----------------------------------------------------------------------------
+#
+class OutputStagingWorker(multiprocessing.Process):
+    """An OutputStagingWorker performs the agent side staging directives
+       and writes the results back to MongoDB.
+    """
+
+    # ------------------------------------------------------------------------
+    #
+    def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
+                 pilot_id, session_id, unitmanager_id):
+
+        """ Creates a new OutputStagingWorker instance.
+        """
+        multiprocessing.Process.__init__(self)
+        self.daemon      = True
+        self._terminate  = False
+
+        self._log = logger
+
+        self._unitmanager_id = None
+        self._pilot_id = pilot_id
+
+        mongo_client = pymongo.MongoClient(mongodb_url)
+        self._mongo_db = mongo_client[mongodb_name]
+        self._p = mongo_db["%s.p"  % session_id]
+        self._w = mongo_db["%s.w"  % session_id]
+        self._wm = mongo_db["%s.wm" % session_id]
+
+        self._staging_queue = staging_queue
+
+
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """Terminates the process' main loop.
+        """
+        self._terminate = True
+
+    # ------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info('OutputStagingWorker started ...')
+
+        try:
+            while self._terminate is False:
+                try:
+                    staging = self._staging_queue.get_nowait()
+
+                    # Perform output staging
+                    directive = staging['directive']
+                    if isinstance(directive, tuple):
+                        self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
+                        directive = directive[0] # TODO: Why is it a fscking tuple?!?!
+
+                    sandbox = staging['sandbox']
+                    wu_id = staging ['wu_id']
+                    self._log.info('Task output staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
+
+                    source = str(directive['source'])
+                    target = str(directive['target'])
+                    abs_source = os.path.join(sandbox, source)
+                    if directive['action'] == LINK:
+                        self._log.info('Going to link %s to %s' % (abs_source, target))
+                        os.symlink(abs_source, target)
+                        logmessage = 'Linked %s to %s' % (abs_source, target)
+                    elif directive['action'] == COPY:
+                        self._log.info('Going to copy %s to %s' % (abs_source, target))
+                        shutil.copyfile (abs_source, target)
+                        logmessage = 'Copied %s to %s' % (abs_source, target)
+                    elif directive['action'] == TRANSFER:
+                        self._log.info('Going to transfer %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                        logmessage = 'Transferred %s to %s' % (abs_source, target)
+                        # TODO: SAGA REMOTE TRANSFER
+                    else:
+                        # TODO: raise
+                        self._log.error('Action %s not supported' % directive['action'])
+
+                    # If all went fine, update the state of this StagingDirective to Done
+                    self._w.find_and_modify(
+                        query={"_id" : ObjectId(wu_id),
+                               'Agent_Output_Status': 'Executing',
+                               'Agent_Output_Directives.state': 'Pending',
+                               'Agent_Output_Directives.source': source,
+                               'Agent_Output_Directives.target': target,
+                               },
+                        update={'$set': {'Agent_Output_Directives.$.state': 'Done'},
+                                '$push': {'log': logmessage}
                                 }
                     )
 
@@ -635,7 +760,7 @@ class StagingWorker(multiprocessing.Process):
 
 
         except Exception, ex:
-            self._log.error("Error in StagingWorker loop: %s", traceback.format_exc())
+            self._log.error("Error in OutputStagingWorker loop: %s", traceback.format_exc())
             raise
 
 # ----------------------------------------------------------------------------
@@ -680,11 +805,12 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
-        # The staging queue holds the staging directives to be performed
-        self._staging_queue = multiprocessing.Queue()
+        # The staging queues holds the staging directives to be performed
+        self._input_staging_queue = multiprocessing.Queue()
+        self._output_staging_queue = multiprocessing.Queue()
 
-        # we devide up the host list into maximum MAX_EXEC_WORKERS host 
-        # partitions and assign them to the exec workers. asignment is 
+        # we divide up the host list into maximum MAX_EXEC_WORKERS host
+        # partitions and assign them to the exec workers. assignment is
         # round robin
         self._host_partitions = []
         partition_idx = 0
@@ -703,6 +829,7 @@ class Agent(threading.Thread):
             exec_worker = ExecWorker(
                 logger          = self._log,
                 task_queue      = self._task_queue,
+                output_staging_queue   = self._output_staging_queue,
                 hosts           = hp,
                 cores_per_host  = self._exec_env.cores_per_node,
                 launch_method   = self._exec_env.launch_method,
@@ -718,19 +845,33 @@ class Agent(threading.Thread):
                 exec_worker, hp)
             self._exec_workers.append(exec_worker)
 
-        # Start staging worker
-        staging_worker = StagingWorker(
+        # Start input staging worker
+        input_staging_worker = InputStagingWorker(
             logger          = self._log,
-            staging_queue   = self._staging_queue,
+            staging_queue   = self._input_staging_queue,
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
             pilot_id        = pilot_id,
             session_id      = session_id,
             unitmanager_id  = unitmanager_id
         )
-        staging_worker.start()
-        self._log.info("Started up %s." % staging_worker)
-        self._staging_worker = staging_worker
+        input_staging_worker.start()
+        self._log.info("Started up %s." % input_staging_worker)
+        self._input_staging_worker = input_staging_worker
+
+        # Start output staging worker
+        output_staging_worker = OutputStagingWorker(
+            logger          = self._log,
+            staging_queue   = self._output_staging_queue,
+            mongodb_url     = mongodb_url,
+            mongodb_name    = mongodb_name,
+            pilot_id        = pilot_id,
+            session_id      = session_id,
+            unitmanager_id  = unitmanager_id
+        )
+        output_staging_worker.start()
+        self._log.info("Started up %s." % output_staging_worker)
+        self._output_staging_worker = output_staging_worker
 
     # ------------------------------------------------------------------------
     #
@@ -741,8 +882,9 @@ class Agent(threading.Thread):
         for ew in self._exec_workers:
             ew.terminate()
 
-        # Shut down the staging worker
-        self._staging_worker.terminate()
+        # Shut down the staging workers
+        self._input_staging_worker.terminate()
+        self._output_staging_worker.terminate()
 
         # Next, we set our own termination signal
         self._terminate.set()
@@ -890,8 +1032,6 @@ class Agent(threading.Thread):
 
                             for wu in wu_cursor:
 
-                                # TODO: Get these from the unit structure and not from the description
-                                #for directive in wu['description']['input_staging']:
                                 for directive in wu['Agent_Input_Directives']:
                                     input_staging = {
                                         'directive': directive,
@@ -900,7 +1040,8 @@ class Agent(threading.Thread):
                                     }
 
                                     # Put the input staging directives in the queue
-                                    self._staging_queue.put(input_staging)
+                                    self._input_staging_queue.put(input_staging)
+
 
                 except Exception, ex:
                     raise
