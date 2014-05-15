@@ -237,7 +237,8 @@ class Agent(threading.Thread):
                             else : 
                                 raise
 
-                        ibrun_exec_string = "cd  %s && ibrun -n %s -o 0 %s" % (task_workdir, task_cores, task_exec_string)
+                        ibrun_exec_string = "cd %s && ibrun -n %s -o 0 %s" % (task_workdir, task_cores, task_exec_string)
+                        LOGGER.info("ibrun exec string: %s" % ibrun_exec_string)
 
                         from subprocess import call
                         call(["/bin/bash -l -c ' %s '" % ibrun_exec_string], shell=True)
