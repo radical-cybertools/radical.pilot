@@ -114,7 +114,7 @@ if __name__ == "__main__":
         # Wait for the compute unit to finish.
         umgr.wait_units()
 
-        session.close()
+        session.close(delete=False)
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex
