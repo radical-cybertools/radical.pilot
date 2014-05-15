@@ -211,7 +211,6 @@ class InputFileTransferWorker(multiprocessing.Process):
                        "state": STAGING_INPUT
                 },
                 update={"$set": {
-                            "FTW_Input_Status": EXECUTING,
                             "state": PENDING_EXECUTION
                         },
                         "$push": {
