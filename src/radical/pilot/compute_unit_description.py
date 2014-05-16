@@ -22,6 +22,7 @@ ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
 INPUT_DATA             = 'input_data'
 OUTPUT_DATA            = 'output_data'
+BIGBANG                = 'bigbang'
 
 # ------------------------------------------------------------------------------
 #
@@ -69,6 +70,12 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        .. note:: TODO: Explain transfer directives.
 
+    .. data:: bigbang
+
+       (`Attribute`) Actions to perform before this task starts (`list` of `strings`) [`optional`].
+
+       .. note:: Before the BigBang, there was nothing ...
+
     """
     def __init__(self):
         """Le constructeur.
@@ -87,6 +94,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self._attributes_register(EXECUTABLE,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ARGUMENTS,              None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(ENVIRONMENT,            None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
+        self._attributes_register(BIGBANG,                None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         #self._attributes_register(CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(START_TIME,        None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
@@ -121,7 +129,8 @@ class ComputeUnitDescription(attributes.Attributes) :
             ENVIRONMENT            : self.environment,
             CORES                  : self.cores,
             INPUT_DATA             : self.input_data, 
-            OUTPUT_DATA            : self.output_data
+            OUTPUT_DATA            : self.output_data,
+            BIGBANG                : self.bigbang
         }
         return obj_dict
 

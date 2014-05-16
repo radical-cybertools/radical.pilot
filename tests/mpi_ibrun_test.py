@@ -82,8 +82,8 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "stampede.tacc.utexas.edu"
-        pdesc.runtime          = 60 # minutes
-        pdesc.cores            = 32 
+        pdesc.runtime          = 15 # minutes
+        pdesc.cores            = 16
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-mpi.py"
         pdesc.cleanup          = False
 
@@ -104,12 +104,12 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, 2):
+        for unit_count in range(0, 1):
 
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.bigbang     = [ "module load namd", "/bin/sleep 1"]
             mpi_test_task.executable  = "namd2"
-            mpi_test_task.arguments   = ["./eq0.inp"]
+            mpi_test_task.arguments   = ["./eq0.inp", ">", "output"]
             mpi_test_task.cores       = 8
             mpi_test_task.input_data  = ["/%s/complex.pdb" % os.getcwd(),
                                          "/%s/complex.top" % os.getcwd(),
@@ -140,6 +140,8 @@ if __name__ == "__main__":
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
+        if not isinstance(units, list):
+            units = [units]
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
