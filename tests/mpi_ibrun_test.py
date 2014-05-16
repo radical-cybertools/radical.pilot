@@ -108,8 +108,8 @@ if __name__ == "__main__":
         for unit_count in range(0, 2):
 
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.executable  = "/bin/bash"
-            mpi_test_task.arguments   = ["-l", "-c", "\"namd2 ./eq0.inp\""]
+            mpi_test_task.executable  = "namd2"
+            mpi_test_task.arguments   = ["./eq0.inp"]
             mpi_test_task.cores       = 8
             mpi_test_task.input_data  = ["/%s/complex.pdb" % os.getcwd(),
                                          "/%s/complex.top" % os.getcwd(),

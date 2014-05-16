@@ -22,7 +22,6 @@ import signal
 import gridfs
 import pymongo
 import optparse
-import tempfile
 import logging
 import datetime
 import hostlist
@@ -216,7 +215,7 @@ class Agent(threading.Thread):
                         computeunits = [computeunits]
 
                     for cu in computeunits:
-                        LOGGER.info("Processing ComputeUnit: %s" % cu["_id"])
+                        LOGGER.info("Processing ComputeUnit: %s" % cu)
 
                         # create working directory in case it doesn't exist
                         task_workdir    = urlparse(cu['sandbox']).path
@@ -238,37 +237,26 @@ class Agent(threading.Thread):
                             else : 
                                 raise
 
-                        with tempfile.NamedTemporaryFile(delete=False) as temp:
-                            temp.write("cd  %s\n" % task_workdir)
-                            temp.write("ibrun -n %s -o 0 %s\n" % (task_cores, task_exec_string))
-                            temp.flush()
+                        ibrun_exec_string = "cd  %s && ibrun -n %s -o 0 %s" % (task_workdir, task_cores, task_exec_string)
 
-                            cmd = "/bin/bash -l %s" % (temp.name)
+                        from subprocess import call
+                        call(["/bin/bash -l -c ' %s '" % ibrun_exec_string], shell=True)
 
-                            LOGGER.info("Running CMD: %s" % cmd)
-                            
-                            temp.seek(0)
-                            LOGGER.info("CMD file content: %s" % temp.read())
-                            temp.seek(0,2)
+                        if cu['description']['output_data'] is not None:
+                            state = "PendingOutputTransfer"
+                        else:
+                            state = "Done"
 
-                            from subprocess import call
-                            call([cmd], shell=True)
-
-                            if cu['description']['output_data'] is not None:
-                                state = "PendingOutputTransfer"
-                            else:
-                                state = "Done"
-
-                            self.computeunit_collection.update({"_id": cu["_id"]}, 
-                                {"$set": {"state"         : state,
-                                          "started"       : "SKEL-AGENT-None",
-                                          "finished"      : "SKEL-AGENT-None",
-                                          "exec_locs"     : "SKEL-AGENT-None",
-                                          "exit_code"     : "SKEL-AGENT-None",
-                                          "stdout_id"     : "SKEL-AGENT-None",
-                                          "stderr_id"     : "SKEL-AGENT-None"},
-                                 "$push": {"statehistory": {"state": state, "timestamp": ts}}
-                                })
+                        self.computeunit_collection.update({"_id": cu["_id"]}, 
+                            {"$set": {"state"         : state,
+                                      "started"       : "SKEL-AGENT-None",
+                                      "finished"      : "SKEL-AGENT-None",
+                                      "exec_locs"     : "SKEL-AGENT-None",
+                                      "exit_code"     : "SKEL-AGENT-None",
+                                      "stdout_id"     : "SKEL-AGENT-None",
+                                      "stderr_id"     : "SKEL-AGENT-None"},
+                             "$push": {"statehistory": {"state": state, "timestamp": ts}}
+                            })
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.
