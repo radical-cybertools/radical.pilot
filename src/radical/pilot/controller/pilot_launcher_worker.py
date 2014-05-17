@@ -252,10 +252,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                         jd.arguments.append("-C")                         # the cleanup flag    
 
                     if queue is not None:
-                        js.arguments.append("-q %s", queue)               # the queue name
+                        jd.arguments.append("-q %s" % queue)               # the queue name
 
                     if project is not None:
-                        js.arguments.append("-a %s", project)             # the project / allocation name
+                        jd.arguments.append("-a %s" % project)             # the project / allocation name
 
                     # if resource config defines 'pre_bootstrap' commands,
                     # we add those to the argument list
@@ -270,8 +270,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                             "-i %s" % resource_cfg['python_interpreter'])
 
                     # fork:// and ssh:// don't support 'queue' and 'project'
-                    if (job_service_url.schema != "fork://") and (job_service_url.schema != "ssh://"):
-
+                    if (job_service_url.schema != "fork") and (job_service_url.schema != "ssh"):
 
                         # process the 'queue' attribute
                         if queue is not None:

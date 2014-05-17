@@ -180,7 +180,7 @@ echo "## CMDLINE: $AGENT_CMD"
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:l:e:t:c:V:C” OPTION
+while getopts “hr:d:s:p:w:i:l:e:t:c:q:a:V:C” OPTION
 do
      case $OPTION in
          h)
@@ -198,6 +198,12 @@ do
              ;;
          p)
              PILOTID=$OPTARG
+             ;;
+         q)
+             QUEUE=$OPTARG
+             ;;
+         a)
+             ALLOCATION=$OPTARG
              ;;
          w)
              WORKDIR=$OPTARG

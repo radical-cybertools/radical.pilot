@@ -52,7 +52,7 @@ if DBURL is None:
 
 # RCONF points to the resource configuration files. Read more about resource 
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/archer.json"]
+RCONF  = ["file://localhost/home/e290/e290/oweidner/radical.pilot/configs/archer.json"]
 
 #------------------------------------------------------------------------------
 #
