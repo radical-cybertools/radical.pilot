@@ -180,7 +180,7 @@ echo "## CMDLINE: $AGENT_CMD"
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:l:e:t:c:q:aV:C” OPTION
+while getopts “hr:d:s:p:w:i:l:e:t:c:q:a:V:C” OPTION
 do
      case $OPTION in
          h)
