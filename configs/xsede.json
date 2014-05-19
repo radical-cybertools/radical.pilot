@@ -4,9 +4,10 @@
         "filesystem"         : "sftp://stampede.tacc.utexas.edu/",
         "default_queue"      : "normal",
         "python_interpreter" : "/opt/apps/python/epd/7.3.2/bin/python",
-        "pre_bootstrap"      : ["module purge", "module load TACC", "module load cluster", "module load python/2.7.3-epd-7.3.2"],
+        "pre_bootstrap"      : ["module purge", "module load TACC", "module load cluster", "module load Linux", "module load mvapich2", "module load python/2.7.3-epd-7.3.2"],
         "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/home1", "/scratch", "/work"]
+        "valid_roots"        : ["/home1", "/scratch", "/work"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "lonestar.tacc.xsede.org": {
@@ -16,7 +17,8 @@
         "python_interpreter" : "/opt/apps/python/epd/7.2.2/bin/python",
         "pre_bootstrap"      : ["module purge", "module load TACC", "module load cluster", "module load mvapich2", "module load python/2.7.2-epd"],
         "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/home1", "/scratch", "/work"]
+        "valid_roots"        : ["/home1", "/scratch", "/work"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     },
 
     "trestles.sdsc.xsede.org": {
@@ -26,7 +28,42 @@
         "python_interpreter" : "/usr/bin/python",
         "pre_bootstrap"      : ["module purge", "module load pgi", "module load mvapich2_ib", "module load gnubase"],
         "task_launch_mode"   : "SSH",
-        "valid_roots"        : ["/home"]
+        "valid_roots"        : ["/home"],
+        "bootstrapper"       : "default_bootstrapper.sh"
+    },
+
+    "stampede.tacc.utexas.edu-local": {
+        "URL"                : "slurm://localhost",
+        "filesystem"         : "file://localhost/",
+        "default_queue"      : "normal",
+        "python_interpreter" : "/opt/apps/python/epd/7.3.2/bin/python",
+        "pre_bootstrap"      : ["module purge", "module load TACC", "module load cluster", "module load python/2.7.3-epd-7.3.2"],
+        "task_launch_mode"   : "SSH",
+        "valid_roots"        : ["/home1", "/scratch", "/work"],
+        "bootstrapper"       : "default_bootstrapper.sh"
+    },
+
+    "lonestar.tacc.xsede.org-local": {
+        "URL"                : "sge//localhost",
+        "filesystem"         : "file://localhost/",
+        "default_queue"      : "normal",
+        "python_interpreter" : "/opt/apps/python/epd/7.2.2/bin/python",
+        "pre_bootstrap"      : ["module purge", "module load TACC", "module load cluster", "module load mvapich2", "module load python/2.7.2-epd"],
+        "task_launch_mode"   : "SSH",
+        "valid_roots"        : ["/home1", "/scratch", "/work"],
+        "bootstrapper"       : "default_bootstrapper.sh"
+    },
+
+    "trestles.sdsc.xsede.org-local": {
+        "URL"                : "pbs://localhost",
+        "filesystem"         : "file://localhost/",
+        "default_queue"      : "normal",
+        "python_interpreter" : "/usr/bin/python",
+        "pre_bootstrap"      : ["module purge", "module load pgi", "module load mvapich2_ib", "module load gnubase"],
+        "task_launch_mode"   : "SSH",
+        "valid_roots"        : ["/home"],
+        "bootstrapper"       : "default_bootstrapper.sh"
     }
+
 }
 

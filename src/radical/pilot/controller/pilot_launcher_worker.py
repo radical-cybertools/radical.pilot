@@ -171,6 +171,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     number_cores = compute_pilot['description']['cores']
                     runtime      = compute_pilot['description']['runtime']
                     queue        = compute_pilot['description']['queue']
+                    project      = compute_pilot['description']['project']
                     cleanup      = compute_pilot['description']['cleanup']
                     pilot_agent  = compute_pilot['description']['pilot_agent_priv']
 
@@ -184,6 +185,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     ########################################################
                     # Create SAGA Job description and submit the pilot job #
                     ########################################################
+
                     log_msg = "Creating agent sandbox '%s'." % str(sandbox)
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
@@ -195,11 +197,8 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     # Copy the bootstrap shell script
                     # This works for installed versions of RADICAL-Pilot
-                    bs_script = which('bootstrap-and-run-agent')
-                    if bs_script is None:
-                        bs_script = os.path.abspath("%s/../../../../bin/bootstrap-and-run-agent" % os.path.dirname(os.path.abspath(__file__)))
-                    # This works for non-installed versions (i.e., python setup.py test)
-                    bs_script_url = saga.Url("file://localhost/%s" % bs_script)
+                    bs_script_full = os.path.abspath("%s/../bootstrapper/%s" % (os.path.dirname(os.path.abspath(__file__)), resource_cfg['bootstrapper']))
+                    bs_script_url = saga.Url("file://localhost/%s" % bs_script_full)
 
                     log_msg = "Copying '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
                     log_messages.append(log_msg)
@@ -230,36 +229,42 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     # now that the script is in place and we know where it is,
                     # we can launch the agent
-                    js = saga.job.Service(resource_cfg['URL'], session=saga_session)
+                    job_service_url = saga.Url(resource_cfg['URL'])
+                    js = saga.job.Service(job_service_url, session=saga_session)
 
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
-                    jd.executable = "./bootstrap-and-run-agent"
-                    jd.arguments = ["-r", database_host,   # database host (+ port)
-                                    "-d", database_name,   # database name
-                                    "-s", session_uid,     # session uid
-                                    "-p", str(compute_pilot_id),  # pilot uid
-                                    "-t", runtime,         # agent runtime in minutes
-                                    "-c", number_cores,
-                                    "-V", VERSION] 
 
-                    if cleanup is True:
-                        jd.arguments.append("-C")
+                    jd.executable = "./%s" % resource_cfg['bootstrapper']
 
+                    jd.arguments = [        "-r", database_host,          # database host (+ port)
+                                            "-d", database_name,          # database name
+                                            "-s", session_uid,            # session uid
+                                            "-p", str(compute_pilot_id),  # pilot uid
+                                            "-t", runtime,                # agent runtime in minutes
+                                            "-c", number_cores,           # number of cores
+                                            "-V", VERSION                 # the radical pilot version
+                    ]
                     if 'task_launch_mode' in resource_cfg:
                         jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
 
-                    # process the 'queue' attribute
+                    if cleanup is True:
+                        jd.arguments.append("-C")                         # the cleanup flag    
+
                     if queue is not None:
-                        jd.queue = queue
-                    elif 'default_queue' in resource_cfg:
-                        jd.queue = resource_cfg['default_queue']
+                        jd.arguments.append("-q")
+                        jd.arguments.append(queue)                        # the queue name
+
+                    if project is not None:
+                        jd.arguments.append("-a")
+                        jd.arguments.append(project)                      # the project / allocation name
 
                     # if resource config defines 'pre_bootstrap' commands,
                     # we add those to the argument list
                     if 'pre_bootstrap' in resource_cfg:
                         for command in resource_cfg['pre_bootstrap']:
-                            jd.arguments.append("-e \"%s\"" % command)
+                            jd.arguments.append("-e")
+                            jd.arguments.append("\"%s\"" % command)
 
                     # if resourc configuration defines a custom 'python_interpreter',
                     # we add it to the argument list
@@ -267,8 +272,21 @@ class PilotLauncherWorker(multiprocessing.Process):
                         jd.arguments.append(
                             "-i %s" % resource_cfg['python_interpreter'])
 
-                    jd.output = "STDOUT"
-                    jd.error = "STDERR"
+                    # fork:// and ssh:// don't support 'queue' and 'project'
+                    if (job_service_url.schema != "fork://") and (job_service_url.schema != "ssh://"):
+
+                        # process the 'queue' attribute
+                        if queue is not None:
+                            jd.queue = queue
+                        elif 'default_queue' in resource_cfg:
+                            jd.queue = resource_cfg['default_queue']
+
+                        # process the project / allocation 
+                        if project is not None:
+                            jd.project = project
+
+                    jd.output = "AGENT.STDOUT"
+                    jd.error  = "AGENT.STDERR"
                     jd.total_cpu_count = number_cores
                     jd.wall_time_limit = runtime
 
@@ -278,6 +296,10 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     pilotjob = js.create_job(jd)
                     pilotjob.run()
+
+                    # do a quick error check
+                    if pilotjob.state == saga.FAILED:
+                        raise Exception("SAGA Job state was FAILED.")
 
                     saga_job_id = pilotjob.id
                     log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)

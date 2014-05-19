@@ -52,7 +52,7 @@ class ComputeUnit(object):
         # handle to the manager's worker
         self._worker = None
 
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
+        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
             logger.debug("GCDEBUG __init__(): ComputeUnit [object id: %s]." % id(self))
 
     #--------------------------------------------------------------------------
@@ -60,7 +60,7 @@ class ComputeUnit(object):
     def __del__(self):
         """Le destructeur.
         """
-        if os.getenv("RADICALPILOT_GCDEBUG", None) is not None:
+        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
             logger.debug("GCDEBUG __del__(): ComputeUnit [object id: %s]." % id(self))
 
     # -------------------------------------------------------------------------

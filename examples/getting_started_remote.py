@@ -24,8 +24,8 @@ if DBURL is None:
     sys.exit(1)
 
 # RCONF points to the resource configuration files.
-RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
+RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/xsede.json",
+          "https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/futuregrid.json"]
 
 #------------------------------------------------------------------------------
 #
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         for unit in units:
             print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
                 % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
-                   unit.description.output_data[0].split(">")[1].strip())
+                   unit.stdout)
 
         # Close automatically cancels the pilot(s).
         session.close()

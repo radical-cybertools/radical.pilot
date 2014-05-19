@@ -3,7 +3,7 @@
 """
 .. module:: radical.pilot-profiler
    :platform: Unix
-   :synopsis: A simple runtime profiler for SAGA-Pilot.
+   :synopsis: A simple runtime profiler for RADICAL-Pilot.
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
@@ -45,9 +45,11 @@ def get_data(logger, session_id, database_url, database_name):
         # get pilot data
         for pmgr in session.get_pilot_managers():
             for pilot in pmgr.get_pilots():
+              # pprint.pprint (pilot.as_dict ())
+              # pprint.pprint (pilot.description)
                 pilot_data = []
                 pilot_data.append( pilot.uid )
-                pilot_data.append( pilot.description['Cores'] ) 
+                pilot_data.append( pilot.description['cores'] ) 
                 pilot_data.append( pilot.submission_time )
                 pilot_data.append( pilot.start_time )
                 pilot_data.append( pilot.stop_time )
@@ -379,7 +381,7 @@ def setup_logger():
 
     Since this is a command line tool, we simply log to the console. 
     """
-    logger = logging.getLogger('sagapilot-profiler')
+    logger = logging.getLogger('radical.pilot.profiler')
 
     logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
@@ -408,7 +410,7 @@ def parse_commandline():
     parser.add_option('-n', '--database-name',
                       metavar='URL',
                       dest='database_name',
-                      default='sagapilot',
+                      default='radicalpilot',
                       help='specifies the name of the database [default: %default].')
 
     parser.add_option('-s', '--session-id',

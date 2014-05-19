@@ -684,7 +684,6 @@ class Agent(threading.Thread):
                                 wu_cursor = [wu_cursor]
 
                             for wu in wu_cursor:
-                                logger.error("about to process: %s" % wu)
                                 # Create new task objects and put them into the 
                                 # task queue
 
@@ -692,10 +691,10 @@ class Agent(threading.Thread):
                                 # standard working directory schema. 
                                 # NOTE: this is not a good idea and just implemented
                                 #       to support some last minute TROY experiments.
-                                if wu["description"]["working_directory_priv"] is not None:
-                                    task_dir_name = wu["description"]["working_directory_priv"]
-                                else:
-                                    task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
+                                #if wu["description"]["working_directory_priv"] is not None:
+                                #    task_dir_name = wu["description"]["working_directory_priv"]
+                                #else:
+                                task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
                                 task = Task(uid         = str(wu["_id"]), 
                                             executable  = wu["description"]["executable"], 
