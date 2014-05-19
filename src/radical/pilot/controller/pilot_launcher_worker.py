@@ -272,7 +272,6 @@ class PilotLauncherWorker(multiprocessing.Process):
                     # fork:// and ssh:// don't support 'queue' and 'project'
                     if (job_service_url.schema != "fork://") and (job_service_url.schema != "ssh://"):
 
-
                         # process the 'queue' attribute
                         if queue is not None:
                             jd.queue = queue
