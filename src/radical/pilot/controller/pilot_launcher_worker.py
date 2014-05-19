@@ -252,10 +252,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                         jd.arguments.append("-C")                         # the cleanup flag    
 
                     if queue is not None:
-                        jd.arguments.append("-q %s", queue)               # the queue name
+                        jd.arguments.append("-q %s" % queue)               # the queue name
 
                     if project is not None:
-                        jd.arguments.append("-a %s", project)             # the project / allocation name
+                        jd.arguments.append("-a %s" % project)             # the project / allocation name
 
                     # if resource config defines 'pre_bootstrap' commands,
                     # we add those to the argument list
