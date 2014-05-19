@@ -294,6 +294,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                     pilotjob = js.create_job(jd)
                     pilotjob.run()
 
+                    # do a quick error check
+                    if pilotjob.state == saga.FAILED:
+                        raise Exception("SAGA Job state was FAILED.")
+
                     saga_job_id = pilotjob.id
                     log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
                     log_messages.append(log_msg)
