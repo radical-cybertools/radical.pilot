@@ -12,7 +12,7 @@ RADICAL-Pilot relies on a set of external software packages, all of which get
 installed automatically as dependencies. 
 
 
-* Python >= 2.5
+* Python >= 2.7
 
 * setuptools (https://pypi.python.org/pypi/setuptools)
 * saga-python (https://pypi.python.org/pypi/saga-python)
