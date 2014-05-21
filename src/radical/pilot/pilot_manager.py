@@ -119,7 +119,7 @@ class PilotManager(Object):
         self._resource_cfgs["localhost"] = {
             "URL"              : "fork://localhost",
             "filesystem"       : "file://localhost",
-            "pre_bootstrap"    : ["brew search test", "date"],
+            "pre_bootstrap"    : ["hostname", "date"],
             "task_launch_mode" : "LOCAL",
             "bootstrapper"     : "default_bootstrapper.sh"
         }
