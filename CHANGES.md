@@ -1,4 +1,13 @@
-0.12 Release                                            May. 09. 2014
+0.13 Release                                             May 19. 2014
+---------------------------------------------------------------------
+
+* ExTASY demo release 
+* Support for project / allocation
+* Updated / simplified resource files
+* Refactored bootstrap mechnism
+
+
+0.12 Release                                             May 09. 2014
 ---------------------------------------------------------------------
 
 * Updated resource files

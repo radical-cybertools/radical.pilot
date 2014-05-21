@@ -79,7 +79,7 @@ if __name__ == "__main__":
         pdesc.resource  = "stampede.tacc.utexas.edu"
         pdesc.runtime   = 15 # minutes
         pdesc.cores     = 32 
-        pdesc.project   = "TG-MCB090174"
+        # pdesc.project = "TG-MCB090174"
         pdesc.cleanup   = True
 
         # Launch the pilot.
