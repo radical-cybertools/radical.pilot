@@ -79,8 +79,8 @@ if __name__ == "__main__":
         cud1 = radical.pilot.ComputeUnitDescription()
         cud1.executable = '/bin/sort'
         cud1.arguments = ['-o', INTERMEDIATE_FILE, INPUT_FILE]
-        cud1.input_tfc = input_file_du
-        cud1.output_tfc = intermediate_file_du
+        cud1.input_data = input_file_du
+        cud1.output_data = intermediate_file_du
         cud1.cores = 1
 
         # Submit the first task for execution.
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         # Wait for the compute unit to finish.
         umgr.wait_units()
 
-        # Configure the TFC for output data
+        # Configure the DU for output data
         output_file_desc = DataUnitDescription(url=OUTPUT_FILE)
         # Add the local file to the remote staging area
         output_file_du = DataUnit(DataUnitDescription(url=output_file_desc))
@@ -100,8 +100,8 @@ if __name__ == "__main__":
         cud2 = radical.pilot.ComputeUnitDescription()
         cud2.executable = '/bin/sh'
         cud2.arguments = ['-c', 'head -n1 %s > %s' % (INTERMEDIATE_FILE, OUTPUT_FILE)]
-        cud2.input_tfc = intermediate_file_du
-        cud2.output_tfc = output_file_du
+        cud2.input_data = intermediate_file_du
+        cud2.output_data = output_file_du
         cud2.cores = 1
 
         # Submit the second CU for execution.

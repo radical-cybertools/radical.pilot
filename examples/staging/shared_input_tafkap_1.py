@@ -95,8 +95,8 @@ if __name__ == "__main__":
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/sh'
             cud.arguments = ['-c', 'cat %s %s > %s' % (shared_input_file_name, input_file_name, output_file_name)]
-            cud.input_tfc = [input_file_du, shared_input_file_du]
-            cud.output_tfc = output_file_du
+            cud.input_data = [input_file_du, shared_input_file_du]
+            cud.output_data = output_file_du
 
             compute_unit_descs.append(cud)
             output_dus.append(output_file_du)
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         # Wait for all compute units to finish.
         umgr.wait_units()
 
-        # Export (download) the content of the TFCs to the local directory.
+        # Export (download) the content of the DUs to the local directory.
         for du in output_dus:
             du.export_all('file://%s' % os.getcwd)
 
