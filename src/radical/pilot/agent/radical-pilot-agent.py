@@ -684,7 +684,6 @@ class Agent(threading.Thread):
                                 wu_cursor = [wu_cursor]
 
                             for wu in wu_cursor:
-                                logger.error("about to process: %s" % wu)
                                 # Create new task objects and put them into the 
                                 # task queue
 

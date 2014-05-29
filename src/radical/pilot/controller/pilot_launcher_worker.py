@@ -235,39 +235,31 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
 
-                    jd.executable = "./%s" % resource_cfg['bootstrapper']
+                    bootstrap_args = "-r %s -d %s -s %s -p %s -t %s -c %s -V %s " %\
+                        (database_host, database_name, session_uid, str(compute_pilot_id), runtime, number_cores, VERSION)
 
-                    jd.arguments = [        "-r", database_host,          # database host (+ port)
-                                            "-d", database_name,          # database name
-                                            "-s", session_uid,            # session uid
-                                            "-p", str(compute_pilot_id),  # pilot uid
-                                            "-t", runtime,                # agent runtime in minutes
-                                            "-c", number_cores,           # number of cores
-                                            "-V", VERSION                 # the radical pilot version
-                    ]
                     if 'task_launch_mode' in resource_cfg:
-                        jd.arguments.extend(["-l", resource_cfg['task_launch_mode']])
-
-                    if cleanup is True:
-                        jd.arguments.append("-C")                         # the cleanup flag    
-
-                    if queue is not None:
-                        jd.arguments.append("-q %s" % queue)               # the queue name
-
-                    if project is not None:
-                        jd.arguments.append("-a %s" % project)             # the project / allocation name
-
-                    # if resource config defines 'pre_bootstrap' commands,
-                    # we add those to the argument list
+                        bootstrap_args += " -l %s " % resource_cfg['task_launch_mode']
+                    if 'python_interpreter' in resource_cfg:
+                        bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
                     if 'pre_bootstrap' in resource_cfg:
                         for command in resource_cfg['pre_bootstrap']:
-                            jd.arguments.append("-e \"%s\"" % command)
+                            bootstrap_args += " -e '%s' " % command
 
-                    # if resourc configuration defines a custom 'python_interpreter',
-                    # we add it to the argument list
-                    if 'python_interpreter' in resource_cfg:
-                        jd.arguments.append(
-                            "-i %s" % resource_cfg['python_interpreter'])
+                    if cleanup is True: 
+                        bootstrap_args += " -C "                # the cleanup flag    
+
+                    if queue is not None:
+                        jd.arguments.append("-q %s" % queue)    # the queue name
+
+                    if project is not None:
+                        jd.arguments.append("-a %s" % project)  # the project / allocation name
+                        bootstrap_args += " -q %s " % queue     # the queue name
+
+                    jd.executable = "/bin/bash"
+                    jd.arguments = ["-l", "-c", '"./%s %s"' % (resource_cfg['bootstrapper'], bootstrap_args)]
+
+                    logger.debug("Bootstrap command line: /bin/bash %s" % jd.arguments)
 
                     # fork:// and ssh:// don't support 'queue' and 'project'
                     if (job_service_url.schema != "fork") and (job_service_url.schema != "ssh"):
@@ -293,6 +285,10 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     pilotjob = js.create_job(jd)
                     pilotjob.run()
+
+                    # do a quick error check
+                    if pilotjob.state == saga.FAILED:
+                        raise Exception("SAGA Job state was FAILED.")
 
                     saga_job_id = pilotjob.id
                     log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
