@@ -106,7 +106,8 @@ if __name__ == "__main__":
         pdesc.resource         = "archer.ac.uk"
         pdesc.project          = "e290"  # archer 'project group'
         pdesc.runtime          = 5
-        pdesc.cores            = 16 
+        pdesc.cores            = 16
+        pdesc.sandbox          = "/work/e290/e290/oweidner/radical.pilot.sandbox" 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
         pdesc.cleanup          = False
 

@@ -5,7 +5,7 @@
         "default_queue"         : "standard",
         "python_interpreter"    : "/work/y07/y07/cse/python/2.7.6/bin/python",
         "pre_bootstrap"         : [],
-        "valid_roots"           : ["/home", "work"],
+        "valid_roots"           : ["/home", "/work"],
         "bootstrapper"          : "cray_bootstrapper.sh"
     }
 }
