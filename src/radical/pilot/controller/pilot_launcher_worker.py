@@ -247,14 +247,11 @@ class PilotLauncherWorker(multiprocessing.Process):
                             bootstrap_args += " -e '%s' " % command
 
                     if cleanup is True: 
-                        bootstrap_args += " -C "                # the cleanup flag    
-
+                        bootstrap_args += " -C "               # the cleanup flag    
                     if queue is not None:
-                        jd.arguments.append("-q %s" % queue)    # the queue name
-
+                        bootstrap_args += " -q %s " % queue    # the queue name
                     if project is not None:
-                        jd.arguments.append("-a %s" % project)  # the project / allocation name
-                        bootstrap_args += " -q %s " % queue     # the queue name
+                        bootstrap_args += " -a %s " % project  # the project / allocation name
 
                     jd.executable = "/bin/bash"
                     jd.arguments = ["-l", "-c", '"./%s %s"' % (resource_cfg['bootstrapper'], bootstrap_args)]
