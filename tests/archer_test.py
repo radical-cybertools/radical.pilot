@@ -158,8 +158,8 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for unit in units:
-            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s" \
+                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
 
         session.close()
         sys.exit(0)
