@@ -52,7 +52,7 @@ if DBURL is None:
 
 # RCONF points to the resource configuration files. Read more about resource 
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["file://localhost/Users/oweidner/Rutgers/Projects/radical.pilot/configs/archer.json"]
+RCONF  = ["file://localhost/%s/configs/archer.json" % os.getcwd()]
 
 #------------------------------------------------------------------------------
 #
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
         pdesc.project          = "e290"  # archer 'project group'
-        pdesc.runtime          = 10
+        pdesc.runtime          = 5
         pdesc.cores            = 16 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
         pdesc.cleanup          = False
