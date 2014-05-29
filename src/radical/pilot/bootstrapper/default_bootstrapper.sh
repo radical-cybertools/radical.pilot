@@ -122,17 +122,29 @@ fi
 # active the virtualenv
 source $R_SYS_DIR/bin/activate
 
-UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
+DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
 echo ""
 echo "################################################################################"
-echo "## Updating virtualenv"
-echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
-$UPDATE_SETUPTOOLS_CMD
+echo "## Downgrading pip to 1.2.1"
+echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
+$DOWNGRADE_PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't update virtualenv! ABORTING"
+   echo "Couldn't downgrade pip! ABORTING"
    exit 1
 fi
+
+#UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
+#echo ""
+#echo "################################################################################"
+#echo "## Updating virtualenv"
+#echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
+#$UPDATE_SETUPTOOLS_CMD
+#OUT=$?
+#if [ $OUT -ne 0 ];then
+#   echo "Couldn't update virtualenv! ABORTING"
+#   exit 1
+#fi
 
 # for now we use development version directly from git
 # this blows up the virtualenv (and agent bootstrap time) significantly
