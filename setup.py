@@ -59,8 +59,10 @@ def get_version (mod_root):
                         stdout=sp.PIPE, stderr=sp.STDOUT, shell=True)
         version_detail = p.communicate()[0].strip()
 
-        if  p.returncode != 0 and out :
-            version_detail = None
+        if  p.returncode   !=  0  or \
+            version_detail == '@' or \
+            'fatal'        in version_detail :
+            version_detail =  "v%s" % version
 
         print 'version: %s (%s)'  % (version, version_detail)
 
