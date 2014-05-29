@@ -3,7 +3,7 @@ import sys
 import radical.pilot
 import saga
 
-from tafkap_1 import TAFKAP_StorageResource, TAFKAP_FileContainer
+from tafkap_1 import StorageResource, StorageResourceDescription, DataUnit, DataUnitDescription
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
@@ -51,16 +51,16 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
 
         # Define and open staging directory on the remote machine
-        staging_area_url = saga.Url('sftp://%s%s' % (REMOTE_HOST, REMOTE_STAGING))
-        staging_area_tsr = TAFKAP_StorageResource(staging_area_url)
+        staging_area_sr_desc = StorageResourceDescription(url='sftp://%s%s' % (REMOTE_HOST, REMOTE_STAGING))
+        staging_area_sr = StorageResource(staging_area_sr_desc)
 
         # Define the url of the local file in the local directory
         shared_input_file_name = 'shared_input_file.txt'
-        shared_input_file_url = saga.Url('file://localhost%s' % os.path.join(os.getcwd(), shared_input_file_name))
-        # Create TFC by inserting local file to the remote staging area.
-        shared_input_file_tfc = staging_area_tsr.insert(shared_input_file_url)
+        shared_input_file_desc = DataUnitDescription(url='file://localhost%s' % os.path.join(os.getcwd(), shared_input_file_name))
+        # Create DU by inserting local file to the remote staging area.
+        shared_input_file_du = staging_area_sr.insert(shared_input_file_desc)
         # Wait until the transfer is completed
-        shared_input_file_tfc.wait()
+        shared_input_file_du.wait()
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -68,9 +68,11 @@ if __name__ == "__main__":
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
+        # Add the previously created Storage Resource to the UnitManager
+        umgr.add_storage(staging_area_sr)
 
-        compute_units = []
-        output_tfcs = []
+        compute_unit_descs = []
+        output_dus = []
 
         for task_no in range(BAG_SIZE):
 
@@ -79,35 +81,37 @@ if __name__ == "__main__":
             output_file_name = 'output_file-%d.txt' % task_no
 
             # Define the url of the local non-shared input file in the local directory
-            input_file_url = saga.Url('file://%s' % (os.path.join(os.getcwd(), input_file_name)))
+            input_file_url = 'file://%s' % (os.path.join(os.getcwd(), input_file_name))
             # Add the local non-shared input file to the remote staging area
-            input_file_tfc = staging_area_tsr.insert(input_file_url)
+            input_file_du = staging_area_sr.insert(input_file_url)
 
-            # Create a TFC based on the output file name for this task.
-            output_file_tfc = staging_area_tsr.create(output_file_name)
+            # Create a DU based on the output file name for this task.
+            output_file_du = DataUnit(DataUnitDescription(url=output_file_name))
+            # Allocate the DU on the Staging Area
+            staging_area_sr.allocate(output_file_du)
 
             # Actual task description:
             # Concatenate the shared input and the task specific input and write it to an output file.
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/sh'
             cud.arguments = ['-c', 'cat %s %s > %s' % (shared_input_file_name, input_file_name, output_file_name)]
-            cud.input_tfc = [ input_file_tfc, shared_input_file_tfc ]
-            cud.output_tfc = output_file_tfc
+            cud.input_tfc = [input_file_du, shared_input_file_du]
+            cud.output_tfc = output_file_du
 
-            compute_units.append(cud)
-            output_tfcs.append(output_file_tfc)
+            compute_unit_descs.append(cud)
+            output_dus.append(output_file_du)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_units)
+        units = umgr.submit_units(compute_unit_descs)
 
         # Wait for all compute units to finish.
         umgr.wait_units()
 
         # Export (download) the content of the TFCs to the local directory.
-        for tfc in output_tfcs:
-            tfc.export_all('file://%s' % os.getcwd)
+        for du in output_dus:
+            du.export_all('file://%s' % os.getcwd)
 
         session.close(delete=False)
 
