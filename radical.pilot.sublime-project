@@ -11,7 +11,7 @@
 				"temp",
 				"venv",
 				"egg*",
-                "*.egg",
+                "*.egg"
 			],
 			"file_exclude_patterns": 
 			[

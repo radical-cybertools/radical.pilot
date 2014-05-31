@@ -59,8 +59,10 @@ def get_version (mod_root):
                         stdout=sp.PIPE, stderr=sp.STDOUT, shell=True)
         version_detail = p.communicate()[0].strip()
 
-        if  p.returncode != 0 and out :
-            version_detail = None
+        if  p.returncode   !=  0  or \
+            version_detail == '@' or \
+            'fatal'        in version_detail :
+            version_detail =  "v%s" % version
 
         print 'version: %s (%s)'  % (version, version_detail)
 
@@ -84,9 +86,9 @@ version, version_detail = get_version (mod_root)
 
 
 #-----------------------------------------------------------------------------
-# check python version. we need > 2.5, <3.x
-if  sys.hexversion < 0x02050000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError("%s requires Python 2.x (2.5 or higher)" % name)
+# check python version. we need > 2.7, <3.x
+if  sys.hexversion < 0x02070000 or sys.hexversion >= 0x03000000:
+    raise RuntimeError("%s requires Python 2.x (2.7 or higher)" % name)
 
 
 #-----------------------------------------------------------------------------

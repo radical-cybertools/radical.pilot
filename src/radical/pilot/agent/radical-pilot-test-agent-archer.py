@@ -216,12 +216,14 @@ class Agent(threading.Thread):
                     for cu in computeunits:
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
 
-                        ###################
-                        # APRUN ........ 
-                        ###################
-                        
-                        #from subprocess import call
-                        #call(["/bin/bash -l -c \" module load namd; ibrun namd2 ./eq0.inp\""], shell=True)
+                        # Create the task working directory if it doesn't exist
+                        cu_workdir = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
+                        if not os.path.exists(cu_workdir):
+                            os.makedirs(cu_workdir)
+
+                        # Create bogus STDOUT and STDERR
+                        open("%s/STDOUT" % cu_workdir, 'a').close()
+                        open("%s/STDERR" % cu_workdir, 'a').close()
 
                         if cu['description']['output_data'] is not None:
                             state = "PendingOutputTransfer"
