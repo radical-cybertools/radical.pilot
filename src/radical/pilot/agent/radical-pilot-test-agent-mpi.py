@@ -32,6 +32,7 @@ import multiprocessing
 
 from urlparse import urlparse
 from bson.objectid import ObjectId
+from subprocess import call
 
 #--------------------------------------------------------------------------
 # Configure the logger
@@ -237,15 +238,33 @@ class Agent(threading.Thread):
                             else : 
                                 raise
 
-                        ibrun_exec_string = "cd  %s && ibrun -n %s -o 0 %s" % (task_workdir, task_cores, task_exec_string)
+                        # Before the Big Bang there was nothing
+                        bigbang = cu['description']['bigbang']
+                        bigbang_string = "&&"
+                        if bigbang:
+                            if not isinstance(bigbang, list):
+                                bigbang = [bigbang]
+                            for bb in bigbang:
+                                bigbang_string += " %s &&" % bb
 
-                        from subprocess import call
-                        call(["/bin/bash -l -c ' %s '" % ibrun_exec_string], shell=True)
+                        # ibrun specifics
+                        ibrun_exec_string = "ibrun -n %s -o 0 %s" % (task_cores, task_exec_string)
 
-                        if cu['description']['output_data'] is not None:
-                            state = "PendingOutputTransfer"
+                        # Change to the Working Directory
+                        cwd_string = "cd %s" % task_workdir
+
+                        # Glue all together, report and execute ...
+                        cmdline_string = "/bin/bash -l -c '%s %s %s'" % (cwd_string, bigbang_string, ibrun_exec_string)
+                        LOGGER.info("command line: %s" % cmdline_string)
+                        rc = call(cmdline_string, shell=True)
+
+                        if rc > 0:
+                            state = "Failed"
                         else:
-                            state = "Done"
+                            if cu['description']['output_data'] is not None:
+                                state = "PendingOutputTransfer"
+                            else:
+                                state = "Done"
 
                         self.computeunit_collection.update({"_id": cu["_id"]}, 
                             {"$set": {"state"         : state,
