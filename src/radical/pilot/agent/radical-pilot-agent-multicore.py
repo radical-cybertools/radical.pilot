@@ -3,12 +3,12 @@
 """
 .. module:: radical.pilot.agent
    :platform: Unix
-   :synopsis: An agent for RADICAL-Pilot.
+   :synopsis: A multi-core agent for RADICAL-Pilot.
 
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
+.. moduleauthor:: Mark Santcroos <mark.santcroos@rutgers.edu>
 """
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
@@ -43,6 +43,7 @@ LAUNCH_METHOD_AUTO   = 'AUTO'
 LAUNCH_METHOD_APRUN  = 'APRUN'
 LAUNCH_METHOD_LOCAL  = 'LOCAL'
 LAUNCH_METHOD_MPIRUN = 'MPIRUN'
+LAUNCH_METHOD_IBRUN = 'IBRUN'
 
 #-----------------------------------------------------------------------------
 #
@@ -128,17 +129,21 @@ class ExecutionEnvironment(object):
         eenv.detect_cores_and_memory()
 
         # check for 'mpirun'
-        eenv.mpirun_location = which('mpirun')
+        eenv.ibrun_location  = which('ibrun')
         eenv.aprun_location  = which('aprun')
+        eenv.mpirun_location = which('mpirun')
         eenv.ssh_location    = which('ssh')
 
-        # suggest a launch method. the current precendce is 
-        # aprun, mpirun, ssh, fork. this can be overrdden 
+        # suggest a launch method. the current precedence is
+        # ibrun, aprun, mpirun, ssh, fork. this can be overridden
         # by passing the '--launch-method' parameter to the agent.
 
         if launch_method == LAUNCH_METHOD_AUTO:
             # Try to autodetect launch method
-            if eenv.aprun_location is not None:
+            if eenv.ibrun_location is not None:
+                eenv.launch_method = LAUNCH_METHOD_IBRUN
+                eenv.launch_command = eenv.ibrun_location
+            elif eenv.aprun_location is not None:
                 eenv.launch_method = LAUNCH_METHOD_APRUN
                 eenv.launch_command = eenv.aprun_location
             elif eenv.mpirun_location is not None:
@@ -170,7 +175,14 @@ class ExecutionEnvironment(object):
                 raise Exception("Launch method set to %s but 'aprun' not found in path." % launch_method)
             else:
                 eenv.launch_method = LAUNCH_METHOD_APRUN
-                eenv.launch_command = eenv.aprun_location      
+                eenv.launch_command = eenv.aprun_location
+
+        elif launch_method == LAUNCH_METHOD_IBRUN:
+            if eenv.ibrun_location is None:
+                raise Exception("Launch method set to %s but 'ibrun' not found in path." % launch_method)
+            else:
+                eenv.launch_method = LAUNCH_METHOD_IBRUN
+                eenv.launch_command = eenv.ibrun_location
 
         elif launch_method == LAUNCH_METHOD_LOCAL:
             eenv.launch_method = LAUNCH_METHOD_LOCAL
@@ -190,7 +202,7 @@ class ExecutionEnvironment(object):
 
         cores_avail = len(eenv.nodes) * int(eenv.cores_per_node)
         if cores_avail < int(requested_cores):
-            raise Exception("Not enought cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
+            raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
 
         if launch_method == LAUNCH_METHOD_LOCAL:
             # make sure that we don't hog all cores with a local
@@ -849,7 +861,7 @@ def parse_commandline():
     parser.add_option('-l', '--launch-method', 
                       metavar='METHOD',
                       dest='launch_method',
-                      help='Enforce a specific launch method (AUTO, LOCAL, SSH, MPIRUN, APRUN). [default: %default]',
+                      help='Enforce a specific launch method (AUTO, LOCAL, SSH, MPIRUN, APRUN, IBRUN). [default: %default]',
                       default=LAUNCH_METHOD_AUTO)
 
     parser.add_option('-V', '--version', 
@@ -877,7 +889,7 @@ def parse_commandline():
 
 
     if options.launch_method is not None: 
-        valid_options = [LAUNCH_METHOD_AUTO, LAUNCH_METHOD_LOCAL, LAUNCH_METHOD_SSH, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_APRUN]
+        valid_options = [LAUNCH_METHOD_AUTO, LAUNCH_METHOD_LOCAL, LAUNCH_METHOD_SSH, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_APRUN, LAUNCH_METHOD_IBRUN]
         if options.launch_method.upper() not in valid_options:
             parser.error("--launch-method must be one of these: %s" % valid_options)
 
@@ -898,7 +910,7 @@ if __name__ == "__main__":
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    logger.info("RADICAL-Pilot agent for package/API version %s" % options.package_version)
+    logger.info("RADICAL-Pilot multi-core agent for package/API version %s" % options.package_version)
 
     #--------------------------------------------------------------------------
     # Establish database connection
