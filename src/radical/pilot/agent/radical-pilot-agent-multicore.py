@@ -746,18 +746,22 @@ class _Process(subprocess.Popen):
         cmdline = str()
 
         # Based on the launch method we use different, well, launch methods
-        # to launch the task. just on the shell, via mpirun, ssh or aprun
+        # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
             pass
 
-        if launch_method == LAUNCH_METHOD_MPIRUN:
+        elif launch_method == LAUNCH_METHOD_MPIRUN:
             cmdline = launch_command
             cmdline += " -np %s -host %s" % (str(task.numcores), host)
 
-        elif launch_method == launch_command:
-            cmdline =  launch_command
-            cmdline += " -n %s " % str(task.numcores)
-            
+        elif launch_method == LAUNCH_METHOD_APRUN:
+            cmdline = launch_command
+            # APRUN MAGIC
+
+        elif launch_method == LAUNCH_METHOD_IBRUN:
+            cmdline = launch_command
+            # IBRUN MAGIC
+
         elif launch_method == LAUNCH_METHOD_SSH:
             cmdline = launch_command
             cmdline += " -o StrictHostKeyChecking=no %s " % host
