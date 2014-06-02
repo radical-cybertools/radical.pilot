@@ -24,8 +24,9 @@ if DBURL is None:
     sys.exit(1)
 
 # RCONF points to the resource configuration files.
-RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/futuregrid.json"]
+#RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/xsede.json",
+#          "https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/futuregrid.json"]
+RCONF = "file:///Users/mark/proj/radical.pilot/configs/xsede.json"
 
 #------------------------------------------------------------------------------
 #
@@ -86,7 +87,7 @@ if __name__ == "__main__":
 
         # Number of cores for respective task
         #task_cores = [1 for _ in range(32)]
-        task_cores = [2 for _ in range(32)]
+        task_cores = [3 for _ in range(32)]
         #task_cores = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
 
         # Seconds of sleep for respective task
@@ -95,8 +96,8 @@ if __name__ == "__main__":
         compute_unit_descriptions = []
         for unit_no in range(32):
             cud = radical.pilot.ComputeUnitDescription()
-            cud.executable  = "/bin/sh"
-            cud.arguments   = ["-c", "'/bin/sleep %d && /bin/date > unit-%s.txt'" % (task_sleep[unit_no], unit_no)]
+            #cud.executable  = ""
+            cud.arguments   = ["/bin/sleep %d && /bin/date > unit-%s.txt" % (task_sleep[unit_no], unit_no)]
             cud.cores       = task_cores[unit_no]
 
             compute_unit_descriptions.append(cud)

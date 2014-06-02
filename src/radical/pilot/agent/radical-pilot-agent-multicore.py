@@ -257,7 +257,7 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, environment, numcores, workdir, stdout, stderr, output_data):
+    def __init__(self, uid, executable, arguments, environment, numcores, bigbang, workdir, stdout, stderr, output_data):
 
         self._log         = None
         self._description = None
@@ -272,6 +272,7 @@ class Task(object):
         self.stderr         = stderr
         self.output_data    = output_data
         self.numcores       = numcores
+        self.bigbang        = bigbang
 
         # Location
         self.slots          = None
@@ -874,7 +875,8 @@ class Agent(threading.Thread):
                                             arguments   = wu["description"]["arguments"],
                                             environment = wu["description"]["environment"],
                                             numcores    = wu["description"]["cores"],
-                                            workdir     = task_dir_name, 
+                                            bigbang     = wu["description"]["bigbang"],
+                                            workdir     = task_dir_name,
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
                                             output_data = wu["description"]["output_data"])
@@ -905,39 +907,47 @@ class _Process(subprocess.Popen):
         self._task = task
         self._log  = logger
 
-        host = slots[0].split(':')[0]
+        # Before the Big Bang there was nothing
+        pre_exec = task.bigbang
+        pre_exec_string = ''
+        if pre_exec:
+            if not isinstance(pre_exec, list):
+                pre_exec = [pre_exec]
+            for bb in pre_exec:
+                pre_exec_string += "%s && " % bb
 
-        cmdline = str()
+        # executable and arguments
+        if task.executable is not None:
+            task_exec_string = task.executable
+        else:
+            task_exec_string = ''
+        for arg in task.arguments:
+            task_exec_string += " %s" % arg
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
-            pass
+            cmdline = ''
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
             cmdline = launch_command
-            cmdline += " -np %s -host %s" % (str(task.numcores), host)
+            #cmdline += " -np %s -host %s" % (str(task.numcores), host)
 
         elif launch_method == LAUNCH_METHOD_APRUN:
             cmdline = launch_command
             # APRUN MAGIC
 
         elif launch_method == LAUNCH_METHOD_IBRUN:
-            cmdline = launch_command
-            # IBRUN MAGIC
+            # NOTE: Don't think that with IBRUN it is possible to have
+            # processes != cores ...
+            ibrun_offset = task.host_index * 16 + task.offset
+            ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
+            cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, ibrun_command, task_exec_string)
 
         elif launch_method == LAUNCH_METHOD_SSH:
-            cmdline = launch_command
-            cmdline += " -o StrictHostKeyChecking=no %s " % host
-
-        # task executable and arguments
-        payload = str(" cd %s && " % task.workdir)
-        payload += " %s " % task.executable
-        if task.arguments is not None:
-            for arg in task.arguments:
-                payload += " %s " % arg
-        
-        cmdline += "%s" % payload
+            host = slots[0].split(':')[0]
+            cmdline = " %s -o StrictHostKeyChecking=no %s \"/bin/bash -l -c '%scd %s && %s'\"" % \
+                      (launch_command, host, pre_exec_string, task.workdir, task_exec_string)
 
         self.stdout_filename = task.stdout
         self._stdout_file_h  = open(self.stdout_filename, "w")
@@ -956,8 +966,8 @@ class _Process(subprocess.Popen):
                                        preexec_fn=None,
                                        close_fds=True,
                                        shell=True,
-                                       cwd=task.workdir,
-                                       env=task.environment,
+                                       cwd=task.workdir, # TODO: This doesn't always make sense if it runs remotely
+                                       env=task.environment, # TODO: Idem
                                        universal_newlines=False,
                                        startupinfo=None,
                                        creationflags=0)

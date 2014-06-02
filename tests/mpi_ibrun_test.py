@@ -30,8 +30,9 @@ if DBURL is None:
 
 # RCONF points to the resource configuration files. Read more about resource 
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
+#RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
+#         "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
+RCONF = "file:///Users/mark/proj/radical.pilot/configs/xsede.json"
 
 #------------------------------------------------------------------------------
 #
@@ -83,8 +84,8 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "stampede.tacc.utexas.edu"
         pdesc.runtime          = 15 # minutes
-        pdesc.cores            = 16
-        pdesc.pilot_agent_priv = "radical-pilot-test-agent-mpi.py"
+        pdesc.cores            = 32
+        pdesc.pilot_agent_priv = "radical-pilot-agent-multicore.py"
         pdesc.cleanup          = False
 
 
@@ -102,21 +103,16 @@ if __name__ == "__main__":
         #    export INPUT2=file2.dat
         #    /bin/cat $INPUT1  $INPUT2
         #
-        compute_units = []
+        cud_list = []
 
-        for unit_count in range(0, 1):
-
+        for unit_count in range(0, 16):
+            #/bin/bash -l -c "module load python mpi4py && ibrun python ~/bin/helloworld_mpi.py"
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.bigbang     = [ "module load namd", "/bin/sleep 1"]
-            mpi_test_task.executable  = "namd2"
-            mpi_test_task.arguments   = ["./eq0.inp", ">", "output"]
-            mpi_test_task.cores       = 8
-            mpi_test_task.input_data  = ["/%s/complex.pdb" % os.getcwd(),
-                                         "/%s/complex.top" % os.getcwd(),
-                                         "/%s/cons.pdb" % os.getcwd(),
-                                         "/%s/eq0.inp" % os.getcwd()]
-            #mpi_test_task.output_data = ["STDOUT"]
-            compute_units.append(mpi_test_task)
+            mpi_test_task.bigbang     = ["module load python intel mvapich2 mpi4py"]
+            mpi_test_task.executable  = "python"
+            mpi_test_task.arguments   = ["~/bin/helloworld_mpi.py"]
+            mpi_test_task.cores       = 4
+            cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -129,13 +125,13 @@ if __name__ == "__main__":
         # change their state.
         umgr.register_callback(unit_state_change_cb)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
+        # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_units)
+        units = umgr.submit_units(cud_list)
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
@@ -146,7 +142,7 @@ if __name__ == "__main__":
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
 
-        session.close()
+        session.close(delete=False)
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:
