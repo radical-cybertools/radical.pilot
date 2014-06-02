@@ -12,11 +12,9 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
-import ast
 import sys
 import time
 import errno
-import pipes
 import Queue
 import signal
 import gridfs
@@ -35,8 +33,8 @@ from bson.objectid import ObjectId
 
 # ----------------------------------------------------------------------------
 # CONSTANTS
-FREE                 = None # just an alias
-MAX_EXEC_WORKERS     = 8    # max number of worker processes
+FREE                 = 'Free'
+BUSY                 = 'Busy'
 
 LAUNCH_METHOD_SSH    = 'SSH'
 LAUNCH_METHOD_AUTO   = 'AUTO'
@@ -198,6 +196,8 @@ class ExecutionEnvironment(object):
             #    eenv.nodes[rn]['_count'] += 1
 
         logger.info("Discovered execution environment: %s" % eenv.nodes)
+        # TODO: These are actually not necessarily discovered.
+        # TODO: Its probably a good idea to report all the detected plus the chosen methods.
         logger.info("Discovered launch method: %s (%s)" % (eenv.launch_method, eenv.launch_command))
 
         cores_avail = len(eenv.nodes) * int(eenv.cores_per_node)
@@ -278,7 +278,10 @@ class Task(object):
         self.stdout         = stdout
         self.stderr         = stderr
         self.output_data    = output_data
+
+        # Location
         self.numcores       = 1
+        self.slots          = None
 
         # dynamic task properties
         self.started        = None
@@ -286,7 +289,6 @@ class Task(object):
 
         self.state          = None
         self.exit_code      = None
-        self.exec_locs      = None
 
         self.stdout_id      = None
         self.stderr_id      = None
@@ -324,23 +326,29 @@ class ExecWorker(multiprocessing.Process):
         self._w = mongo_db["%s.w"  % session_id]
         self._wm = mongo_db["%s.wm" % session_id]
 
+        # Queued tasks by the Agent
         self._task_queue     = task_queue
+
+        # Launched tasks by this ExecWorker
+        self._running_tasks = []
 
         self._launch_method  = launch_method
         self._launch_command = launch_command
 
-        # Slots represents the internal process management structure. The
-        # structure is as follows:
-        # {
-        #    'host1': [p_1, p_2, p_3, ... , p_cores_per_host],
-        #    'host2': [p_1, p_2, p_3. ... , p_cores_per_host]
-        # }
+        # Slots represents the internal process management structure.
+        # The structure is as follows:
+        # [
+        #    {'hostname': 'node1', 'cores': [p_1, p_2, p_3, ... , p_cores_per_host]},
+        #    {'hostname': 'node2', 'cores': [p_1, p_2, p_3. ... , p_cores_per_host]
+        # ]
         #
-        self._slots = {}
+        self._slots = []
         for host in hosts:
-            self._slots[host] = []
-            for _ in range(0, cores_per_host):
-                self._slots[host].append(FREE)
+            self._slots.append({
+                'host': host,
+                'cores': [FREE for _ in range(0, cores_per_host)]
+            })
+        self._cores_per_host = cores_per_host
 
     # ------------------------------------------------------------------------
     #
@@ -357,112 +365,30 @@ class ExecWorker(multiprocessing.Process):
         try:
             while self._terminate is False:
 
-                # we iterate over all slots. if slots are emtpy, we try
-                # to run a new process. if they are occupied, we try to
-                # update the state             
-                for host, slots in self._slots.iteritems():
-                    
-                    # we update tasks in 'bulk' after each iteration.
-                    # all tasks that require DB updates are in update_tasks
-                    update_tasks = []
+                idle = True
 
-                    for slot in range(len(slots)):
+                self._log.debug("Slot status:\n%s", self._slot_status())
 
-                        # check if slot is free. if so, launch a new task
-                        if self._slots[host][slot] is FREE:
+                # Loop over tasks instead of slots!
+                try:
+                    task = self._task_queue.get_nowait()
+                    idle = False
 
-                            try:
-                                task = self._task_queue.get_nowait()
+                    host_index, offset = self._acquire_slots(task.numcores, True)
+                    task.host_index = host_index
+                    task.offset = offset
+                    task_slots = self._index_and_offset_to_slotlist(host_index, offset, task.numcores)
+                    self._launch_task(task, task_slots)
 
-                                # create working directory in case it
-                                # doesn't exist
-                                try :
-                                    os.makedirs(task.workdir)
-                                except OSError as e :
-                                    # ignore failure on existing directory
-                                    if  e.errno == errno.EEXIST and os.path.isdir (task.workdir) :
-                                        pass
-                                    else : 
-                                        raise
+                except Queue.Empty:
+                    # do nothing if we don't have any queued tasks
+                    pass
 
-                                # RUN THE TASK
-                                self._slots[host][slot] = _Process(
-                                    task=task, 
-                                    host=host,
-                                    launch_method=self._launch_method,
-                                    launch_command=self._launch_command,
-                                    logger=self._log)
+                idle &= self._check_running()
 
-                                exec_locs = ["%s:%s" % (host, slot)]
-
-                                self._slots[host][slot].task.started=datetime.datetime.utcnow()
-                                self._slots[host][slot].task.exec_locs=exec_locs
-                                self._slots[host][slot].task.state='Executing'
-
-                                update_tasks.append(self._slots[host][slot].task)
-
-                            except Queue.Empty:
-                                # do nothing if we don't have any queued tasks
-                                self._slots[host][slot] = None
-
-                        else:
-
-                            rc = self._slots[host][slot].poll()
-                            if rc is None:
-                                # subprocess is still running
-                                pass
-                            else:
-                                self._slots[host][slot].close_and_flush_filehandles()
-
-                                # update database, set task state and notify.
-                                uid = self._slots[host][slot].task.uid
-                                self._log.info("Task %s terminated with return code %s." % (uid, rc))
-
-                                if rc != 0:
-                                    state = 'Failed'
-                                else:
-                                    if self._slots[host][slot].task.output_data is not None:
-                                        state = 'PendingOutputTransfer'
-                                    else:
-                                        state = 'Done'
-
-                                # upload stdout and stderr to GridFS
-                                workdir = self._slots[host][slot].task.workdir
-                                task_id = self._slots[host][slot].task.uid
-
-                                stdout_id = None
-                                stderr_id = None
-
-                                stdout = "%s/STDOUT" % workdir
-                                if os.path.isfile(stdout):
-                                    fs = gridfs.GridFS(self._mongo_db)
-                                    with open(stdout, 'r') as stdout_f:
-                                        stdout_id = fs.put(stdout_f.read(), filename=stdout)
-                                        self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
-
-                                stderr = "%s/STDERR" % workdir
-                                if os.path.isfile(stderr):
-                                    fs = gridfs.GridFS(self._mongo_db)
-                                    with open(stderr, 'r') as stderr_f:
-                                        stderr_id = fs.put(stderr_f.read(), filename=stderr)
-                                        self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
-
-                                self._slots[host][slot].task.finished=datetime.datetime.utcnow()
-                                self._slots[host][slot].task.exit_code=rc
-                                self._slots[host][slot].task.state=state
-                                self._slots[host][slot].task.stdout_id=stdout_id
-                                self._slots[host][slot].task.stderr_id=stderr_id
-
-                                update_tasks.append(self._slots[host][slot].task)
-
-                                # mark slot as available
-                                self._slots[host][slot] = FREE
-
-                    # update all the tasks that are marked for update.
-                    self._update_tasks(update_tasks)
-                    self._log.debug("Slot status:\n%s", self._slot_status(self._slots))
-
-                time.sleep(1)
+                # Check if something happened in this cycle, if not, zzzzz for a bit
+                if idle:
+                    time.sleep(1)
 
         except Exception, ex:
             self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
@@ -471,23 +397,323 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _slot_status(self, slots):
-        """Returns a multiline string corresponding to slot status.
+    def _slot_status(self):
+        """Returns a multi-line string corresponding to slot status.
         """
         slot_matrix = ""
-        for host, slots in slots.iteritems():
+        for slot in self._slots:
             slot_vector = ""
-            for slot in slots:
-                if slot is FREE:
+            for core in slot['cores']:
+                if core is FREE:
                     slot_vector += " - "
                 else:
                     slot_vector += " X "
-            slot_matrix += "%s: %s\n" % (host.ljust(24), slot_vector)
+            slot_matrix += "%s: %s\n" % (slot['host'].ljust(24), slot_vector)
         return slot_matrix
 
     # ------------------------------------------------------------------------
     #
+    def _acquire_slots(self, numcores, single_host):
 
+        #
+        # Find a needle (sub-list) in a haystack (list)
+        #
+        def find_sublist(haystack, needle):
+            n = len(needle)
+            # Find all matches (returns list of False and True for every position)
+            hits = [(needle == haystack[i:i+n]) for i in xrange(len(haystack)-n+1)]
+            try:
+                # Grab the first occurrence
+                index = hits.index(True)
+            except ValueError:
+                index = None
+
+            return index
+
+
+        #
+        # Transform the number of cores into a consecutive list of "status"es,
+        # and use that to find a sub-list.
+        #
+        def find_cores(cores, count, status):
+            return find_sublist(cores, [status for _ in range(count)])
+
+        #
+        # Find an available consecutive slot within host boundaries.
+        #
+        def find_slots_single(count):
+
+            for slot in self._slots:
+                cores = slot['cores']
+                offset = find_cores(cores, count, FREE)
+                if offset is not None:
+                    self._log.info('Host %s satisfies %d at offset %d' % (slot['host'], count, offset))
+                    return (self._slots.index(slot), offset)
+
+            return None, None
+
+        #
+        # Find an available consecutive slot across host boundaries.
+        #
+        def find_slots_multi(count):
+            # Glue core lists together
+            cores = [core for host in [host['cores'] for host in self._slots] for core in host]
+
+            ppn = self._cores_per_host
+
+            # Find the start of the first available region
+            cores_index = find_cores(cores, count, FREE)
+            if cores_index is None:
+                return None, None
+
+            # Determine the host in the hostlist
+            host_index = cores_index/ppn
+            # And the offset within that host
+            offset = cores_index%ppn
+
+            return (host_index, offset)
+
+        #
+        # After we have found a slot, mark it busy
+        #
+        def mark_busy(first_host_index, first_host_offset, core_count):
+
+            slot_list = []
+
+            ppn = self._cores_per_host
+
+            last_core = (first_host_index * ppn) + first_host_offset + core_count - 1
+            # We substract one here, because counting starts at zero;
+            # Imagine a zero offset and a count of 1, the only core used would be core 0.
+            #print 'Last core:', last_core
+
+            last_host_index = (last_core) / ppn
+            last_host = self._slots[last_host_index]['host']
+            last_host_offset = last_core % ppn
+
+            first_host = self._slots[first_host_index]['host']
+            self._log.info('First host: %s offset: %d' % (first_host, first_host_offset))
+            self._log.info('Last host: %s offset: %d' % (last_host, last_host_offset))
+
+            for host_index in range(first_host_index, last_host_index+1):
+                # (within range() +1 because the ceiling is exclusive)
+
+                first_core = 0
+                last_core = ppn - 1
+
+                if host_index == first_host_index:
+                    first_core = first_host_offset
+
+                if host_index == last_host_index:
+                    last_core = last_host_offset
+
+                self._log.info('Host: %s (%d-%d)' % (self._slots[host_index]['host'], first_core, last_core))
+                for core in range(first_core, last_core+1):
+                    self._slots[host_index]['cores'][core] = BUSY
+                    slot_list.append('%s:%d' % (self._slots[host_index]['host'], core))
+
+            return slot_list
+
+        #
+        # Switch between searching for single or multi-host
+        #
+        if single_host:
+            host_index, offset = find_slots_single(numcores)
+        else:
+            host_index, offset = find_slots_multi(numcores)
+
+        if host_index is not None:
+            mark_busy(host_index, offset, numcores)
+
+        return host_index, offset
+
+    #
+    # Convert an index, offset and core count into an expanded slot list
+    #
+    def _index_and_offset_to_slotlist(self, first_host_index, first_host_offset, core_count):
+
+        slot_list = []
+
+        ppn = self._cores_per_host
+
+        last_core = (first_host_index * ppn) + first_host_offset + core_count - 1
+        # We substract one here, because counting starts at zero;
+        # Imagine a zero offset and a count of 1, the only core used would be core 0.
+        #print 'Last core:', last_core
+
+        last_host_index = (last_core) / ppn
+        last_host = self._slots[last_host_index]['host']
+        last_host_offset = last_core % ppn
+
+        first_host = self._slots[first_host_index]['host']
+
+        for host_index in range(first_host_index, last_host_index+1):
+            # (within range() +1 because the ceiling is exclusive)
+
+            first_core = 0
+            last_core = ppn - 1
+
+            if host_index == first_host_index:
+                first_core = first_host_offset
+
+            if host_index == last_host_index:
+                last_core = last_host_offset
+
+            for core in range(first_core, last_core+1):
+                slot_list.append('%s:%d' % (self._slots[host_index]['host'], core))
+
+        return slot_list
+
+    #
+    # After we have used a slot and are done, mark it free
+    #
+    def _mark_free(self, first_host_index, first_host_offset, core_count):
+        ppn = self._cores_per_host
+
+        last_core = (first_host_index * ppn) + first_host_offset + core_count - 1
+        # We substract one here, because counting starts at zero;
+        # Imagine a zero offset and a count of 1, the only core used would be core
+        # 0.
+        #print 'Last core:', last_core
+
+        last_host_index = (last_core) / ppn
+        last_host = self._slots[last_host_index]['host']
+        last_host_offset = last_core % ppn
+
+        first_host = self._slots[first_host_index]['host']
+        self._log.info('First host: %s offset: %d' % (first_host, first_host_offset))
+        self._log.info('Last host: %s offset: %d' % (last_host, last_host_offset))
+
+        for host_index in range(first_host_index, last_host_index+1):
+            # (within range() +1 because the ceiling is exclusive)
+
+            first_core = 0
+            last_core = ppn - 1
+
+            if host_index == first_host_index:
+                first_core = first_host_offset
+
+            if host_index == last_host_index:
+                last_core = last_host_offset
+
+            self._log.info('Host: %s (%d-%d)' % (self._slots[host_index]['host'], first_core, last_core))
+            for core in range(first_core, last_core+1):
+                self._slots[host_index]['cores'][core] = FREE
+
+
+
+
+    # ------------------------------------------------------------------------
+    #
+    def _launch_task(self, task, slots):
+
+        # create working directory in case it
+        # doesn't exist
+        try :
+            os.makedirs(task.workdir)
+        except OSError as e :
+            # ignore failure on existing directory
+            if  e.errno == errno.EEXIST and os.path.isdir (task.workdir) :
+                pass
+            else :
+                raise
+
+        # RUN THE TASK
+        proc = _Process(
+            task=task,
+            slots=slots,
+            launch_method=self._launch_method,
+            launch_command=self._launch_command,
+            logger=self._log)
+
+        task.started=datetime.datetime.utcnow()
+        task.slots=slots
+        task.state='Executing'
+
+        self._running_tasks.append(proc)
+
+
+    # ------------------------------------------------------------------------
+    #
+    def _check_running(self):
+
+        idle = True
+
+        # we update tasks in 'bulk' after each iteration.
+        # all tasks that require DB updates are in update_tasks
+        update_tasks = []
+        finished_tasks = []
+
+        for proc in self._running_tasks:
+
+            rc = proc.poll()
+            if rc is None:
+                # subprocess is still running
+                continue
+
+            finished_tasks.append(proc)
+
+            # Make sure all stuff reached the spindles
+            proc.close_and_flush_filehandles()
+
+            # Convenience shortcut
+            task = proc.task
+
+            uid = task.uid
+            self._log.info("Task %s terminated with return code %s." % (uid, rc))
+
+            if rc != 0:
+                state = 'Failed'
+            else:
+                if task.output_data is not None:
+                    state = 'PendingOutputTransfer'
+                else:
+                    state = 'Done'
+
+            # upload stdout and stderr to GridFS
+            workdir = task.workdir
+            task_id = task.uid
+
+            stdout_id = None
+            stderr_id = None
+
+            stdout = "%s/STDOUT" % workdir
+            if os.path.isfile(stdout):
+                fs = gridfs.GridFS(self._mongo_db)
+                with open(stdout, 'r') as stdout_f:
+                    stdout_id = fs.put(stdout_f.read(), filename=stdout)
+                    self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+
+            stderr = "%s/STDERR" % workdir
+            if os.path.isfile(stderr):
+                fs = gridfs.GridFS(self._mongo_db)
+                with open(stderr, 'r') as stderr_f:
+                    stderr_id = fs.put(stderr_f.read(), filename=stderr)
+                    self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
+
+            task.finished=datetime.datetime.utcnow()
+            task.exit_code=rc
+            task.state=state
+            task.stdout_id=stdout_id
+            task.stderr_id=stderr_id
+
+            update_tasks.append(task)
+
+            # mark slot as available
+            # TODO: Free up slots
+            #self._slots[host][slot] = FREE
+            self._mark_free(task.host_index, task.offset, task.numcores)
+
+        # update all the tasks that are marked for update.
+        self._update_tasks(update_tasks)
+
+        for e in finished_tasks:
+            self._running_tasks.remove(e)
+
+        return idle
+
+    # ------------------------------------------------------------------------
+    #
     def _update_tasks(self, tasks):
         """Updates the database entries for one or more tasks, inlcuding 
         task state, log, etc.
@@ -506,7 +732,7 @@ class ExecWorker(multiprocessing.Process):
             {"$set": {"state"         : task.state,
                       "started"       : task.started,
                       "finished"      : task.finished,
-                      "exec_locs"     : task.exec_locs,
+                      "slots"         : task.slots,
                       "exit_code"     : task.exit_code,
                       "stdout_id"     : task.stdout_id,
                       "stderr_id"     : task.stderr_id},
@@ -557,40 +783,22 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
-        # we devide up the host list into maximum MAX_EXEC_WORKERS host 
-        # partitions and assign them to the exec workers. asignment is 
-        # round robin
-        self._host_partitions = []
-        partition_idx = 0
-        for host in self._exec_env.nodes:
-            if partition_idx >= MAX_EXEC_WORKERS:
-                partition_idx = 0
-            if len(self._host_partitions) <= partition_idx:
-                self._host_partitions.append([host])
-            else:
-                self._host_partitions[partition_idx].append(host)
-            partition_idx += 1
-
         # we assign each host partition to a task execution worker
-        self._exec_workers = []
-        for hp in self._host_partitions:
-            exec_worker = ExecWorker(
-                logger          = self._log,
-                task_queue      = self._task_queue,
-                hosts           = hp,
-                cores_per_host  = self._exec_env.cores_per_node,
-                launch_method   = self._exec_env.launch_method,
-                launch_command  = self._exec_env.launch_command,
-                mongodb_url     = mongodb_url,
-                mongodb_name    = mongodb_name,
-                pilot_id        = pilot_id,
-                session_id      = session_id,
-                unitmanager_id = unitmanager_id
-            )
-            exec_worker.start()
-            self._log.info("Started up %s serving hosts %s", 
-                exec_worker, hp)
-            self._exec_workers.append(exec_worker)
+        self._exec_worker = ExecWorker(
+            logger          = self._log,
+            task_queue      = self._task_queue,
+            hosts           = self._exec_env.nodes,
+            cores_per_host  = self._exec_env.cores_per_node,
+            launch_method   = self._exec_env.launch_method,
+            launch_command  = self._exec_env.launch_command,
+            mongodb_url     = mongodb_url,
+            mongodb_name    = mongodb_name,
+            pilot_id        = pilot_id,
+            session_id      = session_id,
+            unitmanager_id = unitmanager_id
+        )
+        self._exec_worker.start()
+        self._log.info("Started up %s serving hosts %s", self._exec_worker, self._exec_env.nodes)
 
     # ------------------------------------------------------------------------
     #
@@ -598,8 +806,7 @@ class Agent(threading.Thread):
         """Terminate the agent main loop.
         """
         # First, we need to shut down all the workers
-        for ew in self._exec_workers:
-            ew.terminate()
+        self._exec_worker.terminate()
 
         # Next, we set our own termination signal
         self._terminate.set()
@@ -631,10 +838,9 @@ class Agent(threading.Thread):
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
                 exit = False
-                for ew in self._exec_workers:
-                    if ew.is_alive() is False:
-                        pilot_FAILED(self._p, self._pilot_id, self._log, "Execution worker %s died." % str(ew))
-                        exit = True
+                if self._exec_worker.is_alive() is False:
+                    pilot_FAILED(self._p, self._pilot_id, self._log, "Execution worker %s died." % str(self._exec_worker))
+                    exit = True
                 if exit:
                     break
 
@@ -738,10 +944,12 @@ class _Process(subprocess.Popen):
 
     #-------------------------------------------------------------------------
     #
-    def __init__(self, task, host, launch_method, launch_command, logger):
+    def __init__(self, task, slots, launch_method, launch_command, logger):
 
         self._task = task
         self._log  = logger
+
+        host = slots[0].split(':')[0]
 
         cmdline = str()
 
@@ -908,9 +1116,9 @@ if __name__ == "__main__":
 
     # configure the agent logger
     logger = logging.getLogger('radical.pilot.agent')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     ch = logging.FileHandler("AGENT.LOG")
-    ch.setLevel(logging.INFO)
+    #ch.setLevel(logging.DEBUG) # TODO: redundant if you have just one file?
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
