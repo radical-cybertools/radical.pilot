@@ -125,7 +125,7 @@ if __name__ == "__main__":
         for unit_count in range(0, 4):
 
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.executable  = "/bin/hostname"
+            mpi_test_task.executable  = "/bin/date"
             mpi_test_task.cores       = 1
             #mpi_test_task.output_data = ["STDOUT"]
             compute_units.append(mpi_test_task)

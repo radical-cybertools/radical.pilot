@@ -309,7 +309,7 @@ class Agent(threading.Thread):
                         
                         w_dir = cu_workdir + "/STDOUT"
                         # this is for localhost execution only!
-                        cu_str = "date > %s" % w_dir
+                        cu_str = "%s > %s" % (cu['description']['executable'], w_dir)
      
                         LOGGER.info("CU_STR: %s" % cu_str)
                         if( int(cu['description']['cores']) < ARCHER_NODE ):
