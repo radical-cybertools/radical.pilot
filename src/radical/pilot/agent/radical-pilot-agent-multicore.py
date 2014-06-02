@@ -264,7 +264,7 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, environment, workdir, stdout, stderr, output_data):
+    def __init__(self, uid, executable, arguments, environment, numcores, workdir, stdout, stderr, output_data):
 
         self._log         = None
         self._description = None
@@ -278,9 +278,9 @@ class Task(object):
         self.stdout         = stdout
         self.stderr         = stderr
         self.output_data    = output_data
+        self.numcores       = numcores
 
         # Location
-        self.numcores       = 1
         self.slots          = None
 
         # dynamic task properties
@@ -375,10 +375,15 @@ class ExecWorker(multiprocessing.Process):
                     idle = False
 
                     host_index, offset = self._acquire_slots(task.numcores, True)
-                    task.host_index = host_index
-                    task.offset = offset
-                    task_slots = self._index_and_offset_to_slotlist(host_index, offset, task.numcores)
-                    self._launch_task(task, task_slots)
+                    if host_index is None:
+                        # No resources free
+                        self._task_queue.put(task)
+                        idle = True
+                    else:
+                        task.host_index = host_index
+                        task.offset = offset
+                        task_slots = self._index_and_offset_to_slotlist(host_index, offset, task.numcores)
+                        self._launch_task(task, task_slots)
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
@@ -918,6 +923,7 @@ class Agent(threading.Thread):
                                             executable  = wu["description"]["executable"], 
                                             arguments   = wu["description"]["arguments"],
                                             environment = wu["description"]["environment"],
+                                            numcores    = wu["description"]["cores"],
                                             workdir     = task_dir_name, 
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
