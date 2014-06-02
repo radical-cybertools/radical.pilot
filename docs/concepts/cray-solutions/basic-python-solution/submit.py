@@ -16,7 +16,7 @@ import sys,os,time
 mode = 'single'
 
 # chose the number of mpi jobs to execute
-jobs = 4
+jobs = 5
 
 # aprun block for ARCHER
 #############################################################################################
