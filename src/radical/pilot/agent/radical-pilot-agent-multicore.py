@@ -257,7 +257,7 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, environment, numcores, bigbang, workdir, stdout, stderr, output_data):
+    def __init__(self, uid, executable, arguments, environment, numcores, pre_exec, workdir, stdout, stderr, output_data):
 
         self._log         = None
         self._description = None
@@ -272,7 +272,7 @@ class Task(object):
         self.stderr         = stderr
         self.output_data    = output_data
         self.numcores       = numcores
-        self.bigbang        = bigbang
+        self.pre_exec       = pre_exec
 
         # Location
         self.slots          = None
@@ -875,7 +875,7 @@ class Agent(threading.Thread):
                                             arguments   = wu["description"]["arguments"],
                                             environment = wu["description"]["environment"],
                                             numcores    = wu["description"]["cores"],
-                                            bigbang     = wu["description"]["bigbang"],
+                                            pre_exec    = wu["description"]["pre_exec"],
                                             workdir     = task_dir_name,
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
@@ -908,7 +908,7 @@ class _Process(subprocess.Popen):
         self._log  = logger
 
         # Before the Big Bang there was nothing
-        pre_exec = task.bigbang
+        pre_exec = task.pre_exec
         pre_exec_string = ''
         if pre_exec:
             if not isinstance(pre_exec, list):

@@ -239,13 +239,13 @@ class Agent(threading.Thread):
                                 raise
 
                         # Before the Big Bang there was nothing
-                        bigbang = cu['description']['bigbang']
-                        bigbang_string = "&&"
-                        if bigbang:
-                            if not isinstance(bigbang, list):
-                                bigbang = [bigbang]
-                            for bb in bigbang:
-                                bigbang_string += " %s &&" % bb
+                        pre_exec = cu['description']['pre_exec']
+                        pre_exec_string = "&&"
+                        if pre_exec:
+                            if not isinstance(pre_exec, list):
+                                pre_exec = [pre_exec]
+                            for bb in pre_exec:
+                                pre_exec_string += " %s &&" % bb
 
                         # ibrun specifics
                         ibrun_exec_string = "ibrun -n %s -o 0 %s" % (task_cores, task_exec_string)
@@ -254,7 +254,7 @@ class Agent(threading.Thread):
                         cwd_string = "cd %s" % task_workdir
 
                         # Glue all together, report and execute ...
-                        cmdline_string = "/bin/bash -l -c '%s %s %s'" % (cwd_string, bigbang_string, ibrun_exec_string)
+                        cmdline_string = "/bin/bash -l -c '%s %s %s'" % (cwd_string, pre_exec_string, ibrun_exec_string)
                         LOGGER.info("command line: %s" % cmdline_string)
                         rc = call(cmdline_string, shell=True)
 

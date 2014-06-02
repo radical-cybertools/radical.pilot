@@ -22,7 +22,7 @@ ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
 INPUT_DATA             = 'input_data'
 OUTPUT_DATA            = 'output_data'
-BIGBANG                = 'bigbang'
+PRE_EXEC               = 'pre_exec'
 
 # ------------------------------------------------------------------------------
 #
@@ -70,7 +70,7 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        .. note:: TODO: Explain transfer directives.
 
-    .. data:: bigbang
+    .. data:: pre_exec
 
        (`Attribute`) Actions to perform before this task starts (`list` of `strings`) [`optional`].
 
@@ -94,7 +94,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self._attributes_register(EXECUTABLE,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ARGUMENTS,              None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(ENVIRONMENT,            None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
-        self._attributes_register(BIGBANG,                None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(PRE_EXEC,               None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         #self._attributes_register(CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(START_TIME,        None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
@@ -130,7 +130,7 @@ class ComputeUnitDescription(attributes.Attributes) :
             CORES                  : self.cores,
             INPUT_DATA             : self.input_data, 
             OUTPUT_DATA            : self.output_data,
-            BIGBANG                : self.bigbang
+            PRE_EXEC               : self.pre_exec
         }
         return obj_dict
 
