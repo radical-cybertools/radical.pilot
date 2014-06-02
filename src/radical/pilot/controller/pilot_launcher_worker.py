@@ -176,7 +176,19 @@ class PilotLauncherWorker(multiprocessing.Process):
                     pilot_agent  = compute_pilot['description']['pilot_agent_priv']
 
                     sandbox      = compute_pilot['sandbox']
-                    resource_cfg = self.resource_configurations[compute_pilot['description']['resource']]
+
+                    use_local_endpoints = False
+                    resource_key = compute_pilot['description']['resource']
+                    s = compute_pilot['description']['resource'].split(":")
+                    if len(s) == 2:
+                        if s[1].lower() == "local":
+                            use_local_endpoints = True
+                            resource_key = s[0]
+                        else:
+                            error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], compute_pilot['description']['resource'])
+                            raise Exception(error_msg)
+
+                    resource_cfg = self.resource_configurations[resource_key]
 
                     database_host = self.db_connection_info.url.split("://")[1] 
                     database_name = self.db_connection_info.dbname
@@ -229,7 +241,11 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     # now that the script is in place and we know where it is,
                     # we can launch the agent
-                    job_service_url = saga.Url(resource_cfg['URL'])
+                    if use_local_endpoints is True:
+                        job_service_url = saga.Url(resource_cfg['local_job_manager_endpoint'])
+                    else:
+                        job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
+
                     js = saga.job.Service(job_service_url, session=saga_session)
 
                     jd = saga.job.Description()
@@ -238,11 +254,11 @@ class PilotLauncherWorker(multiprocessing.Process):
                     bootstrap_args = "-r %s -d %s -s %s -p %s -t %s -c %s -V %s " %\
                         (database_host, database_name, session_uid, str(compute_pilot_id), runtime, number_cores, VERSION)
 
-                    if 'task_launch_mode' in resource_cfg:
+                    if 'task_launch_mode' in resource_cfg and resource_cfg['task_launch_mode'] is not None:
                         bootstrap_args += " -l %s " % resource_cfg['task_launch_mode']
-                    if 'python_interpreter' in resource_cfg:
+                    if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
-                    if 'pre_bootstrap' in resource_cfg:
+                    if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:
                         for command in resource_cfg['pre_bootstrap']:
                             bootstrap_args += " -e '%s' " % command
 
