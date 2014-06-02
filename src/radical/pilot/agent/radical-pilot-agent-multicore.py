@@ -122,9 +122,9 @@ class ExecutionEnvironment(object):
         """Factory method creates a new execution environment.
         """
         eenv = cls(logger)
-        # detect nodes, cores and memory available
+        # detect nodes, cores available
         eenv.detect_nodes()
-        eenv.detect_cores_and_memory()
+        eenv.detect_cores()
 
         # check for 'mpirun'
         eenv.ibrun_location  = which('ibrun')
@@ -189,11 +189,7 @@ class ExecutionEnvironment(object):
         # create node dictionary
         for rn in eenv.raw_nodes:
             if rn not in eenv.nodes:
-                eenv.nodes[rn] = {#'_count': 1,
-                                   'cores': eenv.cores_per_node,
-                                   'memory': eenv.memory_per_node}
-            #else:
-            #    eenv.nodes[rn]['_count'] += 1
+                eenv.nodes[rn] = {'cores': eenv.cores_per_node}
 
         logger.info("Discovered execution environment: %s" % eenv.nodes)
         # TODO: These are actually not necessarily discovered.
@@ -221,7 +217,6 @@ class ExecutionEnvironment(object):
         self.nodes = dict()
         self.raw_nodes = list()
         self.cores_per_node = 0
-        self.memory_per_node = 0
 
         self.launch_method  = None
         self.launch_command = None
@@ -232,10 +227,8 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
-    def detect_cores_and_memory(self):
-        self.cores_per_node = multiprocessing.cpu_count() #psutil.NUM_CPUS
-        #mem_in_megabyte = int(psutil.virtual_memory().total/1024/1024)
-        #self._memory_per_node = mem_in_megabyte
+    def detect_cores(self):
+        self.cores_per_node = multiprocessing.cpu_count()
 
     #-------------------------------------------------------------------------
     #
@@ -479,47 +472,6 @@ class ExecWorker(multiprocessing.Process):
             return (host_index, offset)
 
         #
-        # After we have found a slot, mark it busy
-        #
-        def mark_busy(first_host_index, first_host_offset, core_count):
-
-            slot_list = []
-
-            ppn = self._cores_per_host
-
-            last_core = (first_host_index * ppn) + first_host_offset + core_count - 1
-            # We substract one here, because counting starts at zero;
-            # Imagine a zero offset and a count of 1, the only core used would be core 0.
-            #print 'Last core:', last_core
-
-            last_host_index = (last_core) / ppn
-            last_host = self._slots[last_host_index]['host']
-            last_host_offset = last_core % ppn
-
-            first_host = self._slots[first_host_index]['host']
-            self._log.info('First host: %s offset: %d' % (first_host, first_host_offset))
-            self._log.info('Last host: %s offset: %d' % (last_host, last_host_offset))
-
-            for host_index in range(first_host_index, last_host_index+1):
-                # (within range() +1 because the ceiling is exclusive)
-
-                first_core = 0
-                last_core = ppn - 1
-
-                if host_index == first_host_index:
-                    first_core = first_host_offset
-
-                if host_index == last_host_index:
-                    last_core = last_host_offset
-
-                self._log.info('Host: %s (%d-%d)' % (self._slots[host_index]['host'], first_core, last_core))
-                for core in range(first_core, last_core+1):
-                    self._slots[host_index]['cores'][core] = BUSY
-                    slot_list.append('%s:%d' % (self._slots[host_index]['host'], core))
-
-            return slot_list
-
-        #
         # Switch between searching for single or multi-host
         #
         if single_host:
@@ -528,7 +480,7 @@ class ExecWorker(multiprocessing.Process):
             host_index, offset = find_slots_multi(numcores)
 
         if host_index is not None:
-            mark_busy(host_index, offset, numcores)
+            self._mark_consecutive(host_index, offset, numcores, BUSY)
 
         return host_index, offset
 
@@ -570,40 +522,48 @@ class ExecWorker(multiprocessing.Process):
         return slot_list
 
     #
-    # After we have used a slot and are done, mark it free
+    # For consecutive allocations, this can be used to set a state
     #
-    def _mark_free(self, first_host_index, first_host_offset, core_count):
-        ppn = self._cores_per_host
+    def _mark_consecutive(self, first_host_index, first_host_offset, core_count, state):
 
-        last_core = (first_host_index * ppn) + first_host_offset + core_count - 1
+        # Calculate the last core as a base for other calculations
+        last_core = (first_host_index * self._cores_per_host) + \
+                    first_host_offset + core_count - 1
         # We substract one here, because counting starts at zero;
-        # Imagine a zero offset and a count of 1, the only core used would be core
-        # 0.
-        #print 'Last core:', last_core
+        # Imagine a zero offset and a count of 1, the only core used would be core 0.
 
-        last_host_index = (last_core) / ppn
+        # Benefit from some integer rounding here
+        last_host_index = (last_core) / self._cores_per_host
+        last_host_offset = last_core % self._cores_per_host
+
+        # Get the hostnames for the host indexes
         last_host = self._slots[last_host_index]['host']
-        last_host_offset = last_core % ppn
-
         first_host = self._slots[first_host_index]['host']
-        self._log.info('First host: %s offset: %d' % (first_host, first_host_offset))
-        self._log.info('Last host: %s offset: %d' % (last_host, last_host_offset))
 
+        self._log.debug('First host: %s offset: %d' % (first_host, first_host_offset))
+        self._log.debug('Last host: %s offset: %d' % (last_host, last_host_offset))
+
+        # Iterate over all hosts involved
         for host_index in range(first_host_index, last_host_index+1):
             # (within range() +1 because the ceiling is exclusive)
 
+            # Values if a full host is involved
             first_core = 0
-            last_core = ppn - 1
+            last_core = self._cores_per_host - 1
 
+            # If this is the first host, start at the offset
             if host_index == first_host_index:
                 first_core = first_host_offset
 
+            # If this is the last host, stop at the offset
             if host_index == last_host_index:
                 last_core = last_host_offset
 
-            self._log.info('Host: %s (%d-%d)' % (self._slots[host_index]['host'], first_core, last_core))
+            self._log.debug('Host: %s (%d-%d)' % (self._slots[host_index]['host'], first_core, last_core))
+
+            # Use first and last core values above to set cores state
             for core in range(first_core, last_core+1):
-                self._slots[host_index]['cores'][core] = FREE
+                self._slots[host_index]['cores'][core] = state
 
 
 
@@ -704,10 +664,7 @@ class ExecWorker(multiprocessing.Process):
 
             update_tasks.append(task)
 
-            # mark slot as available
-            # TODO: Free up slots
-            #self._slots[host][slot] = FREE
-            self._mark_free(task.host_index, task.offset, task.numcores)
+            self._mark_consecutive(task.host_index, task.offset, task.numcores, FREE)
 
         # update all the tasks that are marked for update.
         self._update_tasks(update_tasks)
@@ -720,12 +677,12 @@ class ExecWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def _update_tasks(self, tasks):
-        """Updates the database entries for one or more tasks, inlcuding 
+        """Updates the database entries for one or more tasks, including
         task state, log, etc.
         """
         ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
-        # this informattion here:
+        # this information here:
 
         if self._unitmanager_id is None:
             cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
@@ -910,13 +867,6 @@ class Agent(threading.Thread):
                                 # Create new task objects and put them into the 
                                 # task queue
 
-                                # WorkingDirectoryPriv is defined, we override the 
-                                # standard working directory schema. 
-                                # NOTE: this is not a good idea and just implemented
-                                #       to support some last minute TROY experiments.
-                                #if wu["description"]["working_directory_priv"] is not None:
-                                #    task_dir_name = wu["description"]["working_directory_priv"]
-                                #else:
                                 task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
                                 task = Task(uid         = str(wu["_id"]), 
