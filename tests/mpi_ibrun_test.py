@@ -108,7 +108,7 @@ if __name__ == "__main__":
         for unit_count in range(0, 16):
             #/bin/bash -l -c "module load python mpi4py && ibrun python ~/bin/helloworld_mpi.py"
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.bigbang     = ["module load python intel mvapich2 mpi4py"]
+            mpi_test_task.pre_exec    = ["module load python intel mvapich2 mpi4py"]
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["~/bin/helloworld_mpi.py"]
             mpi_test_task.cores       = 4
