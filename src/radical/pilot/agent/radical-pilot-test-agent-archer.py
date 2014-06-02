@@ -22,6 +22,8 @@ import signal
 import gridfs
 import pymongo
 import optparse
+import select
+import socket
 import logging
 import datetime
 import hostlist
@@ -119,7 +121,7 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, workdir, runtime, mongodb_url, mongodb_name, pilot_id, session_id):
+    def __init__(self, project, workdir, cores, runtime, mongodb_url, mongodb_name, pilot_id, session_id):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -127,8 +129,10 @@ class Agent(threading.Thread):
         self.lock        = threading.Lock()
         self._terminate  = threading.Event()
 
+        self._project    = project
         self._workdir    = workdir
         self._pilot_id   = pilot_id
+        self._cores      = cores
 
         self._runtime    = runtime
         self._starttime  = None
@@ -167,9 +171,75 @@ class Agent(threading.Thread):
             })
 
         self._starttime = time.time()
+        #####################################
+        # START
+        #####################################
+        HOSTNAME = socket.gethostname()
+        LOGGER.info("AGENT HOSTNAME: %s" % HOSTNAME)
+        HOST = socket.gethostbyname(HOSTNAME)
+        LOGGER.info("AGENT HOST: %s" % HOST)
+     
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind((HOST, 0))
+        PORT = server.getsockname()[1]
+        LOGGER.info("AGENT USES PORT: %s" % PORT)
+                    
+        # this should be defined somewhere?
+        #ARCHER_NODE = 24
+        # this is for localhost execution only
+        ARCHER_NODE = 2
+        # determining how many nodes to allocate with agent-worker.py script
+        if( int(self._cores) < ARCHER_NODE ):
+            NODES = 1
+        else:
+            NODES = int(self._cores) / ARCHER_NODE
+            if ( (int(self._cores) % ARCHER_NODE) > 0 ):
+                NODES += 1
 
-        # ---------------------------------
-        # This is the main thread loop.
+        ################################################################################################
+        # opening agent-worker.py file in order to pass IP address, port number, number of nodes, and walltime
+        ################################################################################################
+        LOGGER.info("WRITING AGENT'S ADDRESS AND PORT NUMBER TO agent-worker.py FILE")
+        name = 'agent-worker.py'
+
+        try:
+            rfile = open(name,'r')
+        except IOError:
+            LOGGER.info("WARNING UNABLE TO ACCESS FILE: %s" % name)
+                        
+        tbuffer = rfile.read()
+        rfile.close()
+
+        tbuffer = tbuffer.replace("@project@",str(self._project))
+        tbuffer = tbuffer.replace("@server@",str(HOST))
+        tbuffer = tbuffer.replace("@port@",str(PORT))
+        tbuffer = tbuffer.replace("@select@",str(NODES))
+        tbuffer = tbuffer.replace("@walltime@",self._runtime)
+
+        try:
+            wfile = open(name,'w')
+        except IOError:
+            LOGGER.info("WARNING UNABLE TO ACCESS FILE: %s" % name)
+
+        wfile.write(tbuffer)
+        wfile.close()
+        LOGGER.info("FINISHED WRITING TO agent-worker.py...")
+        #####################################################
+        FINISH = 'STOP'
+        WAIT = 'WAIT'
+        LOGGER.info("CALLING QSUB...")
+        # agent submits agent-worker.py using qsub
+        # proc = subprocess.Popen(["qsub agent-worker.py"], stdout=subprocess.PIPE, shell=True)
+
+        # this is for localhost execution only!
+        proc = subprocess.Popen(["nohup python agent-worker.py"], stdout=subprocess.PIPE, shell=True)
+        LOGGER.info("QSUB CALL SUCCEEDED...")
+        server.listen(32)
+        LOGGER.info("AGENT STARTED LISTENING AT %s" % HOST)
+        input = [server,]
+        #####################################
+        # This is the main thread loop
+        #####################################
         while True:
             try:
                 # Exit the main loop if terminate is set. 
@@ -195,7 +265,6 @@ class Agent(threading.Thread):
                     else:
                         LOGGER.warning("Received unknown command '%s'." % command )
 
-
                 # Check if there are work units waiting for execution
                 ts = datetime.datetime.utcnow()
 
@@ -213,9 +282,16 @@ class Agent(threading.Thread):
                     if not isinstance(computeunits, list):
                         computeunits = [computeunits]
 
+                    #######################################
+                    # initialize params
+                    #######################################
+                    aprun_tasks = []
+                    free_nodes = NODES
+                    LOGGER.info("INIT FREE_NODES: %s" % free_nodes)
+                    #######################################
                     for cu in computeunits:
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
-
+                    
                         # Create the task working directory if it doesn't exist
                         cu_workdir = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
                         if not os.path.exists(cu_workdir):
@@ -224,7 +300,60 @@ class Agent(threading.Thread):
                         # Create bogus STDOUT and STDERR
                         open("%s/STDOUT" % cu_workdir, 'a').close()
                         open("%s/STDERR" % cu_workdir, 'a').close()
-
+                       
+                        ##############################################
+                        # aprun string disabled for localhost execuiton
+                        # cu_str = "aprun -n %s %s > %s" % (cu['description']['cores'], cu['description']['executable'], cu_workdir + "/STDOUT")
+                        
+                        w_dir = cu_workdir + "/STDOUT"
+                        # this is for localhost execution only
+                        cu_str = "date > %s" % w_dir
+     
+                        LOGGER.info("CU_STR: %s" % cu_str)
+                        if( int(cu['description']['cores']) < ARCHER_NODE ):
+                            cu_nodes = 1
+                        else:
+                            cu_nodes = int(cu['description']['cores']) / ARCHER_NODE
+                            if ( (int(cu['description']['cores']) % ARCHER_NODE) > 0 ):
+                                cu_nodes += 1
+   
+                        LOGGER.info("CU_NODES: %s" % cu_nodes)
+                        aprun_tasks.append(cu_str)
+                        free_nodes = free_nodes - cu_nodes
+                        LOGGER.info("AFTER 1 CU FREE_NODES: %s" % free_nodes)
+                        ##############################################
+                        # SERVER BLOCK
+                        ##############################################
+                        run = 1
+                        if (free_nodes < 1):
+                            while (run >= 0):
+                                inputready,outputready,exceptready = select.select(input,[],[])
+                                for s in inputready:
+                                    if s == server:
+                                        # handle the server socket 
+                                        client, address = server.accept()
+                                        input.append(client)
+                                        LOGGER.info("AGENT WORKER ADDED: %s" % str(address))
+                                    else:
+                                        # handle all other sockets 
+                                        data = s.recv(1024)
+                                        LOGGER.info("AGENT RECEIVED FROM AGENT WORKER: %s" % repr(data))
+                                        if (run > 0):
+                                            aprun_str = ""
+                                            for task in aprun_tasks:
+                                                if aprun_str == "":
+                                                    aprun_str = task
+                                                else:
+                                                    aprun_str = aprun_str + "&" + task                                
+                                            LOGGER.info("AGENT IS SENDING EXECUTION STRING...")
+                                            s.sendall(aprun_str)
+                                            run -= 1
+                                        else:
+                                            s.sendall(WAIT)
+                                            run -= 1    
+                        ##############################################
+                        # SERVER BLOCK ENDS
+                        ##############################################
                         if cu['description']['output_data'] is not None:
                             state = "PendingOutputTransfer"
                         else:
@@ -247,11 +376,17 @@ class Agent(threading.Thread):
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
                 return 
 
+        #########################
         # MAIN LOOP TERMINATED
+        #########################
+        LOGGER.info("AGENT IN TERMINATING CONNECTION TO AGENT WORKER...")
+        s.sendall(FINISH)  
+        s.close()
+        input.remove(s)
+        server.close()
+        #########################
         pilot_DONE(self.mongo_db, self._pilot_id, "Pilot main loop completed.")
         return
-
-
 
 # ================================================================================
 # ================================================================================
@@ -310,6 +445,11 @@ def parse_commandline():
                       dest='package_version',
                       help='The RADICAL-Pilot package version.')
 
+    parser.add_option('-a', '--allocation',
+                      metavar='ALLOCATION',
+                      dest='project',
+                      help='Specifies project code.')
+
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
@@ -327,6 +467,8 @@ def parse_commandline():
         parser.error("You must define the agent runtime (-t/--runtime). Try --help for help.")
     elif options.package_version is None:
         parser.error("You must pass the RADICAL-Pilot package version (-v/--version). Try --help for help.")
+    elif options.project is None:
+        parser.error("You must pass your project's allocation code (-a/--allocation). Try --help for help.")
 
 
     #if options.launch_method is not None: 
@@ -378,7 +520,9 @@ if __name__ == "__main__":
         else:
             workdir = options.workdir
 
-        agent = Agent(workdir=workdir,
+        agent = Agent(project=options.project,
+                      workdir=workdir,
+                      cores=options.cores,
                       runtime=options.runtime,
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,

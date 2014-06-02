@@ -174,6 +174,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     project      = compute_pilot['description']['project']
                     cleanup      = compute_pilot['description']['cleanup']
                     pilot_agent  = compute_pilot['description']['pilot_agent_priv']
+                    agent_worker = compute_pilot['description']['agent_worker']
 
                     sandbox      = compute_pilot['sandbox']
                     resource_cfg = self.resource_configurations[compute_pilot['description']['resource']]
@@ -227,6 +228,25 @@ class PilotLauncherWorker(multiprocessing.Process):
                     agent_script.copy("%s/radical-pilot-agent.py" % str(sandbox))
                     agent_script.close()
 
+                    # copying agent-worker.py script to sandbox
+                    #########################################################
+                    cwd = os.path.dirname(os.path.abspath(__file__))
+
+                    if agent_worker is not None:
+                        logger.warning("Using custom agent worker script: %s" % agent_worker)
+                        worker_path = os.path.abspath("%s/../agent/%s" % (cwd, agent_worker))
+
+                        worker_script_url = saga.Url("file://localhost/%s" % worker_path)
+
+                        log_msg = "Copying '%s' to agent sandbox (%s)." % (worker_script_url, sandbox)
+                        log_messages.append(log_msg)
+                        logger.debug(log_msg)
+
+                        worker_script = saga.filesystem.File(worker_script_url)
+                        worker_script.copy("%s/agent-worker.py" % str(sandbox))
+                        worker_script.close()
+
+                    #########################################################
                     # now that the script is in place and we know where it is,
                     # we can launch the agent
                     job_service_url = saga.Url(resource_cfg['URL'])

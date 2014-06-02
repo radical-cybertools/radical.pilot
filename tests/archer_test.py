@@ -47,9 +47,10 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+
 # RCONF points to the resource configuration files. Read more about resource 
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["file://localhost/%s/../configs/archer.json" % os.getcwd()]
+RCONF  = ["file://localhost/%s/../configs/local.json" % os.getcwd()]
 
 #------------------------------------------------------------------------------
 #
@@ -97,10 +98,11 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
         pdesc.project          = "e290"  # archer 'project group'
-        pdesc.sandbox          = "/work/e290/e290/oweidner/radical.pilot.sandbox"
-        pdesc.runtime          = 5
-        pdesc.cores            = 16 
+        pdesc.sandbox          = "/home/antons/rp/experiments"
+        pdesc.runtime          = 10
+        pdesc.cores            = 2 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
+        pdesc.agent_worker     = "agent-worker.py"
         pdesc.cleanup          = False
 
 
@@ -124,8 +126,8 @@ if __name__ == "__main__":
 
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.executable  = "/bin/hostname"
-            mpi_test_task.cores       = 8
-            mpi_test_task.output_data = ["STDOUT"]
+            mpi_test_task.cores       = 1
+            #mpi_test_task.output_data = ["STDOUT"]
             compute_units.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
