@@ -236,6 +236,7 @@ class ExecutionEnvironment(object):
         # see if we have a PBS_NODEFILE
         pbs_nodefile = os.environ.get('PBS_NODEFILE')
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
+        sge_hostfile = os.environ.get('PE_HOSTFILE')
 
         if pbs_nodefile is not None:
             # parse PBS the nodefile
@@ -247,9 +248,14 @@ class ExecutionEnvironment(object):
             self.raw_nodes = hostlist.expand_hostlist(slurm_nodelist)
             self.log.info("Found SLURM_NODELIST %s. Expanded to: %s" % (slurm_nodelist, self.raw_nodes))
 
+        elif sge_hostfile is not None:
+            # parse SGE hostfile
+            self.raw_nodes = hostlist.expand_hostlist(sge_hostfile)
+            self.log.info("Found PE_HOSTFILE %s. Expanded to: %s" % (slurm_nodelist, self.raw_nodes))
+
         else:
             self.raw_nodes = ['localhost']
-            self.log.info("No PBS_NODEFILE or SLURM_NODELIST found. Using hosts: %s" % (self.raw_nodes))
+            self.log.info("No PBS_NODEFILE, SLURM_NODELIST or PE_HOSTFILE found. Using hosts: %s" % (self.raw_nodes))
 
 # ----------------------------------------------------------------------------
 #
@@ -370,7 +376,7 @@ class ExecWorker(multiprocessing.Process):
 
                     host_index, offset = self._acquire_slots(task.numcores, True)
                     if host_index is None:
-                        # No resources free
+                        # No resources free, put back in queue
                         self._task_queue.put(task)
                         idle = True
                     else:
