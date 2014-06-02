@@ -185,8 +185,9 @@ class Agent(threading.Thread):
         LOGGER.info("AGENT USES PORT: %s" % PORT)
                     
         # this should be defined somewhere?
+        # for archer we define 24 cores per node
         #ARCHER_NODE = 24
-        # this is for localhost execution only
+        # for localhost we use 2 cores 
         ARCHER_NODE = 2
         # determining how many nodes to allocate with agent-worker.py script
         if( int(self._cores) < ARCHER_NODE ):
@@ -228,10 +229,11 @@ class Agent(threading.Thread):
         FINISH = 'STOP'
         WAIT = 'WAIT'
         LOGGER.info("CALLING QSUB...")
-        # agent submits agent-worker.py using qsub
+        # agent submits agent-worker.py using qsub on archer from work file system
+        # currently this is commented out since we can only run on localhost
         # proc = subprocess.Popen(["qsub agent-worker.py"], stdout=subprocess.PIPE, shell=True)
 
-        # this is for localhost execution only!
+        # line below is for localhost execution only!
         proc = subprocess.Popen(["nohup python agent-worker.py"], stdout=subprocess.PIPE, shell=True)
         LOGGER.info("QSUB CALL SUCCEEDED...")
         server.listen(32)
@@ -302,11 +304,11 @@ class Agent(threading.Thread):
                         open("%s/STDERR" % cu_workdir, 'a').close()
                        
                         ##############################################
-                        # aprun string disabled for localhost execuiton
+                        # below is aprun string for archer, currenty commented out
                         # cu_str = "aprun -n %s %s > %s" % (cu['description']['cores'], cu['description']['executable'], cu_workdir + "/STDOUT")
                         
                         w_dir = cu_workdir + "/STDOUT"
-                        # this is for localhost execution only
+                        # this is for localhost execution only!
                         cu_str = "date > %s" % w_dir
      
                         LOGGER.info("CU_STR: %s" % cu_str)

@@ -98,7 +98,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
         pdesc.project          = "e290"  # archer 'project group'
-        pdesc.sandbox          = "/home/antons/rp/experiments"
+        pdesc.sandbox          = "/home/antons/SINON-WORK/experiments"
         pdesc.runtime          = 10
         pdesc.cores            = 2 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
@@ -122,7 +122,7 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, 2):
+        for unit_count in range(0, 4):
 
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.executable  = "/bin/hostname"
