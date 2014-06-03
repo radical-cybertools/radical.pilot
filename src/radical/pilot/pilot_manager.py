@@ -123,30 +123,6 @@ class PilotManager(Object):
             for rc in rcs:
                 self._resource_cfgs[rc.name] = rc.as_dict() 
 
-
-            # implicit list conversion
-            # if not isinstance(resource_configurations, list):
-            #     resource_configurations = [resource_configurations]
-
-            # for rcf in resource_configurations:
-            #     try:
-            #         # download resource configuration file
-            #         response = urllib2.urlopen(rcf)
-            #         rcf_content = response.read()
-            #     except urllib2.URLError, err:
-            #         msg = "Couln't open/download resource configuration file '%s': %s." % (rcf, str(err))
-            #         raise BadParameter(msg=msg)
-
-            #     try:
-            #         # convert JSON string to dictionary and append
-            #         rcf_dict = json.loads(rcf_content)
-            #         for key, val in rcf_dict.iteritems():
-            #             if key in self._resource_cfgs:
-            #                 raise BadParameter("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
-            #             self._resource_cfgs[key] = val
-            #     except ValueError, err:
-            #         raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
-
         # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
         self._worker = PilotManagerController(
@@ -314,7 +290,7 @@ class PilotManager(Object):
 
             # If 'default_sandbox' is defined, set it.
             if pilot_description.sandbox is not None:
-                if "valid_roots" in resource_cfg:
+                if "valid_roots" in resource_cfg and resource_cfg["valid_roots"] is not None:
                     is_valid = False
                     for vr in resource_cfg["valid_roots"]:
                         if pilot_description.sandbox.startswith(vr):
@@ -345,6 +321,41 @@ class PilotManager(Object):
             return pilot_obj_list[0]
         else:
             return pilot_obj_list
+
+    # -------------------------------------------------------------------------
+    #
+    def add_resource_config(self, resource_config):
+        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
+           dictionary of known resources.
+
+           For example::
+
+                  rc = radical.pilot.ResourceConfig
+                  rc.name = "mycluster"
+                  rc.remote_job_manager_endpoint = "ssh+pbs://mycluster
+                  rc.remote_filesystem_endpoint = "sftp://mycluster
+                  rc.default_queue = "private"
+                  rc.bootstrapper = "default_bootstrapper.sh"
+
+                  pm = radical.pilot.PilotManager(session=s)
+                  pm.add_resource_config(rc)
+
+                  pd = radical.pilot.ComputePilotDescription()
+                  pd.resource = "mycluster"
+                  pd.cores    = 16
+                  pd.runtime  = 5 # minutes
+
+                  pilot = pm.submit_pilots(pd)
+        """
+        self._resource_cfgs[resource_config.name] = resource_config.as_dict()
+
+
+    # -------------------------------------------------------------------------
+    #
+    def list_resource_configs(self):
+        """Returns a dictionary of all known resource configurations.
+        """
+        return self._resource_cfgs
 
     # -------------------------------------------------------------------------
     #

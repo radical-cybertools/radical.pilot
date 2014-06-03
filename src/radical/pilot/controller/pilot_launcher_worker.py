@@ -287,6 +287,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                         if project is not None:
                             jd.project = project
 
+                    # set the SPMD variation if required
+                    if 'spmd_variation' in resource_cfg and resource_cfg['spmd_variation'] is not None:
+                        jd.spmd_variation = resource_cfg['spmd_variation']
+
                     jd.output = "AGENT.STDOUT"
                     jd.error  = "AGENT.STDERR"
                     jd.total_cpu_count = number_cores

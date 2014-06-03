@@ -63,7 +63,7 @@ if __name__ == "__main__":
         # Define a 2-core local pilot that runs for 10 minutes and cleans up
         # after itself.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "localhost:local"
+        pdesc.resource = "localhost"
         pdesc.runtime  = 5 # minutes
         pdesc.cores    = 2
         pdesc.cleanup  = False
