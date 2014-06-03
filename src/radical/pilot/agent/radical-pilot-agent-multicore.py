@@ -384,17 +384,27 @@ class ExecWorker(multiprocessing.Process):
                     task = self._task_queue.get_nowait()
                     idle = False
 
-                    # First try to find all on one host
-                    host_index, offset = self._acquire_slots(task.numcores, single_host=True)
-                    if host_index is None:
-                        # Then spread over multiple hosts
-                        host_index, offset = self._acquire_slots(task.numcores, single_host=False)
+                    # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
+                    # TODO: Dont have scattered scheduler yet, so test disabled.
+                    if True: # self._launch_method == LAUNCH_METHOD_IBRUN:
+                        req_cont = True
+                    else:
+                        req_cont = False
 
+                    # First try to find all cores on a single host
+                    host_index, offset = self._acquire_slots(task.numcores, single_host=True, continuous=req_cont)
+
+                    # If that failed, and our launch method supports multiple hosts, try that
+                    if host_index is None and self._launch_method in [LAUNCH_METHOD_IBRUN, LAUNCH_METHOD_MPIRUN]:
+                        host_index, offset = self._acquire_slots(task.numcores, single_host=False, continuous=req_cont)
+
+                    # Check if we got results
                     if host_index is None:
                         # No resources free, put back in queue
                         self._task_queue.put(task)
                         idle = True
                     else:
+                        # We got an allocation go off and launch the process
                         task.host_index = host_index
                         task.offset = offset
                         task_slots = self._index_and_offset_to_slotlist(host_index, offset, task.numcores)
@@ -433,10 +443,10 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _acquire_slots(self, numcores, single_host):
+    def _acquire_slots(self, numcores, single_host, continuous):
 
         #
-        # Find a needle (sub-list) in a haystack (list)
+        # Find a needle (continuous sub-list) in a haystack (list)
         #
         def find_sublist(haystack, needle):
             n = len(needle)
@@ -450,22 +460,21 @@ class ExecWorker(multiprocessing.Process):
 
             return index
 
-
         #
-        # Transform the number of cores into a consecutive list of "status"es,
+        # Transform the number of cores into a continuous list of "status"es,
         # and use that to find a sub-list.
         #
-        def find_cores(cores, count, status):
+        def find_cores_cont(cores, count, status):
             return find_sublist(cores, [status for _ in range(count)])
 
         #
-        # Find an available consecutive slot within host boundaries.
+        # Find an available continuous slot within host boundaries.
         #
-        def find_slots_single(count):
+        def find_slots_single_cont(count):
 
             for slot in self._slots:
                 cores = slot['cores']
-                offset = find_cores(cores, count, FREE)
+                offset = find_cores_cont(cores, count, FREE)
                 if offset is not None:
                     self._log.info('Host %s satisfies %d at offset %d' % (slot['host'], count, offset))
                     return (self._slots.index(slot), offset)
@@ -473,16 +482,16 @@ class ExecWorker(multiprocessing.Process):
             return None, None
 
         #
-        # Find an available consecutive slot across host boundaries.
+        # Find an available continuous slot across host boundaries.
         #
-        def find_slots_multi(count):
+        def find_slots_multi_cont(count):
             # Glue core lists together
             cores = [core for host in [host['cores'] for host in self._slots] for core in host]
 
             ppn = self._cores_per_host
 
             # Find the start of the first available region
-            cores_index = find_cores(cores, count, FREE)
+            cores_index = find_cores_cont(cores, count, FREE)
             if cores_index is None:
                 return None, None
 
@@ -493,21 +502,35 @@ class ExecWorker(multiprocessing.Process):
 
             return (host_index, offset)
 
-        #
-        # Switch between searching for single or multi-host
-        #
-        if single_host:
-            host_index, offset = find_slots_single(numcores)
-        else:
-            host_index, offset = find_slots_multi(numcores)
+        #################################################################################
+        #  End of inline functions, _acquire_slots() code begins here
 
-        if host_index is not None:
-            self._mark_consecutive(host_index, offset, numcores, BUSY)
+        #
+        # Switch between searching for continuous or scattered slots
+        #
+        if continuous:
+            # Switch between searching for single or multi-host
+            if single_host:
+                host_index, offset = find_slots_single_cont(numcores)
+            else:
+                host_index, offset = find_slots_multi_cont(numcores)
+
+            if host_index is not None:
+                self._mark_continuous(host_index, offset, numcores, BUSY)
+        else:
+            if single_host:
+                raise NotImplementedError('No scattered scheduler implemented yet.')
+            else:
+                raise NotImplementedError('No scattered scheduler implemented yet.')
+
+            if host_index is not None:
+                raise NotImplementedError('No scattered marker implemented yet.')
 
         return host_index, offset
 
     #
     # Convert an index, offset and core count into an expanded slot list
+    # TODO: This needs work!
     #
     def _index_and_offset_to_slotlist(self, first_host_index, first_host_offset, core_count):
 
@@ -544,9 +567,9 @@ class ExecWorker(multiprocessing.Process):
         return slot_list
 
     #
-    # For consecutive allocations, this can be used to set a state
+    # For continuous allocations, this can be used to set a state
     #
-    def _mark_consecutive(self, first_host_index, first_host_offset, core_count, state):
+    def _mark_continuous(self, first_host_index, first_host_offset, core_count, state):
 
         # Calculate the last core as a base for other calculations
         last_core = (first_host_index * self._cores_per_host) + \
@@ -586,9 +609,6 @@ class ExecWorker(multiprocessing.Process):
             # Use first and last core values above to set cores state
             for core in range(first_core, last_core+1):
                 self._slots[host_index]['cores'][core] = state
-
-
-
 
     # ------------------------------------------------------------------------
     #
@@ -686,7 +706,7 @@ class ExecWorker(multiprocessing.Process):
 
             update_tasks.append(task)
 
-            self._mark_consecutive(task.host_index, task.offset, task.numcores, FREE)
+            self._mark_continuous(task.host_index, task.offset, task.numcores, FREE)
 
         # update all the tasks that are marked for update.
         self._update_tasks(update_tasks)
@@ -967,6 +987,8 @@ class _Process(subprocess.Popen):
         elif launch_method == LAUNCH_METHOD_IBRUN:
             # NOTE: Don't think that with IBRUN it is possible to have
             # processes != cores ...
+            # TODO: this hardcoded 16 obviously needs to go away,
+            #       the information is available though, just not to this class.
             ibrun_offset = task.host_index * 16 + task.offset
             ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
             cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, ibrun_command, task_exec_string)
