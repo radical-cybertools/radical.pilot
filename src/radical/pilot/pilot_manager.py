@@ -14,7 +14,7 @@ __license__ = "MIT"
 import os
 import time
 import glob
-import urllib2
+import copy
 
 from radical.pilot.states import *
 from radical.pilot.exceptions import *
@@ -355,7 +355,7 @@ class PilotManager(Object):
     def list_resource_configs(self):
         """Returns a dictionary of all known resource configurations.
         """
-        return self._resource_cfgs
+        return copy.deepcopy(self._resource_cfgs)
 
     # -------------------------------------------------------------------------
     #
