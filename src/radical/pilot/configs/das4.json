@@ -5,7 +5,7 @@
         "local_job_manager_endpoint"    : "sge://localhost",
         "local_filesystem_endpoint"     : "file://localhost/",
         "default_queue"                 : "all.q",
-        "spmd_variation"                : "prun",
+        "spmd_variation"                : "openmpi",
         "task_launch_mode"              : "MPIRUN",
         "python_interpreter"            : "/usr/bin/python",
         "pre_bootstrap"                 : ["module load openmpi/gcc"],
