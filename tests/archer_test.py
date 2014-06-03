@@ -20,25 +20,22 @@ import radical.pilot
 #   python virtualenv-1.10/virtualenv.py $HOME/RP
 #   source $HOME/RP/bin/activate
 #
-# Install SAGA-Python 'devel' branch as we need the latest dev. version of the PBS adaptor
-#
-#   git clone https://github.com/radical-cybertools/saga-python.git
-#   cd saga-python
-#   git checkout devel
-#   easy_install .
-#
-# Next, you can download and install RADICAL-Pilot: 
+# Download and install RADICAL-Pilot: 
 #
 #   git clone https://github.com/radical-cybertools/radical.pilot.git
 #   cd radical.pilot
-#   git checkout devel
+#   git checkout feature/archer
 #   easy_install .
 # 
 # Run this script with the local MongoDB server. The hostname in the 
 # mongodb URL is the hostname of the login node on which you started
 # the server, *not* localhost. 
 #
-#   cd examples
+#   cd tests
+#  
+# In archer_test.py change line `pdesc.sandbox` to appropriate path.
+# Next, run the example
+#
 #   export RADICAL_PILOT_DBURL=mongodb://eslogin007:27017
 #   RADICAL_PILOT_VERBOSE=info python archer_test.py
 #
@@ -52,7 +49,7 @@ if DBURL is None:
 
 # RCONF points to the resource configuration files. Read more about resource 
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["file://localhost/%s/configs/archer.json" % os.getcwd()]
+RCONF  = ["file://localhost/%s/../configs/archer.json" % os.getcwd()]
 
 #------------------------------------------------------------------------------
 #
@@ -87,11 +84,6 @@ if __name__ == "__main__":
         # well as security crendetials.
         session = radical.pilot.Session(database_url=DBURL)
 
-        # Add an ssh identity to the session.
-        cred = radical.pilot.SSHCredential()
-        cred.user_id = "oweidner"
-        session.add_credential(cred)
-
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
 
@@ -105,6 +97,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
         pdesc.project          = "e290"  # archer 'project group'
+        pdesc.sandbox          = "/work/e290/e290/oweidner/radical.pilot.sandbox"
         pdesc.runtime          = 5
         pdesc.cores            = 16 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"

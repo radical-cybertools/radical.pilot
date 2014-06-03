@@ -13,7 +13,7 @@ __license__ = "MIT"
 
 import os
 import time
-import json
+import glob
 import urllib2
 
 from radical.pilot.states import *
@@ -24,6 +24,7 @@ from radical.pilot.controller import PilotManagerController
 from radical.pilot.compute_pilot import ComputePilot
 from radical.pilot.utils.logger import logger
 from radical.pilot.exceptions import * 
+from radical.pilot.resource_config import ResourceConfig
 
 # -----------------------------------------------------------------------------
 #
@@ -53,7 +54,7 @@ class PilotManager(Object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, resource_configurations=None, pilot_launcher_workers=1):
+    def __init__(self, session, pilot_launcher_workers=1, _reconnect=False):
         """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -74,7 +75,7 @@ class PilotManager(Object):
               entries in the  files via the :class:`ComputePilotDescription`.
               For example::
 
-                  pm = radical.pilot.PilotManager(session=s, resource_configurations="https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json")
+                  pm = radical.pilot.PilotManager(session=s)
 
                   pd = radical.pilot.ComputePilotDescription()
                   pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
@@ -101,10 +102,7 @@ class PilotManager(Object):
         self._worker = None
         self._uid = None
 
-        if resource_configurations == "~=RECON=~":
-            # When we get the "~=RECON=~" keyword as resource_configurations,
-            # we were called  from the 'get()' class method. In this case
-            # object instantiation happens there...
+        if _reconnect == True:
             return
 
         ###############################
@@ -115,39 +113,15 @@ class PilotManager(Object):
         # our resource dictionary.
         self._resource_cfgs = {}
 
-        # Add 'localhost' as a built-in resource configuration
-        self._resource_cfgs["localhost"] = {
-            "URL"              : "fork://localhost",
-            "filesystem"       : "file://localhost",
-            "pre_bootstrap"    : ["hostname", "date"],
-            "task_launch_mode" : "LOCAL",
-            "bootstrapper"     : "default_bootstrapper.sh"
-        }
-
-        if resource_configurations is not None:
-
-            # implicit list conversion
-            if not isinstance(resource_configurations, list):
-                resource_configurations = [resource_configurations]
-
-            for rcf in resource_configurations:
-                try:
-                    # download resource configuration file
-                    response = urllib2.urlopen(rcf)
-                    rcf_content = response.read()
-                except urllib2.URLError, err:
-                    msg = "Couln't open/download resource configuration file '%s': %s." % (rcf, str(err))
-                    raise BadParameter(msg=msg)
-
-                try:
-                    # convert JSON string to dictionary and append
-                    rcf_dict = json.loads(rcf_content)
-                    for key, val in rcf_dict.iteritems():
-                        if key in self._resource_cfgs:
-                            raise BadParameter("Resource configuration entry for '%s' defined in %s is already defined." % (key, rcf))
-                        self._resource_cfgs[key] = val
-                except ValueError, err:
-                    raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (rcf, str(err)))
+        # Loading all "default" resource configurations
+        default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
+        config_files = glob.glob(default_configs)
+        for config_file in config_files:
+            config_url = "file://localhost/%s" % config_file
+            rcs = ResourceConfig.from_file(config_url)
+            logger.info("Loaded resource configurations from %s" % config_url)
+            for rc in rcs:
+                self._resource_cfgs[rc.name] = rc.as_dict() 
 
         # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
@@ -215,7 +189,7 @@ class PilotManager(Object):
             raise BadParameter(
                 "PilotManager with id '%s' not in database." % pilot_manager_id)
 
-        obj = cls(session=session, resource_configurations="~=RECON=~")
+        obj = cls(session=session, _reconnect=True)
         obj._uid = pilot_manager_id
         obj._resource_cfgs = None  # TODO: reconnect
 
@@ -294,22 +268,35 @@ class PilotManager(Object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
                 raise BadParameter(error_msg)
 
+            # if resource is preceeded by :local, we use the local job manager
+            # and file system endpoints instead of the remote ones.
+            use_local_endpoints = False
+            resource_key = pilot_description.resource
+            s = pilot_description.resource.split(":")
+            if len(s) == 2:
+                if s[1].lower() == "local":
+                    use_local_endpoints = True
+                    resource_key = s[0]
+                else:
+                    error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], pilot_description.resource)
+                    raise BadParameter(error_msg)
+
             # Make sure resource key is known.
-            if pilot_description.resource not in self._resource_cfgs:
-                error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % pilot_description.resource
+            if resource_key not in self._resource_cfgs:
+                error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
                 raise BadParameter(error_msg)
             else:
-                resource_cfg = self._resource_cfgs[pilot_description.resource]
+                resource_cfg = self._resource_cfgs[resource_key]
 
             # If 'default_sandbox' is defined, set it.
             if pilot_description.sandbox is not None:
-                if "valid_roots" in resource_cfg:
+                if "valid_roots" in resource_cfg and resource_cfg["valid_roots"] is not None:
                     is_valid = False
                     for vr in resource_cfg["valid_roots"]:
                         if pilot_description.sandbox.startswith(vr):
                             is_valid = True
                     if is_valid is False:
-                        raise BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (pilot_description.resource, pilot_description.sandbox, resource_cfg["valid_roots"]))
+                        raise BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (resource_key, pilot_description.sandbox, resource_cfg["valid_roots"]))
 
             # After the sanity checks have passed, we can register a pilot
             # startup request with the worker process and create a facade
@@ -321,6 +308,7 @@ class PilotManager(Object):
 
             pilot_uid = self._worker.register_start_pilot_request(
                 pilot=pilot,
+                use_local_endpoints=use_local_endpoints,
                 resource_config=resource_cfg,
                 session=self._session)
 
@@ -333,6 +321,41 @@ class PilotManager(Object):
             return pilot_obj_list[0]
         else:
             return pilot_obj_list
+
+    # -------------------------------------------------------------------------
+    #
+    def add_resource_config(self, resource_config):
+        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
+           dictionary of known resources.
+
+           For example::
+
+                  rc = radical.pilot.ResourceConfig
+                  rc.name = "mycluster"
+                  rc.remote_job_manager_endpoint = "ssh+pbs://mycluster
+                  rc.remote_filesystem_endpoint = "sftp://mycluster
+                  rc.default_queue = "private"
+                  rc.bootstrapper = "default_bootstrapper.sh"
+
+                  pm = radical.pilot.PilotManager(session=s)
+                  pm.add_resource_config(rc)
+
+                  pd = radical.pilot.ComputePilotDescription()
+                  pd.resource = "mycluster"
+                  pd.cores    = 16
+                  pd.runtime  = 5 # minutes
+
+                  pilot = pm.submit_pilots(pd)
+        """
+        self._resource_cfgs[resource_config.name] = resource_config.as_dict()
+
+
+    # -------------------------------------------------------------------------
+    #
+    def list_resource_configs(self):
+        """Returns a dictionary of all known resource configurations.
+        """
+        return self._resource_cfgs
 
     # -------------------------------------------------------------------------
     #

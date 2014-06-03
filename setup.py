@@ -92,19 +92,6 @@ if  sys.hexversion < 0x02070000 or sys.hexversion >= 0x03000000:
 
 
 #-----------------------------------------------------------------------------
-class our_test(Command):
-    user_options = []
-    def initialize_options (self) : pass
-    def finalize_options   (self) : pass
-    def run (self) :
-        testdir = "%s/tests/" % os.path.dirname(os.path.realpath(__file__))
-        retval  = sp.call([sys.executable,
-                          '%s/run_tests.py'               % testdir,
-                          '%s/configs/workload_input.cfg' % testdir])
-        raise SystemExit(retval)
-
-
-#-----------------------------------------------------------------------------
 #
 def read(*rnames):
     return open(os.path.join(os.path.dirname(__file__), *rnames)).read()
@@ -146,7 +133,8 @@ setup_args = {
     'scripts'          : ['bin/radicalpilot-version',
                           'bin/radicalpilot-profiler'
                          ],
-    'package_data'     : {'': ['*.sh', 'VERSION', 'VERSION.git', ]},
+    'package_data'     : {'': ['*.sh', '*.json', 'VERSION', 'VERSION.git']},
+
     'install_requires' : ['setuptools',
                           'saga-python',
                           'radical.utils',
