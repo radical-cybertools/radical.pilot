@@ -15,24 +15,12 @@ import radical.pilot
 # this up on Linux:
 #   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
 
-# You need to have 
-#    module load namd/2.9
-# in your bashrc on stampede in order for this to work.
-#
-#
-
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
-
-# RCONF points to the resource configuration files. Read more about resource 
-# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-#RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-#         "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
-RCONF = "file:///Users/mark/proj/radical.pilot/configs/das4.json"
 
 #------------------------------------------------------------------------------
 #
@@ -72,19 +60,19 @@ if __name__ == "__main__":
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
+        pmgr = radical.pilot.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 32-core on fs2 that runs for 15 mintues and
+        # Define a N-core on fs2 that runs for X minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "fs2.das4.science.uva.nl"
-        pdesc.runtime          = 15 # minutes
-        pdesc.cores            = 32
+        pdesc.runtime          = 15 # X minutes
+        pdesc.cores            = 16 # N cores
         pdesc.pilot_agent_priv = "radical-pilot-agent-multicore.py"
         pdesc.cleanup          = False
 
@@ -93,13 +81,20 @@ if __name__ == "__main__":
 
         cud_list = []
 
-        for unit_count in range(0, 16):
-            #/bin/bash -l -c "module load python mpi4py && ibrun python ~/bin/helloworld_mpi.py"
+        for unit_count in range(0, 8):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.pre_exec    = ["module load python"]
+
+            # NOTE: pre_exec only works for single node execution currently,
+            # "solved" it by putting things in .bashrc, need a way to pass
+            # this with mpirun though.
+            #mpi_test_task.pre_exec    = ["source $HOME/.virtualenv/mpi4py/bin/activate", "module load openmpi/gcc"]
+            #mpi_test_task.arguments   = ["~/bin/helloworld_mpi.py"]
+
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["~/bin/helloworld_mpi.py"]
+
             mpi_test_task.cores       = 4
+
             cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
