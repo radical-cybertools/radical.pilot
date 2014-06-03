@@ -72,7 +72,18 @@ if __name__ == "__main__":
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
+        pmgr = radical.pilot.PilotManager(session=session)
+
+        # Get all configs,
+        res = pmgr.list_resource_configs()
+        # ... and the entry specific for stampede
+        s = res['stampede.tacc.utexas.edu']
+        # Build a new one based on Stampede's
+        rc = radical.pilot.ResourceConfig(s)
+        # And set launch mode to IBRUN while we can't do this through the CU
+        rc.task_launch_mode = 'IBRUN'
+        # Now add the entry back to the PM
+        pmgr.add_resource_config(rc)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
