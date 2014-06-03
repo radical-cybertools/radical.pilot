@@ -22,7 +22,7 @@ VALID_ROOTS                 = 'valid_roots'
 BOOTSTRAPPER                = 'bootstrapper'
 TASK_LAUNCH_MODE            = 'task_launch_mode'
 
-VALID_KEYS = [NAME, LOCAL_JOB_MANAGER_ENDPOINT, LOCAL_FILESYSTEM_ENDPOINT, 
+VALID_KEYS = [NAME, LOCAL_JOB_MANAGER_ENDPOINT, LOCAL_FILESYSTEM_ENDPOINT,
               REMOTE_JOB_MANAGER_ENDPOINT, REMOTE_FILESYSTEM_ENDPOINT, 
               DEFAULT_QUEUE, SPMD_VARIATION, PYTHON_INTERPRETER, PRE_BOOTSTRAP, 
               VALID_ROOTS, BOOTSTRAPPER, TASK_LAUNCH_MODE]
@@ -122,7 +122,7 @@ class ResourceConfig(attributes.Attributes):
           response = urllib2.urlopen(url)
           rcf_content = response.read()
       except urllib2.URLError, err:
-          msg = "Couln't open resource configuration file '%s': %s." % (rcf, str(err))
+          msg = "Couln't open resource configuration file '%s': %s." % (rcfgs, str(err))
           raise BadParameter(msg=msg)
 
       try:
@@ -137,9 +137,8 @@ class ResourceConfig(attributes.Attributes):
                       msg = "Unknown key '%s' in file '%s'." % (key, str(url))
                       raise BadParameter(msg=msg)
 
-
               for key in VALID_KEYS:
-                  if key == 'name':
+                  if key == NAME:
                       continue
                   if key in cfg:
                       cls[key] = cfg[key]
@@ -156,9 +155,10 @@ class ResourceConfig(attributes.Attributes):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self):
-        """Le constructeur.
-        """ 
+    def __init__(self, seeding_dict=None):
+        """Optionally take a seeding dict to populate the values.
+        """
+
         # initialize attributes
         attributes.Attributes.__init__(self)
 
@@ -178,6 +178,17 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(VALID_ROOTS,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(BOOTSTRAPPER,                None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(TASK_LAUNCH_MODE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+
+        # Parse the seeding dict if it is provided
+        if seeding_dict is not None:
+            try:
+                for key in seeding_dict:
+                    self.set_attribute(key, seeding_dict[key])
+
+            except ValueError, err:
+                raise BadParameter("Couldn't parse seeding dict: %s." % str(err))
+
+
 
     # -------------------------------------------------------------------------
     #
