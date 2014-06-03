@@ -1,0 +1,20 @@
+{
+    "das4-local": {
+        "URL"                : "sge://localhost",
+        "filesystem"         : "file://localhost/",
+        "default_queue"      : "all.q",
+        "python_interpreter" : "/usr/bin/python",
+        "pre_bootstrap"      : ["module load openmpi/gcc"],
+        "valid_roots"        : ["/home"],
+        "bootstrapper"       : "default_bootstrapper.sh"
+    },
+    "fs2.das4.science.uva.nl": {
+        "URL"                : "sge+ssh://fs2.das4.science.uva.nl",
+        "filesystem"         : "sftp://fs2.das4.science.uva.nl/",
+        "default_queue"      : "all.q",
+        "python_interpreter" : "/usr/bin/python",
+        "pre_bootstrap"      : ["module load openmpi/gcc"],
+        "valid_roots"        : ["/home"],
+        "bootstrapper"       : "default_bootstrapper.sh"
+    }
+}
