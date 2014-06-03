@@ -228,7 +228,17 @@ class ExecutionEnvironment(object):
     #-------------------------------------------------------------------------
     #
     def detect_cores(self):
-        self.cores_per_node = multiprocessing.cpu_count()
+        sge_hostfile = os.environ.get('PE_HOSTFILE')
+
+        # SGE core configuration might be different than what multiprocessing announces
+        if sge_hostfile is not None:
+            # parse SGE hostfile
+            cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
+            core_counts = list(set(cores_count_list))
+            self.cores_per_node = min(core_counts)
+            self.log.info("Found unique core counts: %s Using: %d" % (core_counts, self.cores_per_node))
+        else:
+            self.cores_per_node = multiprocessing.cpu_count()
 
     #-------------------------------------------------------------------------
     #
@@ -250,8 +260,8 @@ class ExecutionEnvironment(object):
 
         elif sge_hostfile is not None:
             # parse SGE hostfile
-            self.raw_nodes = hostlist.expand_hostlist(sge_hostfile)
-            self.log.info("Found PE_HOSTFILE %s. Expanded to: %s" % (slurm_nodelist, self.raw_nodes))
+            self.raw_nodes = [line.split()[0] for line in open(sge_hostfile)]
+            self.log.info("Found PE_HOSTFILE %s. Expanded to: %s" % (sge_hostfile, self.raw_nodes))
 
         else:
             self.raw_nodes = ['localhost']
@@ -927,8 +937,9 @@ class _Process(subprocess.Popen):
             task_exec_string = task.executable
         else:
             task_exec_string = ''
-        for arg in task.arguments:
-            task_exec_string += " %s" % arg
+        if task.arguments is not None:
+            for arg in task.arguments:
+                task_exec_string += " %s" % arg
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
@@ -936,8 +947,13 @@ class _Process(subprocess.Popen):
             cmdline = ''
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
-            cmdline = launch_command
-            #cmdline += " -np %s -host %s" % (str(task.numcores), host)
+            hosts_string = ''
+            for slot in slots:
+                host = slot.split(':')[0]
+                hosts_string += '%s,' % host
+
+            mpirun_command = "%s -x PATH -np %s -host %s" % (launch_command, task.numcores, hosts_string)
+            cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, mpirun_command, task_exec_string)
 
         elif launch_method == LAUNCH_METHOD_APRUN:
             cmdline = launch_command
