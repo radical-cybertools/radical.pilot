@@ -384,7 +384,12 @@ class ExecWorker(multiprocessing.Process):
                     task = self._task_queue.get_nowait()
                     idle = False
 
-                    host_index, offset = self._acquire_slots(task.numcores, True)
+                    # First try to find all on one host
+                    host_index, offset = self._acquire_slots(task.numcores, single_host=True)
+                    if host_index is None:
+                        # Then spread over multiple hosts
+                        host_index, offset = self._acquire_slots(task.numcores, single_host=False)
+
                     if host_index is None:
                         # No resources free, put back in queue
                         self._task_queue.put(task)
