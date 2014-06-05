@@ -87,6 +87,7 @@ if __name__ == "__main__":
             # NOTE: pre_exec only works for single node execution currently,
             # "solved" it by putting things in .bashrc, need a way to pass
             # this with mpirun though.
+            # Order of module loads matter!
             mpi_test_task.pre_exec = ["module load openmpi python", "module list",
                                       "virtualenv $HOME/mpive", "source $HOME/mpive/bin/activate",
                                       "pip install mpi4py"]
