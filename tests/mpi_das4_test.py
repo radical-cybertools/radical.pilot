@@ -71,7 +71,7 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "fs2.das4.science.uva.nl"
-        pdesc.runtime          = 15 # X minutes
+        pdesc.runtime          = 5 # X minutes
         pdesc.cores            = 16 # N cores
         pdesc.pilot_agent_priv = "radical-pilot-agent-multicore.py"
         pdesc.cleanup          = False
@@ -81,19 +81,19 @@ if __name__ == "__main__":
 
         cud_list = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 10):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
             # NOTE: pre_exec only works for single node execution currently,
             # "solved" it by putting things in .bashrc, need a way to pass
             # this with mpirun though.
             #mpi_test_task.pre_exec    = ["source $HOME/.virtualenv/mpi4py/bin/activate", "module load openmpi/gcc"]
-            #mpi_test_task.arguments   = ["~/bin/helloworld_mpi.py"]
+            #mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
 
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["~/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
 
-            mpi_test_task.cores       = 4
+            mpi_test_task.cores       = 3
 
             cud_list.append(mpi_test_task)
 

@@ -28,12 +28,6 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-# RCONF points to the resource configuration files. Read more about resource 
-# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-#RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-#         "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
-RCONF = "file:///Users/mark/proj/radical.pilot/configs/xsede.json"
-
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
@@ -95,7 +89,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "stampede.tacc.utexas.edu"
         pdesc.runtime          = 15 # minutes
-        pdesc.cores            = 32
+        pdesc.cores            = 64
         pdesc.pilot_agent_priv = "radical-pilot-agent-multicore.py"
         pdesc.cleanup          = False
 
@@ -116,13 +110,13 @@ if __name__ == "__main__":
         #
         cud_list = []
 
-        for unit_count in range(0, 16):
+        for unit_count in range(0, 4):
             #/bin/bash -l -c "module load python mpi4py && ibrun python ~/bin/helloworld_mpi.py"
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.pre_exec    = ["module load python intel mvapich2 mpi4py"]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["~/bin/helloworld_mpi.py"]
-            mpi_test_task.cores       = 4
+            mpi_test_task.arguments   = ["~marksant/bin/helloworld_mpi.py"]
+            mpi_test_task.cores       = 32
             cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via

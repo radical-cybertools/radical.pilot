@@ -91,8 +91,6 @@ if __name__ == "__main__":
             mpi_test_task.pre_exec = ["module load openmpi python", "module list",
                                       "virtualenv $HOME/mpive", "source $HOME/mpive/bin/activate",
                                       "pip install mpi4py"]
-            #mpi_test_task.arguments = ["~/software/bin/helloworld_mpi.py"]
-
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
 
