@@ -86,9 +86,9 @@ version, version_detail = get_version (mod_root)
 
 
 #-----------------------------------------------------------------------------
-# check python version. we need > 2.7, <3.x
-if  sys.hexversion < 0x02070000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError("%s requires Python 2.x (2.7 or higher)" % name)
+# check python version. we need > 2.6, <3.x
+if  sys.hexversion < 0x02060000 or sys.hexversion >= 0x03000000:
+    raise RuntimeError("%s requires Python 2.x (2.6 or higher)" % name)
 
 
 #-----------------------------------------------------------------------------
