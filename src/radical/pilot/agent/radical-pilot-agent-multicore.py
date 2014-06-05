@@ -231,6 +231,7 @@ class ExecutionEnvironment(object):
         sge_hostfile = os.environ.get('PE_HOSTFILE')
 
         # SGE core configuration might be different than what multiprocessing announces
+        # Alternative: "qconf -sq all.q|awk '/^slots *[0-9]+$/{print $2}'"
         if sge_hostfile is not None:
             # parse SGE hostfile
             cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
