@@ -20,6 +20,7 @@ EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
+MPI                    = 'mpi'
 INPUT_DATA             = 'input_data'
 OUTPUT_DATA            = 'output_data'
 PRE_EXEC               = 'pre_exec'
@@ -45,6 +46,10 @@ class ComputeUnitDescription(attributes.Attributes) :
     .. data:: cores 
 
        (`Attribute`) The number of cores (int) required by the executable. (int) [`mandatory`].
+
+    .. data:: mpi
+
+       (`Attribute`) Set to true if the task is an MPI task. (bool) [`optional`].
 
     .. data:: name 
 
@@ -105,6 +110,7 @@ class ComputeUnitDescription(attributes.Attributes) :
 
         # resource requirements
         self._attributes_register(CORES,                  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(MPI,                    False, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(CPU_ARCHITECTURE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(OPERATING_SYSTEM,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(MEMORY,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
@@ -120,7 +126,7 @@ class ComputeUnitDescription(attributes.Attributes) :
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
-        # Apparently the aatribute interface only handles 'non-None' attributes,
+        # Apparently the attribute interface only handles 'non-None' attributes,
         # so we do it manually. More explicit anyways.
         obj_dict = {
             NAME                   : self.name,
@@ -128,6 +134,7 @@ class ComputeUnitDescription(attributes.Attributes) :
             ARGUMENTS              : self.arguments,
             ENVIRONMENT            : self.environment,
             CORES                  : self.cores,
+            MPI                    : self.mpi,
             INPUT_DATA             : self.input_data, 
             OUTPUT_DATA            : self.output_data,
             PRE_EXEC               : self.pre_exec

@@ -118,92 +118,50 @@ class ExecutionEnvironment(object):
     #-------------------------------------------------------------------------
     #
     @classmethod
-    def discover(cls, logger, launch_method, requested_cores):
+    def discover(cls, logger, requested_cores):
         """Factory method creates a new execution environment.
         """
         eenv = cls(logger)
-        # detect nodes, cores available
-        eenv.detect_nodes()
-        eenv.detect_cores()
 
-        # check for 'mpirun'
-        eenv.ibrun_location  = which('ibrun')
-        eenv.aprun_location  = which('aprun')
-        eenv.mpirun_location = which('mpirun')
-        eenv.ssh_location    = which('ssh')
+        # Discover nodes and number of cores available
+        eenv.discover_nodes()
+        eenv.discover_cores()
 
-        # suggest a launch method. the current precedence is
-        # ibrun, aprun, mpirun, ssh, fork. this can be overridden
-        # by passing the '--launch-method' parameter to the agent.
+        # Discover task launch methods
+        eenv.discovered_task_launch_methods = {}
+        # TODO: Can we come up with a test / config whether local exec is allowed?
+        #       Maybe at a list of "allowed launch methods" in the resource config?
+        eenv.discovered_task_launch_methods[LAUNCH_METHOD_LOCAL] = \
+            {'launch_command': None}
+        ssh_location    = which('ssh')
+        if ssh_location is not None:
+            eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
+                {'launch_command': ssh_location}
+        mpirun_location = which('mpirun')
+        if mpirun_location is not None:
+            eenv.discovered_task_launch_methods[LAUNCH_METHOD_MPIRUN] = \
+                {'launch_command': mpirun_location}
+        ibrun_location  = which('ibrun')
+        if ibrun_location is not None:
+            eenv.discovered_task_launch_methods[LAUNCH_METHOD_IBRUN] = \
+                {'launch_command': ibrun_location}
+        aprun_location  = which('aprun')
+        if aprun_location is not None:
+            eenv.discovered_task_launch_methods[LAUNCH_METHOD_APRUN] = \
+                {'launch_command': aprun_location}
 
-        if launch_method == LAUNCH_METHOD_AUTO:
-            # Try to autodetect launch method
-            if eenv.ibrun_location is not None:
-                eenv.launch_method = LAUNCH_METHOD_IBRUN
-                eenv.launch_command = eenv.ibrun_location
-            elif eenv.aprun_location is not None:
-                eenv.launch_method = LAUNCH_METHOD_APRUN
-                eenv.launch_command = eenv.aprun_location
-            elif eenv.mpirun_location is not None:
-                eenv.launch_method = LAUNCH_METHOD_MPIRUN
-                eenv.launch_command = eenv.mpirun_location
-            elif eenv.ssh_location is not None:
-                eenv.launch_method = LAUNCH_METHOD_SSH
-                eenv.launch_command = eenv.ssh_location
-            else:
-                eenv.launch_method = LAUNCH_METHOD_LOCAL
-                eenv.launch_command = None
-
-        elif launch_method == LAUNCH_METHOD_SSH:
-            if eenv.ssh_location is None:
-                raise Exception("Launch method set to %s but 'ssh' not found in path." % launch_method)
-            else:
-                eenv.launch_method = LAUNCH_METHOD_SSH
-                eenv.launch_command = eenv.ssh_location   
-
-        elif launch_method == LAUNCH_METHOD_MPIRUN:
-            if eenv.mpirun_location is None:
-                raise Exception("Launch method set to %s but 'mpirun' not found in path." % launch_method)
-            else:
-                eenv.launch_method = LAUNCH_METHOD_MPIRUN
-                eenv.launch_command = eenv.mpirun_location       
-
-        elif launch_method == LAUNCH_METHOD_APRUN:
-            if eenv.aprun_location is None:
-                raise Exception("Launch method set to %s but 'aprun' not found in path." % launch_method)
-            else:
-                eenv.launch_method = LAUNCH_METHOD_APRUN
-                eenv.launch_command = eenv.aprun_location
-
-        elif launch_method == LAUNCH_METHOD_IBRUN:
-            if eenv.ibrun_location is None:
-                raise Exception("Launch method set to %s but 'ibrun' not found in path." % launch_method)
-            else:
-                eenv.launch_method = LAUNCH_METHOD_IBRUN
-                eenv.launch_command = eenv.ibrun_location
-
-        elif launch_method == LAUNCH_METHOD_LOCAL:
-            eenv.launch_method = LAUNCH_METHOD_LOCAL
-            eenv.launch_command = None
+        logger.info("Discovered task launch methods: %s." % [lm for lm in eenv.discovered_task_launch_methods])
 
         # create node dictionary
         for rn in eenv.raw_nodes:
             if rn not in eenv.nodes:
                 eenv.nodes[rn] = {'cores': eenv.cores_per_node}
-
         logger.info("Discovered execution environment: %s" % eenv.nodes)
-        # TODO: These are actually not necessarily discovered.
-        # TODO: Its probably a good idea to report all the detected plus the chosen methods.
-        logger.info("Discovered launch method: %s (%s)" % (eenv.launch_method, eenv.launch_command))
 
+        # For now assume that all nodes have equal amount of cores
         cores_avail = len(eenv.nodes) * int(eenv.cores_per_node)
         if cores_avail < int(requested_cores):
             raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
-
-        if launch_method == LAUNCH_METHOD_LOCAL:
-            # make sure that we don't hog all cores with a local
-            # pilot but only the number of cores that were allocated 
-            eenv.cores_per_node = int(requested_cores)
 
         return eenv
 
@@ -214,20 +172,11 @@ class ExecutionEnvironment(object):
         '''
         self.log = logger
 
-        self.nodes = dict()
-        self.raw_nodes = list()
-        self.cores_per_node = 0
-
-        self.launch_method  = None
-        self.launch_command = None
-
-        self.aprun  = 'aprun'
-        self.mpirun = 'mpirun'
-        self.ssh    = 'ssh'
+        self.nodes = {}
 
     #-------------------------------------------------------------------------
     #
-    def detect_cores(self):
+    def discover_cores(self):
         sge_hostfile = os.environ.get('PE_HOSTFILE')
 
         # SGE core configuration might be different than what multiprocessing announces
@@ -243,7 +192,7 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
-    def detect_nodes(self):
+    def discover_nodes(self):
         # see if we have a PBS_NODEFILE
         pbs_nodefile = os.environ.get('PBS_NODEFILE')
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
@@ -274,7 +223,7 @@ class Task(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, uid, executable, arguments, environment, numcores, pre_exec, workdir, stdout, stderr, output_data):
+    def __init__(self, uid, executable, arguments, environment, numcores, mpi, pre_exec, workdir, stdout, stderr, output_data):
 
         self._log         = None
         self._description = None
@@ -289,6 +238,7 @@ class Task(object):
         self.stderr         = stderr
         self.output_data    = output_data
         self.numcores       = numcores
+        self.mpi            = mpi
         self.pre_exec       = pre_exec
 
         # Location
@@ -317,7 +267,7 @@ class ExecWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, task_queue, hosts, cores_per_host, 
-                 launch_method, launch_command, mongodb_url, mongodb_name,
+                 launch_methods, mongodb_url, mongodb_name,
                  pilot_id, session_id, unitmanager_id):
 
         """Le Constructeur creates a new ExecWorker instance.
@@ -343,9 +293,6 @@ class ExecWorker(multiprocessing.Process):
         # Launched tasks by this ExecWorker
         self._running_tasks = []
 
-        self._launch_method  = launch_method
-        self._launch_command = launch_command
-
         # Slots represents the internal process management structure.
         # The structure is as follows:
         # [
@@ -360,6 +307,9 @@ class ExecWorker(multiprocessing.Process):
                 'cores': [FREE for _ in range(0, cores_per_host)]
             })
         self._cores_per_host = cores_per_host
+
+        # The available launch methods
+        self._available_launch_methods = launch_methods
 
     # ------------------------------------------------------------------------
     #
@@ -385,9 +335,34 @@ class ExecWorker(multiprocessing.Process):
                     task = self._task_queue.get_nowait()
                     idle = False
 
+                    if task.mpi:
+                        # Find an appropriate method to execute MPI on this resource
+                        if LAUNCH_METHOD_IBRUN in self._available_launch_methods:
+                            launch_method = LAUNCH_METHOD_IBRUN
+                            launch_command = self._available_launch_methods[launch_method]['launch_command']
+                        elif LAUNCH_METHOD_APRUN in self._available_launch_methods:
+                            launch_method = LAUNCH_METHOD_APRUN
+                            launch_command = self._available_launch_methods[launch_method]['launch_command']
+                        elif LAUNCH_METHOD_MPIRUN in self._available_launch_methods:
+                            launch_method = LAUNCH_METHOD_MPIRUN
+                            launch_command = self._available_launch_methods[launch_method]['launch_command']
+                        else:
+                            raise Exception("No task launch method available to execute MPI tasks")
+                    else:
+                        # For "regular" tasks either use SSH or none
+                        # TODO: Find a switch to go for fork() if we run on localhost
+                        if LAUNCH_METHOD_SSH in self._available_launch_methods:
+                            launch_method = LAUNCH_METHOD_SSH
+                            launch_command = self._available_launch_methods[launch_method]['launch_command']
+                        else:
+                            launch_method = self._available_launch_methods[LAUNCH_METHOD_LOCAL]
+                            launch_command = self._available_launch_methods[launch_method]['launch_command']
+
+                    self._log.debug("Launching task with %s (%s)." % (launch_method, launch_command))
+
                     # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
                     # TODO: Dont have scattered scheduler yet, so test disabled.
-                    if True: # self._launch_method == LAUNCH_METHOD_IBRUN:
+                    if True: # launch_method in [LAUNCH_METHOD_IBRUN]:
                         req_cont = True
                     else:
                         req_cont = False
@@ -396,7 +371,7 @@ class ExecWorker(multiprocessing.Process):
                     host_index, offset = self._acquire_slots(task.numcores, single_host=True, continuous=req_cont)
 
                     # If that failed, and our launch method supports multiple hosts, try that
-                    if host_index is None and self._launch_method in [LAUNCH_METHOD_IBRUN, LAUNCH_METHOD_MPIRUN]:
+                    if host_index is None and launch_method in [LAUNCH_METHOD_IBRUN, LAUNCH_METHOD_MPIRUN]:
                         host_index, offset = self._acquire_slots(task.numcores, single_host=False, continuous=req_cont)
 
                     # Check if we got results
@@ -409,7 +384,7 @@ class ExecWorker(multiprocessing.Process):
                         task.host_index = host_index
                         task.offset = offset
                         task_slots = self._index_and_offset_to_slotlist(host_index, offset, task.numcores)
-                        self._launch_task(task, task_slots)
+                        self._launch_task(task, task_slots, launch_method, launch_command)
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
@@ -613,7 +588,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _launch_task(self, task, slots):
+    def _launch_task(self, task, slots, launch_method, launch_command):
 
         # create working directory in case it
         # doesn't exist
@@ -630,8 +605,8 @@ class ExecWorker(multiprocessing.Process):
         proc = _Process(
             task=task,
             slots=slots,
-            launch_method=self._launch_method,
-            launch_command=self._launch_command,
+            launch_method=launch_method,
+            launch_command=launch_command,
             logger=self._log)
 
         task.started=datetime.datetime.utcnow()
@@ -752,7 +727,7 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, workdir, runtime, launch_method, 
+    def __init__(self, logger, exec_env, workdir, runtime,
                  mongodb_url, mongodb_name, pilot_id, session_id, unitmanager_id):
         """Le Constructeur creates a new Agent instance.
         """
@@ -777,14 +752,7 @@ class Agent(threading.Thread):
         self._w = mongo_db["%s.w"  % session_id]
         self._wm = mongo_db["%s.wm" % session_id]
 
-        # launch method is determined by the execution environment,
-        # but can be overridden if the 'launch_method' flag is set 
-        if launch_method.lower() == "auto":
-            self._launch_method = exec_env.launch_method
-        else:
-            self._launch_method = launch_method
-
-        # the task queue holds the tasks that are pulled from the MongoDB 
+        # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
@@ -794,8 +762,7 @@ class Agent(threading.Thread):
             task_queue      = self._task_queue,
             hosts           = self._exec_env.nodes,
             cores_per_host  = self._exec_env.cores_per_node,
-            launch_method   = self._exec_env.launch_method,
-            launch_command  = self._exec_env.launch_command,
+            launch_methods  = self._exec_env.discovered_task_launch_methods,
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
             pilot_id        = pilot_id,
@@ -917,6 +884,7 @@ class Agent(threading.Thread):
                                             arguments   = wu["description"]["arguments"],
                                             environment = wu["description"]["environment"],
                                             numcores    = wu["description"]["cores"],
+                                            mpi         = wu["description"]["mpi"],
                                             pre_exec    = wu["description"]["pre_exec"],
                                             workdir     = task_dir_name,
                                             stdout      = task_dir_name+'/STDOUT', 
@@ -1086,13 +1054,7 @@ def parse_commandline():
                       dest='runtime',
                       help='Specifies the agent runtime in minutes.')
 
-    parser.add_option('-l', '--launch-method', 
-                      metavar='METHOD',
-                      dest='launch_method',
-                      help='Enforce a specific launch method (AUTO, LOCAL, SSH, MPIRUN, APRUN, IBRUN). [default: %default]',
-                      default=LAUNCH_METHOD_AUTO)
-
-    parser.add_option('-V', '--version', 
+    parser.add_option('-V', '--version',
                       metavar='VERSION ',
                       dest='package_version',
                       help='The RADICAL-Pilot package version.')
@@ -1114,12 +1076,6 @@ def parse_commandline():
         parser.error("You must define the agent runtime (-t/--runtime). Try --help for help.")
     elif options.package_version is None:
         parser.error("You must pass the RADICAL-Pilot package version (-v/--version). Try --help for help.")
-
-
-    if options.launch_method is not None: 
-        valid_options = [LAUNCH_METHOD_AUTO, LAUNCH_METHOD_LOCAL, LAUNCH_METHOD_SSH, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_APRUN, LAUNCH_METHOD_IBRUN]
-        if options.launch_method.upper() not in valid_options:
-            parser.error("--launch-method must be one of these: %s" % valid_options)
 
     return options
 
@@ -1168,11 +1124,10 @@ if __name__ == "__main__":
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
     #--------------------------------------------------------------------------
-    # Discover environment, mpirun, cores, etc.
+    # Discover environment, nodes, cores, mpi, etc.
     try:
         exec_env = ExecutionEnvironment.discover(
             logger=logger,
-            launch_method=options.launch_method,
             requested_cores=options.cores
         )
         if exec_env is None:
@@ -1199,7 +1154,6 @@ if __name__ == "__main__":
                       exec_env=exec_env,
                       workdir=workdir,
                       runtime=options.runtime,
-                      launch_method=options.launch_method,
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
                       pilot_id=options.pilot_id,

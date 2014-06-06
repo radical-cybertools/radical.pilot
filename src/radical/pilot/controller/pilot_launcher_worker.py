@@ -254,8 +254,6 @@ class PilotLauncherWorker(multiprocessing.Process):
                     bootstrap_args = "-r %s -d %s -s %s -p %s -t %s -c %s -V %s " %\
                         (database_host, database_name, session_uid, str(compute_pilot_id), runtime, number_cores, VERSION)
 
-                    if 'task_launch_mode' in resource_cfg and resource_cfg['task_launch_mode'] is not None:
-                        bootstrap_args += " -l %s " % resource_cfg['task_launch_mode']
                     if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
                     if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:
