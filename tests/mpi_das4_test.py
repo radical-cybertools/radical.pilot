@@ -94,6 +94,7 @@ if __name__ == "__main__":
             mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
 
             mpi_test_task.cores       = 3
+            mpi_test_task.mpi         = True
 
             cud_list.append(mpi_test_task)
 
