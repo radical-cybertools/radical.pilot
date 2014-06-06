@@ -6,7 +6,7 @@ import radical.pilot
 #   http://radicalpilot.readthedocs.org/en/latest
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scences!
+# you want to see what happens behind the scenes!
 #
 # RADICAL-Pilot uses ssh to communicate with the remote resource. The 
 # easiest way to make this work seamlessly is to set up ssh key-based
@@ -51,8 +51,8 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-        # well as security crendetials.
+        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
@@ -81,20 +81,21 @@ if __name__ == "__main__":
 
         cud_list = []
 
-        for unit_count in range(0, 1):
+        for unit_count in range(0, 4):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
-            # NOTE: pre_exec only works for single node execution currently,
-            # "solved" it by putting things in .bashrc, need a way to pass
-            # this with mpirun though.
-            # Order of module loads matter!
-            mpi_test_task.pre_exec = ["module load openmpi python", "module list",
-                                      "virtualenv $HOME/mpive", "source $HOME/mpive/bin/activate",
-                                      "pip install mpi4py"]
+            # NOTE: Default module versions are different on worker nodes and head node,
+            #       so test pre_exec's on a worker node and not on the headnode!
+            mpi_test_task.pre_exec = ["module load openmpi/1.4.3-intel python",
+                                      "module list",
+                                      "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
+                                      "source $HOME/mpive/bin/activate",
+                                      "(pip freeze | grep -q mpi4py || pip install mpi4py)"
+            ]
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
 
-            mpi_test_task.cores       = 16
+            mpi_test_task.cores       = 4
 
             cud_list.append(mpi_test_task)
 
@@ -133,4 +134,3 @@ if __name__ == "__main__":
         # Catch all exceptions and exit with and error.
         print "Error during execution: %s" % ex
         sys.exit(1)
-
