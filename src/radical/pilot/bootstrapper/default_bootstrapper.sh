@@ -22,7 +22,7 @@ PILOTID=
 UNITMANAGERID=
 SESSIONID=
 WORKDIR=`pwd`
-PYTHON=`which python`
+PYTHON=
 QUEUE=
 ALLOCATION=
 
@@ -112,7 +112,7 @@ echo "## CMDLINE: $BOOTSTRAP_CMD"
 $BOOTSTRAP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't bootstrap virtuelenv! ABORTING"
+   echo "Couldn't bootstrap virtualenv! ABORTING"
    exit 1
 fi
 
@@ -143,11 +143,8 @@ fi
 #   exit 1
 #fi
 
-# for now we use development version directly from git
-# this blows up the virtualenv (and agent bootstrap time) significantly
-# at some point we will bootstrap everything directly from PyPi.
-# maybe a flag would be good to switch between 'production' and 'deve' ? 
 PIP_CMD="pip install python-hostlist"
+EASY_INSTALL_CMD="easy_install python-hostlist"
 echo ""
 echo "################################################################################"
 echo "## Installing python-hostlist"
@@ -155,11 +152,17 @@ echo "## CMDLINE: $PIP_CMD"
 $PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't install python-hostlist! ABORTING"
-   exit 1
+    echo "pip install failed, trying easy_install ..."
+    $EASY_INSTALL_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+        echo "Easy install failed too, couldn't install python-hostlist! ABORTING"
+        exit 1
+    fi
 fi
 
 PIP_CMD="pip install pymongo"
+EASY_INSTALL_CMD="easy_install pymongo"
 echo ""
 echo "################################################################################"
 echo "## Installing pymongo"
@@ -167,8 +170,13 @@ echo "## CMDLINE: $PIP_CMD"
 $PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't install pymongo! ABORTING"
-   exit 1
+    echo "pip install failed, trying easy_install ..."
+    $EASY_INSTALL_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+        echo "Easy install failed too, couldn't install pymongo! ABORTING"
+        exit 1
+    fi
 fi
 }
 
@@ -258,6 +266,17 @@ then
      exit 1
 fi
 
+# SEMI-HACK for db access through tunnel
+if [[ $ALT_REMOTE ]]; then
+    REMOTE=$ALT_REMOTE
+fi
+
+# If PYTHON was not set as an argument, detect it here.
+if [[ -z $PYTHON ]]
+then
+    PYTHON=`which python`
+fi
+
 # bootstrap virtualenv
 installvenv
 
@@ -277,4 +296,3 @@ fi
 
 # ... and exit
 exit 0
-
