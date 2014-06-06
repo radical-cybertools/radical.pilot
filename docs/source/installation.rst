@@ -27,9 +27,9 @@ installed automatically as dependencies.
   experience the following error during installation::
 
     Traceback (most recent call last):
-      File "/opt/apps/python/epd/7.3.2/lib/python2.7/atexit.py", line 24, in _run_exitfuncs
+      File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
         func(*targs, **kargs)
-      File "/opt/apps/python/epd/7.3.2/lib/python2.7/multiprocessing/util.py", line 284, in _exit_function
+      File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
         info('process shutting down')
     TypeError: 'NoneType' object is not callable
 
