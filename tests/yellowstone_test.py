@@ -78,7 +78,6 @@ if __name__ == "__main__":
         pdesc.cores     = 16
         pdesc.cleanup   = True
         pdesc.project   = "URTG0003"
-        pdesc.pilot_agent_priv = "radical-pilot-agent-multicore.py"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

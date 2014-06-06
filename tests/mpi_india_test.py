@@ -73,7 +73,6 @@ if __name__ == "__main__":
         pdesc.resource         = "india.futuregrid.org"
         pdesc.runtime          = 5 # X minutes
         pdesc.cores            = 16 # N cores
-        pdesc.pilot_agent_priv = "radical-pilot-agent-multicore.py"
         pdesc.cleanup          = False
 
         # Launch the pilot.

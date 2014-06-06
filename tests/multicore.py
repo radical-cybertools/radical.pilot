@@ -75,7 +75,6 @@ if __name__ == "__main__":
         pdesc.runtime   = 15 # minutes
         pdesc.cores     = 32 
         pdesc.cleanup   = False
-        pdesc.pilot_agent_priv = "radical-pilot-agent-multicore.py"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

@@ -73,7 +73,6 @@ if __name__ == "__main__":
         pdesc.resource         = "stampede.tacc.utexas.edu"
         pdesc.runtime          = 15 # N minutes
         pdesc.cores            = 64 # X cores
-        pdesc.pilot_agent_priv = "radical-pilot-agent-multicore.py"
         pdesc.cleanup          = False
 
         # Launch the pilot.

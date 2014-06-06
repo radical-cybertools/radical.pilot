@@ -227,7 +227,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                         logger.warning("Using custom pilot agent script: %s" % pilot_agent)
                         agent_path = os.path.abspath("%s/../agent/%s" % (cwd, pilot_agent))
                     else:
-                        agent_path = os.path.abspath("%s/../agent/radical-pilot-agent.py" % cwd)
+                        agent_path = os.path.abspath("%s/../agent/radical-pilot-agent-multicore.py" % cwd)
 
                     agent_script_url = saga.Url("file://localhost/%s" % agent_path)
 
