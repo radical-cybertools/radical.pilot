@@ -41,7 +41,8 @@ LAUNCH_METHOD_AUTO   = 'AUTO'
 LAUNCH_METHOD_APRUN  = 'APRUN'
 LAUNCH_METHOD_LOCAL  = 'LOCAL'
 LAUNCH_METHOD_MPIRUN = 'MPIRUN'
-LAUNCH_METHOD_IBRUN = 'IBRUN'
+LAUNCH_METHOD_POE    = 'POE'
+LAUNCH_METHOD_IBRUN  = 'IBRUN'
 
 #-----------------------------------------------------------------------------
 #
@@ -133,22 +134,34 @@ class ExecutionEnvironment(object):
         #       Maybe at a list of "allowed launch methods" in the resource config?
         eenv.discovered_task_launch_methods[LAUNCH_METHOD_LOCAL] = \
             {'launch_command': None}
-        ssh_location    = which('ssh')
-        if ssh_location is not None:
+
+        command = which('ssh')
+        if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
-                {'launch_command': ssh_location}
-        mpirun_location = which('mpirun')
-        if mpirun_location is not None:
+                {'launch_command': command}
+
+        command = which('mpirun')
+        if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_MPIRUN] = \
-                {'launch_command': mpirun_location}
-        ibrun_location  = which('ibrun')
-        if ibrun_location is not None:
+                {'launch_command': command}
+
+        # ibrun: wrapper for mpirun at TACC
+        command = which('ibrun')
+        if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_IBRUN] = \
-                {'launch_command': ibrun_location}
-        aprun_location  = which('aprun')
-        if aprun_location is not None:
+                {'launch_command': command}
+
+        # aprun: job launcher for Cray systems
+        command = which('aprun')
+        if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_APRUN] = \
-                {'launch_command': aprun_location}
+                {'launch_command': command}
+
+        # poe: LSF specific wrapper for MPI (e.g. yellowstone)
+        command = which('poe')
+        if command is not None:
+            eenv.discovered_task_launch_methods[LAUNCH_METHOD_POE] = \
+                {'launch_command': command}
 
         logger.info("Discovered task launch methods: %s." % [lm for lm in eenv.discovered_task_launch_methods])
 
@@ -179,6 +192,14 @@ class ExecutionEnvironment(object):
     def discover_cores(self):
         sge_hostfile = os.environ.get('PE_HOSTFILE')
 
+        # TODO: These dont have to be the same number for all hosts.
+
+        # TODO: We might not have reserved the whole node.
+
+        # TODO: Given that the Agent can determine the real core count, in principle we
+        #       could just ignore the config and use as many as we have to our availability
+        #       (taken into account that we might not have the full node reserved of course)
+
         # SGE core configuration might be different than what multiprocessing announces
         # Alternative: "qconf -sq all.q|awk '/^slots *[0-9]+$/{print $2}'"
         if sge_hostfile is not None:
@@ -190,6 +211,7 @@ class ExecutionEnvironment(object):
         else:
             self.cores_per_node = multiprocessing.cpu_count()
 
+
     #-------------------------------------------------------------------------
     #
     def discover_nodes(self):
@@ -197,6 +219,7 @@ class ExecutionEnvironment(object):
         pbs_nodefile = os.environ.get('PBS_NODEFILE')
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
         sge_hostfile = os.environ.get('PE_HOSTFILE')
+        lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
 
         if pbs_nodefile is not None:
             # parse PBS the nodefile
@@ -213,9 +236,23 @@ class ExecutionEnvironment(object):
             self.raw_nodes = [line.split()[0] for line in open(sge_hostfile)]
             self.log.info("Found PE_HOSTFILE %s. Expanded to: %s" % (sge_hostfile, self.raw_nodes))
 
+        elif lsf_hostfile is not None:
+            # parse LSF hostfile
+            # format:
+            # <hostnameX>
+            # <hostnameX>
+            # <hostnameY>
+            # <hostnameY>
+            #
+            # There are in total "-n" entries (number of tasks) and "-R" entries per host (tasks per host).
+            # (That results in "-n" / "-R" unique hosts)
+            #
+            self.raw_nodes = [line.strip() for line in open(lsf_hostfile)]
+            self.log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s" % (lsf_hostfile, self.raw_nodes))
+
         else:
             self.raw_nodes = ['localhost']
-            self.log.info("No PBS_NODEFILE, SLURM_NODELIST or PE_HOSTFILE found. Using hosts: %s" % (self.raw_nodes))
+            self.log.info("No special node file found. Using hosts: %s" % (self.raw_nodes))
 
 # ----------------------------------------------------------------------------
 #
@@ -343,6 +380,9 @@ class ExecWorker(multiprocessing.Process):
                         elif LAUNCH_METHOD_APRUN in self._available_launch_methods:
                             launch_method = LAUNCH_METHOD_APRUN
                             launch_command = self._available_launch_methods[launch_method]['launch_command']
+                        elif LAUNCH_METHOD_POE in self._available_launch_methods:
+                            launch_method = LAUNCH_METHOD_POE
+                            launch_command = self._available_launch_methods[launch_method]['launch_command']
                         elif LAUNCH_METHOD_MPIRUN in self._available_launch_methods:
                             launch_method = LAUNCH_METHOD_MPIRUN
                             launch_command = self._available_launch_methods[launch_method]['launch_command']
@@ -371,7 +411,8 @@ class ExecWorker(multiprocessing.Process):
                     host_index, offset = self._acquire_slots(task.numcores, single_host=True, continuous=req_cont)
 
                     # If that failed, and our launch method supports multiple hosts, try that
-                    if host_index is None and launch_method in [LAUNCH_METHOD_IBRUN, LAUNCH_METHOD_MPIRUN]:
+                    if host_index is None and launch_method in \
+                            [LAUNCH_METHOD_IBRUN, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_POE]:
                         host_index, offset = self._acquire_slots(task.numcores, single_host=False, continuous=req_cont)
 
                     # Check if we got results
@@ -540,6 +581,7 @@ class ExecWorker(multiprocessing.Process):
             for core in range(first_core, last_core+1):
                 slot_list.append('%s:%d' % (self._slots[host_index]['host'], core))
 
+        self._log.debug("Slot list: %s" % slot_list)
         return slot_list
 
     #
@@ -946,7 +988,7 @@ class _Process(subprocess.Popen):
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
-            mpirun_command = "%s -x PATH -np %s -host %s" % (launch_command, task.numcores, hosts_string)
+            mpirun_command = "%s -np %s -host %s" % (launch_command, task.numcores, hosts_string)
             cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, mpirun_command, task_exec_string)
 
         elif launch_method == LAUNCH_METHOD_APRUN:
@@ -958,14 +1000,39 @@ class _Process(subprocess.Popen):
             # processes != cores ...
             # TODO: this hardcoded 16 obviously needs to go away,
             #       the information is available though, just not to this class.
-            ibrun_offset = task.host_index * 16 + task.offset
+            cores_per_node = 16
+            ibrun_offset = task.host_index * cores_per_node + task.offset
             ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
             cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, ibrun_command, task_exec_string)
+
+        elif launch_method == LAUNCH_METHOD_POE:
+
+            # Count slots per host in provided slots description.
+            hosts = {}
+            for slot in slots:
+                host = slot.split(':')[0]
+                if host not in hosts:
+                    hosts[host] = 1
+                else:
+                    hosts[host] += 1
+
+            # Create string with format: "hostX N host
+            hosts_string = ''
+            for host in hosts:
+                hosts_string += '%s %d ' % (host, hosts[host])
+
+            # Override the LSB_MCPU_HOSTS env variable as this is set by default to the size of the whole pilot.
+            poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (hosts_string, launch_command)
+            cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, poe_command, task_exec_string)
 
         elif launch_method == LAUNCH_METHOD_SSH:
             host = slots[0].split(':')[0]
             cmdline = " %s -o StrictHostKeyChecking=no %s \"/bin/bash -l -c '%scd %s && %s'\"" % \
                       (launch_command, host, pre_exec_string, task.workdir, task_exec_string)
+
+        else:
+            raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
+
 
         self.stdout_filename = task.stdout
         self._stdout_file_h  = open(self.stdout_filename, "w")
