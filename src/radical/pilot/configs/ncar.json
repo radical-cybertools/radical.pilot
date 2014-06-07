@@ -4,12 +4,12 @@
         "remote_filesystem_endpoint"  : "sftp://yellowstone.ucar.edu/",
         "local_job_manager_endpoint"  : "lsf://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
-        "default_queue"               : "small",
-        "pre_bootstrap"               : ["module purge", "module load ncarenv", "module load ncarbinlibs",
-                                         "module load python/2.7.5",
+        "default_queue"               : "premium",
+        "pre_bootstrap"               : ["module purge",
+                                         "module load ncarenv", "module load ncarbinlibs",
+                                         "module load python",
                                          "export ALT_REMOTE=yslogin6:12346",
                                          "export LD_PRELOAD=/glade/u/home/marksant/tsocks-1.8/libtsocks.so"],
-        "task_launch_mode"            : "SSH",
         "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
         "bootstrapper"                : "default_bootstrapper.sh"
     }
