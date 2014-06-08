@@ -280,6 +280,9 @@ launchagent
 rm -rf $WORKDIR/virtualenv*
 rm -rf bootstrap-and-run-agent
 rm -rf radical-pilot-agent.py
+rm -rf agent-worker.py
+rm -rf aprun-job.o*
+rm -rf aprun-job.e*
 
 if [[ $CLEANUP ]]
 then

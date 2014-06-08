@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #PBS -A @project@
-#PBS -N mom-job
+#PBS -N aprun-job
 #PBS -l select=@select@
 #PBS -l walltime=00:@walltime@:00
 
@@ -12,9 +12,7 @@ from subprocess import *
 HOST = '@server@'
 PORT = '@port@'
 
-#os.system("export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR")
-#os.chdir(os.environ["PBS_O_WORKDIR"])
-#os.chdir("/work/e290/e290/antonst")
+os.chdir("@workdir@")
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect(( HOST, int(PORT) ))

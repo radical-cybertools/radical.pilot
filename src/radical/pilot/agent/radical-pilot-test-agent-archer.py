@@ -172,23 +172,19 @@ class Agent(threading.Thread):
 
         self._starttime = time.time()
         #####################################
-        # START
-        #####################################
+        # 
         HOSTNAME = socket.gethostname()
-        LOGGER.info("AGENT HOSTNAME: %s" % HOSTNAME)
+        LOGGER.info("agent hostname: %s" % HOSTNAME)
         HOST = socket.gethostbyname(HOSTNAME)
-        LOGGER.info("AGENT HOST: %s" % HOST)
+        LOGGER.info("agent host: %s" % HOST)
      
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.bind((HOST, 0))
         PORT = server.getsockname()[1]
         LOGGER.info("AGENT USES PORT: %s" % PORT)
-                    
-        # this should be defined somewhere?
-        # for archer we define 24 cores per node
-        #ARCHER_NODE = 24
-        # for localhost we use 2 cores 
-        ARCHER_NODE = 2
+
+        # archer node has 24 cores
+        ARCHER_NODE = 24
         # determining how many nodes to allocate with agent-worker.py script
         if( int(self._cores) < ARCHER_NODE ):
             NODES = 1
@@ -197,16 +193,18 @@ class Agent(threading.Thread):
             if ( (int(self._cores) % ARCHER_NODE) > 0 ):
                 NODES += 1
 
-        ################################################################################################
-        # opening agent-worker.py file in order to pass IP address, port number, number of nodes, and walltime
-        ################################################################################################
-        LOGGER.info("WRITING AGENT'S ADDRESS AND PORT NUMBER TO agent-worker.py FILE")
+        aprun_tasks = []
+        free_nodes = NODES
+        ##############################################################################
+        # opening agent-worker.py file in order to pass some parameters
+        ##############################################################################
+        LOGGER.info("writing agent's address and port number to agent-worker.py")
         name = 'agent-worker.py'
 
         try:
             rfile = open(name,'r')
         except IOError:
-            LOGGER.info("WARNING UNABLE TO ACCESS FILE: %s" % name)
+            LOGGER.info("warning unable to access file: %s" % name)
                         
         tbuffer = rfile.read()
         rfile.close()
@@ -216,28 +214,26 @@ class Agent(threading.Thread):
         tbuffer = tbuffer.replace("@port@",str(PORT))
         tbuffer = tbuffer.replace("@select@",str(NODES))
         tbuffer = tbuffer.replace("@walltime@",self._runtime)
+        tbuffer = tbuffer.replace("@workdir@",self._workdir)
 
         try:
             wfile = open(name,'w')
         except IOError:
-            LOGGER.info("WARNING UNABLE TO ACCESS FILE: %s" % name)
+            LOGGER.info("warning unable to access file: %s" % name)
 
         wfile.write(tbuffer)
         wfile.close()
-        LOGGER.info("FINISHED WRITING TO agent-worker.py...")
+        LOGGER.info("finished writing to agent-worker.py")
         #####################################################
         FINISH = 'STOP'
         WAIT = 'WAIT'
-        LOGGER.info("CALLING QSUB...")
+        LOGGER.info("calling qsub...")
         # agent submits agent-worker.py using qsub on archer from work file system
-        # currently this is commented out since we can only run on localhost
-        # proc = subprocess.Popen(["qsub agent-worker.py"], stdout=subprocess.PIPE, shell=True)
+        proc = subprocess.Popen(["qsub agent-worker.py"], stdout=subprocess.PIPE, shell=True)
 
-        # line below is for localhost execution only!
-        proc = subprocess.Popen(["nohup python agent-worker.py"], stdout=subprocess.PIPE, shell=True)
-        LOGGER.info("QSUB CALL SUCCEEDED...")
+        LOGGER.info("qsub call succeeded...")
         server.listen(32)
-        LOGGER.info("AGENT STARTED LISTENING AT %s" % HOST)
+        LOGGER.info("agent started listening at %s" % HOST)
         input = [server,]
         #####################################
         # This is the main thread loop
@@ -275,7 +271,6 @@ class Agent(threading.Thread):
                        "state" : "PendingExecution"},
                 update={"$set" : {"state": "Running"},
                 "$push": {"statehistory": {"state": "RunningX", "timestamp": ts}}}
-                #limit=BULK_LIMIT
                 )
 
                 # There are new work units in the wu_queue on the database.
@@ -284,13 +279,7 @@ class Agent(threading.Thread):
                     if not isinstance(computeunits, list):
                         computeunits = [computeunits]
 
-                    #######################################
-                    # initialize params
-                    #######################################
-                    aprun_tasks = []
-                    free_nodes = NODES
-                    LOGGER.info("INIT FREE_NODES: %s" % free_nodes)
-                    #######################################
+                    LOGGER.info("FREE_NODES: %s" % free_nodes)
                     for cu in computeunits:
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
                     
@@ -299,17 +288,12 @@ class Agent(threading.Thread):
                         if not os.path.exists(cu_workdir):
                             os.makedirs(cu_workdir)
 
-                        # Create bogus STDOUT and STDERR
+                        # Create bogus STDOUT
                         open("%s/STDOUT" % cu_workdir, 'a').close()
-                        open("%s/STDERR" % cu_workdir, 'a').close()
                        
-                        ##############################################
-                        # below is aprun string for archer, currenty commented out
-                        # cu_str = "aprun -n %s %s > %s" % (cu['description']['cores'], cu['description']['executable'], cu_workdir + "/STDOUT")
+                        cu_str = "aprun -n %s %s >& %s" % (cu['description']['cores'], cu['description']['executable'], cu_workdir + "/STDOUT")
                         
                         w_dir = cu_workdir + "/STDOUT"
-                        # this is for localhost execution only!
-                        cu_str = "%s > %s" % (cu['description']['executable'], w_dir)
      
                         LOGGER.info("CU_STR: %s" % cu_str)
                         if( int(cu['description']['cores']) < ARCHER_NODE ):
@@ -322,9 +306,9 @@ class Agent(threading.Thread):
                         LOGGER.info("CU_NODES: %s" % cu_nodes)
                         aprun_tasks.append(cu_str)
                         free_nodes = free_nodes - cu_nodes
-                        LOGGER.info("AFTER 1 CU FREE_NODES: %s" % free_nodes)
+                        LOGGER.info("AFTER THIS CU FREE_NODES: %s" % free_nodes)
                         ##############################################
-                        # SERVER BLOCK
+                        # main loop of server
                         ##############################################
                         run = 1
                         if (free_nodes < 1):
@@ -335,26 +319,29 @@ class Agent(threading.Thread):
                                         # handle the server socket 
                                         client, address = server.accept()
                                         input.append(client)
-                                        LOGGER.info("AGENT WORKER ADDED: %s" % str(address))
+                                        LOGGER.info("agent worker added: %s" % str(address[0]))
                                     else:
                                         # handle all other sockets 
                                         data = s.recv(1024)
-                                        LOGGER.info("AGENT RECEIVED FROM AGENT WORKER: %s" % repr(data))
+                                        LOGGER.info("agent received from worker: %s" % repr(data))
                                         if (run > 0):
                                             aprun_str = ""
                                             for task in aprun_tasks:
                                                 if aprun_str == "":
                                                     aprun_str = task
                                                 else:
-                                                    aprun_str = aprun_str + "&" + task                                
-                                            LOGGER.info("AGENT IS SENDING EXECUTION STRING...")
+                                                    aprun_str = aprun_str + " & " + task                                
+                                            LOGGER.info("agent is sending execution string...")
+                                            LOGGER.info("aprun string was: %s" % aprun_str)
                                             s.sendall(aprun_str)
                                             run -= 1
+                                            free_nodes = NODES
+                                            aprun_tasks = []
                                         else:
                                             s.sendall(WAIT)
                                             run -= 1    
                         ##############################################
-                        # SERVER BLOCK ENDS
+                        # end of server loop 
                         ##############################################
                         if cu['description']['output_data'] is not None:
                             state = "PendingOutputTransfer"
@@ -378,10 +365,10 @@ class Agent(threading.Thread):
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
                 return 
 
-        #########################
-        # MAIN LOOP TERMINATED
-        #########################
-        LOGGER.info("AGENT IN TERMINATING CONNECTION TO AGENT WORKER...")
+        #####################################
+        # gracefully terminating connections
+        #####################################
+        LOGGER.info("agent in terminating connection to worker...")
         s.sendall(FINISH)  
         s.close()
         input.remove(s)

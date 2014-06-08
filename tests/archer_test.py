@@ -5,14 +5,6 @@ import radical.pilot
 # ARCHER:
 # =======
 # 
-# You can use radical.pilot only locally since compute nodes can't dial out at all.
-# You also need to install a local MongoDB database:
-#
-#   wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
-#   tar xzf mongodb-linux-x86_64-2.6.1.tgz
-#   mkdir $HOME/mongodata
-#   ./mongodb-linux-x86_64-2.6.1/bin/mongod --dbpath=$HOME/mongodata
-#
 # Create a virtualenv
 #
 #   wget --no-check-certificate https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.10.tar.gz
@@ -27,16 +19,17 @@ import radical.pilot
 #   git checkout feature/archer
 #   easy_install .
 # 
-# Run this script with the local MongoDB server. The hostname in the 
-# mongodb URL is the hostname of the login node on which you started
-# the server, *not* localhost. 
+# Run this script with the remote MongoDB server.
 #
 #   cd tests
 #  
-# In archer_test.py change line `pdesc.sandbox` to appropriate path.
+# In archer_test.py change: 
+#     "pdesc.sandbox" to appropriate path
+#     "pdesc.project" to your project allocation
+#     
 # Next, run the example
 #
-#   export RADICAL_PILOT_DBURL=mongodb://eslogin007:27017
+#   export RADICAL_PILOT_DBURL=mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/
 #   RADICAL_PILOT_VERBOSE=info python archer_test.py
 #
 
@@ -50,7 +43,7 @@ if DBURL is None:
 
 # RCONF points to the resource configuration files. Read more about resource 
 # configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["file://localhost/%s/../configs/local.json" % os.getcwd()]
+RCONF  = ["file://localhost/%s/../configs/archer.json" % os.getcwd()]
 
 #------------------------------------------------------------------------------
 #
@@ -93,14 +86,12 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 32-core on stamped that runs for 15 mintutes and 
-        # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
         pdesc.project          = "e290"  # archer 'project group'
-        pdesc.sandbox          = "/home/antons/SINON-WORK/experiments"
+        pdesc.sandbox          = "/work/e290/e290/antonst/experiments"
         pdesc.runtime          = 10
-        pdesc.cores            = 2 
+        pdesc.cores            = 56 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
         pdesc.agent_worker     = "agent-worker.py"
         pdesc.cleanup          = False
@@ -109,25 +100,13 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables withih a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1  $INPUT2
-        #
         compute_units = []
 
-        for unit_count in range(0, 4):
+        for unit_count in range(0, 8):
 
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.executable  = "/bin/date"
-            mpi_test_task.cores       = 1
-            #mpi_test_task.output_data = ["STDOUT"]
+            mpi_test_task.executable  = "/bin/hostname"
+            mpi_test_task.cores       = 4
             compute_units.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
