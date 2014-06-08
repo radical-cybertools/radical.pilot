@@ -59,6 +59,7 @@ class TestUnit(unittest.TestCase):
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 

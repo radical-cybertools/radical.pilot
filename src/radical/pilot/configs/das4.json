@@ -1,0 +1,14 @@
+{
+    "fs2.das4.science.uva.nl": {
+        "remote_job_manager_endpoint"   : "sge+ssh://fs2.das4.science.uva.nl",
+        "remote_filesystem_endpoint"    : "sftp://fs2.das4.science.uva.nl/",
+        "local_job_manager_endpoint"    : "sge://localhost",
+        "local_filesystem_endpoint"     : "file://localhost/",
+        "default_queue"                 : "all.q",
+        "spmd_variation"                : "openmpi",
+        "python_interpreter"            : "/usr/bin/python",
+        "pre_bootstrap"                 : ["module load openmpi/gcc"],
+        "valid_roots"                   : ["/home"],
+        "pilot_agent"                   : "radical-pilot-agent-multicore.py"
+    }
+}

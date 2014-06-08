@@ -6,7 +6,7 @@ import radical.pilot
 #   http://radicalpilot.readthedocs.org/en/latest
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scences!
+# you want to see what happens behind the scenes!
 #
 # RADICAL-Pilot uses ssh to communicate with the remote resource. The 
 # easiest way to make this work seamlessly is to set up ssh key-based
@@ -22,11 +22,6 @@ DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
-
-# RCONF points to the resource configuration files. Read more about resource 
-# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 
 #------------------------------------------------------------------------------
 #
@@ -57,56 +52,43 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-        # well as security crendetials.
+        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
         cred = radical.pilot.SSHCredential()
-        cred.user_id = "tg802352"
+        #cred.user_id = "tg802352"
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
+        pmgr = radical.pilot.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 32-core on stamped that runs for 15 mintutes and 
-        # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
+        # Define a 32-core on stamped that runs for 15 minutes and
+        # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "stampede.tacc.utexas.edu"
-        pdesc.runtime          = 15 # minutes
-        pdesc.cores            = 32 
-        pdesc.pilot_agent_priv = "radical-pilot-agent-mpi.py"
-        pdesc.cleanup          = True
-
+        #pdesc.resource  = "stampede.tacc.utexas.edu"
+        pdesc.resource  = "yellowstone.ucar.edu"
+        pdesc.runtime   = 15 # minutes
+        pdesc.cores     = 16
+        pdesc.cleanup   = True
+        pdesc.project   = "URTG0003"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables withih a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
-        #
         compute_units = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 1):
             cu = radical.pilot.ComputeUnitDescription()
-            cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-            cu.executable = "/bin/cat"
-            cu.arguments = ["$INPUT1", "$INPUT2"]
-            cu.cores = 16 # Tells RP that we want 16 cores.
-            cu.input_data = ["./file1.dat", "./file2.dat"]
+            cu.executable  = "/bin/echo"
+            cu.arguments = ['Hello world, gelben Stein!']
+            cu.cores       = 1
 
             compute_units.append(cu)
 
@@ -121,7 +103,7 @@ if __name__ == "__main__":
         # change their state.
         umgr.register_callback(unit_state_change_cb)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
+        # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
         # Submit the previously created ComputeUnit descriptions to the
@@ -132,10 +114,14 @@ if __name__ == "__main__":
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
+        if not isinstance(units, list):
+            units = [units]
         for unit in units:
-            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+            print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
+                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
+                   unit.stdout)
 
+        # Close automatically cancels the pilot(s).
         session.close()
         sys.exit(0)
 

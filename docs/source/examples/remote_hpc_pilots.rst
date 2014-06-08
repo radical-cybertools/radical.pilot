@@ -134,8 +134,6 @@ Scheduling ComputeUnits Across Multiple ComputePilots
 The Complete Example
 --------------------
 
-A fully workin example looks something like this.
-
 .. warning:: Make sure to adjust ... before you attempt to run it.
 
 .. literalinclude:: ../../../examples/getting_started_remote.py

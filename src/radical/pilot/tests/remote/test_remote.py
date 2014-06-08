@@ -23,8 +23,6 @@ if DBURL is None:
     
 DBNAME = 'radicalpilot_unittests'
 
-RESCFG = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
-
 #-----------------------------------------------------------------------------
 #
 class TestRemoteSubmission(unittest.TestCase):
@@ -68,7 +66,7 @@ class TestRemoteSubmission(unittest.TestCase):
 
         session.add_credential(cred)
 
-        pm = radical.pilot.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = self.test_resource
@@ -99,7 +97,7 @@ class TestRemoteSubmission(unittest.TestCase):
         um.wait_units(state=[radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=self.test_timeout)
 
         for cu in cus:
-            assert cu.state == radical.pilot.states.DONE
+            assert cu.state == radical.pilot.states.DONE, "state: %s" % cu.state
             assert cu.stop_time is not None
 
         pm.cancel_pilots()
@@ -118,7 +116,7 @@ class TestRemoteSubmission(unittest.TestCase):
 
         session.add_credential(cred)
 
-        pm = radical.pilot.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource          = self.test_resource
@@ -157,7 +155,7 @@ class TestRemoteSubmission(unittest.TestCase):
 
         session.add_credential(cred)
 
-        pm = radical.pilot.PilotManager(session=session, resource_configurations=RESCFG)
+        pm = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource          = self.test_resource

@@ -270,7 +270,7 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_start_pilot_request(self, pilot, resource_config, session):
+    def register_start_pilot_request(self, pilot, resource_config, use_local_endpoints, session):
         """Register a new pilot start request with the worker.
         """
 
@@ -285,15 +285,22 @@ class PilotManagerController(threading.Thread):
         # create a new UID for the pilot
         pilot_uid = bson.ObjectId()
 
+
+        # switch endpoint type
+        if use_local_endpoints is True:
+            filesystem_endpoint = resource_config['local_filesystem_endpoint']
+        else:
+            filesystem_endpoint = resource_config['remote_filesystem_endpoint']
+
         sandbox = pilot.description.sandbox
-        fs = saga.Url(resource_config['filesystem'])
+        fs = saga.Url(filesystem_endpoint)
         if sandbox is not None:
             fs.path = sandbox
         else:
             # No sandbox defined. try to determine
             found_dir_success = False
 
-            if resource_config['filesystem'].startswith("file"):
+            if filesystem_endpoint.startswith("file"):
                 workdir = os.path.expanduser("~")
                 found_dir_success = True
             else:

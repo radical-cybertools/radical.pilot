@@ -23,10 +23,6 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-# RCONF points to the resource configuration files.
-RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
-
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
@@ -66,7 +62,7 @@ if __name__ == "__main__":
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
+        pmgr = radical.pilot.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager

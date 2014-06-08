@@ -175,13 +175,53 @@ class PilotLauncherWorker(multiprocessing.Process):
                     cleanup      = compute_pilot['description']['cleanup']
                     pilot_agent  = compute_pilot['description']['pilot_agent_priv']
                     agent_worker = compute_pilot['description']['agent_worker']
-
                     sandbox      = compute_pilot['sandbox']
-                    resource_cfg = self.resource_configurations[compute_pilot['description']['resource']]
 
+                    use_local_endpoints = False
+                    resource_key = compute_pilot['description']['resource']
+                    s = compute_pilot['description']['resource'].split(":")
+                    if len(s) == 2:
+                        if s[1].lower() == "local":
+                            use_local_endpoints = True
+                            resource_key = s[0]
+                        else:
+                            error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], compute_pilot['description']['resource'])
+                            raise Exception(error_msg)
+
+                    resource_cfg = self.resource_configurations[resource_key]
+
+                    ########################################################
+                    # database connection parameters
                     database_host = self.db_connection_info.url.split("://")[1] 
                     database_name = self.db_connection_info.dbname
                     session_uid   = self.db_connection_info.session_id
+
+                    cwd = os.path.dirname(os.path.realpath(__file__))
+
+                    ########################################################
+                    # take 'pilot_agent' as defined in the reosurce configuration
+                    # by default, but override it if set in the Pilot description. 
+                    pilot_agent = resource_cfg['pilot_agent']
+                    if compute_pilot['description']['pilot_agent_priv'] is not None:
+                        pilot_agent = compute_pilot['description']['pilot_agent_priv']
+                    agent_path = os.path.abspath("%s/../agent/%s" % (cwd, pilot_agent))
+
+                    log_msg = "Using pilot agent %s" % agent_path
+                    log_messages.append(log_msg)
+                    logger.info(log_msg)
+
+                    ########################################################
+                    # we use always "default_bootstrapper.sh" unless a resource 
+                    # configuration explicitly defines another bootstrapper. 
+                    if 'bootstrapper' in resource_cfg and resource_cfg['bootstrapper'] is not None:
+                        bootstrapper = resource_cfg['bootstrapper']
+                    else:
+                        bootstrapper = 'default_bootstrapper.sh'
+                    bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (cwd, bootstrapper))
+                    
+                    log_msg = "Using bootstrapper %s" % bootstrapper_path
+                    log_messages.append(log_msg)
+                    logger.info(log_msg)
 
                     ########################################################
                     # Create SAGA Job description and submit the pilot job #
@@ -196,12 +236,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                         saga.filesystem.CREATE_PARENTS, session=saga_session)
                     agent_dir.close()
 
+                    ########################################################
                     # Copy the bootstrap shell script
-                    # This works for installed versions of RADICAL-Pilot
-                    bs_script_full = os.path.abspath("%s/../bootstrapper/%s" % (os.path.dirname(os.path.abspath(__file__)), resource_cfg['bootstrapper']))
-                    bs_script_url = saga.Url("file://localhost/%s" % bs_script_full)
-
-                    log_msg = "Copying '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
+                    bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
+                    log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
 
@@ -209,18 +247,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                     bs_script.copy(saga.Url(sandbox))
                     bs_script.close()
 
+                    ########################################################
                     # Copy the agent script
-                    cwd = os.path.dirname(os.path.abspath(__file__))
-
-                    if pilot_agent is not None:
-                        logger.warning("Using custom pilot agent script: %s" % pilot_agent)
-                        agent_path = os.path.abspath("%s/../agent/%s" % (cwd, pilot_agent))
-                    else:
-                        agent_path = os.path.abspath("%s/../agent/radical-pilot-agent.py" % cwd)
-
                     agent_script_url = saga.Url("file://localhost/%s" % agent_path)
-
-                    log_msg = "Copying '%s' to agent sandbox (%s)." % (agent_script_url, sandbox)
+                    log_msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_script_url, sandbox)
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
 
@@ -249,7 +279,11 @@ class PilotLauncherWorker(multiprocessing.Process):
                     #########################################################
                     # now that the script is in place and we know where it is,
                     # we can launch the agent
-                    job_service_url = saga.Url(resource_cfg['URL'])
+                    if use_local_endpoints is True:
+                        job_service_url = saga.Url(resource_cfg['local_job_manager_endpoint'])
+                    else:
+                        job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
+
                     js = saga.job.Service(job_service_url, session=saga_session)
 
                     jd = saga.job.Description()
@@ -258,11 +292,13 @@ class PilotLauncherWorker(multiprocessing.Process):
                     bootstrap_args = "-r %s -d %s -s %s -p %s -t %s -c %s -V %s " %\
                         (database_host, database_name, session_uid, str(compute_pilot_id), runtime, number_cores, VERSION)
 
-                    if 'task_launch_mode' in resource_cfg:
-                        bootstrap_args += " -l %s " % resource_cfg['task_launch_mode']
-                    if 'python_interpreter' in resource_cfg:
+                    if 'pilot_agent_options' in resource_cfg and resource_cfg['pilot_agent_options'] is not None:
+                        for option in resource_cfg['pilot_agent_options']:
+                            bootstrap_args += " %s " % option
+
+                    if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
-                    if 'pre_bootstrap' in resource_cfg:
+                    if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:
                         for command in resource_cfg['pre_bootstrap']:
                             bootstrap_args += " -e '%s' " % command
 
@@ -274,7 +310,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                         bootstrap_args += " -a %s " % project  # the project / allocation name
 
                     jd.executable = "/bin/bash"
-                    jd.arguments = ["-l", "-c", '"./%s %s"' % (resource_cfg['bootstrapper'], bootstrap_args)]
+                    jd.arguments = ["-l", "-c", '"./%s %s"' % (bootstrapper, bootstrap_args)]
 
                     logger.debug("Bootstrap command line: /bin/bash %s" % jd.arguments)
 
@@ -290,6 +326,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                         # process the project / allocation 
                         if project is not None:
                             jd.project = project
+
+                    # set the SPMD variation if required
+                    if 'spmd_variation' in resource_cfg and resource_cfg['spmd_variation'] is not None:
+                        jd.spmd_variation = resource_cfg['spmd_variation']
 
                     jd.output = "AGENT.STDOUT"
                     jd.error  = "AGENT.STDERR"
