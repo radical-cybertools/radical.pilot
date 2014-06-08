@@ -25,6 +25,7 @@ WORKDIR=`pwd`
 PYTHON=
 QUEUE=
 ALLOCATION=
+TASK_LAUNCH_MODE=
 
 # -----------------------------------------------------------------------------
 # print out script usage help
@@ -47,6 +48,8 @@ OPTIONS:
 
    -w      The working (base) directory of the pilot
            (default is '.')
+
+   -l      The task launch mode to use.
 
    -i      The Python interpreter to use, e.g., python2.6
            (default is '/usr/bin/python')
@@ -185,19 +188,19 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION"
+AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION -l $TASK_LAUNCH_MODE"
 echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION
+           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION -l $TASK_LAUNCH_MODE
 }
 
 # -----------------------------------------------------------------------------
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:e:t:c:q:a:V:C” OPTION
+while getopts “hr:d:s:p:w:i:e:t:c:l:q:a:V:C” OPTION
 do
      case $OPTION in
          h)
@@ -215,6 +218,9 @@ do
              ;;
          p)
              PILOTID=$OPTARG
+             ;;
+         l)
+             TASK_LAUNCH_MODE=$OPTARG
              ;;
          w)
              WORKDIR=$OPTARG
@@ -285,8 +291,6 @@ launchagent
 
 # cleanup
 rm -rf $WORKDIR/virtualenv*
-rm -rf bootstrap-and-run-agent
-rm -rf radical-pilot-agent.py
 
 if [[ $CLEANUP ]]
 then

@@ -9,6 +9,6 @@
         "python_interpreter"            : "/usr/bin/python",
         "pre_bootstrap"                 : ["module load openmpi/gcc"],
         "valid_roots"                   : ["/home"],
-        "bootstrapper"                  : "default_bootstrapper.sh"
+        "pilot_agent"                   : "radical-pilot-agent-multicore.py"
     }
 }
