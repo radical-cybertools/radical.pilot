@@ -83,6 +83,8 @@ class TestResourceConfigs(unittest.TestCase):
         pd.resource = "mylocalhost"
         pd.cores    = 1
         pd.runtime  = 1 # minutes
+        pd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        pd.cleanup = True
 
         pilot = pm.submit_pilots(pd)
         pilot.wait()
