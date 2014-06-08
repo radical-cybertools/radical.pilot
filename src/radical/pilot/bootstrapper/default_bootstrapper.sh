@@ -25,6 +25,7 @@ WORKDIR=`pwd`
 PYTHON=
 QUEUE=
 ALLOCATION=
+TASK_LAUNCH_MODE=
 
 # -----------------------------------------------------------------------------
 # print out script usage help
@@ -47,6 +48,8 @@ OPTIONS:
 
    -w      The working (base) directory of the pilot
            (default is '.')
+
+   -l      The task launch mode to use.
 
    -i      The Python interpreter to use, e.g., python2.6
            (default is '/usr/bin/python')
@@ -90,7 +93,7 @@ echo ""
 echo "################################################################################"
 echo "## Downloading and installing virtualenv"
 echo "## CMDLINE: $CURL_CMD"
-curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz
+eval $CURL_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
    echo "Couldn't download virtuelenv via curl! ABORTING"
@@ -109,7 +112,7 @@ echo ""
 echo "################################################################################"
 echo "## Creating virtualenv"
 echo "## CMDLINE: $BOOTSTRAP_CMD"
-$BOOTSTRAP_CMD
+eval $BOOTSTRAP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
    echo "Couldn't bootstrap virtualenv! ABORTING"
@@ -124,7 +127,7 @@ echo ""
 echo "################################################################################"
 echo "## Downgrading pip to 1.2.1"
 echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
-$DOWNGRADE_PIP_CMD
+eval $DOWNGRADE_PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
    echo "Couldn't downgrade pip! ABORTING"
@@ -149,7 +152,7 @@ echo ""
 echo "################################################################################"
 echo "## Installing python-hostlist"
 echo "## CMDLINE: $PIP_CMD"
-$PIP_CMD
+eval $PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
     echo "pip install failed, trying easy_install ..."
@@ -167,7 +170,7 @@ echo ""
 echo "################################################################################"
 echo "## Installing pymongo"
 echo "## CMDLINE: $PIP_CMD"
-$PIP_CMD
+eval $PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
     echo "pip install failed, trying easy_install ..."
@@ -186,18 +189,23 @@ fi
 launchagent()
 {
 AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION"
+if [[ -n $TASK_LAUNCH_MODE ]]
+then 
+    AGENT_CMD="$AGENT_CMD -l $TASK_LAUNCH_MODE"
+fi
+
 echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION
+eval $AGENT_CMD
 }
 
 # -----------------------------------------------------------------------------
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:e:t:c:q:a:V:C” OPTION
+while getopts “hr:d:s:p:w:i:e:t:c:l:q:a:V:C” OPTION
 do
      case $OPTION in
          h)
@@ -215,6 +223,9 @@ do
              ;;
          p)
              PILOTID=$OPTARG
+             ;;
+         l)
+             TASK_LAUNCH_MODE=$OPTARG
              ;;
          w)
              WORKDIR=$OPTARG
@@ -285,8 +296,6 @@ launchagent
 
 # cleanup
 rm -rf $WORKDIR/virtualenv*
-rm -rf bootstrap-and-run-agent
-rm -rf radical-pilot-agent.py
 
 if [[ $CLEANUP ]]
 then

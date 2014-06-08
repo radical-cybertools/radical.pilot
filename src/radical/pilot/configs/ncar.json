@@ -9,8 +9,7 @@
                                          "module load python/2.7.5",
                                          "export ALT_REMOTE=yslogin6:12346",
                                          "export LD_PRELOAD=/glade/u/home/marksant/tsocks-1.8/libtsocks.so"],
-        "task_launch_mode"            : "SSH",
         "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
-        "bootstrapper"                : "default_bootstrapper.sh"
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }

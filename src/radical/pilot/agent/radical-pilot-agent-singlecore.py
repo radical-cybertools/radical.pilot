@@ -670,7 +670,7 @@ class Agent(threading.Thread):
                         wu_cursor = self._w.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : "PendingExecution"},
-                        update={"$set" : {"state": "Executing"},
+                        update={"$set" : {"state": "Executing", "started": datetime.datetime.utcnow()},
                         "$push": {"statehistory": {"state": "PulledByAgent", "timestamp": ts}}}#,
                         #limit=BULK_LIMIT
                         )

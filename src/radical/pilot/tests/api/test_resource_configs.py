@@ -52,14 +52,14 @@ class TestResourceConfigs(unittest.TestCase):
         session = radical.pilot.Session(database_url=DBURL)
 
         pm = radical.pilot.PilotManager(session=session)
-        len1 = len(pm.list_resource_configurations())
+        len1 = len(pm.list_resource_configs())
 
         rc = radical.pilot.ResourceConfig()
         rc.name = "test"
 
         pm.add_resource_config(rc)
-        assert len1+1 == len(pm.list_resource_configurations())
-        assert "test" in pm.list_resource_configurations()
+        assert len1+1 == len(pm.list_resource_configs())
+        assert "test" in pm.list_resource_configs()
 
         session.close()
 
@@ -83,6 +83,8 @@ class TestResourceConfigs(unittest.TestCase):
         pd.resource = "mylocalhost"
         pd.cores    = 1
         pd.runtime  = 1 # minutes
+        pd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        pd.cleanup = True
 
         pilot = pm.submit_pilots(pd)
         pilot.wait()

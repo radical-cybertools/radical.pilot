@@ -1,6 +1,12 @@
 0.14 Release                                             
 ---------------------------------------------------------------------
 
+API Changes:
+
+* ComputeUnitDescription.working_dir_priv removed
+* Extended state model
+* resource_configurations parameter removed from PilotManager c`tor
+
 
 0.13 Release                                             May 19. 2014
 ---------------------------------------------------------------------
