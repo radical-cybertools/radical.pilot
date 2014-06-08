@@ -85,9 +85,13 @@ if __name__ == "__main__":
             cu.pre_exec    = ["module load python intel mvapich2 mpi4py"]
             cu.executable  = "python"
             cu.arguments   = ["./mpi4py_hello_world.py"]
+            cu.input_data  = ["./mpi4py_hello_world.py"]
+            # These two parameters are relevant to MPI execution:
+            #   'cores' sets the number of cores required by the task
+            #   'mpi' identifies the task as an MPI task
             cu.cores       = 32
             cu.mpi         = True
-            cu.input_data  = ["./mpi4py_hello_world.py"]
+
 
             cud_list.append(cu)
 
