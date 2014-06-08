@@ -190,7 +190,9 @@ class ExecutionEnvironment(object):
     #-------------------------------------------------------------------------
     #
     def discover_cores(self):
+
         sge_hostfile = os.environ.get('PE_HOSTFILE')
+        lsb_mcpu_hosts = os.environ.get('LSB_MCPU_HOSTS')
 
         # TODO: These dont have to be the same number for all hosts.
 
@@ -199,6 +201,8 @@ class ExecutionEnvironment(object):
         # TODO: Given that the Agent can determine the real core count, in principle we
         #       could just ignore the config and use as many as we have to our availability
         #       (taken into account that we might not have the full node reserved of course)
+        #       Answer: at least on Yellowstone this doesnt work for MPI,
+        #               as you can't spawn more tasks then the number of slots.
 
         # SGE core configuration might be different than what multiprocessing announces
         # Alternative: "qconf -sq all.q|awk '/^slots *[0-9]+$/{print $2}'"
@@ -208,7 +212,17 @@ class ExecutionEnvironment(object):
             core_counts = list(set(cores_count_list))
             self.cores_per_node = min(core_counts)
             self.log.info("Found unique core counts: %s Using: %d" % (core_counts, self.cores_per_node))
+
+        # Grab the core (slot) count from the environment, not using cpu_count()
+        elif lsb_mcpu_hosts is not None:
+            # Format: hostX N hostY N hostZ N
+            cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
+            core_counts = list(set(cores_count_list))
+            self.cores_per_node = min(core_counts)
+            self.log.info("Found unique core counts: %s Using: %d" % (core_counts, self.cores_per_node))
+
         else:
+            # If there is no way to get it from the environment or configuration, get the number of cores.
             self.cores_per_node = multiprocessing.cpu_count()
 
 
@@ -337,10 +351,13 @@ class ExecWorker(multiprocessing.Process):
         #    {'hostname': 'node2', 'cores': [p_1, p_2, p_3. ... , p_cores_per_host]
         # ]
         #
+        # We put it in a list because we care about (and make use of) the order.
+        #
         self._slots = []
         for host in hosts:
             self._slots.append({
                 'host': host,
+                # TODO: Maybe use the real core numbers in the case of non-exclusive host reservations?
                 'cores': [FREE for _ in range(0, cores_per_host)]
             })
         self._cores_per_host = cores_per_host
