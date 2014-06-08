@@ -40,11 +40,6 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-
-# RCONF points to the resource configuration files. Read more about resource 
-# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["file://localhost/%s/../configs/archer.json" % os.getcwd()]
-
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
@@ -79,7 +74,7 @@ if __name__ == "__main__":
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
+        pmgr = radical.pilot.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -89,7 +84,6 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "archer.ac.uk"
         pdesc.project          = "e290"  # archer 'project group'
-        pdesc.sandbox          = "/work/e290/e290/antonst/experiments"
         pdesc.runtime          = 10
         pdesc.cores            = 56 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
