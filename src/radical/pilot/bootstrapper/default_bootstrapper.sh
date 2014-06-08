@@ -300,7 +300,7 @@ rm -rf $WORKDIR/virtualenv*
 if [[ $CLEANUP ]]
 then
     # if cleanup is set, we delete all CU sandboxes !!
-    rm -rf $WORKDIR/unit-*
+    #rm -rf $WORKDIR/unit-*
 fi
 
 # ... and exit
