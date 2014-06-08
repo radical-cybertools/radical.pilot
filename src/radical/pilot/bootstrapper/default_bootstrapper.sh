@@ -301,6 +301,7 @@ if [[ $CLEANUP ]]
 then
     # if cleanup is set, we delete all CU sandboxes !!
     #rm -rf $WORKDIR/unit-*
+    true # a if/fi clause cannot be empty
 fi
 
 # ... and exit
