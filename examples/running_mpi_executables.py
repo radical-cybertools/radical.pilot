@@ -88,7 +88,7 @@ if __name__ == "__main__":
             cu.input_data  = ["./mpi4py_hello_world.py"]
             # These two parameters are relevant to MPI execution:
             #   'cores' sets the number of cores required by the task
-            #   'mpi' identifies the task as an MPI task
+            #   'mpi' identifies the task as an MPI taskg
             cu.cores       = 32
             cu.mpi         = True
 
