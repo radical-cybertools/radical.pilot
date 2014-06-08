@@ -227,7 +227,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                         logger.warning("Using custom pilot agent script: %s" % pilot_agent)
                         agent_path = os.path.abspath("%s/../agent/%s" % (cwd, pilot_agent))
                     else:
-                        agent_path = os.path.abspath("%s/../agent/radical-pilot-agent.py" % cwd)
+                        agent_path = os.path.abspath("%s/../agent/radical-pilot-agent-multicore.py" % cwd)
 
                     agent_script_url = saga.Url("file://localhost/%s" % agent_path)
 
@@ -254,8 +254,6 @@ class PilotLauncherWorker(multiprocessing.Process):
                     bootstrap_args = "-r %s -d %s -s %s -p %s -t %s -c %s -V %s " %\
                         (database_host, database_name, session_uid, str(compute_pilot_id), runtime, number_cores, VERSION)
 
-                    if 'task_launch_mode' in resource_cfg and resource_cfg['task_launch_mode'] is not None:
-                        bootstrap_args += " -l %s " % resource_cfg['task_launch_mode']
                     if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
                     if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:

@@ -4,7 +4,6 @@
         "remote_filesystem_endpoint"  : "file://localhost",
         "local_job_manager_endpoint"  : "fork://localhost",
         "local_filesystem_endpoint"   : "file://localhost",
-        "task_launch_mode"            : "LOCAL",
         "bootstrapper"                : "default_bootstrapper.sh"
     }
 }
