@@ -425,24 +425,22 @@ class ExecWorker(multiprocessing.Process):
                         req_cont = False
 
                     # First try to find all cores on a single host
-                    host_index, offset = self._acquire_slots(task.numcores, single_host=True, continuous=req_cont)
+                    task_slots = self._acquire_slots(task.numcores, single_host=True, continuous=req_cont)
 
                     # If that failed, and our launch method supports multiple hosts, try that
-                    if host_index is None and launch_method in \
+                    if task_slots is None and launch_method in \
                             [LAUNCH_METHOD_IBRUN, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_POE]:
-                        host_index, offset = self._acquire_slots(task.numcores, single_host=False, continuous=req_cont)
+                        task_slots = self._acquire_slots(task.numcores, single_host=False, continuous=req_cont)
 
                     # Check if we got results
-                    if host_index is None:
+                    if task_slots is None:
                         # No resources free, put back in queue
                         self._task_queue.put(task)
                         idle = True
                     else:
                         # We got an allocation go off and launch the process
-                        task.host_index = host_index
-                        task.offset = offset
-                        task_slots = self._index_and_offset_to_slotlist(host_index, offset, task.numcores)
-                        self._launch_task(task, task_slots, launch_method, launch_command)
+                        task.slots = task_slots
+                        self._launch_task(task, launch_method, launch_command)
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
@@ -477,7 +475,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _acquire_slots(self, numcores, single_host, continuous):
+    def _acquire_slots(self, cores_requested, single_host, continuous):
 
         #
         # Find a needle (continuous sub-list) in a haystack (list)
@@ -498,156 +496,121 @@ class ExecWorker(multiprocessing.Process):
         # Transform the number of cores into a continuous list of "status"es,
         # and use that to find a sub-list.
         #
-        def find_cores_cont(cores, count, status):
-            return find_sublist(cores, [status for _ in range(count)])
+        def find_cores_cont(slot_cores, cores_requested, status):
+            return find_sublist(slot_cores, [status for _ in range(cores_requested)])
 
         #
         # Find an available continuous slot within host boundaries.
         #
-        def find_slots_single_cont(count):
+        def find_slots_single_cont(cores_requested):
 
             for slot in self._slots:
-                cores = slot['cores']
-                offset = find_cores_cont(cores, count, FREE)
-                if offset is not None:
-                    self._log.info('Host %s satisfies %d at offset %d' % (slot['host'], count, offset))
-                    return (self._slots.index(slot), offset)
+                slot_host = slot['host']
+                slot_cores = slot['cores']
 
-            return None, None
+                slot_cores_offset = find_cores_cont(slot_cores, cores_requested, FREE)
+
+                if slot_cores_offset is not None:
+                    self._log.info('Host %s satisfies %d cores at offset %d' % (slot_host, cores_requested, slot_cores_offset))
+                    return ['%s:%d' % (slot_host, core) for core in range(slot_cores_offset, slot_cores_offset + cores_requested)]
+
+            return None
 
         #
         # Find an available continuous slot across host boundaries.
         #
-        def find_slots_multi_cont(count):
-            # Glue core lists together
-            cores = [core for host in [host['cores'] for host in self._slots] for core in host]
+        def find_slots_multi_cont(cores_requested):
 
-            ppn = self._cores_per_host
+            # Convenience aliases
+            cores_per_host = self._cores_per_host
+            all_slots = self._slots
+
+            # Glue all slot core lists together
+            all_slot_cores = [core for host in [host['cores'] for host in all_slots] for core in host]
 
             # Find the start of the first available region
-            cores_index = find_cores_cont(cores, count, FREE)
-            if cores_index is None:
-                return None, None
+            all_slots_first_core_offset = find_cores_cont(all_slot_cores, cores_requested, FREE)
+            if all_slots_first_core_offset is None:
+                return None
 
-            # Determine the host in the hostlist
-            host_index = cores_index/ppn
-            # And the offset within that host
-            offset = cores_index%ppn
+            # Determine the first slot in the slot list
+            first_slot_index = all_slots_first_core_offset / cores_per_host
+            # And the core offset within that host
+            first_slot_core_offset = all_slots_first_core_offset % cores_per_host
 
-            return (host_index, offset)
+            # Note: We substract one here, because counting starts at zero;
+            #       Imagine a zero offset and a count of 1, the only core used would be core 0.
+            #       TODO: Verify this claim :-)
+            all_slots_last_core_offset = (first_slot_index * cores_per_host) + first_slot_core_offset + cores_requested - 1
+            last_slot_index = (all_slots_last_core_offset) / cores_per_host
+            last_slot_core_offset = all_slots_last_core_offset % cores_per_host
 
+            # Convenience aliases
+            last_slot = self._slots[last_slot_index]
+            last_host = last_slot['host']
+            first_slot = self._slots[first_slot_index]
+            first_host = first_slot['host']
+
+            # Collect all host:core slots here
+            task_slots = []
+
+            # Add cores from first slot for this task
+            # As this is a multi-host search, we can safely assume that we go from the offset all the way to the last core
+            task_slots.extend(['%s:%d' % (first_host, core) for core in range(first_slot_core_offset, cores_per_host)])
+
+            # Add all cores from "middle" slots
+            for slot_index in range(first_slot_index+1, last_slot_index-1):
+                slot_host = all_slots[slot_index]
+                task_slots.extend(['%s:%d' % (slot_host, core) for core in range(0, cores_per_host)])
+
+            # Add the cores of the last slot
+            task_slots.extend(['%s:%d' % (last_host, core) for core in range(0, last_slot_core_offset+1)])
+
+            return task_slots
+
+        #  End of inline functions, _acquire_slots() code begins after this
         #################################################################################
-        #  End of inline functions, _acquire_slots() code begins here
 
         #
         # Switch between searching for continuous or scattered slots
         #
-        if continuous:
-            # Switch between searching for single or multi-host
-            if single_host:
-                host_index, offset = find_slots_single_cont(numcores)
+        # Switch between searching for single or multi-host
+        if single_host:
+            if continuous:
+                task_slots = find_slots_single_cont(cores_requested)
             else:
-                host_index, offset = find_slots_multi_cont(numcores)
-
-            if host_index is not None:
-                self._mark_continuous(host_index, offset, numcores, BUSY)
+                raise NotImplementedError('No scattered single host scheduler implemented yet.')
         else:
-            if single_host:
-                raise NotImplementedError('No scattered scheduler implemented yet.')
+            if continuous:
+                task_slots = find_slots_multi_cont(cores_requested)
             else:
-                raise NotImplementedError('No scattered scheduler implemented yet.')
+                raise NotImplementedError('No scattered multi host scheduler implemented yet.')
 
-            if host_index is not None:
-                raise NotImplementedError('No scattered marker implemented yet.')
+        if task_slots is not None:
+            self._change_slot_states(task_slots, BUSY)
 
-        return host_index, offset
-
-    #
-    # Convert an index, offset and core count into an expanded slot list
-    # TODO: This needs work!
-    #
-    def _index_and_offset_to_slotlist(self, first_host_index, first_host_offset, core_count):
-
-        slot_list = []
-
-        ppn = self._cores_per_host
-
-        last_core = (first_host_index * ppn) + first_host_offset + core_count - 1
-        # We substract one here, because counting starts at zero;
-        # Imagine a zero offset and a count of 1, the only core used would be core 0.
-        #print 'Last core:', last_core
-
-        last_host_index = (last_core) / ppn
-        last_host = self._slots[last_host_index]['host']
-        last_host_offset = last_core % ppn
-
-        first_host = self._slots[first_host_index]['host']
-
-        for host_index in range(first_host_index, last_host_index+1):
-            # (within range() +1 because the ceiling is exclusive)
-
-            first_core = 0
-            last_core = ppn - 1
-
-            if host_index == first_host_index:
-                first_core = first_host_offset
-
-            if host_index == last_host_index:
-                last_core = last_host_offset
-
-            for core in range(first_core, last_core+1):
-                slot_list.append('%s:%d' % (self._slots[host_index]['host'], core))
-
-        self._log.debug("Slot list: %s" % slot_list)
-        return slot_list
+        return task_slots
 
     #
-    # For continuous allocations, this can be used to set a state
+    # Change the reserved state of slots (FREE or BUSY)
     #
-    def _mark_continuous(self, first_host_index, first_host_offset, core_count, state):
+    def _change_slot_states(self, task_slots, new_state):
 
-        # Calculate the last core as a base for other calculations
-        last_core = (first_host_index * self._cores_per_host) + \
-                    first_host_offset + core_count - 1
-        # We substract one here, because counting starts at zero;
-        # Imagine a zero offset and a count of 1, the only core used would be core 0.
+        # Convenience alias
+        all_slots = self._slots
 
-        # Benefit from some integer rounding here
-        last_host_index = (last_core) / self._cores_per_host
-        last_host_offset = last_core % self._cores_per_host
+        for slot in task_slots:
+            # Get the host and the core part
+            [slot_host, slot_core] = slot.split(':')
+            # Find the entry in the the all_slots list
+            slot_entry = (slot for slot in all_slots if slot["host"] == slot_host).next()
+            # Change the state of the slot
+            slot_entry['cores'][int(slot_core)] = new_state
 
-        # Get the hostnames for the host indexes
-        last_host = self._slots[last_host_index]['host']
-        first_host = self._slots[first_host_index]['host']
-
-        self._log.debug('First host: %s offset: %d' % (first_host, first_host_offset))
-        self._log.debug('Last host: %s offset: %d' % (last_host, last_host_offset))
-
-        # Iterate over all hosts involved
-        for host_index in range(first_host_index, last_host_index+1):
-            # (within range() +1 because the ceiling is exclusive)
-
-            # Values if a full host is involved
-            first_core = 0
-            last_core = self._cores_per_host - 1
-
-            # If this is the first host, start at the offset
-            if host_index == first_host_index:
-                first_core = first_host_offset
-
-            # If this is the last host, stop at the offset
-            if host_index == last_host_index:
-                last_core = last_host_offset
-
-            self._log.debug('Host: %s (%d-%d)' % (self._slots[host_index]['host'], first_core, last_core))
-
-            # Use first and last core values above to set cores state
-            for core in range(first_core, last_core+1):
-                self._slots[host_index]['cores'][core] = state
 
     # ------------------------------------------------------------------------
     #
-    def _launch_task(self, task, slots, launch_method, launch_command):
+    def _launch_task(self, task, launch_method, launch_command):
 
         # create working directory in case it
         # doesn't exist
@@ -660,16 +623,16 @@ class ExecWorker(multiprocessing.Process):
             else :
                 raise
 
-        # RUN THE TASK
+        # Start a new subprocess to launch the task
         proc = _Process(
             task=task,
-            slots=slots,
+            all_slots=self._slots,
+            cores_per_host=self._cores_per_host,
             launch_method=launch_method,
             launch_command=launch_command,
             logger=self._log)
 
         task.started=datetime.datetime.utcnow()
-        task.slots=slots
         task.state='Executing'
 
         self._running_tasks.append(proc)
@@ -741,7 +704,7 @@ class ExecWorker(multiprocessing.Process):
 
             update_tasks.append(task)
 
-            self._mark_continuous(task.host_index, task.offset, task.numcores, FREE)
+            self._change_slot_states(task.slots, FREE)
 
         # update all the tasks that are marked for update.
         self._update_tasks(update_tasks)
@@ -971,7 +934,7 @@ class _Process(subprocess.Popen):
 
     #-------------------------------------------------------------------------
     #
-    def __init__(self, task, slots, launch_method, launch_command, logger):
+    def __init__(self, task, all_slots, cores_per_host, launch_method, launch_command, logger):
 
         self._task = task
         self._log  = logger
@@ -1001,7 +964,7 @@ class _Process(subprocess.Popen):
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
             hosts_string = ''
-            for slot in slots:
+            for slot in task.slots:
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
@@ -1015,10 +978,17 @@ class _Process(subprocess.Popen):
         elif launch_method == LAUNCH_METHOD_IBRUN:
             # NOTE: Don't think that with IBRUN it is possible to have
             # processes != cores ...
-            # TODO: this hardcoded 16 obviously needs to go away,
-            #       the information is available though, just not to this class.
-            cores_per_node = 16
-            ibrun_offset = task.host_index * cores_per_node + task.offset
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["host"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            # TODO: This assumes all hosts have the same number of cores
+            ibrun_offset = all_slots_slot_index * cores_per_host + int(first_slot_core)
             ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
             cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, ibrun_command, task_exec_string)
 
@@ -1026,7 +996,7 @@ class _Process(subprocess.Popen):
 
             # Count slots per host in provided slots description.
             hosts = {}
-            for slot in slots:
+            for slot in task.slots:
                 host = slot.split(':')[0]
                 if host not in hosts:
                     hosts[host] = 1
@@ -1043,7 +1013,7 @@ class _Process(subprocess.Popen):
             cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, poe_command, task_exec_string)
 
         elif launch_method == LAUNCH_METHOD_SSH:
-            host = slots[0].split(':')[0]
+            host = task.slots[0].split(':')[0]
             cmdline = " %s -o StrictHostKeyChecking=no %s \"/bin/bash -l -c '%scd %s && %s'\"" % \
                       (launch_command, host, pre_exec_string, task.workdir, task_exec_string)
 
