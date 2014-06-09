@@ -26,7 +26,6 @@ RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
 PROJECT           = 'project'
 PILOT_AGENT_PRIV  = 'pilot_agent_priv'
-AGENT_WORKER      = 'agent_worker'
 
 
 # -----------------------------------------------------------------------------
@@ -128,7 +127,6 @@ class ComputePilotDescription(attributes.Attributes):
 
         # Allows to select a different pilot agent - for DEVELOPMENT purposes only !!
         self._attributes_register            (PILOT_AGENT_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register            (AGENT_WORKER, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
     #--------------------------------------------------------------------------
     #
@@ -162,9 +160,6 @@ class ComputePilotDescription(attributes.Attributes):
 
         if PILOT_AGENT_PRIV not in d:
             d[PILOT_AGENT_PRIV] = None
-
-        if AGENT_WORKER not in d:
-            d[AGENT_WORKER] = None
 
         return d
 

@@ -173,8 +173,8 @@ class PilotLauncherWorker(multiprocessing.Process):
                     queue        = compute_pilot['description']['queue']
                     project      = compute_pilot['description']['project']
                     cleanup      = compute_pilot['description']['cleanup']
-                    pilot_agent  = compute_pilot['description']['pilot_agent_priv']
-                    agent_worker = compute_pilot['description']['agent_worker']
+                    #pilot_agent  = compute_pilot['description']['pilot_agent_priv']
+                    #agent_worker = compute_pilot['description']['agent_worker']
                     sandbox      = compute_pilot['sandbox']
 
                     use_local_endpoints = False
@@ -189,6 +189,11 @@ class PilotLauncherWorker(multiprocessing.Process):
                             raise Exception(error_msg)
 
                     resource_cfg = self.resource_configurations[resource_key]
+
+                    if 'pilot_agent_worker' in resource_cfg and resource_cfg['pilot_agent_worker'] is not None:
+                        agent_worker = resource_cfg['pilot_agent_worker']
+                    else:
+                        agent_worker = None
 
                     ########################################################
                     # database connection parameters

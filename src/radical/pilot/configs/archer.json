@@ -9,6 +9,7 @@
         "pre_bootstrap"               : [],
         "valid_roots"                 : ["/home", "/work"],
         "pilot_agent"                 : "radical-pilot-test-agent-archer.py",
+        "pilot_agent_worker"          : "agent-worker.py",
         "bootstrapper"                : "cray_bootstrapper.sh"
     }
 }
