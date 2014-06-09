@@ -88,6 +88,7 @@ if __name__ == "__main__":
         pdesc.cores            = 56 
         pdesc.pilot_agent_priv = "radical-pilot-test-agent-archer.py"
         pdesc.agent_worker     = "agent-worker.py"
+        pdesc.sandbox          = "/work/e290/e290/oweidner/RPTEST/" 
         pdesc.cleanup          = False
 
 
