@@ -16,14 +16,14 @@ import radical.pilot
 #
 #   git clone https://github.com/radical-cybertools/radical.pilot.git
 #   cd radical.pilot
-#   git checkout feature/archer
+#   git checkout devel
 #   easy_install .
 # 
 # Run this script with the remote MongoDB server.
 #
 #   cd tests
 #  
-# In archer_test.py change: 
+# Change: 
 #     "pdesc.sandbox" to appropriate path
 #     "pdesc.project" to your project allocation
 #     
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         pdesc.resource         = "archer.ac.uk"
         pdesc.project          = "e290"  # archer 'project group'
         pdesc.runtime          = 10
-        pdesc.cores            = 56 
+        pdesc.cores            = 56      # there are 24 cores per node on Archer, so this allocates 3 nodes
         pdesc.sandbox          = "/work/e290/e290/oweidner/RPTEST/" 
         pdesc.cleanup          = False
 
