@@ -34,8 +34,6 @@ import multiprocessing
 
 from bson.objectid import ObjectId
 
-# archer node has 24 cores
-ARCHER_NODE = 24
 #--------------------------------------------------------------------------
 # Configure the logger
 LOGGER = logging.getLogger('radical.pilot.agent')
@@ -185,6 +183,8 @@ class Agent(threading.Thread):
         PORT = server.getsockname()[1]
         LOGGER.info("AGENT USES PORT: %s" % PORT)
 
+        # archer node has 24 cores
+        ARCHER_NODE = 24
         # determining how many nodes to allocate with agent-worker.py script
         if( int(self._cores) < ARCHER_NODE ):
             NODES = 1
@@ -194,7 +194,9 @@ class Agent(threading.Thread):
                 NODES += 1
 
         aprun_tasks = []
+        processed_units = []
         free_nodes = NODES
+        loop = True
         ##############################################################################
         # opening agent-worker.py file in order to pass some parameters
         ##############################################################################
@@ -238,7 +240,7 @@ class Agent(threading.Thread):
         #####################################
         # This is the main thread loop
         #####################################
-        while True:
+        while loop:
             try:
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
@@ -279,8 +281,9 @@ class Agent(threading.Thread):
                     if not isinstance(computeunits, list):
                         computeunits = [computeunits]
                 
-                    LOGGER.info("FREE_NODES: %s" % free_nodes)
+                    LOGGER.info("free_nodes: %s" % free_nodes)
                     for cu in computeunits:
+                        LOGGER.info("ComputeUnits are: %s" % computeunits)
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
                     
                         # Create the task working directory if it doesn't exist
@@ -295,7 +298,7 @@ class Agent(threading.Thread):
                         
                         w_dir = cu_workdir + "/STDOUT"
      
-                        LOGGER.info("CU_STR: %s" % cu_str)
+                        LOGGER.info("cu string: %s" % cu_str)
                         if( int(cu['description']['cores']) < ARCHER_NODE ):
                             cu_nodes = 1
                         else:
@@ -303,12 +306,14 @@ class Agent(threading.Thread):
                             if ( (int(cu['description']['cores']) % ARCHER_NODE) > 0 ):
                                 cu_nodes += 1
    
-                        LOGGER.info("CU_NODES: %s" % cu_nodes)
+                        LOGGER.info("cu_nodes: %s" % cu_nodes)
                         aprun_tasks.append(cu_str)
+                        processed_units.append(cu)
                         free_nodes = free_nodes - cu_nodes
-                        LOGGER.info("AFTER THIS CU FREE_NODES: %s" % free_nodes)
+                        LOGGER.info("after this cu free_nodes: %s" % free_nodes)
                 else:
-                    free_nodes = 0  
+                    free_nodes = 0
+                    loop = False
                 ##############################################
                 # main loop of server
                 ##############################################
@@ -339,27 +344,29 @@ class Agent(threading.Thread):
                                     run -= 1
                                     free_nodes = NODES
                                     aprun_tasks = []
+                                    for cu in processed_units:
+                                        if cu['description']['output_data'] is not None:
+                                            state = "PendingOutputTransfer"
+                                        else:
+                                            state = "Done"
+
+                                        self.computeunit_collection.update({"_id": cu["_id"]},
+                                                                           {"$set": {"state"         : state,
+                                                                            "started"       : "SKEL-AGENT-None",
+                                                                            "finished"      : "SKEL-AGENT-None",
+                                                                            "exec_locs"     : "SKEL-AGENT-None",
+                                                                            "exit_code"     : "SKEL-AGENT-None",
+                                                                            "stdout_id"     : "SKEL-AGENT-None",
+                                                                            "stderr_id"     : "SKEL-AGENT-None"},
+                                                                            "$push": {"statehistory": {"state": state, "timestamp": ts}}
+                                        })
+
                                 else:
                                     s.sendall(WAIT)
                                     run -= 1    
                 ##############################################
                 # end of server loop 
                 ##############################################
-                if cu['description']['output_data'] is not None:
-                    state = "PendingOutputTransfer"
-                else:
-                    state = "Done"
-
-                self.computeunit_collection.update({"_id": cu["_id"]}, 
-                            {"$set": {"state"         : state,
-                                      "started"       : "SKEL-AGENT-None",
-                                      "finished"      : "SKEL-AGENT-None",
-                                      "exec_locs"     : "SKEL-AGENT-None",
-                                      "exit_code"     : "SKEL-AGENT-None",
-                                      "stdout_id"     : "SKEL-AGENT-None",
-                                      "stderr_id"     : "SKEL-AGENT-None"},
-                             "$push": {"statehistory": {"state": state, "timestamp": ts}}
-                            })
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.
