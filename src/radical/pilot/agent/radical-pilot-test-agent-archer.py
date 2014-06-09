@@ -34,6 +34,8 @@ import multiprocessing
 
 from bson.objectid import ObjectId
 
+# archer node has 24 cores
+ARCHER_NODE = 24
 #--------------------------------------------------------------------------
 # Configure the logger
 LOGGER = logging.getLogger('radical.pilot.agent')
@@ -183,8 +185,6 @@ class Agent(threading.Thread):
         PORT = server.getsockname()[1]
         LOGGER.info("AGENT USES PORT: %s" % PORT)
 
-        # archer node has 24 cores
-        ARCHER_NODE = 24
         # determining how many nodes to allocate with agent-worker.py script
         if( int(self._cores) < ARCHER_NODE ):
             NODES = 1
@@ -278,7 +278,7 @@ class Agent(threading.Thread):
                 if computeunits is not None:
                     if not isinstance(computeunits, list):
                         computeunits = [computeunits]
-
+                
                     LOGGER.info("FREE_NODES: %s" % free_nodes)
                     for cu in computeunits:
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
@@ -307,48 +307,50 @@ class Agent(threading.Thread):
                         aprun_tasks.append(cu_str)
                         free_nodes = free_nodes - cu_nodes
                         LOGGER.info("AFTER THIS CU FREE_NODES: %s" % free_nodes)
-                        ##############################################
-                        # main loop of server
-                        ##############################################
-                        run = 1
-                        if (free_nodes < 1):
-                            while (run >= 0):
-                                inputready,outputready,exceptready = select.select(input,[],[])
-                                for s in inputready:
-                                    if s == server:
-                                        # handle the server socket 
-                                        client, address = server.accept()
-                                        input.append(client)
-                                        LOGGER.info("agent worker added: %s" % str(address[0]))
-                                    else:
-                                        # handle all other sockets 
-                                        data = s.recv(1024)
-                                        LOGGER.info("agent received from worker: %s" % repr(data))
-                                        if (run > 0):
-                                            aprun_str = ""
-                                            for task in aprun_tasks:
-                                                if aprun_str == "":
-                                                    aprun_str = task
-                                                else:
-                                                    aprun_str = aprun_str + " & " + task                                
-                                            LOGGER.info("agent is sending execution string...")
-                                            LOGGER.info("aprun string was: %s" % aprun_str)
-                                            s.sendall(aprun_str)
-                                            run -= 1
-                                            free_nodes = NODES
-                                            aprun_tasks = []
+                else:
+                    free_nodes = 0  
+                ##############################################
+                # main loop of server
+                ##############################################
+                run = 1
+                if (free_nodes < 1):
+                    while (run >= 0):
+                        inputready,outputready,exceptready = select.select(input,[],[])
+                        for s in inputready:
+                            if s == server:
+                                # handle the server socket 
+                                client, address = server.accept()
+                                input.append(client)
+                                LOGGER.info("agent worker added: %s" % str(address[0]))
+                            else:
+                                # handle all other sockets 
+                                data = s.recv(1024)
+                                LOGGER.info("agent received from worker: %s" % repr(data))
+                                if (run > 0):
+                                    aprun_str = ""
+                                    for task in aprun_tasks:
+                                        if aprun_str == "":
+                                            aprun_str = task
                                         else:
-                                            s.sendall(WAIT)
-                                            run -= 1    
-                        ##############################################
-                        # end of server loop 
-                        ##############################################
-                        if cu['description']['output_data'] is not None:
-                            state = "PendingOutputTransfer"
-                        else:
-                            state = "Done"
+                                            aprun_str = aprun_str + " & " + task                                
+                                    LOGGER.info("agent is sending execution string...")
+                                    LOGGER.info("aprun string was: %s" % aprun_str)
+                                    s.sendall(aprun_str)
+                                    run -= 1
+                                    free_nodes = NODES
+                                    aprun_tasks = []
+                                else:
+                                    s.sendall(WAIT)
+                                    run -= 1    
+                ##############################################
+                # end of server loop 
+                ##############################################
+                if cu['description']['output_data'] is not None:
+                    state = "PendingOutputTransfer"
+                else:
+                    state = "Done"
 
-                        self.computeunit_collection.update({"_id": cu["_id"]}, 
+                self.computeunit_collection.update({"_id": cu["_id"]}, 
                             {"$set": {"state"         : state,
                                       "started"       : "SKEL-AGENT-None",
                                       "finished"      : "SKEL-AGENT-None",
