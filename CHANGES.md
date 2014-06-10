@@ -1,6 +1,11 @@
 0.14 Release                                             
 ---------------------------------------------------------------------
 
+New Features
+
+* Experimental pilot-agent for Cray systems
+* New multi-core agent with MPI support
+
 API Changes:
 
 * ComputeUnitDescription.working_dir_priv removed
