@@ -94,6 +94,7 @@ class TestUnitManager(unittest.TestCase):
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests" 
+        cpd.cleanup = True
 
         p1 = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -117,6 +118,7 @@ class TestUnitManager(unittest.TestCase):
             cpd.cores = 1
             cpd.runtime = 1
             cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests" 
+            cpd.cleanup = True
             p = pm.submit_pilots(pilot_descriptions=cpd)
             um.add_pilots(p)
             pilot_list.append(p)

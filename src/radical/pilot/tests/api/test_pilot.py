@@ -58,6 +58,7 @@ class TestPilot(unittest.TestCase):
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -94,6 +95,7 @@ class TestPilot(unittest.TestCase):
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/non-/existing/directory..."
+        cpd.cleanup = True
 
         try:
             pilot = pm.submit_pilots(pilot_descriptions=cpd)
@@ -106,6 +108,7 @@ class TestPilot(unittest.TestCase):
         cpd.cores = 100000000000  # This should fail - at least in 2014 ;-)
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
         pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
@@ -127,6 +130,7 @@ class TestPilot(unittest.TestCase):
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 

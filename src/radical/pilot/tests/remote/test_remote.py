@@ -97,7 +97,7 @@ class TestRemoteSubmission(unittest.TestCase):
         um.wait_units(state=[radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=self.test_timeout)
 
         for cu in cus:
-            assert cu.state == radical.pilot.states.DONE
+            assert cu.state == radical.pilot.states.DONE, "state: %s" % cu.state
             assert cu.stop_time is not None
 
         pm.cancel_pilots()

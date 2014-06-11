@@ -180,12 +180,12 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION"
+AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION -a $ALLOCATION"
 echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION
+           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION -a $ALLOCATION
 }
 
 # -----------------------------------------------------------------------------
@@ -264,7 +264,7 @@ do
      esac
 done
 
-if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]] || [[ -z $VERSION ]]
+if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]] || [[ -z $VERSION ]] || [[ -z $ALLOCATION ]]
 then
      usage
      exit 1
@@ -280,6 +280,9 @@ launchagent
 rm -rf $WORKDIR/virtualenv*
 rm -rf bootstrap-and-run-agent
 rm -rf radical-pilot-agent.py
+rm -rf agent-worker.py
+rm -rf aprun-job.o*
+rm -rf aprun-job.e*
 
 if [[ $CLEANUP ]]
 then

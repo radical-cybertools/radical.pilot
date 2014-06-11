@@ -58,11 +58,33 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         cred = radical.pilot.SSHCredential()
-        cred.user_id = "tg802352"
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
+
+        # Get all configs,
+        res = pmgr.list_resource_configs()
+        # ... and the entry specific for stampede
+        s = res['stampede.tacc.utexas.edu']
+        print 'Default queue of stampede is: "%s".' % s['default_queue']
+
+        # Build a new one based on Stampede's
+        rc = radical.pilot.ResourceConfig(s)
+        #rc.name = 'testing'
+
+        # And set the queue to development to get a faster turnaround
+        rc.default_queue = 'development'
+
+        # Now add the entry back to the PM
+        pmgr.add_resource_config(rc)
+
+        # Get all configs,
+        res = pmgr.list_resource_configs()
+        # ... and the entry specific for stampede
+        s = res['stampede.tacc.utexas.edu']
+        #s = res['testing']
+        print 'Default queue of stampede after change is: "%s".' % s['default_queue']
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -72,36 +94,21 @@ if __name__ == "__main__":
         # Define a 32-core on stamped that runs for 15 mintutes and 
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "stampede.tacc.utexas.edu"
-        pdesc.runtime          = 15 # minutes
-        pdesc.cores            = 32 
-        pdesc.pilot_agent_priv = "radical-pilot-agent-mpi.py"
-        pdesc.cleanup          = True
-
+        pdesc.resource  = "stampede.tacc.utexas.edu"
+        #pdesc.resource  = "testing"
+        pdesc.runtime   = 15 # minutes
+        pdesc.cores     = 16
+        pdesc.cleanup   = True
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables withih a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
-        #
         compute_units = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 1):
             cu = radical.pilot.ComputeUnitDescription()
-            cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-            cu.executable = "/bin/cat"
-            cu.arguments = ["$INPUT1", "$INPUT2"]
-            cu.cores = 16 # Tells RP that we want 16 cores.
-            cu.input_data = ["./file1.dat", "./file2.dat"]
+            cu.executable  = "/bin/date"
+            cu.cores       = 1
 
             compute_units.append(cu)
 
@@ -127,11 +134,15 @@ if __name__ == "__main__":
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
+        if not isinstance(units, list):
+            units = [units]
         for unit in units:
-            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+            print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
+                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
+                   unit.stdout)
 
-        session.close()
+        # Close automatically cancels the pilot(s).
+        session.close(delete=False)
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

@@ -4,6 +4,7 @@
         "remote_filesystem_endpoint"  : "file://localhost",
         "local_job_manager_endpoint"  : "fork://localhost",
         "local_filesystem_endpoint"   : "file://localhost",
-        "bootstrapper"                : "default_bootstrapper.sh"
+        "pilot_agent"                 : "radical-pilot-agent-singlecore.py",
+        "pilot_agent_options"         : ["-l LOCAL"]
     }
 }
