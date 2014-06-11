@@ -4,7 +4,7 @@
         "remote_filesystem_endpoint"  : "sftp://yellowstone.ucar.edu/",
         "local_job_manager_endpoint"  : "lsf://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
-        "default_queue"               : "small",
+        "default_queue"               : "premium",
         "pre_bootstrap"               : ["module purge",
                                          "module load ncarenv",
                                          "module load ncarbinlibs",
