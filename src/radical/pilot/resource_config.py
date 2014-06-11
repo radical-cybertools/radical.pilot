@@ -21,13 +21,14 @@ PRE_BOOTSTRAP               = 'pre_bootstrap'
 VALID_ROOTS                 = 'valid_roots'
 BOOTSTRAPPER                = 'bootstrapper'
 PILOT_AGENT                 = 'pilot_agent'
+PILOT_AGENT_WORKER          = 'pilot_agent_worker'
 PILOT_AGENT_OPTIONS         = 'pilot_agent_options'
 
 
 VALID_KEYS = [NAME, LOCAL_JOB_MANAGER_ENDPOINT, LOCAL_FILESYSTEM_ENDPOINT,
               REMOTE_JOB_MANAGER_ENDPOINT, REMOTE_FILESYSTEM_ENDPOINT, 
               DEFAULT_QUEUE, SPMD_VARIATION, PYTHON_INTERPRETER, PRE_BOOTSTRAP, 
-              VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_OPTIONS]
+              VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_WORKER, PILOT_AGENT_OPTIONS]
 
 # -----------------------------------------------------------------------------
 #
@@ -188,6 +189,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(VALID_ROOTS,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(BOOTSTRAPPER,                None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PILOT_AGENT_WORKER,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT_OPTIONS,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
         # Parse the seeding dict if it is provided
