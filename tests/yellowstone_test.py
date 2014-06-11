@@ -8,13 +8,9 @@ import radical.pilot
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scenes!
 #
-# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
-# easiest way to make this work seamlessly is to set up ssh key-based
-# authentication and add the key to your keychain so you won't be 
-# prompted for a password. The following article explains how to set 
-# this up on Linux:
-#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
-
+# NOTE: If you run this from your own environment remotely to yellowstone,
+#       you will be asked for your token twice!
+#
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
@@ -56,11 +52,6 @@ if __name__ == "__main__":
         # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
-        # Add an ssh identity to the session.
-        cred = radical.pilot.SSHCredential()
-        #cred.user_id = "tg802352"
-        session.add_credential(cred)
-
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
 
@@ -69,13 +60,12 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 32-core on stamped that runs for 15 minutes and
+        # Define a 32-core pilot on yellowstone that runs for 15 minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        #pdesc.resource  = "stampede.tacc.utexas.edu"
         pdesc.resource  = "yellowstone.ucar.edu"
         pdesc.runtime   = 15 # minutes
-        pdesc.cores     = 16
+        pdesc.cores     = 32 # 2 nodes
         pdesc.cleanup   = True
         pdesc.project   = "URTG0003"
 
@@ -84,7 +74,8 @@ if __name__ == "__main__":
 
         compute_units = []
 
-        for unit_count in range(0, 1):
+        # define tasks
+        for unit_count in range(0, 4):
             cu = radical.pilot.ComputeUnitDescription()
             cu.executable  = "/bin/echo"
             cu.arguments = ['Hello world, gelben Stein!']
