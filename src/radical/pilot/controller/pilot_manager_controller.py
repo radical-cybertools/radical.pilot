@@ -304,41 +304,24 @@ class PilotManagerController(threading.Thread):
                 workdir = os.path.expanduser("~")
                 found_dir_success = True
             else:
-                # A horrible hack to get the home directory on the
-                # remote machine.
-                import subprocess
+                # get the home directory on the remote machine.
+                # Note that this will only work for ssh or shell based access
+                # mechanisms (FIXME)
 
-                usernames = list()
-                for cred in cred_dict:
-                    usernames.append(cred["user_id"])
-                usernames.append(None) # last but not least, we test without a user name.
+                import saga.utils.pty_shell as sup
 
-                # We have mutliple usernames we can try... :/
-                for username in usernames:
-                    if username is not None:
-                        url = "%s@%s" % (username, fs.host)
-                    else:
-                        url = fs.host
+                url = "ssh://%s/" % fs.host
+                shell = sup.PTYShell (url, saga_session, logger, opts={})
 
-                    p = subprocess.Popen(
-                        ["ssh", url,  "echo -n PWD: && pwd"],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                    )
-                    out, err = p.communicate()
+                ret, out, err = shell.run_sync (' echo "PWD: $PWD"')
+                if  ret == 0 and 'PWD:' in out :
+                    workdir = out.split(":")[1].strip()
+                    logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir))
 
-                    if 'PWD:' in out:
-                        workdir = out.split(":")[1]
-                        logger.debug("Determined remote working directory for %s: %s" % (url, workdir))
-                        found_dir_success = True
-                        break 
-                    else:
-                        logger.warning("Couldn't determine remote working directory for %s: %s" % (url, out))
-
-
-            if found_dir_success is False:
-                error_msg = "Couldn't determine remote working directory."
-                logger.error(error_msg)
-                raise Exception(error_msg)
+                else :
+                    error_msg = "Couldn't determine remote working directory."
+                    logger.error(error_msg)
+                    raise Exception(error_msg)
 
             # At this point we have determined 'pwd'
             fs.path = "%s/radical.pilot.sandbox" % workdir.rstrip()
