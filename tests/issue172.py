@@ -70,21 +70,58 @@ if __name__ == "__main__":
         # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "stampede.tacc.utexas.edu"
+        #pdesc.resource         = "stampede.tacc.utexas.edu"
+        pdesc.resource         = "india.futuregrid.org"
         pdesc.runtime          = 15 # N minutes
-        pdesc.cores            = 64 # X cores
+        pdesc.cores            = 16 # X cores
         pdesc.cleanup          = False
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        cud = radical.pilot.ComputeUnitDescription()
-        cud.environment = {'foo': 'bar'}
-        cud.pre_exec    = ['module load TACC amber']
-        cud.executable  = "/opt/apps/intel13/mvapich2_1_9/amber/12.0/bin/MMPBSA.py"
-        cud.arguments   = "--version"
-        cud.cores       = 4
-        cud.mpi         = True
+        bar_variants = ['UNDEFINED', # Special case: env will not be set
+                        None, # None
+                        {}, # empty dict
+                        {'foo': 'bar'}, # single entry dict
+                        {'foo': 'bar', 'sports': 'bar', 'banana': 'bar'} # multi entry dict
+                       ]
+        cud_list = []
+
+        for bar in bar_variants:
+            # Serial
+            cud = radical.pilot.ComputeUnitDescription()
+
+            cud.executable  = "/bin/echo"
+            if bar != 'UNDEFINED':
+                cud.environment = bar
+            cud.arguments   = ['Taverns:', '$foo', '$sports', '$banana']
+            cud.cores       = 1
+
+            cud_list.append(cud)
+
+            # MPI
+            cud = radical.pilot.ComputeUnitDescription()
+
+            # india
+            cud.pre_exec = ["module load openmpi/1.4.3-intel python",
+                            "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
+                            "source $HOME/mpive/bin/activate",
+                            "(pip freeze | grep -q mpi4py || pip install mpi4py)"
+            ]
+
+            # stampede
+            #cud.pre_exec    = ["module load python intel mvapich2 mpi4py"]
+
+            cud.executable  = "python"
+            cud.input_data  = ["./mpi4py_env.py"]
+            if bar != 'UNDEFINED':
+                cud.environment = bar
+            cud.arguments   = 'mpi4py_env.py'
+            #cud.cores       = 8
+            cud.cores       = 8
+            cud.mpi = True
+
+            cud_list.append(cud)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -103,7 +140,7 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cud)
+        units = umgr.submit_units(cud_list)
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
@@ -111,8 +148,8 @@ if __name__ == "__main__":
         if not isinstance(units, list):
             units = [units]
         for unit in units:
-            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+            print "* Task %s - env: %s state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
+                % (unit.uid, unit.description.environment, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
         session.close(delete=False)
         sys.exit(0)

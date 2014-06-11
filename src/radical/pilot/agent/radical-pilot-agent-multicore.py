@@ -950,16 +950,24 @@ class _Process(subprocess.Popen):
 
         # executable and arguments
         if task.executable is not None:
-            task_exec_string = task.executable
+            task_exec_string = task.executable # TODO: Do we allow $ENV/bin/program constructs here?
         else:
             task_exec_string = ''
         if task.arguments is not None:
             for arg in task.arguments:
-                task_exec_string += " %s" % arg
+                escaped_arg = arg.replace('$', '\$')
+                task_exec_string += " %s" % escaped_arg
+
+        # Create string for environment variable setting
+        env_string = ''
+        if task.environment is not None:
+            for key in task.environment:
+                env_string += "%s=%s " % (key, task.environment[key])
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
+            # TODO: fix local execution
             cmdline = ''
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
@@ -969,7 +977,8 @@ class _Process(subprocess.Popen):
                 hosts_string += '%s,' % host
 
             mpirun_command = "%s -np %s -host %s" % (launch_command, task.numcores, hosts_string)
-            cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, mpirun_command, task_exec_string)
+            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % \
+                      (pre_exec_string, task.workdir, env_string, mpirun_command, task_exec_string)
 
         elif launch_method == LAUNCH_METHOD_APRUN:
             cmdline = launch_command
@@ -990,7 +999,7 @@ class _Process(subprocess.Popen):
             # TODO: This assumes all hosts have the same number of cores
             ibrun_offset = all_slots_slot_index * cores_per_host + int(first_slot_core)
             ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
-            cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, ibrun_command, task_exec_string)
+            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % (pre_exec_string, task.workdir, env_string, ibrun_command, task_exec_string)
 
         elif launch_method == LAUNCH_METHOD_POE:
 
@@ -1010,12 +1019,15 @@ class _Process(subprocess.Popen):
 
             # Override the LSB_MCPU_HOSTS env variable as this is set by default to the size of the whole pilot.
             poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (hosts_string, launch_command)
-            cmdline = "/bin/bash -l -c '%scd %s && %s %s'" % (pre_exec_string, task.workdir, poe_command, task_exec_string)
+            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % (pre_exec_string, task.workdir, env_string, poe_command, task_exec_string)
 
         elif launch_method == LAUNCH_METHOD_SSH:
             host = task.slots[0].split(':')[0]
-            cmdline = " %s -o StrictHostKeyChecking=no %s \"/bin/bash -l -c '%scd %s && %s'\"" % \
-                      (launch_command, host, pre_exec_string, task.workdir, task_exec_string)
+            if env_string:
+                env_string = env_string[:-1] + ';' # Replace last space with semi-colon
+
+            cmdline = " %s -o StrictHostKeyChecking=no %s \"/bin/bash -l -c '%scd %s && %s%s'\"" % \
+                      (launch_command, host, pre_exec_string, task.workdir, env_string, task_exec_string)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
@@ -1039,7 +1051,7 @@ class _Process(subprocess.Popen):
                                        close_fds=True,
                                        shell=True,
                                        cwd=task.workdir, # TODO: This doesn't always make sense if it runs remotely
-                                       env=task.environment, # TODO: Idem
+                                       env=None,
                                        universal_newlines=False,
                                        startupinfo=None,
                                        creationflags=0)
