@@ -79,11 +79,12 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
 
         cud = radical.pilot.ComputeUnitDescription()
-        cud.pre_exec   = ['module load amber']
-        cud.executable = "/opt/apps/intel13/mvapich2_1_9/amber/12.0/bin/MMPBSA.py"
-        cud.arguments  = "--version"
-        cud.cores      = 4
-        cud.mpi        = True
+        cud.environment = {'foo': 'bar'}
+        cud.pre_exec    = ['module load TACC amber']
+        cud.executable  = "/opt/apps/intel13/mvapich2_1_9/amber/12.0/bin/MMPBSA.py"
+        cud.arguments   = "--version"
+        cud.cores       = 4
+        cud.mpi         = True
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
