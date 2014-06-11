@@ -635,7 +635,11 @@ class ExecWorker(multiprocessing.Process):
         task.started=datetime.datetime.utcnow()
         task.state='Executing'
 
+        # Add to the list of monitored tasks
         self._running_tasks.append(proc)
+
+        # Update to mongodb
+        self._update_tasks(task)
 
 
     # ------------------------------------------------------------------------
@@ -729,6 +733,8 @@ class ExecWorker(multiprocessing.Process):
                                     {"unitmanager": 1})
             self._unitmanager_id = cursor_p[0]["unitmanager"]
 
+        if not isinstance(tasks, list):
+            tasks = [tasks]
         for task in tasks:
             self._w.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
@@ -739,8 +745,7 @@ class ExecWorker(multiprocessing.Process):
                       "stdout_id"     : task.stdout_id,
                       "stderr_id"     : task.stderr_id},
              "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
-
-                      })
+            })
 
 
 # ----------------------------------------------------------------------------
@@ -873,35 +878,30 @@ class Agent(threading.Thread):
                                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
                                 break
 
-                        # Check the pilot's workunit queue
-                        #new_wu_ids = p_cursor[0]['wu_queue']
-
-                        # Check if there are work units waiting for execution
+                        # Check if there are work units waiting for execution,
+                        # and log that we pulled it.
                         ts = datetime.datetime.utcnow()
-
                         wu_cursor = self._w.find_and_modify(
-                        query={"pilot" : self._pilot_id,
-                               "state" : "PendingExecution"},
-                        update={"$set" : {"state": "Executing"},
-                        "$push": {"statehistory": {"state": "PulledByAgent", "timestamp": ts}}}#,
-                        #limit=BULK_LIMIT
+                            query={"pilot" : self._pilot_id,
+                                   "state" : "PendingExecution"},
+                            update={"$set" : {"state": "Scheduling"},
+                                    "$push": {"statehistory": {"state": "Scheduling", "timestamp": ts}}}
                         )
 
                         # There are new work units in the wu_queue on the database.
-                        # Get the corresponding wu entries
+                        # Get the corresponding wu entries.
                         if wu_cursor is not None:
-                        #    self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
-                        #    wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
                             if not isinstance(wu_cursor, list):
                                 wu_cursor = [wu_cursor]
 
                             for wu in wu_cursor:
-                                # Create new task objects and put them into the 
-                                # task queue
+                                # Create new task objects and put them into the task queue
+                                w_uid = str(wu["_id"])
+                                self._log.info("Found new tasks in pilot queue: %s" % w_uid)
 
                                 task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
-                                task = Task(uid         = str(wu["_id"]), 
+                                task = Task(uid         = w_uid,
                                             executable  = wu["description"]["executable"], 
                                             arguments   = wu["description"]["arguments"],
                                             environment = wu["description"]["environment"],
@@ -913,6 +913,7 @@ class Agent(threading.Thread):
                                             stderr      = task_dir_name+'/STDERR',
                                             output_data = wu["description"]["output_data"])
 
+                                task.state = 'Scheduling'
                                 self._task_queue.put(task)
 
                 except Exception, ex:

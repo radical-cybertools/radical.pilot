@@ -83,6 +83,7 @@ PENDING_INPUT_TRANSFER      = 'PendingInputTransfer'
 TRANSFERRING_INPUT          = 'TransferringInput'
 
 PENDING_EXECUTION           = 'PendingExecution'
+SCHEDULING                  = 'Scheduling'
 EXECUTING                   = 'Executing'
 
 PENDING_OUTPUT_TRANSFER     = 'PendingOutputTransfer'
