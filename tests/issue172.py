@@ -70,8 +70,8 @@ if __name__ == "__main__":
         # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        #pdesc.resource         = "stampede.tacc.utexas.edu"
-        pdesc.resource         = "india.futuregrid.org"
+        #pdesc.resource         = "india.futuregrid.org"
+        pdesc.resource         = "stampede.tacc.utexas.edu"
         pdesc.runtime          = 15 # N minutes
         pdesc.cores            = 16 # X cores
         pdesc.cleanup          = False
@@ -103,14 +103,14 @@ if __name__ == "__main__":
             cud = radical.pilot.ComputeUnitDescription()
 
             # india
-            cud.pre_exec = ["module load openmpi/1.4.3-intel python",
-                            "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
-                            "source $HOME/mpive/bin/activate",
-                            "(pip freeze | grep -q mpi4py || pip install mpi4py)"
-            ]
+            # cud.pre_exec = ["module load openmpi/1.4.3-intel python",
+            #                 "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
+            #                 "source $HOME/mpive/bin/activate",
+            #                 "(pip freeze | grep -q mpi4py || pip install mpi4py)"
+            # ]
 
             # stampede
-            #cud.pre_exec    = ["module load python intel mvapich2 mpi4py"]
+            cud.pre_exec    = ["module load python intel mvapich2 mpi4py"]
 
             cud.executable  = "python"
             cud.input_data  = ["./mpi4py_env.py"]
