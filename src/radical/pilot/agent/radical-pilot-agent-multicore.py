@@ -15,6 +15,7 @@ import os
 import sys
 import time
 import errno
+import pipes
 import Queue
 import signal
 import gridfs
@@ -956,9 +957,8 @@ class _Process(subprocess.Popen):
             task_exec_string = ''
         if task.arguments is not None:
             for arg in task.arguments:
-                arg = arg.replace('$', '\$') # escape environment variables
-                if ' ' in arg:
-                    arg = '\\\"' + arg + '\\\"' # Quote "strings" to maintain there state of a single string
+                if arg[0] != '$': # If argument is an environment variable, don't escape it here.
+                    arg = pipes.quote(arg)
                 task_exec_string += " %s" % arg
 
         # Create string for environment variable setting
@@ -1029,8 +1029,10 @@ class _Process(subprocess.Popen):
             if env_string:
                 env_string = env_string[:-1] + ';' # Replace last space with semi-colon
 
-            cmdline = " %s -o StrictHostKeyChecking=no %s \"/bin/bash -l -c '%scd %s && %s%s'\"" % \
-                      (launch_command, host, pre_exec_string, task.workdir, env_string, task_exec_string)
+            ssh_command = "%s -o StrictHostKeyChecking=no %s" % (launch_command, host)
+            payload = pipes.quote("%s cd %s && %s%s" % (pre_exec_string, task.workdir, env_string, task_exec_string))
+            shell_wrapper = pipes.quote("/bin/bash -l -c %s" % payload)
+            cmdline = '%s %s' % (ssh_command, shell_wrapper)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
