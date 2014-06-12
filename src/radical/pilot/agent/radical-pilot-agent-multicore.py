@@ -956,8 +956,10 @@ class _Process(subprocess.Popen):
             task_exec_string = ''
         if task.arguments is not None:
             for arg in task.arguments:
-                escaped_arg = arg.replace('$', '\$')
-                task_exec_string += " %s" % escaped_arg
+                arg = arg.replace('$', '\$') # escape environment variables
+                if ' ' in arg:
+                    arg = '\\\"' + arg + '\\\"' # Quote "strings" to maintain there state of a single string
+                task_exec_string += " %s" % arg
 
         # Create string for environment variable setting
         env_string = ''
