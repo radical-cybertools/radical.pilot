@@ -88,7 +88,7 @@ if __name__ == "__main__":
         ### In the backend, arguments containing spaces will get special treatment, so that they
         ### remain intact as strings.
         ###
-        ### This CUD will this be executed as: /bin/bash -l -c "cat ./file1.txt ./file2.dat > result.dat"
+        ### This CUD will thus be executed as: /bin/bash -l -c "cat ./file1.txt ./file2.dat > result.dat"
         ###
         cud.input_data = ['../examples/file1.dat > file1.txt', '../examples/file2.dat']
         cud.output_data = ['result.dat']
