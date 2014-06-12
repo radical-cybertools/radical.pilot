@@ -109,7 +109,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self._attributes_register(OUTPUT_DATA,            None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
-        self._attributes_register(CORES,                  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CORES,                  1, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(MPI,                    False, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(CPU_ARCHITECTURE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(OPERATING_SYSTEM,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
