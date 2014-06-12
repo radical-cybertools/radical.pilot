@@ -86,7 +86,7 @@ if __name__ == "__main__":
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.pre_exec    = ["module load python mpi4py"]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
             mpi_test_task.cores       = 24
             mpi_test_task.mpi         = True
             cud_list.append(mpi_test_task)
