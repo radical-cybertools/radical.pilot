@@ -1,3 +1,11 @@
+0.15 Release                                            June 12. 2014
+---------------------------------------------------------------------
+
+Bugfix release - fixed distribution MANIFEST:
+
+https://github.com/radical-cybertools/radical.pilot/issues/174
+
+
 0.14 Release                                            June 11. 2014
 ---------------------------------------------------------------------
 
