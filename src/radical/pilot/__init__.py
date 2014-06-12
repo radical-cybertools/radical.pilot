@@ -34,6 +34,8 @@ from pilot_manager import PilotManager
 from compute_pilot import ComputePilot
 from compute_pilot_description import ComputePilotDescription
 
+from resource_config import ResourceConfig
+
 from staging_directives import StagingDirectives, COPY, LINK, MOVE, TRANSFER
 
 # ------------------------------------------------------------------------------

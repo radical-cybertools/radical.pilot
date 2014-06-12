@@ -22,10 +22,10 @@ PILOTID=
 UNITMANAGERID=
 SESSIONID=
 WORKDIR=`pwd`
-PYTHON=`which python`
-LAUNCH_MODE=SSH
+PYTHON=
 QUEUE=
 ALLOCATION=
+TASK_LAUNCH_MODE=
 
 # -----------------------------------------------------------------------------
 # print out script usage help
@@ -49,10 +49,10 @@ OPTIONS:
    -w      The working (base) directory of the pilot
            (default is '.')
 
+   -l      The task launch mode to use.
+
    -i      The Python interpreter to use, e.g., python2.6
            (default is '/usr/bin/python')
-
-   -l      Task lauch mode, AUTO, LOCAL, MPIRUN, APRUN
 
    -e      List of commands to run before botstrapping
 
@@ -93,7 +93,7 @@ echo ""
 echo "################################################################################"
 echo "## Downloading and installing virtualenv"
 echo "## CMDLINE: $CURL_CMD"
-curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz
+eval $CURL_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
    echo "Couldn't download virtuelenv via curl! ABORTING"
@@ -112,27 +112,39 @@ echo ""
 echo "################################################################################"
 echo "## Creating virtualenv"
 echo "## CMDLINE: $BOOTSTRAP_CMD"
-$BOOTSTRAP_CMD
+eval $BOOTSTRAP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't bootstrap virtuelenv! ABORTING"
+   echo "Couldn't bootstrap virtualenv! ABORTING"
    exit 1
 fi
 
 # active the virtualenv
 source $R_SYS_DIR/bin/activate
 
-UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
+DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
 echo ""
 echo "################################################################################"
-echo "## Updating virtualenv"
-echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
-$UPDATE_SETUPTOOLS_CMD
+echo "## Downgrading pip to 1.2.1"
+echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
+eval $DOWNGRADE_PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't update virtualenv! ABORTING"
+   echo "Couldn't downgrade pip! ABORTING"
    exit 1
 fi
+
+#UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
+#echo ""
+#echo "################################################################################"
+#echo "## Updating virtualenv"
+#echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
+#$UPDATE_SETUPTOOLS_CMD
+#OUT=$?
+#if [ $OUT -ne 0 ];then
+#   echo "Couldn't update virtualenv! ABORTING"
+#   exit 1
+#fi
 
 # On india/fg pip install doesn't work for saga
 INSTALL_CMD="easy_install saga-python"
@@ -148,27 +160,39 @@ if [ $OUT -ne 0 ];then
 fi
 
 PIP_CMD="pip install python-hostlist"
+EASY_INSTALL_CMD="easy_install python-hostlist"
 echo ""
 echo "################################################################################"
 echo "## Installing python-hostlist"
 echo "## CMDLINE: $PIP_CMD"
-$PIP_CMD
+eval $PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't install python-hostlist! ABORTING"
-   exit 1
+    echo "pip install failed, trying easy_install ..."
+    $EASY_INSTALL_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+        echo "Easy install failed too, couldn't install python-hostlist! ABORTING"
+        exit 1
+    fi
 fi
 
 PIP_CMD="pip install pymongo"
+EASY_INSTALL_CMD="easy_install pymongo"
 echo ""
 echo "################################################################################"
 echo "## Installing pymongo"
 echo "## CMDLINE: $PIP_CMD"
-$PIP_CMD
+eval $PIP_CMD
 OUT=$?
 if [ $OUT -ne 0 ];then
-   echo "Couldn't install pymongo! ABORTING"
-   exit 1
+    echo "pip install failed, trying easy_install ..."
+    $EASY_INSTALL_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+        echo "Easy install failed too, couldn't install pymongo! ABORTING"
+        exit 1
+    fi
 fi
 }
 
@@ -177,19 +201,24 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION"
+AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION"
+if [[ -n $TASK_LAUNCH_MODE ]]
+then 
+    AGENT_CMD="$AGENT_CMD -l $TASK_LAUNCH_MODE"
+fi
+
 echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION
+eval $AGENT_CMD
 }
 
 # -----------------------------------------------------------------------------
 # MAIN 
 #
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:l:e:t:c:V:C” OPTION
+while getopts “hr:d:s:p:w:i:e:t:c:l:q:a:V:C” OPTION
 do
      case $OPTION in
          h)
@@ -208,14 +237,14 @@ do
          p)
              PILOTID=$OPTARG
              ;;
+         l)
+             TASK_LAUNCH_MODE=$OPTARG
+             ;;
          w)
              WORKDIR=$OPTARG
              ;;
          i)
              PYTHON=$OPTARG
-             ;;
-         l)
-             LAUNCH_MODE=$OPTARG
              ;;
          e)
              PREBOOTSTRAP=$OPTARG
@@ -261,6 +290,17 @@ then
      exit 1
 fi
 
+# SEMI-HACK for db access through tunnel
+if [[ $ALT_REMOTE ]]; then
+    REMOTE=$ALT_REMOTE
+fi
+
+# If PYTHON was not set as an argument, detect it here.
+if [[ -z $PYTHON ]]
+then
+    PYTHON=`which python`
+fi
+
 # bootstrap virtualenv
 installvenv
 
@@ -269,8 +309,6 @@ launchagent
 
 # cleanup
 rm -rf $WORKDIR/virtualenv*
-rm -rf bootstrap-and-run-agent
-rm -rf radical-pilot-agent.py
 
 if [[ $CLEANUP ]]
 then
@@ -280,4 +318,3 @@ fi
 
 # ... and exit
 exit 0
-

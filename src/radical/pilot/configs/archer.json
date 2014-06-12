@@ -1,0 +1,15 @@
+{
+    "archer.ac.uk": {
+        "remote_job_manager_endpoint" : "fork://localhost",
+        "remote_filesystem_endpoint"  : "file://localhost/",
+        "local_job_manager_endpoint"  : "fork://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "standard",
+        "python_interpreter"          : "/work/y07/y07/cse/python/2.7.6/bin/python",
+        "pre_bootstrap"               : [],
+        "valid_roots"                 : ["/home", "/work"],
+        "pilot_agent"                 : "radical-pilot-test-agent-archer.py",
+        "pilot_agent_worker"          : "agent-worker.py",
+        "bootstrapper"                : "cray_bootstrapper.sh"
+    }
+}

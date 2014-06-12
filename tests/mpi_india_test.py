@@ -6,7 +6,7 @@ import radical.pilot
 #   http://radicalpilot.readthedocs.org/en/latest
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scences!
+# you want to see what happens behind the scenes!
 #
 # RADICAL-Pilot uses ssh to communicate with the remote resource. The 
 # easiest way to make this work seamlessly is to set up ssh key-based
@@ -14,7 +14,6 @@ import radical.pilot
 # prompted for a password. The following article explains how to set 
 # this up on Linux:
 #   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
-
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
@@ -52,13 +51,13 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-        # well as security crendetials.
+        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
         cred = radical.pilot.SSHCredential()
-        cred.user_id = "tg802352"
+        cred.username = 'merzky'
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -69,39 +68,37 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 32-core on stamped that runs for 15 mintutes and 
-        # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
+        # Define a N-core on fs2 that runs for X minutes and
+        # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource  = "stampede.tacc.utexas.edu"
-        pdesc.runtime   = 15 # minutes
-        pdesc.cores     = 32 
-        pdesc.cleanup   = True
+        pdesc.resource         = "india.futuregrid.org"
+        pdesc.runtime          = 5 # X minutes
+        pdesc.cores            = 16 # N cores
+        pdesc.cleanup          = False
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables withih a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
-        #
-        compute_units = []
+        cud_list = []
 
-        for unit_count in range(0, 16):
-            cu = radical.pilot.ComputeUnitDescription()
-            cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-            cu.executable  = "/bin/cat"
-            cu.arguments   = ["$INPUT1", "$INPUT2"]
-            cu.cores       = 1
-            cu.input_data  = ["./file1.dat", "./file2.dat"]
+        for unit_count in range(0, 4):
+            mpi_test_task = radical.pilot.ComputeUnitDescription()
 
-            compute_units.append(cu)
+            # NOTE: Default module versions are different on worker nodes and head node,
+            #       so test pre_exec's on a worker node and not on the headnode!
+            mpi_test_task.pre_exec = ["module load openmpi/1.4.3-intel python",
+                                      "module list",
+                                      "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
+                                      "source $HOME/mpive/bin/activate",
+                                      "(pip freeze | grep -q mpi4py || pip install mpi4py)"
+            ]
+            mpi_test_task.executable  = "python"
+            mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
+            mpi_test_task.mpi         = True
+
+            mpi_test_task.cores       = 4
+
+            cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -114,28 +111,27 @@ if __name__ == "__main__":
         # change their state.
         umgr.register_callback(unit_state_change_cb)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
+        # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_units)
+        units = umgr.submit_units(cud_list)
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
+        if not isinstance(units, list):
+            units = [units]
         for unit in units:
-            print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
-                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
-                   unit.stdout)
+            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
+                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
 
-        # Close automatically cancels the pilot(s).
-        session.close()
+        session.close(delete=False)
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:
         # Catch all exceptions and exit with and error.
         print "Error during execution: %s" % ex
         sys.exit(1)
-

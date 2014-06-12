@@ -1,4 +1,35 @@
-0.12 Release                                            May. 09. 2014
+0.14 Release                                            June 11. 2014
+---------------------------------------------------------------------
+
+Closed Tickets:
+
+* https://github.com/radical-cybertools/radical.pilot/issues?milestone=16&state=closed
+
+New Features
+
+* Experimental pilot-agent for Cray systems
+* New multi-core agent with MPI support
+* New ResourceConfig mechanism does not reuquire the user to add 
+  resource configurations explicitly. Resources can be configured 
+  programatically on API-level.
+
+API Changes:
+
+* ComputeUnitDescription.working_dir_priv removed
+* Extended state model
+* resource_configurations parameter removed from PilotManager c`tor
+
+
+0.13 Release                                             May 19. 2014
+---------------------------------------------------------------------
+
+* ExTASY demo release 
+* Support for project / allocation
+* Updated / simplified resource files
+* Refactored bootstrap mechnism
+
+
+0.12 Release                                             May 09. 2014
 ---------------------------------------------------------------------
 
 * Updated resource files

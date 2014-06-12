@@ -59,8 +59,10 @@ def get_version (mod_root):
                         stdout=sp.PIPE, stderr=sp.STDOUT, shell=True)
         version_detail = p.communicate()[0].strip()
 
-        if  p.returncode != 0 and out :
-            version_detail = None
+        if  p.returncode   !=  0  or \
+            version_detail == '@' or \
+            'fatal'        in version_detail :
+            version_detail =  "v%s" % version
 
         print 'version: %s (%s)'  % (version, version_detail)
 
@@ -84,22 +86,9 @@ version, version_detail = get_version (mod_root)
 
 
 #-----------------------------------------------------------------------------
-# check python version. we need > 2.5, <3.x
-if  sys.hexversion < 0x02050000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError("%s requires Python 2.x (2.5 or higher)" % name)
-
-
-#-----------------------------------------------------------------------------
-class our_test(Command):
-    user_options = []
-    def initialize_options (self) : pass
-    def finalize_options   (self) : pass
-    def run (self) :
-        testdir = "%s/tests/" % os.path.dirname(os.path.realpath(__file__))
-        retval  = sp.call([sys.executable,
-                          '%s/run_tests.py'               % testdir,
-                          '%s/configs/workload_input.cfg' % testdir])
-        raise SystemExit(retval)
+# check python version. we need > 2.6, <3.x
+if  sys.hexversion < 0x02060000 or sys.hexversion >= 0x03000000:
+    raise RuntimeError("%s requires Python 2.x (2.6 or higher)" % name)
 
 
 #-----------------------------------------------------------------------------
@@ -144,7 +133,8 @@ setup_args = {
     'scripts'          : ['bin/radicalpilot-version',
                           'bin/radicalpilot-profiler'
                          ],
-    'package_data'     : {'': ['*.sh', 'VERSION', 'VERSION.git', ]},
+    'package_data'     : {'': ['*.sh', '*.json', 'VERSION', 'VERSION.git']},
+
     'install_requires' : ['setuptools',
                           'saga-python',
                           'radical.utils',

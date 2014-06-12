@@ -22,6 +22,8 @@ import signal
 import gridfs
 import pymongo
 import optparse
+import select
+import socket
 import logging
 import datetime
 import hostlist
@@ -119,7 +121,7 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, workdir, runtime, mongodb_url, mongodb_name, pilot_id, session_id):
+    def __init__(self, project, workdir, cores, runtime, mongodb_url, mongodb_name, pilot_id, session_id):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -127,8 +129,10 @@ class Agent(threading.Thread):
         self.lock        = threading.Lock()
         self._terminate  = threading.Event()
 
+        self._project    = project
         self._workdir    = workdir
         self._pilot_id   = pilot_id
+        self._cores      = cores
 
         self._runtime    = runtime
         self._starttime  = None
@@ -167,10 +171,76 @@ class Agent(threading.Thread):
             })
 
         self._starttime = time.time()
+        #####################################
+        # 
+        HOSTNAME = socket.gethostname()
+        LOGGER.info("agent hostname: %s" % HOSTNAME)
+        HOST = socket.gethostbyname(HOSTNAME)
+        LOGGER.info("agent host: %s" % HOST)
+     
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind((HOST, 0))
+        PORT = server.getsockname()[1]
+        LOGGER.info("AGENT USES PORT: %s" % PORT)
 
-        # ---------------------------------
-        # This is the main thread loop.
-        while True:
+        # archer node has 24 cores
+        ARCHER_NODE = 24
+        # determining how many nodes to allocate with agent-worker.py script
+        if( int(self._cores) < ARCHER_NODE ):
+            NODES = 1
+        else:
+            NODES = int(self._cores) / ARCHER_NODE
+            if ( (int(self._cores) % ARCHER_NODE) > 0 ):
+                NODES += 1
+
+        aprun_tasks = []
+        processed_units = []
+        free_nodes = NODES
+        loop = True
+        ##############################################################################
+        # opening agent-worker.py file in order to pass some parameters
+        ##############################################################################
+        LOGGER.info("writing agent's address and port number to agent-worker.py")
+        name = 'agent-worker.py'
+
+        try:
+            rfile = open(name,'r')
+        except IOError:
+            LOGGER.info("warning unable to access file: %s" % name)
+                        
+        tbuffer = rfile.read()
+        rfile.close()
+
+        tbuffer = tbuffer.replace("@project@",str(self._project))
+        tbuffer = tbuffer.replace("@server@",str(HOST))
+        tbuffer = tbuffer.replace("@port@",str(PORT))
+        tbuffer = tbuffer.replace("@select@",str(NODES))
+        tbuffer = tbuffer.replace("@walltime@",self._runtime)
+        tbuffer = tbuffer.replace("@workdir@",self._workdir)
+
+        try:
+            wfile = open(name,'w')
+        except IOError:
+            LOGGER.info("warning unable to access file: %s" % name)
+
+        wfile.write(tbuffer)
+        wfile.close()
+        LOGGER.info("finished writing to agent-worker.py")
+        #####################################################
+        FINISH = 'STOP'
+        WAIT = 'WAIT'
+        LOGGER.info("calling qsub...")
+        # agent submits agent-worker.py using qsub on archer from work file system
+        proc = subprocess.Popen(["qsub agent-worker.py"], stdout=subprocess.PIPE, shell=True)
+
+        LOGGER.info("qsub call succeeded...")
+        server.listen(32)
+        LOGGER.info("agent started listening at %s" % HOST)
+        input = [server,]
+        #####################################
+        # This is the main thread loop
+        #####################################
+        while loop:
             try:
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
@@ -195,7 +265,6 @@ class Agent(threading.Thread):
                     else:
                         LOGGER.warning("Received unknown command '%s'." % command )
 
-
                 # Check if there are work units waiting for execution
                 ts = datetime.datetime.utcnow()
 
@@ -204,7 +273,6 @@ class Agent(threading.Thread):
                        "state" : "PendingExecution"},
                 update={"$set" : {"state": "Running"},
                 "$push": {"statehistory": {"state": "RunningX", "timestamp": ts}}}
-                #limit=BULK_LIMIT
                 )
 
                 # There are new work units in the wu_queue on the database.
@@ -212,32 +280,93 @@ class Agent(threading.Thread):
                 if computeunits is not None:
                     if not isinstance(computeunits, list):
                         computeunits = [computeunits]
-
+                
+                    LOGGER.info("free_nodes: %s" % free_nodes)
                     for cu in computeunits:
+                        LOGGER.info("ComputeUnits are: %s" % computeunits)
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
+                    
+                        # Create the task working directory if it doesn't exist
+                        cu_workdir = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
+                        if not os.path.exists(cu_workdir):
+                            os.makedirs(cu_workdir)
 
-                        ###################
-                        # APRUN ........ 
-                        ###################
+                        # Create bogus STDOUT
+                        open("%s/STDOUT" % cu_workdir, 'a').close()
+                       
+                        cu_str = "aprun -n %s %s >& %s" % (cu['description']['cores'], cu['description']['executable'], cu_workdir + "/STDOUT")
                         
-                        #from subprocess import call
-                        #call(["/bin/bash -l -c \" module load namd; ibrun namd2 ./eq0.inp\""], shell=True)
-
-                        if cu['description']['output_data'] is not None:
-                            state = "PendingOutputTransfer"
+                        w_dir = cu_workdir + "/STDOUT"
+     
+                        LOGGER.info("cu string: %s" % cu_str)
+                        if( int(cu['description']['cores']) < ARCHER_NODE ):
+                            cu_nodes = 1
                         else:
-                            state = "Done"
+                            cu_nodes = int(cu['description']['cores']) / ARCHER_NODE
+                            if ( (int(cu['description']['cores']) % ARCHER_NODE) > 0 ):
+                                cu_nodes += 1
+   
+                        LOGGER.info("cu_nodes: %s" % cu_nodes)
+                        aprun_tasks.append(cu_str)
+                        processed_units.append(cu)
+                        free_nodes = free_nodes - cu_nodes
+                        LOGGER.info("after this cu free_nodes: %s" % free_nodes)
+                else:
+                    free_nodes = 0
+                    loop = False
+                ##############################################
+                # main loop of server
+                ##############################################
+                run = 1
+                if (free_nodes < 1):
+                    while (run >= 0):
+                        inputready,outputready,exceptready = select.select(input,[],[])
+                        for s in inputready:
+                            if s == server:
+                                # handle the server socket 
+                                client, address = server.accept()
+                                input.append(client)
+                                LOGGER.info("agent worker added: %s" % str(address[0]))
+                            else:
+                                # handle all other sockets 
+                                data = s.recv(1024)
+                                LOGGER.info("agent received from worker: %s" % repr(data))
+                                if (run > 0):
+                                    aprun_str = ""
+                                    for task in aprun_tasks:
+                                        if aprun_str == "":
+                                            aprun_str = task
+                                        else:
+                                            aprun_str = aprun_str + " & " + task                                
+                                    LOGGER.info("agent is sending execution string...")
+                                    LOGGER.info("aprun string was: %s" % aprun_str)
+                                    s.sendall(aprun_str)
+                                    run -= 1
+                                    free_nodes = NODES
+                                    aprun_tasks = []
+                                    for cu in processed_units:
+                                        if cu['description']['output_data'] is not None:
+                                            state = "PendingOutputTransfer"
+                                        else:
+                                            state = "Done"
 
-                        self.computeunit_collection.update({"_id": cu["_id"]}, 
-                            {"$set": {"state"         : state,
-                                      "started"       : "SKEL-AGENT-None",
-                                      "finished"      : "SKEL-AGENT-None",
-                                      "exec_locs"     : "SKEL-AGENT-None",
-                                      "exit_code"     : "SKEL-AGENT-None",
-                                      "stdout_id"     : "SKEL-AGENT-None",
-                                      "stderr_id"     : "SKEL-AGENT-None"},
-                             "$push": {"statehistory": {"state": state, "timestamp": ts}}
-                            })
+                                        self.computeunit_collection.update({"_id": cu["_id"]},
+                                                                           {"$set": {"state"         : state,
+                                                                            "started"       : "SKEL-AGENT-None",
+                                                                            "finished"      : "SKEL-AGENT-None",
+                                                                            "exec_locs"     : "SKEL-AGENT-None",
+                                                                            "exit_code"     : "SKEL-AGENT-None",
+                                                                            "stdout_id"     : "SKEL-AGENT-None",
+                                                                            "stderr_id"     : "SKEL-AGENT-None"},
+                                                                            "$push": {"statehistory": {"state": state, "timestamp": ts}}
+                                        })
+
+                                else:
+                                    s.sendall(WAIT)
+                                    run -= 1    
+                ##############################################
+                # end of server loop 
+                ##############################################
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.
@@ -245,11 +374,17 @@ class Agent(threading.Thread):
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
                 return 
 
-        # MAIN LOOP TERMINATED
+        #####################################
+        # gracefully terminating connections
+        #####################################
+        LOGGER.info("agent in terminating connection to worker...")
+        s.sendall(FINISH)  
+        s.close()
+        input.remove(s)
+        server.close()
+        #########################
         pilot_DONE(self.mongo_db, self._pilot_id, "Pilot main loop completed.")
         return
-
-
 
 # ================================================================================
 # ================================================================================
@@ -308,6 +443,11 @@ def parse_commandline():
                       dest='package_version',
                       help='The RADICAL-Pilot package version.')
 
+    parser.add_option('-a', '--allocation',
+                      metavar='ALLOCATION',
+                      dest='project',
+                      help='Specifies project code.')
+
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
@@ -325,6 +465,8 @@ def parse_commandline():
         parser.error("You must define the agent runtime (-t/--runtime). Try --help for help.")
     elif options.package_version is None:
         parser.error("You must pass the RADICAL-Pilot package version (-v/--version). Try --help for help.")
+    elif options.project is None:
+        parser.error("You must pass your project's allocation code (-a/--allocation). Try --help for help.")
 
 
     #if options.launch_method is not None: 
@@ -376,7 +518,9 @@ if __name__ == "__main__":
         else:
             workdir = options.workdir
 
-        agent = Agent(workdir=workdir,
+        agent = Agent(project=options.project,
+                      workdir=workdir,
+                      cores=options.cores,
                       runtime=options.runtime,
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,

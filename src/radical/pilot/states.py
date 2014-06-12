@@ -82,6 +82,7 @@ ACTIVE                      = 'Active'
 # -----------------------------------------------------------------------------
 # ComputeUnit States
 PENDING_EXECUTION           = 'PendingExecution'
+SCHEDULING                  = 'Scheduling'
 EXECUTING                   = 'Executing'
 
 PENDING_INPUT_STAGING       = 'PendingInputStaging'  # These last 4 are not really states,

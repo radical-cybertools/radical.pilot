@@ -1,0 +1,49 @@
+{
+    "alamo.futuregrid.org": {
+        "remote_job_manager_endpoint" : "pbs+ssh://alamo.futuregrid.org",
+        "remote_filesystem_endpoint"  : "sftp://alamo.futuregrid.org/",
+        "local_job_manager_endpoint"  : "pbs://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "short",
+        "python_interpreter"          : "/N/soft/python/2.7/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
+        "valid_roots"                 : ["/N", "/home"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+
+    "india.futuregrid.org": {
+        "remote_job_manager_endpoint" : "pbs+ssh://india.futuregrid.org",
+        "remote_filesystem_endpoint"  : "sftp://india.futuregrid.org/",
+        "local_job_manager_endpoint"  : "pbs://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "batch",
+        "python_interpreter"          : "/N/soft/python/2.7/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
+        "valid_roots"                 : ["/N"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+
+    "sierra.futuregrid.org": {
+        "remote_job_manager_endpoint" : "pbs+ssh://sierra.futuregrid.org",
+        "remote_filesystem_endpoint"  : "sftp://sierra.futuregrid.org/",
+        "local_job_manager_endpoint"  : "pbs://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "batch",
+        "python_interpreter"          : "/N/soft/python/2.7/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
+        "valid_roots"                 : ["/N"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+
+    "hotel.futuregrid.org": {
+        "remote_job_manager_endpoint" : "pbs+ssh://hotel.futuregrid.org",
+        "remote_filesystem_endpoint"  : "sftp://hotel.futuregrid.org/",
+        "local_job_manager_endpoint"  : "pbs://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "batch",
+        "python_interpreter"          : "/soft/python/gnu-4.1/2.7/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
+        "valid_roots"                 : ["/N", "/gpfs"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    }
+}

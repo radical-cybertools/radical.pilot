@@ -1,0 +1,38 @@
+{
+    "stampede.tacc.utexas.edu": {
+        "remote_job_manager_endpoint" : "slurm+ssh://stampede.tacc.utexas.edu",
+        "remote_filesystem_endpoint"  : "sftp://stampede.tacc.utexas.edu/",
+        "local_job_manager_endpoint"  : "slurm://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "normal",
+        "python_interpreter"          : "/opt/apps/python/epd/7.3.2/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load TACC", "module load cluster", "module load Linux", "module load mvapich2", "module load python/2.7.3-epd-7.3.2"],
+        "valid_roots"                 : ["/home1", "/scratch", "/work"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+
+    "lonestar.tacc.xsede.org": {
+        "remote_job_manager_endpoint" : "sge+ssh://lonestar.tacc.utexas.edu",
+        "remote_filesystem_endpoint"  : "sftp://lonestar.tacc.utexas.edu/",
+        "local_job_manager_endpoint"  : "sge://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "normal",
+        "python_interpreter"          : "/opt/apps/python/epd/7.2.2/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load TACC", "module load cluster", "module load mvapich2", "module load python/2.7.2-epd"],
+        "valid_roots"                 : ["/home1", "/scratch", "/work"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+
+    "trestles.sdsc.xsede.org": {
+        "remote_job_manager_endpoint" : "pbs+ssh://trestles.sdsc.xsede.org",
+        "remote_filesystem_endpoint"  : "sftp://trestles.sdsc.xsede.org/",
+        "local_filesystem_endpoint"   : "pbs://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "normal",
+        "python_interpreter"          : "/usr/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load pgi", "module load mvapich2_ib", "module load gnubase"],
+        "valid_roots"                 : ["/home"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    }
+}
+

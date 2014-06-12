@@ -1,0 +1,17 @@
+{
+    "yellowstone.ucar.edu": {
+        "remote_job_manager_endpoint" : "lsf+ssh://yellowstone.ucar.edu",
+        "remote_filesystem_endpoint"  : "sftp://yellowstone.ucar.edu/",
+        "local_job_manager_endpoint"  : "lsf://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "premium",
+        "pre_bootstrap"               : ["module purge",
+                                         "module load ncarenv",
+                                         "module load ncarbinlibs",
+                                         "module load python",
+                                         "export ALT_REMOTE=yslogin6:12346",
+                                         "export LD_PRELOAD=/glade/u/home/marksant/tsocks-1.8/libtsocks.so"],
+        "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    }
+}

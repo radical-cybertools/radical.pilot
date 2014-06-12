@@ -12,13 +12,29 @@ RADICAL-Pilot relies on a set of external software packages, all of which get
 installed automatically as dependencies. 
 
 
-* Python >= 2.5
+* Python >= 2.6
+    
 
 * setuptools (https://pypi.python.org/pypi/setuptools)
 * saga-python (https://pypi.python.org/pypi/saga-python)
 * radical.utils (https://pypi.python.org/pypi/radical.utils/)
 * python-hostlist (https://pypi.python.org/pypi/python-hostlist)
 * pymongo (https://pypi.python.org/pypi/pymongo/)
+
+.. note::
+
+  Note that some Python installations have a broken multiprocessing module -- if you
+  experience the following error during installation::
+
+    Traceback (most recent call last):
+      File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
+        func(*targs, **kargs)
+      File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
+        info('process shutting down')
+    TypeError: 'NoneType' object is not callable
+
+  you may need to move to Python 2.7 (see http://bugs.python.org/issue15881).
+
 
 Installation
 ============

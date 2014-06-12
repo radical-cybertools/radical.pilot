@@ -216,8 +216,17 @@ class Agent(threading.Thread):
                     for cu in computeunits:
                         LOGGER.info("Processing ComputeUnit: %s" % cu)
 
+                        # Create the task working directory if it doesn't exist
+                        cu_workdir = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
+                        if not os.path.exists(cu_workdir):
+                            os.makedirs(cu_workdir)
+
+                        # Create bogus STDOUT and STDERR
+                        open("%s/STDOUT" % cu_workdir, 'a').close()
+                        open("%s/STDERR" % cu_workdir, 'a').close()
+
                         if cu['description']['output_data'] is not None:
-                            state = "PendingOutputTranfsfer"
+                            state = "PendingOutputTransfer"
                         else:
                             state = "Done"
 
@@ -334,7 +343,7 @@ if __name__ == "__main__":
     # parse command line options
     options = parse_commandline()
 
-    logger.info("RADICAL-Pilot agent (radical-pilot-agent-skeleton.py) for package/API version %s" % options.package_version)
+    LOGGER.info("RADICAL-Pilot agent (radical-pilot-agent-skeleton.py) for package/API version %s" % options.package_version)
 
 
     #--------------------------------------------------------------------------

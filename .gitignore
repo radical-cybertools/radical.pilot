@@ -35,4 +35,6 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# IDEA / PyCharm
 .idea/
