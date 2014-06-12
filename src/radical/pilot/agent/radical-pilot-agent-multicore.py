@@ -12,10 +12,10 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import stat
 import sys
 import time
 import errno
-import pipes
 import Queue
 import signal
 import gridfs
@@ -24,6 +24,7 @@ import optparse
 import logging
 import datetime
 import hostlist
+import tempfile
 import traceback
 import threading 
 import subprocess
@@ -941,6 +942,13 @@ class _Process(subprocess.Popen):
         self._task = task
         self._log  = logger
 
+        launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script', dir=task.workdir, suffix=".sh", delete=False)
+        self._log.debug('Created launch_script: %s' % launch_script.name)
+        st = os.stat(launch_script.name)
+        os.chmod(launch_script.name, st.st_mode | stat.S_IEXEC)
+        launch_script.write('#!/bin/bash -l\n')
+        launch_script.write('cd %s\n' % task.workdir)
+
         # Before the Big Bang there was nothing
         pre_exec = task.pre_exec
         pre_exec_string = ''
@@ -948,24 +956,35 @@ class _Process(subprocess.Popen):
             if not isinstance(pre_exec, list):
                 pre_exec = [pre_exec]
             for bb in pre_exec:
-                pre_exec_string += "%s && " % bb
+                pre_exec_string += "%s\n" % bb
+        if pre_exec_string:
+            launch_script.write('%s' % pre_exec_string)
 
         # executable and arguments
         if task.executable is not None:
             task_exec_string = task.executable # TODO: Do we allow $ENV/bin/program constructs here?
         else:
-            task_exec_string = ''
+            raise Exception("No executable specified!") # TODO: This should be catched earlier problaby
         if task.arguments is not None:
             for arg in task.arguments:
-                if arg[0] != '$': # If argument is an environment variable, don't escape it here.
-                    arg = pipes.quote(arg)
-                task_exec_string += " %s" % arg
+                arg = arg.replace ('"', '\\"') # Escape all double quotes
+                if  arg[0] == arg[-1] == "'" : # If a string is between outer single quotes,
+                    task_exec_string += ' %s' % arg # ... pass it as is.
+                else :
+                    task_exec_string += ' "%s"' % arg # Otherwise return between double quotes.
 
         # Create string for environment variable setting
         env_string = ''
         if task.environment is not None:
+            env_string += 'export'
             for key in task.environment:
-                env_string += "%s=%s " % (key, task.environment[key])
+                env_string += ' %s=%s' % (key, task.environment[key])
+
+            # make sure we didnt have an empty dict
+            if env_string == 'export':
+                env_string = ''
+        if env_string:
+            launch_script.write('%s\n' % env_string)
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
@@ -974,14 +993,16 @@ class _Process(subprocess.Popen):
             cmdline = ''
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
+            # Construct the hosts_string
             hosts_string = ''
             for slot in task.slots:
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
             mpirun_command = "%s -np %s -host %s" % (launch_command, task.numcores, hosts_string)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % \
-                      (pre_exec_string, task.workdir, env_string, mpirun_command, task_exec_string)
+            launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
             cmdline = launch_command
@@ -1002,7 +1023,11 @@ class _Process(subprocess.Popen):
             # TODO: This assumes all hosts have the same number of cores
             ibrun_offset = all_slots_slot_index * cores_per_host + int(first_slot_core)
             ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % (pre_exec_string, task.workdir, env_string, ibrun_command, task_exec_string)
+
+            # Build launch script
+            launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_POE:
 
@@ -1022,21 +1047,27 @@ class _Process(subprocess.Popen):
 
             # Override the LSB_MCPU_HOSTS env variable as this is set by default to the size of the whole pilot.
             poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (hosts_string, launch_command)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % (pre_exec_string, task.workdir, env_string, poe_command, task_exec_string)
+
+            # Continue to build launch script
+            launch_script.write('%s %s\n' % (poe_command, task_exec_string))
+
+            # Command line to execute launch script
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_SSH:
-            host = task.slots[0].split(':')[0]
-            if env_string:
-                env_string = env_string[:-1] + ';' # Replace last space with semi-colon
+            host = task.slots[0].split(':')[0] # Get the host of the first entry in the acquired slot
 
-            ssh_command = "%s -o StrictHostKeyChecking=no %s" % (launch_command, host)
-            payload = pipes.quote("%s cd %s && %s%s" % (pre_exec_string, task.workdir, env_string, task_exec_string))
-            shell_wrapper = pipes.quote("/bin/bash -l -c %s" % payload)
-            cmdline = '%s %s' % (ssh_command, shell_wrapper)
+            # Continue to build launch script
+            launch_script.write('%s\n' % task_exec_string)
+
+            # Command line to execute launch script
+            cmdline = '%s -o StrictHostKeyChecking=no %s %s' % (launch_command, host, launch_script.name)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
 
+        # We are done writing to the launch script, its ready for execution now.
+        launch_script.close()
 
         self.stdout_filename = task.stdout
         self._stdout_file_h  = open(self.stdout_filename, "w")
