@@ -50,6 +50,8 @@ def unit_state_change_cb(unit, state):
 if __name__ == "__main__":
 
     try:
+        retval = 0
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
@@ -118,9 +120,11 @@ if __name__ == "__main__":
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
+            if  state != radical.pilot.DONE :
+                retval = 1
 
         session.close(delete=False)
-        sys.exit(0)
+        sys.exit(retval)
 
     except radical.pilot.PilotException, ex:
         # Catch all exceptions and exit with and error.
