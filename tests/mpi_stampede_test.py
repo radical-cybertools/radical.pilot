@@ -57,6 +57,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         cred = radical.pilot.SSHCredential()
+        cred.user_id="tg803521"
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
