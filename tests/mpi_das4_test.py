@@ -90,7 +90,7 @@ if __name__ == "__main__":
             #mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
 
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
 
             mpi_test_task.cores       = 3
             mpi_test_task.mpi         = True
