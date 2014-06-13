@@ -93,7 +93,7 @@ if __name__ == "__main__":
                                       "(pip freeze | grep -q mpi4py || pip install mpi4py)"
             ]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
             mpi_test_task.mpi         = True
 
             mpi_test_task.cores       = 4

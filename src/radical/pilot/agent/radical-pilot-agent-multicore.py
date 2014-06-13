@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import stat
 import sys
 import time
 import errno
@@ -23,6 +24,7 @@ import optparse
 import logging
 import datetime
 import hostlist
+import tempfile
 import traceback
 import threading 
 import subprocess
@@ -43,28 +45,6 @@ LAUNCH_METHOD_LOCAL  = 'LOCAL'
 LAUNCH_METHOD_MPIRUN = 'MPIRUN'
 LAUNCH_METHOD_POE    = 'POE'
 LAUNCH_METHOD_IBRUN  = 'IBRUN'
-
-#-----------------------------------------------------------------------------
-#
-def which(program):
-    """Finds the location of an executable.
-    Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-    """
-    #-------------------------------------------------------------------------
-    #
-    def is_exe(fpath):
-        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if is_exe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            exe_file = os.path.join(path, program)
-            if is_exe(exe_file):
-                return exe_file
-    return None
 
 #---------------------------------------------------------------------------
 #
@@ -125,8 +105,8 @@ class ExecutionEnvironment(object):
         eenv = cls(logger)
 
         # Discover nodes and number of cores available
-        eenv.discover_nodes()
-        eenv.discover_cores()
+        eenv._discover_nodes()
+        eenv._discover_cores()
 
         # Discover task launch methods
         eenv.discovered_task_launch_methods = {}
@@ -135,30 +115,40 @@ class ExecutionEnvironment(object):
         eenv.discovered_task_launch_methods[LAUNCH_METHOD_LOCAL] = \
             {'launch_command': None}
 
-        command = which('ssh')
+        command = eenv._which('ssh')
         if command is not None:
-            eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
-                {'launch_command': command}
+            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into the path.
+            # We try to detect that and then use different arguments.
+            if os.path.islink(command):
+                target = os.path.realpath(command)
 
-        command = which('mpirun')
+                if os.path.basename(target) == 'rsh':
+                    eenv.log.info('Detected that "ssh" is a link to "rsh".')
+                    eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
+                        {'launch_command': '%s' % target}
+                else:
+                    eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
+                        {'launch_command': '%s -o StrictHostKeyChecking=no' % command}
+
+        command = eenv._which('mpirun')
         if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_MPIRUN] = \
                 {'launch_command': command}
 
         # ibrun: wrapper for mpirun at TACC
-        command = which('ibrun')
+        command = eenv._which('ibrun')
         if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_IBRUN] = \
                 {'launch_command': command}
 
         # aprun: job launcher for Cray systems
-        command = which('aprun')
+        command = eenv._which('aprun')
         if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_APRUN] = \
                 {'launch_command': command}
 
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
-        command = which('poe')
+        command = eenv._which('poe')
         if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_POE] = \
                 {'launch_command': command}
@@ -187,9 +177,32 @@ class ExecutionEnvironment(object):
 
         self.nodes = {}
 
+    #-----------------------------------------------------------------------------
+    #
+    def _which(self, program):
+        """Finds the location of an executable.
+        Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+        """
+        #-------------------------------------------------------------------------
+        #
+        def is_exe(fpath):
+            return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+        fpath, fname = os.path.split(program)
+        if fpath:
+            if is_exe(program):
+                return program
+        else:
+            for path in os.environ["PATH"].split(os.pathsep):
+                exe_file = os.path.join(path, program)
+                if is_exe(exe_file):
+                    return exe_file
+        return None
+
+
     #-------------------------------------------------------------------------
     #
-    def discover_cores(self):
+    def _discover_cores(self):
 
         sge_hostfile = os.environ.get('PE_HOSTFILE')
         lsb_mcpu_hosts = os.environ.get('LSB_MCPU_HOSTS')
@@ -228,7 +241,8 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
-    def discover_nodes(self):
+    def _discover_nodes(self):
+
         # see if we have a PBS_NODEFILE
         pbs_nodefile = os.environ.get('PBS_NODEFILE')
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
@@ -940,6 +954,13 @@ class _Process(subprocess.Popen):
         self._task = task
         self._log  = logger
 
+        launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script', dir=task.workdir, suffix=".sh", delete=False)
+        self._log.debug('Created launch_script: %s' % launch_script.name)
+        st = os.stat(launch_script.name)
+        os.chmod(launch_script.name, st.st_mode | stat.S_IEXEC)
+        launch_script.write('#!/bin/bash -l\n')
+        launch_script.write('cd %s\n' % task.workdir)
+
         # Before the Big Bang there was nothing
         pre_exec = task.pre_exec
         pre_exec_string = ''
@@ -947,25 +968,35 @@ class _Process(subprocess.Popen):
             if not isinstance(pre_exec, list):
                 pre_exec = [pre_exec]
             for bb in pre_exec:
-                pre_exec_string += "%s && " % bb
+                pre_exec_string += "%s\n" % bb
+        if pre_exec_string:
+            launch_script.write('%s' % pre_exec_string)
 
         # executable and arguments
         if task.executable is not None:
             task_exec_string = task.executable # TODO: Do we allow $ENV/bin/program constructs here?
         else:
-            task_exec_string = ''
+            raise Exception("No executable specified!") # TODO: This should be catched earlier problaby
         if task.arguments is not None:
             for arg in task.arguments:
-                arg = arg.replace('$', '\$') # escape environment variables
-                if ' ' in arg:
-                    arg = '\\\"' + arg + '\\\"' # Quote "strings" to maintain there state of a single string
-                task_exec_string += " %s" % arg
+                arg = arg.replace ('"', '\\"') # Escape all double quotes
+                if  arg[0] == arg[-1] == "'" : # If a string is between outer single quotes,
+                    task_exec_string += ' %s' % arg # ... pass it as is.
+                else :
+                    task_exec_string += ' "%s"' % arg # Otherwise return between double quotes.
 
         # Create string for environment variable setting
         env_string = ''
         if task.environment is not None:
+            env_string += 'export'
             for key in task.environment:
-                env_string += "%s=%s " % (key, task.environment[key])
+                env_string += ' %s=%s' % (key, task.environment[key])
+
+            # make sure we didnt have an empty dict
+            if env_string == 'export':
+                env_string = ''
+        if env_string:
+            launch_script.write('%s\n' % env_string)
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
@@ -974,14 +1005,16 @@ class _Process(subprocess.Popen):
             cmdline = ''
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
+            # Construct the hosts_string
             hosts_string = ''
             for slot in task.slots:
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
             mpirun_command = "%s -np %s -host %s" % (launch_command, task.numcores, hosts_string)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % \
-                      (pre_exec_string, task.workdir, env_string, mpirun_command, task_exec_string)
+            launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
             cmdline = launch_command
@@ -1002,7 +1035,11 @@ class _Process(subprocess.Popen):
             # TODO: This assumes all hosts have the same number of cores
             ibrun_offset = all_slots_slot_index * cores_per_host + int(first_slot_core)
             ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % (pre_exec_string, task.workdir, env_string, ibrun_command, task_exec_string)
+
+            # Build launch script
+            launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_POE:
 
@@ -1022,19 +1059,27 @@ class _Process(subprocess.Popen):
 
             # Override the LSB_MCPU_HOSTS env variable as this is set by default to the size of the whole pilot.
             poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (hosts_string, launch_command)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % (pre_exec_string, task.workdir, env_string, poe_command, task_exec_string)
+
+            # Continue to build launch script
+            launch_script.write('%s %s\n' % (poe_command, task_exec_string))
+
+            # Command line to execute launch script
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_SSH:
-            host = task.slots[0].split(':')[0]
-            if env_string:
-                env_string = env_string[:-1] + ';' # Replace last space with semi-colon
+            host = task.slots[0].split(':')[0] # Get the host of the first entry in the acquired slot
 
-            cmdline = " %s -o StrictHostKeyChecking=no %s \"/bin/bash -l -c '%scd %s && %s%s'\"" % \
-                      (launch_command, host, pre_exec_string, task.workdir, env_string, task_exec_string)
+            # Continue to build launch script
+            launch_script.write('%s\n' % task_exec_string)
+
+            # Command line to execute launch script
+            cmdline = '%s %s %s' % (launch_command, host, launch_script.name)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
 
+        # We are done writing to the launch script, its ready for execution now.
+        launch_script.close()
 
         self.stdout_filename = task.stdout
         self._stdout_file_h  = open(self.stdout_filename, "w")
