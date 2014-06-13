@@ -81,13 +81,13 @@ if __name__ == "__main__":
         cud_list = []
 
         for unit_count in range(0, 4):
-            #/bin/bash -l -c "module load python mpi4py && ibrun python ~/bin/helloworld_mpi.py"
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.pre_exec    = ["module load python intel mvapich2 mpi4py"]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["~marksant/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
             mpi_test_task.cores       = 32
             mpi_test_task.mpi         = True
+
             cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via

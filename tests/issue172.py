@@ -94,7 +94,7 @@ if __name__ == "__main__":
             cud.executable  = "/bin/echo"
             if bar != 'UNDEFINED':
                 cud.environment = bar
-            cud.arguments   = ['Taverns:', '$foo', '$sports', '$banana']
+            cud.arguments   = ['Taverns:', '$foo', '$sports', '$banana', 'dollars\$\$', '"$dollar"', 'sitting \'all\' by myself', 'drinking "cheap" beer']
             cud.cores       = 1
 
             cud_list.append(cud)
