@@ -129,7 +129,9 @@ if __name__ == "__main__":
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
-            if  unit.state != radical.pilot.DONE :
+            if  unit.state == radical.pilot.FAILED :
+                print "STDERR: %s" % unit.stderr
+                print "STDOUT: %s" % unit.stdout
                 retval = 1
 
         session.close(delete=False)
