@@ -87,7 +87,7 @@ if __name__ == "__main__":
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.pre_exec    = ["module load python intel mvapich2 mpi4py"]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["/home1/01083/tg803521/software/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
             mpi_test_task.cores       = 32
             mpi_test_task.mpi         = True
 
