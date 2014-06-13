@@ -46,28 +46,6 @@ LAUNCH_METHOD_MPIRUN = 'MPIRUN'
 LAUNCH_METHOD_POE    = 'POE'
 LAUNCH_METHOD_IBRUN  = 'IBRUN'
 
-#-----------------------------------------------------------------------------
-#
-def which(program):
-    """Finds the location of an executable.
-    Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-    """
-    #-------------------------------------------------------------------------
-    #
-    def is_exe(fpath):
-        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if is_exe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            exe_file = os.path.join(path, program)
-            if is_exe(exe_file):
-                return exe_file
-    return None
-
 #---------------------------------------------------------------------------
 #
 def pilot_FAILED(mongo_p, pilot_uid, logger, message):
@@ -127,8 +105,8 @@ class ExecutionEnvironment(object):
         eenv = cls(logger)
 
         # Discover nodes and number of cores available
-        eenv.discover_nodes()
-        eenv.discover_cores()
+        eenv._discover_nodes()
+        eenv._discover_cores()
 
         # Discover task launch methods
         eenv.discovered_task_launch_methods = {}
@@ -137,30 +115,40 @@ class ExecutionEnvironment(object):
         eenv.discovered_task_launch_methods[LAUNCH_METHOD_LOCAL] = \
             {'launch_command': None}
 
-        command = which('ssh')
+        command = eenv._which('ssh')
         if command is not None:
-            eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
-                {'launch_command': command}
+            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into the path.
+            # We try to detect that and then use different arguments.
+            if os.path.islink(command):
+                target = os.path.realpath(command)
 
-        command = which('mpirun')
+                if os.path.basename(target) == 'rsh':
+                    eenv.log.info('Detected that "ssh" is a link to "rsh".')
+                    eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
+                        {'launch_command': '%s' % target}
+                else:
+                    eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
+                        {'launch_command': '%s -o StrictHostKeyChecking=no' % command}
+
+        command = eenv._which('mpirun')
         if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_MPIRUN] = \
                 {'launch_command': command}
 
         # ibrun: wrapper for mpirun at TACC
-        command = which('ibrun')
+        command = eenv._which('ibrun')
         if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_IBRUN] = \
                 {'launch_command': command}
 
         # aprun: job launcher for Cray systems
-        command = which('aprun')
+        command = eenv._which('aprun')
         if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_APRUN] = \
                 {'launch_command': command}
 
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
-        command = which('poe')
+        command = eenv._which('poe')
         if command is not None:
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_POE] = \
                 {'launch_command': command}
@@ -189,9 +177,32 @@ class ExecutionEnvironment(object):
 
         self.nodes = {}
 
+    #-----------------------------------------------------------------------------
+    #
+    def _which(self, program):
+        """Finds the location of an executable.
+        Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+        """
+        #-------------------------------------------------------------------------
+        #
+        def is_exe(fpath):
+            return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+        fpath, fname = os.path.split(program)
+        if fpath:
+            if is_exe(program):
+                return program
+        else:
+            for path in os.environ["PATH"].split(os.pathsep):
+                exe_file = os.path.join(path, program)
+                if is_exe(exe_file):
+                    return exe_file
+        return None
+
+
     #-------------------------------------------------------------------------
     #
-    def discover_cores(self):
+    def _discover_cores(self):
 
         sge_hostfile = os.environ.get('PE_HOSTFILE')
         lsb_mcpu_hosts = os.environ.get('LSB_MCPU_HOSTS')
@@ -230,7 +241,8 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
-    def discover_nodes(self):
+    def _discover_nodes(self):
+
         # see if we have a PBS_NODEFILE
         pbs_nodefile = os.environ.get('PBS_NODEFILE')
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
@@ -1061,7 +1073,7 @@ class _Process(subprocess.Popen):
             launch_script.write('%s\n' % task_exec_string)
 
             # Command line to execute launch script
-            cmdline = '%s -o StrictHostKeyChecking=no %s %s' % (launch_command, host, launch_script.name)
+            cmdline = '%s %s %s' % (launch_command, host, launch_script.name)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
