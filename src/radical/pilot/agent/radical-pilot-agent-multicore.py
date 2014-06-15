@@ -144,8 +144,13 @@ class ExecutionEnvironment(object):
         # aprun: job launcher for Cray systems
         command = eenv._which('aprun')
         if command is not None:
+
+            mom_node = os.environ.get('ESWRAP_LOGIN')
+            ssh_command = eenv._which('crayssh')
             eenv.discovered_task_launch_methods[LAUNCH_METHOD_APRUN] = \
-                {'launch_command': command}
+                {'launch_command': command,
+                 'mom_node': mom_node,
+                 'crayssh': ssh_command}
 
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
         command = eenv._which('poe')
@@ -404,32 +409,33 @@ class ExecWorker(multiprocessing.Process):
                     idle = False
 
                     if task.mpi:
-                        # Find an appropriate method to execute MPI on this resource
-                        if LAUNCH_METHOD_IBRUN in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_IBRUN
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        elif LAUNCH_METHOD_APRUN in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_APRUN
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        elif LAUNCH_METHOD_POE in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_POE
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        elif LAUNCH_METHOD_MPIRUN in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_MPIRUN
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        else:
+                        mpi_preferred_launch_method_ordering = [ \
+                            LAUNCH_METHOD_IBRUN,
+                            LAUNCH_METHOD_APRUN,
+                            LAUNCH_METHOD_POE,
+                            LAUNCH_METHOD_MPIRUN
+                        ]
+
+                        launch_method = None
+                        for p in mpi_preferred_launch_method_ordering:
+                            if p in self._available_launch_methods:
+                                launch_method = p
+                                break
+
+                        if launch_method is None:
                             raise Exception("No task launch method available to execute MPI tasks")
                     else:
                         # For "regular" tasks either use SSH or none
                         # TODO: Find a switch to go for fork() if we run on localhost
                         if LAUNCH_METHOD_SSH in self._available_launch_methods:
                             launch_method = LAUNCH_METHOD_SSH
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
                         else:
-                            launch_method = self._available_launch_methods[LAUNCH_METHOD_LOCAL]
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
+                            launch_method = LAUNCH_METHOD_LOCAL
 
-                    self._log.debug("Launching task with %s (%s)." % (launch_method, launch_command))
+                    launch_config = self._available_launch_methods[launch_method]
+
+                    self._log.debug("Launching task with %s (%s)." % (
+                        launch_method, launch_config['launch_command']))
 
                     # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
                     # TODO: Dont have scattered scheduler yet, so test disabled.
@@ -454,7 +460,7 @@ class ExecWorker(multiprocessing.Process):
                     else:
                         # We got an allocation go off and launch the process
                         task.slots = task_slots
-                        self._launch_task(task, launch_method, launch_command)
+                        self._launch_task(task, launch_method, launch_config)
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
@@ -624,7 +630,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _launch_task(self, task, launch_method, launch_command):
+    def _launch_task(self, task, launch_method, launch_config):
 
         # create working directory in case it
         # doesn't exist
@@ -643,7 +649,7 @@ class ExecWorker(multiprocessing.Process):
             all_slots=self._slots,
             cores_per_host=self._cores_per_host,
             launch_method=launch_method,
-            launch_command=launch_command,
+            launch_config=launch_config,
             logger=self._log)
 
         task.started=datetime.datetime.utcnow()
@@ -949,7 +955,8 @@ class _Process(subprocess.Popen):
 
     #-------------------------------------------------------------------------
     #
-    def __init__(self, task, all_slots, cores_per_host, launch_method, launch_command, logger):
+    def __init__(self, task, all_slots, cores_per_host, launch_method,
+                 launch_config, logger):
 
         self._task = task
         self._log  = logger
@@ -1011,14 +1018,26 @@ class _Process(subprocess.Popen):
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
-            mpirun_command = "%s -np %s -host %s" % (launch_command, task.numcores, hosts_string)
+            mpirun_command = "%s -np %s -host %s" % (launch_config[
+                                                         'launch_command'],
+                                                     task.numcores, hosts_string)
             launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
 
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
-            cmdline = launch_command
-            # APRUN MAGIC
+            # Although the agent is running on a workernode, we can't start
+            # aprun from there, so we connect back to the mom node to launch
+            # aprun from there.
+            # This way the long running task is on the headnode as it should
+            #  be.
+            aprun_command = "%s -n %s" % (launch_config['launch_command'],
+                                                        task.numcores)
+            launch_script.write('%s %s\n' % (aprun_command, task_exec_string))
+
+            cmdline = '%s %s %s' % (launch_config['ssh_command'],
+                                    launch_config['mom_node'],
+                                    launch_script.name)
 
         elif launch_method == LAUNCH_METHOD_IBRUN:
             # NOTE: Don't think that with IBRUN it is possible to have
@@ -1034,7 +1053,9 @@ class _Process(subprocess.Popen):
 
             # TODO: This assumes all hosts have the same number of cores
             ibrun_offset = all_slots_slot_index * cores_per_host + int(first_slot_core)
-            ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
+            ibrun_command = "%s -n %s -o %d" % \
+                            (launch_config['launch_command'], task.numcores,
+                             ibrun_offset)
 
             # Build launch script
             launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
@@ -1057,8 +1078,10 @@ class _Process(subprocess.Popen):
             for host in hosts:
                 hosts_string += '%s %d ' % (host, hosts[host])
 
-            # Override the LSB_MCPU_HOSTS env variable as this is set by default to the size of the whole pilot.
-            poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (hosts_string, launch_command)
+            # Override the LSB_MCPU_HOSTS env variable as this is set by
+            # default to the size of the whole pilot.
+            poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (
+                hosts_string, launch_method[ 'launch_command'])
 
             # Continue to build launch script
             launch_script.write('%s %s\n' % (poe_command, task_exec_string))
@@ -1073,7 +1096,8 @@ class _Process(subprocess.Popen):
             launch_script.write('%s\n' % task_exec_string)
 
             # Command line to execute launch script
-            cmdline = '%s %s %s' % (launch_command, host, launch_script.name)
+            cmdline = '%s %s %s' % (launch_method['launch_command'], host,
+                                                  launch_script.name)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
