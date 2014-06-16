@@ -36,4 +36,4 @@ Contents:
    machconf.rst
    testing.rst
    developer.rst
-
+   tutorial/index.rst
