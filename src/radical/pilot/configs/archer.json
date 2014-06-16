@@ -1,7 +1,7 @@
 {
     "archer.ac.uk": {
-        "remote_job_manager_endpoint" : "fork://localhost",
-        "remote_filesystem_endpoint"  : "file://localhost/",
+        "remote_job_manager_endpoint" : "pbs+ssh://login.archer.ac.uk",
+        "remote_filesystem_endpoint"  : "sftp://login.archer.ac.uk/",
         "local_job_manager_endpoint"  : "fork://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "standard",
