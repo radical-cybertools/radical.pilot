@@ -1,7 +1,7 @@
+
 import os
 import sys
-import pilot
-import traceback
+import radical.pilot
 
 """ DESCRIPTION: Tutorial 3: Coupled Ensembles
 Note: User must edit PILOT SETUP and TASK DESCRIPTION 1-3 sections
@@ -10,145 +10,200 @@ This example will not run if these values are not set.
 
 # ---------------- BEGIN REQUIRED PILOT SETUP -----------------
 
-# Distributed Coordination Service - Redis server and password
-REDIS_PWD   = # Fill in the password to your redis server
-REDIS_URL   = "redis://%s@localhost:6379" % REDIS_PWD
+# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
+# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
+DBURL = os.getenv("RADICAL_PILOT_DBURL")
+if DBURL is None:
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
+    sys.exit(1)
 
-# Resource Information
-HOSTNAME     = # Remote Resource URL
-USER_NAME    = # Username on the remote resource
-SAGA_ADAPTOR = # Name of the SAGA adaptor, e.g. fork, sge, pbs, slurm, etc.
-# NOTE: See complete list of BigJob supported SAGA adaptors at:
-# http://saga-project.github.io/BigJob/sphinxdoc/tutorial/table.html
-
-# Fill in queue and allocation for the given resource 
+# resource information
 # Note: Set fields to "None" if not applicable
-QUEUE        = # Add queue you want to use
-PROJECT      = # Add project / allocation / account to charge
+HOSTNAME     = "india.futuregrid.org" # remote resource
+USERNAME     = "merzky"               # username on the remote resource
+QUEUE        =  None # add queue you want to use
+PROJECT      =  None # add project / allocation / account to charge
+WALLTIME     =    10 # add pilot wallsime in minutes
+PILOT_SIZE   =     1 # number of cores required for the Pilot-Job
+NUMBER_JOBS  =    10 # the total number of cus to run
 
-WALLTIME     = # Maximum Runtime (minutes) for the Pilot Job
+# Continue to USER DEFINED CU DESCRIPTION to add 
+# the required information about the individual cus.
 
-WORKDIR      = "" # Path of Resource Working Directory
-# This is the directory where BigJob will store its output and error files
-
-SPMD_VARIATION = # Specify the WAYNESS of SGE clusters ONLY, valid input '12way' for example
-
-PROCESSES_PER_NODE = # Valid on PBS clusters ONLY - this is the number of processors per node. One processor core is treated as one processor on PBS; e.g. a node with 8 cores has a maximum ppn=8
-
-PILOT_SIZE = # Number of cores required for the Pilot-Job
-
-# Job Information
-NUMBER_JOBS  = # The TOTAL number of tasks to run
-
-# Continue to USER DEFINED TASK DESCRIPTION to add 
-# the required information about the individual tasks.
-
-# ---------------- END REQUIRED PILOT SETUP -----------------
+#------------------------------------------------------------------------------
 #
+def pilot_state_cb(pilot, state):
+    """pilot_state_change_cb() is a callback function. It gets called very
+    time a ComputePilot changes its state.
+    """
 
+    if state == radical.pilot.states.FAILED:
+        print "[Callback]: Pilot '%s' state changed to %s." % (pilot.uid, state)
+        print "            Log: \n%s" % pilot.log
+        sys.exit(1)
+
+
+#------------------------------------------------------------------------------
+#
+def unit_state_change_cb(unit, state):
+    """unit_state_change_cb() is a callback function. It gets called very
+    time a ComputeUnit changes its state.
+    """
+    if state == radical.pilot.states.FAILED:
+        print "[Callback]: CU '%s' state changed to '%s'." % (unit.uid, state)
+        print "            Log: \n%s" % unit.log
+        sys.exit(1)
+
+
+#------------------------------------------------------------------------------
+#
 def main():
     try:
+        # Create a new session. A session is the 'root' object for all other
+        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
+        # well as security crendetials.
+        session = radical.pilot.Session(database_url=DBURL)
+
+        # Add an ssh identity to the session.
+        cred = radical.pilot.SSHCredential()
+        cred.user_id = USERNAME
+        session.add_credential(cred)
+
+        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        print "create pilot manager"
+        pmgr = radical.pilot.PilotManager(session=session)
+
+        # Register our callback with the PilotManager. This callback will get
+        # called every time any of the pilots managed by the PilotManager
+        # change their state.
+        pmgr.register_callback(pilot_state_cb)
+
         # this describes the parameters and requirements for our pilot job
-        pilot_description = pilot.PilotComputeDescription()
-        pilot_description.service_url = "%s://%s@%s" %  (SAGA_ADAPTOR,USER_NAME,HOSTNAME)
-        pilot_description.queue = QUEUE
-        pilot_description.project = PROJECT
-        pilot_description.number_of_processes = PILOT_SIZE
-        pilot_description.working_directory = WORKDIR
-        pilot_description.walltime = WALLTIME
-	pilot_description.processes_per_node = PROCESSES_PER_NODE
-	pilot_description.spmd_variation = SPMD_VARIATION
+        pdesc = radical.pilot.ComputePilotDescription ()
+        pdesc.resource = HOSTNAME
+        pdesc.runtime  = WALLTIME
+        pdesc.queue    = QUEUE
+        pdesc.project  = PROJECT
+        pdesc.cores    = PILOT_SIZE
+        pdesc.cleanup  = True
 
-        # create a new pilot job
-        pilot_compute_service = pilot.PilotComputeService(REDIS_URL)
-        pilotjob = pilot_compute_service.create_pilot(pilot_description)
+        # submit the pilot.
+        print "submit pilot"
+        pilot = pmgr.submit_pilots(pdesc)
 
-        # submit 'A' tasks to pilot job
-        task_set_A = list()
+
+        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # a UnitManager object.
+        print "create unit manager"
+        umgr = radical.pilot.UnitManager(
+            session=session,
+            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+
+        # Register our callback with the UnitManager. This callback will get
+        # called every time any of the units managed by the UnitManager
+        # change their state.
+        umgr.register_callback(unit_state_change_cb)
+
+        # Add the previsouly created ComputePilot to the UnitManager.
+        print "add    pilot"
+        umgr.add_pilots(pilot)
+
+
+        # submit A cus to pilot job
+        cudesc_set_A = list ()
         for i in range(NUMBER_JOBS):
 
-	# -------- BEGIN USER DEFINED TASK 1 DESCRIPTION --------- #
-            task_desc = pilot.ComputeUnitDescription()
-            task_desc.executable = '/bin/echo'
-            task_desc.arguments = ['I am an $TASK_SET task with id $TASK_NO', ]
-            task_desc.environment = {'TASK_SET': 'A', 'TASK_NO': i}
-	    task_desc.spmd_variation = 'single'
-            task_desc.number_of_processes = 1
-            task_desc.output = 'A-stdout.txt'
-            task_desc.error  = 'A-stderr.txt'
-	# -------- END USER DEFINED TASK 1 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
+            cudesc = radical.pilot.ComputeUnitDescription()
+            cudesc.environment = {"CU_SET": "A", "CU_NO": "%02d" % i}
+            cudesc.executable  = "/bin/echo"
+            cudesc.arguments   = ['"$CU_SET CU with id $CU_NO"', '>', '$HOME/tmp/A-$CU_NO.txt', ]
+            cudesc.cores       = 1
+            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
 
-            task = pilotjob.submit_compute_unit(task_desc)
-            print "* Submitted 'A' task '%s' with id '%s'" % (i, task.get_id())
-            task_set_A.append(task)
+            cudesc_set_A.append(cudesc)
+
+        # Submit the previously created ComputeUnit descriptions to the
+        # PilotManager. This will trigger the selected scheduler to start
+        # assigning ComputeUnits to the ComputePilots.
+        print "submit units A"
+        cu_set_A = umgr.submit_units (cudesc_set_A)
 
 
-        # submit 'B' tasks to pilot job
-        task_set_B = list()
+
+        # submit B cus to pilot job
+        cudesc_set_B = list ()
         for i in range(NUMBER_JOBS):
 
-	# -------- BEGIN USER DEFINED TASK 2 DESCRIPTION --------- #
-            task_desc = pilot.ComputeUnitDescription()
-            task_desc.executable = '/bin/echo'
-            task_desc.arguments = ['I am a $TASK_SET task with id $TASK_NO']
-            task_desc.environment = {'TASK_SET': 'B', 'TASK_NO': i}
-	    task_desc.spmd_variation = 'single'
-            task_desc.number_of_processes = 1
-            task_desc.output = 'B-stdout.txt'
-            task_desc.error  = 'B-stderr.txt'
-	# -------- END USER DEFINED TASK 2 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
+            cudesc = radical.pilot.ComputeUnitDescription()
+            cudesc.environment = {"CU_SET": "B", "CU_NO": "%02d" % i}
+            cudesc.executable  = "/bin/echo"
+            cudesc.arguments   = ['"$CU_SET CU with id $CU_NO"', '>', '$HOME/tmp/B-$CU_NO.txt', ]
+            cudesc.cores       = 1
+            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
 
-            task = pilotjob.submit_compute_unit(task_desc)
-            print "* Submitted 'B' task '%s' with id '%s'" % (i, task.get_id())
-            task_set_B.append(task)
+            cudesc_set_B.append(cudesc)
+
+        # Submit the previously created ComputeUnit descriptions to the
+        # PilotManager. This will trigger the selected scheduler to start
+        # assigning ComputeUnits to the ComputePilots.
+        print "submit units B"
+        cu_set_B = umgr.submit_units (cudesc_set_B)
+
 
         # ---------------------------------------------------------------------
-        print "Waiting for 'A' and 'B' tasks to complete..."
-        pilotjob.wait()
-	print "Executing 'C' tasks now..."
+        print "Waiting for 'A' and 'B' CUs to complete..."
+        umgr.wait_units ()
+
+
+        print "Executing 'C' tasks now..."
         # ---------------------------------------------------------------------
 
         # submit 'C' tasks to pilot job. each 'C' task takes the output of
         # an 'A' and a 'B' task and puts them together.
-        task_set_C = list()
+        cudesc_set_C = list ()
         for i in range(NUMBER_JOBS):
 
-	# -------- BEGIN USER DEFINED TASK 3 DESCRIPTION --------- #
-            task_desc = pilot.ComputeUnitDescription()
-            task_desc.executable = '/bin/echo'
-            task_desc.arguments = ['I am a $TASK_SET task with id $TASK_NO']
-            task_desc.environment = {'TASK_SET': 'C', 'TASK_NO': i}
-	    task_desc.spmd_variation = 'single'
-            task_desc.number_of_processes = 1
-            task_desc.output = 'C-stdout.txt'
-            task_desc.error  = 'C-stderr.txt'
-	# -------- END USER DEFINED TASK 3 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
+            cudesc = radical.pilot.ComputeUnitDescription()
+            cudesc.environment = {"CU_SET": "C", "CU_NO": "%02d" % i}
+            cudesc.executable  = "/bin/echo"
+            cudesc.arguments   = ['"$CU_SET CU with id $CU_NO"', 
+                                  " (`cat $HOME/tmp/A-%02d.txt`)" % i, 
+                                  " (`cat $HOME/tmp/B-%02d.txt`)" % i]
+            cudesc.cores       = 1
+            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
 
-            task = pilotjob.submit_compute_unit(task_desc)
-            print "* Submitted 'C' task '%s' with id '%s'" % (i, task.get_id())
-            task_set_C.append(task)
+            cudesc_set_C.append(cudesc)
+
+        # Submit the previously created ComputeUnit descriptions to the
+        # PilotManager. This will trigger the selected scheduler to start
+        # assigning ComputeUnits to the ComputePilots.
+        print "submit units C"
+        cu_set_C = umgr.submit_units (cudesc_set_C)
+
+
 
         # ---------------------------------------------------------------------
-        print "Waiting for 'C' tasks to complete..."
-        pilotjob.wait()
-        # ---------------------------------------------------------------------
+        print "Waiting for 'C' CUs to complete..."
+        for cu in cu_set_C :
+            cu.wait ()
+            print "---------------"
+            print "CU '%s' finished." % (cu.uid)
+            print cu.stdout
 
-        return(0)
-
-    except Exception, ex:
-            print "AN ERROR OCCURRED: %s" % ((str(ex)))
-            # print a stack trace in case of an exception -
-            # this can be helpful for debugging the problem
-            traceback.print_exc()
+    except Exception as e:
+            print "AN ERROR OCCURRED: %s" % ((str(e)))
             return(-1)
 
-    finally:
-        # alway try to shut down pilots, otherwise jobs might end up
-        # lingering in the queue
-        print ("Terminating BigJob...")
-        pilotjob.cancel()
-        pilot_compute_service.cancel()
 
-
+#------------------------------------------------------------------------------
+#
 if __name__ == "__main__":
+
     sys.exit(main())
+
+#
+#------------------------------------------------------------------------------
+
