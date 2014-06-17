@@ -43,6 +43,7 @@ def pilot_state_cb(pilot, state):
         print "            Log: \n%s" % pilot.log
         sys.exit(1)
 
+
 #------------------------------------------------------------------------------
 #
 def unit_state_change_cb(unit, state):
@@ -52,10 +53,11 @@ def unit_state_change_cb(unit, state):
     if state == radical.pilot.states.FAILED:
         print "[Callback]: CU '%s' state changed to '%s'." % (unit.uid, state)
         print "            Log: \n%s" % unit.log
+        sys.exit(1)
 
-# ---------------- END REQUIRED PILOT SETUP -----------------
+
+# -----------------------------------------------------------
 #
-
 def main():
 
     try:
@@ -158,17 +160,18 @@ def main():
             print "B CU '%s' finished." % (cu_b.uid)
             print cu_b.stdout
 
-        return(0)
 
     except Exception as e:
             print "AN ERROR OCCURRED: %s" % ((str(e)))
             return(-1)
 
-    finally:
-        # cancel pilots
-        pass
 
-
+#------------------------------------------------------------------------------
+#
 if __name__ == "__main__":
+
     sys.exit(main())
+
+#
+#------------------------------------------------------------------------------
 
