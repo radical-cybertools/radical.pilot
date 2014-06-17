@@ -18,8 +18,7 @@ if DBURL is None:
 
 # resource information
 # Note: Set fields to "None" if not applicable
-HOSTNAME     = "india.futuregrid.org" # remote resource
-USERNAME     = "merzky"               # username on the remote resource
+HOSTNAME     = "fs2.das4.science.uva.nl:local" # remote resource
 QUEUE        =  None # add queue you want to use
 PROJECT      =  None # add project / allocation / account to charge
 WALLTIME     =    10 # add pilot wallsime in minutes
