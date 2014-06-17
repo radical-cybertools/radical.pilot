@@ -18,17 +18,15 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-# Resource Information
-HOSTNAME     = "localhost" # Remote Resource URL
-USERNAME     = "merzky"    # Username on the remote resource
-
-# Fill in queue and allocation for the given resource 
+# resource information
 # Note: Set fields to "None" if not applicable
-QUEUE        =  None # Add queue you want to use
-PROJECT      =  None # Add project / allocation / account to charge
-WALLTIME     =    10 # Add pilot wallsime in minutes
-PILOT_SIZE   =     1 # Number of cores required for the Pilot-Job
-NUMBER_JOBS  =    10 # The TOTAL number of cus to run
+HOSTNAME     = "india.futuregrid.org" # remote resource
+USERNAME     = "merzky"               # username on the remote resource
+QUEUE        =  None # add queue you want to use
+PROJECT      =  None # add project / allocation / account to charge
+WALLTIME     =    10 # add pilot wallsime in minutes
+PILOT_SIZE   =     1 # number of cores required for the Pilot-Job
+NUMBER_JOBS  =    10 # the total number of cus to run
 
 # Continue to USER DEFINED CU DESCRIPTION to add 
 # the required information about the individual cus.
@@ -132,7 +130,7 @@ def main():
         # output file.
         cu_set_B = list()
         while len(cu_set_A) > 0 :
-            for idx,cu_a in cu_set_A.enumerate() :
+            for idx,cu_a in enumerate (cu_set_A) :
                 cu_a.wait ()
                 print "One 'A' CU %s finished. Launching a 'B' CU." % (cu_a.uid)
 
@@ -141,7 +139,7 @@ def main():
                 cudesc.executable  = '/bin/echo'
                 cudesc.arguments   = ['I am a $CU_SET CU with id $CU_NO', ]
                 cudesc.environment = {'CU_SET': 'B', 'CU_NO': idx}
-                cudesc.cotes       = 1
+                cudesc.cores       = 1
             ##  cudesc.stdout      = 'B-stdout.txt'
             ##  cudesc.stderr      = 'B-stderr.txt'
                 # -------- END USER DEFINED CU 2 DESCRIPTION --------- #
