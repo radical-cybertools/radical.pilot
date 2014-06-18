@@ -4,7 +4,7 @@
 Tutorial
 ********
 
-This tutorial will walk you through the installation as well as the basic features of RADICAL-Pilot. Serveral examples illustrate common workflow usages in distributed environments.
+This tutorial will walk you through the basic features of RADICAL-Pilot. Serveral examples illustrate common workflow usages in distributed environments.
 
 **Prerequisites:**
 
@@ -15,7 +15,6 @@ This tutorial will walk you through the installation as well as the basic featur
 
 **You will learn how to:**
 
-* Install RADICAL-Pilot into user space on your own machine or an XSEDE resource.
 * Submit multiple jobs through a 'container job' to either your local machine or a remote resource.
 * Write a program that runs multiple jobs to form a simple ensemble workflow.
 * Write programs that demonstrate more complex, frequently used workflows.
@@ -25,7 +24,6 @@ This tutorial will walk you through the installation as well as the basic featur
 .. toctree::
    :maxdepth: 1
 
-   ../installation.rst
    simple_bot.rst
    chained_tasks.rst
    coupled_tasks.rst
