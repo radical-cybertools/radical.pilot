@@ -2,9 +2,7 @@ import os
 import sys
 import radical.pilot
 
-""" DESCRIPTION: Tutorial 1: A Simple Workload 
-Note: User must edit USER VARIABLES section
-This example will not run if these values are not set.
+""" DESCRIPTION: Tutorial 1: A Simple Workload consisting of a Bag-of-Tasks
 """
 
 # ---------------- BEGIN REQUIRED PILOT SETUP -----------------
@@ -16,18 +14,6 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-# resource information
-# Note: Set fields to "None" if not applicable
-HOSTNAME     = "fs2.das4.science.uva.nl:local" # remote resource
-QUEUE        =  None # add queue you want to use
-PROJECT      =  None # add project / allocation / account to charge
-WALLTIME     =    10 # add pilot wallsime in minutes
-PILOT_SIZE   =     1 # number of cores required for the Pilot-Job
-NUMBER_JOBS  =    10 # the total number of cus to run
-
-# Continue to USER DEFINED CU DESCRIPTION to add 
-# the required information about the individual cus.
-
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
@@ -36,9 +22,11 @@ def pilot_state_cb(pilot, state):
     """
 
     if state == radical.pilot.states.FAILED:
-        print "[Callback]: Pilot '%s' state changed to %s." % (pilot.uid, state)
-        print "            Log: \n%s" % pilot.log
+        print "Compute Pilot '%s' failed, exiting ..." % pilot.uid
         sys.exit(1)
+
+    elif state == radical.pilot.states.ACTIVE:
+        print "Compute Pilot '%s' became active!" % (pilot.uid)
 
 
 #------------------------------------------------------------------------------
@@ -48,10 +36,12 @@ def unit_state_change_cb(unit, state):
     time a ComputeUnit changes its state.
     """
     if state == radical.pilot.states.FAILED:
-        print "[Callback]: CU '%s' state changed to '%s'." % (unit.uid, state)
-        print "            Log: \n%s" % unit.log
+        print "Compute Unit '%s' failed ..." % unit.uid
         sys.exit(1)
 
+    elif state == radical.pilot.states.DONE:
+        print "Compute Unit '%s' finished with output:" % (unit.uid)
+        print unit.stdout
 
 #------------------------------------------------------------------------------
 #
@@ -59,16 +49,17 @@ def main():
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-        # well as security crendetials.
+        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
         cred = radical.pilot.SSHCredential()
+        #cred.user_id = 'osdcXX'
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        print "create pilot manager"
+        print "Initializing Pilot Manager ..."
         pmgr = radical.pilot.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
@@ -78,21 +69,18 @@ def main():
 
         # this describes the parameters and requirements for our pilot job
         pdesc = radical.pilot.ComputePilotDescription ()
-        pdesc.resource = HOSTNAME
-        pdesc.runtime  = WALLTIME
-        pdesc.queue    = QUEUE
-        pdesc.project  = PROJECT
-        pdesc.cores    = PILOT_SIZE
+        pdesc.resource = "fs2.das4.science.uva.nl" # NOTE: This is a "label", not a hostname
+        pdesc.runtime  = 5 # minutes
+        pdesc.cores    = 1
         pdesc.cleanup  = True
 
         # submit the pilot.
-        print "submit pilot"
+        print "Submitting Compute Pilot to Pilot Manager ..."
         pilot = pmgr.submit_pilots(pdesc)
-
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        print "create unit manager"
+        print "Initializing Unit Manager ..."
         umgr = radical.pilot.UnitManager(
             session=session,
             scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
@@ -102,13 +90,14 @@ def main():
         # change their state.
         umgr.register_callback(unit_state_change_cb)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
-        print "add    pilot"
+        # Add the created ComputePilot to the UnitManager.
+        print "Registering Compute Pilots with Unit Manager ..."
         umgr.add_pilots(pilot)
 
+        NUMBER_JOBS  = 10 # the total number of cus to run
 
         # submit CUs to pilot job
-        cudesc_set = list ()
+        cudesc_list = []
         for i in range(NUMBER_JOBS):
 
             # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
@@ -119,21 +108,20 @@ def main():
             cudesc.cores       = 1
             # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
 
-            cudesc_set.append(cudesc)
+            cudesc_list.append(cudesc)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        print "submit units"
-        cu_set = umgr.submit_units (cudesc_set)
+        print "Submit Compute Units to Unit Manager ..."
+        cu_set = umgr.submit_units (cudesc_list)
 
-        print "Waiting for CUs to finish..."
-        for cu in cu_set :
-            cu.wait ()
-            print "---------------"
-            print "CU '%s' finished." % (cu.uid)
-            print cu.stdout
+        print "Waiting for CUs to complete ..."
+        umgr.wait_units()
+        print "All CUs completed successfully!"
 
+        session.close()
+        print "Closed session, exiting now ..."
 
     except Exception as e:
             print "AN ERROR OCCURRED: %s" % ((str(e)))
@@ -148,4 +136,3 @@ if __name__ == "__main__":
 
 #
 #------------------------------------------------------------------------------
-
