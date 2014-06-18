@@ -91,7 +91,7 @@ def main():
         umgr.register_callback(unit_state_change_cb)
 
         # Add the created ComputePilot to the UnitManager.
-        print "Registering Compute Pilots with Unit Manager ..."
+        print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
 
         NUMBER_JOBS  = 10 # the total number of cus to run

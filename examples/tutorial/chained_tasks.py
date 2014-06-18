@@ -115,7 +115,7 @@ def main():
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         print "Submit 'A' Compute Units to Unit Manager ..."
-        cu_list_A = umgr.submit_units (cudesc_list_A)
+        cu_list_A = umgr.submit_units(cudesc_list_A)
 
         # Chaining cus i.e submit a compute unit, when compute unit from A is successfully executed.
         # A B CU reads the content of the output file of an A CU and writes it into its own
@@ -138,7 +138,7 @@ def main():
                 # -------- END USER DEFINED COMPUTE UNIT B_n DESCRIPTION --------- #
 
                 # Submit CU to Pilot Job
-                cu_b = umgr.submit_units (cudesc)
+                cu_b = umgr.submit_units(cudesc)
                 cu_list_B.append(cu_b)
                 cu_list_A.remove(cu_a)
 
