@@ -7,6 +7,6 @@ Tutorial
 .. toctree::
    :maxdepth: 1
 
-   simple_ensembles.rst
-   chained_ensembles.rst
-   coupled_ensembles.rst
+   simple_bot.rst
+   chained_tasks.rst
+   coupled_tasks.rst
