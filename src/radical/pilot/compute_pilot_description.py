@@ -61,7 +61,7 @@ class ComputePilotDescription(attributes.Attributes):
 
     .. data:: runtime
 
-       [Type: `int`] [**mandatory**] The total run time (wall-clock time) in
+       [Type: `int`] [**mandatory**] The maximum run time (wall-clock time) in
        **minutes** of the ComputePilot.
 
     .. data:: cores
