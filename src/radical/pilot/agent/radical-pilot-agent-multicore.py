@@ -48,7 +48,7 @@ LAUNCH_METHOD_IBRUN  = 'IBRUN'
 
 #---------------------------------------------------------------------------
 #
-def pilot_FAILED(mongo_p, pilot_uid, logger, message):
+def pilot_FAILED(mongo_p, pilot_uid, logger, message, slot_history):
     """Updates the state of one or more pilots.
     """
     logger.error(message)      
@@ -56,7 +56,8 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push": {"log" : message,
-                   "statehistory": {"state": 'Failed', "timestamp": ts}},
+                   "statehistory": {"state": 'Failed', "timestamp": ts},
+                   "slothistory" : slot_history},
          "$set":  {"state": 'Failed',
                    "finished": ts}
 
@@ -64,7 +65,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
 
 #---------------------------------------------------------------------------
 #
-def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
+def pilot_CANCELED(mongo_p, pilot_uid, logger, message, slot_history):
     """Updates the state of one or more pilots.
     """
     logger.warning(message)
@@ -72,20 +73,22 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push": {"log" : message,
-                   "statehistory": {"state": 'Canceled', "timestamp": ts}},
+                   "statehistory": {"state": 'Canceled', "timestamp": ts}, 
+                   "slothistory" : slot_history},
          "$set":  {"state": 'Canceled',
                    "finished": ts}
         })
 
 #---------------------------------------------------------------------------
 #
-def pilot_DONE(mongo_p, pilot_uid):
+def pilot_DONE(mongo_p, pilot_uid, slot_history):
     """Updates the state of one or more pilots.
     """
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"statehistory": {"state": 'Done', "timestamp": ts}},
+        {"$push": {"statehistory": {"state": 'Done', "timestamp": ts},
+                   "slothistory" : slot_history},
          "$set": {"state": 'Done',
                   "finished": ts}
 
@@ -331,7 +334,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, task_queue, hosts, cores_per_host, 
+    def __init__(self, logger, task_queue, info_queue, hosts, cores_per_host, 
                  launch_methods, mongodb_url, mongodb_name,
                  pilot_id, session_id, unitmanager_id):
 
@@ -348,12 +351,15 @@ class ExecWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._w  = mongo_db["%s.w"  % session_id]
         self._wm = mongo_db["%s.wm" % session_id]
 
         # Queued tasks by the Agent
         self._task_queue     = task_queue
+
+        # info backchannel to the agent
+        self._info_queue     = info_queue
 
         # Launched tasks by this ExecWorker
         self._running_tasks = []
@@ -391,12 +397,16 @@ class ExecWorker(multiprocessing.Process):
     def run(self):
         """Starts the process when Process.start() is called.
         """
+        slot_history = list()
         try:
             while self._terminate is False:
 
                 idle = True
 
-                self._log.debug("Slot status:\n%s", self._slot_status())
+                slot_status, slot_stats = self._slot_status()
+                slot_history.append (slot_stats)
+
+                self._log.debug("Slot status:\n%s", slot_status)
 
                 # Loop over tasks instead of slots!
                 try:
@@ -468,6 +478,7 @@ class ExecWorker(multiprocessing.Process):
 
         except Exception, ex:
             self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
+            self._info_queue.put (slot_history)
             raise
 
 
@@ -477,15 +488,20 @@ class ExecWorker(multiprocessing.Process):
         """Returns a multi-line string corresponding to slot status.
         """
         slot_matrix = ""
+        slot_hist   = ""
         for slot in self._slots:
-            slot_vector = ""
+            slot_vector  = ""
+            slot_stats  += "|"
             for core in slot['cores']:
                 if core is FREE:
                     slot_vector += " - "
+                    slot_stats  += "-"
                 else:
                     slot_vector += " X "
+                    slot_stats  += "+"
             slot_matrix += "%s: %s\n" % (slot['host'].ljust(24), slot_vector)
-        return slot_matrix
+        slot_stats  += "|"
+        return slot_matrix, slot_stats
 
     # ------------------------------------------------------------------------
     #
@@ -560,8 +576,8 @@ class ExecWorker(multiprocessing.Process):
             last_slot_core_offset = all_slots_last_core_offset % cores_per_host
 
             # Convenience aliases
-            last_slot = self._slots[last_slot_index]
-            last_host = last_slot['host']
+            last_slot  = self._slots[last_slot_index]
+            last_host  = last_slot['host']
             first_slot = self._slots[first_slot_index]
             first_host = first_slot['host']
 
@@ -769,7 +785,8 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, workdir, runtime,
-                 mongodb_url, mongodb_name, pilot_id, session_id, unitmanager_id):
+                 mongodb_url, mongodb_name, pilot_id, session_id,
+                 unitmanager_id, slot_hist):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -787,6 +804,8 @@ class Agent(threading.Thread):
         self._runtime    = runtime
         self._starttime  = None
 
+        self._slot_hist  = slot_hist
+
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
         self._p = mongo_db["%s.p"  % session_id]
@@ -797,10 +816,14 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
+        # the info queue is the backchannel for worker information (slot_hist)
+        self._info_queue = multiprocessing.Queue()
+
         # we assign each host partition to a task execution worker
         self._exec_worker = ExecWorker(
             logger          = self._log,
             task_queue      = self._task_queue,
+            info_queue      = self._info_queue,
             hosts           = self._exec_env.nodes,
             cores_per_host  = self._exec_env.cores_per_node,
             launch_methods  = self._exec_env.discovered_task_launch_methods,
@@ -939,6 +962,9 @@ class Agent(threading.Thread):
                 # If we arrive here, there was an exception in the main loop.
                 pilot_FAILED(self._p, self._pilot_id, self._log, 
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
+
+        # try to retrieve slot history
+        self._slot_host = self._info_queue.get_nowait()
 
         # MAIN LOOP TERMINATED
         return
@@ -1210,6 +1236,8 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     logger.info("RADICAL-Pilot multi-core agent for package/API version %s" % options.package_version)
 
+    slot_hist = list()
+
     #--------------------------------------------------------------------------
     # Establish database connection
     try:
@@ -1227,13 +1255,13 @@ if __name__ == "__main__":
     # Some singal handling magic 
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
-        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
+        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg, slot_hist)
         sys.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)
 
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
-        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
+        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg, slot_hist)
         sys.exit(0)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
@@ -1272,7 +1300,8 @@ if __name__ == "__main__":
                       mongodb_name=options.database_name,
                       pilot_id=options.pilot_id,
                       session_id=options.session_id,
-                      unitmanager_id=options.unitmanager_id)
+                      unitmanager_id=options.unitmanager_id, 
+                      slot_hist=slot_hist)
 
         agent.start()
         agent.join()
@@ -1280,7 +1309,7 @@ if __name__ == "__main__":
     except Exception, ex:
         msg = "Error running agent: %s" % str(ex)
         logger.error(msg)
-        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg, slot_hist)
         agent.stop()
         sys.exit(1)
 
@@ -1288,3 +1317,4 @@ if __name__ == "__main__":
 
         logger.error("Caught keyboard interrupt. EXITING")
         agent.stop()
+
