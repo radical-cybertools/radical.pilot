@@ -5,8 +5,6 @@ import radical.pilot
 """ DESCRIPTION: Tutorial 1: A Simple Workload consisting of a Bag-of-Tasks
 """
 
-# ---------------- BEGIN REQUIRED PILOT SETUP -----------------
-
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
@@ -100,13 +98,13 @@ def main():
         cudesc_list = []
         for i in range(NUMBER_JOBS):
 
-            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
             cudesc = radical.pilot.ComputeUnitDescription()
             cudesc.environment = {'CU_NO': i}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['I am CU number $CU_NO']
             cudesc.cores       = 1
-            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- END USER DEFINED CU DESCRIPTION --------- #
 
             cudesc_list.append(cudesc)
 

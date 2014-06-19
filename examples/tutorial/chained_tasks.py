@@ -101,13 +101,13 @@ def main():
         cudesc_list_A = []
         for i in range(NUMBER_JOBS):
 
-            # -------- BEGIN USER DEFINED COMPUTE UNIT A_n DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU A_n DESCRIPTION --------- #
             cudesc = radical.pilot.ComputeUnitDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % i}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
             cudesc.cores       = 1
-            # -------- END USER DEFINED COMPUTE UNIT A_n DESCRIPTION --------- #
+            # -------- END USER DEFINED CU A_n DESCRIPTION --------- #
 
             cudesc_list_A.append(cudesc)
 
@@ -129,13 +129,13 @@ def main():
                 cu_a.wait ()
                 print "'A' Compute Unit '%s' finished. Submitting 'B' CU ..." % idx
 
-                # -------- BEGIN USER DEFINED COMPUTE UNIT B_n DESCRIPTION --------- #
+                # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
                 cudesc = radical.pilot.ComputeUnitDescription()
                 cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
                 cudesc.executable  = '/bin/echo'
                 cudesc.arguments   = ['"$CU_LIST CU with id %s"' % idx]
                 cudesc.cores       = 1
-                # -------- END USER DEFINED COMPUTE UNIT B_n DESCRIPTION --------- #
+                # -------- END USER DEFINED CU B_n DESCRIPTION --------- #
 
                 # Submit CU to Pilot Job
                 cu_b = umgr.submit_units(cudesc)

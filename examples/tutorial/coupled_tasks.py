@@ -118,13 +118,13 @@ def main():
         cudesc_list_B = []
         for idx in range(NUMBER_JOBS):
 
-            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU 2 DESCRIPTION --------- #
             cudesc = radical.pilot.ComputeUnitDescription()
             cudesc.environment = {"CU_LIST": "B", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
             cudesc.cores       = 1
-            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- END USER DEFINED CU 2 DESCRIPTION --------- #
 
             cudesc_list_B.append(cudesc)
 
@@ -138,7 +138,6 @@ def main():
         # ---------------------------------------------------------------------
         print "Waiting for 'A' and 'B' CUs to complete..."
         umgr.wait_units()
-
         print "Executing 'C' tasks now..."
         # ---------------------------------------------------------------------
 
@@ -147,13 +146,13 @@ def main():
         cudesc_list_C = []
         for idx in range(NUMBER_JOBS):
 
-            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU 3 DESCRIPTION --------- #
             cudesc = radical.pilot.ComputeUnitDescription()
             cudesc.environment = {"CU_SET": "C", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_SET CU with id $CU_NO"']
             cudesc.cores       = 1
-            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- END USER DEFINED CU 3 DESCRIPTION --------- #
 
             cudesc_list_C.append(cudesc)
 
