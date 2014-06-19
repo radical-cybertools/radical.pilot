@@ -25,10 +25,9 @@ This keeps the RADICAL-Pilot utilization high.
 Chained Tasks Code
 ==================
 
-Create a new file ``chained_tasks.py`` and paste the following code:
-
-.. literalinclude:: ../../../examples/tutorial/chained_tasks.py
-	:language: python
+Download the file ``chained_tasks.py`` with the following command:
+.. code-block:: bash
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/chained_tasks.py
 
 ------------------------
 How to Edit The Examples

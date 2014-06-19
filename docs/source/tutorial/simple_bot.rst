@@ -1,8 +1,8 @@
-.. _chapter_tutorial_simple_ensembles:
+.. _chapter_tutorial_simple_bot:
 
-*****************
-Simple  Ensembles 
-*****************
+*******************
+Simple Bag-of-Tasks
+*******************
 
 You might be wondering how to create your own RADICAL-Pilot script or how
 RADICAL-Pilot can be useful for your needs. Before delving into the remote job
@@ -21,23 +21,23 @@ either a parameter sweep job or a set of ensemble simulation.
 We will create an example which submits N jobs using RADICAL-Pilot. The jobs are
 all identical, except that they each record their number in their output. This
 type of run is very useful if you are running many jobs using the same
-executable (but perhaps different input files).  Rather than submit each job
+executable (but perhaps with different input files).  Rather than submit each job
 individually to the queuing system and then wait for every job to become active
 and complete, you submit just one container job (called a Pilot) that reserves
 the number of cores needed to run all of your jobs. When this pilot becomes
 active, your tasks (which are named 'Compute Units' or 'CUs') are pulled by
 RADICAL-Pilot from the MongoDB server and executed. 
 
-Create a new file ``simple_bot.py`` and paste the following code:
+Download the file ``simple_bot.py`` with the following command:
 
-.. literalinclude:: ../../../examples/tutorial/simple_bot.py
-	:language: python
+.. code-block:: bash
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/simple_bot.py
 
 ------------------------
 How to Edit The Examples
 ------------------------
 
-Open the file ``simple_bot.py.`` There is a critical sections that must be
+Open the file ``simple_bot.py`` with your favorite editor. There is a critical sections that must be
 filled in by the user: Line 101 of this file says, "BEGIN REQUIRED CU SETUP."
 This section defines the actual tasks to be executed by the pilot.
 
@@ -104,5 +104,5 @@ Give it a try with the above example:
 
 .. code-block:: bash
 
-  RADICAL_VERBOSE=DEBUG SAGA_VERBOSE=DEBUG python simple_ensembles.py
+  RADICAL_PILOT_VERBOSE=DEBUG SAGA_VERBOSE=DEBUG python simple_bot.py
 

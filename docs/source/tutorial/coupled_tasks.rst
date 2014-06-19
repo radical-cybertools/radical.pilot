@@ -14,10 +14,9 @@ from jobs A and B.
 Coupled Tasks Code
 ==================
 
-Create a new file ``coupled_tasks.py`` and paste the following code:
-
-.. literalinclude:: ../../../examples/tutorial/coupled_tasks.py
-	:language: python
+Download the file ``coupled_tasks.py`` with the following command:
+.. code-block:: bash
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/coupled_tasks.py
 
 ------------------------
 How to Edit The Examples
