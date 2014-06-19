@@ -121,6 +121,8 @@ def main():
         # A B CU reads the content of the output file of an A CU and writes it into its own
         # output file.
         cu_list_B = []
+        # We create a copy of cu_list_A so that we can remove elements from it,
+        # and still reference to the original index.
         cu_list_A_copy = cu_list_A[:]
         while cu_list_A:
             for cu_a in cu_list_A:
@@ -133,7 +135,7 @@ def main():
                 cudesc = radical.pilot.ComputeUnitDescription()
                 cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
                 cudesc.executable  = '/bin/echo'
-                cudesc.arguments   = ['"$CU_LIST CU with id %s"' % idx]
+                cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
                 cudesc.cores       = 1
                 # -------- END USER DEFINED CU B_n DESCRIPTION --------- #
 
