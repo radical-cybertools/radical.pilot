@@ -31,6 +31,7 @@ RADICAL-Pilot from the MongoDB server and executed.
 Download the file ``simple_bot.py`` with the following command:
 
 .. code-block:: bash
+
     curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/simple_bot.py
 
 ------------------------

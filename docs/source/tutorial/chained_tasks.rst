@@ -26,7 +26,9 @@ Chained Tasks Code
 ==================
 
 Download the file ``chained_tasks.py`` with the following command:
+
 .. code-block:: bash
+
     curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/chained_tasks.py
 
 ------------------------
