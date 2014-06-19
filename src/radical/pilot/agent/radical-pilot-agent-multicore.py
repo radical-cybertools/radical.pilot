@@ -48,7 +48,7 @@ LAUNCH_METHOD_IBRUN  = 'IBRUN'
 
 #---------------------------------------------------------------------------
 #
-def pilot_FAILED(mongo_p, pilot_uid, logger, message, slot_history):
+def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.error(message)      
@@ -56,8 +56,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message, slot_history):
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push": {"log" : message,
-                   "statehistory": {"state": 'Failed', "timestamp": ts},
-                   "slothistory" : slot_history},
+                   "statehistory": {"state": 'Failed', "timestamp": ts}},
          "$set":  {"state": 'Failed',
                    "finished": ts}
 
@@ -65,7 +64,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message, slot_history):
 
 #---------------------------------------------------------------------------
 #
-def pilot_CANCELED(mongo_p, pilot_uid, logger, message, slot_history):
+def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.warning(message)
@@ -73,22 +72,20 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message, slot_history):
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push": {"log" : message,
-                   "statehistory": {"state": 'Canceled', "timestamp": ts}, 
-                   "slothistory" : slot_history},
+                   "statehistory": {"state": 'Canceled', "timestamp": ts}},
          "$set":  {"state": 'Canceled',
                    "finished": ts}
         })
 
 #---------------------------------------------------------------------------
 #
-def pilot_DONE(mongo_p, pilot_uid, slot_history):
+def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"statehistory": {"state": 'Done', "timestamp": ts},
-                   "slothistory" : slot_history},
+            {"$push": {"statehistory": {"state": 'Done', "timestamp": ts}},
          "$set": {"state": 'Done',
                   "finished": ts}
 
@@ -385,6 +382,16 @@ class ExecWorker(multiprocessing.Process):
             })
         self._cores_per_host = cores_per_host
 
+
+        # publish the list of slots to the agent
+        self._info_queue.put (self._slots)
+
+        # keep a slot allocation history (short status), start with presumably
+        # empty state now
+        self._slot_history = list()
+        self._slot_history.append (self._slot_status (short=True))
+
+
         # The available launch methods
         self._available_launch_methods = launch_methods
 
@@ -400,14 +407,12 @@ class ExecWorker(multiprocessing.Process):
     def run(self):
         """Starts the process when Process.start() is called.
         """
-        slot_history = list()
         try:
             while self._terminate is False:
 
                 idle = True
 
-                slot_status, slot_stats = self._slot_status()
-                slot_history.append (slot_stats)
+                slot_status = self._slot_status()
 
                 self._log.debug("Slot status:\n%s", slot_status)
 
@@ -481,30 +486,38 @@ class ExecWorker(multiprocessing.Process):
 
         except Exception, ex:
             self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
-            self._info_queue.put (slot_history)
             raise
 
 
     # ------------------------------------------------------------------------
     #
-    def _slot_status(self):
+    def _slot_status(self, short=False):
         """Returns a multi-line string corresponding to slot status.
         """
-        slot_matrix = ""
-        slot_hist   = ""
-        for slot in self._slots:
-            slot_vector  = ""
-            slot_stats  += "|"
-            for core in slot['cores']:
-                if core is FREE:
-                    slot_vector += " - "
-                    slot_stats  += "-"
-                else:
-                    slot_vector += " X "
-                    slot_stats  += "+"
-            slot_matrix += "%s: %s\n" % (slot['host'].ljust(24), slot_vector)
-        slot_stats  += "|"
-        return slot_matrix, slot_stats
+
+        if  short :
+            slot_matrix = ""
+            for slot in self._slots:
+                slot_matrix += "|"
+                for core in slot['cores']:
+                    if core is FREE:
+                        slot_matrix += "-"
+                    else:
+                        slot_matrix += "+"
+            slot_matrix += "|"
+
+        else :
+            slot_matrix = ""
+            for slot in self._slots:
+                slot_vector  = ""
+                for core in slot['cores']:
+                    if core is FREE:
+                        slot_vector += " - "
+                    else:
+                        slot_vector += " X "
+                slot_matrix += "%s: %s\n" % (slot['host'].ljust(24), slot_vector)
+
+        return slot_matrix
 
     # ------------------------------------------------------------------------
     #
@@ -640,6 +653,9 @@ class ExecWorker(multiprocessing.Process):
             # Change the state of the slot
             slot_entry['cores'][int(slot_core)] = new_state
 
+        # something changed - write history!
+        self._slot_history.append (self._slot_status (short=True))
+
 
     # ------------------------------------------------------------------------
     #
@@ -749,6 +765,8 @@ class ExecWorker(multiprocessing.Process):
         for e in finished_tasks:
             self._running_tasks.remove(e)
 
+        # AM: why is idle always True?  Whats the point here?  Not to run too
+        # fast? :P
         return idle
 
     # ------------------------------------------------------------------------
@@ -760,11 +778,19 @@ class ExecWorker(multiprocessing.Process):
         ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
         # this information here:
-
+        # AM: why is that umgr ID needed?  It is never used...
         if self._unitmanager_id is None:
             cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
                                     {"unitmanager": 1})
             self._unitmanager_id = cursor_p[0]["unitmanager"]
+
+        # AM: FIXME: this at the moment pushes slot history whenever a task
+        # state is updated...  This needs only to be done on ExecWorker
+        # shutdown.
+        self._p.update(
+            {"_id": ObjectId(self._pilot_id)}, 
+            {"$set": {"slothistory" : self._slot_history}}
+            )
 
         if not isinstance(tasks, list):
             tasks = [tasks]
@@ -789,7 +815,7 @@ class Agent(threading.Thread):
     #
     def __init__(self, logger, exec_env, workdir, runtime,
                  mongodb_url, mongodb_name, pilot_id, session_id,
-                 unitmanager_id, slot_hist):
+                 unitmanager_id):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -807,8 +833,6 @@ class Agent(threading.Thread):
         self._runtime    = runtime
         self._starttime  = None
 
-        self._slot_hist  = slot_hist
-
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
         self._p = mongo_db["%s.p"  % session_id]
@@ -819,7 +843,7 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
-        # the info queue is the backchannel for worker information (slot_hist)
+        # the info queue is the backchannel for worker information (slot_history)
         self._info_queue = multiprocessing.Queue()
 
         # we assign each host partition to a task execution worker
@@ -861,6 +885,7 @@ class Agent(threading.Thread):
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : "Active",
+                      "slots"          : self._slots,
                       "nodes"          : self._exec_env.nodes.keys(),
                       "cores_per_node" : self._exec_env.cores_per_node,
                       "started"        : ts},
@@ -885,7 +910,7 @@ class Agent(threading.Thread):
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
-                    pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set.")
+                    pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set).")
                     break
 
                 # Make sure that we haven't exceeded the agent runtime. if 
@@ -967,7 +992,9 @@ class Agent(threading.Thread):
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
 
         # try to retrieve slot history
-        self._slot_host = self._info_queue.get_nowait()
+        self._slot_hist = self._info_queue.get_nowait()
+
+
 
         # MAIN LOOP TERMINATED
         return
@@ -1258,13 +1285,13 @@ if __name__ == "__main__":
     # Some singal handling magic 
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
-        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg, slot_hist)
+        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)
 
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
-        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg, slot_hist)
+        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(0)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
@@ -1290,24 +1317,25 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Launch the agent thread
     try:
-        if options.workdir is '.':
-            workdir = os.getcwd()
-        else:
-            workdir = options.workdir
+        with open ("%s/slothist" % os.environ['HOME'], "w") as sh_out :
+            if options.workdir is '.':
+                workdir = os.getcwd()
+            else:
+                workdir = options.workdir
 
-        agent = Agent(logger=logger,
-                      exec_env=exec_env,
-                      workdir=workdir,
-                      runtime=options.runtime,
-                      mongodb_url=options.mongodb_url,
-                      mongodb_name=options.database_name,
-                      pilot_id=options.pilot_id,
-                      session_id=options.session_id,
-                      unitmanager_id=options.unitmanager_id, 
-                      slot_hist=slot_hist)
+            agent = Agent(logger=logger,
+                          exec_env=exec_env,
+                          workdir=workdir,
+                          runtime=options.runtime,
+                          mongodb_url=options.mongodb_url,
+                          mongodb_name=options.database_name,
+                          pilot_id=options.pilot_id,
+                          session_id=options.session_id,
+                          unitmanager_id=options.unitmanager_id, 
+                          slot_hist=slot_hist)
 
-        agent.start()
-        agent.join()
+            agent.start()
+            agent.join()
 
     except Exception, ex:
         msg = "Error running agent: %s" % str(ex)
