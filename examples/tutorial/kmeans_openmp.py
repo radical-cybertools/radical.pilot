@@ -95,8 +95,8 @@ def main():
         umgr.add_pilots(pilot)
 
         #input = '/var/scratch/marksant/kmeans_data/random_5000points.csv'
-        input = '/var/scratch/marksant/kmeans_data/random_500000points.csv'
-        #input = '/var/scratch/marksant/kmeans_data/random_1000000points.csv'
+        #input = '/var/scratch/marksant/kmeans_data/random_500000points.csv'
+        input = '/var/scratch/marksant/kmeans_data/random_1000000points.csv'
         output = '$PWD'
         clusters = 42
         threshold = 0.0010 # default
@@ -105,12 +105,13 @@ def main():
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores       = cores
         cudesc.executable  = "/home/marksant/software/bin/kmeans_omp"
-        cudesc.arguments   = ['-i', input, # input file
-                              # '-a', output, # TODO: output directory
-                              '-n', clusters, # number of clusters to find
-                              '-t', threshold, # convergence threshold
-                              '-p', cores,
-                              '-o' # output timing results
+        cudesc.pre_exec    = ["module load intel-cluster-runtime"]
+        cudesc.arguments   = ['-i', input,      # input file
+                              '-z', output,     # output directory
+                              '-n', clusters,   # number of clusters to find
+                              '-t', threshold,  # convergence threshold
+                              '-p', cores,      # number of cores, should be the same as cudesc.cores
+                              '-o'              # output timing results
                               ]
 
         # Submit the previously created ComputeUnit descriptions to the

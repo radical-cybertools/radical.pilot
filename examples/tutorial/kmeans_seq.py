@@ -95,8 +95,8 @@ def main():
         umgr.add_pilots(pilot)
 
         #input = '/var/scratch/marksant/kmeans_data/random_5000points.csv'
-        input = '/var/scratch/marksant/kmeans_data/random_500000points.csv'
-        #input = '/var/scratch/marksant/kmeans_data/random_1000000points.csv'
+        #input = '/var/scratch/marksant/kmeans_data/random_500000points.csv'
+        input = '/var/scratch/marksant/kmeans_data/random_1000000points.csv'
         #output = '/var/scratch/$USER/'
         output = '$PWD'
         clusters = 42
@@ -106,7 +106,7 @@ def main():
         cudesc.cores       = 1
         cudesc.executable  = "/home/marksant/software/bin/kmeans_seq"
         cudesc.arguments   = ['-i', input, # input file
-                              '-a', output, # output directory
+                              '-z', output, # output directory
                               '-n', clusters, # number of clusters to find
                               '-t', threshold, # convergence threshold
                               '-o' # output timing results
