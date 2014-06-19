@@ -124,11 +124,14 @@ class ExecutionEnvironment(object):
 
                 if os.path.basename(target) == 'rsh':
                     eenv.log.info('Detected that "ssh" is a link to "rsh".')
-                    eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
-                        {'launch_command': '%s' % target}
-                else:
-                    eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
-                        {'launch_command': '%s -o StrictHostKeyChecking=no' % command}
+                    command = target
+            else:
+                # In case of normal ssh disable hostkey checks
+                # (This is just for communication between headnodes and worker nodes)
+                command = '%s -o StrictHostKeyChecking=no' % command
+
+            eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
+                {'launch_command': command}
 
         command = eenv._which('mpirun')
         if command is not None:
