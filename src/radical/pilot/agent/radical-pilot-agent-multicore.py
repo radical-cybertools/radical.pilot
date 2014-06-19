@@ -389,6 +389,7 @@ class ExecWorker(multiprocessing.Process):
         # The available launch methods
         self._available_launch_methods = launch_methods
 
+
     # ------------------------------------------------------------------------
     #
     def stop(self):
@@ -474,7 +475,15 @@ class ExecWorker(multiprocessing.Process):
 
                 # Check if something happened in this cycle, if not, zzzzz for a bit
                 if idle:
-                    time.sleep(1)
+                    time.sleep(0.1)
+
+            # AM: we are done -- push slot history 
+            self._p.update(
+                {"_id": ObjectId(self._pilot_id)},
+                {"$set": {"slothistory" : self._slot_history, 
+                          "slots"       : self._slots}}
+                )
+
 
         except Exception, ex:
             self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
@@ -781,12 +790,14 @@ class ExecWorker(multiprocessing.Process):
 
         # AM: FIXME: this at the moment pushes slot history whenever a task
         # state is updated...  This needs only to be done on ExecWorker
-        # shutdown.
+        # shutdown.  Well, alas, there is currently no way for it to find out
+        # when it is shut down...
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
             {"$set": {"slothistory" : self._slot_history, 
                       "slots"       : self._slots}}
             )
+
 
         if not isinstance(tasks, list):
             tasks = [tasks]
@@ -837,6 +848,7 @@ class Agent(threading.Thread):
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
+
 
         # we assign each host partition to a task execution worker
         self._exec_worker = ExecWorker(
@@ -974,7 +986,7 @@ class Agent(threading.Thread):
                 except Exception, ex:
                     raise
 
-                time.sleep(1)
+                time.sleep(0.1)
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.
