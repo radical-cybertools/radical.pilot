@@ -1,10 +1,8 @@
-
 import os
 import sys
 import radical.pilot
 
-""" DESCRIPTION: Tutorial 3: Coupled Tasks
-For every task A1 and B1 a C1 is started.
+""" DESCRIPTION: A Simple Workload consisting one task of sequential k-means clustering.
 """
 
 # ---------------- BEGIN REQUIRED PILOT SETUP -----------------
@@ -41,10 +39,14 @@ def unit_state_change_cb(unit, state):
         print "Compute Unit '%s' failed ..." % unit.uid
         sys.exit(1)
 
+    elif state == radical.pilot.states.DONE:
+        print "Compute Unit '%s' finished with output:" % (unit.uid)
+        print unit.stdout
 
 #------------------------------------------------------------------------------
 #
 def main():
+
     try:
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
@@ -68,7 +70,7 @@ def main():
         # this describes the parameters and requirements for our pilot job
         pdesc = radical.pilot.ComputePilotDescription ()
         pdesc.resource = "fs2.das4.science.uva.nl" # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 5
+        pdesc.runtime  = 5 # minutes
         pdesc.cores    = 1
         pdesc.cleanup  = True
 
@@ -88,86 +90,39 @@ def main():
         # change their state.
         umgr.register_callback(unit_state_change_cb)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
+        # Add the created ComputePilot to the UnitManager.
         print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
 
-        NUMBER_JOBS  = 2 # the total number of CUs to chain
+        #input = '/var/scratch/marksant/kmeans_data/random_5000points.csv'
+        #input = '/var/scratch/marksant/kmeans_data/random_500000points.csv'
+        input = '/var/scratch/marksant/kmeans_data/random_1000000points.csv'
+        #output = '/var/scratch/$USER/'
+        output = '$PWD'
+        clusters = 42
+        threshold = 0.0010 # default
 
-        # submit A cus to pilot job
-        cudesc_list_A = []
-        for idx in range(NUMBER_JOBS):
-
-            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
-            cudesc = radical.pilot.ComputeUnitDescription()
-            cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % idx}
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
-
-            cudesc_list_A.append(cudesc)
-
-        # Submit the previously created ComputeUnit descriptions to the
-        # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print "Submit Compute Units 'A' to Unit Manager ..."
-        cu_set_A = umgr.submit_units(cudesc_list_A)
-
-        # submit B cus to pilot job
-        cudesc_list_B = []
-        for idx in range(NUMBER_JOBS):
-
-            # -------- BEGIN USER DEFINED CU 2 DESCRIPTION --------- #
-            cudesc = radical.pilot.ComputeUnitDescription()
-            cudesc.environment = {"CU_LIST": "B", "CU_NO": "%02d" % idx}
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU 2 DESCRIPTION --------- #
-
-            cudesc_list_B.append(cudesc)
+        cudesc = radical.pilot.ComputeUnitDescription()
+        cudesc.cores       = 1
+        cudesc.executable  = "/home/marksant/software/bin/kmeans_seq"
+        cudesc.arguments   = ['-i', input, # input file
+                              '-z', output, # output directory
+                              '-n', clusters, # number of clusters to find
+                              '-t', threshold, # convergence threshold
+                              '-o' # output timing results
+                              ]
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        print "Submit Compute Units 'B' to Unit Manager ..."
-        cu_set_B = umgr.submit_units(cudesc_list_B)
+        print "Submit Compute Unit to Unit Manager ..."
+        cu_set = umgr.submit_units (cudesc)
 
-
-        # ---------------------------------------------------------------------
-        print "Waiting for 'A' and 'B' CUs to complete..."
-        umgr.wait_units()
-        print "Executing 'C' tasks now..."
-        # ---------------------------------------------------------------------
-
-        # submit 'C' tasks to pilot job. each 'C' task takes the output of
-        # an 'A' and a 'B' task and puts them together.
-        cudesc_list_C = []
-        for idx in range(NUMBER_JOBS):
-
-            # -------- BEGIN USER DEFINED CU 3 DESCRIPTION --------- #
-            cudesc = radical.pilot.ComputeUnitDescription()
-            cudesc.environment = {"CU_SET": "C", "CU_NO": "%02d" % idx}
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_SET CU with id $CU_NO"']
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU 3 DESCRIPTION --------- #
-
-            cudesc_list_C.append(cudesc)
-
-        # Submit the previously created ComputeUnit descriptions to the
-        # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print "Submit Compute Units 'C' to Unit Manager ..."
-        cu_set_C = umgr.submit_units(cudesc_list_C)
-
-        # ---------------------------------------------------------------------
-        print "Waiting for 'C' CUs to complete..."
+        print "Waiting for CU to complete ..."
         umgr.wait_units()
         print "All CUs completed successfully!"
 
-        session.close()
+        session.close(delete=False)
         print "Closed session, exiting now ..."
 
     except Exception as e:
