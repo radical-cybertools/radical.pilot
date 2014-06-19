@@ -85,7 +85,7 @@ def pilot_DONE(mongo_p, pilot_uid):
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-            {"$push": {"statehistory": {"state": 'Done', "timestamp": ts}},
+        {"$push": {"statehistory": {"state": 'Done', "timestamp": ts}},
          "$set": {"state": 'Done',
                   "finished": ts}
 
@@ -334,7 +334,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, task_queue, info_queue, hosts, cores_per_host, 
+    def __init__(self, logger, task_queue, hosts, cores_per_host, 
                  launch_methods, mongodb_url, mongodb_name,
                  pilot_id, session_id, unitmanager_id):
 
@@ -351,15 +351,12 @@ class ExecWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p  = mongo_db["%s.p"  % session_id]
-        self._w  = mongo_db["%s.w"  % session_id]
+        self._p = mongo_db["%s.p"  % session_id]
+        self._w = mongo_db["%s.w"  % session_id]
         self._wm = mongo_db["%s.wm" % session_id]
 
         # Queued tasks by the Agent
         self._task_queue     = task_queue
-
-        # info backchannel to the agent
-        self._info_queue     = info_queue
 
         # Launched tasks by this ExecWorker
         self._running_tasks = []
@@ -382,9 +379,6 @@ class ExecWorker(multiprocessing.Process):
             })
         self._cores_per_host = cores_per_host
 
-
-        # publish the list of slots to the agent
-        self._info_queue.put (self._slots)
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
@@ -412,9 +406,7 @@ class ExecWorker(multiprocessing.Process):
 
                 idle = True
 
-                slot_status = self._slot_status()
-
-                self._log.debug("Slot status:\n%s", slot_status)
+                self._log.debug("Slot status:\n%s", self._slot_status())
 
                 # Loop over tasks instead of slots!
                 try:
@@ -592,8 +584,8 @@ class ExecWorker(multiprocessing.Process):
             last_slot_core_offset = all_slots_last_core_offset % cores_per_host
 
             # Convenience aliases
-            last_slot  = self._slots[last_slot_index]
-            last_host  = last_slot['host']
+            last_slot = self._slots[last_slot_index]
+            last_host = last_slot['host']
             first_slot = self._slots[first_slot_index]
             first_host = first_slot['host']
 
@@ -778,6 +770,7 @@ class ExecWorker(multiprocessing.Process):
         ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
         # this information here:
+
         # AM: why is that umgr ID needed?  It is never used...
         if self._unitmanager_id is None:
             cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
@@ -788,7 +781,7 @@ class ExecWorker(multiprocessing.Process):
         # state is updated...  This needs only to be done on ExecWorker
         # shutdown.
         self._p.update(
-            {"_id": ObjectId(self._pilot_id)}, 
+            {"_id": ObjectId(self._pilot_id)},
             {"$set": {"slothistory" : self._slot_history}}
             )
 
@@ -814,8 +807,7 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, workdir, runtime,
-                 mongodb_url, mongodb_name, pilot_id, session_id,
-                 unitmanager_id):
+                 mongodb_url, mongodb_name, pilot_id, session_id, unitmanager_id):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -843,14 +835,10 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
-        # the info queue is the backchannel for worker information (slot_history)
-        self._info_queue = multiprocessing.Queue()
-
         # we assign each host partition to a task execution worker
         self._exec_worker = ExecWorker(
             logger          = self._log,
             task_queue      = self._task_queue,
-            info_queue      = self._info_queue,
             hosts           = self._exec_env.nodes,
             cores_per_host  = self._exec_env.cores_per_node,
             launch_methods  = self._exec_env.discovered_task_launch_methods,
@@ -990,11 +978,6 @@ class Agent(threading.Thread):
                 # If we arrive here, there was an exception in the main loop.
                 pilot_FAILED(self._p, self._pilot_id, self._log, 
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
-
-        # try to retrieve slot history
-        self._slot_hist = self._info_queue.get_nowait()
-
-
 
         # MAIN LOOP TERMINATED
         return
@@ -1266,8 +1249,6 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     logger.info("RADICAL-Pilot multi-core agent for package/API version %s" % options.package_version)
 
-    slot_hist = list()
-
     #--------------------------------------------------------------------------
     # Establish database connection
     try:
@@ -1317,30 +1298,28 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Launch the agent thread
     try:
-        with open ("%s/slothist" % os.environ['HOME'], "w") as sh_out :
-            if options.workdir is '.':
-                workdir = os.getcwd()
-            else:
-                workdir = options.workdir
+        if options.workdir is '.':
+            workdir = os.getcwd()
+        else:
+            workdir = options.workdir
 
-            agent = Agent(logger=logger,
-                          exec_env=exec_env,
-                          workdir=workdir,
-                          runtime=options.runtime,
-                          mongodb_url=options.mongodb_url,
-                          mongodb_name=options.database_name,
-                          pilot_id=options.pilot_id,
-                          session_id=options.session_id,
-                          unitmanager_id=options.unitmanager_id, 
-                          slot_hist=slot_hist)
+        agent = Agent(logger=logger,
+                      exec_env=exec_env,
+                      workdir=workdir,
+                      runtime=options.runtime,
+                      mongodb_url=options.mongodb_url,
+                      mongodb_name=options.database_name,
+                      pilot_id=options.pilot_id,
+                      session_id=options.session_id,
+                      unitmanager_id=options.unitmanager_id)
 
-            agent.start()
-            agent.join()
+        agent.start()
+        agent.join()
 
     except Exception, ex:
         msg = "Error running agent: %s" % str(ex)
         logger.error(msg)
-        pilot_FAILED(mongo_p, options.pilot_id, logger, msg, slot_hist)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         agent.stop()
         sys.exit(1)
 
