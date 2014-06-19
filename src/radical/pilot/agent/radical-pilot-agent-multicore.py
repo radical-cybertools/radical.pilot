@@ -497,6 +497,8 @@ class ExecWorker(multiprocessing.Process):
                     else:
                         slot_matrix += "+"
             slot_matrix += "|"
+            ts = datetime.datetime.utcnow()
+            return slot_matrix, ts
 
         else :
             slot_matrix = ""
@@ -508,8 +510,8 @@ class ExecWorker(multiprocessing.Process):
                     else:
                         slot_vector += " X "
                 slot_matrix += "%s: %s\n" % (slot['host'].ljust(24), slot_vector)
+            return slot_matrix
 
-        return slot_matrix
 
     # ------------------------------------------------------------------------
     #
@@ -782,7 +784,8 @@ class ExecWorker(multiprocessing.Process):
         # shutdown.
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
-            {"$set": {"slothistory" : self._slot_history}}
+            {"$set": {"slothistory" : self._slot_history, 
+                      "slots"       : self._slots}}
             )
 
         if not isinstance(tasks, list):
@@ -873,7 +876,6 @@ class Agent(threading.Thread):
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : "Active",
-                      "slots"          : self._slots,
                       "nodes"          : self._exec_env.nodes.keys(),
                       "cores_per_node" : self._exec_env.cores_per_node,
                       "started"        : ts},
