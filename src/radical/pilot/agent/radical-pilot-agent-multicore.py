@@ -395,6 +395,7 @@ class ExecWorker(multiprocessing.Process):
     def stop(self):
         """Terminates the process' main loop.
         """
+        # AM: Why does this call exist?  It is never called....
         self._terminate = True
 
     # ------------------------------------------------------------------------
@@ -478,6 +479,7 @@ class ExecWorker(multiprocessing.Process):
                     time.sleep(0.1)
 
             # AM: we are done -- push slot history 
+            # FIXME: this is never called, self._terminate is a farce :(
             self._p.update(
                 {"_id": ObjectId(self._pilot_id)},
                 {"$set": {"slothistory" : self._slot_history, 
@@ -1269,8 +1271,8 @@ if __name__ == "__main__":
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
         mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.w"  % options.session_id]
-        mongo_wm     = mongo_db["%s.wm" % options.session_id]
+        mongo_w      = mongo_db["%s.w"  % options.session_id]  # AM: never used
+        mongo_wm     = mongo_db["%s.wm" % options.session_id]  # AM: never used
 
     except Exception, ex:
         logger.error("Couldn't establish database connection: %s" % str(ex))
