@@ -44,6 +44,39 @@ def get_session_docs (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
+def get_session_slothist (dbclient, dbname, session) :
+    """
+    For all pilots in the session, get the slot lists and slot histories. and
+    return as list of tuples like:
+
+            [pilot_id,      [      [hostname, slotnum] ],      [      [slotstate, timestamp] ] ] 
+      tuple (string  , list (tuple (string  , int    ) ), list (tuple (string   , datetime ) ) )
+    """
+
+    docs = get_session_docs (dbclient, dbname, "%s.p" % session)
+
+    ret = list()
+
+    for doc in docs['session'] :
+        pid   = str(doc['_id'])
+        slots =     doc['slots']
+        hist  =     doc['slothistory']
+
+        slotinfo = list()
+        for hostinfo in slots :
+            hostname = hostinfo['host'] 
+            slotnum  = len (hostinfo['cores'])
+            slotinfo.append ([hostname, slotnum])
+
+        ret.append ([pid, slotinfo, hist])
+
+  # import pprint
+  # pprint.pprint (ret)
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
 def get_session_events (dbclient, dbname, session) :
     """
     For all entities in the session, create simple event tuples, and return
@@ -98,13 +131,12 @@ def get_session_events (dbclient, dbname, session) :
             ret.append ([otype, oid, event['timestamp'], event['state'], odoc])
 
     # we don't want None times, actually
-    for r in ret :
+    for r in list(ret) :
         if  r[2] == None :
-            r[2] =  datetime.datetime.min
+            ret.remove (r)
+          # r[2] =  datetime.datetime.min
 
     ret.sort (key=lambda tup: tup[2]) 
-    for r in ret :
-        print r
 
     return ret
 

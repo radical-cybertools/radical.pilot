@@ -1,0 +1,262 @@
+#!/usr/bin/env python
+
+import sys
+import pprint
+import pymongo
+import radical.utils       as ru
+import radical.pilot.utils as rpu
+
+
+_DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+
+
+# ------------------------------------------------------------------------------
+#
+def usage (msg=None) :
+
+    if  msg :
+        print "\n\t%s\n" % msg
+
+    print """
+
+      usage   : %s [command] [dburl] [session]
+      example : %s stats mongodb://localhost/radicalpilot 536afe101d41c83696ea0135
+
+      commands:
+
+        help  : show this message
+        tree  : show a tree of the database
+        dump  : show a tree of the database with full details
+        list  : show a list of the session objects
+        sort  : show a list of the objects in a session, sorted by type
+        hist  : print timeline of session history
+        stat  : print statistics of execution history
+        plot  : create gnuplot representing session history
+
+      The default command is 'list'.  If no session ID is specified, operations
+      which apply to a single session will choose the last session in the given
+      DB.  The default MongoDB is '%s'
+      
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+
+    if  msg :
+        sys.exit (1)
+
+    sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+#
+def dump_session (dbclient, dbname, session) :
+
+    handle_session (dbclient, 'dump', dbname, session, None)
+
+
+# ------------------------------------------------------------------------------
+#
+def tree_session (dbclient, dbname, session) :
+
+    handle_session (dbclient, 'tree', dbname, session, None)
+
+
+# ------------------------------------------------------------------------------
+#
+def list_sessions (dbclient, dbname) :
+
+    sids = rpu.get_session_ids (dbclient, dbname)
+
+
+    if not sids :
+        print 'no session recorded in database at %s' % url
+
+    else :
+        print "Session IDs:"
+        for sid in sids :
+            print "  %s" % sid
+
+
+# ------------------------------------------------------------------------------
+def sort_session (dbclient, dbname, session) :
+
+    docs = rpu.get_session_docs (dbclient, dbname, session)
+
+    print "pilot managers :" 
+    for doc in docs['pmgr'] :
+        print "  %s" %  doc['_id']
+
+    print "pilot managers :" 
+    for doc in docs['pmgr'] :
+        print "  %s" %  doc['_id']
+
+    print "pilots :" 
+    for doc in docs['pilots'] :
+        print "  %s" %  doc['_id']
+
+    print "unit manager"
+    for doc in docs['umgr'] :
+        print "  %s" %  doc['_id']
+
+    print "units"
+    for doc in docs['units'] :
+        print "  %s" %  doc['_id']
+
+
+# ------------------------------------------------------------------------------
+def hist_session (dbclient, dbname, session) :
+
+    events = rpu.get_session_events (dbclient, dbname, session)
+
+    if  not events :
+        print "no events found for session %s" % session
+
+    start = events[0][2]
+    print "session : %s" % session
+    print "          %s" % str(start)
+
+    for e in events :
+        seconds = ru.time_diff (start, e[2])
+        print "          %08.2fs : %10s : %15s : %s" % (seconds, e[0], e[1], e[3])
+
+    slothists = rpu.get_session_slothist (dbclient, dbname, session)
+    for pilot_info in slothists :
+        print "pilot   : %s" % pilot_info[0]
+        for slothist in pilot_info[2] :
+            print "          %s" % str(slothist[0])
+
+
+# ------------------------------------------------------------------------------
+def handle_session (dbclient, mode, dbname, session, pname) :
+    """
+    For the given db, traverse collections
+    """
+
+    database = dbclient[dbname]
+    print " +-- db   %s" % dbname
+
+    cnames = list()
+    cnames.append ("%s"    % session)
+    cnames.append ("%s.pm" % session)
+    cnames.append ("%s.p"  % session)
+    cnames.append ("%s.wm" % session)
+    cnames.append ("%s.w"  % session)
+
+    for name in cnames :
+
+        if  mode == 'list' and not cname :
+            print " | +-- coll %s" % name
+
+        elif  mode == 'remove' and not pname :
+            try :
+                database.drop_collection (name)
+                print "  removed collection %s" % name
+            except :
+                pass # ignore errors
+
+        else :
+            handle_coll (database, mode, name, pname)
+
+
+
+# ------------------------------------------------------------------------------
+def handle_coll (database, mode, cname, pname) :
+    """
+    For a given collection, traverse all documents
+    """
+
+    if 'indexes' in cname :
+        return
+
+    collection = database[cname]
+    print " | +-- coll %s" % cname
+
+    docs = collection.find ()
+
+    for doc in docs :
+
+        name = doc['_id']
+
+        if  mode == 'list' and not pname :
+            print " | | +-- doc  %s" % name
+
+        elif  mode == 'remove' :
+            if (not pname) or (str(name)==str(pname)) :
+                try :
+                    collection.remove (name)
+                    print "  removed document %s" % name
+                except Exception as e:
+                    pass # ignore errors
+
+        else :
+            if (not pname) or (str(name)==str(pname)) :
+                handle_doc (collection, mode, doc)
+
+
+# ------------------------------------------------------------------------------
+def handle_doc (collection, mode, doc) :
+    """
+    And, surprise, for a given document, show it according to 'mode'
+    """
+
+    name = doc['_id']
+
+    if  mode == 'list' :
+
+        for key in doc :
+            print " | | | +-- %s" % (key)
+
+    elif  mode == 'tree' :
+        print " | | +-- doc  %s" % (name)
+        for key in doc :
+            print " | | | +-- %s" % (key)
+
+    elif  mode == 'dump' :
+        print " | | +-- doc  %s" % (name)
+        for key in doc :
+            txt_in  = pprint.pformat (doc[key])
+            txt_out = ""
+            lnum    = 1
+            for line in txt_in.split ('\n') :
+                if  lnum != 1 :
+                    txt_out += ' | | | |                '
+                txt_out += line
+                txt_out += '\n'
+                lnum    += 1
+
+            print " | | | +-- %-10s : %s" % (key, txt_out[:-1]) # remove last \n
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__' :
+
+    mode    = 'list'
+    url     = _DEFAULT_DBURL
+    session = None
+
+    if len(sys.argv) > 1 : mode    = sys.argv[1]
+    if len(sys.argv) > 2 : url     = sys.argv[2] 
+    if len(sys.argv) > 3 : session = sys.argv[3] 
+    if len(sys.argv) > 4 : usage ("incorrect usage -- too many arguments") 
+
+    if mode == 'help'    : usage ()
+
+    [host, port, dbname, cname, pname] = ru.split_dburl (url, _DEFAULT_DBURL)
+    dbclient = pymongo.MongoClient (host=host, port=port)
+
+    if not session       : session = rpu.get_last_session (dbclient, dbname)
+
+    print "url     : %s" % url
+    print "mode    : %s" % mode
+
+    if mode == 'list' : list_sessions (dbclient, dbname)
+    if mode == 'dump' : dump_session  (dbclient, dbname, session) 
+    if mode == 'tree' : tree_session  (dbclient, dbname, session) 
+    if mode == 'sort' : sort_session  (dbclient, dbname, session) 
+    if mode == 'hist' : hist_session  (dbclient, dbname, session) 
+
+    # ------------------------------------------------------------------------------------
+    dbclient.disconnect ()
+
+# ------------------------------------------------------------------------------
+
