@@ -373,7 +373,7 @@ class UnitManager(object):
                     unit_descriptions=unit_descriptions)
 
             except Exception as e:
-                raise exceptions.radical.pilotException(
+                raise exceptions.pilotException(
                     "Internal error - unit scheduler failed: %s" % e)
 
             unscheduled = list()  # unscheduled unit descriptions
