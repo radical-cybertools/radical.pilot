@@ -23,7 +23,7 @@ DBNAME = 'radicalpilot_unittests'
 
 #-----------------------------------------------------------------------------
 #
-class TestIssues(unittest.TestCase):
+class TestIssue169(unittest.TestCase):
     # silence deprecation warnings under py3
 
     def setUp(self):
@@ -46,7 +46,7 @@ class TestIssues(unittest.TestCase):
 
     #-------------------------------------------------------------------------
     #
-    def test__issue_169(self):
+    def test__issue_169_part_1(self):
         """ https://github.com/radical-cybertools/radical.pilot/issues/169
         """
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
@@ -66,3 +66,38 @@ class TestIssues(unittest.TestCase):
             assert pilot.state == radical.pilot.states.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
 
         session.close()
+
+    #-------------------------------------------------------------------------
+    #
+    def test__issue_169_part_2(self):
+        """ https://github.com/radical-cybertools/radical.pilot/issues/169
+        """
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+
+        pmgr = radical.pilot.PilotManager(session=session)
+        
+        cpd1 = radical.pilot.ComputePilotDescription()
+        cpd1.resource = "localhost"
+        cpd1.cores = 1
+        cpd1.runtime = 1
+        cpd1.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        cpd1.cleanup = True
+
+        cpd2 = radical.pilot.ComputePilotDescription()
+        cpd2.resource = "localhost"
+        cpd2.cores = 1
+        cpd2.runtime = 1
+        cpd2.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        cpd2.cleanup = True
+
+        pilots = pmgr.submit_pilots([cpd1, cpd2])
+
+        pmgr.wait_pilots()
+        
+        for pilot in pilots:
+            assert pilot.state == radical.pilot.states.DONE
+            assert pilot.stop_time is not None
+            assert pilot.start_time is not None
+
+        session.close()
+
