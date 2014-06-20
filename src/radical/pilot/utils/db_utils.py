@@ -58,6 +58,11 @@ def get_session_slothist (dbclient, dbname, session) :
     ret = list()
 
     for doc in docs['session'] :
+
+        # slot configuration was only recently (v0.18) added to the RP agent...
+        if  not 'slots' in doc :
+            return None
+
         pid   = str(doc['_id'])
         slots =     doc['slots']
         hist  =     doc['slothistory']
@@ -70,9 +75,6 @@ def get_session_slothist (dbclient, dbname, session) :
 
         ret.append ([pid, slotinfo, hist])
 
-  # import pprint
-  # pprint.pprint (ret)
-
     return ret
 
 
@@ -80,9 +82,11 @@ def get_session_slothist (dbclient, dbname, session) :
 def get_session_events (dbclient, dbname, session) :
     """
     For all entities in the session, create simple event tuples, and return
-    them.  A tuple is
+    them as a list
 
-      [object type, object id, timestamp, event name, object document]
+           [      [object type, object id, timestamp, event name, object document] ]
+      list (tuple (string     , string   , datetime , string    , dict           ) )
+      
     """
 
     docs = get_session_docs (dbclient, dbname, session)
@@ -101,7 +105,8 @@ def get_session_events (dbclient, dbname, session) :
         otype = 'pilot'
         oid   = str(doc['_id'])
 
-        for event in ['submitted', 'started',    'finished',
+        for event in ['submitted', 
+                    # 'started',    'finished',  # redundant to states..
                       'input_transfer_started',  'input_transfer_finished', 
                       'output_transfer_started', 'output_transfer_finished'] :
             if  event in doc :
@@ -118,7 +123,8 @@ def get_session_events (dbclient, dbname, session) :
         otype = 'unit'
         oid   = str(doc['_id'])
 
-        for event in ['submitted', 'started',    'finished',
+        for event in ['submitted', 
+                     # 'started',    'finished',  # redundant to states..
                       'input_transfer_started',  'input_transfer_finished', 
                       'output_transfer_started', 'output_transfer_finished'
                       ] :

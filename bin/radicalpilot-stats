@@ -4,11 +4,71 @@ import sys
 import pprint
 import pymongo
 import radical.utils       as ru
+import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
 
 _DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
 _DEFAULT_DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+
+# for graphing events, we assign numerical pseudo values to each event.  
+# Note: make sure that those are translated back into event tags via 'set # [xy]tics'
+# 
+#   set xtics ("lbl1" 1, "lbl2" 2, "lbl3" 3, "lbl4" 4)
+#
+_EVENT_ENCODING = {
+        'session': {
+            'created'                  :  1
+        }, 
+        'pmgr': {
+        }, 
+        'pilot' : {
+            rp.PENDING_LAUNCH          :  1,
+            rp.LAUNCHING               :  2,
+            rp.PENDING_ACTIVE          :  3,
+            rp.ACTIVE                  :  4,
+            rp.DONE                    :  5,
+            rp.CANCELED                :  6,
+            rp.FAILED                  :  7
+        },
+        'umgr': {
+        }, 
+        'unit': {
+            rp.NEW                     :  1,
+            rp.PENDING_EXECUTION       :  2,
+            rp.SCHEDULING              :  3,
+            rp.PENDING_INPUT_TRANSFER  :  4,
+            rp.TRANSFERRING_INPUT      :  5,
+            rp.EXECUTING               :  6,
+            rp.PENDING_OUTPUT_TRANSFER :  7,
+            rp.TRANSFERRING_OUTPUT     :  8,
+            rp.DONE                    :  9,
+            rp.CANCELED                : 10,
+            rp.FAILED                  : 11
+        }
+    }
+
+# DONE                        
+# CANCELED                    
+# FAILED                      
+# 
+# # pilot states
+# PENDING_LAUNCH              
+# LAUNCHING                   
+# PENDING_ACTIVE              
+# ACTIVE                      
+# 
+# # ComputeUnit States
+# NEW                         
+# PENDING_INPUT_TRANSFER      
+# TRANSFERRING_INPUT          
+# 
+# PENDING_EXECUTION           
+# SCHEDULING                  
+# EXECUTING                   
+# 
+# PENDING_OUTPUT_TRANSFER     
+# TRANSFERRING_OUTPUT         
 
 
 # ------------------------------------------------------------------------------
@@ -20,19 +80,19 @@ def usage (msg=None) :
 
     print """
 
-      usage   : %s [command] [dburl] [session]
-      example : %s stats mongodb://localhost/radicalpilot 536afe101d41c83696ea0135
+      usage   : %s -m mode [-d dburl] [-s session]
+      example : %s -m stats -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
 
-      commands:
+      modes :
 
         help  : show this message
-        tree  : show a tree of the database
-        dump  : show a tree of the database with full details
-        list  : show a list of the session objects
-        sort  : show a list of the objects in a session, sorted by type
-        hist  : print timeline of session history
-        stat  : print statistics of execution history
-        plot  : create gnuplot representing session history
+        list  : show  a  list   of sessions in the database
+        tree  : show  a  tree   of session objects
+        dump  : show  a  tree   of session objects, with full details
+        sort  : show  a  list   of session objects, sorted by type
+        hist  : show timeline   of session history
+        stat  : show statistics of session history (not implemented)
+        plot  : save gnuplot representing session history
 
       The default command is 'list'.  If no session ID is specified, operations
       which apply to a single session will choose the last session in the given
@@ -50,6 +110,11 @@ def usage (msg=None) :
 #
 def dump_session (dbclient, dbname, session) :
 
+    if  not session :
+        print "need session parameter on 'dump'"
+        sys.exit (-1)
+
+    print "session : %s" % session
     handle_session (dbclient, 'dump', dbname, session, None)
 
 
@@ -57,12 +122,20 @@ def dump_session (dbclient, dbname, session) :
 #
 def tree_session (dbclient, dbname, session) :
 
+    if  not session :
+        print "need session parameter on 'tree'"
+        sys.exit (-1)
+
     handle_session (dbclient, 'tree', dbname, session, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (dbclient, dbname) :
+def list_sessions (dbclient, dbname, session) :
+
+    if  session :
+        print "invalid session parameter on 'list'"
+        sys.exit (-1)
 
     sids = rpu.get_session_ids (dbclient, dbname)
 
@@ -79,11 +152,11 @@ def list_sessions (dbclient, dbname) :
 # ------------------------------------------------------------------------------
 def sort_session (dbclient, dbname, session) :
 
-    docs = rpu.get_session_docs (dbclient, dbname, session)
+    if  not session :
+        print "need session parameter on 'sort'"
+        sys.exit (-1)
 
-    print "pilot managers :" 
-    for doc in docs['pmgr'] :
-        print "  %s" %  doc['_id']
+    docs = rpu.get_session_docs (dbclient, dbname, session)
 
     print "pilot managers :" 
     for doc in docs['pmgr'] :
@@ -105,12 +178,26 @@ def sort_session (dbclient, dbname, session) :
 # ------------------------------------------------------------------------------
 def hist_session (dbclient, dbname, session) :
 
-    events = rpu.get_session_events (dbclient, dbname, session)
+    if  not session :
+        print "need session parameter on 'hist'"
+        sys.exit (-1)
+
+    events    = rpu.get_session_events   (dbclient, dbname, session)
+    slothists = rpu.get_session_slothist (dbclient, dbname, session)
 
     if  not events :
         print "no events found for session %s" % session
+        sys.exit (-1)
+
+    if  not slothists :
+        print "no slot configuration for session %s" % session
+        print "Please update your pilot agent!"
+        sys.exit (-1)
 
     start = events[0][2]
+
+    # ascii output of time sorted events and slot history
+
     print "session : %s" % session
     print "          %s" % str(start)
 
@@ -118,11 +205,132 @@ def hist_session (dbclient, dbname, session) :
         seconds = ru.time_diff (start, e[2])
         print "          %08.2fs : %10s : %15s : %s" % (seconds, e[0], e[1], e[3])
 
-    slothists = rpu.get_session_slothist (dbclient, dbname, session)
     for pilot_info in slothists :
         print "pilot   : %s" % pilot_info[0]
         for slothist in pilot_info[2] :
-            print "          %s" % str(slothist[0])
+            seconds = ru.time_diff (start, slothist[1])
+            print "          %08.2fs : %s" % (seconds, str(slothist[0]))
+
+
+# ------------------------------------------------------------------------------
+def plot_session (dbclient, dbname, session) :
+
+    if  not session :
+        print "need session parameter on 'plot'"
+        sys.exit (-1)
+
+    events    = rpu.get_session_events   (dbclient, dbname, session)
+    slothists = rpu.get_session_slothist (dbclient, dbname, session)
+
+    if  not events :
+        print "no events found for session %s" % session
+        sys.exit (-1)
+
+    if  not slothists :
+        print "no slot configuration for session %s" % session
+        print "Please update your pilot agent!"
+        sys.exit (-1)
+
+    start = events[0][2]
+
+    # create datafile for object lifelines (i.e. for graphs which show change
+    # of object state over time), sorted by object type
+
+    data = dict()
+
+    for event in events :
+        otype  = event[0]
+        oid    = event[1]
+        estamp = event[2]
+        ename  = event[3]
+
+        seconds = ru.time_diff (start, estamp)
+
+        if  not otype in data :
+            data[otype] = dict()
+
+        if  not oid in data[otype] :
+            data[otype][oid] = list()
+
+        etag = 0 # unknown
+        if  otype in _EVENT_ENCODING :
+            if  ename in _EVENT_ENCODING[otype] :
+                etag = _EVENT_ENCODING[otype][ename]
+
+        # as the event list is time sorted, the resulting event lists for each
+        # oid will be time sorted, too.
+        data[otype][oid].append ([seconds, etag])
+
+
+    with open ("/tmp/%s.events.dat" % session, "w") as dat :
+
+        dat.write ("\n")
+        dat.write ("# %-12s  %25s  %10s  %6s  %6s\n\n" \
+                % ('object type', 'object id', 'time', 'event', 'color'))
+
+        for otype in data :
+            oidx = 0
+            for oid in data[otype] :
+                for event in data[otype][oid] :
+                    dat.write ("%-14s  %25s  %10.2f  %6d  %6d\n" \
+                            % (otype, oid, event[0], event[1], oidx))
+                dat.write ("\n") # separate line segments
+                oidx += 1
+
+
+    # create datafile for slot allocations (i.e. for graphs which chow which
+    # slots have been busy over time), sorted by pilot ID
+
+    with open ("/tmp/%s.slots.dat" % session, "w") as dat :
+
+        if  not len (slothists) :
+            print "skip empty slot history"
+            return
+
+        dat.write ("\n")
+        dat.write ("# %-12s  %25s  %10s  %6s  %6s\n" \
+                % ('object type', 'object id', 'time', 'slot', 'color'))
+
+        # [pilot_id, [ [hostname, slotnum] ], [ [slotstate, timestamp] ] ] 
+
+        for pilot_info in slothists :
+
+            # on first slothist, find the string indices of the slots
+            slotidxs = list()
+            slotstr  = slothists[0][2][0][0]
+
+            for idx in range (0, len(slotstr)) :
+                if  slotstr[idx] in ['-', '+'] :
+                    slotidxs.append (idx)
+
+            dat.write ("\n")
+
+            for number,slotidx in enumerate(slotidxs) :
+
+                used     = False
+                oid      = pilot_info[0]
+                slothist = pilot_info[2]
+
+                for entry in slothist :
+
+                    seconds = ru.time_diff (start, entry[1])
+
+                    slotstate = entry[0][slotidx]
+                    if  slotstate == '-' : 
+                        if  used :
+                            dat.write ("%-14s  %25s  %10.2f  %6d  %6d\n" \
+                                    % ('pilot', oid, seconds, number, number))
+                            dat.write ("\n")
+                            used    = False
+
+                    elif  slotstate == '+' : 
+                        dat.write ("%-14s  %25s  %10.2f  %6d  %6d\n" \
+                                % ('pilot', oid, seconds, number, number))
+                        used    = True
+
+                    else :
+                        print "oops?  invalid slotstate '%s'" % slotstate
+
 
 
 # ------------------------------------------------------------------------------
@@ -224,22 +432,45 @@ def handle_doc (collection, mode, doc) :
                 lnum    += 1
 
             print " | | | +-- %-10s : %s" % (key, txt_out[:-1]) # remove last \n
+# ------------------------------------------------------------------------------
+# 
+def parse_commandline():
+
+    return options
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__' :
 
-    mode    = 'list'
-    url     = _DEFAULT_DBURL
-    session = None
+    import optparse
+    parser = optparse.OptionParser ()
 
-    if len(sys.argv) > 1 : mode    = sys.argv[1]
-    if len(sys.argv) > 2 : url     = sys.argv[2] 
-    if len(sys.argv) > 3 : session = sys.argv[3] 
-    if len(sys.argv) > 4 : usage ("incorrect usage -- too many arguments") 
+    parser.add_option('-s', '--session', dest='session')
+    parser.add_option('-d', '--dburl',   dest='url')
+    parser.add_option('-m', '--mode',    dest='mode')
 
-    if mode == 'help'    : usage ()
+    options, args = parser.parse_args ()
+
+    if  args :
+        usage ("Too many arguments (%s)" % args)
+
+    if  options.mode in ['help'] : 
+        usage ()
+
+    if  options.mode not in ['list', 'dump', 'tree', 'hist', 'stat', 'plot'] : 
+        usage ("Unsupported mode '%s'" % options.mode)
+
+  # if  not options.session and options.mode not in ['list'] :
+  #     usage ("mode '%s' needs session parameter" % options.mode)
+
+    if  not options.url : 
+        options.url = _DEFAULT_DBURL 
+
+
+    mode    = options.mode 
+    url     = options.url
+    session = options.session
 
     [host, port, dbname, cname, pname] = ru.split_dburl (url, _DEFAULT_DBURL)
     dbclient = pymongo.MongoClient (host=host, port=port)
@@ -249,11 +480,14 @@ if __name__ == '__main__' :
     print "url     : %s" % url
     print "mode    : %s" % mode
 
-    if mode == 'list' : list_sessions (dbclient, dbname)
-    if mode == 'dump' : dump_session  (dbclient, dbname, session) 
-    if mode == 'tree' : tree_session  (dbclient, dbname, session) 
-    if mode == 'sort' : sort_session  (dbclient, dbname, session) 
-    if mode == 'hist' : hist_session  (dbclient, dbname, session) 
+    if   mode == 'list' : list_sessions (dbclient, dbname)
+    elif mode == 'tree' : tree_session  (dbclient, dbname, session) 
+    elif mode == 'dump' : dump_session  (dbclient, dbname, session) 
+    elif mode == 'sort' : sort_session  (dbclient, dbname, session) 
+    elif mode == 'hist' : hist_session  (dbclient, dbname, session) 
+    elif mode == 'stat' : stat_session  (dbclient, dbname, session) 
+    elif mode == 'plot' : plot_session  (dbclient, dbname, session) 
+    else                : usage ("unknown mode '%s'" % mode)
 
     # ------------------------------------------------------------------------------------
     dbclient.disconnect ()
