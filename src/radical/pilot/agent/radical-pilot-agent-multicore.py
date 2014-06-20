@@ -793,7 +793,8 @@ class ExecWorker(multiprocessing.Process):
         # AM: FIXME: this at the moment pushes slot history whenever a task
         # state is updated...  This needs only to be done on ExecWorker
         # shutdown.  Well, alas, there is currently no way for it to find out
-        # when it is shut down...
+        # when it is shut down... Some quick and  superficial measurements 
+        # though show no negative impact on agent performance.
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
             {"$set": {"slothistory" : self._slot_history, 
@@ -1329,6 +1330,9 @@ if __name__ == "__main__":
                       session_id=options.session_id,
                       unitmanager_id=options.unitmanager_id)
 
+        # AM: why is this done in a thread?  This thread blocks anyway, so it
+        # could just *do* the things.  That would avoid those global vars and
+        # would allow for cleaner shutdown.
         agent.start()
         agent.join()
 
