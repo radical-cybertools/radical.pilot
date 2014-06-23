@@ -123,17 +123,11 @@ The content of the file should look like this (make sure to change the class nam
 
             session.close()
 
-Next, add the test to the ``issues/__init__.py`` file.
-
-.. code-block:: python
-
-    from issue_123 import *
-
 Now you can re-install RADICAL-Pilot and run you new test. In the source root, 
 run:
 
 .. code-block:: python
 
-    easy_install . && python -m unittest -v -q radical.pilot.tests.issues.TestIssue123
+    easy_install . && python -m unittest -v -q radical.pilot.tests.issues.issue_123.TestIssue123
 
 
