@@ -476,7 +476,7 @@ class ExecWorker(multiprocessing.Process):
 
                 # Check if something happened in this cycle, if not, zzzzz for a bit
                 if idle:
-                    time.sleep(0.1)
+                    time.sleep(1)
 
             # AM: we are done -- push slot history 
             # FIXME: this is never called, self._terminate is a farce :(
@@ -989,7 +989,7 @@ class Agent(threading.Thread):
                 except Exception, ex:
                     raise
 
-                time.sleep(0.1)
+                time.sleep(1)
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.
