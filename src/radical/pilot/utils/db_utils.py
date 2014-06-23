@@ -53,19 +53,19 @@ def get_session_slothist (dbclient, dbname, session) :
       tuple (string  , list (tuple (string  , int    ) ), list (tuple (string   , datetime ) ) )
     """
 
-    docs = get_session_docs (dbclient, dbname, "%s.p" % session)
+    docs = get_session_docs (dbclient, dbname, session)
 
     ret = list()
 
-    for doc in docs['session'] :
+    for pilot_doc in docs['pilots'] :
 
         # slot configuration was only recently (v0.18) added to the RP agent...
-        if  not 'slots' in doc :
+        if  not 'slots' in pilot_doc :
             return None
 
-        pid   = str(doc['_id'])
-        slots =     doc['slots']
-        hist  =     doc['slothistory']
+        pid      = str(pilot_doc['_id'])
+        slots    =     pilot_doc['slots']
+        slothist =     pilot_doc['slothistory']
 
         slotinfo = list()
         for hostinfo in slots :
@@ -73,7 +73,9 @@ def get_session_slothist (dbclient, dbname, session) :
             slotnum  = len (hostinfo['cores'])
             slotinfo.append ([hostname, slotnum])
 
-        ret.append ([pid, slotinfo, hist])
+        ret.append ({'pilot_id' : pid, 
+                     'slotinfo' : slotinfo, 
+                     'slothist' : slothist})
 
     return ret
 
@@ -97,25 +99,27 @@ def get_session_events (dbclient, dbname, session) :
         odoc  = dict()
         otype = 'session'
         oid   = str(doc['_id'])
-        ret.append ([otype, oid, doc['created'],        'created',        odoc])
-        ret.append ([otype, oid, doc['last_reconnect'], 'last_reconnect', odoc])
+        ret.append (['state', otype, oid, doc['created'],        'created',        odoc])
+        ret.append (['state', otype, oid, doc['last_reconnect'], 'last_reconnect', odoc])
 
     for doc in docs['pilots'] :
         odoc  = dict()
         otype = 'pilot'
         oid   = str(doc['_id'])
 
-        for event in ['submitted', 
-                    # 'started',    'finished',  # redundant to states..
+        for event in [# 'submitted', 'started',    'finished',  # redundant to states..
                       'input_transfer_started',  'input_transfer_finished', 
                       'output_transfer_started', 'output_transfer_finished'] :
             if  event in doc :
-                ret.append ([otype, oid, doc[event], event, odoc])
+                ret.append (['state', otype, oid, doc[event], event, odoc])
             else : 
-                ret.append ([otype, oid, None,       event, odoc])
+                ret.append (['state', otype, oid, None,       event, odoc])
 
         for event in doc['statehistory'] :
-            ret.append ([otype, oid, event['timestamp'], event['state'], odoc])
+            ret.append (['state', otype, oid, event['timestamp'], event['state'], odoc])
+
+        for event in doc['callbackhistory'] :
+            ret.append (['callback', otype, oid, event['timestamp'], event['state'], odoc])
 
 
     for doc in docs['units'] :
@@ -123,26 +127,28 @@ def get_session_events (dbclient, dbname, session) :
         otype = 'unit'
         oid   = str(doc['_id'])
 
-        for event in ['submitted', 
-                     # 'started',    'finished',  # redundant to states..
+        for event in [# 'submitted', 'started',    'finished',  # redundant to states..
                       'input_transfer_started',  'input_transfer_finished', 
                       'output_transfer_started', 'output_transfer_finished'
                       ] :
             if  event in doc :
-                ret.append ([otype, oid, doc[event], event, odoc])
+                ret.append (['state', otype, oid, doc[event], event, odoc])
             else : 
-                ret.append ([otype, oid, None,       event, odoc])
+                ret.append (['state', otype, oid, None,       event, odoc])
 
         for event in doc['statehistory'] :
-            ret.append ([otype, oid, event['timestamp'], event['state'], odoc])
+            ret.append (['state', otype, oid, event['timestamp'], event['state'], odoc])
+
+        for event in doc['callbackhistory'] :
+            ret.append (['callback', otype, oid, event['timestamp'], event['state'], odoc])
 
     # we don't want None times, actually
     for r in list(ret) :
-        if  r[2] == None :
+        if  r[3] == None :
             ret.remove (r)
-          # r[2] =  datetime.datetime.min
+          # r[3] =  datetime.datetime.min
 
-    ret.sort (key=lambda tup: tup[2]) 
+    ret.sort (key=lambda tup: tup[3]) 
 
     return ret
 

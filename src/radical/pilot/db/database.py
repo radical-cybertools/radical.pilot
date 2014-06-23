@@ -440,6 +440,16 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
+    def publish_compute_pilot_callback_history(self, pilot_uid, callback_history):
+
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._p.update({"_id": ObjectId(pilot_uid)},
+                       {"$set": {"callbackhistory": callback_history}})
+
+    #--------------------------------------------------------------------------
+    #
     def get_compute_units(self, unit_manager_id, unit_ids=None):
         """ Get yerself a bunch of compute units.
         """
@@ -639,6 +649,16 @@ class Session():
         self._p.update({"_id": ObjectId(pilot_uid)},
                        {"$pushAll":
                            {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
+
+    #--------------------------------------------------------------------------
+    #
+    def publish_compute_unit_callback_history(self, unit_uid, callback_history):
+
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._w.update({"_id": ObjectId(unit_uid)},
+                       {"$set": {"callbackhistory": callback_history}})
 
     #--------------------------------------------------------------------------
     #

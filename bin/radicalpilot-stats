@@ -194,7 +194,7 @@ def hist_session (dbclient, dbname, session) :
         print "Please update your pilot agent!"
         sys.exit (-1)
 
-    start = events[0][2]
+    start = events[0][3]
 
     # ascii output of time sorted events and slot history
 
@@ -202,14 +202,14 @@ def hist_session (dbclient, dbname, session) :
     print "          %s" % str(start)
 
     for e in events :
-        seconds = ru.time_diff (start, e[2])
-        print "          %08.2fs : %10s : %15s : %s" % (seconds, e[0], e[1], e[3])
+        seconds = ru.time_diff (start, e[3])
+        print "          %08.2fs : %10s : %15s : %20s (%s)" % (seconds, e[1], e[2], e[4], e[0])
 
     for pilot_info in slothists :
-        print "pilot   : %s" % pilot_info[0]
-        for slothist in pilot_info[2] :
-            seconds = ru.time_diff (start, slothist[1])
-            print "          %08.2fs : %s" % (seconds, str(slothist[0]))
+        print "pilot   : %s" % pilot_info['pilot_id']
+        for slothist in pilot_info['slothist'] :
+            seconds = ru.time_diff (start, slothist['timestamp'])
+            print "          %08.2fs : %s" % (seconds, str(slothist['slotstate']))
 
 
 # ------------------------------------------------------------------------------
@@ -231,7 +231,7 @@ def plot_session (dbclient, dbname, session) :
         print "Please update your pilot agent!"
         sys.exit (-1)
 
-    start = events[0][2]
+    start = events[0][3]
 
     # create datafile for object lifelines (i.e. for graphs which show change
     # of object state over time), sorted by object type
@@ -239,10 +239,11 @@ def plot_session (dbclient, dbname, session) :
     data = dict()
 
     for event in events :
-        otype  = event[0]
-        oid    = event[1]
-        estamp = event[2]
-        ename  = event[3]
+        etype  = event[0]
+        otype  = event[1]
+        oid    = event[2]
+        estamp = event[3]
+        ename  = event[4]
 
         seconds = ru.time_diff (start, estamp)
 
@@ -259,21 +260,21 @@ def plot_session (dbclient, dbname, session) :
 
         # as the event list is time sorted, the resulting event lists for each
         # oid will be time sorted, too.
-        data[otype][oid].append ([seconds, etag])
+        data[otype][oid].append ([seconds, etag, etype])
 
 
     with open ("/tmp/%s.events.dat" % session, "w") as dat :
 
         dat.write ("\n")
-        dat.write ("# %-12s  %25s  %10s  %6s  %6s\n\n" \
-                % ('object type', 'object id', 'time', 'event', 'color'))
+        dat.write ("# %-12s  %25s  %10s  %10s  %10s  %6s\n\n" \
+                % ('object type', 'object id', 'time', 'event', 'eventtype', 'color'))
 
         for otype in data :
             oidx = 0
             for oid in data[otype] :
                 for event in data[otype][oid] :
-                    dat.write ("%-14s  %25s  %10.2f  %6d  %6d\n" \
-                            % (otype, oid, event[0], event[1], oidx))
+                    dat.write ("%-14s  %25s  %10.2f  %6d  %10s  %6d\n" \
+                            % (otype, oid, event[0], event[1], event[2], oidx))
                 dat.write ("\n") # separate line segments
                 oidx += 1
 
@@ -293,29 +294,39 @@ def plot_session (dbclient, dbname, session) :
 
         # [pilot_id, [ [hostname, slotnum] ], [ [slotstate, timestamp] ] ] 
 
+        slotidxs_dict = dict()
+
+        # find busy/free information for all hist entries
         for pilot_info in slothists :
 
-            # on first slothist, find the string indices of the slots
-            slotidxs = list()
-            slotstr  = slothists[0][2][0][0]
+            # if we did not see that pilot before, determine its slot idx list
+            # from the slot info
+            pilot_id = pilot_info['pilot_id']
 
-            for idx in range (0, len(slotstr)) :
-                if  slotstr[idx] in ['-', '+'] :
-                    slotidxs.append (idx)
+            if not pilot_id in slotidxs_dict :
+
+                slotidxs_dict[pilot_id] = list()
+                slotstr                 = pilot_info['slothist'][0]['slotstate']
+
+                for idx in range (0, len(slotstr)) :
+                    if  slotstr[idx] in ['-', '+'] :
+                        slotidxs_dict[pilot_id].append (idx)
+
+            slotidxs = slotidxs_dict[pilot_id]
 
             dat.write ("\n")
 
             for number,slotidx in enumerate(slotidxs) :
 
                 used     = False
-                oid      = pilot_info[0]
-                slothist = pilot_info[2]
+                oid      = pilot_info['pilot_id']
+                slothist = pilot_info['slothist']
 
                 for entry in slothist :
 
-                    seconds = ru.time_diff (start, entry[1])
+                    seconds = ru.time_diff (start, entry['timestamp'])
 
-                    slotstate = entry[0][slotidx]
+                    slotstate = entry['slotstate'][slotidx]
                     if  slotstate == '-' : 
                         if  used :
                             dat.write ("%-14s  %25s  %10.2f  %6d  %6d\n" \
@@ -458,7 +469,7 @@ if __name__ == '__main__' :
     if  options.mode in ['help'] : 
         usage ()
 
-    if  options.mode not in ['list', 'dump', 'tree', 'hist', 'stat', 'plot'] : 
+    if  options.mode not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot'] : 
         usage ("Unsupported mode '%s'" % options.mode)
 
   # if  not options.session and options.mode not in ['list'] :
@@ -475,12 +486,10 @@ if __name__ == '__main__' :
     [host, port, dbname, cname, pname] = ru.split_dburl (url, _DEFAULT_DBURL)
     dbclient = pymongo.MongoClient (host=host, port=port)
 
-    if not session       : session = rpu.get_last_session (dbclient, dbname)
-
     print "url     : %s" % url
     print "mode    : %s" % mode
 
-    if   mode == 'list' : list_sessions (dbclient, dbname)
+    if   mode == 'list' : list_sessions (dbclient, dbname, session)
     elif mode == 'tree' : tree_session  (dbclient, dbname, session) 
     elif mode == 'dump' : dump_session  (dbclient, dbname, session) 
     elif mode == 'sort' : sort_session  (dbclient, dbname, session) 

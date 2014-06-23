@@ -10,6 +10,7 @@ import os
 import time
 import Queue
 import weakref
+import datetime
 import threading
 
 from multiprocessing import Pool
@@ -105,6 +106,8 @@ class UnitManagerController(threading.Thread):
             self._output_file_transfer_worker_pool.append(worker)
             worker.start()
 
+        self._callback_histories = dict ()
+
     # ------------------------------------------------------------------------
     #
     @classmethod
@@ -153,6 +156,15 @@ class UnitManagerController(threading.Thread):
         """Wrapper function to call all all relevant callbacks, on unit-level
         as well as manager-level.
         """
+
+        # this is the point where, at the earliest, the application could have
+        # been notified about unit state changes.  So we record that event.
+        if  not unit_id in self._callback_histories :
+            self._callback_histories[unit_id] = list()
+        self._callback_histories[unit_id].append (
+                {'timestamp' : datetime.datetime.utcnow(), 
+                 'state'     : new_state})
+    
         for cb in self._shared_data[unit_id]['callbacks']:
             try:
                 cb(self._shared_data[unit_id]['facade_object'],
@@ -170,6 +182,12 @@ class UnitManagerController(threading.Thread):
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+
+        # if we meet a final state, we record the object's callback history for
+        # later evalutation
+        if  new_state in (DONE, FAILED, CANCELED) :
+            self._db.publish_compute_unit_callback_history (unit_id, self._callback_histories[unit_id])
+
 
     # ------------------------------------------------------------------------
     #

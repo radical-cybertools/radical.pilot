@@ -19,7 +19,8 @@ from multiprocessing import Pool
 
 from radical.utils import which
 
-from radical.pilot.credentials import SSHCredential
+from radical.pilot.credentials  import SSHCredential
+from radical.pilot.states       import *
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
@@ -106,6 +107,8 @@ class PilotManagerController(threading.Thread):
             self._pilot_launcher_worker_pool.append(worker)
             worker.start()
 
+        self._callback_histories = dict()
+
     # ------------------------------------------------------------------------
     #
     @classmethod
@@ -144,6 +147,7 @@ class PilotManagerController(threading.Thread):
         self._initialized.wait()
 
         if pilot_uids is None:
+            # AM: this code branch is never used
             data = self._db.get_pilots(pilot_manager_id=self._pm_id)
             return data
 
@@ -173,6 +177,14 @@ class PilotManagerController(threading.Thread):
         as well as manager-level.
         """
 
+        # this is the point where, at the earliest, the application could have
+        # been notified about pilot state changes.  So we record that event.
+        if  not pilot_id in self._callback_histories :
+            self._callback_histories[pilot_id] = list()
+        self._callback_histories[pilot_id].append (
+                {'timestamp' : datetime.datetime.utcnow(), 
+                 'state'     : new_state})
+
         for cb in self._shared_data[pilot_id]['callbacks']:
             try:
                 cb(self._shared_data[pilot_id]['facade_object'](),
@@ -190,6 +202,12 @@ class PilotManagerController(threading.Thread):
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+
+        # if we meet a final state, we record the object's callback history for
+        # later evalutation
+        if  new_state in (DONE, FAILED, CANCELED) :
+            self._db.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
+
 
     # ------------------------------------------------------------------------
     #

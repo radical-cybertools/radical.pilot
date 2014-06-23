@@ -509,7 +509,7 @@ class ExecWorker(multiprocessing.Process):
                         slot_matrix += "+"
             slot_matrix += "|"
             ts = datetime.datetime.utcnow()
-            return slot_matrix, ts
+            return {'timestamp' : ts, 'slotstate' : slot_matrix}
 
         else :
             slot_matrix = ""
