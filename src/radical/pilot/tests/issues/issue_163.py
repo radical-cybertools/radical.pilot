@@ -18,7 +18,7 @@ if DBURL is None:
     print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radicalpilot_unittests'
+DBNAME = 'XYZ'
 
 
 #-----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ class TestIssue163(unittest.TestCase):
         pmgr = radical.pilot.PilotManager(session=session)
 
         # Get all configs,
-        res = pmgr.list_resource_configs()
+        res = session.list_resource_configs()
         # ... and the entry specific for localhost
         s = res['localhost']
 
@@ -65,10 +65,10 @@ class TestIssue163(unittest.TestCase):
         # And set the queue to development to get a faster turnaround
         rc.default_queue = 'development'
         # Now add the entry back to the PM
-        pmgr.add_resource_config(rc)
+        session.add_resource_config(rc)
 
         # Get all configs
-        res = pmgr.list_resource_configs()
+        res = session.list_resource_configs()
         s = res['testing123-localhost']
         assert s['default_queue'] == 'development'
 
@@ -79,9 +79,12 @@ class TestIssue163(unittest.TestCase):
         pdesc.cleanup   = True
 
         pilot = pmgr.submit_pilots(pdesc)
-        pilot.cancel()
+        pilot.wait(timeout=2.0*60)
+        
+        # This passes only if the pilot started succesfully. 
+        assert pilot.state == radical.pilot.states.DONE, "state: {0}".format(pilot.state)
 
-        session.close(delete=True)
+        session.close(delete=False)
 
 
     #-------------------------------------------------------------------------

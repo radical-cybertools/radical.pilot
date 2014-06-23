@@ -35,8 +35,7 @@ class PilotManagerController(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, pilot_manager_uid, pilot_manager_data, 
-        pilot_launcher_workers, resource_configurations, 
-        db_connection, db_connection_info):
+        pilot_launcher_workers, db_connection, db_connection_info):
         """Le constructeur.
         """
         # The MongoDB database handle.
@@ -91,8 +90,6 @@ class PilotManagerController(threading.Thread):
             self._pm_id = pilot_manager_uid
             self._num_pilot_launcher_workers = um_json["pilot_launcher_workers"]
 
-        self.resource_configurations = resource_configurations
-
         # The pilot launcher worker(s) are autonomous processes that
         # execute pilot bootstrap / launcher requests concurrently.
         self._pilot_launcher_worker_pool = []
@@ -100,7 +97,6 @@ class PilotManagerController(threading.Thread):
             worker = PilotLauncherWorker(
                 db_connection_info=db_connection_info, 
                 pilot_manager_id=self._pm_id,
-                resource_configurations=resource_configurations,
                 number=worker_number
             )
             self._pilot_launcher_worker_pool.append(worker)

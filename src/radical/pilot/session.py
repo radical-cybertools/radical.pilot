@@ -12,19 +12,21 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os 
+import glob
 
-from radical.pilot.object        import Object
-from radical.pilot.unit_manager  import UnitManager
-from radical.pilot.pilot_manager import PilotManager
-from radical.pilot.credentials   import SSHCredential
-from radical.pilot.utils.logger  import logger
-from radical.pilot.utils         import DBConnectionInfo
-from radical.pilot               import exceptions
+from radical.pilot.object          import Object
+from radical.pilot.unit_manager    import UnitManager
+from radical.pilot.pilot_manager   import PilotManager
+from radical.pilot.credentials     import SSHCredential
+from radical.pilot.utils.logger    import logger
+from radical.pilot.utils           import DBConnectionInfo
+from radical.pilot.resource_config import ResourceConfig
+from radical.pilot                 import exceptions
 
-from radical.pilot.db            import Session as dbSession
-from radical.pilot.db            import DBException
+from radical.pilot.db              import Session as dbSession
+from radical.pilot.db              import DBException
 
-from bson.objectid import ObjectId
+from bson.objectid                 import ObjectId
 
 # ------------------------------------------------------------------------------
 #
@@ -121,6 +123,9 @@ class Session(Object):
         # List of credentials registered with this session.
         self._credentials = []
 
+        # The resource configuration dictionary associated with the session.
+        self._resource_configs = {}
+
         try:
             self._database_url  = database_url
             self._database_name = database_name 
@@ -133,11 +138,23 @@ class Session(Object):
                 self._uid = str(ObjectId())
                 self._last_reconnect = None
 
+                # Loading all "default" resource configurations
+                default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
+                config_files = glob.glob(default_configs)
+                for config_file in config_files:
+                    config_url = "file://localhost/%s" % config_file
+                    rcs = ResourceConfig.from_file(config_url)
+                    logger.info("Loaded resource configurations from %s" % config_url)
+                    for rc in rcs:
+                        self._resource_configs[rc.name] = rc.as_dict() 
+
                 self._dbs, self._created = dbSession.new(sid=self._uid, 
                                                          db_url=database_url, 
-                                                         db_name=database_name)
+                                                         db_name=database_name,
+                                                         resource_configs=self._resource_configs)
 
                 logger.info("New Session created%s." % str(self))
+
 
             ######################################
             ## RECONNECT TO AN EXISTING SESSION ##
@@ -154,6 +171,8 @@ class Session(Object):
 
                 for cred_dict in session_info["credentials"]:
                     self._credentials.append(SSHCredential.from_dict(cred_dict))
+
+                self._resource_configs = session_info["resource_configs"]
 
                 logger.info("Reconnected to existing Session %s." % str(self))
 
@@ -417,4 +436,38 @@ class Session(Object):
             unit_manager_objects = unit_manager_objects[0]
 
         return unit_manager_objects
+
+    # -------------------------------------------------------------------------
+    #
+    def add_resource_config(self, resource_config):
+        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
+           dictionary of known resources.
+
+           For example::
+
+                  rc = radical.pilot.ResourceConfig
+                  rc.name = "mycluster"
+                  rc.remote_job_manager_endpoint = "ssh+pbs://mycluster
+                  rc.remote_filesystem_endpoint = "sftp://mycluster
+                  rc.default_queue = "private"
+                  rc.bootstrapper = "default_bootstrapper.sh"
+
+                  pm = radical.pilot.PilotManager(session=s)
+                  pm.add_resource_config(rc)
+
+                  pd = radical.pilot.ComputePilotDescription()
+                  pd.resource = "mycluster"
+                  pd.cores    = 16
+                  pd.runtime  = 5 # minutes
+
+                  pilot = pm.submit_pilots(pd)
+        """
+        self._dbs.session_add_resource_configs(resource_config.name, resource_config.as_dict())
+
+    # -------------------------------------------------------------------------
+    #
+    def list_resource_configs(self):
+        """Returns a dictionary of all known resource configurations.
+        """
+        return self._dbs.session_list_resource_configs()
 

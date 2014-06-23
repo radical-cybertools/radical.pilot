@@ -72,18 +72,18 @@ class Session():
     #--------------------------------------------------------------------------
     #
     @staticmethod
-    def new(sid, db_url, db_name="radical.pilot"):
+    def new(sid, db_url, db_name="radical.pilot", resource_configs={}):
         """ Creates a new session (factory method).
         """
         creation_time = datetime.datetime.utcnow()
 
         dbs = Session(db_url, db_name)
-        dbs._create(sid, creation_time)
+        dbs._create(sid, creation_time, resource_configs)
         return (dbs, creation_time)
 
     #--------------------------------------------------------------------------
     #
-    def _create(self, sid, creation_time):
+    def _create(self, sid, creation_time, resource_configs):
         """ Creates a new session (private).
 
             A session is a distinct collection with three sub-collections
@@ -104,6 +104,11 @@ class Session():
             raise DBEntryExistsException(
                 "Session with id '%s' already exists." % sid)
 
+        # dot replacement
+        rc_safe = {}
+        for key, val in resource_configs.iteritems():
+            rc_safe[key.replace(".", "<dot>")] = val
+
         # remember session id
         self._session_id = sid
 
@@ -111,9 +116,10 @@ class Session():
         self._s.insert( 
             {
                 "_id"  : ObjectId(sid),
-                "created"        : creation_time,
-                "last_reconnect" : None,
-                "credentials"    : []
+                "created"          : creation_time,
+                "last_reconnect"   : None,
+                "credentials"      : [],
+                "resource_configs" : rc_safe
             }
         )
 
@@ -180,6 +186,37 @@ class Session():
             {"$push": {"credentials": credential}},
             multi=True
         )
+
+    #--------------------------------------------------------------------------
+    #
+    def session_add_resource_configs(self, name, config):
+        if self._s is None:
+            raise DBException("No active session.")
+
+        self._s.update(
+            {"_id": ObjectId(self._session_id)},
+            {"$set": 
+                {"resource_configs.{0}".format(name.replace(".", "<dot>")): config}
+            },
+            upsert=True
+        )
+
+    #--------------------------------------------------------------------------
+    #
+    def session_list_resource_configs(self):
+        if self._s is None:
+            raise DBException("No active session.")
+
+        result = self._s.find(
+                {"_id": ObjectId(self._session_id)},
+                {"resource_configs": 1}
+            )
+        rcs_unsafe = result[0]['resource_configs']
+        rc_safe = {}
+        for key, val in rcs_unsafe.iteritems():
+            rc_safe[key.replace("<dot>", ".")] = val
+
+        return rc_safe
 
     #--------------------------------------------------------------------------
     #
