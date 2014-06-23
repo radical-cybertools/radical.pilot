@@ -46,17 +46,22 @@ do for [term_i=1:words(terms)] {
         set ylabel font ",8"
         set title  font ",8"
     }
+
+    # pilot 1: states, notifications, slots, maxslots 
+    set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*1
+    set style line 101 lt 1 lc rgb '#AA6666' pt 7 ps term_mult*0.6 lw term_mult*1
+    set style line 102 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*4
+    set style line 103 lt 2 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
+
+    set style line 1   lt 1 lc rgb '#FF9944' pt 6 ps term_mult*0.6 lw term_mult*1
+    set style line 2   lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.6 lw term_mult*1
+
+    set style line 4   lt 1 lc rgb '#6666AA' pt 6 ps term_mult*0.6 lw term_mult*1
+    set style line 5   lt 1 lc rgb '#FF4400' pt 6 ps term_mult*0.6 lw term_mult*1
+    set style line 6   lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.6 lw term_mult*1
+    set style line 7   lt 1 lc rgb '#66AA66' pt 6 ps term_mult*0.6 lw term_mult*1
+    set style line 8   lt 1 lc rgb '#6666AA' pt 6 ps term_mult*0.6 lw term_mult*1
     
-    set style line 1 lt 1 lc rgb '#FF9944' pt 6 ps term_mult*0.6 lw term_mult*1
-    set style line 2 lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.6 lw term_mult*1
-    set style line 3 lt 1 lc rgb '#FF9944' pt 6 ps term_mult*0.2 lw term_mult*4
-    set style line 4 lt 1 lc rgb '#6666AA' pt 6 ps term_mult*0.6 lw term_mult*1
-    set style line 5 lt 1 lc rgb '#FF4400' pt 6 ps term_mult*0.6 lw term_mult*1
-    set style line 6 lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.6 lw term_mult*1
-    set style line 7 lt 1 lc rgb '#66AA66' pt 6 ps term_mult*0.6 lw term_mult*1
-    set style line 8 lt 1 lc rgb '#6666AA' pt 6 ps term_mult*0.6 lw term_mult*1
-    
-    set border lw 4.0
   # set mxtics 10
   # set mytics 10
     set tics   scale 1.5
@@ -74,10 +79,11 @@ do for [term_i=1:words(terms)] {
 
     set title  ''
 
-    set tmargin 0
-    set bmargin 0
+    set tmargin  0
+    set bmargin  0
     set lmargin 25
     set rmargin 10
+    set border  lw 4.0
 
   # set size 1.0,1.5
     set multiplot layout 4,1 title "\n\n" . plottitle . "\n\n\n\n"
@@ -99,9 +105,9 @@ do for [term_i=1:words(terms)] {
     set grid
 
     plot '<(grep -e "^pilot" -e "^ *$" '.events_dat.' | grep -e "state" -e "^ *$")' \
-            using 3:4 title '' with linespoints ls 1 , \
+            using 3:4 title '' with linespoints ls 100 , \
          '<(grep -e "^pilot" -e "^ *$" '.events_dat.' | grep -e "callback" -e "^ *$")' \
-            using 3:4 title '' with linespoints ls 2
+            using 3:4 title '' with linespoints ls 101
  
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
@@ -132,7 +138,7 @@ do for [term_i=1:words(terms)] {
 
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
-    set yrange [-1:slotnum+1]
+    set yrange [-1:slotnum+nodesize/2]
     set ytics  nodesize
 
     set xlabel 'time'
@@ -141,14 +147,15 @@ do for [term_i=1:words(terms)] {
     set grid
 
     plot '<(grep -e "^pilot" -e "^ *$" '.slots_dat.')' \
-            using 3:4 title '' with lines ls 3
+            using 3:($4+1) title '' with lines ls 102, \
+         32           title '' with lines ls 103
 
     # ------------------------------------------------------------------------------------
     # Key plot
     set   tmargin 3
     set   lmargin 24
     set   key top left reverse
-    set   border 0
+    set   border  lw 0
     unset tics
     unset xlabel
     unset ylabel
