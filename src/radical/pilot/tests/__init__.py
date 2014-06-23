@@ -6,3 +6,4 @@ import unittest
 
 from api    import * 
 from remote import * 
+from issues import *

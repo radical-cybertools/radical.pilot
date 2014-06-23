@@ -97,11 +97,9 @@ class TestPilot(unittest.TestCase):
         cpd.sandbox = "/non-/existing/directory..."
         cpd.cleanup = True
 
-        try:
-            pilot = pm.submit_pilots(pilot_descriptions=cpd)
-            assert False, "Pilot submission should have failed"
-        except Exception, ex:
-            assert pilot.state == radical.pilot.states.FAILED
+        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
+        assert pilot.state == radical.pilot.states.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"

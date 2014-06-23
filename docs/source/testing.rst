@@ -22,7 +22,16 @@ to install RADICAL-Pilot first:
 
     If you run the same command in an environment where RADICAL-Pilot is already
     installed, the unit tests will test the installed version instead of the 
-    source version. 
+    source version.
+
+Run an Individual Test
+======================
+
+You can run individual tests from the command line like this:
+
+.. code-block:: bash
+
+    python -m unittest -q radical.pilot.tests.issues.issues
 
 Remote Testing 
 ==============
