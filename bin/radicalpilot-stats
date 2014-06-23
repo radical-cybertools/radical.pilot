@@ -214,6 +214,15 @@ def hist_session (dbclient, dbname, session) :
 
 # ------------------------------------------------------------------------------
 def plot_session (dbclient, dbname, session) :
+    """
+    gnuplot -e maxtime=160 
+            -e timetics=10 
+            -e slotnum=32 
+            -e nodesize=8 
+            -e 'plottitle="RADICAL-Pilot\\n=============\\n\\nPilot and Unit Event Traces"
+            -e 'session="53a76ab374df9249eacbca5f"' 
+               bin/plot_session_stats.plot
+    """
 
     if  not session :
         print "need session parameter on 'plot'"

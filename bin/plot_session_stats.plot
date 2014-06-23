@@ -1,4 +1,5 @@
 
+print 'plot title: ' . plottitle
 print 'session id: ' . session
 print 'max time  : ' . maxtime
 print 'timetics  : ' . timetics
@@ -22,7 +23,7 @@ do for [term_i=1:words(terms)] {
     if (t eq 'pdf') {
         term_mult  = 6.0
         term_x     = 70
-        term_y     = 50
+        term_y     = 70
         term_font  = 'Monospace,6'
         term_dl    = 7
         term_lw    = 3
@@ -60,7 +61,12 @@ do for [term_i=1:words(terms)] {
   # set mytics 10
     set tics   scale 1.5
 
-    set term   term_t enhanced color size term_x,term_y font term_font fontscale term_mult dashed dashlength term_dl linewidth term_lw
+    set term       term_t enhanced color dashed \
+        size       term_x,term_y \
+        font       term_font     \
+        fontscale  term_mult     \
+        dashlength term_dl       \
+        linewidth term_lw
       
     # --------------------------------------------------------------------------------------------------
     set output './'.session.'.'.t 
@@ -71,10 +77,10 @@ do for [term_i=1:words(terms)] {
     set tmargin 0
     set bmargin 0
     set lmargin 25
-    set rmargin 13
+    set rmargin 10
 
   # set size 1.0,1.5
-    set multiplot layout 4,1 title ""
+    set multiplot layout 4,1 title "\n\n" . plottitle . "\n\n\n\n"
 
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
@@ -92,11 +98,10 @@ do for [term_i=1:words(terms)] {
     set format x ""
     set grid
 
-    plot \
-        '<(grep -e "^pilot" -e "^ *$" '.events_dat.' | grep -e "state" -e "^ *$")' \
-        using 3:4 title '' with linespoints ls 1 , \
-        '<(grep -e "^pilot" -e "^ *$" '.events_dat.' | grep -e "callback" -e "^ *$")' \
-        using 3:4 title '' with linespoints ls 2
+    plot '<(grep -e "^pilot" -e "^ *$" '.events_dat.' | grep -e "state" -e "^ *$")' \
+            using 3:4 title '' with linespoints ls 1 , \
+         '<(grep -e "^pilot" -e "^ *$" '.events_dat.' | grep -e "callback" -e "^ *$")' \
+            using 3:4 title '' with linespoints ls 2
  
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
@@ -118,11 +123,10 @@ do for [term_i=1:words(terms)] {
     set format x ""
     set grid
 
-    plot \
-        '<(grep -e "^unit" -e "^ *$" '.events_dat.' | grep -e "state" -e "^ *$")' \
-        using 3:4 title '' with linespoints ls 1 , \
-        '<(grep -e "^unit" -e "^ *$" '.events_dat.' | grep -e "callback" -e "^ *$")' \
-        using 3:4 title '' with linespoints ls 2
+    plot '<(grep -e "^unit" -e "^ *$" '.events_dat.' | grep -e "state" -e "^ *$")' \
+            using 3:4 title '' with linespoints ls 1 , \
+         '<(grep -e "^unit" -e "^ *$" '.events_dat.' | grep -e "callback" -e "^ *$")' \
+            using 3:4 title '' with linespoints ls 2
 
 
 
@@ -136,8 +140,27 @@ do for [term_i=1:words(terms)] {
   unset format
     set grid
 
-    plot \
-        '<(grep -e "^pilot" -e "^ *$" '.slots_dat.')' using 3:4 title '' with lines ls 3
+    plot '<(grep -e "^pilot" -e "^ *$" '.slots_dat.')' \
+            using 3:4 title '' with lines ls 3
+
+    # ------------------------------------------------------------------------------------
+    # Key plot
+    set   tmargin 3
+    set   lmargin 24
+    set   key top left reverse
+    set   border 0
+    unset tics
+    unset xlabel
+    unset ylabel
+    set   yrange [0:1]
+    plot NaN ls 1 t 'pilot/unit states recorded by RP agent'           , \
+         NaN ls 2 t 'pilot/unit states notified to application'        , \
+         NaN ls 3 t 'busy slot (i.e. used CPU core)'                   , \
+         NaN lw 0 t "\n"                                                 \
+                  . "2.25s : mean time Pilot SUBMITTED -> ACTIVE\n"      \
+                  . "1.23s : mean time CU    SUBMITTED -> EXECUTING\n"   \
+                  . "1.23s : mean time CU    EXECUTING -> DONE\n"
+    # ------------------------------------------------------------------------------------
 
     unset multiplot
     # ------------------------------------------------------------------------------------
