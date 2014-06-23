@@ -186,7 +186,8 @@ class PilotManager(Object):
             obj._worker = PilotManagerController(
                 pilot_manager_uid=pilot_manager_id,
                 pilot_manager_data={},
-                db_connection=session._dbs)
+                db_connection=session._dbs,
+                db_connection_info=session._connection_info)
             session._process_registry.register(pilot_manager_id, obj._worker)
 
         # start the worker if it's not already running

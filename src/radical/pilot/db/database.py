@@ -173,7 +173,10 @@ class Session():
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid]
 
-        return cursor[0]
+        try:
+            return cursor[0]
+        except:
+            raise Exception("Couldn't find Session UID '{0}'in database.".format(sid))
 
     #--------------------------------------------------------------------------
     #
@@ -585,7 +588,28 @@ class Session():
             msg = "No unit manager with id %s found in DB." % unit_manager_id
             raise DBException(msg=msg)
 
-        return cursor[0]
+        try:
+            return cursor[0]
+        except:
+            msg = "No UnitManager with id '{0}' found in database.".format(unit_manager_id)
+            raise DBException(msg=msg)
+
+    #--------------------------------------------------------------------------
+    #
+    def get_pilot_manager(self, pilot_manager_id):
+        """ Get a unit manager.
+        """
+        if self._s is None:
+            raise DBException("No active session.")
+
+        cursor = self._pm.find({"_id": ObjectId(pilot_manager_id)})
+
+        try:
+            return cursor[0]
+        except:
+            msg = "No pilot manager with id '{0}' found in DB.".format(unit_manager_id)
+            raise DBException(msg=msg)
+
 
     #--------------------------------------------------------------------------
     #

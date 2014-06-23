@@ -165,10 +165,10 @@ class UnitManager(object):
         if worker is not None:
             obj._worker = worker
         else:
-            obj._worker = UnitManagerWorker(
-                unit_manager_uid=unit_manager_id,
-                unit_manager_data=None,
-                db_connection=session._dbs)
+            obj._worker = UnitManagerController(
+                unit_manager_uid=unit_manager_id, 
+                db_connection=session._dbs,
+                db_connection_info=session._connection_info)
             session._process_registry.register(unit_manager_id, obj._worker)
 
         # start the worker if it's not already running

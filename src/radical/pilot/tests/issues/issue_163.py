@@ -18,7 +18,7 @@ if DBURL is None:
     print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'XYZ'
+DBNAME = 'radicalpilot_unittests'
 
 
 #-----------------------------------------------------------------------------
@@ -84,12 +84,4 @@ class TestIssue163(unittest.TestCase):
         # This passes only if the pilot started succesfully. 
         assert pilot.state == radical.pilot.states.DONE, "state: {0}".format(pilot.state)
 
-        session.close(delete=False)
-
-
-    #-------------------------------------------------------------------------
-    #
-    def test__issue_163_part_2(self):
-        """ https://github.com/radical-cybertools/radical.pilot/issues/163
-        """
-        pass
+        session.close()

@@ -21,7 +21,7 @@ from radical.pilot.credentials     import SSHCredential
 from radical.pilot.utils.logger    import logger
 from radical.pilot.utils           import DBConnectionInfo
 from radical.pilot.resource_config import ResourceConfig
-from radical.pilot                 import exceptions
+from radical.pilot.exceptions      import PilotException
 
 from radical.pilot.db              import Session as dbSession
 from radical.pilot.db              import DBException
@@ -126,15 +126,14 @@ class Session(Object):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
-        try:
-            self._database_url  = database_url
-            self._database_name = database_name 
+        self._database_url  = database_url
+        self._database_name = database_name 
 
-            ##########################
-            ## CREATE A NEW SESSION ##
-            ##########################
-            if session_uid is None:
-
+        ##########################
+        ## CREATE A NEW SESSION ##
+        ##########################
+        if session_uid is None:
+            try:
                 self._uid = str(ObjectId())
                 self._last_reconnect = None
 
@@ -155,11 +154,14 @@ class Session(Object):
 
                 logger.info("New Session created%s." % str(self))
 
+            except Exception, ex:
+                raise PilotException("Couldn't create new session: %s" % ex)  
 
-            ######################################
-            ## RECONNECT TO AN EXISTING SESSION ##
-            ######################################
-            else:
+        ######################################
+        ## RECONNECT TO AN EXISTING SESSION ##
+        ######################################
+        else:
+            try:
                 # otherwise, we reconnect to an exissting session
                 self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
                                                               db_url=database_url, 
@@ -176,8 +178,8 @@ class Session(Object):
 
                 logger.info("Reconnected to existing Session %s." % str(self))
 
-        except DBException, ex:
-            raise exceptions.radical.pilotException("Database Error: %s" % ex)  
+            except Exception, ex:
+                raise PilotException("Couldn't re-connect to session: %s" % ex)  
 
         self._connection_info = DBConnectionInfo(
             session_id=self._uid,
