@@ -23,7 +23,7 @@ from radical.pilot.object import Object
 from radical.pilot.controller import PilotManagerController
 from radical.pilot.compute_pilot import ComputePilot
 from radical.pilot.utils.logger import logger
-from radical.pilot.exceptions import * 
+from radical.pilot.exceptions import PilotException, BadParameter
 from radical.pilot.resource_config import ResourceConfig
 
 # -----------------------------------------------------------------------------
@@ -227,7 +227,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
         self._assert_obj_is_valid()
@@ -321,7 +321,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
         self._assert_obj_is_valid()
@@ -347,7 +347,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         self._assert_obj_is_valid()
 
@@ -393,7 +393,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         self._assert_obj_is_valid()
 
@@ -443,7 +443,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
         self._assert_obj_is_valid()
