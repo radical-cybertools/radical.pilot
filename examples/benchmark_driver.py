@@ -28,7 +28,8 @@ def pilot_state_cb(pilot, state):
     print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
 
-    if state == radical.pilot.states.FAILED:
+    if state == radical.pilot.FAILED:
+        print "exit"
         sys.exit(1)
 
 #------------------------------------------------------------------------------
@@ -39,8 +40,8 @@ def unit_state_change_cb(unit, state):
     """
     print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
         unit.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % unit.log[-1]
+    if state == radical.pilot.FAILED:
+        print "            Log: %s" % unit.log
 
 #------------------------------------------------------------------------------
 #
@@ -64,18 +65,27 @@ if __name__ == "__main__":
         # Define 1-core local pilots that run for 10 minutes and clean up
         # after themself.
         pdescriptions = list()
-        for i in range (0, 1) :
+        for i in range (0, 2) :
             pdesc = radical.pilot.ComputePilotDescription()
             pdesc.resource = "india.futuregrid.org"
             pdesc.runtime  = 30 # minutes
-            pdesc.cores    = 32
+            pdesc.cores    = 8*(i+1)
             pdesc.cleanup  = False
 
             pdescriptions.append(pdesc)
 
+
         # Launch the pilots.
         pilots = pmgr.submit_pilots (pdescriptions)
-        print pilots
+        print "pilots: %s" % pilots
+
+        pilot_ids = list()
+        for pilot in pilots :
+            pilot_ids.append (pilot.uid)
+
+        pmgr.wait_pilots (pilot_ids, state=radical.pilot.ACTIVE)
+        print "pilots: %s" % pilot_ids
+
 
 
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
@@ -89,7 +99,7 @@ if __name__ == "__main__":
         #    export INPUT2=file2.dat
         #    /bin/cat $INPUT1 $INPUT2
         #
-        compute_units = []
+        cu_descriptions = []
 
         for unit_count in range(0, 100):
             cu = radical.pilot.ComputeUnitDescription()
@@ -99,7 +109,7 @@ if __name__ == "__main__":
             cu.cores       = 1
           # cu.input_data  = ["./file1.dat", "./file2.dat"]
 
-            compute_units.append(cu)
+            cu_descriptions.append(cu)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -118,14 +128,15 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_units)
+        units = umgr.submit_units(cu_descriptions)
+        print "units: %s" % umgr.list_units ()
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
         for unit in units:
-            print "* Task %s (executed @ %s) state %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+            print "* Task %s (executed @ %s) state %s, exit code: %s, started: %s, finished: %s" \
+                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
 
         # Close automatically cancels the pilot(s).
         print session.uid

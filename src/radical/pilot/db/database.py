@@ -749,6 +749,8 @@ class Session():
 
             ts = datetime.datetime.utcnow()
 
+            print "inserting unit %s" % unit.uid
+
             unit_json = {
                 "_id":          ObjectId(unit.uid),
                 "description":  unit.description.as_dict(),

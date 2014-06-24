@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import pprint
 import pymongo
@@ -163,7 +164,7 @@ def sort_session (dbclient, dbname, session) :
         print "  %s" %  doc['_id']
 
     print "pilots :" 
-    for doc in docs['pilots'] :
+    for doc in docs['pilot'] :
         print "  %s" %  doc['_id']
 
     print "unit manager"
@@ -171,7 +172,7 @@ def sort_session (dbclient, dbname, session) :
         print "  %s" %  doc['_id']
 
     print "units"
-    for doc in docs['units'] :
+    for doc in docs['unit'] :
         print "  %s" %  doc['_id']
 
 
@@ -194,7 +195,7 @@ def hist_session (dbclient, dbname, session) :
         print "Please update your pilot agent!"
         sys.exit (-1)
 
-    start = events[0][3]
+    start = events[0][4]
 
     # ascii output of time sorted events and slot history
 
@@ -202,8 +203,8 @@ def hist_session (dbclient, dbname, session) :
     print "          %s" % str(start)
 
     for e in events :
-        seconds = ru.time_diff (start, e[3])
-        print "          %08.2fs : %10s : %15s : %20s (%s)" % (seconds, e[1], e[2], e[4], e[0])
+        seconds = ru.time_diff (start, e[4])
+        print "          %08.2fs : %10s : %15s : %20s (%s)" % (seconds, e[1], e[2], e[5], e[0])
 
     for pilot_info in slothists :
         print "pilot   : %s" % pilot_info['pilot_id']
@@ -215,19 +216,28 @@ def hist_session (dbclient, dbname, session) :
 # ------------------------------------------------------------------------------
 def plot_session (dbclient, dbname, session) :
     """
-    gnuplot -e maxtime=160 
-            -e timetics=10 
-            -e slotnum=32 
-            -e nodesize=8 
-            -e 'plottitle="RADICAL-Pilot\\n=============\\n\\nPilot and Unit Event Traces"
-            -e 'session="53a76ab374df9249eacbca5f"' 
-               bin/plot_session_stats.plot
+    gnuplot -e  maxtime=160  \
+            -e  timetics=10  \
+            -e  slotnum=32  \
+            -e  nodesize=8  \
+            -e 'session="53a944b674df92192d7d43f6"'  \
+            -e 'plottitle="RADICAL-Pilot\n=============\n\nPilot and Unit Event Traces"'  \
+            -e  pilotnum=3  \
+            -e 'pilot_1_name="india.fg.org[8]"' \
+            -e 'pilot_2_name="india.fg.org[16]"' \
+            -e 'pilot_3_name="india.fg.org[32]"' \
+            -e 'pilot_1_id="53a944b974df92192d7d43f8"' \
+            -e 'pilot_2_id="53a944bd74df92192d7d43f9"' \
+            -e 'pilot_3_id="53a944bd74df92192d7d43f9"' \
+                plot_session_stats.plot
     """
 
     if  not session :
         print "need session parameter on 'plot'"
         sys.exit (-1)
 
+
+    docs      = rpu.get_session_docs (dbclient, dbname, session)
     events    = rpu.get_session_events   (dbclient, dbname, session)
     slothists = rpu.get_session_slothist (dbclient, dbname, session)
 
@@ -240,116 +250,114 @@ def plot_session (dbclient, dbname, session) :
         print "Please update your pilot agent!"
         sys.exit (-1)
 
-    start = events[0][3]
+    start       = events[0][4]
+    pids        = list()
+    maxtime     = 0.0
+    maxslots    = 0
+    nodesize    = 0
+    slots       = list()
+    hosts       = list()
 
-    # create datafile for object lifelines (i.e. for graphs which show change
-    # of object state over time), sorted by object type
+    for pilot in docs['pilot'] :
 
-    data = dict()
+        pid = str(pilot['_id'])
+        pids.append (pid)
+        hosts.append (ru.Url (pilot['sandbox']).host)
 
-    for event in events :
-        etype  = event[0]
-        otype  = event[1]
-        oid    = event[2]
-        estamp = event[3]
-        ename  = event[4]
-
-        seconds = ru.time_diff (start, estamp)
-
-        if  not otype in data :
-            data[otype] = dict()
-
-        if  not oid in data[otype] :
-            data[otype][oid] = list()
-
-        etag = 0 # unknown
-        if  otype in _EVENT_ENCODING :
-            if  ename in _EVENT_ENCODING[otype] :
-                etag = _EVENT_ENCODING[otype][ename]
-
-        # as the event list is time sorted, the resulting event lists for each
-        # oid will be time sorted, too.
-        data[otype][oid].append ([seconds, etag, etype])
-
-
-    with open ("/tmp/%s.events.dat" % session, "w") as dat :
-
-        dat.write ("\n")
-        dat.write ("# %-12s  %25s  %10s  %10s  %10s  %6s\n\n" \
-                % ('object type', 'object id', 'time', 'event', 'eventtype', 'color'))
-
-        for otype in data :
-            oidx = 0
-            for oid in data[otype] :
-                for event in data[otype][oid] :
-                    dat.write ("%-14s  %25s  %10.2f  %6d  %10s  %6d\n" \
-                            % (otype, oid, event[0], event[1], event[2], oidx))
-                dat.write ("\n") # separate line segments
-                oidx += 1
-
-
-    # create datafile for slot allocations (i.e. for graphs which chow which
-    # slots have been busy over time), sorted by pilot ID
-
-    with open ("/tmp/%s.slots.dat" % session, "w") as dat :
-
-        if  not len (slothists) :
-            print "skip empty slot history"
-            return
-
-        dat.write ("\n")
-        dat.write ("# %-12s  %25s  %10s  %6s  %6s\n" \
-                % ('object type', 'object id', 'time', 'slot', 'color'))
-
-        # [pilot_id, [ [hostname, slotnum] ], [ [slotstate, timestamp] ] ] 
-
-        slotidxs_dict = dict()
-
-        # find busy/free information for all hist entries
-        for pilot_info in slothists :
-
-            # if we did not see that pilot before, determine its slot idx list
-            # from the slot info
-            pilot_id = pilot_info['pilot_id']
-
-            if not pilot_id in slotidxs_dict :
-
-                slotidxs_dict[pilot_id] = list()
-                slotstr                 = pilot_info['slothist'][0]['slotstate']
-
-                for idx in range (0, len(slotstr)) :
-                    if  slotstr[idx] in ['-', '+'] :
-                        slotidxs_dict[pilot_id].append (idx)
-
-            slotidxs = slotidxs_dict[pilot_id]
-
+        with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
+            for event in pilot['statehistory'] :
+                etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
+                seconds = ru.time_diff (start, event['timestamp'])
+                maxtime = max (maxtime, seconds)
+                dat.write (" %10.2f  %-25s\n" % (seconds, etag))
             dat.write ("\n")
+            
+        with open ("/tmp/rp.%s.pilot.callbacks.%s.dat" % (session, pid), "w") as dat :
+            for event in pilot['callbackhistory'] :
+                etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
+                seconds = ru.time_diff (start, event['timestamp'])
+                maxtime = max (maxtime, seconds)
+                dat.write ("%10.2f  %-25s\n" % (seconds, etag))
+            dat.write ("\n")
+
+            
+        with open ("/tmp/rp.%s.unit.states.%s.dat" % (session, pid), "w") as dat :
+            for unit_id in pilot['wu_queue'] :
+                for unit in docs['unit'] :
+                    if  unit_id == unit['_id'] :
+                        for event in unit['statehistory'] :
+                            etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
+                            seconds = ru.time_diff (start, event['timestamp'])
+                            maxtime = max (maxtime, seconds)
+                            dat.write (" %10.2f  %-25s\n" % (seconds, etag))
+                        dat.write ("\n")
+            
+        with open ("/tmp/rp.%s.unit.callbacks.%s.dat" % (session, pid), "w") as dat :
+            for unit_id in pilot['wu_queue'] :
+                for unit in docs['unit'] :
+                    if  unit_id == unit['_id'] :
+                        for event in unit['callbackhistory'] :
+                            etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
+                            seconds = ru.time_diff (start, event['timestamp'])
+                            maxtime = max (maxtime, seconds)
+                            dat.write (" %10.2f  %-25s\n" % (seconds, etag))
+                        dat.write ("\n")
+
+            
+        with open ("/tmp/rp.%s.pilot.slots.%s.dat" % (session, pid), "w") as dat :
+
+            slotidxs = list()
+            slotstr  = pilot['slothistory'][0]['slotstate']
+
+            for idx in range (0, len(slotstr)) :
+                if  slotstr[idx] in ['-', '+'] :
+                    slotidxs.append (idx)
+
+            nodesize = max (nodesize, pilot['cores_per_node'])
+            maxslots = max (maxslots, len(slotidxs))
+            slots.append (len(slotidxs))
 
             for number,slotidx in enumerate(slotidxs) :
 
-                used     = False
-                oid      = pilot_info['pilot_id']
-                slothist = pilot_info['slothist']
+                used = False
+                for entry in pilot['slothistory'] :
 
-                for entry in slothist :
-
-                    seconds = ru.time_diff (start, entry['timestamp'])
-
+                    seconds   = ru.time_diff (start, entry['timestamp'])
+                    maxtime   = max (maxtime, seconds)
                     slotstate = entry['slotstate'][slotidx]
+
                     if  slotstate == '-' : 
                         if  used :
-                            dat.write ("%-14s  %25s  %10.2f  %6d  %6d\n" \
-                                    % ('pilot', oid, seconds, number, number))
+                            dat.write ("%10.2f  %6d\n" % (seconds, number+1))
                             dat.write ("\n")
                             used    = False
 
                     elif  slotstate == '+' : 
-                        dat.write ("%-14s  %25s  %10.2f  %6d  %6d\n" \
-                                % ('pilot', oid, seconds, number, number))
+                        dat.write ("%10.2f  %6d\n" % (seconds, number+1))
                         used    = True
 
                     else :
                         print "oops?  invalid slotstate '%s'" % slotstate
+                dat.write ("\n")
+
+    pilotnum = len(pids)
+                                         
+    cmd  = "gnuplot -e  maxtime=%d "       % int(maxtime+10)
+    cmd +=        " -e  timetics=10 " 
+    cmd +=        " -e  maxslots=%d "      % maxslots
+    for idx,pid in enumerate(pids) :
+        cmd +=    " -e  slotnum_%d=%d "    % (idx+1, slots[idx])
+    cmd +=        " -e  nodesize=%d "      % nodesize
+    cmd +=        " -e 'session=\"%s\"' "  % session
+    cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n=============\\n\\nPilot and Unit Event Traces\"'  "
+    cmd +=        " -e  pilotnum=%d "      % len(pids)
+    for idx,pid in enumerate(pids) :
+        cmd +=    " -e 'pilot_%d_name=\"%s[%d]\"' " % (idx+1, hosts[idx], slots[idx])
+    for idx,pid in enumerate(pids) :
+        cmd +=    " -e 'pilot_%d_id=\"%s\"' " % (idx+1, pids[idx])
+    cmd +=        "     bin/plot_session_stats.plot "
+
+    os.system (cmd) 
 
 
 
@@ -497,6 +505,12 @@ if __name__ == '__main__' :
 
     print "url     : %s" % url
     print "mode    : %s" % mode
+    print "session : %s" % session
+
+    if  not session and mode != 'list' :
+        session = rpu.get_last_session  (dbclient, dbname)
+        print "session : %s (last session in database)" % session
+
 
     if   mode == 'list' : list_sessions (dbclient, dbname, session)
     elif mode == 'tree' : tree_session  (dbclient, dbname, session) 
