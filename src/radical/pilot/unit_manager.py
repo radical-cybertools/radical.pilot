@@ -384,8 +384,11 @@ class UnitManager(object):
 
             units = list()  # compute unit instances to return
 
+
             # submit to all pilots which got something submitted to
             for pilot_id in schedule.keys():
+
+                pilot_units = list()
 
                 # sanity check on scheduler provided information
                 if not pilot_id in self.list_pilots():
@@ -415,15 +418,18 @@ class UnitManager(object):
                         unit_description=ud,
                         unit_manager_obj=self
                     )
-                    units.append(compute_unit)
+
+                    pilot_units.append(compute_unit)
 
                 self._worker.schedule_compute_units(
                     pilot_uid=pilot_id,
-                    units=units,
+                    units=pilot_units,
                     session=self._session
                 )
 
-                assert len(units) == len(uds)
+                assert len(pilot_units) == len(uds)
+
+                units += pilot_units
 
             if len(units) == 1:
                 return units[0]
