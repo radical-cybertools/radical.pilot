@@ -152,8 +152,8 @@ if __name__ == "__main__":
         session.close(delete=False)
 
         # run the stats plotter
-        os.system ("bin/radicalpilot-stats -m plot -s %s"    % sid) 
-        os.system ("cp -v %s.png %s/rp.benchmark.latest.png" % (sid, os.environ['HOME'])) 
+        os.system ("bin/radicalpilot-stats -m plot -s %s" % sid) 
+        os.system ("cp -v %s.png report/rp.benchmark.png" % sid) 
 
         sys.exit(0)
 
