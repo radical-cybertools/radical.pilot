@@ -66,17 +66,17 @@ do for [term_i=1:words(terms)] {
         set title  font ",6"
 
     } else {
-        term_mult  = 8.0
+        term_mult  = 7.0
         term_x     = '6000'
-        term_y     = '4000'
+        term_y     = '6000'
         term_font  = 'Monospace,6'
         term_dl    = 6
         term_lw    = 1
 
-        set key    font ",8"
-        set xlabel font ",8"
-        set ylabel font ",8"
-        set title  font ",8"
+        set key    font ",6"
+        set xlabel font ",6"
+        set ylabel font ",6"
+        set title  font ",6"
     }
 
     # pilot 1: pilot states, pilot notifications
