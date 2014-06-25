@@ -216,20 +216,7 @@ def hist_session (dbclient, dbname, session) :
 # ------------------------------------------------------------------------------
 def plot_session (dbclient, dbname, session) :
     """
-    gnuplot -e  maxtime=160  \
-            -e  timetics=10  \
-            -e  slotnum=32  \
-            -e  nodesize=8  \
-            -e 'session="53a944b674df92192d7d43f6"'  \
-            -e 'plottitle="RADICAL-Pilot\n=============\n\nPilot and Unit Event Traces"'  \
-            -e  pilotnum=3  \
-            -e 'pilot_1_name="india.fg.org[8]"' \
-            -e 'pilot_2_name="india.fg.org[16]"' \
-            -e 'pilot_3_name="india.fg.org[32]"' \
-            -e 'pilot_1_id="53a944b974df92192d7d43f8"' \
-            -e 'pilot_2_id="53a944bd74df92192d7d43f9"' \
-            -e 'pilot_3_id="53a944bd74df92192d7d43f9"' \
-                plot_session_stats.plot
+    plot results :P
     """
 
     if  not session :
@@ -488,9 +475,6 @@ if __name__ == '__main__' :
 
     if  options.mode not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot'] : 
         usage ("Unsupported mode '%s'" % options.mode)
-
-  # if  not options.session and options.mode not in ['list'] :
-  #     usage ("mode '%s' needs session parameter" % options.mode)
 
     if  not options.url : 
         options.url = _DEFAULT_DBURL 

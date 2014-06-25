@@ -54,6 +54,11 @@ if __name__ == "__main__":
         session = radical.pilot.Session(database_url=DBURL)
         print "session: %s" % session.uid
 
+        # make jenkins happy
+        cred         = radical.pilot.SSHCredential()
+        cred.user_id = "merzky"
+        session.add_credential (cred)
+
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
 
