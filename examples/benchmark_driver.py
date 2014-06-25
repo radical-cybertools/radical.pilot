@@ -147,7 +147,14 @@ if __name__ == "__main__":
         print session.uid
         pmgr.cancel_pilots ()
         time.sleep (3)
+
+        sid = session.uid
         session.close(delete=False)
+
+        # run the stats plotter
+        os.system ("bin/radicalpilot-stats -m plot -s %s"       % sid) 
+        os.system ("cp -v %s.png $HOME/rp.benchmark.latest.png" % sid) 
+
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

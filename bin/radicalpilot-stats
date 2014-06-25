@@ -342,7 +342,7 @@ def plot_session (dbclient, dbname, session) :
         cmd +=    " -e 'pilot_%d_name=\"%s[%d]\"' " % (idx+1, hosts[idx], slots[idx])
     for idx,pid in enumerate(pids) :
         cmd +=    " -e 'pilot_%d_id=\"%s\"' " % (idx+1, pids[idx])
-    cmd +=        "     bin/plot_session_stats.plot "
+    cmd +=        "     bin/radicalpilot-stats.plot "
 
     os.system (cmd) 
 
