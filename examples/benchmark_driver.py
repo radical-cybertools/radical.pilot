@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
         # run the stats plotter
         os.system ("bin/radicalpilot-stats -m plot -s %s"    % sid) 
-        os.system ("cp -v %s.png %s/rp.benchmark.latest.png" % (sid, os.environ['HOME']) 
+        os.system ("cp -v %s.png %s/rp.benchmark.latest.png" % (sid, os.environ['HOME'])) 
 
         sys.exit(0)
 
