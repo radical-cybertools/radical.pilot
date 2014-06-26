@@ -36,10 +36,10 @@ _EVENT_ENCODING = {
         }, 
         'unit': {
             rp.NEW                     :  1,
-            rp.PENDING_EXECUTION       :  2,
-            rp.SCHEDULING              :  3,
-            rp.PENDING_INPUT_TRANSFER  :  4,
-            rp.TRANSFERRING_INPUT      :  5,
+            rp.PENDING_INPUT_TRANSFER  :  2,
+            rp.TRANSFERRING_INPUT      :  3,
+            rp.PENDING_EXECUTION       :  4,
+            rp.SCHEDULING              :  5,
             rp.EXECUTING               :  6,
             rp.PENDING_OUTPUT_TRANSFER :  7,
             rp.TRANSFERRING_OUTPUT     :  8,
@@ -296,6 +296,27 @@ def plot_session (dbclient, dbname, session) :
             delete_me.append (dat.name)
 
             
+        with open ("/tmp/rp.%s.pilot.queue.%s.dat" % (session, pid), "w") as dat :
+
+            queue_size = 0
+            dat.write ("%10.2f  %6d\n" % (0, queue_size))
+
+            for event in events :
+                if  event[0] == 'state' and \
+                    event[1] == 'unit'  and \
+                    event[3] ==  pid    :
+                    print event
+                    if  event[5] == rp.NEW :
+                        seconds     = ru.time_diff (start, event[4])
+                        queue_size += 1
+                        dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+                    if  event[5] == rp.EXECUTING :
+                        seconds     = ru.time_diff (start, event[4])
+                        queue_size -= 1
+                        dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+
+
+
         with open ("/tmp/rp.%s.pilot.slots.%s.dat" % (session, pid), "w") as dat :
 
             slotidxs = list()
@@ -350,12 +371,14 @@ def plot_session (dbclient, dbname, session) :
         cmd +=    " -e 'pilot_%d_id=\"%s\"' " % (idx+1, pids[idx])
     cmd +=        "     bin/radicalpilot-stats.plot "
 
+    print cmd
     os.system (cmd) 
 
     for filename in delete_me :
         print "removing %s" % filename
         try :
-            os.remove (filename)
+         #  os.remove (filename)
+            pass
         except Exception as e :
             print "Error: %s" % str(e)
 

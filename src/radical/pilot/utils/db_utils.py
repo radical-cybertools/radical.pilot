@@ -148,7 +148,7 @@ def get_session_events (dbclient, dbname, session) :
         if  r[4] == None :
             ret.remove (r)
     
-    ret.sort (key=lambda tup: tup[3]) 
+    ret.sort (key=lambda tup: tup[4]) 
 
     return ret
 
