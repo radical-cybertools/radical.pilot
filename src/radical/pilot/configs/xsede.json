@@ -17,6 +17,7 @@
         "local_job_manager_endpoint"  : "sge://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "normal",
+        "spmd_variation"              : "24way",
         "python_interpreter"          : "/opt/apps/python/epd/7.2.2/bin/python",
         "pre_bootstrap"               : ["module purge", "module load TACC", "module load cluster", "module load mvapich2", "module load python/2.7.2-epd"],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
