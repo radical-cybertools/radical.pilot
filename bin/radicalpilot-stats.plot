@@ -69,17 +69,17 @@ do for [term_i=1:words(terms)] {
         set title  font ",6"
 
     } else {
-        term_mult  = 7.0
+        term_mult  = 6.0
         term_x     = '6000'
         term_y     = '6000'
-        term_font  = 'Monospace,6'
+        term_font  = 'Monospace,8'
         term_dl    = 6
         term_lw    = 1
 
-        set key    font ",6"
-        set xlabel font ",6"
-        set ylabel font ",6"
-        set title  font ",6"
+        set key    font ",8"
+        set xlabel font ",8"
+        set ylabel font ",8"
+        set title  font ",8"
     }
 
     # pilot 1: pilot states, pilot notifications
@@ -188,22 +188,22 @@ do for [term_i=1:words(terms)] {
     set grid
 
     if (pilotnum==1) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with linespoints ls 102 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with      points ls 103
+        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps ls 100 , \
+             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101
     }
     if (pilotnum==2) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 102 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 103 , \
-             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 202 , \
-             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 203
+        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
+             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
+             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
+             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201
     }
     if (pilotnum==3) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with linespoints ls 102 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with      points ls 103 , \
-             unit_states_2_dat    using 1:($2-0.1) title '' with linespoints ls 202 , \
-             unit_callbacks_2_dat using 1:($2+0.1) title '' with      points ls 203 , \
-             unit_states_3_dat    using 1:($2-0.1) title '' with linespoints ls 302 , \
-             unit_callbacks_3_dat using 1:($2+0.1) title '' with      points ls 303
+        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
+             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
+             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
+             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201 , \
+             unit_states_3_dat    using 1:($2-0.1) title '' with steps  ls 300 , \
+             unit_callbacks_3_dat using 1:($2+0.1) title '' with points ls 301
     }
 
     # ------------------------------------------------------------------------------------
@@ -217,28 +217,28 @@ do for [term_i=1:words(terms)] {
     set grid
 
     if (pilotnum==1) {
-      plot pilot_slots_1_dat using 1:($2+1.0) title '' with lines ls 104 , \
-           slotnum_1                          title '' with lines ls 105 , \
-           pilot_queue_1_dat using 1:($2+0.3) title '' with steps ls 104 axes x1y2
+      plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
+           pilot_queue_1_dat using 1:($2+0.1) title '' with steps ls 104 axes x1y2 , \
+           slotnum_1                          title '' with lines ls 105 
     }
     if (pilotnum==2) {
-      plot pilot_slots_1_dat using 1:($2-0.2) title '' with lines ls 104 , \
+      plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
+           pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 104 axes x1y2 , \
            slotnum_1                          title '' with lines ls 105 , \
-           pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 104 axes x1y2, \
-           pilot_slots_2_dat using 1:($2+0.2) title '' with lines ls 204 , \
-           slotnum_2                          title '' with lines ls 205 , \
-           pilot_queue_2_dat using 1:($2+0.3) title '' with steps ls 204 axes x1y2
+           pilot_slots_2_dat using 1:($2+0.3) title '' with lines ls 204 , \
+           pilot_queue_2_dat using 1:($2+0.3) title '' with steps ls 204 axes x1y2 , \
+           slotnum_2                          title '' with lines ls 205  
     }
     if (pilotnum==3) {
-      plot pilot_slots_1_dat using 1:($2-0.3) title '' with lines ls 104 , \
+      plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
+           pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 104 axes x1y2 , \
            slotnum_1                          title '' with lines ls 105 , \
-           pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 104 axes x1y2, \
-           pilot_slots_2_dat using 1:($2+0.0) title '' with lines ls 204 , \
+           pilot_slots_2_dat using 1:($2+0.2) title '' with lines ls 204 , \
+           pilot_queue_2_dat using 1:($2+0.2) title '' with steps ls 204 axes x1y2 , \
            slotnum_2                          title '' with lines ls 205 , \
-           pilot_queue_2_dat using 1:($2+0.2) title '' with steps ls 204 axes x1y2, \
-           pilot_slots_3_dat using 1:($2+0.0) title '' with lines ls 304 , \
-           slotnum_3                          title '' with lines ls 305 , \
-           pilot_queue_3_dat using 1:($2+0.4) title '' with steps ls 304 axes x1y2
+           pilot_slots_3_dat using 1:($2+0.4) title '' with lines ls 304 , \
+           pilot_queue_3_dat using 1:($2+0.4) title '' with steps ls 304 axes x1y2 , \
+           slotnum_3                          title '' with lines ls 305 
     }
 
     # ------------------------------------------------------------------------------------
