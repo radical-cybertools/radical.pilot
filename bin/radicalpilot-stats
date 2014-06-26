@@ -305,7 +305,6 @@ def plot_session (dbclient, dbname, session) :
                 if  event[0] == 'state' and \
                     event[1] == 'unit'  and \
                     event[3] ==  pid    :
-                    print event
                     if  event[5] == rp.NEW :
                         seconds     = ru.time_diff (start, event[4])
                         queue_size += 1
