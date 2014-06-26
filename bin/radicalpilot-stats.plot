@@ -218,6 +218,7 @@ do for [term_i=1:words(terms)] {
     set xlabel ''
     set ylabel "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
     set grid
+  unset format
 
     if (pilotnum==1) {
       plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
