@@ -4,12 +4,16 @@
         "remote_filesystem_endpoint"  : "sftp://login.archer.ac.uk/",
         "local_job_manager_endpoint"  : "fork://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
-        "default_queue"               : "standard",
+        "default_queue"               : "debug",
+        "lrms"                        : "PBSPRO",
+        "task_launch_method"          : "APRUN",
+        "mpi_launch_method"           : "APRUN",
+        "forward_tunnel_endpoint"     : "10.60.0.52",
         "python_interpreter"          : "/work/y07/y07/cse/python/2.7.6/bin/python",
-        "pre_bootstrap"               : [],
+        "global_virtenv"              : "/fs4/e290/e290/marksant/pilotve",
+        "pre_bootstrap"               : ["module load python"],
         "valid_roots"                 : ["/work"],
-        "pilot_agent"                 : "radical-pilot-test-agent-archer.py",
-        "pilot_agent_worker"          : "agent-worker.py",
-        "bootstrapper"                : "cray_bootstrapper.sh"
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py",
+        "bootstrapper"                : "default_bootstrapper.sh"
     }
 }

@@ -32,7 +32,7 @@ JOB_CHECK_INTERVAL=10 # seconds
 # ----------------------------------------------------------------------------
 #
 class PilotLauncherWorker(multiprocessing.Process):
-    """PilotLauncherWorker handles bootstrapping and laucnhing of 
+    """PilotLauncherWorker handles bootstrapping and launching of
        the pilot agents.
     """
 
@@ -197,7 +197,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     ########################################################
                     # database connection parameters
-                    database_host = self.db_connection_info.url.split("://")[1] 
+                    database_url = self.db_connection_info.url.split("://")[1]
                     database_name = self.db_connection_info.dbname
                     session_uid   = self.db_connection_info.session_id
 
@@ -294,8 +294,9 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
 
-                    bootstrap_args = "-r %s -d %s -s %s -p %s -t %s -c %s -V %s " %\
-                        (database_host, database_name, session_uid, str(compute_pilot_id), runtime, number_cores, VERSION)
+                    bootstrap_args = "-m %s -n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
+                        (database_url, database_name, session_uid, str(compute_pilot_id),
+                         runtime, logger.level, number_cores, VERSION)
 
                     if 'pilot_agent_options' in resource_cfg and resource_cfg['pilot_agent_options'] is not None:
                         for option in resource_cfg['pilot_agent_options']:
@@ -306,13 +307,27 @@ class PilotLauncherWorker(multiprocessing.Process):
                     if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:
                         for command in resource_cfg['pre_bootstrap']:
                             bootstrap_args += " -e '%s' " % command
+                    if 'global_virtenv' in resource_cfg and resource_cfg['global_virtenv'] is not None:
+                        bootstrap_args += " -g %s " % resource_cfg['global_virtenv']
+                    if 'lrms' in resource_cfg and resource_cfg['lrms'] is not None:
+                        bootstrap_args += " -l %s " % resource_cfg['lrms']
+                    else:
+                        raise Exception("LRMS not specified.")
+                    if 'task_launch_method' in resource_cfg and resource_cfg['task_launch_method'] is not None:
+                        bootstrap_args += " -j %s " % resource_cfg['task_launch_method']
+                    else:
+                        raise Exception("Task launch method not set.")
+                    if 'mpi_launch_method' in resource_cfg and resource_cfg['mpi_launch_method'] is not None:
+                        bootstrap_args += " -k %s " % resource_cfg['mpi_launch_method']
+                    else:
+                        raise Exception("MPI launch method not set.")
+                    if 'forward_tunnel_endpoint' in resource_cfg and resource_cfg['forward_tunnel_endpoint'] is not None:
+                        bootstrap_args += " -f %s " % resource_cfg['forward_tunnel_endpoint']
 
                     if cleanup is True: 
-                        bootstrap_args += " -C "               # the cleanup flag    
+                        bootstrap_args += " -x "               # the cleanup flag
                     if queue is not None:
                         bootstrap_args += " -q %s " % queue    # the queue name
-                    if project is not None:
-                        bootstrap_args += " -a %s " % project  # the project / allocation name
 
                     jd.executable = "/bin/bash"
                     jd.arguments = ["-l", "-c", '"./%s %s"' % (bootstrapper, bootstrap_args)]

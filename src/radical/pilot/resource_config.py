@@ -23,12 +23,18 @@ BOOTSTRAPPER                = 'bootstrapper'
 PILOT_AGENT                 = 'pilot_agent'
 PILOT_AGENT_WORKER          = 'pilot_agent_worker'
 PILOT_AGENT_OPTIONS         = 'pilot_agent_options'
+GLOBAL_VIRTENV              = 'global_virtenv'
+LRMS                        = 'lrms'
+TASK_LAUNCH_METHOD          = 'task_launch_method'
+MPI_LAUNCH_METHOD           = 'mpi_launch_method'
+FORWARD_TUNNEL_ENDPOINT     = 'forward_tunnel_endpoint'
 
 
 VALID_KEYS = [NAME, LOCAL_JOB_MANAGER_ENDPOINT, LOCAL_FILESYSTEM_ENDPOINT,
-              REMOTE_JOB_MANAGER_ENDPOINT, REMOTE_FILESYSTEM_ENDPOINT, 
+              REMOTE_JOB_MANAGER_ENDPOINT, REMOTE_FILESYSTEM_ENDPOINT,
               DEFAULT_QUEUE, SPMD_VARIATION, PYTHON_INTERPRETER, PRE_BOOTSTRAP, 
-              VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_WORKER, PILOT_AGENT_OPTIONS]
+              VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_WORKER, PILOT_AGENT_OPTIONS,
+              GLOBAL_VIRTENV, LRMS, TASK_LAUNCH_METHOD, MPI_LAUNCH_METHOD, FORWARD_TUNNEL_ENDPOINT]
 
 # -----------------------------------------------------------------------------
 #
@@ -116,6 +122,13 @@ class ResourceConfig(attributes.Attributes):
 
        [Type: `list of string`] [optional] TODO
 
+    .. data:: global_virtenv
+
+       [Type: `string`] [optional] TODO
+
+    .. data:: lrms
+
+       [Type: `string`] [optional] TODO
 
     """
 
@@ -133,7 +146,7 @@ class ResourceConfig(attributes.Attributes):
           response = urllib2.urlopen(url)
           rcf_content = response.read()
       except urllib2.URLError, err:
-          msg = "Couln't open resource configuration file '%s': %s." % (rcfgs, str(err))
+          msg = "Couldn't open resource configuration file '%s': %s." % (rcfgs, str(err))
           raise BadParameter(msg=msg)
 
       try:
@@ -191,6 +204,11 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(PILOT_AGENT,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT_WORKER,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT_OPTIONS,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(GLOBAL_VIRTENV,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LRMS,                        None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(TASK_LAUNCH_METHOD,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(MPI_LAUNCH_METHOD,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(FORWARD_TUNNEL_ENDPOINT,     None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # Parse the seeding dict if it is provided
         if seeding_dict is not None:

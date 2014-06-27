@@ -6,9 +6,12 @@
         "local_filesystem_endpoint"     : "file://localhost/",
         "default_queue"                 : "all.q",
         "spmd_variation"                : "openmpi",
+        "lrms"                          : "SGE",
+        "task_launch_method"            : "SSH",
+        "mpi_launch_method"             : "MPIRUN",
         "python_interpreter"            : "/usr/bin/python",
         "pre_bootstrap"                 : ["module load openmpi/gcc"],
-        "valid_roots"                   : ["/home"],
+        "valid_roots"                   : ["/home", "/var/scratch"],
         "pilot_agent"                   : "radical-pilot-agent-multicore.py"
     }
 }
