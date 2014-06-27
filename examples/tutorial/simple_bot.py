@@ -2,12 +2,8 @@ import os
 import sys
 import radical.pilot
 
-# READ: The RADICAL-Pilot documentation: 
-#   http://radicalpilot.readthedocs.org/en/latest
-#
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scenes!
-#
+""" DESCRIPTION: Tutorial 1: A Simple Workload consisting of a Bag-of-Tasks
+"""
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
@@ -22,11 +18,14 @@ def pilot_state_cb(pilot, state):
     """pilot_state_change_cb() is a callback function. It gets called very
     time a ComputePilot changes its state.
     """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
 
     if state == radical.pilot.states.FAILED:
+        print "Compute Pilot '%s' failed, exiting ..." % pilot.uid
         sys.exit(1)
+
+    elif state == radical.pilot.states.ACTIVE:
+        print "Compute Pilot '%s' became active!" % (pilot.uid)
+
 
 #------------------------------------------------------------------------------
 #
@@ -34,14 +33,17 @@ def unit_state_change_cb(unit, state):
     """unit_state_change_cb() is a callback function. It gets called very
     time a ComputeUnit changes its state.
     """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
     if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % unit.log[-1]
+        print "Compute Unit '%s' failed ..." % unit.uid
+        sys.exit(1)
+
+    elif state == radical.pilot.states.DONE:
+        print "Compute Unit '%s' finished with output:" % (unit.uid)
+        print unit.stdout
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+def main():
 
     try:
         # Create a new session. A session is the 'root' object for all other
@@ -51,9 +53,11 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         cred = radical.pilot.SSHCredential()
+        #cred.user_id = 'osdcXX'
         session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        print "Initializing Pilot Manager ..."
         pmgr = radical.pilot.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
@@ -61,32 +65,20 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a X-core on stamped that runs for N minutes and
-        # uses $HOME/radical.pilot.sandbox as sandbox directory.
-        pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "yellowstone.ucar.edu"
-        pdesc.runtime          = 15 # N minutes
-        pdesc.cores            = 32 # X cores
-        pdesc.cleanup          = False
-        pdesc.project          = "URTG0003"
+        # this describes the parameters and requirements for our pilot job
+        pdesc = radical.pilot.ComputePilotDescription ()
+        pdesc.resource = "fs2.das4.science.uva.nl" # NOTE: This is a "label", not a hostname
+        pdesc.runtime  = 5 # minutes
+        pdesc.cores    = 1
+        pdesc.cleanup  = True
 
-        # Launch the pilot.
+        # submit the pilot.
+        print "Submitting Compute Pilot to Pilot Manager ..."
         pilot = pmgr.submit_pilots(pdesc)
-
-        cud_list = []
-
-        for unit_count in range(0, 1):
-            #/bin/bash -l -c "module load python mpi4py && ibrun python ~/bin/helloworld_mpi.py"
-            mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.pre_exec    = ["module load python mpi4py"]
-            mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
-            mpi_test_task.cores       = 16
-            mpi_test_task.mpi         = True
-            cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
+        print "Initializing Unit Manager ..."
         umgr = radical.pilot.UnitManager(
             session=session,
             scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
@@ -96,28 +88,49 @@ if __name__ == "__main__":
         # change their state.
         umgr.register_callback(unit_state_change_cb)
 
-        # Add the previously created ComputePilot to the UnitManager.
+        # Add the created ComputePilot to the UnitManager.
+        print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
+
+        NUMBER_JOBS  = 10 # the total number of cus to run
+
+        # submit CUs to pilot job
+        cudesc_list = []
+        for i in range(NUMBER_JOBS):
+
+            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
+            cudesc = radical.pilot.ComputeUnitDescription()
+            cudesc.environment = {'CU_NO': i}
+            cudesc.executable  = "/bin/echo"
+            cudesc.arguments   = ['I am CU number $CU_NO']
+            cudesc.cores       = 1
+            # -------- END USER DEFINED CU DESCRIPTION --------- #
+
+            cudesc_list.append(cudesc)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cud_list)
+        print "Submit Compute Units to Unit Manager ..."
+        cu_set = umgr.submit_units (cudesc_list)
 
-        # Wait for all compute units to reach a terminal state (DONE or FAILED).
+        print "Waiting for CUs to complete ..."
         umgr.wait_units()
+        print "All CUs completed successfully!"
 
-        if not isinstance(units, list):
-            units = [units]
-        for unit in units:
-            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
+        session.close()
+        print "Closed session, exiting now ..."
 
-        session.close(delete=False)
-        sys.exit(0)
+    except Exception as e:
+            print "AN ERROR OCCURRED: %s" % ((str(e)))
+            return(-1)
 
-    except radical.pilot.PilotException, ex:
-        # Catch all exceptions and exit with and error.
-        print "Error during execution: %s" % ex
-        sys.exit(1)
 
+#------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    sys.exit(main())
+
+#
+#------------------------------------------------------------------------------

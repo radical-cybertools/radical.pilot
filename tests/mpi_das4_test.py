@@ -83,16 +83,11 @@ if __name__ == "__main__":
         for unit_count in range(0, 10):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
-            # NOTE: pre_exec only works for single node execution currently,
-            # "solved" it by putting things in .bashrc, need a way to pass
-            # this with mpirun though.
-            #mpi_test_task.pre_exec    = ["source $HOME/.virtualenv/mpi4py/bin/activate", "module load openmpi/gcc"]
-            #mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
-
+            mpi_test_task.pre_exec    = ["source $HOME/.virtualenv/mpi4py/bin/activate", "module load openmpi/gcc"]
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
 
-            mpi_test_task.cores       = 3
+            mpi_test_task.cores       = 16
             mpi_test_task.mpi         = True
 
             cud_list.append(mpi_test_task)

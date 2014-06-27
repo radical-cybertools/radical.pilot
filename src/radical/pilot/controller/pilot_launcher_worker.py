@@ -330,7 +330,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                         bootstrap_args += " -q %s " % queue    # the queue name
 
                     jd.executable = "/bin/bash"
-                    jd.arguments = ["-l", "-c", '"./%s %s"' % (bootstrapper, bootstrap_args)]
+                    jd.arguments = ["-l", "-c", '"chmod +x %s && ./%s %s"' % (bootstrapper, bootstrapper, bootstrap_args)]
 
                     logger.debug("Bootstrap command line: /bin/bash %s" % jd.arguments)
 
