@@ -480,6 +480,16 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
+    def publish_compute_pilot_callback_history(self, pilot_uid, callback_history):
+
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._p.update({"_id": ObjectId(pilot_uid)},
+                       {"$set": {"callbackhistory": callback_history}})
+
+    #--------------------------------------------------------------------------
+    #
     def get_compute_units(self, unit_manager_id, unit_ids=None):
         """ Get yerself a bunch of compute units.
         """
@@ -703,6 +713,16 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
+    def publish_compute_unit_callback_history(self, unit_uid, callback_history):
+
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._w.update({"_id": ObjectId(unit_uid)},
+                       {"$set": {"callbackhistory": callback_history}})
+
+    #--------------------------------------------------------------------------
+    #
     def insert_compute_units(self, pilot_uid, pilot_sandbox, unit_manager_uid,
                              units, unit_log):
         """ Adds one or more compute units to the database and sets their state
@@ -728,6 +748,8 @@ class Session():
             working_directory.path += "/unit-"+unit.uid
 
             ts = datetime.datetime.utcnow()
+
+            print "inserting unit %s" % unit.uid
 
             unit_json = {
                 "_id":          ObjectId(unit.uid),

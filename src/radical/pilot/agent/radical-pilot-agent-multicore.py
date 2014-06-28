@@ -663,14 +663,23 @@ class ExecWorker(multiprocessing.Process):
             })
         self._cores_per_node = cores_per_node
 
+
+        # keep a slot allocation history (short status), start with presumably
+        # empty state now
+        self._slot_history = list()
+        self._slot_history.append (self._slot_status (short=True))
+
+
         # The available launch methods
         self._available_launch_methods = launch_methods
+
 
     # ------------------------------------------------------------------------
     #
     def stop(self):
         """Terminates the process' main loop.
         """
+        # AM: Why does this call exist?  It is never called....
         self._terminate = True
 
     # ------------------------------------------------------------------------
@@ -735,6 +744,15 @@ class ExecWorker(multiprocessing.Process):
                 if idle:
                     time.sleep(1)
 
+            # AM: we are done -- push slot history 
+            # FIXME: this is never called, self._terminate is a farce :(
+            self._p.update(
+                {"_id": ObjectId(self._pilot_id)},
+                {"$set": {"slothistory" : self._slot_history, 
+                          "slots"       : self._slots}}
+                )
+
+
         except Exception, ex:
             self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
             raise
@@ -742,9 +760,10 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _slot_status(self):
+    def _slot_status(self, short=False):
         """Returns a multi-line string corresponding to slot status.
         """
+<<<<<<< HEAD
         slot_matrix = ""
         for slot in self._slots:
             slot_vector = ""
@@ -755,6 +774,34 @@ class ExecWorker(multiprocessing.Process):
                     slot_vector += " X "
             slot_matrix += "%s: %s\n" % (slot['node'].ljust(24), slot_vector)
         return slot_matrix
+=======
+
+        if  short :
+            slot_matrix = ""
+            for slot in self._slots:
+                slot_matrix += "|"
+                for core in slot['cores']:
+                    if core is FREE:
+                        slot_matrix += "-"
+                    else:
+                        slot_matrix += "+"
+            slot_matrix += "|"
+            ts = datetime.datetime.utcnow()
+            return {'timestamp' : ts, 'slotstate' : slot_matrix}
+
+        else :
+            slot_matrix = ""
+            for slot in self._slots:
+                slot_vector  = ""
+                for core in slot['cores']:
+                    if core is FREE:
+                        slot_vector += " - "
+                    else:
+                        slot_vector += " X "
+                slot_matrix += "%s: %s\n" % (slot['host'].ljust(24), slot_vector)
+            return slot_matrix
+
+>>>>>>> origin/feature/benchmarking
 
     # ------------------------------------------------------------------------
     #
@@ -910,6 +957,9 @@ class ExecWorker(multiprocessing.Process):
             # Change the state of the slot
             slot_entry['cores'][int(slot_core)] = new_state
 
+        # something changed - write history!
+        self._slot_history.append (self._slot_status (short=True))
+
 
     # ------------------------------------------------------------------------
     #
@@ -1019,6 +1069,8 @@ class ExecWorker(multiprocessing.Process):
         for e in finished_tasks:
             self._running_tasks.remove(e)
 
+        # AM: why is idle always True?  Whats the point here?  Not to run too
+        # fast? :P
         return idle
 
     # ------------------------------------------------------------------------
@@ -1031,6 +1083,27 @@ class ExecWorker(multiprocessing.Process):
         # We need to know which unit manager we are working with. We can pull
         # this information here:
 
+<<<<<<< HEAD
+=======
+        # AM: why is that umgr ID needed?  It is never used...
+        if self._unitmanager_id is None:
+            cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
+                                    {"unitmanager": 1})
+            self._unitmanager_id = cursor_p[0]["unitmanager"]
+
+        # AM: FIXME: this at the moment pushes slot history whenever a task
+        # state is updated...  This needs only to be done on ExecWorker
+        # shutdown.  Well, alas, there is currently no way for it to find out
+        # when it is shut down... Some quick and  superficial measurements 
+        # though show no negative impact on agent performance.
+        self._p.update(
+            {"_id": ObjectId(self._pilot_id)},
+            {"$set": {"slothistory" : self._slot_history, 
+                      "slots"       : self._slots}}
+            )
+
+
+>>>>>>> origin/feature/benchmarking
         if not isinstance(tasks, list):
             tasks = [tasks]
         for task in tasks:
@@ -1081,7 +1154,12 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
+<<<<<<< HEAD
         # we assign each node partition to a task execution worker
+=======
+
+        # we assign each host partition to a task execution worker
+>>>>>>> origin/feature/benchmarking
         self._exec_worker = ExecWorker(
             logger          = self._log,
             task_queue      = self._task_queue,
@@ -1142,7 +1220,7 @@ class Agent(threading.Thread):
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
-                    pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set.")
+                    pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set).")
                     break
 
                 # Make sure that we haven't exceeded the agent runtime. if 
@@ -1529,8 +1607,8 @@ if __name__ == "__main__":
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
         mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.w"  % options.session_id]
-        mongo_wm     = mongo_db["%s.wm" % options.session_id]
+        mongo_w      = mongo_db["%s.w"  % options.session_id]  # AM: never used
+        mongo_wm     = mongo_db["%s.wm" % options.session_id]  # AM: never used
 
     except Exception, ex:
         logger.error("Couldn't establish database connection: %s" % str(ex))
@@ -1589,6 +1667,9 @@ if __name__ == "__main__":
                       pilot_id=options.pilot_id,
                       session_id=options.session_id)
 
+        # AM: why is this done in a thread?  This thread blocks anyway, so it
+        # could just *do* the things.  That would avoid those global vars and
+        # would allow for cleaner shutdown.
         agent.start()
         agent.join()
 
@@ -1603,3 +1684,4 @@ if __name__ == "__main__":
 
         logger.error("Caught keyboard interrupt. EXITING")
         agent.stop()
+
