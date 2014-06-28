@@ -38,8 +38,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, db_connection_info, pilot_manager_id, 
-        resource_configurations, number=None):
+    def __init__(self, db_connection_info, pilot_manager_id, number=None):
         """Creates a new pilot launcher background process.
         """
         # Multiprocessing stuff
@@ -49,7 +48,7 @@ class PilotLauncherWorker(multiprocessing.Process):
         self.db_connection_info = db_connection_info
         self.pilot_manager_id = pilot_manager_id
 
-        self.resource_configurations = resource_configurations
+        self.resource_configurations = dict()
 
         self.name = "PilotLauncherWorker-%s" % str(number)
 
@@ -58,27 +57,34 @@ class PilotLauncherWorker(multiprocessing.Process):
     def run(self):
         """Starts the process when Process.start() is called.
         """
-
         # saga_session holds the SSH context infos.
         saga_session = saga.Session()
 
-        # Try to connect to the database and create a tailable cursor.
+        # Try to connect to the database 
         try:
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
             pilot_col = db["%s.p" % self.db_connection_info.session_id]
             logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
+            # Process / update all known credentials
             session_col = db["%s" % self.db_connection_info.session_id]
             session = session_col.find(
                 {"_id": ObjectId(self.db_connection_info.session_id)},
-                {"credentials": 1}
+                {"credentials": 1, "resource_configs": 1}
             )
 
             for cred_dict in session[0]["credentials"]:
                 cred = SSHCredential.from_dict(cred_dict)
                 saga_session.add_context(cred._context)
                 logger.debug("Found SSH context info: %s." % cred._context)
+
+            # Update the known resource configurations
+            rcs = {}
+            rcs_safe = session[0]["resource_configs"]
+            for key, val in rcs_safe.iteritems():
+                rcs[key.replace("<dot>", ".")] = val
+            self.resource_configurations = rcs
 
         except Exception, ex:
             tb = traceback.format_exc()
@@ -388,7 +394,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     )
 
                 except Exception, ex:
-                    # Update the CU's state 'FAILED'.
+                    # Update the Pilot's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
                     log_messages = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
                     pilot_col.update(
