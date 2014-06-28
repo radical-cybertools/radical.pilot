@@ -763,20 +763,8 @@ class ExecWorker(multiprocessing.Process):
     def _slot_status(self, short=False):
         """Returns a multi-line string corresponding to slot status.
         """
-<<<<<<< HEAD
-        slot_matrix = ""
-        for slot in self._slots:
-            slot_vector = ""
-            for core in slot['cores']:
-                if core is FREE:
-                    slot_vector += " - "
-                else:
-                    slot_vector += " X "
-            slot_matrix += "%s: %s\n" % (slot['node'].ljust(24), slot_vector)
-        return slot_matrix
-=======
 
-        if  short :
+        if short:
             slot_matrix = ""
             for slot in self._slots:
                 slot_matrix += "|"
@@ -798,10 +786,9 @@ class ExecWorker(multiprocessing.Process):
                         slot_vector += " - "
                     else:
                         slot_vector += " X "
-                slot_matrix += "%s: %s\n" % (slot['host'].ljust(24), slot_vector)
+                slot_matrix += "%s: %s\n" % (slot['node'].ljust(24), slot_vector)
             return slot_matrix
 
->>>>>>> origin/feature/benchmarking
 
     # ------------------------------------------------------------------------
     #
@@ -1083,14 +1070,6 @@ class ExecWorker(multiprocessing.Process):
         # We need to know which unit manager we are working with. We can pull
         # this information here:
 
-<<<<<<< HEAD
-=======
-        # AM: why is that umgr ID needed?  It is never used...
-        if self._unitmanager_id is None:
-            cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
-                                    {"unitmanager": 1})
-            self._unitmanager_id = cursor_p[0]["unitmanager"]
-
         # AM: FIXME: this at the moment pushes slot history whenever a task
         # state is updated...  This needs only to be done on ExecWorker
         # shutdown.  Well, alas, there is currently no way for it to find out
@@ -1102,8 +1081,6 @@ class ExecWorker(multiprocessing.Process):
                       "slots"       : self._slots}}
             )
 
-
->>>>>>> origin/feature/benchmarking
         if not isinstance(tasks, list):
             tasks = [tasks]
         for task in tasks:
@@ -1154,12 +1131,7 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
-<<<<<<< HEAD
         # we assign each node partition to a task execution worker
-=======
-
-        # we assign each host partition to a task execution worker
->>>>>>> origin/feature/benchmarking
         self._exec_worker = ExecWorker(
             logger          = self._log,
             task_queue      = self._task_queue,
