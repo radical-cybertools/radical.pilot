@@ -24,7 +24,7 @@ from scheduler import *
 from url import Url
 from exceptions import *
 from session import Session 
-from credentials import SSHCredential 
+from credentials import SSHCredential, X509Credential
 
 from unit_manager import UnitManager
 from compute_unit import ComputeUnit
