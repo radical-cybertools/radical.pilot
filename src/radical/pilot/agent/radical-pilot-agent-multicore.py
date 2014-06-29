@@ -261,8 +261,12 @@ class ExecutionEnvironment(object):
             self.log.error(msg)
             raise Exception(msg)
 
+        # only unique node names
+        torque_node_list = list(set(torque_nodes))
+        self.log.debug("Node list: %s" % torque_node_list)
+
         self.cores_per_node = torque_cores_per_node
-        self.node_list = torque_nodes
+        self.node_list = torque_node_list
 
 
     #-------------------------------------------------------------------------
@@ -1288,7 +1292,7 @@ class _Process(subprocess.Popen):
         self._task = task
         self._log  = logger
 
-        launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script', dir=task.workdir, suffix=".sh", delete=False)
+        launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script-', dir=task.workdir, suffix=".sh", delete=False)
         self._log.debug('Created launch_script: %s' % launch_script.name)
         st = os.stat(launch_script.name)
         os.chmod(launch_script.name, st.st_mode | stat.S_IEXEC)
