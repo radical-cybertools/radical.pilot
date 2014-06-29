@@ -107,7 +107,8 @@ class UnitManager(object):
                 unit_manager_uid=None, 
                 scheduler=scheduler,
                 input_transfer_workers=input_transfer_workers,
-                output_transfer_workers=output_transfer_workers,
+                output_transfer_workers=output_transfer_workers, 
+                session=self._session,
                 db_connection=session._dbs,
                 db_connection_info=session._connection_info)
             self._worker.start()
@@ -423,8 +424,7 @@ class UnitManager(object):
 
                 self._worker.schedule_compute_units(
                     pilot_uid=pilot_id,
-                    units=pilot_units,
-                    session=self._session
+                    units=pilot_units
                 )
 
                 assert len(pilot_units) == len(uds)

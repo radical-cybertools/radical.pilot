@@ -13,11 +13,11 @@ __license__   = "MIT"
 
 import os 
 import glob
+import saga
 
 from radical.pilot.object          import Object
 from radical.pilot.unit_manager    import UnitManager
 from radical.pilot.pilot_manager   import PilotManager
-from radical.pilot.credentials     import SSHCredential
 from radical.pilot.utils.logger    import logger
 from radical.pilot.utils           import DBConnectionInfo
 from radical.pilot.resource_config import ResourceConfig
@@ -27,6 +27,8 @@ from radical.pilot.db              import Session as dbSession
 from radical.pilot.db              import DBException
 
 from bson.objectid                 import ObjectId
+
+
 
 # ------------------------------------------------------------------------------
 #
@@ -64,7 +66,7 @@ class _ProcessRegistry(object):
 
 # ------------------------------------------------------------------------------
 #
-class Session(Object):
+class Session (saga.Session, Object):
     """A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
 
@@ -110,6 +112,10 @@ class Session(Object):
 
         """
 
+        # init the base class inits
+        saga.Session.__init__ (self)
+        Object.__init__ (self)
+
         # Dictionaries holding all manager objects created during the session.
         self._pilot_manager_objects = list()
         self._unit_manager_objects = list()
@@ -119,9 +125,6 @@ class Session(Object):
         # in this registry. This makes it easier to shut down things in 
         # a more coordinate fashion. 
         self._process_registry = _ProcessRegistry()
-
-        # List of credentials registered with this session.
-        self._credentials = []
 
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
@@ -167,13 +170,9 @@ class Session(Object):
                                                               db_url=database_url, 
                                                               db_name=database_name)
 
-                self._uid = session_uid
-                self._created = session_info["created"]
-                self._last_reconnect = session_info["last_reconnect"]
-
-                for cred_dict in session_info["credentials"]:
-                    self._credentials.append(SSHCredential.from_dict(cred_dict))
-
+                self._uid              = session_uid
+                self._created          = session_info["created"]
+                self._last_reconnect   = session_info["last_reconnect"]
                 self._resource_configs = session_info["resource_configs"]
 
                 logger.info("Reconnected to existing Session %s." % str(self))
@@ -262,25 +261,6 @@ class Session(Object):
         self._assert_obj_is_valid()
         return self._last_reconnect
 
-    #---------------------------------------------------------------------------
-    #
-    def add_credential(self, credential):
-        """Adds a new security credential to the session.
-        """
-        self._assert_obj_is_valid()
-
-        self._dbs.session_add_credential(credential.as_dict())
-        self._credentials.append(credential)
-        logger.info("Added credential %s to session %s." % (str(credential), self.uid))
-
-    #---------------------------------------------------------------------------
-    #
-    @property
-    def credentials(self):
-        """Returns the security credentials of the session.
-        """
-        self._assert_obj_is_valid()
-        return self._credentials
 
     #---------------------------------------------------------------------------
     #

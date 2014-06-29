@@ -31,8 +31,11 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, db_connection, db_connection_info, 
-        scheduler=None, input_transfer_workers=None, output_transfer_workers=None):
+    def __init__(self, unit_manager_uid, session, db_connection, db_connection_info,
+        scheduler=None, input_transfer_workers=None,
+        output_transfer_workers=None):
+
+        self._session = session
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -86,6 +89,7 @@ class UnitManagerController(threading.Thread):
         self._input_file_transfer_worker_pool = []
         for worker_number in range(1, self._num_input_transfer_workers+1):
             worker = InputFileTransferWorker(
+                session=self._session,
                 db_connection_info=db_connection_info, 
                 unit_manager_id=self._um_id,
                 number=worker_number
@@ -98,6 +102,7 @@ class UnitManagerController(threading.Thread):
         self._output_file_transfer_worker_pool = []
         for worker_number in range(1, self._num_output_transfer_workers+1):
             worker = OutputFileTransferWorker(
+                session=self._session,
                 db_connection_info=db_connection_info, 
                 unit_manager_id=self._um_id,
                 number=worker_number
@@ -373,15 +378,10 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def schedule_compute_units(self, pilot_uid, units, session):
+    def schedule_compute_units(self, pilot_uid, units):
         """Request the scheduling of one or more ComputeUnits on a
            ComputePilot.
         """
-
-        # Get the credentials from the session.
-        cred_dict = []
-        for cred in session.credentials:
-            cred_dict.append(cred.as_dict())
 
         unit_descriptions = list()
         wu_transfer = list()

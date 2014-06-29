@@ -118,7 +118,6 @@ class Session():
                 "_id"  : ObjectId(sid),
                 "created"          : creation_time,
                 "last_reconnect"   : None,
-                "credentials"      : [],
                 "resource_configs" : rc_safe
             }
         )
@@ -180,19 +179,8 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def session_add_credential(self, credential):
-        if self._s is None:
-            raise DBException("No active session.")
-
-        self._s.update(
-            {"_id": ObjectId(self._session_id)},
-            {"$push": {"credentials": credential}},
-            multi=True
-        )
-
-    #--------------------------------------------------------------------------
-    #
     def session_add_resource_configs(self, name, config):
+        # why is this called 'add' if it is actually a 'set'?
         if self._s is None:
             raise DBException("No active session.")
 
@@ -207,6 +195,7 @@ class Session():
     #--------------------------------------------------------------------------
     #
     def session_list_resource_configs(self):
+        # AM: why is this called 'list', if it is actually a 'get'?
         if self._s is None:
             raise DBException("No active session.")
 

@@ -19,7 +19,6 @@ from multiprocessing import Pool
 
 from radical.utils import which
 
-from radical.pilot.credentials import SSHCredential
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
@@ -35,9 +34,11 @@ class PilotManagerController(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, pilot_manager_uid, pilot_manager_data, 
-        db_connection, db_connection_info, pilot_launcher_workers=1):
+        session, db_connection, db_connection_info, pilot_launcher_workers=1):
         """Le constructeur.
         """
+        self._session = session
+
         # The MongoDB database handle.
         self._db = db_connection
 
@@ -95,6 +96,7 @@ class PilotManagerController(threading.Thread):
         self._pilot_launcher_worker_pool = []
         for worker_number in range(1, self._num_pilot_launcher_workers+1):
             worker = PilotLauncherWorker(
+                session=self._session,
                 db_connection_info=db_connection_info, 
                 pilot_manager_id=self._pm_id,
                 number=worker_number
@@ -266,17 +268,9 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_start_pilot_request(self, pilot, resource_config, use_local_endpoints, session):
+    def register_start_pilot_request(self, pilot, resource_config, use_local_endpoints):
         """Register a new pilot start request with the worker.
         """
-
-        saga_session = saga.Session()
-
-        # Get the credentials from the session.
-        cred_dict = []
-        for cred in session.credentials:
-            cred_dict.append(cred.as_dict())
-            saga_session.add_context(cred._context)
 
         # create a new UID for the pilot
         pilot_uid = bson.ObjectId()
@@ -307,7 +301,7 @@ class PilotManagerController(threading.Thread):
                 import saga.utils.pty_shell as sup
 
                 url = "ssh://%s/" % fs.host
-                shell = sup.PTYShell (url, saga_session, logger, opts={})
+                shell = sup.PTYShell (url, self._session, logger, opts={})
 
                 ret, out, err = shell.run_sync (' echo "PWD: $PWD"')
                 if  ret == 0 and 'PWD:' in out :

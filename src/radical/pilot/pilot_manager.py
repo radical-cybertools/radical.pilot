@@ -114,7 +114,8 @@ class PilotManager(Object):
         self._worker = PilotManagerController(
             pilot_manager_uid=None,
             pilot_manager_data={},
-            pilot_launcher_workers=pilot_launcher_workers,
+            pilot_launcher_workers=pilot_launcher_workers, 
+            session=self._session,
             db_connection=session._dbs,
             db_connection_info=session._connection_info)
         self._worker.start()
@@ -296,8 +297,7 @@ class PilotManager(Object):
             pilot_uid = self._worker.register_start_pilot_request(
                 pilot=pilot,
                 use_local_endpoints=use_local_endpoints,
-                resource_config=resource_cfg,
-                session=self._session)
+                resource_config=resource_cfg)
 
             pilot._uid = pilot_uid
 

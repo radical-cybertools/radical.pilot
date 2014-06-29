@@ -57,9 +57,9 @@ if __name__ == "__main__":
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        cred = radical.pilot.SSHCredential()
-        cred.user_id = "tg802352"
-        session.add_credential(cred)
+        c = radical.pilot.Context('ssh')
+        c.user_id = "tg802352"
+        session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)

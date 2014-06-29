@@ -20,7 +20,7 @@ from radical.pilot.states import *
 
 from radical.pilot.utils.version import version as VERSION
 from radical.pilot.utils.logger import logger
-from radical.pilot.credentials import SSHCredential
+from radical.pilot.context import Context
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
@@ -38,17 +38,17 @@ class PilotLauncherWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, db_connection_info, pilot_manager_id, number=None):
+    def __init__(self, session, db_connection_info, pilot_manager_id, number=None):
         """Creates a new pilot launcher background process.
         """
+        self._session = session
+
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
         self.daemon = True
 
         self.db_connection_info = db_connection_info
         self.pilot_manager_id = pilot_manager_id
-
-        self.resource_configurations = dict()
 
         self.name = "PilotLauncherWorker-%s" % str(number)
 
@@ -57,9 +57,6 @@ class PilotLauncherWorker(multiprocessing.Process):
     def run(self):
         """Starts the process when Process.start() is called.
         """
-        # saga_session holds the SSH context infos.
-        saga_session = saga.Session()
-
         # Try to connect to the database 
         try:
             connection = self.db_connection_info.get_db_handle()
@@ -67,24 +64,14 @@ class PilotLauncherWorker(multiprocessing.Process):
             pilot_col = db["%s.p" % self.db_connection_info.session_id]
             logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
-            # Process / update all known credentials
-            session_col = db["%s" % self.db_connection_info.session_id]
-            session = session_col.find(
-                {"_id": ObjectId(self.db_connection_info.session_id)},
-                {"credentials": 1, "resource_configs": 1}
-            )
-
-            for cred_dict in session[0]["credentials"]:
-                cred = SSHCredential.from_dict(cred_dict)
-                saga_session.add_context(cred._context)
-                logger.debug("Found SSH context info: %s." % cred._context)
-
+            # AM: this list is only read once, at startup, so this worker
+            # will not pick up any changes.  I am not sure how to trigger
+            # re-initialization, as doing it once per iteration seems a rather
+            # bad idea (list_resource_configs() goes via mongodb).  OTOH, there
+            # is no direct communication between worker and manager, AFACIS.
+            #
             # Update the known resource configurations
-            rcs = {}
-            rcs_safe = session[0]["resource_configs"]
-            for key, val in rcs_safe.iteritems():
-                rcs[key.replace("<dot>", ".")] = val
-            self.resource_configurations = rcs
+            resource_configurations = self._session.list_resource_configs()
 
         except Exception, ex:
             tb = traceback.format_exc()
@@ -115,7 +102,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     # Create a job service object:
                     try: 
                         js_url = saga_job_id.split("]-[")[0][1:]
-                        js = saga.job.Service(js_url, session=saga_session)
+                        js = saga.job.Service(js_url, session=self._session)
                         saga_job = js.get_job(saga_job_id)
                         if saga.job.state == saga.job.FAILED:
                             log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
@@ -194,7 +181,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                             error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], compute_pilot['description']['resource'])
                             raise Exception(error_msg)
 
-                    resource_cfg = self.resource_configurations[resource_key]
+                    resource_cfg = resource_configurations[resource_key]
 
                     if 'pilot_agent_worker' in resource_cfg and resource_cfg['pilot_agent_worker'] is not None:
                         agent_worker = resource_cfg['pilot_agent_worker']
@@ -244,7 +231,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     agent_dir = saga.filesystem.Directory(
                         saga.Url(sandbox),
-                        saga.filesystem.CREATE_PARENTS, session=saga_session)
+                        saga.filesystem.CREATE_PARENTS, session=self._session)
                     agent_dir.close()
 
                     ########################################################
@@ -295,7 +282,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     else:
                         job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
 
-                    js = saga.job.Service(job_service_url, session=saga_session)
+                    js = saga.job.Service(job_service_url, session=self._session)
 
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
@@ -389,3 +376,4 @@ class PilotLauncherWorker(multiprocessing.Process):
                          "$push": {"log": log_messages}}
                     )
                     logger.error(log_messages)
+
