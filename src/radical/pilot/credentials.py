@@ -133,7 +133,7 @@ class X509Credential(object):
         """Returns a Python dictionary representation of the object.
         """
         dct = {
-            "type"       : "SSH",
+            "type"       : "X509",
             "user_proxy" : self._context.user_proxy,
             "life_time"  : self._context.life_time,
             }
