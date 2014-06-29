@@ -52,14 +52,14 @@ class TestResourceConfigs(unittest.TestCase):
         session = radical.pilot.Session(database_url=DBURL)
 
         pm = radical.pilot.PilotManager(session=session)
-        len1 = len(pm.list_resource_configs())
+        len1 = len(session.list_resource_configs())
 
         rc = radical.pilot.ResourceConfig()
         rc.name = "test"
 
-        pm.add_resource_config(rc)
-        assert len1+1 == len(pm.list_resource_configs())
-        assert "test" in pm.list_resource_configs()
+        session.add_resource_config(rc)
+        assert len1+1 == len(session.list_resource_configs())
+        assert "test" in session.list_resource_configs()
 
         session.close()
 
@@ -75,9 +75,11 @@ class TestResourceConfigs(unittest.TestCase):
         rc.remote_job_manager_endpoint = "fork://localhost"
         rc.remote_filesystem_endpoint = "file://localhost/"
         rc.bootstrapper = "default_bootstrapper.sh"
+        rc.pilot_agent = "radical-pilot-agent-singlecore.py"
+        rc.pilot_agent_options = ["-l LOCAL"]
 
         pm = radical.pilot.PilotManager(session=session)
-        pm.add_resource_config(rc)
+        session.add_resource_config(rc)
 
         pd = radical.pilot.ComputePilotDescription()
         pd.resource = "mylocalhost"

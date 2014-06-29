@@ -31,8 +31,8 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, scheduler, input_transfer_workers,
-        output_transfer_workers, db_connection, db_connection_info):
+    def __init__(self, unit_manager_uid, db_connection, db_connection_info, 
+        scheduler=None, input_transfer_workers=None, output_transfer_workers=None):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -76,7 +76,7 @@ class UnitManagerController(threading.Thread):
             self._num_input_transfer_workers = input_transfer_workers
             self._num_output_transfer_workers = output_transfer_workers
         else:
-            um_json = self._db.get_unit_manager(unit_manager_id=unit_manager_id)
+            um_json = self._db.get_unit_manager(unit_manager_id=unit_manager_uid)
             self._um_id = unit_manager_uid
             self._num_input_transfer_workers = um_json["input_transfer_workers"]
             self._num_output_transfer_workers = um_json["output_transfer_workers"]
