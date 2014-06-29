@@ -295,12 +295,12 @@ class PilotManagerController(threading.Thread):
                 found_dir_success = True
             else:
                 # get the home directory on the remote machine.
-                # Note that this will only work for ssh or shell based access
+                # Note that this will only work for (gsi)ssh or shell based access
                 # mechanisms (FIXME)
 
                 import saga.utils.pty_shell as sup
 
-                url = "ssh://%s/" % fs.host
+                url = "%s://%s/" % (fs.schema, fs.host)
                 shell = sup.PTYShell (url, self._session, logger, opts={})
 
                 ret, out, err = shell.run_sync (' echo "PWD: $PWD"')
