@@ -1,0 +1,21 @@
+{
+    "gridmuc.lrz.de": {
+        "remote_job_manager_endpoint" : "loadl+gsissh://gridmuc.lrz.de",
+        "remote_filesystem_endpoint"  : "gsiftp://gridmuc.lrz.de/",
+        "local_job_manager_endpoint"  : "loadl://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "premium",
+        "lrms"                        : "LOADL",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "POE",
+        "forward_tunnel_endpoint"     : "login07",
+        "pre_bootstrap"               : ["module purge", "module load lrz",
+                                         "module load python/2.7.6",
+                                         "export LD_PRELOAD=/home/hpc/pr87be/di29sut/software/tsocks-1.8/libtsocks.so.1.8",
+                                         "export TSOCKS_CONF_FILE=/home/hpc/pr87be/di29sut/software/tsocks-1.8/tsocks.conf",
+                                         "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
+                                        ],
+        "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    }
+}
