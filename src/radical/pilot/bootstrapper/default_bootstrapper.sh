@@ -337,7 +337,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     BIND_ADDRESS=127.0.0.1
 
     # Set up tunnel
-    ssh -x -a -4 -T -N -D $BIND_ADDRESS:$PROXY_PORT -L $BIND_ADDRESS:$DBPORT:$DBURL $FORWARD_TUNNEL_ENDPOINT &
+    ssh -x -a -4 -T -N -D $BIND_ADDRESS:$PROXY_PORT -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
