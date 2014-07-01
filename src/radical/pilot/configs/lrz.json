@@ -4,7 +4,7 @@
         "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",
         "local_job_manager_endpoint"  : "loadl://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
-        "default_queue"               : "premium",
+        "default_queue"               : "test",
         "lrms"                        : "LOADL",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "POE",
