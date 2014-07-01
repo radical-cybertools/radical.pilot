@@ -232,7 +232,7 @@ echo "## Environment of bootstrapper process:"
 printenv
 
 # parse command line arguments
-while getopts "c:d:e:f:g:hi:j:k:l:m:n:p:s:t:v:w:x:" OPTION; do
+while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
     case $OPTION in
         c)
             # Passed to agent
@@ -313,8 +313,8 @@ while getopts "c:d:e:f:g:hi:j:k:l:m:n:p:s:t:v:w:x:" OPTION; do
            #
             CLEANUP=true
             ;;
-        ?)
-            echo "Unknown option"
+        *)
+            echo "Unknown option: $OPTION=$OPTARG"
             usage
             exit
             ;;
