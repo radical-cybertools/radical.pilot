@@ -220,6 +220,11 @@ eval $AGENT_CMD
 # -----------------------------------------------------------------------------
 # MAIN 
 #
+
+# Report where we are, as this is not always what you expect ;-)
+echo "################################################################################"
+echo "## Bootstrapper running on host: `hostname -f`."
+
 # parse command line arguments
 while getopts "c:d:e:f:g:hi:j:k:l:m:n:p:s:t:v:w:x:" OPTION; do
     case $OPTION in
