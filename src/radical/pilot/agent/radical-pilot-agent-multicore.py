@@ -38,18 +38,26 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH    = 'SSH'
-LAUNCH_METHOD_APRUN  = 'APRUN'
-LAUNCH_METHOD_LOCAL  = 'LOCAL'
-LAUNCH_METHOD_MPIRUN = 'MPIRUN'
-LAUNCH_METHOD_POE    = 'POE'
-LAUNCH_METHOD_IBRUN  = 'IBRUN'
+LAUNCH_METHOD_SSH     = 'SSH'
+LAUNCH_METHOD_APRUN   = 'APRUN'
+LAUNCH_METHOD_LOCAL   = 'LOCAL'
+LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
+LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
+LAUNCH_METHOD_POE     = 'POE'
+LAUNCH_METHOD_IBRUN   = 'IBRUN'
+
+MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
+                              LAUNCH_METHOD_MPIRUN,
+                              LAUNCH_METHOD_POE,
+                              LAUNCH_METHOD_APRUN,
+                              LAUNCH_METHOD_MPIEXEC]
 
 LRMS_TORQUE = 'TORQUE'
 LRMS_PBSPRO = 'PBSPRO'
 LRMS_SLURM  = 'SLURM'
 LRMS_SGE    = 'SGE'
 LRMS_LSF    = 'LSF'
+LRMS_LOADL  = 'LOADL'
 LRMS_FORK   = 'FORK'
 
 
@@ -136,6 +144,12 @@ class ExecutionEnvironment(object):
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
             command = self._which('mpirun')
+            if command is not None:
+                mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIEXEC:
+            # mpiexec (e.g. on SuperMUC)
+            command = self._which('mpiexec')
             if command is not None:
                 mpi_launch_command = command
 
@@ -532,6 +546,43 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
+    def _configure_loadl(self):
+
+        self.log.info("Configured to run on system with %s." % LRMS_LOADL)
+
+        #LOADL_HOSTFILE
+        loadl_hostfile = os.environ.get('LOADL_HOSTFILE')
+        if loadl_hostfile is None:
+            msg = "$LOADL_HOSTFILE not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        #LOADL_TOTAL_TASKS
+        loadl_total_tasks_str = os.environ.get('LOADL_TOTAL_TASKS')
+        if loadl_total_tasks_str is None:
+            msg = "$LOADL_TOTAL_TASKS not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+        else:
+            loadl_total_tasks = int(loadl_total_tasks_str)
+
+        loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
+        self.log.info("Found LOADL_HOSTFILE %s. Expanded to: %s" % (loadl_hostfile, loadl_nodes))
+        loadl_node_list = list(set(loadl_nodes))
+
+        # Assume: cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
+        loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
+
+        # Verify that $LLOAD_TOTAL_TASKS == len($LOADL_HOSTFILE)
+        if loadl_total_tasks != len(loadl_nodes):
+            self.log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)" % \
+                           (loadl_total_tasks, len(loadl_nodes)))
+
+        self.node_list = loadl_node_list
+        self.cores_per_node = loadl_cpus_per_node
+
+    #-------------------------------------------------------------------------
+    #
     def _configure(self, lrms):
         # TODO: These dont have to be the same number for all hosts.
 
@@ -569,6 +620,10 @@ class ExecutionEnvironment(object):
         elif lrms == LRMS_LSF:
             # LSF (e.g. Yellowstone)
             self._configure_lsf()
+
+        elif lrms == LRMS_LOADL:
+            # LoadLeveler (e.g. SuperMUC)
+            self._configure_loadl()
 
         else:
             msg = "Unknown lrms type %s." % lrms
@@ -724,8 +779,7 @@ class ExecWorker(multiprocessing.Process):
                     task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
 
                     # If that failed, and our launch method supports multiple nodes, try that
-                    if task_slots is None and launch_method in \
-                            [LAUNCH_METHOD_IBRUN, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_POE, LAUNCH_METHOD_APRUN]:
+                    if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
                         task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
 
                     # Check if we got results
@@ -1352,6 +1406,18 @@ class _Process(subprocess.Popen):
             mpirun_command = "%s -np %s -host %s" % (launch_command,
                                                      task.numcores, hosts_string)
             launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_MPIEXEC:
+            # Construct the hosts_string
+            hosts_string = ''
+            for slot in task.slots:
+                host = slot.split(':')[0]
+                hosts_string += '%s,' % host
+
+            mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+            launch_script.write('%s %s\n' % (mpiexec_command, task_exec_string))
 
             cmdline = launch_script.name
 
