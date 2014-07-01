@@ -10,7 +10,7 @@
         "mpi_launch_method"           : "POE",
         "forward_tunnel_endpoint"     : "login07",
         "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
-        "pre_bootstrap"               : ["source /lrz/sys/share/modules/init/bash",
+        "pre_bootstrap"               : ["source /etc/profile.d/modules.sh",
                                          "module purge", "module load lrz",
                                          "module load python/2.7.6",
                                          "export LD_PRELOAD=/home/hpc/pr87be/di29sut/software/tsocks-1.8/libtsocks.so.1.8",
