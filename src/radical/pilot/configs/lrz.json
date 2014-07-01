@@ -7,17 +7,17 @@
         "default_queue"               : "test",
         "lrms"                        : "LOADL",
         "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "POE",
-        "forward_tunnel_endpoint"     : "login07",
+        "mpi_launch_method"           : "MPIEXEC",
+        "forward_tunnel_endpoint"     : "local2",
         "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
-        "pre_bootstrap"               : ["source /etc/profile.d/modules.sh",
-                                         "module purge", "module load lrz",
+        "pre_bootstrap"               : ["source /etc/profile",
+                                         "source /etc/profile.d/modules.sh",
+                                         "echo module purge", "echo module load lrz",
                                          "module load python/2.7.6",
-                                         "export LD_PRELOAD=/home/hpc/pr87be/di29sut/software/tsocks-1.8/libtsocks.so.1.8",
-                                         "export TSOCKS_CONF_FILE=/home/hpc/pr87be/di29sut/software/tsocks-1.8/tsocks.conf",
+                                         "module unload mpi.ibm", "module load mpi.intel",
                                          "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
                                         ],
-        "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
+        "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
