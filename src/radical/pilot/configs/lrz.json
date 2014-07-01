@@ -1,7 +1,7 @@
 {
-    "gridmuc.lrz.de": {
-        "remote_job_manager_endpoint" : "loadl+gsissh://gridmuc.lrz.de",
-        "remote_filesystem_endpoint"  : "gsiftp://gridmuc.lrz.de/",
+    "supermuc.lrz.de": {
+        "remote_job_manager_endpoint" : "loadl+gsissh://supermuc.lrz.de:2222",
+        "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",
         "local_job_manager_endpoint"  : "loadl://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "premium",
