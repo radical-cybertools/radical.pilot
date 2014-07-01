@@ -9,6 +9,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "POE",
         "forward_tunnel_endpoint"     : "login07",
+        "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
         "pre_bootstrap"               : ["source /lrz/sys/share/modules/init/bash",
                                          "module purge", "module load lrz",
                                          "module load python/2.7.6",
