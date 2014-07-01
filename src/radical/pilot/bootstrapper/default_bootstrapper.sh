@@ -225,6 +225,12 @@ eval $AGENT_CMD
 echo "################################################################################"
 echo "## Bootstrapper running on host: `hostname -f`."
 
+# Print environment, useful for debugging
+echo ""
+echo "################################################################################"
+echo "## Environment of bootstrapper process:"
+printenv
+
 # parse command line arguments
 while getopts "c:d:e:f:g:hi:j:k:l:m:n:p:s:t:v:w:x:" OPTION; do
     case $OPTION in
