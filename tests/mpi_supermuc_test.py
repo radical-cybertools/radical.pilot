@@ -59,11 +59,6 @@ if __name__ == "__main__":
         c = radical.pilot.Context('x509')
         c.user_proxy = '/Users/mark/proj/myproxy/xsede.x509'
         c.life_time = 3600
-
-        print c
-
-        #exit()
-
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
