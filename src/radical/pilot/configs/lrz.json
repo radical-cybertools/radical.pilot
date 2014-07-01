@@ -8,7 +8,7 @@
         "lrms"                        : "LOADL",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        "forward_tunnel_endpoint"     : "local2",
+        "agent_mongodb_endpoint"      : "login03:24243",
         "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
         "pre_bootstrap"               : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",

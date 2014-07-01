@@ -287,9 +287,14 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
 
-                    bootstrap_args = "-m %s -n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
-                        (database_url, database_name, session_uid, str(compute_pilot_id),
+                    bootstrap_args = "-n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
+                        (database_name, session_uid, str(compute_pilot_id),
                          runtime, logger.level, number_cores, VERSION)
+
+                    if 'agent_mongodb_endpoint' in resource_cfg and resource_cfg['agent_mongodb_endpoint'] is not None:
+                        bootstrap_args += " -m %s " % resource_cfg['agent_mongodb_endpoint']
+                    else:
+                        bootstrap_args += " -m %s " % database_url
 
                     if 'pilot_agent_options' in resource_cfg and resource_cfg['pilot_agent_options'] is not None:
                         for option in resource_cfg['pilot_agent_options']:
