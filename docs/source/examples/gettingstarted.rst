@@ -44,7 +44,7 @@ Creating a Session
 A :class:`radical.pilot.Session` is the root object for all other objects in RADICAL-
 Pilot. You can think of it as a *tree* or a *directory structure* with a
 Session as root. Each Session can have  zero or more
-:class:`radical.pilot.SSHCredential`, :class:`radical.pilot.PilotManager` and
+:class:`radical.pilot.Context`, :class:`radical.pilot.PilotManager` and
 :class:`radical.pilot.UnitManager` attached to it.
 
 .. code-block:: text
@@ -52,7 +52,7 @@ Session as root. Each Session can have  zero or more
      (~~~~~~~~~)
      (         ) <---- [Session]
      ( MongoDB )       |
-     (         )       |---- SSHCredential
+     (         )       |---- Context
      (_________)       |---- ....
                        |
                        |---- [PilotManager]
@@ -92,7 +92,7 @@ Session as required. This  is covered in :ref:`chapter_example_disconnect_reconn
 .. code-block:: python
 
     print "UID           : {0} ".format( session.uid )
-    print "Credentials   : {0} ".format( session.list_credentials() )
+    print "Contexts      : {0} ".format( session.list_contexts() )
     print "UnitManagers  : {0} ".format( session.list_unit_managers() )
     print "PilotManagers : {0} ".format( session.list_pilot_managers() )
 

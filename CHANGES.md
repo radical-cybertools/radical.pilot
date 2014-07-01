@@ -131,7 +131,7 @@ API Changes:
   pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
 
 * Added logging
-* Added security credential handling 
+* Added security context handling 
 * Closed tickets: 
   - https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed
 

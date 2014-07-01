@@ -16,7 +16,6 @@ import multiprocessing
 from bson.objectid import ObjectId
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
-from radical.pilot.credentials import SSHCredential
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
@@ -30,7 +29,9 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, db_connection_info, unit_manager_id, number=None):
+    def __init__(self, session, db_connection_info, unit_manager_id, number=None):
+
+        self._session = session
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
@@ -47,26 +48,12 @@ class OutputFileTransferWorker(multiprocessing.Process):
         """Starts the process when Process.start() is called.
         """
 
-        # saga_session holds the SSH context infos.
-        saga_session = saga.Session()
-
         # Try to connect to the database and create a tailable cursor.
         try:
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
             um_col = db["%s.w" % self.db_connection_info.session_id]
             logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
-
-            session_col = db["%s" % self.db_connection_info.session_id]
-            session = session_col.find(
-                {"_id": ObjectId(self.db_connection_info.session_id)},
-                {"credentials": 1}
-            )
-
-            for cred_dict in session[0]["credentials"]:
-                cred = SSHCredential.from_dict(cred_dict)
-                saga_session.add_context(cred._context)
-                logger.debug("Found SSH context info: %s." % cred._context)
 
         except Exception, ex:
             logger.error("Connection error: %s. %s" % (str(ex), traceback.format_exc()))
@@ -90,6 +77,8 @@ class OutputFileTransferWorker(multiprocessing.Process):
                 # Sleep a bit if no new units are available.
                 time.sleep(1)
             else:
+                # AM: The code below seems wrong when BULK_LIMIT != 1 -- the
+                # compute_unit will be a list then I assume.
                 try:
                     log_messages = []
 
@@ -118,7 +107,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         logger.debug(log_msg)
 
                         output_file = saga.filesystem.File(saga.Url(abs_source),
-                            session=saga_session
+                            session=self._session
                         )
                         output_file.copy(saga.Url(abs_target))
                         output_file.close()

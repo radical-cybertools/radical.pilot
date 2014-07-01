@@ -46,7 +46,7 @@ if __name__ == "__main__":
     try:
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security credentials.
+        # well as security contexts.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.

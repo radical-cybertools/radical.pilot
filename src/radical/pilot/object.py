@@ -15,6 +15,11 @@ from exceptions import IncorrectState
 
 class Object(object):
 
+    # AM: this seems to be only used in session and pilot_manager -- is there
+    # a reason why this is not used for all 'Objects' which have a uid and can
+    # be closed?
+
+
     #---------------------------------------------------------------------------
     #
     def __init__(self):

@@ -48,13 +48,13 @@ def main():
     try:
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security credentials.
+        # well as security contexts.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        cred = radical.pilot.SSHCredential()
-        #cred.user_id = 'osdcXX'
-        session.add_credential(cred)
+        c = radical.pilot.Context('ssh')
+        #c.user_id = 'osdcXX'
+        session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         print "Initializing Pilot Manager ..."
