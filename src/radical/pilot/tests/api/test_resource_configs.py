@@ -76,7 +76,6 @@ class TestResourceConfigs(unittest.TestCase):
         rc.remote_filesystem_endpoint = "file://localhost/"
         rc.bootstrapper = "default_bootstrapper.sh"
         rc.pilot_agent = "radical-pilot-agent-singlecore.py"
-        rc.pilot_agent_options = ["-l LOCAL"]
 
         pm = radical.pilot.PilotManager(session=session)
         session.add_resource_config(rc)

@@ -296,10 +296,6 @@ class PilotLauncherWorker(multiprocessing.Process):
                     else:
                         bootstrap_args += " -m %s " % database_url
 
-                    if 'pilot_agent_options' in resource_cfg and resource_cfg['pilot_agent_options'] is not None:
-                        for option in resource_cfg['pilot_agent_options']:
-                            bootstrap_args += " %s " % option
-
                     if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
                     if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:
