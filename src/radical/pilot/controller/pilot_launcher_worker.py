@@ -324,8 +324,6 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     if cleanup is True: 
                         bootstrap_args += " -x "               # the cleanup flag
-                    if queue is not None:
-                        bootstrap_args += " -q %s " % queue    # the queue name
 
                     jd.executable = "/bin/bash"
                     jd.arguments = ["-l", "-c", '"chmod +x %s && ./%s %s"' % (bootstrapper, bootstrapper, bootstrap_args)]

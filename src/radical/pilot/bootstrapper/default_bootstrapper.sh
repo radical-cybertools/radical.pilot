@@ -67,8 +67,6 @@ OPTIONS:
 
    -p      The unique identifier (uid) of the pilot.
 
-   -q      The name of the queue to use.
-
    -s      The unique identifier (uid) of the session.
 
    -t      Runtime in minutes.
