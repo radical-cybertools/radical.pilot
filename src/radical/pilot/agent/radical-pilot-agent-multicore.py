@@ -116,6 +116,7 @@ class ExecutionEnvironment(object):
     def __init__(self, logger, lrms, requested_cores, task_launch_method, mpi_launch_method):
         self.log = logger
 
+        self.requested_cores = requested_cores
         self.node_list = None # TODO: Need to think about a structure that works for all machines
         self.cores_per_node = None # Work with one value for now
 
@@ -610,11 +611,13 @@ class ExecutionEnvironment(object):
 
         self.log.info("Using fork on localhost.")
 
-        cpu_count = multiprocessing.cpu_count()
-        self.log.info("Detected %s cores on localhost." % cpu_count)
+        detected_cpus = multiprocessing.cpu_count()
+        selected_cpus = min(detected_cpus, self.requested_cores)
+
+        self.log.info("Detected %d cores on localhost, using %d." % (detected_cpus, selected_cpus))
 
         self.node_list = ["localhost"]
-        self.cores_per_node = cpu_count
+        self.cores_per_node = selected_cpus
 
 
     #-------------------------------------------------------------------------
