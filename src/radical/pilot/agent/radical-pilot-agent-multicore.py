@@ -119,9 +119,11 @@ class ExecutionEnvironment(object):
         self.node_list = None # TODO: Need to think about a structure that works for all machines
         self.cores_per_node = None # Work with one value for now
 
-
         # Configure nodes and number of cores available
         self._configure(lrms)
+
+        task_launch_command = None
+        mpi_launch_command = None
 
         # Regular tasks
         if task_launch_method == LAUNCH_METHOD_LOCAL:
@@ -583,6 +585,19 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
+    def _configure_fork(self):
+
+        self.log.info("Using fork on localhost.")
+
+        cpu_count = multiprocessing.cpu_count()
+        self.log.info("Detected %s cores on localhost." % cpu_count)
+
+        self.node_list = ["localhost"]
+        self.cores_per_node = cpu_count
+
+
+    #-------------------------------------------------------------------------
+    #
     def _configure(self, lrms):
         # TODO: These dont have to be the same number for all hosts.
 
@@ -596,10 +611,8 @@ class ExecutionEnvironment(object):
 
 
         if lrms == LRMS_FORK:
-            # If there is no way to get it from the environment or configuration, get the number of cores.
-            self.log.info("Using fork on localhost.")
-            cpu_count = multiprocessing.cpu_count()
-            self.log.info("Detected %s cores on localhost." % cpu_count)
+            # Fork on localhost
+            self._configure_fork()
 
         elif lrms == LRMS_TORQUE:
             # TORQUE/PBS (e.g. India)
