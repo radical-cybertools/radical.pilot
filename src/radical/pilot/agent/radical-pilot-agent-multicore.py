@@ -145,9 +145,13 @@ class ExecutionEnvironment(object):
 
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
-            command = self._which('mpirun')
+            command = self._find_executable(['mpirun',           # General case
+                                             'mpirun-openmpi-mp' # Mac OSX MacPorts
+                                            ])
             if command is not None:
                 mpi_launch_command = command
+            else:
+                raise Exception("No launch command found for launch method: %s." % LAUNCH_METHOD_MPIRUN)
 
         elif mpi_launch_method == LAUNCH_METHOD_MPIEXEC:
             # mpiexec (e.g. on SuperMUC)
