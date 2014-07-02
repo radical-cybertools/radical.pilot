@@ -216,6 +216,23 @@ class ExecutionEnvironment(object):
 
     #-----------------------------------------------------------------------------
     #
+    def _find_executable(self, names):
+        """Takes a (list of) name(s) and looks for an executable in the path.
+        """
+
+        if not isinstance(names, list):
+            names = [names]
+
+        for name in names:
+            ret = self._which(name)
+            if ret is not None:
+                return ret
+
+        return None
+
+
+    #-----------------------------------------------------------------------------
+    #
     def _which(self, program):
         """Finds the location of an executable.
         Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
@@ -1406,7 +1423,7 @@ class _Process(subprocess.Popen):
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
-            launch_script.write('%s\n' % (task_exec_string))
+            launch_script.write('%s\n' % task_exec_string)
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
@@ -1512,7 +1529,7 @@ class _Process(subprocess.Popen):
         self.stderr_filename = task.stderr
         self._stderr_file_h  = open(self.stderr_filename, "w")
 
-        self._log.info("Launching task %s via %s (env: %s) in %s" % (task.uid, cmdline, task.environment, task.workdir))
+        self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
 
         super(_Process, self).__init__(args=cmdline,
                                        bufsize=0,
