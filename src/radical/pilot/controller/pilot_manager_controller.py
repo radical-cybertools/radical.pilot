@@ -293,7 +293,6 @@ class PilotManagerController(threading.Thread):
         # create a new UID for the pilot
         pilot_uid = bson.ObjectId()
 
-
         # switch endpoint type
         if use_local_endpoints is True:
             filesystem_endpoint = resource_config['local_filesystem_endpoint']
@@ -306,11 +305,9 @@ class PilotManagerController(threading.Thread):
             fs.path = sandbox
         else:
             # No sandbox defined. try to determine
-            found_dir_success = False
 
             if filesystem_endpoint.startswith("file"):
-                workdir = os.path.expanduser("~")
-                found_dir_success = True
+                workdir_expanded = os.path.expanduser("~")
             else:
                 # get the home directory on the remote machine.
                 # Note that this will only work for (gsi)ssh or shell based access
@@ -321,18 +318,22 @@ class PilotManagerController(threading.Thread):
                 url = "%s://%s/" % (fs.schema, fs.host)
                 shell = sup.PTYShell (url, self._session, logger, opts={})
 
-                ret, out, err = shell.run_sync (' echo "PWD: $PWD"')
-                if  ret == 0 and 'PWD:' in out :
-                    workdir = out.split(":")[1].strip()
-                    logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir))
+                if 'default_remote_workdir' in resource_config and resource_config['default_remote_workdir'] is not None:
+                    workdir_raw = resource_config['default_remote_workdir']
+                else:
+                    workdir_raw = "$PWD"
 
+                ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
+                if  ret == 0 and 'WORKDIR:' in out :
+                    workdir_expanded = out.split(":")[1].strip()
+                    logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
                 else :
                     error_msg = "Couldn't determine remote working directory."
                     logger.error(error_msg)
                     raise Exception(error_msg)
 
             # At this point we have determined 'pwd'
-            fs.path = "%s/radical.pilot.sandbox" % workdir.rstrip()
+            fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
 
         # This is the base URL / 'sandbox' for the pilot!
         agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
