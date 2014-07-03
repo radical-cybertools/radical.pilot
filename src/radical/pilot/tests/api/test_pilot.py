@@ -66,7 +66,7 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait(radical.pilot.states.ACTIVE)
+        pilot.wait(radical.pilot.states.ACTIVE, timeout=5*60 # 5 minutes)
         assert pilot.submission_time is not None
         assert pilot.state == radical.pilot.states.ACTIVE
         assert pilot.start_time is not None
@@ -75,7 +75,7 @@ class TestPilot(unittest.TestCase):
 
         # the pilot should finish after it has reached run_time
 
-        pilot.wait(radical.pilot.states.DONE)
+        pilot.wait(radical.pilot.states.DONE, , timeout=5*60 # 5 minutes)
         assert pilot.state == radical.pilot.states.DONE
         assert pilot.stop_time is not None
 
@@ -98,7 +98,7 @@ class TestPilot(unittest.TestCase):
         cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
-        pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
+        pilot.wait(radical.pilot.states.FAILED, timeout=5*60 # 5 minutes)
         assert pilot.state == radical.pilot.states.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
 
         cpd = radical.pilot.ComputePilotDescription()
@@ -109,7 +109,7 @@ class TestPilot(unittest.TestCase):
         cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
-        pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
+        pilot.wait(radical.pilot.states.FAILED, timeout=5*60 # 5 minutes)
         assert pilot.state == radical.pilot.states.FAILED, ("state should be %s and not %s" (radical.pilot.states.FAILED, pilot.state))
 
         session.close()
@@ -136,7 +136,7 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait(radical.pilot.states.ACTIVE)
+        pilot.wait(radical.pilot.states.ACTIVE, timeout=5*60 # 5 minutes)
         assert pilot.submission_time is not None
         assert pilot.state == radical.pilot.states.ACTIVE
         assert pilot.start_time is not None
@@ -144,7 +144,7 @@ class TestPilot(unittest.TestCase):
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait(radical.pilot.states.CANCELED)
+        pilot.wait(radical.pilot.states.CANCELED, timeout=5*60 # 5 minutes)
         assert pilot.state == radical.pilot.states.CANCELED
         assert pilot.stop_time is not None
 

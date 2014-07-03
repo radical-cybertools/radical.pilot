@@ -88,7 +88,7 @@ class TestResourceConfigs(unittest.TestCase):
         pd.cleanup = True
 
         pilot = pm.submit_pilots(pd)
-        pilot.wait()
+        pilot.wait(timeout=5*60 # 5 minutes)
         pilot.cancel()
 
         session.close()
