@@ -347,6 +347,8 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd.error  = "AGENT.STDERR"
                     jd.total_cpu_count = number_cores
                     jd.wall_time_limit = runtime
+                    if compute_pilot['description']['memory'] is not None:
+                        jd.total_physical_memory = compute_pilot['description']['memory']
 
                     log_msg = "Submitting SAGA job with description: %s" % str(jd)
                     log_messages.append(log_msg)
