@@ -75,9 +75,9 @@ class OutputFileTransferWorker(multiprocessing.Process):
                 limit=BULK_LIMIT
             )
 
-            logger.info("OFTW after finding pending wus")
+            #logger.info("OFTW after finding pending wus")
             if compute_unit is None:
-                logger.info("OFTW no wus, sleep")
+                #logger.info("OFTW no wus, sleep")
                 # Sleep a bit if no new units are available.
                 time.sleep(1)
             else:

@@ -137,12 +137,16 @@ class ComputeUnitDescription(attributes.Attributes) :
             MPI                    : self.mpi,
             PRE_EXEC               : self.pre_exec
         }
-        if not isinstance(self.input_staging, list):
+        if not self.input_staging:
+            obj_dict[INPUT_STAGING] = []
+        elif not isinstance(self.input_staging, list):
             obj_dict[INPUT_STAGING] = [self.input_staging.as_dict()]
         else:
             obj_dict[INPUT_STAGING] = [x.as_dict() for x in self.input_staging]
 
-        if not isinstance(self.output_staging, list):
+        if not self.output_staging:
+            obj_dict[OUTPUT_STAGING] = []
+        elif not isinstance(self.output_staging, list):
             obj_dict[OUTPUT_STAGING] = [self.output_staging.as_dict()]
         else:
             obj_dict[OUTPUT_STAGING] = [x.as_dict() for x in self.output_staging]

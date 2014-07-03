@@ -430,7 +430,10 @@ class UnitManagerController(threading.Thread):
             inp_sd = unit.description.input_staging
             if not isinstance(inp_sd, list):
                 # Ugly, but is a workaround for iterating on att iface
-                inp_sd = [inp_sd]
+                if inp_sd:
+                    inp_sd = [inp_sd]
+                else:
+                    inp_sd = []
             for sd_obj in inp_sd:
                 sd = sd_obj.as_dict()
 
@@ -461,7 +464,10 @@ class UnitManagerController(threading.Thread):
             outp_sd = unit.description.output_staging
             if not isinstance(outp_sd, list):
                 # Ugly, but is a workaround for iterating on att iface
-                outp_sd = [outp_sd]
+                if outp_sd:
+                    outp_sd = [outp_sd]
+                else:
+                    outp_sd = []
             for sd_obj in outp_sd:
                 sd = sd_obj.as_dict()
                 action = sd['action']
