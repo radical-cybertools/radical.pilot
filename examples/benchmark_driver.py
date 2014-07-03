@@ -53,9 +53,9 @@ try:
     print "session: %s" % session.uid
 
     # make jenkins happy
-    cred         = radical.pilot.SSHCredential()
-    cred.user_id = "merzky"
-    session.add_credential (cred)
+    c         = radical.pilot.Context ('ssh')
+    c.user_id = "merzky"
+    session.add_context (c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = radical.pilot.PilotManager(session=session)
