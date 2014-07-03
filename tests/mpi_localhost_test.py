@@ -55,6 +55,16 @@ if __name__ == "__main__":
         # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
+        # resources
+        #res = session.list_resource_configs()
+        #s = res['localhost']
+        # Build a new one based on localhost
+        #rc = radical.pilot.ResourceConfig(s)
+        #rc.name = 'testing123-localhost'
+        #rc.mpi_launch_method = 'FORK'
+        # Now add the entry back to the PM
+        #session.add_resource_config(rc)
+
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
 
