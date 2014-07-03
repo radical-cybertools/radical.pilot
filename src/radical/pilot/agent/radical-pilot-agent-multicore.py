@@ -71,6 +71,32 @@ LINK     = 'Link'     # local ln -s
 MOVE     = 'Move'     # local mv
 TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
 
+# -----------------------------------------------------------------------------
+# Common States
+NEW                         = 'New'
+NULL                        = 'Null'
+PENDING                     = 'Pending'
+DONE                        = 'Done'
+CANCELED                    = 'Canceled'
+FAILED                      = 'Failed'
+
+# -----------------------------------------------------------------------------
+# ComputePilot States
+PENDING_LAUNCH              = 'PendingLaunch'
+LAUNCHING                   = 'Launching'
+PENDING_ACTIVE              = 'PendingActive'
+ACTIVE                      = 'Active'
+
+# -----------------------------------------------------------------------------
+# ComputeUnit States
+PENDING_EXECUTION           = 'PendingExecution'
+SCHEDULING                  = 'Scheduling'
+EXECUTING                   = 'Executing'
+
+PENDING_INPUT_STAGING       = 'PendingInputStaging'  # These last 4 are not really states,
+STAGING_INPUT               = 'StagingInput'         # as there are distributed entities enacting on them.
+PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just go,
+STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
 #---------------------------------------------------------------------------
 #
@@ -82,8 +108,8 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push": {"log" : message,
-                   "statehistory": {"state": 'Failed', "timestamp": ts}},
-         "$set":  {"state": 'Failed',
+                   "statehistory": {"state": FAILED, "timestamp": ts}},
+         "$set":  {"state": FAILED,
                    "finished": ts}
 
         })
@@ -98,8 +124,8 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push": {"log" : message,
-                   "statehistory": {"state": 'Canceled', "timestamp": ts}},
-         "$set":  {"state": 'Canceled',
+                   "statehistory": {"state": CANCELED, "timestamp": ts}},
+         "$set":  {"state": CANCELED,
                    "finished": ts}
         })
 
@@ -111,8 +137,8 @@ def pilot_DONE(mongo_p, pilot_uid):
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"statehistory": {"state": 'Done', "timestamp": ts}},
-         "$set": {"state": 'Done',
+        {"$push": {"statehistory": {"state": DONE, "timestamp": ts}},
+         "$set": {"state": DONE,
                   "finished": ts}
 
         })
@@ -1084,7 +1110,7 @@ class ExecWorker(multiprocessing.Process):
             logger=self._log)
 
         task.started=datetime.datetime.utcnow()
-        task.state='Executing'
+        task.state = EXECUTING
 
         # Add to the list of monitored tasks
         self._running_tasks.append(proc)
@@ -1123,13 +1149,13 @@ class ExecWorker(multiprocessing.Process):
             self._log.info("Task %s terminated with return code %s." % (uid, rc))
 
             if rc != 0:
-                state = 'Failed'
+                state = FAILED
             else:
 
                 # Check if there is either Agent or FTW output staging required
                 if task.agent_output_staging or task.ftw_output_staging:
 
-                    state = 'StagingOutput' # TODO: this should ideally be PendingOutputStaging,
+                    state = STAGING_OUTPUT # TODO: this should ideally be PendingOutputStaging,
                                             # but that introduces a race condition currently
 
                     # Check if there are Directives that need to be performed
@@ -1149,7 +1175,7 @@ class ExecWorker(multiprocessing.Process):
 
                             self._w.update(
                                 {"_id": ObjectId(uid)},
-                                {"$set": {"Agent_Output_Status": 'Executing'}}
+                                {"$set": {"Agent_Output_Status": EXECUTING}}
                             )
 
                     # Check if there are Directives that need to be performed
@@ -1161,10 +1187,10 @@ class ExecWorker(multiprocessing.Process):
 
                         self._w.update(
                             {"_id": ObjectId(uid)},
-                            {"$set": {"FTW_Output_Status": 'Pending'}}
+                            {"$set": {"FTW_Output_Status": PENDING}}
                         )
                 else:
-                    state = 'Done'
+                    state = DONE
 
             # upload stdout and stderr to GridFS
             workdir = task.workdir
@@ -1339,12 +1365,12 @@ class InputStagingWorker(multiprocessing.Process):
                     # If all went fine, update the state of this StagingDirective to Done
                     self._w.find_and_modify(
                         query={"_id" : ObjectId(wu_id),
-                               'Agent_Input_Status': 'Executing',
-                               'Agent_Input_Directives.state': 'Pending',
+                               'Agent_Input_Status': EXECUTING,
+                               'Agent_Input_Directives.state': PENDING,
                                'Agent_Input_Directives.source': source,
                                'Agent_Input_Directives.target': target,
                                },
-                        update={'$set': {'Agent_Input_Directives.$.state': 'Done'},
+                        update={'$set': {'Agent_Input_Directives.$.state': DONE},
                                 '$push': {'log': logmessage}
                         }
                     )
@@ -1446,12 +1472,12 @@ class OutputStagingWorker(multiprocessing.Process):
                     # If all went fine, update the state of this StagingDirective to Done
                     self._w.find_and_modify(
                         query={"_id" : ObjectId(wu_id),
-                               'Agent_Output_Status': 'Executing',
-                               'Agent_Output_Directives.state': 'Pending',
+                               'Agent_Output_Status': EXECUTING,
+                               'Agent_Output_Directives.state': PENDING,
                                'Agent_Output_Directives.source': source,
                                'Agent_Output_Directives.target': target,
                                },
-                        update={'$set': {'Agent_Output_Directives.$.state': 'Done'},
+                        update={'$set': {'Agent_Output_Directives.$.state': DONE},
                                 '$push': {'log': logmessage}
                         }
                     )
@@ -1572,11 +1598,11 @@ class Agent(threading.Thread):
         ts = datetime.datetime.utcnow()
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"state"          : "Active",
+            {"$set": {"state"          : ACTIVE,
                       "nodes"          : self._exec_env.node_list,
                       "cores_per_node" : self._exec_env.cores_per_node,
                       "started"        : ts},
-             "$push": {"statehistory": {"state": 'Active', "timestamp": ts}}
+             "$push": {"statehistory": {"state": ACTIVE, "timestamp": ts}}
             })
 
         self._starttime = time.time()
@@ -1635,9 +1661,9 @@ class Agent(threading.Thread):
                         ts = datetime.datetime.utcnow()
                         wu_cursor = self._w.find_and_modify(
                             query={"pilot" : self._pilot_id,
-                                   "state" : "PendingExecution"},
-                            update={"$set" : {"state": "Scheduling"},
-                                    "$push": {"statehistory": {"state": "Scheduling", "timestamp": ts}}}
+                                   "state" : PENDING_EXECUTION},
+                            update={"$set" : {"state": SCHEDULING},
+                                    "$push": {"statehistory": {"state": SCHEDULING, "timestamp": ts}}}
                         )
 
                         # There are new work units in the wu_queue on the database.
@@ -1667,7 +1693,7 @@ class Agent(threading.Thread):
                                             ftw_output_staging   = True if wu['FTW_Output_Directives'] else False
                                             )
 
-                                task.state = 'Scheduling'
+                                task.state = SCHEDULING
                                 self._task_queue.put(task)
 
                         #
@@ -1677,11 +1703,11 @@ class Agent(threading.Thread):
 
                         wu_cursor = self._w.find_and_modify(
                             query={'pilot' : self._pilot_id,
-                                   'Agent_Input_Status': 'Pending'},
+                                   'Agent_Input_Status': PENDING},
                             # TODO: This might/will create double state history for StagingInput
-                            update={'$set' : {'Agent_Input_Status': 'Executing',
-                                              'state': 'StagingInput'},
-                                    '$push': {'statehistory': {'state': 'StagingInput', 'timestamp': ts}}}#,
+                            update={'$set' : {'Agent_Input_Status': EXECUTING,
+                                              'state': STAGING_INPUT},
+                                    '$push': {'statehistory': {'state': STAGING_INPUT, 'timestamp': ts}}}#,
                             #limit=BULK_LIMIT
                         )
 
