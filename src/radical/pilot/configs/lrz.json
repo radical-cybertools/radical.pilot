@@ -1,0 +1,23 @@
+{
+    "supermuc.lrz.de": {
+        "remote_job_manager_endpoint" : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
+        "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",
+        "local_job_manager_endpoint"  : "loadl://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "test",
+        "lrms"                        : "LOADL",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIEXEC",
+        "agent_mongodb_endpoint"      : "login03:24243",
+        "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
+        "pre_bootstrap"               : ["source /etc/profile",
+                                         "source /etc/profile.d/modules.sh",
+                                         "echo module purge", "echo module load lrz",
+                                         "module load python/2.7.6",
+                                         "module unload mpi.ibm", "module load mpi.intel",
+                                         "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
+                                        ],
+        "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    }
+}

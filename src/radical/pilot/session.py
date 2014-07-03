@@ -12,19 +12,23 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os 
+import glob
+import saga
 
-from radical.pilot.object        import Object
-from radical.pilot.unit_manager  import UnitManager
-from radical.pilot.pilot_manager import PilotManager
-from radical.pilot.credentials   import SSHCredential
-from radical.pilot.utils.logger  import logger
-from radical.pilot.utils         import DBConnectionInfo
-from radical.pilot               import exceptions
+from radical.pilot.object          import Object
+from radical.pilot.unit_manager    import UnitManager
+from radical.pilot.pilot_manager   import PilotManager
+from radical.pilot.utils.logger    import logger
+from radical.pilot.utils           import DBConnectionInfo
+from radical.pilot.resource_config import ResourceConfig
+from radical.pilot.exceptions      import PilotException
 
-from radical.pilot.db            import Session as dbSession
-from radical.pilot.db            import DBException
+from radical.pilot.db              import Session as dbSession
+from radical.pilot.db              import DBException
 
-from bson.objectid import ObjectId
+from bson.objectid                 import ObjectId
+
+
 
 # ------------------------------------------------------------------------------
 #
@@ -62,7 +66,7 @@ class _ProcessRegistry(object):
 
 # ------------------------------------------------------------------------------
 #
-class Session(Object):
+class Session (saga.Session, Object):
     """A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
 
@@ -108,6 +112,10 @@ class Session(Object):
 
         """
 
+        # init the base class inits
+        saga.Session.__init__ (self)
+        Object.__init__ (self)
+
         # Dictionaries holding all manager objects created during the session.
         self._pilot_manager_objects = list()
         self._unit_manager_objects = list()
@@ -118,47 +126,59 @@ class Session(Object):
         # a more coordinate fashion. 
         self._process_registry = _ProcessRegistry()
 
-        # List of credentials registered with this session.
-        self._credentials = []
+        # The resource configuration dictionary associated with the session.
+        self._resource_configs = {}
 
-        try:
-            self._database_url  = database_url
-            self._database_name = database_name 
+        self._database_url  = database_url
+        self._database_name = database_name 
 
-            ##########################
-            ## CREATE A NEW SESSION ##
-            ##########################
-            if session_uid is None:
-
+        ##########################
+        ## CREATE A NEW SESSION ##
+        ##########################
+        if session_uid is None:
+            try:
                 self._uid = str(ObjectId())
                 self._last_reconnect = None
 
+                # Loading all "default" resource configurations
+                default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
+                config_files = glob.glob(default_configs)
+                for config_file in config_files:
+                    config_url = "file://localhost/%s" % config_file
+                    rcs = ResourceConfig.from_file(config_url)
+                    logger.info("Loaded resource configurations from %s" % config_url)
+                    for rc in rcs:
+                        self._resource_configs[rc.name] = rc.as_dict() 
+
                 self._dbs, self._created = dbSession.new(sid=self._uid, 
                                                          db_url=database_url, 
-                                                         db_name=database_name)
+                                                         db_name=database_name,
+                                                         resource_configs=self._resource_configs)
 
                 logger.info("New Session created%s." % str(self))
 
-            ######################################
-            ## RECONNECT TO AN EXISTING SESSION ##
-            ######################################
-            else:
+            except Exception, ex:
+                raise PilotException("Couldn't create new session: %s" % ex)  
+
+        ######################################
+        ## RECONNECT TO AN EXISTING SESSION ##
+        ######################################
+        else:
+            try:
                 # otherwise, we reconnect to an exissting session
                 self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
                                                               db_url=database_url, 
                                                               db_name=database_name)
 
-                self._uid = session_uid
-                self._created = session_info["created"]
-                self._last_reconnect = session_info["last_reconnect"]
-
-                for cred_dict in session_info["credentials"]:
-                    self._credentials.append(SSHCredential.from_dict(cred_dict))
+                self._uid              = session_uid
+                self._created          = session_info["created"]
+                self._last_reconnect   = session_info["last_reconnect"]
+                self._resource_configs = session_info["resource_configs"]
 
                 logger.info("Reconnected to existing Session %s." % str(self))
 
-        except DBException, ex:
-            raise exceptions.radical.pilotException("Database Error: %s" % ex)  
+            except Exception, ex:
+                raise PilotException("Couldn't re-connect to session: %s" % ex)  
 
         self._connection_info = DBConnectionInfo(
             session_id=self._uid,
@@ -241,25 +261,6 @@ class Session(Object):
         self._assert_obj_is_valid()
         return self._last_reconnect
 
-    #---------------------------------------------------------------------------
-    #
-    def add_credential(self, credential):
-        """Adds a new security credential to the session.
-        """
-        self._assert_obj_is_valid()
-
-        self._dbs.session_add_credential(credential.as_dict())
-        self._credentials.append(credential)
-        logger.info("Added credential %s to session %s." % (str(credential), self.uid))
-
-    #---------------------------------------------------------------------------
-    #
-    @property
-    def credentials(self):
-        """Returns the security credentials of the session.
-        """
-        self._assert_obj_is_valid()
-        return self._credentials
 
     #---------------------------------------------------------------------------
     #
@@ -417,4 +418,38 @@ class Session(Object):
             unit_manager_objects = unit_manager_objects[0]
 
         return unit_manager_objects
+
+    # -------------------------------------------------------------------------
+    #
+    def add_resource_config(self, resource_config):
+        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
+           dictionary of known resources.
+
+           For example::
+
+                  rc = radical.pilot.ResourceConfig
+                  rc.name = "mycluster"
+                  rc.remote_job_manager_endpoint = "ssh+pbs://mycluster
+                  rc.remote_filesystem_endpoint = "sftp://mycluster
+                  rc.default_queue = "private"
+                  rc.bootstrapper = "default_bootstrapper.sh"
+
+                  pm = radical.pilot.PilotManager(session=s)
+                  pm.add_resource_config(rc)
+
+                  pd = radical.pilot.ComputePilotDescription()
+                  pd.resource = "mycluster"
+                  pd.cores    = 16
+                  pd.runtime  = 5 # minutes
+
+                  pilot = pm.submit_pilots(pd)
+        """
+        self._dbs.session_add_resource_configs(resource_config.name, resource_config.as_dict())
+
+    # -------------------------------------------------------------------------
+    #
+    def list_resource_configs(self):
+        """Returns a dictionary of all known resource configurations.
+        """
+        return self._dbs.session_list_resource_configs()
 

@@ -16,10 +16,10 @@ Sessions
    :members: Session
    :special-members: __init__
 
-SSHCredentials
---------------
-.. autoclass:: radical.pilot.SSHCredential
-   :members: SSHCredential
+Security Contexts
+-----------------
+.. autoclass:: radical.pilot.Context
+   :members: Context
    :special-members: __init__
 
 Pilots and PilotManagers

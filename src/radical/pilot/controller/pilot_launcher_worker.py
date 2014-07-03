@@ -20,7 +20,7 @@ from radical.pilot.states import *
 
 from radical.pilot.utils.version import version as VERSION
 from radical.pilot.utils.logger import logger
-from radical.pilot.credentials import SSHCredential
+from radical.pilot.context import Context
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
@@ -32,24 +32,23 @@ JOB_CHECK_INTERVAL=10 # seconds
 # ----------------------------------------------------------------------------
 #
 class PilotLauncherWorker(multiprocessing.Process):
-    """PilotLauncherWorker handles bootstrapping and laucnhing of 
+    """PilotLauncherWorker handles bootstrapping and launching of
        the pilot agents.
     """
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, db_connection_info, pilot_manager_id, 
-        resource_configurations, number=None):
+    def __init__(self, session, db_connection_info, pilot_manager_id, number=None):
         """Creates a new pilot launcher background process.
         """
+        self._session = session
+
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
         self.daemon = True
 
         self.db_connection_info = db_connection_info
         self.pilot_manager_id = pilot_manager_id
-
-        self.resource_configurations = resource_configurations
 
         self.name = "PilotLauncherWorker-%s" % str(number)
 
@@ -58,27 +57,21 @@ class PilotLauncherWorker(multiprocessing.Process):
     def run(self):
         """Starts the process when Process.start() is called.
         """
-
-        # saga_session holds the SSH context infos.
-        saga_session = saga.Session()
-
-        # Try to connect to the database and create a tailable cursor.
+        # Try to connect to the database 
         try:
             connection = self.db_connection_info.get_db_handle()
             db = connection[self.db_connection_info.dbname]
             pilot_col = db["%s.p" % self.db_connection_info.session_id]
             logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
-            session_col = db["%s" % self.db_connection_info.session_id]
-            session = session_col.find(
-                {"_id": ObjectId(self.db_connection_info.session_id)},
-                {"credentials": 1}
-            )
-
-            for cred_dict in session[0]["credentials"]:
-                cred = SSHCredential.from_dict(cred_dict)
-                saga_session.add_context(cred._context)
-                logger.debug("Found SSH context info: %s." % cred._context)
+            # AM: this list is only read once, at startup, so this worker
+            # will not pick up any changes.  I am not sure how to trigger
+            # re-initialization, as doing it once per iteration seems a rather
+            # bad idea (list_resource_configs() goes via mongodb).  OTOH, there
+            # is no direct communication between worker and manager, AFACIS.
+            #
+            # Update the known resource configurations
+            resource_configurations = self._session.list_resource_configs()
 
         except Exception, ex:
             tb = traceback.format_exc()
@@ -109,7 +102,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     # Create a job service object:
                     try: 
                         js_url = saga_job_id.split("]-[")[0][1:]
-                        js = saga.job.Service(js_url, session=saga_session)
+                        js = saga.job.Service(js_url, session=self._session)
                         saga_job = js.get_job(saga_job_id)
                         if saga.job.state == saga.job.FAILED:
                             log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
@@ -188,7 +181,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                             error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], compute_pilot['description']['resource'])
                             raise Exception(error_msg)
 
-                    resource_cfg = self.resource_configurations[resource_key]
+                    resource_cfg = resource_configurations[resource_key]
 
                     if 'pilot_agent_worker' in resource_cfg and resource_cfg['pilot_agent_worker'] is not None:
                         agent_worker = resource_cfg['pilot_agent_worker']
@@ -197,7 +190,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     ########################################################
                     # database connection parameters
-                    database_host = self.db_connection_info.url.split("://")[1] 
+                    database_url = self.db_connection_info.url.split("://")[1]
                     database_name = self.db_connection_info.dbname
                     session_uid   = self.db_connection_info.session_id
 
@@ -238,7 +231,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     agent_dir = saga.filesystem.Directory(
                         saga.Url(sandbox),
-                        saga.filesystem.CREATE_PARENTS, session=saga_session)
+                        saga.filesystem.CREATE_PARENTS, session=self._session)
                     agent_dir.close()
 
                     ########################################################
@@ -289,33 +282,47 @@ class PilotLauncherWorker(multiprocessing.Process):
                     else:
                         job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
 
-                    js = saga.job.Service(job_service_url, session=saga_session)
+                    js = saga.job.Service(job_service_url, session=self._session)
 
                     jd = saga.job.Description()
                     jd.working_directory = saga.Url(sandbox).path
 
-                    bootstrap_args = "-r %s -d %s -s %s -p %s -t %s -c %s -V %s " %\
-                        (database_host, database_name, session_uid, str(compute_pilot_id), runtime, number_cores, VERSION)
+                    bootstrap_args = "-n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
+                        (database_name, session_uid, str(compute_pilot_id),
+                         runtime, logger.level, number_cores, VERSION)
 
-                    if 'pilot_agent_options' in resource_cfg and resource_cfg['pilot_agent_options'] is not None:
-                        for option in resource_cfg['pilot_agent_options']:
-                            bootstrap_args += " %s " % option
+                    if 'agent_mongodb_endpoint' in resource_cfg and resource_cfg['agent_mongodb_endpoint'] is not None:
+                        bootstrap_args += " -m %s " % resource_cfg['agent_mongodb_endpoint']
+                    else:
+                        bootstrap_args += " -m %s " % database_url
 
                     if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
                     if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:
                         for command in resource_cfg['pre_bootstrap']:
                             bootstrap_args += " -e '%s' " % command
+                    if 'global_virtenv' in resource_cfg and resource_cfg['global_virtenv'] is not None:
+                        bootstrap_args += " -g %s " % resource_cfg['global_virtenv']
+                    if 'lrms' in resource_cfg and resource_cfg['lrms'] is not None:
+                        bootstrap_args += " -l %s " % resource_cfg['lrms']
+                    else:
+                        raise Exception("LRMS not specified.")
+                    if 'task_launch_method' in resource_cfg and resource_cfg['task_launch_method'] is not None:
+                        bootstrap_args += " -j %s " % resource_cfg['task_launch_method']
+                    else:
+                        raise Exception("Task launch method not set.")
+                    if 'mpi_launch_method' in resource_cfg and resource_cfg['mpi_launch_method'] is not None:
+                        bootstrap_args += " -k %s " % resource_cfg['mpi_launch_method']
+                    else:
+                        raise Exception("MPI launch method not set.")
+                    if 'forward_tunnel_endpoint' in resource_cfg and resource_cfg['forward_tunnel_endpoint'] is not None:
+                        bootstrap_args += " -f %s " % resource_cfg['forward_tunnel_endpoint']
 
                     if cleanup is True: 
-                        bootstrap_args += " -C "               # the cleanup flag    
-                    if queue is not None:
-                        bootstrap_args += " -q %s " % queue    # the queue name
-                    if project is not None:
-                        bootstrap_args += " -a %s " % project  # the project / allocation name
+                        bootstrap_args += " -x "               # the cleanup flag
 
                     jd.executable = "/bin/bash"
-                    jd.arguments = ["-l", "-c", '"./%s %s"' % (bootstrapper, bootstrap_args)]
+                    jd.arguments = ["-l", "-c", '"chmod +x %s && ./%s %s"' % (bootstrapper, bootstrapper, bootstrap_args)]
 
                     logger.debug("Bootstrap command line: /bin/bash %s" % jd.arguments)
 
@@ -340,6 +347,8 @@ class PilotLauncherWorker(multiprocessing.Process):
                     jd.error  = "AGENT.STDERR"
                     jd.total_cpu_count = number_cores
                     jd.wall_time_limit = runtime
+                    if compute_pilot['description']['memory'] is not None:
+                        jd.total_physical_memory = compute_pilot['description']['memory']
 
                     log_msg = "Submitting SAGA job with description: %s" % str(jd)
                     log_messages.append(log_msg)
@@ -373,7 +382,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     )
 
                 except Exception, ex:
-                    # Update the CU's state 'FAILED'.
+                    # Update the Pilot's state 'FAILED'.
                     ts = datetime.datetime.utcnow()
                     log_messages = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
                     pilot_col.update(
@@ -383,3 +392,4 @@ class PilotLauncherWorker(multiprocessing.Process):
                          "$push": {"log": log_messages}}
                     )
                     logger.error(log_messages)
+

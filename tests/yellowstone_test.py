@@ -8,9 +8,6 @@ import radical.pilot
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scenes!
 #
-# NOTE: If you run this from your own environment remotely to yellowstone,
-#       you will be asked for your token twice!
-#
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
@@ -49,8 +46,12 @@ if __name__ == "__main__":
     try:
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security credentials.
+        # well as security contexts.
         session = radical.pilot.Session(database_url=DBURL)
+
+        # Add an ssh identity to the session.
+        cred = radical.pilot.SSHCredential()
+        session.add_credential(cred)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
@@ -60,28 +61,25 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 32-core pilot on yellowstone that runs for 15 minutes and
+        # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource  = "yellowstone.ucar.edu"
-        pdesc.runtime   = 15 # minutes
-        pdesc.cores     = 32 # 2 nodes
-        pdesc.cleanup   = True
-        pdesc.project   = "URTG0003"
+        pdesc.resource         = "yellowstone.ucar.edu"
+        pdesc.runtime          = 15 # N minutes
+        pdesc.cores            = 32 # X cores
+        pdesc.cleanup          = False
+        pdesc.project          = "URTG0003"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        compute_units = []
+        cud_list = []
 
-        # define tasks
-        for unit_count in range(0, 4):
-            cu = radical.pilot.ComputeUnitDescription()
-            cu.executable  = "/bin/echo"
-            cu.arguments = ['Hello world, gelben Stein!']
-            cu.cores       = 1
-
-            compute_units.append(cu)
+        for unit_count in range(0, 64):
+            test_task = radical.pilot.ComputeUnitDescription()
+            test_task.executable  = "/bin/bash"
+            test_task.arguments   = ["-l", "-c", "'hostname -f && uname -a && sleep 30'"]
+            cud_list.append(test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -100,7 +98,7 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_units)
+        units = umgr.submit_units(cud_list)
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
@@ -108,12 +106,10 @@ if __name__ == "__main__":
         if not isinstance(units, list):
             units = [units]
         for unit in units:
-            print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
-                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
-                   unit.stdout)
+            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
+                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
-        # Close automatically cancels the pilot(s).
-        session.close()
+        session.close(delete=False)
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

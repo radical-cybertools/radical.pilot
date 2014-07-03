@@ -1,7 +1,6 @@
 #!/bin/bash -l
 
 # -----------------------------------------------------------------------------
-# Author: Ole Weidner (ole.weidner@rutgers.edu)
 # Copyright 2013-2014, radical@rutgers.edu
 # License under the MIT License
 #
@@ -11,64 +10,73 @@
 # -----------------------------------------------------------------------------
 # global variables
 #
-VERSION=
-PREBOOTSTRAP=
 CLEANUP=
-REMOTE=
 CORES=
-RUNTIME=
 DBNAME=
+DBURL=
+DEBUG=
+GLOBAL_VIRTENV=
+LRMS=
+MPI_LAUNCH_METHOD=
+PREBOOTSTRAP=
 PILOTID=
-UNITMANAGERID=
-SESSIONID=
-WORKDIR=`pwd`
 PYTHON=
-QUEUE=
-ALLOCATION=
-TASK_LAUNCH_MODE=
+RUNTIME=
+SESSIONID=
+TASK_LAUNCH_METHOD=
+VERSION=
+WORKDIR=`pwd`
 
 # -----------------------------------------------------------------------------
 # print out script usage help
 #
 usage()
 {
-cat << EOF
+cat << EOF > /dev/stderr
 usage: $0 options
 
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
-   -r      Address and port of the coordination service host (MongoDB)
+   -a      The name of project / allocation to charge.
 
-   -d      The name of the database 
+   -c      Number of requested cores.
 
-   -s      The unique identifier (uid) of the session
+   -d      Specify debug level.
 
-   -p      The unique identifier (uid) of the pilot
+   -e      List of commands to run before bootstrapping.
 
-   -w      The working (base) directory of the pilot
-           (default is '.')
+   -f      Tunnel endpoint for connection forwarding.
 
-   -l      The task launch mode to use.
+   -g      Global shared virtualenv, do not install anything.
 
-   -i      The Python interpreter to use, e.g., python2.6
+   -h      Show this message.
+
+   -i      The Python interpreter to use, e.g., python2.6.
            (default is '/usr/bin/python')
 
-   -e      List of commands to run before botstrapping
+   -j      Task launch method.
 
-   -t      Runtime in minutes
+   -k      MPI launch method.
 
-   -c      Number of requested cores
+   -l      Type of Local Resource Management System.
 
-   -q      The name of the queue to use
+   -m      Address and port of the coordination service host (MongoDB).
 
-   -a      The name of project / allocation to charge
+   -n      The name of the database.
 
-   -C      Cleanup - delete virtualenv after execution
+   -p      The unique identifier (uid) of the pilot.
 
-   -V      Version - the RADICAL-Pilot package version
+   -s      The unique identifier (uid) of the session.
 
-   -h      Show this message
+   -t      Runtime in minutes.
+
+   -v      Version - the RADICAL-Pilot package version.
+
+   -w      The working (base) directory of the pilot.
+           (default is '.')
+
+   -x      Cleanup - delete virtualenv after execution.
 
 EOF
 }
@@ -80,8 +88,7 @@ installvenv()
 {
 R_SYS_DIR=$WORKDIR/virtualenv/
 # remove any old versionsion
-if [ -d $R_SYS_DIR ] 
-then
+if [[ -d $R_SYS_DIR ]]; then
     echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Removing previous virtualenv: $R_SYS_DIR"
     rm -r $R_SYS_DIR
 fi
@@ -95,26 +102,26 @@ echo "## Downloading and installing virtualenv"
 echo "## CMDLINE: $CURL_CMD"
 eval $CURL_CMD
 OUT=$?
-if [ $OUT -ne 0 ];then
+if [[ $OUT != 0 ]]; then
    echo "Couldn't download virtuelenv via curl! ABORTING"
    exit 1
 fi
 
 tar xvfz virtualenv-1.9.tar.gz
 OUT=$?
-if [ $OUT -ne 0 ];then
+if [[ $OUT != 0 ]]; then
    echo "Couldn't unpack virtualenv! ABORTING"
    exit 1
 fi
 
-BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py --python=$PYTHON $R_SYS_DIR"
+BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $R_SYS_DIR"
 echo ""
 echo "################################################################################"
 echo "## Creating virtualenv"
 echo "## CMDLINE: $BOOTSTRAP_CMD"
 eval $BOOTSTRAP_CMD
 OUT=$?
-if [ $OUT -ne 0 ];then
+if [[ $OUT != 0 ]]; then
    echo "Couldn't bootstrap virtualenv! ABORTING"
    exit 1
 fi
@@ -129,7 +136,7 @@ echo "## Downgrading pip to 1.2.1"
 echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
 eval $DOWNGRADE_PIP_CMD
 OUT=$?
-if [ $OUT -ne 0 ];then
+if [[ $OUT != 0 ]]; then
    echo "Couldn't downgrade pip! ABORTING"
    exit 1
 fi
@@ -141,7 +148,7 @@ fi
 #echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
 #$UPDATE_SETUPTOOLS_CMD
 #OUT=$?
-#if [ $OUT -ne 0 ];then
+#if [ $OUT -ne 0 ]; then
 #   echo "Couldn't update virtualenv! ABORTING"
 #   exit 1
 #fi
@@ -167,11 +174,11 @@ echo "## Installing python-hostlist"
 echo "## CMDLINE: $PIP_CMD"
 eval $PIP_CMD
 OUT=$?
-if [ $OUT -ne 0 ];then
+if [[ $OUT != 0 ]]; then
     echo "pip install failed, trying easy_install ..."
     $EASY_INSTALL_CMD
     OUT=$?
-    if [ $OUT -ne 0 ];then
+    if [[ $OUT != 0 ]]; then
         echo "Easy install failed too, couldn't install python-hostlist! ABORTING"
         exit 1
     fi
@@ -185,11 +192,11 @@ echo "## Installing pymongo"
 echo "## CMDLINE: $PIP_CMD"
 eval $PIP_CMD
 OUT=$?
-if [ $OUT -ne 0 ];then
+if [[ $OUT != 0 ]]; then
     echo "pip install failed, trying easy_install ..."
     $EASY_INSTALL_CMD
     OUT=$?
-    if [ $OUT -ne 0 ];then
+    if [[ $OUT != 0 ]]; then
         echo "Easy install failed too, couldn't install pymongo! ABORTING"
         exit 1
     fi
@@ -201,11 +208,18 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -V $VERSION"
-if [[ -n $TASK_LAUNCH_MODE ]]
-then 
-    AGENT_CMD="$AGENT_CMD -l $TASK_LAUNCH_MODE"
-fi
+AGENT_CMD="python radical-pilot-agent.py\
+    -c $CORES\
+    -d $DEBUG\
+    -j $TASK_LAUNCH_METHOD\
+    -k $MPI_LAUNCH_METHOD\
+    -l $LRMS\
+    -m mongodb://$DBURL\
+    -n $DBNAME\
+    -p $PILOTID\
+    -s $SESSIONID\
+    -t $RUNTIME\
+    -v $VERSION"
 
 echo ""
 echo "################################################################################"
@@ -217,92 +231,158 @@ eval $AGENT_CMD
 # -----------------------------------------------------------------------------
 # MAIN 
 #
+
+# Report where we are, as this is not always what you expect ;-)
+echo "################################################################################"
+echo "## Bootstrapper running on host: `hostname -f`."
+
+# Print environment, useful for debugging
+echo ""
+echo "################################################################################"
+echo "## Environment of bootstrapper process:"
+printenv
+
 # parse command line arguments
-while getopts “hr:d:s:p:w:i:e:t:c:l:q:a:V:C” OPTION
-do
-     case $OPTION in
-         h)
-             usage
-             exit 1
-             ;;
-         r)
-             REMOTE=$OPTARG
-             ;;
-         d)
-             DBNAME=$OPTARG
-             ;;
-         s)
-             SESSIONID=$OPTARG
-             ;;
-         p)
-             PILOTID=$OPTARG
-             ;;
-         l)
-             TASK_LAUNCH_MODE=$OPTARG
-             ;;
-         w)
-             WORKDIR=$OPTARG
-             ;;
-         i)
-             PYTHON=$OPTARG
-             ;;
-         e)
-             PREBOOTSTRAP=$OPTARG
-             echo ""
-             echo "################################################################################"
-             echo "## Running pre-bootstrapping command"
-             echo "## CMDLINE: $PREBOOTSTRAP"
-             $PREBOOTSTRAP
-             OUT=$?
-             if [ $OUT -ne 0 ];then
+while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
+    case $OPTION in
+        c)
+            # Passed to agent
+            CORES=$OPTARG
+            ;;
+        d)
+            # Passed to agent
+            DEBUG=$OPTARG
+            ;;
+        e)
+            PREBOOTSTRAP=$OPTARG
+
+            # Note: Executed inline here because -e can be passed multiple times.
+            echo ""
+            echo "################################################################################"
+            echo "## Running pre-bootstrapping command"
+            echo "## CMDLINE: $PREBOOTSTRAP"
+            $PREBOOTSTRAP
+            OUT=$?
+            if [[ $OUT -ne 0 ]]; then
                 echo "Error running pre-boostrapping command! ABORTING"
                 exit 1
-             fi
-             ;;
-         t)
-             RUNTIME=$OPTARG
-             ;;
-         c)
-             CORES=$OPTARG
-             ;;
-         q)
-             QUEUE=$OPTARG
-             ;;
-         a)
-             ALLOCATION=$OPTARG
-             ;;
-         C)
-             CLEANUP=true
-             ;;
-         V)  
-             VERSION=$OPTARG
-             ;;
-         ?)
-             usage
-             exit
-             ;;
-     esac
+            fi
+            ;;
+        f)
+            FORWARD_TUNNEL_ENDPOINT=$OPTARG
+            ;;
+        g)
+            GLOBAL_VIRTENV=$OPTARG
+            ;;
+        h)
+            usage
+            exit 1
+            ;;
+        i)
+            PYTHON=$OPTARG
+            ;;
+        j)
+            # Passed to agent
+            TASK_LAUNCH_METHOD=$OPTARG
+            ;;
+        k)
+            # Passed to agent
+            MPI_LAUNCH_METHOD=$OPTARG
+            ;;
+        l)
+            # Passed to agent
+            LRMS=$OPTARG
+            ;;
+        m)
+            # Passed to agent, possibly after rewrite for proxy
+            DBURL=$OPTARG
+            ;;
+        n)
+            # Passed to agent
+            DBNAME=$OPTARG
+            ;;
+        p)
+            # Passed to agent
+            PILOTID=$OPTARG
+            ;;
+        s)
+            # Passed to agent
+            SESSIONID=$OPTARG
+            ;;
+        t)
+            # Passed to agent
+            RUNTIME=$OPTARG
+            ;;
+        v)
+            # Passed to agent
+            VERSION=$OPTARG
+            ;;
+        w)
+            WORKDIR=$OPTARG
+            ;;
+        x)
+            CLEANUP=true
+            ;;
+        *)
+            echo "Unknown option: $OPTION=$OPTARG"
+            usage
+            exit
+            ;;
+    esac
 done
 
-if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]] || [[ -z $VERSION ]]
-then
+# Check that mandatory arguments are set
+# (Currently all that are passed through to the agent)
+if [[ -z $CORES ]] ||\
+   [[ -z $DEBUG ]] ||\
+   [[ -z $DBNAME ]] ||\
+   [[ -z $DBURL ]] ||\
+   [[ -z $LRMS ]] ||\
+   [[ -z $MPI_LAUNCH_METHOD ]] ||\
+   [[ -z $PILOTID ]] ||\
+   [[ -z $RUNTIME ]] ||\
+   [[ -z $SESSIONID ]] ||\
+   [[ -z $TASK_LAUNCH_METHOD ]] ||\
+   [[ -z $VERSION ]]; then
+     echo "Missing option"
      usage
      exit 1
 fi
 
-# SEMI-HACK for db access through tunnel
-if [[ $ALT_REMOTE ]]; then
-    REMOTE=$ALT_REMOTE
+# If the host that will run the agent is not capable of communication
+# with the outside world directly, we will setup a tunnel.
+if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
+    # TODO: Dynamic and/or random to prevent conflicts
+    PROXY_PORT=12345
+    DBPORT=12346
+    BIND_ADDRESS=127.0.0.1
+
+    # Set up tunnel
+    ssh -x -a -4 -T -N -D $BIND_ADDRESS:$PROXY_PORT -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
+
+    # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
+    trap 'jobs -p | xargs kill' EXIT
+
+    # Overwrite DBURL
+    DBURL=$BIND_ADDRESS:$DBPORT
 fi
 
 # If PYTHON was not set as an argument, detect it here.
-if [[ -z $PYTHON ]]
-then
+if [[ -z $PYTHON ]]; then
     PYTHON=`which python`
 fi
 
-# bootstrap virtualenv
-installvenv
+# Reuse existing VE if it exists
+if [[ $GLOBAL_VIRTENV ]]; then
+    if [[ ! -d $GLOBAL_VIRTENV || ! -f $GLOBAL_VIRTENV/bin/activate ]]; then
+        echo "Global Virtual Environment not found!"
+        exit 1
+    fi
+    source $GLOBAL_VIRTENV/bin/activate
+else
+    # bootstrap virtualenv
+    installvenv
+fi
 
 # launch the agent
 launchagent
@@ -310,8 +390,7 @@ launchagent
 # cleanup
 rm -rf $WORKDIR/virtualenv*
 
-if [[ $CLEANUP ]]
-then
+if [[ $CLEANUP ]]; then
     # if cleanup is set, we delete all CU sandboxes !!
     rm -rf $WORKDIR/unit-*
 fi

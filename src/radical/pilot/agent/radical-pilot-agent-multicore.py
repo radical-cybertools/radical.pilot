@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import stat
 import sys
 import time
 import errno
@@ -23,6 +24,7 @@ import optparse
 import logging
 import datetime
 import hostlist
+import tempfile
 import traceback
 import threading 
 import subprocess
@@ -36,35 +38,28 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH    = 'SSH'
-LAUNCH_METHOD_AUTO   = 'AUTO'
-LAUNCH_METHOD_APRUN  = 'APRUN'
-LAUNCH_METHOD_LOCAL  = 'LOCAL'
-LAUNCH_METHOD_MPIRUN = 'MPIRUN'
-LAUNCH_METHOD_POE    = 'POE'
-LAUNCH_METHOD_IBRUN  = 'IBRUN'
+LAUNCH_METHOD_SSH     = 'SSH'
+LAUNCH_METHOD_APRUN   = 'APRUN'
+LAUNCH_METHOD_LOCAL   = 'LOCAL'
+LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
+LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
+LAUNCH_METHOD_POE     = 'POE'
+LAUNCH_METHOD_IBRUN   = 'IBRUN'
 
-#-----------------------------------------------------------------------------
-#
-def which(program):
-    """Finds the location of an executable.
-    Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-    """
-    #-------------------------------------------------------------------------
-    #
-    def is_exe(fpath):
-        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
+                              LAUNCH_METHOD_MPIRUN,
+                              LAUNCH_METHOD_POE,
+                              LAUNCH_METHOD_APRUN,
+                              LAUNCH_METHOD_MPIEXEC]
 
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if is_exe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            exe_file = os.path.join(path, program)
-            if is_exe(exe_file):
-                return exe_file
-    return None
+LRMS_TORQUE = 'TORQUE'
+LRMS_PBSPRO = 'PBSPRO'
+LRMS_SLURM  = 'SLURM'
+LRMS_SGE    = 'SGE'
+LRMS_LSF    = 'LSF'
+LRMS_LOADL  = 'LOADL'
+LRMS_FORK   = 'FORK'
+
 
 #---------------------------------------------------------------------------
 #
@@ -118,82 +113,516 @@ class ExecutionEnvironment(object):
     """
     #-------------------------------------------------------------------------
     #
-    @classmethod
-    def discover(cls, logger, requested_cores):
-        """Factory method creates a new execution environment.
-        """
-        eenv = cls(logger)
+    def __init__(self, logger, lrms, requested_cores, task_launch_method, mpi_launch_method):
+        self.log = logger
 
-        # Discover nodes and number of cores available
-        eenv.discover_nodes()
-        eenv.discover_cores()
+        self.requested_cores = requested_cores
+        self.node_list = None # TODO: Need to think about a structure that works for all machines
+        self.cores_per_node = None # Work with one value for now
 
-        # Discover task launch methods
-        eenv.discovered_task_launch_methods = {}
-        # TODO: Can we come up with a test / config whether local exec is allowed?
-        #       Maybe at a list of "allowed launch methods" in the resource config?
-        eenv.discovered_task_launch_methods[LAUNCH_METHOD_LOCAL] = \
-            {'launch_command': None}
+        # Configure nodes and number of cores available
+        self._configure(lrms)
 
-        command = which('ssh')
-        if command is not None:
-            eenv.discovered_task_launch_methods[LAUNCH_METHOD_SSH] = \
-                {'launch_command': command}
+        task_launch_command = None
+        mpi_launch_command = None
 
-        command = which('mpirun')
-        if command is not None:
-            eenv.discovered_task_launch_methods[LAUNCH_METHOD_MPIRUN] = \
-                {'launch_command': command}
+        # Regular tasks
+        if task_launch_method == LAUNCH_METHOD_LOCAL:
+            task_launch_command = None
 
-        # ibrun: wrapper for mpirun at TACC
-        command = which('ibrun')
-        if command is not None:
-            eenv.discovered_task_launch_methods[LAUNCH_METHOD_IBRUN] = \
-                {'launch_command': command}
+        elif task_launch_method == LAUNCH_METHOD_SSH:
+            # Find ssh command
+            command = self._find_ssh()
+            if command is not None:
+                task_launch_command = command
 
-        # aprun: job launcher for Cray systems
-        command = which('aprun')
-        if command is not None:
-            eenv.discovered_task_launch_methods[LAUNCH_METHOD_APRUN] = \
-                {'launch_command': command}
+        elif task_launch_method == LAUNCH_METHOD_APRUN:
+            # aprun: job launcher for Cray systems
+            command = self._which('aprun')
+            if command is not None:
+                task_launch_command = command
+        else:
+            raise Exception("Task launch method not set or unknown: %s!" % task_launch_method)
 
-        # poe: LSF specific wrapper for MPI (e.g. yellowstone)
-        command = which('poe')
-        if command is not None:
-            eenv.discovered_task_launch_methods[LAUNCH_METHOD_POE] = \
-                {'launch_command': command}
+        # MPI tasks
+        if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
+            command = self._find_executable(['mpirun',           # General case
+                                             'mpirun-openmpi-mp' # Mac OSX MacPorts
+                                            ])
+            if command is not None:
+                mpi_launch_command = command
+            else:
+                raise Exception("No launch command found for launch method: %s." % LAUNCH_METHOD_MPIRUN)
 
-        logger.info("Discovered task launch methods: %s." % [lm for lm in eenv.discovered_task_launch_methods])
+        elif mpi_launch_method == LAUNCH_METHOD_MPIEXEC:
+            # mpiexec (e.g. on SuperMUC)
+            command = self._which('mpiexec')
+            if command is not None:
+                mpi_launch_command = command
 
-        # create node dictionary
-        for rn in eenv.raw_nodes:
-            if rn not in eenv.nodes:
-                eenv.nodes[rn] = {'cores': eenv.cores_per_node}
-        logger.info("Discovered execution environment: %s" % eenv.nodes)
+        elif mpi_launch_method == LAUNCH_METHOD_APRUN:
+            # aprun: job launcher for Cray systems
+            command = self._which('aprun')
+            if command is not None:
+                mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_IBRUN:
+
+            # ibrun: wrapper for mpirun at TACC
+            command = self._which('ibrun')
+            if command is not None:
+                mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_POE:
+
+            # poe: LSF specific wrapper for MPI (e.g. yellowstone)
+            command = self._which('poe')
+            if command is not None:
+                mpi_launch_command = command
+        else:
+            raise Exception("MPI launch method not set or unknown: %s!" % mpi_launch_method)
+
+        self.discovered_launch_methods = {
+            'task_launch_method': task_launch_method,
+            'task_launch_command': task_launch_command,
+            'mpi_launch_method': mpi_launch_method,
+            'mpi_launch_command': mpi_launch_command
+        }
+
+        logger.info("Discovered task launch command: '%s' and MPI launch command: '%s'." % \
+                    (task_launch_command, mpi_launch_command))
+
+        logger.info("Discovered execution environment: %s" % self.node_list)
 
         # For now assume that all nodes have equal amount of cores
-        cores_avail = len(eenv.nodes) * int(eenv.cores_per_node)
+        cores_avail = len(self.node_list) * self.cores_per_node
         if cores_avail < int(requested_cores):
             raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
 
-        return eenv
+
+    def _find_ssh(self):
+
+        command = self._which('ssh')
+
+        if command is not None:
+
+            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into the path.
+            # We try to detect that and then use different arguments.
+            if os.path.islink(command):
+
+                target = os.path.realpath(command)
+
+                if os.path.basename(target) == 'rsh':
+                    self.log.info('Detected that "ssh" is a link to "rsh".')
+                    return target
+
+            return '%s -o StrictHostKeyChecking=no' % command
+
+
+    #-----------------------------------------------------------------------------
+    #
+    def _find_executable(self, names):
+        """Takes a (list of) name(s) and looks for an executable in the path.
+        """
+
+        if not isinstance(names, list):
+            names = [names]
+
+        for name in names:
+            ret = self._which(name)
+            if ret is not None:
+                return ret
+
+        return None
+
+
+    #-----------------------------------------------------------------------------
+    #
+    def _which(self, program):
+        """Finds the location of an executable.
+        Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+        """
+        #-------------------------------------------------------------------------
+        #
+        def is_exe(fpath):
+            return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+        fpath, fname = os.path.split(program)
+        if fpath:
+            if is_exe(program):
+                return program
+        else:
+            for path in os.environ["PATH"].split(os.pathsep):
+                exe_file = os.path.join(path, program)
+                if is_exe(exe_file):
+                    return exe_file
+        return None
 
     #-------------------------------------------------------------------------
     #
-    def __init__(self, logger=None):
-        '''le constructeur
-        '''
-        self.log = logger
+    def _configure_torque(self):
+        self.log.info("Configured to run on system with %s." % LRMS_TORQUE)
 
-        self.nodes = {}
+        torque_nodefile = os.environ.get('PBS_NODEFILE')
+        if torque_nodefile is None:
+            msg = "$PBS_NODEFILE not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Parse PBS the nodefile
+        torque_nodes = [line.strip() for line in open(torque_nodefile)]
+        self.log.info("Found Torque PBS_NODEFILE %s: %s" % (torque_nodefile, torque_nodes))
+
+        # Number of nodes involved in allocation
+        val = os.environ.get('PBS_NUM_NODES')
+        if val:
+            torque_num_nodes = int(val)
+        else:
+            msg = "$PBS_NUM_NODES not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Number of cores (processors) per node
+        val = os.environ.get('PBS_NUM_PPN')
+        if val:
+            torque_cores_per_node = int(val)
+        else:
+            msg = "$PBS_NUM_PPN not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
+        torque_nodes_length = len(torque_nodes)
+        if torque_nodes_length != torque_num_nodes * torque_cores_per_node:
+            msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
+                  (torque_nodes_length, torque_nodes, torque_cores_per_node)
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # only unique node names
+        torque_node_list = list(set(torque_nodes))
+        self.log.debug("Node list: %s" % torque_node_list)
+
+        self.cores_per_node = torque_cores_per_node
+        self.node_list = torque_node_list
+
 
     #-------------------------------------------------------------------------
     #
-    def discover_cores(self):
+    def _parse_pbspro_vnodes(self):
+
+        # PBS Job ID
+        val = os.environ.get('PBS_JOBID')
+        if val:
+            pbspro_jobid = val
+        else:
+            msg = "$PBS_JOBID not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Get the output of qstat -f for this job
+        output = subprocess.check_output(["qstat", "-f", pbspro_jobid])
+
+        # Get the (multiline) 'exec_vnode' entry
+        vnodes_str = ''
+        for line in output.splitlines():
+            # Detect start of entry
+            if 'exec_vnode = ' in line:
+                vnodes_str += line.strip()
+            elif vnodes_str:
+                # Find continuing lines
+                if " = " not in line:
+                    vnodes_str += line.strip()
+                else:
+                    break
+
+        # Get the RHS of the entry
+        input = vnodes_str.split('=',1)[1].strip()
+        self.log.debug("input: %s" % input)
+
+        nodes_list = []
+        # Break up the individual node partitions into vnode slices
+        while True:
+            idx = input.find(')+(')
+
+            node_str = input[1:idx]
+            nodes_list.append(node_str)
+            input = input[idx+2:]
+
+            if idx < 0:
+                break
+
+        vnodes_list = []
+        cpus_list = []
+        # Split out the slices into vnode name and cpu count
+        for node_str in nodes_list:
+            slices = node_str.split('+')
+            for slice in slices:
+                vnode, cpus = slice.split(':')
+                cpus = int(cpus.split('=')[1])
+                self.log.debug('vnode: %s cpus: %s' % (vnode, cpus))
+                vnodes_list.append(vnode)
+                cpus_list.append(cpus)
+
+        self.log.debug("vnodes: %s" % vnodes_list)
+        self.log.debug("cpus: %s" % cpus_list)
+
+        cpus_list = list(set(cpus_list))
+        min_cpus = int(min(cpus_list))
+
+        if len(cpus_list) > 1:
+            self.log.debug("Detected vnodes of different sizes: %s, the minimal is: %d." % (cpus_list, min_cpus))
+
+        node_list = []
+        for vnode in vnodes_list:
+            # strip the last _0 of the vnodes to get the node name
+            node_list.append(vnode.rsplit('_', 1)[0])
+
+        # only unique node names
+        node_list = list(set(node_list))
+        self.log.debug("Node list: %s" % node_list)
+
+        # Return the list of node names
+        return node_list
+
+
+    #-------------------------------------------------------------------------
+    #
+    def _configure_pbspro(self):
+        self.log.info("Configured to run on system with %s." % LRMS_PBSPRO)
+        # TODO: $NCPUS?!?! = 1 on archer
+
+        pbspro_nodefile = os.environ.get('PBS_NODEFILE')
+
+        if pbspro_nodefile is None:
+            msg = "$PBS_NODEFILE not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        self.log.info("Found PBSPro $PBS_NODEFILE %s." % pbspro_nodefile)
+
+        # Dont need to parse the content of nodefile for PBSPRO,
+        # only the length is interesting, as there are only duplicate entries in it.
+        pbspro_nodes_length = len([line.strip() for line in open(pbspro_nodefile)])
+
+        # Number of Processors per Node
+        val = os.environ.get('NUM_PPN')
+        if val:
+            pbspro_num_ppn = int(val)
+        else:
+            msg = "$NUM_PPN not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Number of Nodes allocated
+        val = os.environ.get('NODE_COUNT')
+        if val:
+            pbspro_node_count = int(val)
+        else:
+            msg = "$NODE_COUNT not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Number of Parallel Environments
+        val = os.environ.get('NUM_PES')
+        if val:
+            pbspro_num_pes = int(val)
+        else:
+            msg = "$NUM_PES not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        pbspro_vnodes = self._parse_pbspro_vnodes()
+
+        # Verify that $NUM_PES == $NODE_COUNT * $NUM_PPN == len($PBS_NODEFILE)
+        if not (pbspro_node_count * pbspro_num_ppn == pbspro_num_pes == pbspro_nodes_length):
+            self.log.warning("NUM_PES != NODE_COUNT * NUM_PPN != len($PBS_NODEFILE)")
+
+        self.cores_per_node = pbspro_num_ppn
+        self.node_list = pbspro_vnodes
+
+    #-------------------------------------------------------------------------
+    #
+    def _configure_slurm(self):
+
+        self.log.info("Configured to run on system with %s." % LRMS_SLURM)
+
+        slurm_nodelist = os.environ.get('SLURM_NODELIST')
+        if slurm_nodelist is None:
+            msg = "$SLURM_NODELIST not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Parse SLURM nodefile environment variable
+        slurm_nodes = hostlist.expand_hostlist(slurm_nodelist)
+        self.log.info("Found SLURM_NODELIST %s. Expanded to: %s" % (slurm_nodelist, slurm_nodes))
+
+        # $SLURM_NPROCS = Total number of processes in the current job
+        slurm_nprocs_str = os.environ.get('SLURM_NPROCS')
+        if slurm_nprocs_str is None:
+            msg = "$SLURM_NPROCS not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+        else:
+            slurm_nprocs = int(slurm_nprocs_str)
+
+        # $SLURM_NNODES = Total number of nodes in the job's resource allocation
+        slurm_nnodes_str = os.environ.get('SLURM_NNODES')
+        if slurm_nnodes_str is None:
+            msg = "$SLURM_NNODES not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+        else:
+            slurm_nnodes = int(slurm_nnodes_str)
+
+        # $SLURM_CPUS_ON_NODE = Count of processors available to the job on this node.
+        slurm_cpus_on_node_str = os.environ.get('SLURM_CPUS_ON_NODE')
+        if slurm_cpus_on_node_str is None:
+            msg = "$SLURM_NNODES not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+        else:
+            slurm_cpus_on_node = int(slurm_cpus_on_node_str)
+
+        # Verify that $SLURM_NPROCS == $SLURM_NNODES * $SLURM_CPUS_ON_NODE
+        if slurm_nnodes * slurm_cpus_on_node != slurm_nprocs:
+            self.log.error("$SLURM_NPROCS(%d) != $SLURM_NNODES(%d) * $SLURM_CPUS_ON_NODE(%d)" % \
+                           (slurm_nnodes, slurm_cpus_on_node, slurm_nprocs))
+
+        # Verify that $SLURM_NNODES == len($SLURM_NODELIST)
+        if slurm_nnodes != len(slurm_nodes):
+            self.log.error("$SLURM_NNODES(%d) != len($SLURM_NODELIST)(%d)" % \
+                           (slurm_nnodes, len(slurm_nodes)))
+
+        self.cores_per_node = slurm_cpus_on_node
+        self.node_list = slurm_nodes
+
+    #-------------------------------------------------------------------------
+    #
+    def _configure_sge(self):
 
         sge_hostfile = os.environ.get('PE_HOSTFILE')
-        lsb_mcpu_hosts = os.environ.get('LSB_MCPU_HOSTS')
+        if sge_hostfile is None:
+            msg = "$PE_HOSTFILE not set!"
+            self.log.error(msg)
+            raise Exception(msg)
 
+        # SGE core configuration might be different than what multiprocessing announces
+        # Alternative: "qconf -sq all.q|awk '/^slots *[0-9]+$/{print $2}'"
+
+        # Parse SGE hostfile for nodes
+        sge_node_list = [line.split()[0] for line in open(sge_hostfile)]
+        # Keep only unique nodes
+        sge_nodes = list(set(sge_node_list))
+        self.log.info("Found PE_HOSTFILE %s. Expanded to: %s" % (sge_hostfile, sge_nodes))
+
+        # Parse SGE hostfile for cores
+        sge_cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
+        sge_core_counts = list(set(sge_cores_count_list))
+        sge_cores_per_node = min(sge_core_counts)
+        self.log.info("Found unique core counts: %s Using: %d" % (sge_core_counts, sge_cores_per_node))
+
+        self.node_list = sge_nodes
+        self.cores_per_node = sge_cores_per_node
+
+
+    #-------------------------------------------------------------------------
+    #
+    def _configure_lsf(self):
+
+        self.log.info("Configured to run on system with %s." % LRMS_LSF)
+
+        lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
+        if lsf_hostfile is None:
+            msg = "$LSB_DJOB_HOSTFILE not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        lsb_mcpu_hosts = os.environ.get('LSB_MCPU_HOSTS')
+        if lsb_mcpu_hosts is None:
+            msg = "$LSB_MCPU_HOSTS not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # parse LSF hostfile
+        # format:
+        # <hostnameX>
+        # <hostnameX>
+        # <hostnameY>
+        # <hostnameY>
+        #
+        # There are in total "-n" entries (number of tasks) and "-R" entries per host (tasks per host).
+        # (That results in "-n" / "-R" unique hosts)
+        #
+        lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
+        self.log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s" % (lsf_hostfile, lsf_nodes))
+        lsf_node_list = list(set(lsf_nodes))
+
+        # Grab the core (slot) count from the environment
+        # Format: hostX N hostY N hostZ N
+        lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
+        lsf_core_counts = list(set(lsf_cores_count_list))
+        lsf_cores_per_node = min(lsf_core_counts)
+        self.log.info("Found unique core counts: %s Using: %d" % (lsf_core_counts, lsf_cores_per_node))
+
+        self.node_list = lsf_node_list
+        self.cores_per_node = lsf_cores_per_node
+
+    #-------------------------------------------------------------------------
+    #
+    def _configure_loadl(self):
+
+        self.log.info("Configured to run on system with %s." % LRMS_LOADL)
+
+        #LOADL_HOSTFILE
+        loadl_hostfile = os.environ.get('LOADL_HOSTFILE')
+        if loadl_hostfile is None:
+            msg = "$LOADL_HOSTFILE not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        #LOADL_TOTAL_TASKS
+        loadl_total_tasks_str = os.environ.get('LOADL_TOTAL_TASKS')
+        if loadl_total_tasks_str is None:
+            msg = "$LOADL_TOTAL_TASKS not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+        else:
+            loadl_total_tasks = int(loadl_total_tasks_str)
+
+        loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
+        self.log.info("Found LOADL_HOSTFILE %s. Expanded to: %s" % (loadl_hostfile, loadl_nodes))
+        loadl_node_list = list(set(loadl_nodes))
+
+        # Assume: cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
+        loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
+
+        # Verify that $LLOAD_TOTAL_TASKS == len($LOADL_HOSTFILE)
+        if loadl_total_tasks != len(loadl_nodes):
+            self.log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)" % \
+                           (loadl_total_tasks, len(loadl_nodes)))
+
+        self.node_list = loadl_node_list
+        self.cores_per_node = loadl_cpus_per_node
+
+    #-------------------------------------------------------------------------
+    #
+    def _configure_fork(self):
+
+        self.log.info("Using fork on localhost.")
+
+        detected_cpus = multiprocessing.cpu_count()
+        selected_cpus = min(detected_cpus, self.requested_cores)
+
+        self.log.info("Detected %d cores on localhost, using %d." % (detected_cpus, selected_cpus))
+
+        self.node_list = ["localhost"]
+        self.cores_per_node = selected_cpus
+
+
+    #-------------------------------------------------------------------------
+    #
+    def _configure(self, lrms):
         # TODO: These dont have to be the same number for all hosts.
 
         # TODO: We might not have reserved the whole node.
@@ -204,75 +633,44 @@ class ExecutionEnvironment(object):
         #       Answer: at least on Yellowstone this doesnt work for MPI,
         #               as you can't spawn more tasks then the number of slots.
 
-        # SGE core configuration might be different than what multiprocessing announces
-        # Alternative: "qconf -sq all.q|awk '/^slots *[0-9]+$/{print $2}'"
-        if sge_hostfile is not None:
-            # parse SGE hostfile
-            cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
-            core_counts = list(set(cores_count_list))
-            self.cores_per_node = min(core_counts)
-            self.log.info("Found unique core counts: %s Using: %d" % (core_counts, self.cores_per_node))
 
-        # Grab the core (slot) count from the environment, not using cpu_count()
-        elif lsb_mcpu_hosts is not None:
-            # Format: hostX N hostY N hostZ N
-            cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
-            core_counts = list(set(cores_count_list))
-            self.cores_per_node = min(core_counts)
-            self.log.info("Found unique core counts: %s Using: %d" % (core_counts, self.cores_per_node))
+        if lrms == LRMS_FORK:
+            # Fork on localhost
+            self._configure_fork()
 
-        else:
-            # If there is no way to get it from the environment or configuration, get the number of cores.
-            self.cores_per_node = multiprocessing.cpu_count()
+        elif lrms == LRMS_TORQUE:
+            # TORQUE/PBS (e.g. India)
+            self._configure_torque()
 
+        elif lrms == LRMS_PBSPRO:
+            # PBSPro (e.g. Archer)
+            self._configure_pbspro()
 
-    #-------------------------------------------------------------------------
-    #
-    def discover_nodes(self):
-        # see if we have a PBS_NODEFILE
-        pbs_nodefile = os.environ.get('PBS_NODEFILE')
-        slurm_nodelist = os.environ.get('SLURM_NODELIST')
-        sge_hostfile = os.environ.get('PE_HOSTFILE')
-        lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
+        elif lrms == LRMS_SLURM:
+            # SLURM (e.g. Stampede)
+            self._configure_slurm()
 
-        if pbs_nodefile is not None:
-            # parse PBS the nodefile
-            self.raw_nodes = [line.strip() for line in open(pbs_nodefile)]
-            self.log.info("Found PBS_NODEFILE %s: %s" % (pbs_nodefile, self.raw_nodes))
+        elif lrms == LRMS_SGE:
+            # SGE (e.g. DAS4)
+            self._configure_sge()
 
-        elif slurm_nodelist is not None:
-            # parse SLURM nodefile
-            self.raw_nodes = hostlist.expand_hostlist(slurm_nodelist)
-            self.log.info("Found SLURM_NODELIST %s. Expanded to: %s" % (slurm_nodelist, self.raw_nodes))
+        elif lrms == LRMS_LSF:
+            # LSF (e.g. Yellowstone)
+            self._configure_lsf()
 
-        elif sge_hostfile is not None:
-            # parse SGE hostfile
-            self.raw_nodes = [line.split()[0] for line in open(sge_hostfile)]
-            self.log.info("Found PE_HOSTFILE %s. Expanded to: %s" % (sge_hostfile, self.raw_nodes))
-
-        elif lsf_hostfile is not None:
-            # parse LSF hostfile
-            # format:
-            # <hostnameX>
-            # <hostnameX>
-            # <hostnameY>
-            # <hostnameY>
-            #
-            # There are in total "-n" entries (number of tasks) and "-R" entries per host (tasks per host).
-            # (That results in "-n" / "-R" unique hosts)
-            #
-            self.raw_nodes = [line.strip() for line in open(lsf_hostfile)]
-            self.log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s" % (lsf_hostfile, self.raw_nodes))
+        elif lrms == LRMS_LOADL:
+            # LoadLeveler (e.g. SuperMUC)
+            self._configure_loadl()
 
         else:
-            self.raw_nodes = ['localhost']
-            self.log.info("No special node file found. Using hosts: %s" % (self.raw_nodes))
+            msg = "Unknown lrms type %s." % lrms
+            self.log.error(msg)
+            raise Exception(msg)
 
 # ----------------------------------------------------------------------------
 #
 class Task(object):
 
-    # ------------------------------------------------------------------------
     #
     def __init__(self, uid, executable, arguments, environment, numcores, mpi, pre_exec, workdir, stdout, stderr, output_data):
 
@@ -317,9 +715,9 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, task_queue, hosts, cores_per_host, 
+    def __init__(self, logger, task_queue, node_list, cores_per_node,
                  launch_methods, mongodb_url, mongodb_name,
-                 pilot_id, session_id, unitmanager_id):
+                 pilot_id, session_id):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
@@ -329,7 +727,6 @@ class ExecWorker(multiprocessing.Process):
 
         self._log = logger
 
-        self._unitmanager_id = None
         self._pilot_id = pilot_id
 
         mongo_client = pymongo.MongoClient(mongodb_url)
@@ -347,29 +744,38 @@ class ExecWorker(multiprocessing.Process):
         # Slots represents the internal process management structure.
         # The structure is as follows:
         # [
-        #    {'hostname': 'node1', 'cores': [p_1, p_2, p_3, ... , p_cores_per_host]},
-        #    {'hostname': 'node2', 'cores': [p_1, p_2, p_3. ... , p_cores_per_host]
+        #    {'node': 'node1', 'cores': [p_1, p_2, p_3, ... , p_cores_per_node]},
+        #    {'node': 'node2', 'cores': [p_1, p_2, p_3. ... , p_cores_per_node]
         # ]
         #
         # We put it in a list because we care about (and make use of) the order.
         #
         self._slots = []
-        for host in hosts:
+        for node in node_list:
             self._slots.append({
-                'host': host,
+                'node': node,
                 # TODO: Maybe use the real core numbers in the case of non-exclusive host reservations?
-                'cores': [FREE for _ in range(0, cores_per_host)]
+                'cores': [FREE for _ in range(0, cores_per_node)]
             })
-        self._cores_per_host = cores_per_host
+        self._cores_per_node = cores_per_node
+
+
+        # keep a slot allocation history (short status), start with presumably
+        # empty state now
+        self._slot_history = list()
+        self._slot_history.append (self._slot_status (short=True))
+
 
         # The available launch methods
         self._available_launch_methods = launch_methods
+
 
     # ------------------------------------------------------------------------
     #
     def stop(self):
         """Terminates the process' main loop.
         """
+        # AM: Why does this call exist?  It is never called....
         self._terminate = True
 
     # ------------------------------------------------------------------------
@@ -390,32 +796,14 @@ class ExecWorker(multiprocessing.Process):
                     idle = False
 
                     if task.mpi:
-                        # Find an appropriate method to execute MPI on this resource
-                        if LAUNCH_METHOD_IBRUN in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_IBRUN
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        elif LAUNCH_METHOD_APRUN in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_APRUN
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        elif LAUNCH_METHOD_POE in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_POE
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        elif LAUNCH_METHOD_MPIRUN in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_MPIRUN
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        else:
-                            raise Exception("No task launch method available to execute MPI tasks")
+                        launch_method = self._available_launch_methods['mpi_launch_method']
+                        launch_command = self._available_launch_methods['mpi_launch_command']
                     else:
-                        # For "regular" tasks either use SSH or none
-                        # TODO: Find a switch to go for fork() if we run on localhost
-                        if LAUNCH_METHOD_SSH in self._available_launch_methods:
-                            launch_method = LAUNCH_METHOD_SSH
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
-                        else:
-                            launch_method = self._available_launch_methods[LAUNCH_METHOD_LOCAL]
-                            launch_command = self._available_launch_methods[launch_method]['launch_command']
+                        launch_method = self._available_launch_methods['task_launch_method']
+                        launch_command = self._available_launch_methods['task_launch_command']
 
-                    self._log.debug("Launching task with %s (%s)." % (launch_method, launch_command))
+                    self._log.debug("Launching task with %s (%s)." % (
+                        launch_method, launch_command))
 
                     # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
                     # TODO: Dont have scattered scheduler yet, so test disabled.
@@ -424,13 +812,12 @@ class ExecWorker(multiprocessing.Process):
                     else:
                         req_cont = False
 
-                    # First try to find all cores on a single host
-                    task_slots = self._acquire_slots(task.numcores, single_host=True, continuous=req_cont)
+                    # First try to find all cores on a single node
+                    task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
 
-                    # If that failed, and our launch method supports multiple hosts, try that
-                    if task_slots is None and launch_method in \
-                            [LAUNCH_METHOD_IBRUN, LAUNCH_METHOD_MPIRUN, LAUNCH_METHOD_POE]:
-                        task_slots = self._acquire_slots(task.numcores, single_host=False, continuous=req_cont)
+                    # If that failed, and our launch method supports multiple nodes, try that
+                    if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
+                        task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
 
                     # Check if we got results
                     if task_slots is None:
@@ -452,6 +839,15 @@ class ExecWorker(multiprocessing.Process):
                 if idle:
                     time.sleep(1)
 
+            # AM: we are done -- push slot history 
+            # FIXME: this is never called, self._terminate is a farce :(
+            self._p.update(
+                {"_id": ObjectId(self._pilot_id)},
+                {"$set": {"slothistory" : self._slot_history, 
+                          "slots"       : self._slots}}
+                )
+
+
         except Exception, ex:
             self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
             raise
@@ -459,23 +855,42 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _slot_status(self):
+    def _slot_status(self, short=False):
         """Returns a multi-line string corresponding to slot status.
         """
-        slot_matrix = ""
-        for slot in self._slots:
-            slot_vector = ""
-            for core in slot['cores']:
-                if core is FREE:
-                    slot_vector += " - "
-                else:
-                    slot_vector += " X "
-            slot_matrix += "%s: %s\n" % (slot['host'].ljust(24), slot_vector)
-        return slot_matrix
+
+        if short:
+            slot_matrix = ""
+            for slot in self._slots:
+                slot_matrix += "|"
+                for core in slot['cores']:
+                    if core is FREE:
+                        slot_matrix += "-"
+                    else:
+                        slot_matrix += "+"
+            slot_matrix += "|"
+            ts = datetime.datetime.utcnow()
+            return {'timestamp' : ts, 'slotstate' : slot_matrix}
+
+        else :
+            slot_matrix = ""
+            for slot in self._slots:
+                slot_vector  = ""
+                for core in slot['cores']:
+                    if core is FREE:
+                        slot_vector += " - "
+                    else:
+                        slot_vector += " X "
+                slot_matrix += "%s: %s\n" % (slot['node'].ljust(24), slot_vector)
+            return slot_matrix
+
 
     # ------------------------------------------------------------------------
     #
-    def _acquire_slots(self, cores_requested, single_host, continuous):
+    # Returns a data structure in the form of:
+    #
+    #
+    def _acquire_slots(self, cores_requested, single_node, continuous):
 
         #
         # Find a needle (continuous sub-list) in a haystack (list)
@@ -500,71 +915,82 @@ class ExecWorker(multiprocessing.Process):
             return find_sublist(slot_cores, [status for _ in range(cores_requested)])
 
         #
-        # Find an available continuous slot within host boundaries.
+        # Find an available continuous slot within node boundaries.
         #
         def find_slots_single_cont(cores_requested):
 
             for slot in self._slots:
-                slot_host = slot['host']
+                slot_node = slot['node']
                 slot_cores = slot['cores']
 
                 slot_cores_offset = find_cores_cont(slot_cores, cores_requested, FREE)
 
                 if slot_cores_offset is not None:
-                    self._log.info('Host %s satisfies %d cores at offset %d' % (slot_host, cores_requested, slot_cores_offset))
-                    return ['%s:%d' % (slot_host, core) for core in range(slot_cores_offset, slot_cores_offset + cores_requested)]
+                    self._log.info('Node %s satisfies %d cores at offset %d' % (slot_node, cores_requested, slot_cores_offset))
+                    return ['%s:%d' % (slot_node, core) for core in range(slot_cores_offset, slot_cores_offset + cores_requested)]
 
             return None
 
         #
-        # Find an available continuous slot across host boundaries.
+        # Find an available continuous slot across node boundaries.
         #
         def find_slots_multi_cont(cores_requested):
 
             # Convenience aliases
-            cores_per_host = self._cores_per_host
+            cores_per_node = self._cores_per_node
             all_slots = self._slots
 
             # Glue all slot core lists together
-            all_slot_cores = [core for host in [host['cores'] for host in all_slots] for core in host]
+            all_slot_cores = [core for node in [node['cores'] for node in all_slots] for core in node]
+            self._log.debug("all_slot_cores: %s" % all_slot_cores)
 
             # Find the start of the first available region
             all_slots_first_core_offset = find_cores_cont(all_slot_cores, cores_requested, FREE)
+            self._log.debug("all_slots_first_core_offset: %s" % all_slots_first_core_offset)
             if all_slots_first_core_offset is None:
                 return None
 
             # Determine the first slot in the slot list
-            first_slot_index = all_slots_first_core_offset / cores_per_host
-            # And the core offset within that host
-            first_slot_core_offset = all_slots_first_core_offset % cores_per_host
+            first_slot_index = all_slots_first_core_offset / cores_per_node
+            self._log.debug("first_slot_index: %s" % first_slot_index)
+            # And the core offset within that node
+            first_slot_core_offset = all_slots_first_core_offset % cores_per_node
+            self._log.debug("first_slot_core_offset: %s" % first_slot_core_offset)
 
-            # Note: We substract one here, because counting starts at zero;
+            # Note: We subtract one here, because counting starts at zero;
             #       Imagine a zero offset and a count of 1, the only core used would be core 0.
             #       TODO: Verify this claim :-)
-            all_slots_last_core_offset = (first_slot_index * cores_per_host) + first_slot_core_offset + cores_requested - 1
-            last_slot_index = (all_slots_last_core_offset) / cores_per_host
-            last_slot_core_offset = all_slots_last_core_offset % cores_per_host
+            all_slots_last_core_offset = (first_slot_index * cores_per_node) + first_slot_core_offset + cores_requested - 1
+            self._log.debug("all_slots_last_core_offset: %s" % all_slots_last_core_offset)
+            last_slot_index = (all_slots_last_core_offset) / cores_per_node
+            self._log.debug("last_slot_index: %s" % last_slot_index)
+            last_slot_core_offset = all_slots_last_core_offset % cores_per_node
+            self._log.debug("last_slot_core_offset: %s" % last_slot_core_offset)
 
             # Convenience aliases
             last_slot = self._slots[last_slot_index]
-            last_host = last_slot['host']
+            self._log.debug("last_slot: %s" % last_slot)
+            last_node = last_slot['node']
+            self._log.debug("last_node: %s" % last_node)
             first_slot = self._slots[first_slot_index]
-            first_host = first_slot['host']
+            self._log.debug("first_slot: %s" % first_slot)
+            first_node = first_slot['node']
+            self._log.debug("first_node: %s" % first_node)
 
-            # Collect all host:core slots here
+            # Collect all node:core slots here
             task_slots = []
 
             # Add cores from first slot for this task
-            # As this is a multi-host search, we can safely assume that we go from the offset all the way to the last core
-            task_slots.extend(['%s:%d' % (first_host, core) for core in range(first_slot_core_offset, cores_per_host)])
+            # As this is a multi-node search, we can safely assume that we go from the offset all the way to the last core
+            task_slots.extend(['%s:%d' % (first_node, core) for core in range(first_slot_core_offset, cores_per_node)])
 
             # Add all cores from "middle" slots
-            for slot_index in range(first_slot_index+1, last_slot_index-1):
-                slot_host = all_slots[slot_index]
-                task_slots.extend(['%s:%d' % (slot_host, core) for core in range(0, cores_per_host)])
+            for slot_index in range(first_slot_index+1, last_slot_index):
+                slot_node = all_slots[slot_index]['node']
+                task_slots.extend(['%s:%d' % (slot_node, core) for core in range(0, cores_per_node)])
 
             # Add the cores of the last slot
-            task_slots.extend(['%s:%d' % (last_host, core) for core in range(0, last_slot_core_offset+1)])
+            task_slots.extend(['%s:%d' % (last_node, core) for core in range(0, last_slot_core_offset+1)])
 
             return task_slots
 
@@ -574,17 +1000,17 @@ class ExecWorker(multiprocessing.Process):
         #
         # Switch between searching for continuous or scattered slots
         #
-        # Switch between searching for single or multi-host
-        if single_host:
+        # Switch between searching for single or multi-node
+        if single_node:
             if continuous:
                 task_slots = find_slots_single_cont(cores_requested)
             else:
-                raise NotImplementedError('No scattered single host scheduler implemented yet.')
+                raise NotImplementedError('No scattered single node scheduler implemented yet.')
         else:
             if continuous:
                 task_slots = find_slots_multi_cont(cores_requested)
             else:
-                raise NotImplementedError('No scattered multi host scheduler implemented yet.')
+                raise NotImplementedError('No scattered multi node scheduler implemented yet.')
 
         if task_slots is not None:
             self._change_slot_states(task_slots, BUSY)
@@ -594,18 +1020,27 @@ class ExecWorker(multiprocessing.Process):
     #
     # Change the reserved state of slots (FREE or BUSY)
     #
+    # task_slots in the shape of:
+    #
+    #
     def _change_slot_states(self, task_slots, new_state):
 
         # Convenience alias
         all_slots = self._slots
 
+        logger.debug("change_slot_states: task slots: %s" % task_slots)
+
         for slot in task_slots:
-            # Get the host and the core part
-            [slot_host, slot_core] = slot.split(':')
+            logger.debug("change_slot_states: slot content: %s" % slot)
+            # Get the node and the core part
+            [slot_node, slot_core] = slot.split(':')
             # Find the entry in the the all_slots list
-            slot_entry = (slot for slot in all_slots if slot["host"] == slot_host).next()
+            slot_entry = (slot for slot in all_slots if slot["node"] == slot_node).next()
             # Change the state of the slot
             slot_entry['cores'][int(slot_core)] = new_state
+
+        # something changed - write history!
+        self._slot_history.append (self._slot_status (short=True))
 
 
     # ------------------------------------------------------------------------
@@ -627,7 +1062,7 @@ class ExecWorker(multiprocessing.Process):
         proc = _Process(
             task=task,
             all_slots=self._slots,
-            cores_per_host=self._cores_per_host,
+            cores_per_node=self._cores_per_node,
             launch_method=launch_method,
             launch_command=launch_command,
             logger=self._log)
@@ -716,6 +1151,8 @@ class ExecWorker(multiprocessing.Process):
         for e in finished_tasks:
             self._running_tasks.remove(e)
 
+        # AM: why is idle always True?  Whats the point here?  Not to run too
+        # fast? :P
         return idle
 
     # ------------------------------------------------------------------------
@@ -728,10 +1165,16 @@ class ExecWorker(multiprocessing.Process):
         # We need to know which unit manager we are working with. We can pull
         # this information here:
 
-        if self._unitmanager_id is None:
-            cursor_p = self._p.find({"_id": ObjectId(self._pilot_id)},
-                                    {"unitmanager": 1})
-            self._unitmanager_id = cursor_p[0]["unitmanager"]
+        # AM: FIXME: this at the moment pushes slot history whenever a task
+        # state is updated...  This needs only to be done on ExecWorker
+        # shutdown.  Well, alas, there is currently no way for it to find out
+        # when it is shut down... Some quick and  superficial measurements 
+        # though show no negative impact on agent performance.
+        self._p.update(
+            {"_id": ObjectId(self._pilot_id)},
+            {"$set": {"slothistory" : self._slot_history, 
+                      "slots"       : self._slots}}
+            )
 
         if not isinstance(tasks, list):
             tasks = [tasks]
@@ -755,7 +1198,7 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, workdir, runtime,
-                 mongodb_url, mongodb_name, pilot_id, session_id, unitmanager_id):
+                 mongodb_url, mongodb_name, pilot_id, session_id):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -783,21 +1226,20 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
-        # we assign each host partition to a task execution worker
+        # we assign each node partition to a task execution worker
         self._exec_worker = ExecWorker(
             logger          = self._log,
             task_queue      = self._task_queue,
-            hosts           = self._exec_env.nodes,
-            cores_per_host  = self._exec_env.cores_per_node,
-            launch_methods  = self._exec_env.discovered_task_launch_methods,
+            node_list       = self._exec_env.node_list,
+            cores_per_node  = self._exec_env.cores_per_node,
+            launch_methods  = self._exec_env.discovered_launch_methods,
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
             pilot_id        = pilot_id,
-            session_id      = session_id,
-            unitmanager_id = unitmanager_id
+            session_id      = session_id
         )
         self._exec_worker.start()
-        self._log.info("Started up %s serving hosts %s", self._exec_worker, self._exec_env.nodes)
+        self._log.info("Started up %s serving nodes %s", self._exec_worker, self._exec_env.node_list)
 
     # ------------------------------------------------------------------------
     #
@@ -821,7 +1263,7 @@ class Agent(threading.Thread):
         self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : "Active",
-                      "nodes"          : self._exec_env.nodes.keys(),
+                      "nodes"          : self._exec_env.node_list,
                       "cores_per_node" : self._exec_env.cores_per_node,
                       "started"        : ts},
              "$push": {"statehistory": {"state": 'Active', "timestamp": ts}}
@@ -845,7 +1287,7 @@ class Agent(threading.Thread):
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
-                    pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set.")
+                    pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set).")
                     break
 
                 # Make sure that we haven't exceeded the agent runtime. if 
@@ -935,10 +1377,18 @@ class _Process(subprocess.Popen):
 
     #-------------------------------------------------------------------------
     #
-    def __init__(self, task, all_slots, cores_per_host, launch_method, launch_command, logger):
+    def __init__(self, task, all_slots, cores_per_node, launch_method,
+                 launch_command, logger):
 
         self._task = task
         self._log  = logger
+
+        launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script-', dir=task.workdir, suffix=".sh", delete=False)
+        self._log.debug('Created launch_script: %s' % launch_script.name)
+        st = os.stat(launch_script.name)
+        os.chmod(launch_script.name, st.st_mode | stat.S_IEXEC)
+        launch_script.write('#!/bin/bash -l\n')
+        launch_script.write('cd %s\n' % task.workdir)
 
         # Before the Big Bang there was nothing
         pre_exec = task.pre_exec
@@ -947,45 +1397,72 @@ class _Process(subprocess.Popen):
             if not isinstance(pre_exec, list):
                 pre_exec = [pre_exec]
             for bb in pre_exec:
-                pre_exec_string += "%s && " % bb
+                pre_exec_string += "%s\n" % bb
+        if pre_exec_string:
+            launch_script.write('%s' % pre_exec_string)
 
         # executable and arguments
         if task.executable is not None:
             task_exec_string = task.executable # TODO: Do we allow $ENV/bin/program constructs here?
         else:
-            task_exec_string = ''
+            raise Exception("No executable specified!") # TODO: This should be catched earlier problaby
         if task.arguments is not None:
             for arg in task.arguments:
-                arg = arg.replace('$', '\$') # escape environment variables
-                if ' ' in arg:
-                    arg = '\\\"' + arg + '\\\"' # Quote "strings" to maintain there state of a single string
-                task_exec_string += " %s" % arg
+                arg = arg.replace ('"', '\\"') # Escape all double quotes
+                if  arg[0] == arg[-1] == "'" : # If a string is between outer single quotes,
+                    task_exec_string += ' %s' % arg # ... pass it as is.
+                else :
+                    task_exec_string += ' "%s"' % arg # Otherwise return between double quotes.
 
         # Create string for environment variable setting
         env_string = ''
         if task.environment is not None:
+            env_string += 'export'
             for key in task.environment:
-                env_string += "%s=%s " % (key, task.environment[key])
+                env_string += ' %s=%s' % (key, task.environment[key])
+
+            # make sure we didnt have an empty dict
+            if env_string == 'export':
+                env_string = ''
+        if env_string:
+            launch_script.write('%s\n' % env_string)
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
-            # TODO: fix local execution
-            cmdline = ''
+            launch_script.write('%s\n' % task_exec_string)
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
+            # Construct the hosts_string
             hosts_string = ''
             for slot in task.slots:
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
-            mpirun_command = "%s -np %s -host %s" % (launch_command, task.numcores, hosts_string)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % \
-                      (pre_exec_string, task.workdir, env_string, mpirun_command, task_exec_string)
+            mpirun_command = "%s -np %s -host %s" % (launch_command,
+                                                     task.numcores, hosts_string)
+            launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_MPIEXEC:
+            # Construct the hosts_string
+            hosts_string = ''
+            for slot in task.slots:
+                host = slot.split(':')[0]
+                hosts_string += '%s,' % host
+
+            mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+            launch_script.write('%s %s\n' % (mpiexec_command, task_exec_string))
+
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
-            cmdline = launch_command
-            # APRUN MAGIC
+            aprun_command = "%s -n %s" % (launch_command, task.numcores)
+            launch_script.write('%s %s\n' % (aprun_command, task_exec_string))
+
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_IBRUN:
             # NOTE: Don't think that with IBRUN it is possible to have
@@ -995,14 +1472,20 @@ class _Process(subprocess.Popen):
             # Get the host and the core part
             [first_slot_host, first_slot_core] = first_slot.split(':')
             # Find the entry in the the all_slots list based on the host
-            slot_entry = (slot for slot in all_slots if slot["host"] == first_slot_host).next()
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
             # Transform it into an index in to the all_slots list
             all_slots_slot_index = all_slots.index(slot_entry)
 
             # TODO: This assumes all hosts have the same number of cores
-            ibrun_offset = all_slots_slot_index * cores_per_host + int(first_slot_core)
-            ibrun_command = "%s -n %s -o %d" % (launch_command, task.numcores, ibrun_offset)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % (pre_exec_string, task.workdir, env_string, ibrun_command, task_exec_string)
+            ibrun_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            ibrun_command = "%s -n %s -o %d" % \
+                            (launch_command, task.numcores,
+                             ibrun_offset)
+
+            # Build launch script
+            launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_POE:
 
@@ -1020,21 +1503,32 @@ class _Process(subprocess.Popen):
             for host in hosts:
                 hosts_string += '%s %d ' % (host, hosts[host])
 
-            # Override the LSB_MCPU_HOSTS env variable as this is set by default to the size of the whole pilot.
-            poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (hosts_string, launch_command)
-            cmdline = "/bin/bash -l -c '%scd %s && %s%s %s'" % (pre_exec_string, task.workdir, env_string, poe_command, task_exec_string)
+            # Override the LSB_MCPU_HOSTS env variable as this is set by
+            # default to the size of the whole pilot.
+            poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (
+                hosts_string, launch_command)
+
+            # Continue to build launch script
+            launch_script.write('%s %s\n' % (poe_command, task_exec_string))
+
+            # Command line to execute launch script
+            cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_SSH:
-            host = task.slots[0].split(':')[0]
-            if env_string:
-                env_string = env_string[:-1] + ';' # Replace last space with semi-colon
+            host = task.slots[0].split(':')[0] # Get the host of the first entry in the acquired slot
 
-            cmdline = " %s -o StrictHostKeyChecking=no %s \"/bin/bash -l -c '%scd %s && %s%s'\"" % \
-                      (launch_command, host, pre_exec_string, task.workdir, env_string, task_exec_string)
+            # Continue to build launch script
+            launch_script.write('%s\n' % task_exec_string)
+
+            # Command line to execute launch script
+            cmdline = '%s %s %s' % (launch_command, host,
+                                                  launch_script.name)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
 
+        # We are done writing to the launch script, its ready for execution now.
+        launch_script.close()
 
         self.stdout_filename = task.stdout
         self._stdout_file_h  = open(self.stdout_filename, "w")
@@ -1042,7 +1536,7 @@ class _Process(subprocess.Popen):
         self.stderr_filename = task.stderr
         self._stderr_file_h  = open(self.stderr_filename, "w")
 
-        self._log.info("Launching task %s via %s (env: %s) in %s" % (task.uid, cmdline, task.environment, task.workdir))
+        self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
 
         super(_Process, self).__init__(args=cmdline,
                                        bufsize=0,
@@ -1082,7 +1576,34 @@ def parse_commandline():
 
     parser = optparse.OptionParser()
 
-    parser.add_option('-d', '--mongodb-url',
+    parser.add_option('-c', '--cores',
+                      metavar='CORES',
+                      dest='cores',
+                      type='int',
+                      help='Specifies the number of cores to allocate.')
+
+    parser.add_option('-d', '--debug',
+                      metavar='DEBUG',
+                      dest='debug_level',
+                      type='int',
+                      help='The DEBUG level for the agent.')
+
+    parser.add_option('-j', '--task-launch-method',
+                      metavar='METHOD',
+                      dest='task_launch_method',
+                      help='Specifies the task launch method.')
+
+    parser.add_option('-k', '--mpi-launch-method',
+                      metavar='METHOD',
+                      dest='mpi_launch_method',
+                      help='Specifies the MPI launch method.')
+
+    parser.add_option('-l', '--lrms',
+                      metavar='LRMS',
+                      dest='lrms',
+                      help='Specifies the LRMS type.')
+
+    parser.add_option('-m', '--mongodb-url',
                       metavar='URL',
                       dest='mongodb_url',
                       help='Specifies the MongoDB Url.')
@@ -1092,20 +1613,25 @@ def parse_commandline():
                       dest='database_name',
                       help='Specifies the MongoDB database name.')
 
-    parser.add_option('-s', '--session-id',
-                      metavar='SID',
-                      dest='session_id',
-                      help='Specifies the Session ID.')
-
     parser.add_option('-p', '--pilot-id',
                       metavar='PID',
                       dest='pilot_id',
                       help='Specifies the Pilot ID.')
 
-    parser.add_option('-u', '--unitmanager-id',
-                      metavar='UMID',
-                      dest='unitmanager_id',
-                      help='Specifies the UnitManager ID.')
+    parser.add_option('-s', '--session-id',
+                      metavar='SID',
+                      dest='session_id',
+                      help='Specifies the Session ID.')
+
+    parser.add_option('-t', '--runtime',
+                      metavar='RUNTIME',
+                      dest='runtime',
+                      help='Specifies the agent runtime in minutes.')
+
+    parser.add_option('-v', '--version',
+                      metavar='VERSION ',
+                      dest='package_version',
+                      help='The RADICAL-Pilot package version.')
 
     parser.add_option('-w', '--workdir',
                       metavar='DIRECTORY',
@@ -1113,38 +1639,27 @@ def parse_commandline():
                       help='Specifies the base (working) directory for the agent. [default: %default]',
                       default='.')
 
-    parser.add_option('-c', '--cores',
-                      metavar='CORES',
-                      dest='cores',
-                      help='Specifies the number of cores to allocate.')
-
-    parser.add_option('-t', '--runtime',
-                      metavar='RUNTIME',
-                      dest='runtime',
-                      help='Specifies the agent runtime in minutes.')
-
-    parser.add_option('-V', '--version',
-                      metavar='VERSION ',
-                      dest='package_version',
-                      help='The RADICAL-Pilot package version.')
-
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
     if options.mongodb_url is None:
-        parser.error("You must define MongoDB URL (-d/--mongodb-url). Try --help for help.")
-    elif options.database_name is None:
+        parser.error("You must define MongoDB URL (-m/--mongodb-url). Try --help for help.")
+    if options.database_name is None:
         parser.error("You must define a database name (-n/--database-name). Try --help for help.")
-    elif options.session_id is None:
+    if options.session_id is None:
         parser.error("You must define a session id (-s/--session-id). Try --help for help.")
-    elif options.pilot_id is None:
+    if options.pilot_id is None:
         parser.error("You must define a pilot id (-p/--pilot-id). Try --help for help.")
-    elif options.cores is None:
+    if options.cores is None:
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
-    elif options.runtime is None:
+    if options.runtime is None:
         parser.error("You must define the agent runtime (-t/--runtime). Try --help for help.")
-    elif options.package_version is None:
+    if options.package_version is None:
         parser.error("You must pass the RADICAL-Pilot package version (-v/--version). Try --help for help.")
+    if options.debug_level is None:
+        parser.error("You must pass the DEBUG level (-d/--debug). Try --help for help.")
+    if options.lrms is None:
+        parser.error("You must pass the LRMS (-l/--lrms). Try --help for help.")
 
     return options
 
@@ -1157,7 +1672,7 @@ if __name__ == "__main__":
 
     # configure the agent logger
     logger = logging.getLogger('radical.pilot.agent')
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(options.debug_level)
     ch = logging.FileHandler("AGENT.LOG")
     #ch.setLevel(logging.DEBUG) # TODO: redundant if you have just one file?
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -1171,15 +1686,15 @@ if __name__ == "__main__":
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
         mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.w"  % options.session_id]
-        mongo_wm     = mongo_db["%s.wm" % options.session_id]
+        mongo_w      = mongo_db["%s.w"  % options.session_id]  # AM: never used
+        mongo_wm     = mongo_db["%s.wm" % options.session_id]  # AM: never used
 
     except Exception, ex:
         logger.error("Couldn't establish database connection: %s" % str(ex))
         sys.exit(1)
 
     #--------------------------------------------------------------------------
-    # Some singal handling magic 
+    # Some signal handling magic
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
         pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
@@ -1195,9 +1710,12 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Discover environment, nodes, cores, mpi, etc.
     try:
-        exec_env = ExecutionEnvironment.discover(
+        exec_env = ExecutionEnvironment(
             logger=logger,
-            requested_cores=options.cores
+            lrms=options.lrms,
+            requested_cores=options.cores,
+            task_launch_method=options.task_launch_method,
+            mpi_launch_method=options.mpi_launch_method
         )
         if exec_env is None:
             msg = "Couldn't set up execution environment."
@@ -1226,9 +1744,11 @@ if __name__ == "__main__":
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
                       pilot_id=options.pilot_id,
-                      session_id=options.session_id,
-                      unitmanager_id=options.unitmanager_id)
+                      session_id=options.session_id)
 
+        # AM: why is this done in a thread?  This thread blocks anyway, so it
+        # could just *do* the things.  That would avoid those global vars and
+        # would allow for cleaner shutdown.
         agent.start()
         agent.join()
 
@@ -1243,3 +1763,4 @@ if __name__ == "__main__":
 
         logger.error("Caught keyboard interrupt. EXITING")
         agent.stop()
+

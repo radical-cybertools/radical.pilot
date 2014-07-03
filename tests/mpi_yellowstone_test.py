@@ -8,12 +8,6 @@ import radical.pilot
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scenes!
 #
-# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
-# easiest way to make this work seamlessly is to set up ssh key-based
-# authentication and add the key to your keychain so you won't be 
-# prompted for a password. The following article explains how to set 
-# this up on Linux:
-#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
@@ -52,12 +46,12 @@ if __name__ == "__main__":
     try:
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security credentials.
+        # well as security contexts.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        cred = radical.pilot.SSHCredential()
-        session.add_credential(cred)
+        c = radical.pilot.Context('ssh')
+        session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
@@ -68,7 +62,7 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         # Define a X-core on stamped that runs for N minutes and
-        # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
+        # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "yellowstone.ucar.edu"
         pdesc.runtime          = 15 # N minutes
@@ -86,8 +80,8 @@ if __name__ == "__main__":
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.pre_exec    = ["module load python mpi4py"]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
-            mpi_test_task.cores       = 24
+            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
+            mpi_test_task.cores       = 16
             mpi_test_task.mpi         = True
             cud_list.append(mpi_test_task)
 

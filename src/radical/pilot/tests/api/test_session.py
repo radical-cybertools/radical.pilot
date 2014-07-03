@@ -74,32 +74,3 @@ class Test_Session(unittest.TestCase):
 
         session.close()
 
-    #-------------------------------------------------------------------------
-    #
-    def test__credentials_reconnect(self):
-        """ Tests if reconnecting to an existing session works as epxected and if
-        credentials are reloaded properly.
-        """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-
-        # Add an ssh identity to the session.
-        cred1 = radical.pilot.SSHCredential()
-        cred1.user_id = "tg802352"
-        session.add_credential(cred1)
-
-        # Add an ssh identity to the session.
-        cred2 = radical.pilot.SSHCredential()
-        cred2.user_id = "abcedesds"
-        session.add_credential(cred2)
-
-        assert len(session.credentials) == 2
-
-        session2 = radical.pilot.Session(database_url=DBURL, database_name=DBNAME, session_uid=session.uid)
-        print "Session: {0} ".format(session2)
-
-        assert len(session2.credentials) == 2
-
-        for cred in session2.credentials:
-            assert cred.as_dict() in [cred1.as_dict(), cred2.as_dict()]
-
-        session.close()

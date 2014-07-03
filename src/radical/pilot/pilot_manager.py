@@ -23,7 +23,7 @@ from radical.pilot.object import Object
 from radical.pilot.controller import PilotManagerController
 from radical.pilot.compute_pilot import ComputePilot
 from radical.pilot.utils.logger import logger
-from radical.pilot.exceptions import * 
+from radical.pilot.exceptions import PilotException, BadParameter
 from radical.pilot.resource_config import ResourceConfig
 
 # -----------------------------------------------------------------------------
@@ -109,27 +109,13 @@ class PilotManager(Object):
         # Create a new pilot manager. #
         ###############################
 
-        # Donwload and parse the configuration file(s) and the content to
-        # our resource dictionary.
-        self._resource_cfgs = {}
-
-        # Loading all "default" resource configurations
-        default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
-        config_files = glob.glob(default_configs)
-        for config_file in config_files:
-            config_url = "file://localhost/%s" % config_file
-            rcs = ResourceConfig.from_file(config_url)
-            logger.info("Loaded resource configurations from %s" % config_url)
-            for rc in rcs:
-                self._resource_cfgs[rc.name] = rc.as_dict() 
-
         # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
         self._worker = PilotManagerController(
             pilot_manager_uid=None,
             pilot_manager_data={},
-            pilot_launcher_workers=pilot_launcher_workers,
-            resource_configurations=self._resource_cfgs,
+            pilot_launcher_workers=pilot_launcher_workers, 
+            session=self._session,
             db_connection=session._dbs,
             db_connection_info=session._connection_info)
         self._worker.start()
@@ -201,7 +187,8 @@ class PilotManager(Object):
             obj._worker = PilotManagerController(
                 pilot_manager_uid=pilot_manager_id,
                 pilot_manager_data={},
-                db_connection=session._dbs)
+                db_connection=session._dbs,
+                db_connection_info=session._connection_info)
             session._process_registry.register(pilot_manager_id, obj._worker)
 
         # start the worker if it's not already running
@@ -241,7 +228,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
         self._assert_obj_is_valid()
@@ -282,11 +269,12 @@ class PilotManager(Object):
                     raise BadParameter(error_msg)
 
             # Make sure resource key is known.
-            if resource_key not in self._resource_cfgs:
+            rcs = self._session.list_resource_configs()
+            if resource_key not in rcs:
                 error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
                 raise BadParameter(error_msg)
             else:
-                resource_cfg = self._resource_cfgs[resource_key]
+                resource_cfg = rcs[resource_key]
 
             # If 'default_sandbox' is defined, set it.
             if pilot_description.sandbox is not None:
@@ -309,8 +297,7 @@ class PilotManager(Object):
             pilot_uid = self._worker.register_start_pilot_request(
                 pilot=pilot,
                 use_local_endpoints=use_local_endpoints,
-                resource_config=resource_cfg,
-                session=self._session)
+                resource_config=resource_cfg)
 
             pilot._uid = pilot_uid
 
@@ -324,41 +311,6 @@ class PilotManager(Object):
 
     # -------------------------------------------------------------------------
     #
-    def add_resource_config(self, resource_config):
-        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
-           dictionary of known resources.
-
-           For example::
-
-                  rc = radical.pilot.ResourceConfig
-                  rc.name = "mycluster"
-                  rc.remote_job_manager_endpoint = "ssh+pbs://mycluster
-                  rc.remote_filesystem_endpoint = "sftp://mycluster
-                  rc.default_queue = "private"
-                  rc.bootstrapper = "default_bootstrapper.sh"
-
-                  pm = radical.pilot.PilotManager(session=s)
-                  pm.add_resource_config(rc)
-
-                  pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "mycluster"
-                  pd.cores    = 16
-                  pd.runtime  = 5 # minutes
-
-                  pilot = pm.submit_pilots(pd)
-        """
-        self._resource_cfgs[resource_config.name] = resource_config.as_dict()
-
-
-    # -------------------------------------------------------------------------
-    #
-    def list_resource_configs(self):
-        """Returns a dictionary of all known resource configurations.
-        """
-        return copy.deepcopy(self._resource_cfgs)
-
-    # -------------------------------------------------------------------------
-    #
     def list_pilots(self):
         """Lists the unique identifiers of all :class:`radical.pilot.ComputePilot`
         instances associated with this PilotManager
@@ -369,7 +321,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
         self._assert_obj_is_valid()
@@ -395,7 +347,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         self._assert_obj_is_valid()
 
@@ -441,7 +393,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         self._assert_obj_is_valid()
 
@@ -491,7 +443,7 @@ class PilotManager(Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
         self._assert_obj_is_valid()

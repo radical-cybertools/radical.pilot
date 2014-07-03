@@ -19,6 +19,7 @@ import saga.attributes  as attributes
 RESOURCE          = 'resource'
 QUEUE             = 'queue'
 CORES             = 'cores'
+MEMORY            = 'memory'
 SANDBOX           = 'sandbox'
 OUTPUT            = 'output'
 ERROR             = 'error'
@@ -61,7 +62,7 @@ class ComputePilotDescription(attributes.Attributes):
 
     .. data:: runtime
 
-       [Type: `int`] [**mandatory**] The total run time (wall-clock time) in
+       [Type: `int`] [**mandatory**] The maximum run time (wall-clock time) in
        **minutes** of the ComputePilot.
 
     .. data:: cores
@@ -123,6 +124,7 @@ class ComputePilotDescription(attributes.Attributes):
 
         self._attributes_register             (RESOURCE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register             (CORES, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register             (MEMORY, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register             (QUEUE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # Allows to select a different pilot agent - for DEVELOPMENT purposes only !!
@@ -154,6 +156,9 @@ class ComputePilotDescription(attributes.Attributes):
 
         if CORES not in d:
             d[CORES] = None
+
+        if MEMORY not in d:
+            d[MEMORY] = None
 
         if QUEUE not in d:
             d[QUEUE] = None

@@ -72,18 +72,18 @@ class Session():
     #--------------------------------------------------------------------------
     #
     @staticmethod
-    def new(sid, db_url, db_name="radical.pilot"):
+    def new(sid, db_url, db_name="radical.pilot", resource_configs={}):
         """ Creates a new session (factory method).
         """
         creation_time = datetime.datetime.utcnow()
 
         dbs = Session(db_url, db_name)
-        dbs._create(sid, creation_time)
+        dbs._create(sid, creation_time, resource_configs)
         return (dbs, creation_time)
 
     #--------------------------------------------------------------------------
     #
-    def _create(self, sid, creation_time):
+    def _create(self, sid, creation_time, resource_configs):
         """ Creates a new session (private).
 
             A session is a distinct collection with three sub-collections
@@ -104,6 +104,11 @@ class Session():
             raise DBEntryExistsException(
                 "Session with id '%s' already exists." % sid)
 
+        # dot replacement
+        rc_safe = {}
+        for key, val in resource_configs.iteritems():
+            rc_safe[key.replace(".", "<dot>")] = val
+
         # remember session id
         self._session_id = sid
 
@@ -111,9 +116,9 @@ class Session():
         self._s.insert( 
             {
                 "_id"  : ObjectId(sid),
-                "created"        : creation_time,
-                "last_reconnect" : None,
-                "credentials"    : []
+                "created"          : creation_time,
+                "last_reconnect"   : None,
+                "resource_configs" : rc_safe
             }
         )
 
@@ -167,19 +172,43 @@ class Session():
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid]
 
-        return cursor[0]
+        try:
+            return cursor[0]
+        except:
+            raise Exception("Couldn't find Session UID '{0}'in database.".format(sid))
 
     #--------------------------------------------------------------------------
     #
-    def session_add_credential(self, credential):
+    def session_add_resource_configs(self, name, config):
+        # why is this called 'add' if it is actually a 'set'?
         if self._s is None:
             raise DBException("No active session.")
 
         self._s.update(
             {"_id": ObjectId(self._session_id)},
-            {"$push": {"credentials": credential}},
-            multi=True
+            {"$set": 
+                {"resource_configs.{0}".format(name.replace(".", "<dot>")): config}
+            },
+            upsert=True
         )
+
+    #--------------------------------------------------------------------------
+    #
+    def session_list_resource_configs(self):
+        # AM: why is this called 'list', if it is actually a 'get'?
+        if self._s is None:
+            raise DBException("No active session.")
+
+        result = self._s.find(
+                {"_id": ObjectId(self._session_id)},
+                {"resource_configs": 1}
+            )
+        rcs_unsafe = result[0]['resource_configs']
+        rc_safe = {}
+        for key, val in rcs_unsafe.iteritems():
+            rc_safe[key.replace("<dot>", ".")] = val
+
+        return rc_safe
 
     #--------------------------------------------------------------------------
     #
@@ -440,6 +469,16 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
+    def publish_compute_pilot_callback_history(self, pilot_uid, callback_history):
+
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._p.update({"_id": ObjectId(pilot_uid)},
+                       {"$set": {"callbackhistory": callback_history}})
+
+    #--------------------------------------------------------------------------
+    #
     def get_compute_units(self, unit_manager_id, unit_ids=None):
         """ Get yerself a bunch of compute units.
         """
@@ -548,7 +587,28 @@ class Session():
             msg = "No unit manager with id %s found in DB." % unit_manager_id
             raise DBException(msg=msg)
 
-        return cursor[0]
+        try:
+            return cursor[0]
+        except:
+            msg = "No UnitManager with id '{0}' found in database.".format(unit_manager_id)
+            raise DBException(msg=msg)
+
+    #--------------------------------------------------------------------------
+    #
+    def get_pilot_manager(self, pilot_manager_id):
+        """ Get a unit manager.
+        """
+        if self._s is None:
+            raise DBException("No active session.")
+
+        cursor = self._pm.find({"_id": ObjectId(pilot_manager_id)})
+
+        try:
+            return cursor[0]
+        except:
+            msg = "No pilot manager with id '{0}' found in DB.".format(unit_manager_id)
+            raise DBException(msg=msg)
+
 
     #--------------------------------------------------------------------------
     #
@@ -639,6 +699,16 @@ class Session():
         self._p.update({"_id": ObjectId(pilot_uid)},
                        {"$pushAll":
                            {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
+
+    #--------------------------------------------------------------------------
+    #
+    def publish_compute_unit_callback_history(self, unit_uid, callback_history):
+
+        if self._s is None:
+            raise Exception("No active session.")
+
+        self._w.update({"_id": ObjectId(unit_uid)},
+                       {"$set": {"callbackhistory": callback_history}})
 
     #--------------------------------------------------------------------------
     #

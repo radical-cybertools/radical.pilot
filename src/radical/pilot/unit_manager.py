@@ -22,7 +22,7 @@ from radical.pilot.controller import UnitManagerController
 from radical.pilot.scheduler import get_scheduler
 
 from radical.pilot.states import *
-from radical.pilot.exceptions import *
+from radical.pilot.exceptions import PilotException
 
 from bson import ObjectId
 
@@ -94,7 +94,7 @@ class UnitManager(object):
                   know what you are doing.
 
         **Raises:**
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         self._session = session
         self._worker = None 
@@ -107,7 +107,8 @@ class UnitManager(object):
                 unit_manager_uid=None, 
                 scheduler=scheduler,
                 input_transfer_workers=input_transfer_workers,
-                output_transfer_workers=output_transfer_workers,
+                output_transfer_workers=output_transfer_workers, 
+                session=self._session,
                 db_connection=session._dbs,
                 db_connection_info=session._connection_info)
             self._worker.start()
@@ -165,10 +166,10 @@ class UnitManager(object):
         if worker is not None:
             obj._worker = worker
         else:
-            obj._worker = UnitManagerWorker(
-                unit_manager_uid=unit_manager_id,
-                unit_manager_data=None,
-                db_connection=session._dbs)
+            obj._worker = UnitManagerController(
+                unit_manager_uid=unit_manager_id, 
+                db_connection=session._dbs,
+                db_connection_info=session._connection_info)
             session._process_registry.register(unit_manager_id, obj._worker)
 
         # start the worker if it's not already running
@@ -248,7 +249,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -273,7 +274,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -300,7 +301,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -344,7 +345,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -355,7 +356,7 @@ class UnitManager(object):
         # always use the scheduler for now...
         if True:
            # if not self._scheduler :
-           #     raise exceptions.radical.pilotException("Internal error - no unit scheduler")
+           #     raise PilotException("Internal error - no unit scheduler")
 
             # the scheduler will return a dictionary of the form:
             #   {
@@ -373,7 +374,7 @@ class UnitManager(object):
                     unit_descriptions=unit_descriptions)
 
             except Exception as e:
-                raise exceptions.radical.pilotException(
+                raise PilotException(
                     "Internal error - unit scheduler failed: %s" % e)
 
             unscheduled = list()  # unscheduled unit descriptions
@@ -384,12 +385,15 @@ class UnitManager(object):
 
             units = list()  # compute unit instances to return
 
+
             # submit to all pilots which got something submitted to
             for pilot_id in schedule.keys():
 
+                pilot_units = list()
+
                 # sanity check on scheduler provided information
                 if not pilot_id in self.list_pilots():
-                    raise exceptions.radical.pilotException(
+                    raise PilotException(
                         "Internal error - invalid scheduler reply, "
                         "no such pilot %s" % pilot_id)
 
@@ -400,7 +404,7 @@ class UnitManager(object):
                 for ud in uds:
                     # sanity check on scheduler provided information
                     if not ud in unscheduled:
-                        raise exceptions.radical.pilotException(
+                        raise PilotException(
                             "Internal error - invalid scheduler reply, "
                             "no such unit description %s" % ud)
 
@@ -415,15 +419,17 @@ class UnitManager(object):
                         unit_description=ud,
                         unit_manager_obj=self
                     )
-                    units.append(compute_unit)
+
+                    pilot_units.append(compute_unit)
 
                 self._worker.schedule_compute_units(
                     pilot_uid=pilot_id,
-                    units=units,
-                    session=self._session
+                    units=pilot_units
                 )
 
-                assert len(units) == len(uds)
+                assert len(pilot_units) == len(uds)
+
+                units += pilot_units
 
             if len(units) == 1:
                 return units[0]
@@ -446,7 +452,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -496,7 +502,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
@@ -538,7 +544,7 @@ class UnitManager(object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException`
+            * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")

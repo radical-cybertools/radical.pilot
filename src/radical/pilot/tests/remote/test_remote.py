@@ -60,11 +60,11 @@ class TestRemoteSubmission(unittest.TestCase):
         """ Test simple remote submission with one pilot.
         """
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-        cred = radical.pilot.SSHCredential()
-        cred.user_id  = self.test_ssh_uid
-        cred.user_key = self.test_ssh_key
+        c = radical.pilot.Context('ssh')
+        c.user_id  = self.test_ssh_uid
+        c.user_key = self.test_ssh_key
 
-        session.add_credential(cred)
+        session.add_context(c)
 
         pm = radical.pilot.PilotManager(session=session)
 
@@ -110,11 +110,11 @@ class TestRemoteSubmission(unittest.TestCase):
         """ Test if we can wait for different pilot states. 
         """
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-        cred = radical.pilot.SSHCredential()
-        cred.user_id  = self.test_ssh_uid
-        cred.user_key = self.test_ssh_key
+        c = radical.pilot.Context('ssh')
+        c.user_id  = self.test_ssh_uid
+        c.user_key = self.test_ssh_key
 
-        session.add_credential(cred)
+        session.add_context(c)
 
         pm = radical.pilot.PilotManager(session=session)
 
@@ -149,11 +149,11 @@ class TestRemoteSubmission(unittest.TestCase):
         """ Test if we can cancel a pilot. 
         """
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-        cred = radical.pilot.SSHCredential()
-        cred.user_id  = self.test_ssh_uid
-        cred.user_key = self.test_ssh_key
+        c = radical.pilot.Context('ssh')
+        c.user_id  = self.test_ssh_uid
+        c.user_key = self.test_ssh_key
 
-        session.add_credential(cred)
+        session.add_context(c)
 
         pm = radical.pilot.PilotManager(session=session)
 

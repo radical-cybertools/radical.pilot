@@ -1,3 +1,23 @@
+0.17 Release                                            June 18. 2014
+---------------------------------------------------------------------
+
+Bugfix release - fixed file permissions et al. :/
+
+
+0.16 Release                                            June 17. 2014
+---------------------------------------------------------------------
+
+Bugfix release - fixed file permissions et al.
+
+
+0.15 Release                                            June 12. 2014
+---------------------------------------------------------------------
+
+Bugfix release - fixed distribution MANIFEST:
+
+https://github.com/radical-cybertools/radical.pilot/issues/174
+
+
 0.14 Release                                            June 11. 2014
 ---------------------------------------------------------------------
 
@@ -111,7 +131,7 @@ API Changes:
   pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
 
 * Added logging
-* Added security credential handling 
+* Added security context handling 
 * Closed tickets: 
   - https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed
 

@@ -50,15 +50,17 @@ def unit_state_change_cb(unit, state):
 if __name__ == "__main__":
 
     try:
+        retval = 0
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security credentials.
+        # well as security contexts.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        cred = radical.pilot.SSHCredential()
-        cred.username = 'merzky'
-        session.add_credential(cred)
+        c = radical.pilot.Context('ssh')
+        c.user_id = 'merzky'
+        session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
@@ -93,7 +95,7 @@ if __name__ == "__main__":
                                       "(pip freeze | grep -q mpi4py || pip install mpi4py)"
             ]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["~marksant/software/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
             mpi_test_task.mpi         = True
 
             mpi_test_task.cores       = 4
@@ -127,9 +129,13 @@ if __name__ == "__main__":
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
+            if  unit.state == radical.pilot.FAILED :
+                print "STDERR: %s" % unit.stderr
+                print "STDOUT: %s" % unit.stdout
+                retval = 1
 
         session.close(delete=False)
-        sys.exit(0)
+        sys.exit(retval)
 
     except radical.pilot.PilotException, ex:
         # Catch all exceptions and exit with and error.

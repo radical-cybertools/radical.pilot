@@ -19,7 +19,7 @@ from multiprocessing import Pool
 
 from radical.utils import which
 
-from radical.pilot.credentials import SSHCredential
+from radical.pilot.states       import *
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
@@ -35,10 +35,11 @@ class PilotManagerController(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, pilot_manager_uid, pilot_manager_data, 
-        pilot_launcher_workers, resource_configurations, 
-        db_connection, db_connection_info):
+        session, db_connection, db_connection_info, pilot_launcher_workers=1):
         """Le constructeur.
         """
+        self._session = session
+
         # The MongoDB database handle.
         self._db = db_connection
 
@@ -89,22 +90,22 @@ class PilotManagerController(threading.Thread):
         else:
             pm_json = self._db.get_pilot_manager(pilot_manager_id=pilot_manager_uid)
             self._pm_id = pilot_manager_uid
-            self._num_pilot_launcher_workers = um_json["pilot_launcher_workers"]
-
-        self.resource_configurations = resource_configurations
+            self._num_pilot_launcher_workers = pm_json["pilot_launcher_workers"]
 
         # The pilot launcher worker(s) are autonomous processes that
         # execute pilot bootstrap / launcher requests concurrently.
         self._pilot_launcher_worker_pool = []
         for worker_number in range(1, self._num_pilot_launcher_workers+1):
             worker = PilotLauncherWorker(
+                session=self._session,
                 db_connection_info=db_connection_info, 
                 pilot_manager_id=self._pm_id,
-                resource_configurations=resource_configurations,
                 number=worker_number
             )
             self._pilot_launcher_worker_pool.append(worker)
             worker.start()
+
+        self._callback_histories = dict()
 
     # ------------------------------------------------------------------------
     #
@@ -144,6 +145,7 @@ class PilotManagerController(threading.Thread):
         self._initialized.wait()
 
         if pilot_uids is None:
+            # AM: this code branch is never used
             data = self._db.get_pilots(pilot_manager_id=self._pm_id)
             return data
 
@@ -173,6 +175,14 @@ class PilotManagerController(threading.Thread):
         as well as manager-level.
         """
 
+        # this is the point where, at the earliest, the application could have
+        # been notified about pilot state changes.  So we record that event.
+        if  not pilot_id in self._callback_histories :
+            self._callback_histories[pilot_id] = list()
+        self._callback_histories[pilot_id].append (
+                {'timestamp' : datetime.datetime.utcnow(), 
+                 'state'     : new_state})
+
         for cb in self._shared_data[pilot_id]['callbacks']:
             try:
                 cb(self._shared_data[pilot_id]['facade_object'](),
@@ -190,6 +200,12 @@ class PilotManagerController(threading.Thread):
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+
+        # if we meet a final state, we record the object's callback history for
+        # later evalutation
+        if  new_state in (DONE, FAILED, CANCELED) :
+            self._db.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
+
 
     # ------------------------------------------------------------------------
     #
@@ -270,21 +286,12 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_start_pilot_request(self, pilot, resource_config, use_local_endpoints, session):
+    def register_start_pilot_request(self, pilot, resource_config, use_local_endpoints):
         """Register a new pilot start request with the worker.
         """
 
-        saga_session = saga.Session()
-
-        # Get the credentials from the session.
-        cred_dict = []
-        for cred in session.credentials:
-            cred_dict.append(cred.as_dict())
-            saga_session.add_context(cred._context)
-
         # create a new UID for the pilot
         pilot_uid = bson.ObjectId()
-
 
         # switch endpoint type
         if use_local_endpoints is True:
@@ -298,33 +305,35 @@ class PilotManagerController(threading.Thread):
             fs.path = sandbox
         else:
             # No sandbox defined. try to determine
-            found_dir_success = False
 
             if filesystem_endpoint.startswith("file"):
-                workdir = os.path.expanduser("~")
-                found_dir_success = True
+                workdir_expanded = os.path.expanduser("~")
             else:
                 # get the home directory on the remote machine.
-                # Note that this will only work for ssh or shell based access
+                # Note that this will only work for (gsi)ssh or shell based access
                 # mechanisms (FIXME)
 
                 import saga.utils.pty_shell as sup
 
-                url = "ssh://%s/" % fs.host
-                shell = sup.PTYShell (url, saga_session, logger, opts={})
+                url = "%s://%s/" % (fs.schema, fs.host)
+                shell = sup.PTYShell (url, self._session, logger, opts={})
 
-                ret, out, err = shell.run_sync (' echo "PWD: $PWD"')
-                if  ret == 0 and 'PWD:' in out :
-                    workdir = out.split(":")[1].strip()
-                    logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir))
+                if 'default_remote_workdir' in resource_config and resource_config['default_remote_workdir'] is not None:
+                    workdir_raw = resource_config['default_remote_workdir']
+                else:
+                    workdir_raw = "$PWD"
 
+                ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
+                if  ret == 0 and 'WORKDIR:' in out :
+                    workdir_expanded = out.split(":")[1].strip()
+                    logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
                 else :
                     error_msg = "Couldn't determine remote working directory."
                     logger.error(error_msg)
                     raise Exception(error_msg)
 
             # At this point we have determined 'pwd'
-            fs.path = "%s/radical.pilot.sandbox" % workdir.rstrip()
+            fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
 
         # This is the base URL / 'sandbox' for the pilot!
         agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
