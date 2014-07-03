@@ -6,16 +6,10 @@ import saga
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICALPILOT_DBURL")
+DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: RADICALPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
-
-# RCONF points to the resource configuration files. Read more about resource
-# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
-         "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
-#RCONF="file://localhost/Users/mark/proj/radical.pilot/configs/futuregrid.json"
 
 REMOTE_STAGING = '///N/u/marksant/staging_area/'
 REMOTE_HOST = 'india.futuregrid.org'
@@ -36,7 +30,7 @@ if __name__ == "__main__":
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session, resource_configurations=RCONF)
+        pmgr = radical.pilot.PilotManager(session=session)
 
         # Define a 32-core on stamped that runs for 15 mintutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy.
@@ -94,8 +88,8 @@ if __name__ == "__main__":
             # Actual task description.
             # Concatenate the shared input and the task specific input.
             cu = radical.pilot.ComputeUnitDescription()
-            cu.executable = '/bin/cat'
-            cu.arguments = ('shared_input_file.txt input_file-%d.txt > output_file-%d.txt' % (unit_count, unit_count)).split()
+            cu.executable = '/bin/bash'
+            cu.arguments = ['-l', '-c', 'cat shared_input_file.txt input_file-%d.txt > output_file-%d.txt' % (unit_count, unit_count)]
             cu.cores = 1
             cu.input_staging = [sd_shared, sd_input]
             cu.output_staging = sd_output
