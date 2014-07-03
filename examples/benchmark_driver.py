@@ -145,11 +145,12 @@ try:
     pmgr.cancel_pilots ()
     time.sleep (3)
 
+  
     sid = session.uid
     session.close(delete=False)
 
-    print "session id: %s" % session.uid
-  
+    print "session id: %s" % sid
+
     # run the stats plotter
     os.system ("bin/radicalpilot-stats -m plot -s %s" % sid) 
     os.system ("cp -v %s.png report/rp.benchmark.png" % sid) 
