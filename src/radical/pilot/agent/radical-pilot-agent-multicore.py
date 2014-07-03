@@ -151,8 +151,6 @@ class ExecutionEnvironment(object):
                                             ])
             if command is not None:
                 mpi_launch_command = command
-            else:
-                raise Exception("No launch command found for launch method: %s." % LAUNCH_METHOD_MPIRUN)
 
         elif mpi_launch_method == LAUNCH_METHOD_MPIEXEC:
             # mpiexec (e.g. on SuperMUC)
@@ -167,20 +165,22 @@ class ExecutionEnvironment(object):
                 mpi_launch_command = command
 
         elif mpi_launch_method == LAUNCH_METHOD_IBRUN:
-
             # ibrun: wrapper for mpirun at TACC
             command = self._which('ibrun')
             if command is not None:
                 mpi_launch_command = command
 
         elif mpi_launch_method == LAUNCH_METHOD_POE:
-
             # poe: LSF specific wrapper for MPI (e.g. yellowstone)
             command = self._which('poe')
             if command is not None:
                 mpi_launch_command = command
+
         else:
             raise Exception("MPI launch method not set or unknown: %s!" % mpi_launch_method)
+
+        if not mpi_launch_command:
+            self.log.warning("No MPI launch command found for launch method: %s." % mpi_launch_method)
 
         self.discovered_launch_methods = {
             'task_launch_method': task_launch_method,
