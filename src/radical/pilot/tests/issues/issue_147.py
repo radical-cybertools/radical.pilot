@@ -80,7 +80,7 @@ class TestIssue147(unittest.TestCase):
 
         session.close(delete=False)
 
-        # NOW LET'S TRY TO RECONENCT
+        # NOW LET'S TRY TO RECONNECT
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME, session_uid=session_id)
 
         for pm_id in session.list_pilot_managers():

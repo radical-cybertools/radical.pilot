@@ -165,7 +165,7 @@ class Session (saga.Session, Object):
         ######################################
         else:
             try:
-                # otherwise, we reconnect to an exissting session
+                # otherwise, we reconnect to an existing session
                 self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
                                                               db_url=database_url, 
                                                               db_name=database_name)
