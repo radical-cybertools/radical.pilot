@@ -849,8 +849,8 @@ class ExecWorker(multiprocessing.Process):
 
 
         except Exception, ex:
-            self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
-            raise
+            msg = ("Error in ExecWorker loop: %s", traceback.format_exc())
+            pilot_FAILED(self._p, self._pilot_id, self._log, msg)
 
 
     # ------------------------------------------------------------------------
