@@ -110,7 +110,7 @@ class TestPilot(unittest.TestCase):
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
         pilot.wait(radical.pilot.states.FAILED, timeout=5*60)
-        assert pilot.state == radical.pilot.states.FAILED, ("state should be %s and not %s" (radical.pilot.states.FAILED, pilot.state))
+        assert pilot.state == radical.pilot.states.FAILED, ("state should be %s and not %s" % (radical.pilot.states.FAILED, pilot.state))
 
         session.close()
 
