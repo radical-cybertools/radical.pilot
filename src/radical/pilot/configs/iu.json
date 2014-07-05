@@ -1,0 +1,15 @@
+{
+    "quarry.uits.indiana.edu": {
+        "remote_job_manager_endpoint" : "pbs+ssh://quarry.uits.indiana.edu",
+        "remote_filesystem_endpoint"  : "sftp://quarry.uits.indiana.edu/",
+        "local_job_manager_endpoint"  : "pbs://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "lrms"                        : "TORQUE",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "python_interpreter"          : "/N/soft/rhel6/python/2.7.3/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
+        "valid_roots"                 : ["/N"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    }
+}
