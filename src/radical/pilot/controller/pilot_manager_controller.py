@@ -145,7 +145,6 @@ class PilotManagerController(threading.Thread):
         self._initialized.wait()
 
         if pilot_uids is None:
-            # AM: this code branch is never used
             data = self._db.get_pilots(pilot_manager_id=self._pm_id)
             return data
 
