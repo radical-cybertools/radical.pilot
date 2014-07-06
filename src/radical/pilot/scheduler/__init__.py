@@ -13,11 +13,13 @@ __license__   = "MIT"
 
 from direct_submission import DirectSubmissionScheduler
 from round_robin import RoundRobinScheduler
+from late_binding import LateBindingScheduler
 
 # -----------------------------------------------------------------------------
 # Constants
 SCHED_ROUND_ROBIN       = "round_robin"
 SCHED_DIRECT_SUBMISSION = "direct_submission"
+SCHED_LATE_BINDING      = "late_binding"
 
 # -----------------------------------------------------------------------------
 # 
@@ -29,6 +31,9 @@ def get_scheduler(name):
 
     elif name == SCHED_DIRECT_SUBMISSION:
         return DirectSubmissionScheduler()
+
+    elif name == SCHED_LATE_BINDING:
+        return LateBindingScheduler()
 
     else:
         raise RuntimeError("Scheduler '%s' doesn't exist." % name)
