@@ -765,6 +765,7 @@ class ExecWorker(multiprocessing.Process):
             })
         self._cores_per_node = cores_per_node
 
+        self._capability = self._slots2caps(self._slots)
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
@@ -775,6 +776,33 @@ class ExecWorker(multiprocessing.Process):
         # The available launch methods
         self._available_launch_methods = launch_methods
 
+    # ------------------------------------------------------------------------
+    #
+    def _slots2caps(self, slots):
+        """Convert slots structure into a capability structure.
+        """
+
+        all_caps_tuples = {}
+        for node in slots:
+            free_cores = node['cores'].count(FREE)
+            # (Free_cores, Continuous, Single_Node) = Count
+            cap_tuple = (free_cores, False, True)
+
+            if cap_tuple in all_caps_tuples:
+                all_caps_tuples[cap_tuple] += 1
+            else:
+                all_caps_tuples[cap_tuple] = 1
+
+
+        # Convert to please the gods of json and mongodb
+        all_caps_dict = []
+        for caps_tuple in all_caps_tuples:
+            free_cores, cont, single = cap_tuple
+            count = all_caps_tuples[cap_tuple]
+            cap_dict = {'free_cores': free_cores, 'continuous': cont, 'single_node': single, 'count': count}
+            all_caps_dict.append(cap_dict)
+
+        return all_caps_dict
 
     # ------------------------------------------------------------------------
     #
@@ -1171,6 +1199,9 @@ class ExecWorker(multiprocessing.Process):
         # We need to know which unit manager we are working with. We can pull
         # this information here:
 
+        # Update capabilities
+        self._capability = self._slots2caps(self._slots)
+
         # AM: FIXME: this at the moment pushes slot history whenever a task
         # state is updated...  This needs only to be done on ExecWorker
         # shutdown.  Well, alas, there is currently no way for it to find out
@@ -1179,7 +1210,8 @@ class ExecWorker(multiprocessing.Process):
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
             {"$set": {"slothistory" : self._slot_history, 
-                      "slots"       : self._slots}}
+                      "slots"       : self._slots,
+                      "capability"  : self._capability}}
             )
 
         if not isinstance(tasks, list):
