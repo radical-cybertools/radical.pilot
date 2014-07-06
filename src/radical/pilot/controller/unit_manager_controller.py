@@ -407,6 +407,7 @@ class UnitManagerController(threading.Thread):
 
         # Get some information about the pilot sandbox from the database.
         pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
+        # TODO: this hack below relies on what?! That there is just one pilot?
         pilot_sandbox = pilot_info[0]['sandbox']
 
         # Split units into two different lists: the first list contains the CUs
