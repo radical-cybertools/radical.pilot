@@ -15,7 +15,7 @@ import os
 
 from radical.pilot.utils.logger        import logger
 from radical.pilot.scheduler.interface import Scheduler
-from radical.pilot.states              import *
+from radical.pilot.states              import ACTIVE
 
 # -----------------------------------------------------------------------------
 # 
@@ -72,26 +72,37 @@ class LateBindingScheduler(Scheduler):
 
         for ud in unit_descriptions:
 
+            found_slot = False
+
             if ud.cores > 1:
                 raise Exception("Late-binding scheduler only supports single core tasks for now!")
 
             pilots_json = manager._worker._db.get_pilots(pilot_ids=pilots)
 
             for pilot in pilots_json:
-                if pilot['state'] == 'Active':
-                    print 'Found an active Pilot'
+                pilot_uid = str(pilot['_id'])
 
-                if 'Free' in pilot['slots'][0]['cores']:
-                    pilot_uid = str(pilot['_id'])
-
-                    print 'Found a free slot to schedule on Pilot %s!' % pilot_uid
-
-                    if pilot_uid not in ret :
-                        ret[pilot_uid] = []
-
-                    ret[pilot_uid].append(ud)
-
+                if pilot['state'] == ACTIVE:
+                    print 'Found an active Pilot: %s' % pilot_uid
                 else:
-                    print 'Did not found a free slot to schedule!'
+                    print 'Found an inactive Pilot %s, skipping ...' %  pilot_uid
+                    continue
+
+                for node in pilot['slots']:
+
+                    if 'Free' in node['cores']:
+                        print 'Found a free slot at node %s to schedule on Pilot %s!' % (node['node'], pilot_uid)
+
+                        if pilot_uid not in ret :
+                            ret[pilot_uid] = []
+                        ret[pilot_uid].append(ud)
+
+                        found_slot = True
+                        break
+
+                if found_slot:
+                    break
+                else:
+                    print 'Did not find a free slot to schedule on Pilot %s!' % pilot_uid
 
         return ret
