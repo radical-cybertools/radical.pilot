@@ -75,7 +75,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "quarry.uits.indiana.edu"
         pdesc.runtime          = 15 # N minutes
-        pdesc.cores            = 64 # X cores
+        pdesc.cores            = 8 # X cores
         pdesc.cleanup          = False
 
         # Launch the pilot.
@@ -83,15 +83,16 @@ if __name__ == "__main__":
 
         cud_list = []
 
-        for unit_count in range(0, 4):
+        for unit_count in range(0, 2):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.pre_exec    = ["(test -d $HOME/mpive || python ../virtualenv-1.9/virtualenv.py $HOME/mpive)",
+            mpi_test_task.pre_exec    = ["module load openmpi/gnu/1.6.3",
+                                         "(test -d $HOME/mpive || python $HOME/virtualenv-1.9.1/virtualenv.py $HOME/mpive)",
                                          "source $HOME/mpive/bin/activate",
                                          "(pip freeze | grep -q mpi4py || pip install mpi4py)"]
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["helloworld_mpi.py"]
             mpi_test_task.input_data  = ["helloworld_mpi.py"]
-            mpi_test_task.cores       = 32
+            mpi_test_task.cores       = 4
             mpi_test_task.mpi         = True
 
             cud_list.append(mpi_test_task)
@@ -128,7 +129,7 @@ if __name__ == "__main__":
                 print "STDOUT: %s" % unit.stdout
                 retval = 1
 
-        session.close(delete=False)
+        session.close()
         sys.exit(retval)
 
     except radical.pilot.PilotException, ex:

@@ -846,6 +846,8 @@ class ExecWorker(multiprocessing.Process):
                     if task.mpi:
                         launch_method = self._available_launch_methods['mpi_launch_method']
                         launch_command = self._available_launch_methods['mpi_launch_command']
+                        if not launch_command:
+                            raise Exception("Can't launch MPI tasks without MPI launcher.")
                     else:
                         launch_method = self._available_launch_methods['task_launch_method']
                         launch_command = self._available_launch_methods['task_launch_command']
