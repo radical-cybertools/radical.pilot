@@ -85,7 +85,8 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 2):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.pre_exec    = ["(test -d $HOME/mpive || python ../virtualenv-1.9/virtualenv.py $HOME/mpive)",
+            mpi_test_task.pre_exec    = ["module load openmpi/gnu/1.6.3",
+                                         "(test -d $HOME/mpive || python $HOME/virtualenv-1.9.1/virtualenv.py $HOME/mpive)",
                                          "source $HOME/mpive/bin/activate",
                                          "(pip freeze | grep -q mpi4py || pip install mpi4py)"]
             mpi_test_task.executable  = "python"
