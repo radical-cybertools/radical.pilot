@@ -553,7 +553,10 @@ class UnitManager(object):
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
             unit_ids = [unit_ids]
 
-        raise Exception("Not implemented")
+        cus = self.get_units(unit_ids)
+        for cu in cus:
+            cu.cancel()
+
 
     # -------------------------------------------------------------------------
     #

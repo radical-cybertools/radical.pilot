@@ -83,7 +83,7 @@ class ComputeUnit(object):
     #
     @staticmethod
     def _get(unit_manager_obj, unit_ids):
-        """ PRIVATE: Get one or more pilot via their UIDs.
+        """ PRIVATE: Get one or more Compute Units via their UIDs.
         """
         units_json = unit_manager_obj._session._dbs.get_compute_units(
             unit_manager_id=unit_manager_obj.uid,
@@ -381,7 +381,7 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     def cancel(self):
-        """Terminates the ComputeUnit.
+        """Cancel the ComputeUnit.
 
         **Raises:**
 
@@ -394,11 +394,36 @@ class ComputeUnit(object):
 
         if self.state in [DONE, FAILED, CANCELED]:
             # nothing to do
+            logger.debug("Compute unit %s has state %s, can't cancel any longer." % (self._uid, self.state))
             return
 
-        if self.state in [UNKNOWN]:
-            raise exceptions.radical.pilotException(
-                "Compute Unit state is UNKNOWN, cannot cancel")
+        elif self.state in [NEW, PENDING_INPUT_TRANSFER]:
+            logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
+            pass
 
-        # done waiting
+        elif self.state ==  TRANSFERRING_INPUT:
+            logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
+            pass
+
+        elif self.state in [PENDING_EXECUTION, SCHEDULING]:
+            logger.debug("Compute unit %s has state %s, will abort start-up." % (self._uid, self.state))
+            pass
+
+        elif self.state ==  EXECUTING:
+            logger.debug("Compute unit %s has state %s, will terminate the task." % (self._uid, self.state))
+            pass
+
+        elif self.state ==  PENDING_OUTPUT_TRANSFER:
+            logger.debug("Compute unit %s has state %s, will abort the transfer." % (self._uid, self.state))
+            pass
+
+        elif self.state == TRANSFERRING_OUTPUT:
+            logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
+            pass
+
+        else:
+            raise exceptions.radical.pilotException(
+                "Unknown Compute Unit state: %s, cannot cancel" % self.state)
+
+        # done canceling
         return
