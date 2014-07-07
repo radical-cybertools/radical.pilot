@@ -53,9 +53,9 @@ try:
     print "session: %s" % session.uid
 
     # make jenkins happy
-    cred         = radical.pilot.SSHCredential()
-    cred.user_id = "merzky"
-    session.add_credential (cred)
+    c         = radical.pilot.Context ('ssh')
+    c.user_id = "merzky"
+    session.add_context (c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = radical.pilot.PilotManager(session=session)
@@ -144,12 +144,12 @@ try:
     # Close automatically cancels the pilot(s).
     pmgr.cancel_pilots ()
     time.sleep (3)
-
-    sid = session.uid
-    session.close(delete=False)
-
-    print "session id: %s" % session.uid
   
+    sid = session.uid
+    # session.close(delete=False)
+
+    print "session id: %s" % sid
+
     # run the stats plotter
     os.system ("bin/radicalpilot-stats -m plot -s %s" % sid) 
     os.system ("cp -v %s.png report/rp.benchmark.png" % sid) 

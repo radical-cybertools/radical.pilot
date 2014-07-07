@@ -144,9 +144,8 @@ class Session (saga.Session, Object):
                 default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
                 config_files = glob.glob(default_configs)
                 for config_file in config_files:
-                    config_url = "file://localhost/%s" % config_file
-                    rcs = ResourceConfig.from_file(config_url)
-                    logger.info("Loaded resource configurations from %s" % config_url)
+                    rcs = ResourceConfig.from_file(config_file)
+                    logger.info("Loaded resource configurations from %s" % config_file)
                     for rc in rcs:
                         self._resource_configs[rc.name] = rc.as_dict() 
 
@@ -165,7 +164,7 @@ class Session (saga.Session, Object):
         ######################################
         else:
             try:
-                # otherwise, we reconnect to an exissting session
+                # otherwise, we reconnect to an existing session
                 self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
                                                               db_url=database_url, 
                                                               db_name=database_name)

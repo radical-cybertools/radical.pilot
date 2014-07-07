@@ -188,8 +188,6 @@ class ExecutionEnvironment(object):
                                             ])
             if command is not None:
                 mpi_launch_command = command
-            else:
-                raise Exception("No launch command found for launch method: %s." % LAUNCH_METHOD_MPIRUN)
 
         elif mpi_launch_method == LAUNCH_METHOD_MPIEXEC:
             # mpiexec (e.g. on SuperMUC)
@@ -204,20 +202,22 @@ class ExecutionEnvironment(object):
                 mpi_launch_command = command
 
         elif mpi_launch_method == LAUNCH_METHOD_IBRUN:
-
             # ibrun: wrapper for mpirun at TACC
             command = self._which('ibrun')
             if command is not None:
                 mpi_launch_command = command
 
         elif mpi_launch_method == LAUNCH_METHOD_POE:
-
             # poe: LSF specific wrapper for MPI (e.g. yellowstone)
             command = self._which('poe')
             if command is not None:
                 mpi_launch_command = command
+
         else:
             raise Exception("MPI launch method not set or unknown: %s!" % mpi_launch_method)
+
+        if not mpi_launch_command:
+            self.log.warning("No MPI launch command found for launch method: %s." % mpi_launch_method)
 
         self.discovered_launch_methods = {
             'task_launch_method': task_launch_method,
@@ -315,32 +315,38 @@ class ExecutionEnvironment(object):
         if val:
             torque_num_nodes = int(val)
         else:
-            msg = "$PBS_NUM_NODES not set!"
-            self.log.error(msg)
-            raise Exception(msg)
+            msg = "$PBS_NUM_NODES not set! (old Torque version?)"
+            torque_num_nodes = None
+            self.log.warning(msg)
 
         # Number of cores (processors) per node
         val = os.environ.get('PBS_NUM_PPN')
         if val:
             torque_cores_per_node = int(val)
         else:
-            msg = "$PBS_NUM_PPN not set!"
-            self.log.error(msg)
-            raise Exception(msg)
+            msg = "$PBS_NUM_PPN not set! (old Torque version?)"
+            torque_cores_per_node = None
+            self.log.warning(msg)
 
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)
-        if torque_nodes_length != torque_num_nodes * torque_cores_per_node:
+        if torque_num_nodes and torque_cores_per_node and \
+            torque_nodes_length != torque_num_nodes * torque_cores_per_node:
             msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
                   (torque_nodes_length, torque_nodes, torque_cores_per_node)
-            self.log.error(msg)
             raise Exception(msg)
 
         # only unique node names
         torque_node_list = list(set(torque_nodes))
-        self.log.debug("Node list: %s" % torque_node_list)
+        torque_node_list_length = len(torque_node_list)
+        self.log.debug("Node list: %s(%d)" % (torque_node_list, torque_node_list_length))
 
-        self.cores_per_node = torque_cores_per_node
+        if torque_num_nodes and torque_cores_per_node:
+            # Modern style Torque
+            self.cores_per_node = torque_cores_per_node
+        else:
+            # Old style Torque (Should we just use this for all versions?)
+            self.cores_per_node = torque_nodes_length / torque_node_list_length
         self.node_list = torque_node_list
 
 
@@ -891,8 +897,8 @@ class ExecWorker(multiprocessing.Process):
 
 
         except Exception, ex:
-            self._log.error("Error in ExecWorker loop: %s", traceback.format_exc())
-            raise
+            msg = ("Error in ExecWorker loop: %s", traceback.format_exc())
+            pilot_FAILED(self._p, self._pilot_id, self._log, msg)
 
 
     # ------------------------------------------------------------------------

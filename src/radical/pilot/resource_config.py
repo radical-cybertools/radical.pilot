@@ -1,8 +1,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import json
-import urllib2
+import radical.utils
 
 import saga.attributes  as attributes
 from radical.pilot.exceptions import * 
@@ -133,22 +132,14 @@ class ResourceConfig(attributes.Attributes):
     # -------------------------------------------------------------------------
     #
     @classmethod 
-    def from_file(cls, url, entry_name=None):
+    def from_file(cls, filename, entry_name=None):
       """Reads a resource configuration JSON file from the URL provided and 
          returns a list of one or more ResourceConfig objects.
       """
       rcfgs = []
 
       try:
-          # download resource configuration file
-          response = urllib2.urlopen(url)
-          rcf_content = response.read()
-      except urllib2.URLError, err:
-          msg = "Couldn't open resource configuration file '%s': %s." % (rcfgs, str(err))
-          raise BadParameter(msg=msg)
-
-      try:
-          rcf_dict = json.loads(rcf_content)
+          rcf_dict = radical.utils.read_json(filename)
 
           for name, cfg in rcf_dict.iteritems():
               cls = ResourceConfig()
@@ -156,7 +147,7 @@ class ResourceConfig(attributes.Attributes):
 
               for key in cfg:
                   if key not in VALID_KEYS:
-                      msg = "Unknown key '%s' in file '%s'." % (key, str(url))
+                      msg = "Unknown key '%s' in file '%s'." % (key, str(filename))
                       raise BadParameter(msg=msg)
 
               for key in VALID_KEYS:
@@ -170,7 +161,7 @@ class ResourceConfig(attributes.Attributes):
                   rcfgs.append(cls)
 
       except ValueError, err:
-          raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (url, str(err)))
+          raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (filename, str(err)))
 
       return rcfgs
 

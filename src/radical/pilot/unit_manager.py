@@ -167,7 +167,8 @@ class UnitManager(object):
             obj._worker = worker
         else:
             obj._worker = UnitManagerController(
-                unit_manager_uid=unit_manager_id, 
+                unit_manager_uid=unit_manager_id,
+                session=session,
                 db_connection=session._dbs,
                 db_connection_info=session._connection_info)
             session._process_registry.register(unit_manager_id, obj._worker)

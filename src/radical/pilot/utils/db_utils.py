@@ -69,7 +69,7 @@ def get_session_slothist (dbclient, dbname, session) :
 
         slotinfo = list()
         for hostinfo in slots :
-            hostname = hostinfo['host'] 
+            hostname = hostinfo['node'] 
             slotnum  = len (hostinfo['cores'])
             slotinfo.append ([hostname, slotnum])
 
