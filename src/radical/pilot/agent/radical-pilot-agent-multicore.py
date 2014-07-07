@@ -875,11 +875,11 @@ class ExecWorker(multiprocessing.Process):
 
             # AM: we are done -- push slot history 
             # FIXME: this is never called, self._terminate is a farce :(
-            self._p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._slot_history, 
-                          "slots"       : self._slots}}
-                )
+            #self._p.update(
+            #    {"_id": ObjectId(self._pilot_id)},
+            #    {"$set": {"slothistory" : self._slot_history,
+            #              "slots"       : self._slots}}
+            #    )
 
 
         except Exception, ex:
@@ -1210,7 +1210,6 @@ class ExecWorker(multiprocessing.Process):
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
             {"$set": {"slothistory" : self._slot_history, 
-                      "slots"       : self._slots,
                       "capability"  : self._capability}}
             )
 
