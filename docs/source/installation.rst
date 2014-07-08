@@ -13,7 +13,10 @@ by the installer. Besides that, RADICAL-Pilot needs access to a MongoDB
 database that is reachable from the internet. User groups within the same 
 institution or project can share a single MongoDB instance. 
 
-MongoDB is standard software on most Linux distributions. 
+MongoDB is standard software and available in most Linux distributions. At the 
+end of this section, we provide brief instructions how to set up a MongoDB 
+server and discuss some advanced topics, like SSL support and authentication 
+to increased the security of RADICAL-Pilot. 
 
 
 Installation
