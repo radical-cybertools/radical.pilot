@@ -15,7 +15,7 @@ import os
 
 from radical.pilot.utils.logger        import logger
 from radical.pilot.scheduler.interface import Scheduler
-from radical.pilot.states              import ACTIVE
+from radical.pilot.states              import *
 
 # -----------------------------------------------------------------------------
 # 
@@ -32,21 +32,11 @@ class LateBindingScheduler(Scheduler):
         Scheduler.__init__(self)
         logger.info("Loaded scheduler: %s." % self.name)
 
-
     # -------------------------------------------------------------------------
     #
     def _name(self):
         return "LateBindingScheduler"
 
-    
-    # -------------------------------------------------------------------------
-    #
-    def unit_callback (self, cu, state) :
-        
-        logger.debug ("unit %s changed to %s" % (cu.uid, state))
-
-        self.re_schedule (cu.cores
-    
     # -------------------------------------------------------------------------
     #
     def schedule(self, manager, unit_descriptions):

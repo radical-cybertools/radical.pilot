@@ -100,6 +100,19 @@ class UnitManager(object):
         self._worker = None 
         self._pilots = []
 
+        # queues for managing the CUs.
+        self.wait_queue = list() # incoming CU requesus
+        self.work_queue = list() # active CUs
+        self.done_queue = list() # finished CUs
+
+        # also keep a assignment map from pilot to CUs.  This will contain all
+        # CUs -- ICU inot assigned to a pilot are mapped to None.  New pilots
+        # will get a new entry in this map.
+        self.pilot_cu_map = {None: list()}
+
+
+
+
         if _reconnect is False:
             # Start a worker process fo this UnitManager instance. The worker
             # process encapsulates database access et al.
@@ -261,7 +274,12 @@ class UnitManager(object):
         self._worker.add_pilots(pilots)
 
         for pilot in pilots:
+
+            if  not pilot :
+                continue
+
             self._pilots.append(pilot.uid)
+            self.pilot_cu_map[pilot.uid] = list()
 
     # -------------------------------------------------------------------------
     #
@@ -327,6 +345,95 @@ class UnitManager(object):
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         return self._worker.get_compute_unit_uids()
+
+    # -------------------------------------------------------------------------
+    #
+    def _unit_callback (self, cu, state) :
+        
+        logger.debug ("unit %s changed to %s" % (cu.uid, state))
+
+        if  state in [DONE, FAILED, CANCELED] :
+            # the pilot which owned this CU should now have free slots available
+            self.re_schedule (finished=cu)
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _re_schedule (self, finished_cu=None, active_pilot=None) :
+        """
+        On certain events, we attempot to re-schedule CUs which previously have
+        not been assigned to a pilot, usually due to insufficient capabilities.
+        This methid is called when a previsouly submitted CU finishes (which
+        frees resources from the pilot); 
+        """
+
+        if  finished_cu :
+
+            # check if we knew the finished CU -- if not, we have a consistency
+            # problem
+            if  finished not in self.work_queue :
+                raise RuntimeError ('Unit scheduler is in inconsistent state')
+
+            # move the CU to done list
+            self.done_queue.append (finished)
+            self.work_queue.remove (finished)
+
+            # look through the wait queue, and try to schedule the first CU which
+            # has the same or smaller size as the finished CU -- g=that should fit.
+            # We repeat that until we find no more CUs which can (in total) occupy
+            # the freed space.
+            free_slots = finished.cores
+
+            # at this point, we would *love* to know which pilot owned the
+            # finished CU -- then we could simply assign the matching CUs below
+            # to that pilot... :(
+
+
+
+        if  finished_cu :
+            # check if we knew the finished CU -- if not, we have a consistency
+            # problem
+            if  finished_cu not in self.work_queue :
+                raise RuntimeError ('Unit scheduler is in inconsistent state')
+
+            # move the CU to done list
+            self.done_queue.append (finished_cu)
+            self.work_queue.remove (finished_cu)
+
+            # look through the wait queue, and try to schedule the first CU which
+            # has the same or smaller size as the finished CU -- g=that should fit.
+            # We repeat that until we find no more CUs which can (in total) occupy
+            # the freed space.
+            free_slots = finished_cu.cores
+
+
+
+        if  active_pilot :
+            # if a new pilot became active, then the number of free slots is
+            # exactly the size of that pilot
+            free_slots = active_pilot.cores
+
+
+        # we now know how many slots are *at least* free, so we attempt to
+        # schedule CUs into that space
+        for (cud, manager) in self.wait_queue :
+
+            if  free_slots < 0 :
+                raise RuntimeError ('Unit scheduler is in inconsistent state')
+
+            if  free_slots == 0 :
+                # wait for the next CU do finish...
+                break
+
+            if  cud.cores <= free_slots :
+                try :
+                    cu_id       = self.schedule (manager, cud)
+                    free_slots -= cud.cores
+                    logger.info ("re-scheduled CU %s" % cu_id)
+
+                except Exception as e :
+                    logger.debug ("Failed to reschedule CU %s" % cud)
+
 
     # -------------------------------------------------------------------------
     #
