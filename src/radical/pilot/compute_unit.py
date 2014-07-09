@@ -19,6 +19,9 @@ from radical.pilot.utils.logger import logger
 from radical.pilot.states import *
 from radical.pilot.exceptions import *
 
+from bson import ObjectId
+
+
 # -----------------------------------------------------------------------------
 #
 class ComputeUnit(object):
@@ -66,17 +69,18 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(unit_manager_obj, unit_uid, unit_description):
+    def _create(unit_manager_obj, unit_description, local_state):
         """ PRIVATE: Create a new compute unit.
         """
         # create and return pilot object
         computeunit = ComputeUnit()
-        computeunit._uid = unit_uid
 
         computeunit._description = unit_description
-        computeunit._manager = unit_manager_obj
+        computeunit._manager     = unit_manager_obj
+        computeunit._worker      = unit_manager_obj._worker
+        computeunit._uid         = str(ObjectId())
+        computeunit._local_state = local_state
 
-        computeunit._worker = unit_manager_obj._worker
         return computeunit
 
     # -------------------------------------------------------------------------

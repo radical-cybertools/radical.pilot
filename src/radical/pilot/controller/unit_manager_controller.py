@@ -396,12 +396,37 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
+    def publish_compute_units(self, units):
+        """register the unscheduled units in the database"""
+
+        # Add all units to the database.
+        results = self._db.insert_compute_units(
+            pilot_uid=None,
+            pilot_sandbox=None,
+            unit_manager_uid=self._um_id,
+            units=units,
+            unit_log=[]
+        )
+
+        assert len(units) == len(results)
+
+        # Match results with units.
+        for unit in units:
+            # Create a shared data store entry
+            self._shared_data[unit.uid] = {
+                'data':          results[unit.uid],
+                'callbacks':     [],
+                'facade_object': unit # weakref.ref(unit)
+            }
+
+
+    # ------------------------------------------------------------------------
+    #
     def schedule_compute_units(self, pilot_uid, units):
         """Request the scheduling of one or more ComputeUnits on a
            ComputePilot.
         """
 
-        unit_descriptions = list()
         wu_transfer = list()
         wu_notransfer = list()
 
@@ -463,3 +488,7 @@ class UnitManagerController(threading.Thread):
                 log = ["Scheduled for data tranfer to ComputePilot %s." % pilot_uid]
                 self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_TRANSFER, log)
                 #self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)
+
+
+# ----------------------------------------------------------------------------
+

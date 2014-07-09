@@ -24,8 +24,6 @@ from radical.pilot.scheduler import get_scheduler
 from radical.pilot.states import *
 from radical.pilot.exceptions import PilotException
 
-from bson import ObjectId
-
 
 # -----------------------------------------------------------------------------
 #
@@ -275,11 +273,9 @@ class UnitManager(object):
 
         for pilot in pilots:
 
-            if  not pilot :
-                continue
-
             self._pilots.append(pilot.uid)
             self.pilot_cu_map[pilot.uid] = list()
+
 
     # -------------------------------------------------------------------------
     #
@@ -329,6 +325,24 @@ class UnitManager(object):
             pilot_ids = [pilot_ids]
 
         self._worker.remove_pilots(pilot_ids)
+
+
+        # if a pilot gets removed, we need to re-assign all its units to other
+        # pilots.   We thus move them all into the wait queue, and call the
+        # global rescheduler.  Some of the CUs might already be in final state
+        # -- those are ignored (they'll be in the done_queue anyways).  We leave
+        # it to the scheduling policy what happens to non-NEW CUs in the
+        # wait_queue, i.e. if they get rescheduled, or if they'll raise an
+        # error.
+
+        for pilot_id in pilot_ids :
+            for cu in self.pilot_cu_map[pilot_id] :
+                if  cu.state not in [DONE, FAILED, CANCELED] :
+                    self.wait_queue.append (cu)
+                else :
+
+
+        self.pilot_cu_map[pilot.uid] = list()
 
     # -------------------------------------------------------------------------
     #
@@ -461,88 +475,104 @@ class UnitManager(object):
         if not isinstance(unit_descriptions, list):
             unit_descriptions = [unit_descriptions]
 
-        # always use the scheduler for now...
-        if True:
-           # if not self._scheduler :
-           #     raise PilotException("Internal error - no unit scheduler")
+        # the scheduler will return a dictionary of the form:
+        #   {
+        #     ud_1 : pilot_id_a,
+        #     ud_2 : pilot_id_b
+        #     ...
+        #   }
+        #
+        # The scheduler may not be able to schedule some units - those will
+        # have 'None' as pilot ID.
 
-            # the scheduler will return a dictionary of the form:
-            #   {
-            #     pilot_id_1  : [ud_1, ud_2, ...],
-            #     pilot_id_2  : [ud_3, ud_4, ...],
-            #     ...
-            #   }
-            # The scheduler may not be able to schedule some units - those will
-            # simply not be listed for any pilot.  The UM needs to make sure
-            # that no UD from the original list is left untreated, eventually.
+        try:
+            schedule = self._scheduler.schedule(
+                manager=self, 
+                unit_descriptions=unit_descriptions)
 
-            try:
-                schedule = self._scheduler.schedule(
-                    manager=self, 
-                    unit_descriptions=unit_descriptions)
+        except Exception as e:
+            raise PilotException(
+                "Internal error - unit scheduler failed: %s" % e)
 
-            except Exception as e:
+        if  len(schedule.keys()) != len(unit_descriptions) :
+            raise PilotException(
+                "Internal error - invalid unit count")
+
+
+        # we want to use bulk submission to the pilots, so we collect all units
+        # assigned to the same set of pilots.  At the same time, we select
+        # unscheduled units for later insertion into the wait queue.
+
+        pilot_cu_map = dict()
+        unscheduled  = list()
+
+        for (ud, pilot_id) in schedule.keys() :
+
+            if  None == pilot_id :
+                logger.warning ("delayed scheduling of unit %s" % str(ud))
+                unscheduled.append (ud)
+                continue
+
+            if  pilot_id not in pilot_cu_map :
+                pilot_cu_map[pilot_id] = list()
+
+            pilot_cu_map[pilot_id].append (ud)
+
+
+        # submit to all pilots which got something submitted to
+        for pilot_id in pilot_cu_map.keys():
+
+            pilot_units = list()
+
+            # sanity check on scheduler provided information
+            if not pilot_id in self.list_pilots():
                 raise PilotException(
-                    "Internal error - unit scheduler failed: %s" % e)
+                    "Internal error - invalid scheduler reply, "
+                    "no such pilot %s" % pilot_id)
 
-            unscheduled = list()  # unscheduled unit descriptions
+            # submit each unit description scheduled here, all in one bulk
+            for ud in pilot_cu_map[pilot_id] :
 
-            # we copy all unit descriptions into unscheduled, and then remove
-            # the scheduled ones...
-            unscheduled = unit_descriptions[:]  # python semi-deep-copy magic
-
-            units = list()  # compute unit instances to return
-
-
-            # submit to all pilots which got something submitted to
-            for pilot_id in schedule.keys():
-
-                pilot_units = list()
-
-                # sanity check on scheduler provided information
-                if not pilot_id in self.list_pilots():
-                    raise PilotException(
-                        "Internal error - invalid scheduler reply, "
-                        "no such pilot %s" % pilot_id)
-
-                # get the scheduled unit descriptions for this pilot
-                uds = schedule[pilot_id]
-
-                # submit each unit description scheduled here, all in one bulk
-                for ud in uds:
-                    # sanity check on scheduler provided information
-                    if not ud in unscheduled:
-                        raise PilotException(
-                            "Internal error - invalid scheduler reply, "
-                            "no such unit description %s" % ud)
-
-                    # this unit is not unscheduled anymore...
-                    unscheduled.remove(ud)
-
-                    unit_uid = str(ObjectId())
-
-                    # create a new ComputeUnit object
-                    compute_unit = ComputeUnit._create(
-                        unit_uid=unit_uid,
-                        unit_description=ud,
-                        unit_manager_obj=self
-                    )
-
-                    pilot_units.append(compute_unit)
-
-                self._worker.schedule_compute_units(
-                    pilot_uid=pilot_id,
-                    units=pilot_units
+                # create a new ComputeUnit object
+                compute_unit = ComputeUnit._create(
+                    unit_description=ud,
+                    unit_manager_obj=self, 
+                    local_state=SCHEDULED
                 )
 
-                assert len(pilot_units) == len(uds)
+                pilot_units.append(compute_unit)
 
-                units += pilot_units
+            self._worker.schedule_compute_units(
+                pilot_uid=pilot_id,
+                units=pilot_units
+            )
 
-            if len(units) == 1:
-                return units[0]
-            else:
-                return units
+            units += pilot_units
+
+        # the above submission will have pushed all units into the SCHEDULED
+        # state, and will have addded entries into the CUs state history.
+        # for all unscheduled units we will also create a CU object, but will
+        # set the state to 'NEW' and rely on later rescheduling to pick them
+        # up.
+        for ud in unscheduled :
+            # create a new ComputeUnit object
+            compute_unit = ComputeUnit._create(
+                unit_description=ud,
+                unit_manager_obj=self, 
+                local_state=NEW
+            )
+
+            new_units.append(compute_unit)
+
+        self._worker.publish_compute_units(units=new_units)
+
+        units += new_units
+
+
+        if len(units) == 1:
+            return units[0]
+        else:
+            return units
 
     # -------------------------------------------------------------------------
     #

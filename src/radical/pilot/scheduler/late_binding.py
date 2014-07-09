@@ -61,7 +61,7 @@ class LateBindingScheduler(Scheduler):
         if not len(pilots) :
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
-        ret = {}
+        ret = dict()
 
         for ud in unit_descriptions:
 
@@ -86,9 +86,7 @@ class LateBindingScheduler(Scheduler):
                     if 'Free' in node['cores']:
                         print 'Found a free slot at node %s to schedule on Pilot %s!' % (node['node'], pilot_uid)
 
-                        if pilot_uid not in ret :
-                            ret[pilot_uid] = []
-                        ret[pilot_uid].append(ud)
+                        ret[ud] = pilot_uid
 
                         found_slot = True
                         break
@@ -97,5 +95,6 @@ class LateBindingScheduler(Scheduler):
                     break
                 else:
                     print 'Did not find a free slot to schedule on Pilot %s!' % pilot_uid
+                    ret[ud] = None
 
         return ret

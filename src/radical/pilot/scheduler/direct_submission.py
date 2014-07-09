@@ -59,8 +59,7 @@ class DirectSubmissionScheduler(Scheduler):
             raise RuntimeError ('Direct Submission only works for a single pilot!')
         
         ret            = dict()
-        ret[pilots[0]] = list ()
         for ud in unit_descriptions:
-            ret[pilots[0]].append (ud)
+            ret[ud] = pilots[0]
 
         return ret

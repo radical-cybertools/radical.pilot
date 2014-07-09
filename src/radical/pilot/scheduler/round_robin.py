@@ -76,13 +76,7 @@ class RoundRobinScheduler(Scheduler):
             if  self._idx >= len(pilots) : 
                 self._idx = 0
             
-            pilot = pilots[self._idx]
-
-            if  pilot not in ret :
-                ret[pilot] = []
-
-            ret[pilot].append (ud)
-
+            ret[ud]    = pilots[self._idx]
             self._idx += 1
 
 
