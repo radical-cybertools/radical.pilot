@@ -4,7 +4,7 @@
         "remote_filesystem_endpoint"  : "sftp://login.archer.ac.uk/",
         "local_job_manager_endpoint"  : "fork://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
-        "default_queue"               : "debug",
+        "default_queue"               : "standard",
         "lrms"                        : "PBSPRO",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",

@@ -8,7 +8,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "python_interpreter"          : "/N/soft/rhel6/python/2.7.3/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
+        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi/gnu/1.6.3"],
         "valid_roots"                 : ["/N"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
