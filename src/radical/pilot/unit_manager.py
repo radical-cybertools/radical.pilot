@@ -544,7 +544,7 @@ class UnitManager(object):
                 compute_unit = ComputeUnit._create(
                     unit_description=ud,
                     unit_manager_obj=self, 
-                    local_state=SCHEDULED
+                    local_state=STATE_X
                 )
 
                 pilot_units.append(compute_unit)

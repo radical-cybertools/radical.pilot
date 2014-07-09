@@ -79,7 +79,7 @@ ACTIVE                      = 'Active'
 # -----------------------------------------------------------------------------
 # ComputeUnit States
 NEW                         = 'New'
-SCHEDULED                   = 'Scheduled'
+STATE_X                     = 'Scheduled'
 PENDING_INPUT_TRANSFER      = 'PendingInputTransfer'
 TRANSFERRING_INPUT          = 'TransferringInput'
 
