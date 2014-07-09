@@ -339,10 +339,11 @@ class UnitManager(object):
             for cu in self.pilot_cu_map[pilot_id] :
                 if  cu.state not in [DONE, FAILED, CANCELED] :
                     self.wait_queue.append (cu)
-                else :
-
 
         self.pilot_cu_map[pilot.uid] = list()
+
+        # FIXME: call global reschedule...
+
 
     # -------------------------------------------------------------------------
     #
@@ -469,11 +470,15 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
+
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         if not isinstance(unit_descriptions, list):
             unit_descriptions = [unit_descriptions]
+
+        # we return a list of compute units
+        ret = list()
 
         # the scheduler will return a dictionary of the form:
         #   {
@@ -506,7 +511,9 @@ class UnitManager(object):
         pilot_cu_map = dict()
         unscheduled  = list()
 
-        for (ud, pilot_id) in schedule.keys() :
+        for ud in schedule.keys() :
+
+            pilot_id = schedule[ud]
 
             if  None == pilot_id :
                 logger.warning ("delayed scheduling of unit %s" % str(ud))
@@ -547,32 +554,37 @@ class UnitManager(object):
                 units=pilot_units
             )
 
-            units += pilot_units
+            ret += pilot_units
 
-        # the above submission will have pushed all units into the SCHEDULED
+        # The above submission will have pushed all units into the SCHEDULED
         # state, and will have addded entries into the CUs state history.
-        # for all unscheduled units we will also create a CU object, but will
+        # For all unscheduled units we will also create a CU object, but will
         # set the state to 'NEW' and rely on later rescheduling to pick them
         # up.
-        for ud in unscheduled :
-            # create a new ComputeUnit object
-            compute_unit = ComputeUnit._create(
-                unit_description=ud,
-                unit_manager_obj=self, 
-                local_state=NEW
-            )
+        if len(unscheduled) :
 
-            new_units.append(compute_unit)
+           new_units = list()
 
-        self._worker.publish_compute_units(units=new_units)
+           for ud in unscheduled :
+               # create a new ComputeUnit object
+               compute_unit = ComputeUnit._create(
+                   unit_description=ud,
+                   unit_manager_obj=self, 
+                   local_state=NEW
+               )
 
-        units += new_units
+               new_units.append(compute_unit)
 
+           
+           self._worker.publish_compute_units(units=new_units)
 
-        if len(units) == 1:
-            return units[0]
+           ret += new_units
+
+        # we are done -- return the little buggers...
+        if len(ret) == 1:
+            return ret[0]
         else:
-            return units
+            return ret
 
     # -------------------------------------------------------------------------
     #
