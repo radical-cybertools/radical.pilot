@@ -387,11 +387,10 @@ class PilotManagerController(threading.Thread):
     def register_cancel_pilots_request(self, pilot_ids):
         """Registers one or more pilots for cancelation.
         """
-        self._db.send_command_to_pilot(
-            pilot_manager_id=self._pm_id,
-            pilot_ids=pilot_ids, cmd=COMMAND_CANCEL_PILOT)
 
         if pilot_ids is None:
+            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_manager_id=self._pm_id)
             logger.info("Sent 'COMMAND_CANCEL_PILOT' command to all pilots.")
         else:
+            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
             logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
