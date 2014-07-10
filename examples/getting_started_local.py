@@ -87,6 +87,9 @@ if __name__ == "__main__":
         for unit_count in range(0, 16):
             cu = radical.pilot.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
+            cu.pre_exec    = ["touch /tmp/pre_test.%d" % unit_count]
+            cu.post_exec   = ["touch /tmp/post_test_1.%d" % unit_count, 
+                              "touch /tmp/post_test_2.%d" % unit_count, ]
             cu.executable  = "/bin/cat"
             cu.arguments   = ["$INPUT1", "$INPUT2"]
             cu.cores       = 1

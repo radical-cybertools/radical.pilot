@@ -678,7 +678,8 @@ class ExecutionEnvironment(object):
 class Task(object):
 
     #
-    def __init__(self, uid, executable, arguments, environment, numcores, mpi, pre_exec, workdir, stdout, stderr, output_data):
+    def __init__(self, uid, executable, arguments, environment, numcores, mpi,
+                 pre_exec, post_exec, workdir, stdout, stderr, output_data):
 
         self._log         = None
         self._description = None
@@ -695,6 +696,7 @@ class Task(object):
         self.numcores       = numcores
         self.mpi            = mpi
         self.pre_exec       = pre_exec
+        self.post_exec      = post_exec
 
         # Location
         self.slots          = None
@@ -1358,6 +1360,7 @@ class Agent(threading.Thread):
                                             numcores    = wu["description"]["cores"],
                                             mpi         = wu["description"]["mpi"],
                                             pre_exec    = wu["description"]["pre_exec"],
+                                            post_exec   = wu["description"]["post_exec"],
                                             workdir     = task_dir_name,
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
@@ -1406,8 +1409,15 @@ class _Process(subprocess.Popen):
                 pre_exec = [pre_exec]
             for bb in pre_exec:
                 pre_exec_string += "%s\n" % bb
-        if pre_exec_string:
-            launch_script.write('%s' % pre_exec_string)
+
+        # After the universe dies the infrared death, there will be nothing
+        post_exec = task.post_exec
+        post_exec_string = ''
+        if post_exec:
+            if not isinstance(post_exec, list):
+                post_exec = [post_exec]
+            for bb in post_exec:
+                post_exec_string += "%s\n" % bb
 
         # executable and arguments
         if task.executable is not None:
@@ -1424,21 +1434,20 @@ class _Process(subprocess.Popen):
 
         # Create string for environment variable setting
         env_string = ''
-        if task.environment is not None:
+        if task.environment is not None and len(task.environment.keys()):
             env_string += 'export'
             for key in task.environment:
                 env_string += ' %s=%s' % (key, task.environment[key])
 
-            # make sure we didnt have an empty dict
-            if env_string == 'export':
-                env_string = ''
-        if env_string:
-            launch_script.write('%s\n' % env_string)
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
-            launch_script.write('%s\n' % task_exec_string)
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s\n'    % task_exec_string)
+            launch_script.write('%s\n'    % post_exec_string)
+
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
@@ -1450,7 +1459,11 @@ class _Process(subprocess.Popen):
 
             mpirun_command = "%s -np %s -host %s" % (launch_command,
                                                      task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1462,13 +1475,22 @@ class _Process(subprocess.Popen):
                 hosts_string += '%s,' % host
 
             mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpiexec_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
+            
             aprun_command = "%s -n %s" % (launch_command, task.numcores)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (aprun_command, task_exec_string))
+            launch_script.write('%s\n' % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1491,7 +1513,10 @@ class _Process(subprocess.Popen):
                              ibrun_offset)
 
             # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1517,7 +1542,10 @@ class _Process(subprocess.Popen):
                 hosts_string, launch_command)
 
             # Continue to build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (poe_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             # Command line to execute launch script
             cmdline = launch_script.name
@@ -1526,11 +1554,13 @@ class _Process(subprocess.Popen):
             host = task.slots[0].split(':')[0] # Get the host of the first entry in the acquired slot
 
             # Continue to build launch script
-            launch_script.write('%s\n' % task_exec_string)
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s\n'    % task_exec_string)
+            launch_script.write('%s\n'    % post_exec_string)
 
             # Command line to execute launch script
-            cmdline = '%s %s %s' % (launch_command, host,
-                                                  launch_script.name)
+            cmdline = '%s %s %s' % (launch_command, host, launch_script.name)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
