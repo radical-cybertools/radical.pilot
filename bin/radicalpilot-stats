@@ -71,6 +71,15 @@ _EVENT_ENCODING = {
 # PENDING_OUTPUT_TRANSFER     
 # TRANSFERRING_OUTPUT         
 
+# ------------------------------------------------------------------------------
+#
+def my_round (x, base=5) :
+
+    # thanks to 
+    # http://stackoverflow.com/questions/2272149/round-to-5-or-other-number-in-python
+
+    return int(base * round(float(x) / base))
+
 
 # ------------------------------------------------------------------------------
 #
@@ -262,12 +271,13 @@ def plot_session (dbclient, dbname, session) :
             delete_me.append (dat.name)
             
         with open ("/tmp/rp.%s.pilot.callbacks.%s.dat" % (session, pid), "w") as dat :
-            for event in pilot['callbackhistory'] :
-                etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
-                seconds = ru.time_diff (start, event['timestamp'])
-                maxtime = max (maxtime, seconds)
-                dat.write ("%10.2f  %-25s\n" % (seconds, etag))
-            dat.write ("\n")
+            if  'callbackhistory' in pilot :
+                for event in pilot['callbackhistory'] :
+                    etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
+                    seconds = ru.time_diff (start, event['timestamp'])
+                    maxtime = max (maxtime, seconds)
+                    dat.write ("%10.2f  %-25s\n" % (seconds, etag))
+                dat.write ("\n")
             delete_me.append (dat.name)
 
             
@@ -354,9 +364,15 @@ def plot_session (dbclient, dbname, session) :
             delete_me.append (dat.name)
 
     pilotnum = len(pids)
+
+    timetics = 10
+    for i in range(1,10) :
+        if  maxtime  > 10**i :
+            timetics = 10**(i-1)
+
                                          
     cmd  = "gnuplot -e  maxtime=%d "       % int(maxtime+10)
-    cmd +=        " -e  timetics=10 " 
+    cmd +=        " -e  timetics=%d "      % timetics
     cmd +=        " -e  maxslots=%d "      % maxslots
     for idx,pid in enumerate(pids) :
         cmd +=    " -e  slotnum_%d=%d "    % (idx+1, slots[idx])
