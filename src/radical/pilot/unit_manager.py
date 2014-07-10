@@ -104,10 +104,9 @@ class UnitManager(object):
         self.done_queue = list() # finished CUs
 
         # also keep a assignment map from pilot to CUs.  This will contain all
-        # CUs -- ICU inot assigned to a pilot are mapped to None.  New pilots
+        # CUs -- CUs not assigned to a pilot are mapped to None.  New pilots
         # will get a new entry in this map.
         self.pilot_cu_map = {None: list()}
-
 
 
 
@@ -136,6 +135,11 @@ class UnitManager(object):
         else:
             # re-connect. do nothing
             pass
+
+        # make sure to register unit state callbacks, to trigger re-scheduling
+        # as needed...
+        self.register_callback (self._unit_state_callback)
+
 
     #--------------------------------------------------------------------------
     #
@@ -340,7 +344,7 @@ class UnitManager(object):
                 if  cu.state not in [DONE, FAILED, CANCELED] :
                     self.wait_queue.append (cu)
 
-        self.pilot_cu_map[pilot.uid] = list()
+            self.pilot_cu_map[pilot_id] = list()
 
         # FIXME: call global reschedule...
 
@@ -363,13 +367,30 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def _unit_callback (self, cu, state) :
+    def _unit_state_callback (self, cu, state) :
         
         logger.debug ("unit %s changed to %s" % (cu.uid, state))
 
         if  state in [DONE, FAILED, CANCELED] :
             # the pilot which owned this CU should now have free slots available
-            self.re_schedule (finished=cu)
+            self._re_schedule (finished_cu=cu)
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _pilot_state_callback (self, pilot, state) :
+        
+        logger.debug ("pilot %s changed to %s" % (pilot.uid, state))
+
+        if  state in [ACTIVE] :
+            # the pilot which owned this CU should now have free slots available
+            self._re_schedule (active_pilot=pilot)
+
+        if  state in [DONE, FAILED, CANCELED] :
+            # the CUs owned by this pilot need to be re-scheduled (unless they
+            # are in a final state, then they'll be in the done_queue anyways).
+            #
+            self._re_schedule (active_pilot=pilot)
 
 
     # -------------------------------------------------------------------------
@@ -516,7 +537,6 @@ class UnitManager(object):
             pilot_id = schedule[ud]
 
             if  None == pilot_id :
-                logger.warning ("delayed scheduling of unit %s" % str(ud))
                 unscheduled.append (ud)
                 continue
 
@@ -541,13 +561,13 @@ class UnitManager(object):
             for ud in pilot_cu_map[pilot_id] :
 
                 # create a new ComputeUnit object
-                compute_unit = ComputeUnit._create(
+                cu = ComputeUnit._create(
                     unit_description=ud,
                     unit_manager_obj=self, 
                     local_state=STATE_X
                 )
 
-                pilot_units.append(compute_unit)
+                pilot_units.append(cu)
 
             self._worker.schedule_compute_units(
                 pilot_uid=pilot_id,
@@ -567,13 +587,14 @@ class UnitManager(object):
 
            for ud in unscheduled :
                # create a new ComputeUnit object
-               compute_unit = ComputeUnit._create(
+               cu = ComputeUnit._create(
                    unit_description=ud,
                    unit_manager_obj=self, 
                    local_state=NEW
                )
+               logger.warning ("delayed scheduling of unit %s" % str(cu.uid))
 
-               new_units.append(compute_unit)
+               new_units.append(cu)
 
            
            self._worker.publish_compute_units(units=new_units)

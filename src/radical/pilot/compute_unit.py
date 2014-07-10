@@ -87,13 +87,13 @@ class ComputeUnit(object):
     #
     @staticmethod
     def _get(unit_manager_obj, unit_ids):
-        """ PRIVATE: Get one or more pilot via their UIDs.
+        """ PRIVATE: Get one or more units via their UIDs.
         """
         units_json = unit_manager_obj._session._dbs.get_compute_units(
             unit_manager_id=unit_manager_obj.uid,
             unit_ids=unit_ids
         )
-        # create and return pilot objects
+        # create and return unit objects
         computeunits = []
 
         for u in units_json:
@@ -139,16 +139,16 @@ class ComputeUnit(object):
     #
     @property
     def uid(self):
-        """Returns the Pilot's unique identifier.
+        """Returns the unit's unique identifier.
 
-        The uid identifies the ComputePilot within a :class:`PilotManager` and
-        can be used to retrieve an existing Pilot.
+        The uid identifies the ComputeUnit within a :class:`UnitManager` and
+        can be used to retrieve an existing ComputeUnit.
 
         **Returns:**
             * A unique identifier (string).
         """
         # uid is static and doesn't change over the lifetime
-        # of a pilot, hence it can be stored in a member var.
+        # of a unit, hence it can be stored in a member var.
         return self._uid
 
     # -------------------------------------------------------------------------
@@ -199,10 +199,10 @@ class ComputeUnit(object):
     #
     @property
     def description(self):
-        """Returns the pilot description the ComputeUnit was started with.
+        """Returns the ComputeUnitDescription the ComputeUnit was started with.
         """
         # description is static and doesn't change over the lifetime
-        # of a pilot, hence it is stored as a member var.
+        # of a unit, hence it is stored as a member var.
         return self._description
 
     # -------------------------------------------------------------------------
@@ -221,7 +221,7 @@ class ComputeUnit(object):
     #
     @property
     def state_history(self):
-        """Returns the complete state history of the pilot.
+        """Returns the complete state history of the ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
