@@ -678,7 +678,8 @@ class ExecutionEnvironment(object):
 class Task(object):
 
     #
-    def __init__(self, uid, executable, arguments, environment, numcores, mpi, pre_exec, workdir, stdout, stderr, output_data):
+    def __init__(self, uid, executable, arguments, environment, numcores, mpi,
+                 pre_exec, post_exec, workdir, stdout, stderr, output_data):
 
         self._log         = None
         self._description = None
@@ -695,6 +696,7 @@ class Task(object):
         self.numcores       = numcores
         self.mpi            = mpi
         self.pre_exec       = pre_exec
+        self.post_exec      = post_exec
 
         # Location
         self.slots          = None

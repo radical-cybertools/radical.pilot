@@ -24,7 +24,7 @@ MPI                    = 'mpi'
 INPUT_DATA             = 'input_data'
 OUTPUT_DATA            = 'output_data'
 PRE_EXEC               = 'pre_exec'
-POST_EXE               = 'post_exec'
+POST_EXEC              = 'post_exec'
 
 # ------------------------------------------------------------------------------
 #
@@ -143,7 +143,7 @@ class ComputeUnitDescription(attributes.Attributes) :
             MPI                    : self.mpi,
             INPUT_DATA             : self.input_data, 
             OUTPUT_DATA            : self.output_data,
-            PRE_EXEC               : self.pre_exec
+            PRE_EXEC               : self.pre_exec,
             POST_EXEC              : self.post_exec
         }
         return obj_dict
