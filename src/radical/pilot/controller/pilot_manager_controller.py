@@ -24,6 +24,7 @@ from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
 
+from radical.pilot.db.database import COMMAND_CANCEL_PILOT
 
 # ----------------------------------------------------------------------------
 #
@@ -386,11 +387,11 @@ class PilotManagerController(threading.Thread):
     def register_cancel_pilots_request(self, pilot_ids):
         """Registers one or more pilots for cancelation.
         """
-        self._db.signal_pilots(
+        self._db.send_command_to_pilot(
             pilot_manager_id=self._pm_id,
-            pilot_ids=pilot_ids, cmd="CANCEL")
+            pilot_ids=pilot_ids, cmd=COMMAND_CANCEL_PILOT)
 
         if pilot_ids is None:
-            logger.info("Sent 'CANCEL' command to all pilots.")
+            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to all pilots.")
         else:
-            logger.info("Sent 'CANCEL' command to pilots %s.", pilot_ids)
+            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)

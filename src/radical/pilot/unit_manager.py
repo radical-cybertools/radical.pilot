@@ -116,9 +116,9 @@ class UnitManager(object):
             self._uid = self._worker.unit_manager_uid
             self._scheduler = get_scheduler(name=scheduler)
 
-            # Each pilot manager has a worker thread associated with it.
+            # Each unit manager has a worker thread associated with it.
             # The task of the worker thread is to check and update the state
-            # of pilots, fire callbacks and so on.
+            # of units, fire callbacks and so on.
             self._session._unit_manager_objects.append(self)
             self._session._process_registry.register(self._uid, self._worker)
 
