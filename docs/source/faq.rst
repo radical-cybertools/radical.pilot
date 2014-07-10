@@ -8,8 +8,12 @@ Frequently Asked Questions
 Q: I see the error "Host key verification failed" in AGENT.STDERR.
 ------------------------------------------------------------------
 
+The AGENT.STDERR file shows the following error and the pilot never starts
+running:
+
 .. code-block:: bash
-    Host key verification failed.
+
+    Host key verification failed.g
     kill: 19932: No such process
 
 A: Set up password-less, intra-node SSH access.
@@ -20,6 +24,7 @@ is not always the case. The following instructions will help you to set up
 password-less SSH acces:
 
 .. code-block:: bash
+
     cd ~/.ssh/
     ssh-keygen -t rsa
 
