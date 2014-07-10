@@ -765,7 +765,8 @@ class ExecWorker(multiprocessing.Process):
             })
         self._cores_per_node = cores_per_node
 
-        self._capability = self._slots2caps(self._slots)
+        #self._capability = self._slots2caps(self._slots)
+        self._capability = self._slots2free(self._slots)
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
@@ -775,6 +776,19 @@ class ExecWorker(multiprocessing.Process):
 
         # The available launch methods
         self._available_launch_methods = launch_methods
+
+    # ------------------------------------------------------------------------
+    #
+    def _slots2free(self, slots):
+        """Convert slots structure into a free core count
+        """
+
+        free_cores = 0
+        for node in slots:
+            free_cores += node['cores'].count(FREE)
+
+        return free_cores
+
 
     # ------------------------------------------------------------------------
     #
@@ -1200,7 +1214,8 @@ class ExecWorker(multiprocessing.Process):
         # this information here:
 
         # Update capabilities
-        self._capability = self._slots2caps(self._slots)
+        #self._capability = self._slots2caps(self._slots)
+        self._capability = self._slots2free(self._slots)
 
         # AM: FIXME: this at the moment pushes slot history whenever a task
         # state is updated...  This needs only to be done on ExecWorker
@@ -1209,8 +1224,11 @@ class ExecWorker(multiprocessing.Process):
         # though show no negative impact on agent performance.
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
-            {"$set": {"slothistory" : self._slot_history, 
-                      "capability"  : self._capability}}
+            {"$set": {"slothistory" : self._slot_history,
+                      #"slots"       : self._slots,
+                      "capability"  : self._capability
+                     }
+            }
             )
 
         if not isinstance(tasks, list):
