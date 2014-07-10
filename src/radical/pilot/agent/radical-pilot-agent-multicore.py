@@ -776,6 +776,12 @@ class ExecWorker(multiprocessing.Process):
         # The available launch methods
         self._available_launch_methods = launch_methods
 
+        self._p.update(
+            {"_id": ObjectId(self._pilot_id)},
+            {"$set": {"slothistory" : self._slot_history,
+                      "slots"       : self._slots}}
+            )
+
     # ------------------------------------------------------------------------
     #
     def _slots2caps(self, slots):
@@ -1108,6 +1114,14 @@ class ExecWorker(multiprocessing.Process):
         self._running_tasks.append(proc)
 
         # Update to mongodb
+        #
+        # AM: FIXME: this mongodb update is effectively a (or rather multiple)
+        # synchronous remote operation(s) in the exec worker main loop.  Even if
+        # spanning multiple exec workers, we would still share the mongodb
+        # channel, which would still need serialization.  This is rather
+        # inefficient.  We should consider to use a async communication scheme.
+        # For example, we could collect all messages for a second (but not
+        # longer) and send those updates in a bulk.
         self._update_tasks(task)
 
 
@@ -1207,6 +1221,8 @@ class ExecWorker(multiprocessing.Process):
         # shutdown.  Well, alas, there is currently no way for it to find out
         # when it is shut down... Some quick and  superficial measurements 
         # though show no negative impact on agent performance.
+        # AM: the capability publication cannot be delayed until shutdown
+        # though...
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
             {"$set": {"slothistory" : self._slot_history, 

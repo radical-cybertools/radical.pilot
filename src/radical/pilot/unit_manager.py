@@ -136,9 +136,9 @@ class UnitManager(object):
             # re-connect. do nothing
             pass
 
-        # make sure to register unit state callbacks, to trigger re-scheduling
-        # as needed...
-        self.register_callback (self._unit_state_callback)
+      # # make sure to register unit state callbacks, to trigger re-scheduling
+      # # as needed...
+      # self.register_callback (self._unit_state_callback)
 
 
     #--------------------------------------------------------------------------
@@ -407,28 +407,6 @@ class UnitManager(object):
 
             # check if we knew the finished CU -- if not, we have a consistency
             # problem
-            if  finished not in self.work_queue :
-                raise RuntimeError ('Unit scheduler is in inconsistent state')
-
-            # move the CU to done list
-            self.done_queue.append (finished)
-            self.work_queue.remove (finished)
-
-            # look through the wait queue, and try to schedule the first CU which
-            # has the same or smaller size as the finished CU -- g=that should fit.
-            # We repeat that until we find no more CUs which can (in total) occupy
-            # the freed space.
-            free_slots = finished.cores
-
-            # at this point, we would *love* to know which pilot owned the
-            # finished CU -- then we could simply assign the matching CUs below
-            # to that pilot... :(
-
-
-
-        if  finished_cu :
-            # check if we knew the finished CU -- if not, we have a consistency
-            # problem
             if  finished_cu not in self.work_queue :
                 raise RuntimeError ('Unit scheduler is in inconsistent state')
 
@@ -441,6 +419,10 @@ class UnitManager(object):
             # We repeat that until we find no more CUs which can (in total) occupy
             # the freed space.
             free_slots = finished_cu.cores
+
+            # at this point, we would *love* to know which pilot owned the
+            # finished CU -- then we could simply assign the matching CUs below
+            # to that pilot... :(
 
 
 
@@ -698,7 +680,7 @@ class UnitManager(object):
                 break
 
             # wait a bit
-            time.sleep(1)
+            time.sleep(0.1)
 
         # done waiting
         return
