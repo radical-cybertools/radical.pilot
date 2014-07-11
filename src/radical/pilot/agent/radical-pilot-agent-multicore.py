@@ -1623,6 +1623,7 @@ def parse_commandline():
 
     parser.add_option('-b', '--benchmark',
                       metavar='BENCHMARK',
+                      type='int',
                       dest='benchmark',
                       help='Enables timing for benchmarking purposes.')
 
@@ -1786,6 +1787,12 @@ if __name__ == "__main__":
             workdir = os.getcwd()
         else:
             workdir = options.workdir
+
+        print 'benchmark: %s' % options.benchmark
+        if options.benchmark :
+            print "use benchmarks"
+        else :
+            print "do no use benchmarks"
 
         agent = Agent(logger=logger,
                       exec_env=exec_env,

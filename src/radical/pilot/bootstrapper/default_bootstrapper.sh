@@ -233,11 +233,12 @@ echo "## Environment of bootstrapper process:"
 printenv
 
 # parse command line arguments
-while getopts "ab:c:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
+BENCHMARK=0
+while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
     case $OPTION in
         b)
             # Passed to agent
-            BENCHMARK=$OPTARG
+            BENCHMARK=1
             ;;
         c)
             # Passed to agent
