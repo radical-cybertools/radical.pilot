@@ -118,8 +118,9 @@ def get_session_events (dbclient, dbname, session) :
         for event in doc['statehistory'] :
             ret.append (['state',     otype, oid, oid, event['timestamp'], event['state'], odoc])
 
-        for event in doc['callbackhistory'] :
-            ret.append (['callback',  otype, oid, oid, event['timestamp'], event['state'], odoc])
+        if  'callbackhistory' in event :
+            for event in doc['callbackhistory'] :
+                ret.append (['callback',  otype, oid, oid, event['timestamp'], event['state'], odoc])
 
 
     for doc in docs['unit'] :

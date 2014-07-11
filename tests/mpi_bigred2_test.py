@@ -70,12 +70,11 @@ if __name__ == "__main__":
         # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "archer.ac.uk"
+        pdesc.resource         = "bigred2.uits.indiana.edu"
         pdesc.runtime          = 9 # N minutes
-        pdesc.cores            = 48 # X cores
+        pdesc.cores            = 32 # X cores
+        pdesc.queue            = "debug_cpu"
         pdesc.cleanup          = False
-        pdesc.project          = "e290"
-        pdesc.queue            = "debug"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -84,10 +83,12 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 4):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.pre_exec    = ["module load python", "source /fs4/e290/e290/marksant/cuve/bin/activate", "module swap PrgEnv-cray PrgEnv-gnu"]
+            mpi_test_task.pre_exec    = ["module load python"]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["/fs4/e290/e290/marksant/software/bin/helloworld_mpi.py"]
-            mpi_test_task.cores       = 48
+            mpi_test_task.arguments   = ["helloworld_mpi.py"]
+            mpi_test_task.input_data  = ["helloworld_mpi.py"]
+            mpi_test_task.cores       = 16
+
             mpi_test_task.mpi         = True
             cud_list.append(mpi_test_task)
 
