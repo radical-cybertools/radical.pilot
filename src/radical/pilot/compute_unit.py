@@ -403,27 +403,27 @@ class ComputeUnit(object):
 
         elif self.state in [NEW, PENDING_INPUT_TRANSFER]:
             logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
-            raise NotImplemented("Cancelation in state %s not yet implemented." % self.state)
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
 
-        elif self.state ==  TRANSFERRING_INPUT:
+        elif self.state == TRANSFERRING_INPUT:
             logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
-            raise NotImplemented("Cancelation in state %s not yet implemented." % self.state)
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
 
         elif self.state in [PENDING_EXECUTION, SCHEDULING]:
             logger.debug("Compute unit %s has state %s, will abort start-up." % (self._uid, self.state))
-            raise NotImplemented("Cancelation in state %s not yet implemented." % self.state)
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
 
-        elif self.state ==  EXECUTING:
+        elif self.state == EXECUTING:
             logger.debug("Compute unit %s has state %s, will terminate the task." % (self._uid, self.state))
             self._manager._session._dbs.send_command_to_pilot(cmd=COMMAND_CANCEL_COMPUTE_UNIT, arg=self.uid, pilot_ids=pilot_uid)
 
-        elif self.state ==  PENDING_OUTPUT_TRANSFER:
+        elif self.state == PENDING_OUTPUT_TRANSFER:
             logger.debug("Compute unit %s has state %s, will abort the transfer." % (self._uid, self.state))
-            raise NotImplemented("Cancelation in state %s not yet implemented." % self.state)
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
 
         elif self.state == TRANSFERRING_OUTPUT:
             logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
-            raise NotImplemented("Cancelation in state %s not yet implemented." % self.state)
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
 
         else:
             raise exceptions.radical.pilotException(
