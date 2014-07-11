@@ -321,6 +321,9 @@ class PilotLauncherWorker(multiprocessing.Process):
                     if cleanup is True: 
                         bootstrap_args += " -x "               # the cleanup flag
 
+                    benchmark = os.getenv('RADICAL_PILOT_BENCHMARK', "0")
+                    bootstrap_args += " -b %s " % benchmark
+
                     jd.executable = "/bin/bash"
                     jd.arguments = ["-l", "-c", '"chmod +x %s && ./%s %s"' % (bootstrapper, bootstrapper, bootstrap_args)]
 

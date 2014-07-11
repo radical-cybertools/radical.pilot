@@ -725,7 +725,7 @@ class ExecWorker(multiprocessing.Process):
     #
     def __init__(self, logger, task_queue, node_list, cores_per_node,
                  launch_methods, mongodb_url, mongodb_name,
-                 pilot_id, session_id):
+                 pilot_id, session_id, benchmark):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
@@ -735,7 +735,8 @@ class ExecWorker(multiprocessing.Process):
 
         self._log = logger
 
-        self._pilot_id = pilot_id
+        self._pilot_id  = pilot_id
+        self._benchmark = benchmark
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
@@ -851,11 +852,12 @@ class ExecWorker(multiprocessing.Process):
 
             # AM: we are done -- push slot history 
             # FIXME: this is never called, self._terminate is a farce :(
-            self._p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._slot_history, 
-                          "slots"       : self._slots}}
-                )
+            if  self._benchmark :
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)},
+                    {"$set": {"slothistory" : self._slot_history, 
+                              "slots"       : self._slots}}
+                    )
 
 
         except Exception, ex:
@@ -1180,11 +1182,12 @@ class ExecWorker(multiprocessing.Process):
         # shutdown.  Well, alas, there is currently no way for it to find out
         # when it is shut down... Some quick and  superficial measurements 
         # though show no negative impact on agent performance.
-        self._p.update(
-            {"_id": ObjectId(self._pilot_id)},
-            {"$set": {"slothistory" : self._slot_history, 
-                      "slots"       : self._slots}}
-            )
+        if  self._benchmark :
+            self._p.update(
+                {"_id": ObjectId(self._pilot_id)},
+                {"$set": {"slothistory" : self._slot_history, 
+                          "slots"       : self._slots}}
+                )
 
         if not isinstance(tasks, list):
             tasks = [tasks]
@@ -1208,7 +1211,8 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, workdir, runtime,
-                 mongodb_url, mongodb_name, pilot_id, session_id):
+                 mongodb_url, mongodb_name, pilot_id, session_id, 
+                 benchmark):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -1225,6 +1229,8 @@ class Agent(threading.Thread):
 
         self._runtime    = runtime
         self._starttime  = None
+
+        self._benchmark  = benchmark
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
@@ -1246,7 +1252,8 @@ class Agent(threading.Thread):
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
             pilot_id        = pilot_id,
-            session_id      = session_id
+            session_id      = session_id,
+            benchmark       = benchmark
         )
         self._exec_worker.start()
         self._log.info("Started up %s serving nodes %s", self._exec_worker, self._exec_env.node_list)
@@ -1614,6 +1621,11 @@ def parse_commandline():
 
     parser = optparse.OptionParser()
 
+    parser.add_option('-b', '--benchmark',
+                      metavar='BENCHMARK',
+                      dest='benchmark',
+                      help='Enables timing for benchmarking purposes.')
+
     parser.add_option('-c', '--cores',
                       metavar='CORES',
                       dest='cores',
@@ -1782,7 +1794,8 @@ if __name__ == "__main__":
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
                       pilot_id=options.pilot_id,
-                      session_id=options.session_id)
+                      session_id=options.session_id, 
+                      benchmark=options.benchmark)
 
         # AM: why is this done in a thread?  This thread blocks anyway, so it
         # could just *do* the things.  That would avoid those global vars and

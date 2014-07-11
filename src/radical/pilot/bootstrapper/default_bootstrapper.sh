@@ -40,6 +40,8 @@ This script launches a RADICAL-Pilot agent.
 OPTIONS:
    -a      The name of project / allocation to charge.
 
+   -b      Enable benchmarks.
+
    -c      Number of requested cores.
 
    -d      Specify debug level.
@@ -196,6 +198,7 @@ fi
 launchagent()
 {
 AGENT_CMD="python radical-pilot-agent.py\
+    -b $BENCHMARK\
     -c $CORES\
     -d $DEBUG\
     -j $TASK_LAUNCH_METHOD\
@@ -230,8 +233,12 @@ echo "## Environment of bootstrapper process:"
 printenv
 
 # parse command line arguments
-while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
+while getopts "ab:c:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
     case $OPTION in
+        b)
+            # Passed to agent
+            BENCHMARK=$OPTARG
+            ;;
         c)
             # Passed to agent
             CORES=$OPTARG

@@ -124,7 +124,9 @@ if __name__ == "__main__":
                 % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
         # Close automatically cancels the pilot(s).
-        session.close()
+        pmgr.cancel_pilots ()
+        print session.uid
+        session.close(delete=False)
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:
