@@ -141,8 +141,9 @@ def get_session_events (dbclient, dbname, session) :
         for event in doc['statehistory'] :
             ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], odoc])
 
-        for event in doc['callbackhistory'] :
-            ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], odoc])
+        if  'callbackhistory' in event :
+            for event in doc['callbackhistory'] :
+                ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], odoc])
 
     # we don't want None times, actually
     for r in list(ret) :
