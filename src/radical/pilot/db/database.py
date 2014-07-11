@@ -370,6 +370,7 @@ class Session():
             "input_transfer_finished": None,
             "started":        None,
             "finished":       None,
+            "heartbeat":      None,
             "output_transfer_started": None,
             "output_transfer_finished": None,
             "nodes":          None,
@@ -506,6 +507,23 @@ class Session():
             units_json.append(obj)
 
         return units_json
+
+    #--------------------------------------------------------------------------
+    #
+    def set_all_running_compute_units(self, pilot_id, state, log):
+        """Update the state and the log of all compute units belonging to 
+           a specific pilot.
+        """
+        ts = datetime.datetime.utcnow()
+
+        if self._s is None:
+            raise Exception("No active session.")     
+
+        self._w.update({"pilot": pilot_id, "state": { "$in": ["Executing", "PendingExecution", "Scheduling"]}},
+                       {"$set": {"state": state},
+                        "$push": {"statehistory": {"state": state, "timestamp": ts},
+                                  "log": log}
+                       })
 
     #--------------------------------------------------------------------------
     #
