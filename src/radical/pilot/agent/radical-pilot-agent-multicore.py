@@ -1788,12 +1788,6 @@ if __name__ == "__main__":
         else:
             workdir = options.workdir
 
-        print 'benchmark: %s' % options.benchmark
-        if options.benchmark :
-            print "use benchmarks"
-        else :
-            print "do no use benchmarks"
-
         agent = Agent(logger=logger,
                       exec_env=exec_env,
                       workdir=workdir,
