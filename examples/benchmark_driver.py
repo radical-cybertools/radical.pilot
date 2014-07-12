@@ -30,7 +30,7 @@ def pilot_state_cb(pilot, state):
 
     if state == radical.pilot.FAILED:
         print "exit"
-        sys.exit(1)
+        sys.exit(0)
 
 #------------------------------------------------------------------------------
 #
@@ -46,6 +46,15 @@ def unit_state_change_cb(unit, state):
 #------------------------------------------------------------------------------
 #
 try:
+    rp_user     = str(os.getenv ("RP_USER",     "merzky"))
+    rp_cores    = int(os.getenv ("RP_CORES",    4))
+    rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
+    rp_units    = int(os.getenv ("RP_UNITS",    10))
+    rp_runtime  = int(os.getenv ("RP_RUNTIME",  10))
+    rp_host     = str(os.getenv ("RP_HOST",     "localhost"))
+    rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
+    rp_project  = str(os.getenv ("RP_PROJECT",  ""))
+
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
     # well as security crendetials.
@@ -54,7 +63,7 @@ try:
 
     # make jenkins happy
     c         = radical.pilot.Context ('ssh')
-    c.user_id = "merzky"
+    c.user_id = rp_user
     session.add_context (c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -68,26 +77,26 @@ try:
     # Define 1-core local pilots that run for 10 minutes and clean up
     # after themself.
     pdescriptions = list()
-    for i in range (0, 2) :
+    for i in range (0, 1) :
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "india.futuregrid.org"
-        pdesc.runtime  = 30 # minutes
-        pdesc.cores    = 8*(i+1)
+        pdesc.resource = rp_host
+        pdesc.runtime  = rp_runtime
+        pdesc.cores    = rp_cores
         pdesc.cleanup  = False
+        if rp_queue   : pdesc.queue    = rp_queue
+        if rp_project : pdesc.project  = rp_project
 
         pdescriptions.append(pdesc)
+
+        import pprint
+        pprint.pprint (pdesc)
 
 
     # Launch the pilots.
     pilots = pmgr.submit_pilots (pdescriptions)
     print "pilots: %s" % pilots
 
-    pilot_ids = list()
-    for pilot in pilots :
-        pilot_ids.append (pilot.uid)
-
-    pmgr.wait_pilots (pilot_ids, state=radical.pilot.ACTIVE)
-    print "pilots: %s" % pilot_ids
+    pmgr.wait_pilots (state=radical.pilot.ACTIVE)
 
 
 
@@ -104,13 +113,15 @@ try:
     #
     cu_descriptions = []
 
-    for unit_count in range(0, 100):
+    for unit_count in range(0, rp_units):
         cu = radical.pilot.ComputeUnitDescription()
-        cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-        cu.executable  = "/bin/sh"
-        cu.arguments   = ["-l", "-c", "sleep 5; echo \"$INPUT1 $INPUT2\""]
-        cu.cores       = 1
-      # cu.input_data  = ["./file1.dat", "./file2.dat"]
+        cu.executable  = "/bin/sleep"
+        cu.arguments   = [str(int(rp_cores/32)+10)]
+        cu.cores       = 32
+        cu.mpi         = True
+
+        import pprint
+        pprint.pprint (cu)
 
         cu_descriptions.append(cu)
 
@@ -137,6 +148,9 @@ try:
     # Wait for all compute units to reach a terminal state (DONE or FAILED).
     umgr.wait_units()
 
+    if not isinstance (units, list) :
+        units=[units]
+    
     for unit in units:
         print "* Task %s (executed @ %s) state %s, exit code: %s, started: %s, finished: %s" \
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
