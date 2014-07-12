@@ -2,6 +2,7 @@
 
 export RADICAL_PILOT_DBURL=mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/
 export RADICAL_PILOT_VERBOSE=DEBUG
+export RADICAL_PILOT_BENCHMARK=
 
 if true 
 then 
@@ -15,17 +16,6 @@ then
       jobs="$(($size * $mult))"
       echo "size: $size"
       echo "jobs: $jobs"
-  
-      # only set RADICAL_PILOT_BENCHMARK if slothist size estimation is smaller than 4MB
-      max_slothist_size="$((1024 * 1024 * 4))"
-      est_slothist_size="$(($size  *  $jobs))"
-  
-      if test $est_slothist_size -gt $max_slothist_size
-      then
-        unset  RADICAL_PILOT_BENCHMARK
-      else
-        export RADICAL_PILOT_BENCHMARK=
-      fi
   
       export RP_USER=tg803521
       export RP_CORES=$size
