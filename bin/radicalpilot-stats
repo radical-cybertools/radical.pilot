@@ -86,12 +86,11 @@ def my_round (x, base=5) :
 def usage (msg=None) :
 
     if  msg :
-        print "\n\t%s\n" % msg
+        print "\n      Error: %s" % msg
 
     print """
-
-      usage   : %s -m mode [-d dburl] [-s session]
-      example : %s -m stats -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
+      usage   : %s -m <mode> [-d dburl] [-s session]
+      example : %s -m stat    -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
 
       modes :
 
@@ -518,19 +517,26 @@ def parse_commandline():
 if __name__ == '__main__' :
 
     import optparse
-    parser = optparse.OptionParser ()
+    parser = optparse.OptionParser (add_help_option=False)
 
     parser.add_option('-s', '--session', dest='session')
     parser.add_option('-d', '--dburl',   dest='url')
     parser.add_option('-m', '--mode',    dest='mode')
+    parser.add_option('-h', '--help',    dest='help', action="store_true")
 
     options, args = parser.parse_args ()
 
     if  args :
         usage ("Too many arguments (%s)" % args)
 
+    if  options.help :
+        usage ()
+
     if  options.mode in ['help'] : 
         usage ()
+
+    if  not options.mode :
+        usage ("No mode specified")
 
     if  options.mode not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot'] : 
         usage ("Unsupported mode '%s'" % options.mode)
@@ -562,6 +568,7 @@ if __name__ == '__main__' :
     elif mode == 'hist' : hist_session  (dbclient, dbname, session) 
     elif mode == 'stat' : stat_session  (dbclient, dbname, session) 
     elif mode == 'plot' : plot_session  (dbclient, dbname, session) 
+    elif mode == 'help' : usage ()
     else                : usage ("unknown mode '%s'" % mode)
 
     # ------------------------------------------------------------------------------------
