@@ -118,7 +118,7 @@ try:
         cu = radical.pilot.ComputeUnitDescription()
         cu.executable  = "/bin/sleep"
         cu.arguments   = [str(int(rp_cores/32)+10)]
-        cu.cores       = 32
+        cu.cores       = rp_cu_cores
         cu.mpi         = True
 
         import pprint

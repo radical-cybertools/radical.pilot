@@ -376,21 +376,23 @@ def plot_session (dbclient, dbname, session) :
         if  maxtime  > 10**i :
             timetics = 10**(i-1)
 
+    plotfile = "%s/radicalpilot-stats.plot" % os.path.dirname (__file__)
+
                                          
-    cmd  = "gnuplot -e  maxtime=%d "       % int(maxtime+10)
-    cmd +=        " -e  timetics=%d "      % timetics
-    cmd +=        " -e  maxslots=%d "      % maxslots
+    cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
+    cmd +=        " -e  timetics=%d "       % timetics
+    cmd +=        " -e  maxslots=%d "       % maxslots
     for idx,pid in enumerate(pids) :
-        cmd +=    " -e  slotnum_%d=%d "    % (idx+1, slots[idx])
-    cmd +=        " -e  nodesize=%d "      % nodesize
-    cmd +=        " -e 'session=\"%s\"' "  % session
+        cmd +=    " -e  slotnum_%d=%d "     % (idx+1, slots[idx])
+    cmd +=        " -e  nodesize=%d "       % nodesize
+    cmd +=        " -e 'session=\"%s\"' "   % session
     cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n=============\\n\\nPilot and Unit Event Traces\"'  "
-    cmd +=        " -e  pilotnum=%d "      % len(pids)
+    cmd +=        " -e  pilotnum=%d "       % len(pids)
     for idx,pid in enumerate(pids) :
         cmd +=    " -e 'pilot_%d_name=\"%s[%d]\"' " % (idx+1, hosts[idx], slots[idx])
     for idx,pid in enumerate(pids) :
-        cmd +=    " -e 'pilot_%d_id=\"%s\"' " % (idx+1, pids[idx])
-    cmd +=        "     bin/radicalpilot-stats.plot "
+        cmd +=    " -e 'pilot_%d_id=\"%s\"' "       % (idx+1, pids[idx])
+    cmd +=        "     %s "                        % plotfile
 
     print cmd
     os.system (cmd) 
