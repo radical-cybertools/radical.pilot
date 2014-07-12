@@ -16,6 +16,7 @@ export RADICAL_PILOT_BENCHMARK=
 for size in 512 1024 2048 4096
 do
 
+  host=archer
   if ! test $size = 1024
   then
     export RADICAL_PILOT_BENCHMARK=
@@ -38,8 +39,9 @@ do
     export RP_QUEUE=standard
     export RP_PROJECT=e290
     export RP_RUNTIME="$(($jobs * 5 / 60))"
+    export RP_NAME="$host.$size.$jobs"
 
-    time python examples/benchmark_driver.py 2>&1 | tee archer.$size.$jobs.log
+    time python ./benchmark_driver.py 2>&1 | tee $RP_NAME.log
 
   done
 

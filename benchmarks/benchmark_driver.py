@@ -54,6 +54,7 @@ try:
     rp_host     = str(os.getenv ("RP_HOST",     "localhost"))
     rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
     rp_project  = str(os.getenv ("RP_PROJECT",  ""))
+    rp_name     = str(os.getenv ("RP_NAME",     ""))
 
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
@@ -165,8 +166,10 @@ try:
     print "session id: %s" % sid
 
     # run the stats plotter
-    os.system ("bin/radicalpilot-stats -m plot -s %s" % sid) 
+    os.system ("radicalpilot-stats -m plot -s %s" % sid) 
     os.system ("cp -v %s.png report/rp.benchmark.png" % sid) 
+    os.system ("mv -v %s.png %s.png" % (sid, rp_name)) 
+    os.system ("mv -v %s.pdf %s.pdf" % (sid, rp_name)) 
 
 
 except radical.pilot.PilotException, ex:
