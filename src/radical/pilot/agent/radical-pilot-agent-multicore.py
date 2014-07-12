@@ -954,7 +954,7 @@ class ExecWorker(multiprocessing.Process):
 
             # Glue all slot core lists together
             all_slot_cores = [core for node in [node['cores'] for node in all_slots] for core in node]
-            self._log.debug("all_slot_cores: %s" % all_slot_cores)
+          # self._log.debug("all_slot_cores: %s" % all_slot_cores)
 
             # Find the start of the first available region
             all_slots_first_core_offset = find_cores_cont(all_slot_cores, cores_requested, FREE)
@@ -1040,10 +1040,10 @@ class ExecWorker(multiprocessing.Process):
         # Convenience alias
         all_slots = self._slots
 
-        logger.debug("change_slot_states: task slots: %s" % task_slots)
+      # logger.debug("change_slot_states: task slots: %s" % task_slots)
 
         for slot in task_slots:
-            logger.debug("change_slot_states: slot content: %s" % slot)
+          # logger.debug("change_slot_states: slot content: %s" % slot)
             # Get the node and the core part
             [slot_node, slot_core] = slot.split(':')
             # Find the entry in the the all_slots list
@@ -1052,7 +1052,14 @@ class ExecWorker(multiprocessing.Process):
             slot_entry['cores'][int(slot_core)] = new_state
 
         # something changed - write history!
-        self._slot_history.append (self._slot_status (short=True))
+        # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
+        # ensue.  We thus limit the slot history size to 4MB, to keep suffient
+        # space for the actual operational data
+        if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
+            self._slot_history.append (self._slot_status (short=True))
+        else :
+            # just replace the last entry with the current one.
+            self._slot_history[-1]  =  self._slot_status (short=True)
 
 
     # ------------------------------------------------------------------------
