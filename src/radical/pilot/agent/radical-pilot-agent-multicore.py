@@ -1057,6 +1057,9 @@ class ExecWorker(multiprocessing.Process):
         # space for the actual operational data
         if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
             self._slot_history.append (self._slot_status (short=True))
+        else :
+            # just replace the last entry with the current one.
+            self._slot_history[-1]  =  self._slot_status (short=True)
 
 
     # ------------------------------------------------------------------------
