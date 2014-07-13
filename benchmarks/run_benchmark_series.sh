@@ -4,7 +4,7 @@ export RADICAL_PILOT_DBURL=mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:2
 export RADICAL_PILOT_VERBOSE=DEBUG
 export RADICAL_PILOT_BENCHMARK=
 
-if true 
+if false
 then 
   for size in 512 1024 2048 4096
   do
@@ -35,37 +35,22 @@ then
 fi
 
 
-if false
+if true
 then
-  for size in 512 1024 2048 4096
+# for size in 512 1024 2048 4096
+  for size in          2048 
   do
   
     host=archer
-    if ! test $size = 1024
-    then
-      export RADICAL_PILOT_BENCHMARK=
-    else
-      unset  RADICAL_PILOT_BENCHMARK
-    fi
   
-    for mult in 1/2 1 2 4
+  # for mult in 1/2 1 2 4
+    for mult in       2 4
     do 
   
       jobs="$(($size * $mult))"
       echo "size: $size"
       echo "jobs: $jobs"
 
-      # only set RADICAL_PILOT_BENCHMARK if slothist size estimation is smaller than 4MB
-      max_slothist_size="$((1024 * 1024 * 4))"
-      est_slothist_size="$(($size  *  $jobs))"
-  
-      if test $est_slothist_size -gt $max_slothist_size
-      then
-        unset  RADICAL_PILOT_BENCHMARK
-      else
-        export RADICAL_PILOT_BENCHMARK=
-      fi
-  
       export RP_USER=merzky
       export RP_CORES=$size
       export RP_CU_CORES=32
