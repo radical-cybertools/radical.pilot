@@ -37,7 +37,8 @@ fi
 
 if false
 then 
-  for size in 512 1024 2048 4096
+# for size in 512 1024 2048 4096
+  for size in          2048 4096
   do
   
     host=stampede
@@ -45,8 +46,11 @@ then
     do 
   
       jobs="$(($size * $mult))"
+      runtime="$(($jobs / ($size / 32) * 10 * 3/2))"
       echo "size: $size"
       echo "jobs: $jobs"
+      echo "runt: $runtime"
+
   
       export RP_USER=tg803521
       export RP_CORES=$size
@@ -55,7 +59,7 @@ then
       export RP_HOST=stampede.tacc.utexas.edu
       export RP_QUEUE=normal
       export RP_PROJECT=TG-MCB090174
-      export RP_RUNTIME="$(($jobs * 5 / 60))"
+      export RP_RUNTIME=$runtime
       export RP_NAME="$host.$size.$jobs"
   
       time python ./benchmark_driver.py 2>&1 | tee $RP_NAME.log
