@@ -2,6 +2,7 @@
 
 import os
 import sys
+import numpy
 import pprint
 import pymongo
 import radical.utils       as ru
@@ -83,7 +84,7 @@ def my_round (x, base=5) :
 
 # ------------------------------------------------------------------------------
 #
-def usage (msg=None) :
+def usage (msg=None, noexit=False) :
 
     if  msg :
         print "\n      Error: %s" % msg
@@ -112,16 +113,13 @@ def usage (msg=None) :
     if  msg :
         sys.exit (1)
 
-    sys.exit (0)
+    if  not noexit :
+        sys.exit (0)
 
 
 # ------------------------------------------------------------------------------
 #
 def dump_session (dbclient, dbname, session) :
-
-    if  not session :
-        print "need session parameter on 'dump'"
-        sys.exit (-1)
 
     print "session : %s" % session
     handle_session (dbclient, 'dump', dbname, session, None)
@@ -130,10 +128,6 @@ def dump_session (dbclient, dbname, session) :
 # ------------------------------------------------------------------------------
 #
 def tree_session (dbclient, dbname, session) :
-
-    if  not session :
-        print "need session parameter on 'tree'"
-        sys.exit (-1)
 
     handle_session (dbclient, 'tree', dbname, session, None)
 
@@ -161,10 +155,6 @@ def list_sessions (dbclient, dbname, session) :
 # ------------------------------------------------------------------------------
 def sort_session (dbclient, dbname, session) :
 
-    if  not session :
-        print "need session parameter on 'sort'"
-        sys.exit (-1)
-
     docs = rpu.get_session_docs (dbclient, dbname, session)
 
     print "pilot managers :" 
@@ -186,10 +176,6 @@ def sort_session (dbclient, dbname, session) :
 
 # ------------------------------------------------------------------------------
 def hist_session (dbclient, dbname, session) :
-
-    if  not session :
-        print "need session parameter on 'hist'"
-        sys.exit (-1)
 
     events    = rpu.get_session_events   (dbclient, dbname, session)
     slothists = rpu.get_session_slothist (dbclient, dbname, session)
@@ -223,17 +209,118 @@ def hist_session (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
+def get_stats (docs, events, slothist) :
+
+    n_units               = 0
+    n_pilots              = 0
+    unit_state_durations  = dict()
+    pilot_utilization     = dict()
+    units                 = dict()
+
+    pilot_utilization['pilots'] = dict()
+
+    for cu in docs['unit'] :
+        units[str(cu['_id'])] = cu
+
+    for pilot_doc in docs['pilot'] :
+
+        n_pilots   += 1
+        pid         = str(pilot_doc['_id'])
+        pilot_util  = dict()
+
+        pilot_util['n_units']      = 0
+        pilot_util['unit_states']  = dict()
+        pilot_util['pilot_states'] = list()
+
+        # we assume that states are time-ordered
+        state = pilot_doc['statehistory'][0]['state']
+        start = pilot_doc['statehistory'][0]['timestamp']
+        for t in pilot_doc['statehistory'][1:] :
+            ts = t['timestamp']
+            s  = t['state']
+            pilot_util['pilot_states'].append ({'state'    : state, 
+                                                'duration' : ru.time_diff(start, ts)})
+            state = s
+            start = ts
+
+        for cu in pilot_doc['wu_queue'] :
+            uid                    = str(cu)
+            n_units               += 1
+            pilot_util['n_units'] += 1
+
+            if  not uid in units :
+                print 'unknonwn unit %s' % uid
+                sys.exit ()
+
+            unit_doc = units[uid]
+            state    = unit_doc['statehistory'][0]['state']
+            start    = unit_doc['statehistory'][0]['timestamp']
+
+            for t in unit_doc['statehistory'][1:] :
+                ts = t['timestamp']
+                s  = t['state']
+
+                if not state in pilot_util['unit_states'] :
+                    pilot_util['unit_states'][state]        = dict()
+                    pilot_util['unit_states'][state]['dur'] = list()
+
+                pilot_util['unit_states'][state]['dur'].append (ru.time_diff(start, ts))
+                state = s
+                start = ts
+
+        for s in pilot_util['unit_states'] :
+            array = numpy.array (pilot_util['unit_states'][s]['dur'])
+            pilot_util['unit_states'][s]['num' ] = len        (array)
+            pilot_util['unit_states'][s]['mean'] = numpy.mean (array)
+            pilot_util['unit_states'][s]['std' ] = numpy.std  (array)
+            pilot_util['unit_states'][s]['dur' ] = list()
+
+
+        pilot_utilization['pilots'][pid] = pilot_util
+
+    pilot_utilization['n_pilots'] = n_pilots
+
+    return pilot_utilization
+
+
+
+    
+# ------------------------------------------------------------------------------
+def stat_session (dbclient, dbname, session) :
+
+    docs      = rpu.get_session_docs     (dbclient, dbname, session)
+    events    = rpu.get_session_events   (dbclient, dbname, session)
+    slothists = rpu.get_session_slothist (dbclient, dbname, session)
+
+    stats     = get_stats (docs, events, slothists)
+
+    print "Session Statistics"
+    print "------------------"
+    print ""
+    print "  pilots : %s" % stats['n_pilots']
+
+    for pid in stats['pilots'] :
+        print "  pilot [%s]" % pid
+        pilot = stats['pilots'][pid]
+
+        print "      pilot states:"
+        for ps in pilot['pilot_states'] :
+            print "        state %-18s : %10.1fs" % (ps['state'], ps['duration'])
+        print "      units : %d" % pilot['n_units']
+        print "      unit states:"
+        for us  in pilot['unit_states'] :
+            data = pilot['unit_states'][us]
+            print "        state %-18s : %10.1fs  +/- %8.1fs" % (us, data['mean'], data['std'])
+
+
+
+# ------------------------------------------------------------------------------
 def plot_session (dbclient, dbname, session) :
     """
     plot results :P
     """
 
-    if  not session :
-        print "need session parameter on 'plot'"
-        sys.exit (-1)
-
-
-    docs      = rpu.get_session_docs (dbclient, dbname, session)
+    docs      = rpu.get_session_docs     (dbclient, dbname, session)
     events    = rpu.get_session_events   (dbclient, dbname, session)
     slothists = rpu.get_session_slothist (dbclient, dbname, session)
 
@@ -393,16 +480,21 @@ def plot_session (dbclient, dbname, session) :
         cmd +=    " -e 'pilot_%d_id=\"%s\"' "       % (idx+1, pids[idx])
     cmd +=        "     %s "                        % plotfile
 
-    print cmd
+  # print cmd
+    print "\nplotting..."
     os.system (cmd) 
 
+    if 'RP_PLOTNAME' in os.environ :
+        plotname = os.environ['RP_PLOTNAME']
+        os.system ("mv %s.png %s.png" % (session, plotname))
+        os.system ("mv %s.pdf %s.pdf" % (session, plotname))
+
     for filename in delete_me :
-        print "removing %s" % filename
+      # print "removing %s" % filename
         try :
-         #  os.remove (filename)
-            pass
+            os.remove (filename)
         except Exception as e :
-            print "Error: %s" % str(e)
+            print "Error removing %s: %s" % (filename, str(e))
 
 
 
@@ -516,6 +608,36 @@ def parse_commandline():
 #
 if __name__ == '__main__' :
 
+    # import datetime
+    # h = [ {'s' : 'PendingLaunch',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 3, 959000)},
+    #       {'s' : 'Launching',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 4, 124000)},
+    #       {'s' : 'PendingActive',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 26)},
+    #       {'s' : 'Active',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 21, 11, 498000)},
+    #       {'s' : 'Canceled',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 32, 26, 764000)}]
+
+    # d     = dict()
+    # print h
+    # print h[0]
+
+    # state = h[0]['s']
+    # start = h[0]['ts']
+
+    # for t in h :
+    #     s = t['s']
+    #     x = ru.time_diff(start, t['ts'])
+    #     d[state] = x
+    #     start = t['ts']
+    #     state = t['s']
+
+    # print d
+    # sys.exit (0)
+
+
     import optparse
     parser = optparse.OptionParser (add_help_option=False)
 
@@ -538,9 +660,6 @@ if __name__ == '__main__' :
     if  not options.mode :
         usage ("No mode specified")
 
-    if  options.mode not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot'] : 
-        usage ("Unsupported mode '%s'" % options.mode)
-
     if  not options.url : 
         options.url = _DEFAULT_DBURL 
 
@@ -552,24 +671,29 @@ if __name__ == '__main__' :
     [host, port, dbname, cname, pname] = ru.split_dburl (url, _DEFAULT_DBURL)
     dbclient = pymongo.MongoClient (host=host, port=port)
 
-    print "url     : %s" % url
-    print "mode    : %s" % mode
-    print "session : %s" % session
+    print "modes   : %s" % mode
+    print "db url  : %s" % url
 
     if  not session and mode != 'list' :
         session = rpu.get_last_session  (dbclient, dbname)
         print "session : %s (last session in database)" % session
+    else :
+        print "session : %s" % session
 
+    for m in mode.split (',') :
 
-    if   mode == 'list' : list_sessions (dbclient, dbname, session)
-    elif mode == 'tree' : tree_session  (dbclient, dbname, session) 
-    elif mode == 'dump' : dump_session  (dbclient, dbname, session) 
-    elif mode == 'sort' : sort_session  (dbclient, dbname, session) 
-    elif mode == 'hist' : hist_session  (dbclient, dbname, session) 
-    elif mode == 'stat' : stat_session  (dbclient, dbname, session) 
-    elif mode == 'plot' : plot_session  (dbclient, dbname, session) 
-    elif mode == 'help' : usage ()
-    else                : usage ("unknown mode '%s'" % mode)
+        if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
+            usage ("Unsupported mode '%s'" % m)
+
+        if   m == 'list' : list_sessions (dbclient, dbname, session)
+        elif m == 'tree' : tree_session  (dbclient, dbname, session) 
+        elif m == 'dump' : dump_session  (dbclient, dbname, session) 
+        elif m == 'sort' : sort_session  (dbclient, dbname, session) 
+        elif m == 'hist' : hist_session  (dbclient, dbname, session) 
+        elif m == 'stat' : stat_session  (dbclient, dbname, session) 
+        elif m == 'plot' : plot_session  (dbclient, dbname, session) 
+        elif m == 'help' : usage (noexit=True)
+        else             : usage ("unknown mode '%s'" % mode)
 
     # ------------------------------------------------------------------------------------
     dbclient.disconnect ()
