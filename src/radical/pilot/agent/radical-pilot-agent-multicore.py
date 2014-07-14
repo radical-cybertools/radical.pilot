@@ -1757,6 +1757,7 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Establish database connection
     try:
+        host, port = options.mongodb_url.split(':', 1)
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
 

@@ -131,7 +131,7 @@ if __name__ == "__main__":
                    unit.stdout)
 
         # Close automatically cancels the pilot(s).
-        session.close()
+        session.close(delete=False)
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

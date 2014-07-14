@@ -4,12 +4,9 @@ import pymongo
 
 # ------------------------------------------------------------------------------
 #
-def get_session_ids (dbclient, dbname) :
+def get_session_ids (db) :
 
-    if not dbname : usage ("require specific database name to list session IDs")
-
-    database = dbclient[dbname]
-    cnames = database.collection_names ()
+    cnames = db.collection_names ()
 
     sids = list()
     for cname in cnames :
@@ -20,31 +17,29 @@ def get_session_ids (dbclient, dbname) :
 
 
 # ------------------------------------------------------------------------------
-def get_last_session (dbclient, dbname) :
+def get_last_session (db) :
 
     # this assumes that sessions are ordered by time -- which is the case at
     # this point...
-    return get_session_ids (dbclient, dbname)[-1]
+    return get_session_ids (db)[-1]
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs (dbclient, dbname, session) :
-
-    database = dbclient[dbname]
+def get_session_docs (db, session) :
 
     ret = dict()
 
-    ret['session'] = list(database["%s"    % session].find ())
-    ret['pmgr'   ] = list(database["%s.pm" % session].find ())
-    ret['pilot'  ] = list(database["%s.p"  % session].find ())
-    ret['umgr'   ] = list(database["%s.wm" % session].find ())
-    ret['unit'   ] = list(database["%s.w"  % session].find ())
+    ret['session'] = list(db["%s"    % session].find ())
+    ret['pmgr'   ] = list(db["%s.pm" % session].find ())
+    ret['pilot'  ] = list(db["%s.p"  % session].find ())
+    ret['umgr'   ] = list(db["%s.wm" % session].find ())
+    ret['unit'   ] = list(db["%s.w"  % session].find ())
 
     return ret
 
 
 # ------------------------------------------------------------------------------
-def get_session_slothist (dbclient, dbname, session) :
+def get_session_slothist (db, session) :
     """
     For all pilots in the session, get the slot lists and slot histories. and
     return as list of tuples like:
@@ -53,7 +48,7 @@ def get_session_slothist (dbclient, dbname, session) :
       tuple (string  , list (tuple (string  , int    ) ), list (tuple (string   , datetime ) ) )
     """
 
-    docs = get_session_docs (dbclient, dbname, session)
+    docs = get_session_docs (db, session)
 
     ret = list()
 
@@ -81,7 +76,7 @@ def get_session_slothist (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_events (dbclient, dbname, session) :
+def get_session_events (db, session) :
     """
     For all entities in the session, create simple event tuples, and return
     them as a list
@@ -91,7 +86,7 @@ def get_session_events (dbclient, dbname, session) :
       
     """
 
-    docs = get_session_docs (dbclient, dbname, session)
+    docs = get_session_docs (db, session)
 
     ret = list()
 
