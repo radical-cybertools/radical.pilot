@@ -19,7 +19,6 @@ from radical.pilot.object          import Object
 from radical.pilot.unit_manager    import UnitManager
 from radical.pilot.pilot_manager   import PilotManager
 from radical.pilot.utils.logger    import logger
-from radical.pilot.utils           import DBConnectionInfo
 from radical.pilot.resource_config import ResourceConfig
 from radical.pilot.exceptions      import PilotException
 
@@ -99,7 +98,7 @@ class Session (saga.Session, Object):
             * **database_url** (`string`): The MongoDB URL. 
 
             * **database_name** (`string`): An alternative database name 
-              (default: 'radical.pilot').
+              (default: 'radicalpilot').
 
             * **session_uid** (`string`): If session_uid is set, we try 
               re-connect to an existing session instead of creating a new one.
@@ -136,7 +135,8 @@ class Session (saga.Session, Object):
         ## CREATE A NEW SESSION ##
         ##########################
         if session_uid is None:
-            try:
+            if True :
+          # try:
                 self._uid = str(ObjectId())
                 self._last_reconnect = None
 
@@ -149,27 +149,30 @@ class Session (saga.Session, Object):
                     for rc in rcs:
                         self._resource_configs[rc.name] = rc.as_dict() 
 
-                self._dbs, self._created = dbSession.new(sid=self._uid, 
-                                                         db_url=database_url, 
-                                                         db_name=database_name,
-                                                         resource_configs=self._resource_configs)
+                self._dbs, self._created, self._connection_info = \
+                        dbSession.new(sid=self._uid, 
+                                      db_url=database_url, 
+                                      db_name=database_name,
+                                      resource_configs=self._resource_configs)
 
                 logger.info("New Session created%s." % str(self))
 
-            except Exception, ex:
-                raise PilotException("Couldn't create new session: %s" % ex)  
+          # except Exception, ex:
+          #     raise PilotException("Couldn't create new session: %s" % ex)  
 
         ######################################
         ## RECONNECT TO AN EXISTING SESSION ##
         ######################################
         else:
             try:
-                # otherwise, we reconnect to an existing session
-                self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
-                                                              db_url=database_url, 
-                                                              db_name=database_name)
+                self._uid = session_uid
 
-                self._uid              = session_uid
+                # otherwise, we reconnect to an existing session
+                self._dbs, session_info, self._connection_info = \
+                        dbSession.reconnect(sid=self._uid, 
+                                            db_url=database_url, 
+                                            db_name=database_name)
+
                 self._created          = session_info["created"]
                 self._last_reconnect   = session_info["last_reconnect"]
                 self._resource_configs = session_info["resource_configs"]
@@ -178,12 +181,6 @@ class Session (saga.Session, Object):
 
             except Exception, ex:
                 raise PilotException("Couldn't re-connect to session: %s" % ex)  
-
-        self._connection_info = DBConnectionInfo(
-            session_id=self._uid,
-            dbname=database_name,
-            url=database_url
-        )
 
     #---------------------------------------------------------------------------
     #
@@ -230,8 +227,9 @@ class Session (saga.Session, Object):
             "uid": self._uid,
             "created": self._created,
             "last_reconnect": self._last_reconnect,
-            "database_name": self._database_name,
-            "database_url": self._database_url
+            "database_name": self._connection_info.dbname,
+            "database_auth": self._connection_info.dbauth,
+            "database_url" : self._connection_info.dburl
         }
         return object_dict
 

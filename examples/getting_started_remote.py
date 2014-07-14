@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id = "tg803521"
+        c.user_id = "merzky"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -72,9 +72,9 @@ if __name__ == "__main__":
         # Define a 32-core on stamped that runs for 15 mintutes and 
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource  = "stampede.tacc.utexas.edu"
+        pdesc.resource  = "localhost"
         pdesc.runtime   = 15 # minutes
-        pdesc.cores     = 32 
+        pdesc.cores     = 4
         pdesc.cleanup   = True
 
         # Launch the pilot.

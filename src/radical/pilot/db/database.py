@@ -15,10 +15,13 @@ import os
 import saga
 import datetime
 import gridfs
+import radical.utils as ru
+
 from pymongo import *
 from bson.objectid import ObjectId
 
 from radical.pilot.states import *
+from radical.pilot.utils  import DBConnectionInfo
 
 # -----------------------------------------------------------------------------
 #
@@ -52,12 +55,23 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, db_url, db_name="radical.pilot"):
+    def __init__(self, db_url, db_name="radicalpilot"):
         """ Le constructeur. Should not be called directrly, but rather
             via the static methods new() or reconnect().
         """
-        self._client = MongoClient(db_url)
-        self._db     = self._client[db_name]
+
+        url = ru.Url (db_url)
+
+        if  db_name :
+            url.path = db_name
+
+        mongo, db, dbname, pname, cname = ru.mongodb_connect (url)
+
+        self._client = mongo
+        self._db     = db
+        self._dburl  = str(url)
+        self._dbname = dbname
+        self._dbauth = "%s:%s" % (url.username, url.password)
 
         self._session_id = None
 
@@ -72,14 +86,22 @@ class Session():
     #--------------------------------------------------------------------------
     #
     @staticmethod
-    def new(sid, db_url, db_name="radical.pilot", resource_configs={}):
+    def new(sid, db_url, db_name="radicalpilot", resource_configs={}):
         """ Creates a new session (factory method).
         """
         creation_time = datetime.datetime.utcnow()
 
         dbs = Session(db_url, db_name)
         dbs._create(sid, creation_time, resource_configs)
-        return (dbs, creation_time)
+
+        connection_info = DBConnectionInfo(
+            session_id=sid,
+            dbname=dbs._dbname,
+            dbauth=dbs._dbauth,
+            dburl=dbs._dburl
+        )
+
+        return (dbs, creation_time, connection_info)
 
     #--------------------------------------------------------------------------
     #
@@ -139,7 +161,15 @@ class Session():
         """
         dbs = Session(db_url, db_name)
         session_info = dbs._reconnect(sid)
-        return (dbs, session_info)
+
+        connection_info = DBConnectionInfo(
+            session_id=sid,
+            dbname=dbs._dbname,
+            dbauth=dbs._dbauth,
+            dburl=dbs._dburl
+        )
+
+        return (dbs, session_info, connection_info)
 
     #--------------------------------------------------------------------------
     #

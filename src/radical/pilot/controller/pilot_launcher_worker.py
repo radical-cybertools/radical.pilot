@@ -13,7 +13,8 @@ import datetime
 import traceback
 import multiprocessing
 
-from radical.utils import which
+import radical.utils as ru
+
 from bson.objectid import ObjectId
 
 from radical.pilot.states import * 
@@ -190,11 +191,15 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     ########################################################
                     # database connection parameters
-                    database_url = self.db_connection_info.url.split("://")[1]
+                    database_url  = self.db_connection_info.dburl
                     database_name = self.db_connection_info.dbname
+                    database_auth = self.db_connection_info.dbauth
                     session_uid   = self.db_connection_info.session_id
 
                     cwd = os.path.dirname(os.path.realpath(__file__))
+
+                    u = ru.Url (database_url)
+                    database_hostport = "%s:%d" % (u.host, u.port)
 
                     ########################################################
                     # take 'pilot_agent' as defined in the reosurce configuration
@@ -291,10 +296,15 @@ class PilotLauncherWorker(multiprocessing.Process):
                         (database_name, session_uid, str(compute_pilot_id),
                          runtime, logger.level, number_cores, VERSION)
 
+                    # AM: wht are we actually sending only host and port?
+                    # 'Only' for the transparent tunnel setup, to save the
+                    # bootstrapper from URL parsing?
                     if 'agent_mongodb_endpoint' in resource_cfg and resource_cfg['agent_mongodb_endpoint'] is not None:
                         bootstrap_args += " -m %s " % resource_cfg['agent_mongodb_endpoint']
                     else:
-                        bootstrap_args += " -m %s " % database_url
+                        bootstrap_args += " -m %s " % database_hostport
+
+                    bootstrap_args += " -a %s " % database_auth
 
                     if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']

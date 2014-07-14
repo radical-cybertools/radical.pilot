@@ -18,6 +18,7 @@ REMOTE=
 CORES=
 RUNTIME=
 DBNAME=
+AUTH=
 PILOTID=
 UNITMANAGERID=
 SESSIONID=
@@ -41,6 +42,8 @@ OPTIONS:
    -r      Address and port of the coordination service host (MongoDB)
 
    -d      The name of the database 
+
+   -a      database access authorization info (user:pass)
 
    -s      The unique identifier (uid) of the session
 
@@ -180,12 +183,12 @@ fi
 #
 launchagent()
 {
-AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION -a $ALLOCATION"
+AGENT_CMD="python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -a $AUTH -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION -a $ALLOCATION"
 echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION -a $ALLOCATION
+           python radical-pilot-agent.py -d mongodb://$REMOTE -n $DBNAME -a $AUTH -s $SESSIONID -p $PILOTID -c $CORES -t $RUNTIME -l $LAUNCH_MODE -V $VERSION -a $ALLOCATION
 }
 
 # -----------------------------------------------------------------------------
@@ -204,6 +207,9 @@ do
              ;;
          d)
              DBNAME=$OPTARG
+             ;;
+         a)
+             AUTH=$OPTARG
              ;;
          s)
              SESSIONID=$OPTARG
@@ -264,7 +270,7 @@ do
      esac
 done
 
-if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]] || [[ -z $VERSION ]] || [[ -z $ALLOCATION ]]
+if [[ -z $REMOTE ]] || [[ -z $SESSIONID ]] || [[ -z $PILOTID ]] || [[ -z $DBNAME ]] || [[ -z $AUTH ]] || [[ -z $RUNTIME ]] || [[ -z $CORES ]] || [[ -z $VERSION ]] || [[ -z $ALLOCATION ]]
 then
      usage
      exit 1

@@ -10,6 +10,7 @@
 # -----------------------------------------------------------------------------
 # global variables
 #
+AUTH=
 CLEANUP=
 CORES=
 DBNAME=
@@ -198,6 +199,7 @@ fi
 launchagent()
 {
 AGENT_CMD="python radical-pilot-agent.py\
+    -a $AUTH\
     -b $BENCHMARK\
     -c $CORES\
     -d $DEBUG\
@@ -234,8 +236,12 @@ printenv
 
 # parse command line arguments
 BENCHMARK=0
-while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
+while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
     case $OPTION in
+        a)
+            # Passed to agent
+            AUTH=$OPTARG
+            ;;
         b)
             # Passed to agent
             BENCHMARK=1
@@ -328,7 +334,8 @@ done
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if [[ -z $CORES ]] ||\
+if [[ -z $AUTH ]] ||\
+   [[ -z $CORES ]] ||\
    [[ -z $DEBUG ]] ||\
    [[ -z $DBNAME ]] ||\
    [[ -z $DBURL ]] ||\
