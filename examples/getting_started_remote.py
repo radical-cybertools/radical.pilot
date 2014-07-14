@@ -56,17 +56,9 @@ if __name__ == "__main__":
         # well as security crendetials.
         session = radical.pilot.Session(database_url=DBURL)
 
-        rp_user     = str(os.getenv ("RP_USER",     "merzky"))
-        rp_cores    = int(os.getenv ("RP_CORES",    4))
-        rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
-        rp_units    = int(os.getenv ("RP_UNITS",    10))
-        rp_host     = str(os.getenv ("RP_HOST",     "localhost"))
-        rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
-        rp_project  = str(os.getenv ("RP_PROJECT",  ""))
-
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id = rp_user
+        c.user_id = "tg803521"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -80,13 +72,10 @@ if __name__ == "__main__":
         # Define a 32-core on stamped that runs for 15 mintutes and 
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.runtime   = 5*rp_units/60
-        pdesc.cores     = rp_cores
+        pdesc.resource  = "stampede.tacc.utexas.edu"
+        pdesc.runtime   = 15 # minutes
+        pdesc.cores     = 32 
         pdesc.cleanup   = True
-
-        pdesc.resource  = rp_host
-        pdesc.queue     = rp_queue
-        pdesc.project   = rp_project
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -104,13 +93,13 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, rp_cores):
+        for unit_count in range(0, 16):
             cu = radical.pilot.ComputeUnitDescription()
-          # cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-            cu.executable  = "/bin/sleep"
-            cu.arguments   = [str(5*rp_units - 5*unit_count)]
-            cu.cores       = rp_cu_cores
-          # cu.input_data  = ["./file1.dat", "./file2.dat"]
+            cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
+            cu.executable  = "/bin/cat"
+            cu.arguments   = ["$INPUT1", "$INPUT2"]
+            cu.cores       = 1
+            cu.input_data  = ["./file1.dat", "./file2.dat"]
 
             compute_units.append(cu)
 
@@ -142,7 +131,7 @@ if __name__ == "__main__":
                    unit.stdout)
 
         # Close automatically cancels the pilot(s).
-        session.close(delete=False)
+        session.close()
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:
