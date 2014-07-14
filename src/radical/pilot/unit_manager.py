@@ -518,7 +518,8 @@ class UnitManager(object):
 
             all_done = True
 
-            for wu_state in self._worker.get_compute_unit_states():
+            wu_states = self._worker.get_compute_unit_states()
+            for wu_state in wu_states:
                 if wu_state not in state:
                     all_done = False
                     break  # leave for loop
@@ -531,7 +532,7 @@ class UnitManager(object):
             time.sleep(1)
 
         # done waiting
-        return
+        return wu_states
 
     # -------------------------------------------------------------------------
     #
