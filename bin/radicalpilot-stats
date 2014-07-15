@@ -676,7 +676,7 @@ if __name__ == '__main__' :
     url     = options.url
     session = options.session
 
-    [host, port, dbname, cname, pname] = ru.split_dburl (url, _DEFAULT_DBURL)
+    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:4]
     dbclient = pymongo.MongoClient (host=host, port=port)
 
     print "modes   : %s" % mode
