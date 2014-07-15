@@ -215,12 +215,12 @@ function find_available_port()
             break
         fi
 
-        # Wait for children
-        wait
-
         # Reset port, so that the last port doesn't get chosen in error
         port=
     done
+
+    # Wait for children
+    wait 2>/dev/null
 
     # Assume the most recent port is available
     AVAILABLE_PORT=$port
