@@ -57,6 +57,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
+        c.user_id = 'merzky'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -75,6 +76,7 @@ if __name__ == "__main__":
         pdesc.cores            = 48 # X cores
         pdesc.cleanup          = False
         pdesc.project          = "e290"
+        pdesc.queue            = "debug"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

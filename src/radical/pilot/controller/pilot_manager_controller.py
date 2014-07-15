@@ -271,6 +271,14 @@ class PilotManagerController(threading.Thread):
 
                 self._shared_data[pilot_id]['data'] = pilot
 
+                # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
+                # set the state of the compute unit accordingly
+                if new_state in ['Failed', 'Done', 'Canceled']:
+                    self._db.set_all_running_compute_units(
+                        pilot_id=pilot_id, 
+                        state="Canceled",
+                        log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
+
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
                     self._initialized.set()

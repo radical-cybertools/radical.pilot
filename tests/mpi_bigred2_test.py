@@ -50,16 +50,13 @@ def unit_state_change_cb(unit, state):
 if __name__ == "__main__":
 
     try:
-        retval = 0
-
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security contexts.
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id="tg803521"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -73,11 +70,11 @@ if __name__ == "__main__":
         # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "stampede.tacc.utexas.edu"
-        pdesc.runtime          = 15 # N minutes
-        pdesc.cores            = 64 # X cores
+        pdesc.resource         = "bigred2.uits.indiana.edu"
+        pdesc.runtime          = 9 # N minutes
+        pdesc.cores            = 32 # X cores
+        pdesc.queue            = "debug_cpu"
         pdesc.cleanup          = False
-        pdesc.project          = 'TG-MCB090174'
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -86,12 +83,13 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 4):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.pre_exec    = ["module load python intel mvapich2 mpi4py"]
+            mpi_test_task.pre_exec    = ["module load python"]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
-            mpi_test_task.cores       = 32
-            mpi_test_task.mpi         = True
+            mpi_test_task.arguments   = ["helloworld_mpi.py"]
+            mpi_test_task.input_data  = ["helloworld_mpi.py"]
+            mpi_test_task.cores       = 16
 
+            mpi_test_task.mpi         = True
             cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -121,13 +119,9 @@ if __name__ == "__main__":
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
-            if  unit.state == radical.pilot.FAILED :
-                print "STDERR: %s" % unit.stderr
-                print "STDOUT: %s" % unit.stdout
-                retval = 1
 
         session.close(delete=False)
-        sys.exit(retval)
+        sys.exit(0)
 
     except radical.pilot.PilotException, ex:
         # Catch all exceptions and exit with and error.

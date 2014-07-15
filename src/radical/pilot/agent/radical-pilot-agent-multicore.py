@@ -678,7 +678,8 @@ class ExecutionEnvironment(object):
 class Task(object):
 
     #
-    def __init__(self, uid, executable, arguments, environment, numcores, mpi, pre_exec, workdir, stdout, stderr, output_data):
+    def __init__(self, uid, executable, arguments, environment, numcores, mpi,
+                 pre_exec, post_exec, workdir, stdout, stderr, output_data):
 
         self._log         = None
         self._description = None
@@ -695,6 +696,7 @@ class Task(object):
         self.numcores       = numcores
         self.mpi            = mpi
         self.pre_exec       = pre_exec
+        self.post_exec      = post_exec
 
         # Location
         self.slots          = None
@@ -723,7 +725,7 @@ class ExecWorker(multiprocessing.Process):
     #
     def __init__(self, logger, task_queue, node_list, cores_per_node,
                  launch_methods, mongodb_url, mongodb_name,
-                 pilot_id, session_id):
+                 pilot_id, session_id, benchmark):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
@@ -733,7 +735,8 @@ class ExecWorker(multiprocessing.Process):
 
         self._log = logger
 
-        self._pilot_id = pilot_id
+        self._pilot_id  = pilot_id
+        self._benchmark = benchmark
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
@@ -852,6 +855,8 @@ class ExecWorker(multiprocessing.Process):
                     if task.mpi:
                         launch_method = self._available_launch_methods['mpi_launch_method']
                         launch_command = self._available_launch_methods['mpi_launch_command']
+                        if not launch_command:
+                            raise Exception("Can't launch MPI tasks without MPI launcher.")
                     else:
                         launch_method = self._available_launch_methods['task_launch_method']
                         launch_command = self._available_launch_methods['task_launch_command']
@@ -895,11 +900,12 @@ class ExecWorker(multiprocessing.Process):
 
             # AM: we are done -- push slot history 
             # FIXME: this is never called, self._terminate is a farce :(
-            #self._p.update(
-            #    {"_id": ObjectId(self._pilot_id)},
-            #    {"$set": {"slothistory" : self._slot_history,
-            #              "slots"       : self._slots}}
-            #    )
+            # if  self._benchmark :
+            #     self._p.update(
+            #         {"_id": ObjectId(self._pilot_id)},
+            #         {"$set": {"slothistory" : self._slot_history, 
+            #                   "slots"       : self._slots}}
+            #         )
 
 
         except Exception, ex:
@@ -996,7 +1002,7 @@ class ExecWorker(multiprocessing.Process):
 
             # Glue all slot core lists together
             all_slot_cores = [core for node in [node['cores'] for node in all_slots] for core in node]
-            self._log.debug("all_slot_cores: %s" % all_slot_cores)
+          # self._log.debug("all_slot_cores: %s" % all_slot_cores)
 
             # Find the start of the first available region
             all_slots_first_core_offset = find_cores_cont(all_slot_cores, cores_requested, FREE)
@@ -1082,10 +1088,10 @@ class ExecWorker(multiprocessing.Process):
         # Convenience alias
         all_slots = self._slots
 
-        logger.debug("change_slot_states: task slots: %s" % task_slots)
+      # logger.debug("change_slot_states: task slots: %s" % task_slots)
 
         for slot in task_slots:
-            logger.debug("change_slot_states: slot content: %s" % slot)
+          # logger.debug("change_slot_states: slot content: %s" % slot)
             # Get the node and the core part
             [slot_node, slot_core] = slot.split(':')
             # Find the entry in the the all_slots list
@@ -1094,7 +1100,14 @@ class ExecWorker(multiprocessing.Process):
             slot_entry['cores'][int(slot_core)] = new_state
 
         # something changed - write history!
-        self._slot_history.append (self._slot_status (short=True))
+        # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
+        # ensue.  We thus limit the slot history size to 4MB, to keep suffient
+        # space for the actual operational data
+        if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
+            self._slot_history.append (self._slot_status (short=True))
+        else :
+            # just replace the last entry with the current one.
+            self._slot_history[-1]  =  self._slot_status (short=True)
 
 
     # ------------------------------------------------------------------------
@@ -1238,14 +1251,15 @@ class ExecWorker(multiprocessing.Process):
         # though show no negative impact on agent performance.
         # AM: the capability publication cannot be delayed until shutdown
         # though...
-        self._p.update(
-            {"_id": ObjectId(self._pilot_id)},
-            {"$set": {"slothistory" : self._slot_history,
-                      #"slots"       : self._slots,
-                      "capability"  : self._capability
-                     }
-            }
-            )
+        if  self._benchmark :
+            self._p.update(
+                {"_id": ObjectId(self._pilot_id)},
+                {"$set": {"slothistory" : self._slot_history,
+                          #"slots"       : self._slots,
+                          "capability"  : self._capability
+                         }
+                }
+                )
 
         if not isinstance(tasks, list):
             tasks = [tasks]
@@ -1269,7 +1283,8 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, workdir, runtime,
-                 mongodb_url, mongodb_name, pilot_id, session_id):
+                 mongodb_url, mongodb_name, pilot_id, session_id, 
+                 benchmark):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -1286,6 +1301,8 @@ class Agent(threading.Thread):
 
         self._runtime    = runtime
         self._starttime  = None
+
+        self._benchmark  = benchmark
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
@@ -1307,7 +1324,8 @@ class Agent(threading.Thread):
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
             pilot_id        = pilot_id,
-            session_id      = session_id
+            session_id      = session_id,
+            benchmark       = benchmark
         )
         self._exec_worker.start()
         self._log.info("Started up %s serving nodes %s", self._exec_worker, self._exec_env.node_list)
@@ -1421,6 +1439,7 @@ class Agent(threading.Thread):
                                             numcores    = wu["description"]["cores"],
                                             mpi         = wu["description"]["mpi"],
                                             pre_exec    = wu["description"]["pre_exec"],
+                                            post_exec   = wu["description"]["post_exec"],
                                             workdir     = task_dir_name,
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
@@ -1469,8 +1488,15 @@ class _Process(subprocess.Popen):
                 pre_exec = [pre_exec]
             for bb in pre_exec:
                 pre_exec_string += "%s\n" % bb
-        if pre_exec_string:
-            launch_script.write('%s' % pre_exec_string)
+
+        # After the universe dies the infrared death, there will be nothing
+        post_exec = task.post_exec
+        post_exec_string = ''
+        if post_exec:
+            if not isinstance(post_exec, list):
+                post_exec = [post_exec]
+            for bb in post_exec:
+                post_exec_string += "%s\n" % bb
 
         # executable and arguments
         if task.executable is not None:
@@ -1487,21 +1513,20 @@ class _Process(subprocess.Popen):
 
         # Create string for environment variable setting
         env_string = ''
-        if task.environment is not None:
+        if task.environment is not None and len(task.environment.keys()):
             env_string += 'export'
             for key in task.environment:
                 env_string += ' %s=%s' % (key, task.environment[key])
 
-            # make sure we didnt have an empty dict
-            if env_string == 'export':
-                env_string = ''
-        if env_string:
-            launch_script.write('%s\n' % env_string)
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
-            launch_script.write('%s\n' % task_exec_string)
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s\n'    % task_exec_string)
+            launch_script.write('%s\n'    % post_exec_string)
+
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
@@ -1513,7 +1538,11 @@ class _Process(subprocess.Popen):
 
             mpirun_command = "%s -np %s -host %s" % (launch_command,
                                                      task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1525,13 +1554,22 @@ class _Process(subprocess.Popen):
                 hosts_string += '%s,' % host
 
             mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpiexec_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
+            
             aprun_command = "%s -n %s" % (launch_command, task.numcores)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (aprun_command, task_exec_string))
+            launch_script.write('%s\n' % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1554,7 +1592,10 @@ class _Process(subprocess.Popen):
                              ibrun_offset)
 
             # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1580,7 +1621,10 @@ class _Process(subprocess.Popen):
                 hosts_string, launch_command)
 
             # Continue to build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (poe_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             # Command line to execute launch script
             cmdline = launch_script.name
@@ -1589,11 +1633,13 @@ class _Process(subprocess.Popen):
             host = task.slots[0].split(':')[0] # Get the host of the first entry in the acquired slot
 
             # Continue to build launch script
-            launch_script.write('%s\n' % task_exec_string)
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s\n'    % task_exec_string)
+            launch_script.write('%s\n'    % post_exec_string)
 
             # Command line to execute launch script
-            cmdline = '%s %s %s' % (launch_command, host,
-                                                  launch_script.name)
+            cmdline = '%s %s %s' % (launch_command, host, launch_script.name)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
@@ -1646,6 +1692,12 @@ class _Process(subprocess.Popen):
 def parse_commandline():
 
     parser = optparse.OptionParser()
+
+    parser.add_option('-b', '--benchmark',
+                      metavar='BENCHMARK',
+                      type='int',
+                      dest='benchmark',
+                      help='Enables timing for benchmarking purposes.')
 
     parser.add_option('-c', '--cores',
                       metavar='CORES',
@@ -1815,7 +1867,8 @@ if __name__ == "__main__":
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
                       pilot_id=options.pilot_id,
-                      session_id=options.session_id)
+                      session_id=options.session_id, 
+                      benchmark=options.benchmark)
 
         # AM: why is this done in a thread?  This thread blocks anyway, so it
         # could just *do* the things.  That would avoid those global vars and

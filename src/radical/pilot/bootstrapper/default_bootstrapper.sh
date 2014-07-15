@@ -40,6 +40,8 @@ This script launches a RADICAL-Pilot agent.
 OPTIONS:
    -a      The name of project / allocation to charge.
 
+   -b      Enable benchmarks.
+
    -c      Number of requested cores.
 
    -d      Specify debug level.
@@ -196,6 +198,7 @@ fi
 launchagent()
 {
 AGENT_CMD="python radical-pilot-agent.py\
+    -b $BENCHMARK\
     -c $CORES\
     -d $DEBUG\
     -j $TASK_LAUNCH_METHOD\
@@ -230,8 +233,13 @@ echo "## Environment of bootstrapper process:"
 printenv
 
 # parse command line arguments
+BENCHMARK=0
 while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
     case $OPTION in
+        b)
+            # Passed to agent
+            BENCHMARK=1
+            ;;
         c)
             # Passed to agent
             CORES=$OPTARG
@@ -345,7 +353,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     BIND_ADDRESS=127.0.0.1
 
     # Set up tunnel
-    ssh -x -a -4 -T -N -D $BIND_ADDRESS:$PROXY_PORT -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -D $BIND_ADDRESS:$PROXY_PORT -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT

@@ -203,6 +203,7 @@ class Session (saga.Session, Object):
         """
         if not self._uid:
             logger.warning("Session object already closed.")
+            return
 
         for pmngr in self._pilot_manager_objects:
             # If delete is true, we also set the terminate flag in the 
