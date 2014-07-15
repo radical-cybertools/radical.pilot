@@ -193,32 +193,6 @@ fi
 }
 
 # -----------------------------------------------------------------------------
-# launch the radical agent 
-#
-launchagent()
-{
-AGENT_CMD="python radical-pilot-agent.py\
-    -b $BENCHMARK\
-    -c $CORES\
-    -d $DEBUG\
-    -j $TASK_LAUNCH_METHOD\
-    -k $MPI_LAUNCH_METHOD\
-    -l $LRMS\
-    -m mongodb://$DBURL\
-    -n $DBNAME\
-    -p $PILOTID\
-    -s $SESSIONID\
-    -t $RUNTIME\
-    -v $VERSION"
-
-echo ""
-echo "################################################################################"
-echo "## Launching radical-pilot-agent for $CORES cores."
-echo "## CMDLINE: $AGENT_CMD"
-eval $AGENT_CMD
-}
-
-# -----------------------------------------------------------------------------
 # MAIN 
 #
 
@@ -382,8 +356,29 @@ else
     installvenv
 fi
 
-# launch the agent
-launchagent
+# -----------------------------------------------------------------------------
+# launch the radical agent
+#
+AGENT_CMD="python radical-pilot-agent.py\
+    -b $BENCHMARK\
+    -c $CORES\
+    -d $DEBUG\
+    -j $TASK_LAUNCH_METHOD\
+    -k $MPI_LAUNCH_METHOD\
+    -l $LRMS\
+    -m mongodb://$DBURL\
+    -n $DBNAME\
+    -p $PILOTID\
+    -s $SESSIONID\
+    -t $RUNTIME\
+    -v $VERSION"
+
+echo ""
+echo "################################################################################"
+echo "## Launching radical-pilot-agent for $CORES cores."
+echo "## CMDLINE: $AGENT_CMD"
+eval $AGENT_CMD
+AGENT_EXITCODE=$?
 
 # cleanup
 rm -rf $WORKDIR/virtualenv*
@@ -394,4 +389,4 @@ if [[ $CLEANUP ]]; then
 fi
 
 # ... and exit
-exit 0
+exit $AGENT_EXITCODE
