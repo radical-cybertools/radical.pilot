@@ -76,6 +76,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
                    "finished": ts}
 
         })
+    sys.exit (1)
 
 #---------------------------------------------------------------------------
 #
@@ -91,6 +92,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
          "$set":  {"state": 'Canceled',
                    "finished": ts}
         })
+    sys.exit (0)
 
 #---------------------------------------------------------------------------
 #
@@ -105,6 +107,7 @@ def pilot_DONE(mongo_p, pilot_uid):
                   "finished": ts}
 
         })
+    sys.exit (0)
 
 #-----------------------------------------------------------------------------
 #
@@ -1367,24 +1370,18 @@ class Agent(threading.Thread):
                 # Check the workers periodically. If they have died, we 
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
-                exit = False
                 if self._exec_worker.is_alive() is False:
                     pilot_FAILED(self._p, self._pilot_id, self._log, "Execution worker %s died." % str(self._exec_worker))
-                    exit = True
-                if exit:
-                    break
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
                     pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set).")
-                    break
 
                 # Make sure that we haven't exceeded the agent runtime. if 
                 # we have, terminate. 
                 if time.time() >= self._starttime + (int(self._runtime) * 60):
                     self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
                     pilot_DONE(self._p, self._pilot_id)
-                    break
 
                 # Try to get new tasks from the database. for this, we check the 
                 # wu_queue of the pilot. if there are new entries, we get them,
@@ -1396,7 +1393,6 @@ class Agent(threading.Thread):
                     #if p_cursor.count() != 1:
                     #    self._log.info("Pilot entry %s has disappeared from the database." % self._pilot_id)
                     #    pilot_FAILED(self._p, self._pilot_id)
-                    #    break
                     if False:
                         pass
 
@@ -1407,7 +1403,6 @@ class Agent(threading.Thread):
                             self._log.info("Received new command: %s" % command)
                             if command.lower() == "cancel":
                                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                                break
 
                         # Check if there are work units waiting for execution,
                         # and log that we pulled it.
@@ -1821,13 +1816,11 @@ if __name__ == "__main__":
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
         pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)
 
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
         pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit(0)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
     #--------------------------------------------------------------------------
@@ -1844,13 +1837,11 @@ if __name__ == "__main__":
             msg = "Couldn't set up execution environment."
             logger.error(msg)
             pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-            sys.exit(1)
 
     except Exception, ex:
         msg = "Error setting up execution environment: %s" % str(ex)
         logger.error(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit(1)
 
     #--------------------------------------------------------------------------
     # Launch the agent thread
@@ -1879,9 +1870,8 @@ if __name__ == "__main__":
     except Exception, ex:
         msg = "Error running agent: %s" % str(ex)
         logger.error(msg)
-        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         agent.stop()
-        sys.exit(1)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
 
     except SystemExit:
 
