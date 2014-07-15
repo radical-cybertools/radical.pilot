@@ -76,13 +76,12 @@ class TestIssue18(unittest.TestCase):
             assert False, "Couldn't find SAGA Job ID in logs."
 
         # KILL THE AGENT PROCESS. 
-        print "stopping job %s" % saga_id
         s = saga.job.Service("fork://localhost")
         j = s.get_job(saga_id)
         j.cancel()
 
-        pilot.wait(radical.pilot.states.FAILED, timeout=80)
-        assert pilot.state == radical.pilot.states.FAILED
+        pilot.wait(radical.pilot.states.CANCELED, timeout=80)
+        assert pilot.state == radical.pilot.states.CANCELED
 
         session.close()
 

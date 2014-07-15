@@ -27,7 +27,7 @@ BULK_LIMIT=1
 
 # The interval at which we check 
 # the saga jobs.
-JOB_CHECK_INTERVAL=10 # seconds
+JOB_CHECK_INTERVAL=30 # seconds
 
 # ----------------------------------------------------------------------------
 #
@@ -42,6 +42,7 @@ class PilotLauncherWorker(multiprocessing.Process):
         """Creates a new pilot launcher background process.
         """
         self._session = session
+        self._local_pilots = []
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
@@ -82,22 +83,26 @@ class PilotLauncherWorker(multiprocessing.Process):
 
         while True:
             # Periodically, we pull up all ComputePilots that are pending 
-            # execution and check if the corresponding  SAGA
-            # job is still pending in the queue. If that is not the case, 
+            # execution or were last seen executing and check if the corresponding  
+            # SAGA job is still pending in the queue. If that is not the case, 
             # we assume that the job has failed for some reasons and update
             # the state of the ComputePilot accordingly.
             if last_job_check + JOB_CHECK_INTERVAL < time.time():
                 pending_pilots = pilot_col.find(
                     {"pilotmanager": self.pilot_manager_id,
-                     "state"       : PENDING_EXECUTION}
+                     "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]}}
                 )
 
                 for pending_pilot in pending_pilots:
                     pilot_id    = pending_pilot["_id"]
                     saga_job_id = pending_pilot["saga_job_id"]
                     logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
-
-                    log_message = None
+                    
+                    # Check if the pilot was active at some point.
+                    was_runnung = False
+                    for state in pending_pilot['statehistory']:
+                        if state['state'] == ACTIVE:
+                            was_running = True
 
                     # Create a job service object:
                     try: 
@@ -118,13 +123,19 @@ class PilotLauncherWorker(multiprocessing.Process):
                         js.close()
 
                     except Exception, ex:
-                        log_message = "Couldn't determine SAGA job state for ComputePilot %s. Assuming it failed to launch." % pilot_id
+
+                        if was_running is False:
+                            log_message = "Couldn't determine job state for ComputePilot %s. Assuming it has failed to launch." % pilot_id
+                            state = FAILED
+                        else:
+                            log_message = "Couldn't determine job state for previously running ComputePilot %s. Assuming it was canceled." % pilot_id
+                            state = CANCELED
 
                         ts = datetime.datetime.utcnow()
                         pilot_col.update(
                             {"_id": pilot_id},
-                            {"$set": {"state": FAILED},
-                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                            {"$set": {"state": state},
+                             "$push": {"statehistory": {"state": state, "timestamp": ts}},
                              "$push": {"log": log_message}}
                         )
                         logger.error(log_message)
@@ -366,6 +377,9 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     saga_job_id = pilotjob.id
                     log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
+
+                    self._local_pilots.append(saga_job_id)
+
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
 
