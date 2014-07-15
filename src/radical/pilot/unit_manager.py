@@ -518,11 +518,14 @@ class UnitManager(object):
 
             all_done = True
 
-            wu_states = self._worker.get_compute_unit_states()
+            wu_states = self._worker.get_compute_unit_states(unit_uids=unit_ids)
+
+
+
             for wu_state in wu_states:
                 if wu_state not in state:
                     all_done = False
-                    break  # leave for loop
+                    break  # leave 'for' loop
 
             # check timeout
             if (None != timeout) and (timeout <= (time.time() - start_wait)):

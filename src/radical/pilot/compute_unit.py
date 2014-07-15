@@ -375,8 +375,8 @@ class ComputeUnit(object):
             if(None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
 
-        # done waiting
-        return
+        # done waiting -- return the state
+        return new_state
 
     # -------------------------------------------------------------------------
     #

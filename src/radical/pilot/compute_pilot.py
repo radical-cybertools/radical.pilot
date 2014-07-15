@@ -370,7 +370,7 @@ class ComputePilot (object):
             if (timeout is not None) and (timeout <= (time.time() - start_wait)):
                 break
 
-        # done waiting
+        # done waiting -- return the state
         return new_state
 
     # -------------------------------------------------------------------------
