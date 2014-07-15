@@ -102,7 +102,7 @@ echo ""
 echo "################################################################################"
 echo "## Downloading and installing virtualenv"
 echo "## CMDLINE: $CURL_CMD"
-eval $CURL_CMD
+$CURL_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't download virtuelenv via curl! ABORTING"
@@ -121,7 +121,7 @@ echo ""
 echo "################################################################################"
 echo "## Creating virtualenv"
 echo "## CMDLINE: $BOOTSTRAP_CMD"
-eval $BOOTSTRAP_CMD
+$BOOTSTRAP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't bootstrap virtualenv! ABORTING"
@@ -136,7 +136,7 @@ echo ""
 echo "################################################################################"
 echo "## Downgrading pip to 1.2.1"
 echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
-eval $DOWNGRADE_PIP_CMD
+$DOWNGRADE_PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't downgrade pip! ABORTING"
@@ -161,7 +161,7 @@ echo ""
 echo "################################################################################"
 echo "## Installing python-hostlist"
 echo "## CMDLINE: $PIP_CMD"
-eval $PIP_CMD
+$PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
     echo "pip install failed, trying easy_install ..."
@@ -179,7 +179,7 @@ echo ""
 echo "################################################################################"
 echo "## Installing pymongo"
 echo "## CMDLINE: $PIP_CMD"
-eval $PIP_CMD
+$PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
     echo "pip install failed, trying easy_install ..."
@@ -190,32 +190,6 @@ if [[ $OUT != 0 ]]; then
         exit 1
     fi
 fi
-}
-
-# -----------------------------------------------------------------------------
-# launch the radical agent 
-#
-launchagent()
-{
-AGENT_CMD="python radical-pilot-agent.py\
-    -b $BENCHMARK\
-    -c $CORES\
-    -d $DEBUG\
-    -j $TASK_LAUNCH_METHOD\
-    -k $MPI_LAUNCH_METHOD\
-    -l $LRMS\
-    -m mongodb://$DBURL\
-    -n $DBNAME\
-    -p $PILOTID\
-    -s $SESSIONID\
-    -t $RUNTIME\
-    -v $VERSION"
-
-echo ""
-echo "################################################################################"
-echo "## Launching radical-pilot-agent for $CORES cores."
-echo "## CMDLINE: $AGENT_CMD"
-eval $AGENT_CMD
 }
 
 # -----------------------------------------------------------------------------
@@ -347,6 +321,9 @@ fi
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
 if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
+    echo ""
+    echo "################################################################################"
+    echo "## Setting up forward tunnel to $FORWARD_TUNNEL_ENDPOINT."
     # TODO: Dynamic and/or random to prevent conflicts
     PROXY_PORT=12345
     DBPORT=12346
@@ -379,8 +356,29 @@ else
     installvenv
 fi
 
-# launch the agent
-launchagent
+# -----------------------------------------------------------------------------
+# launch the radical agent
+#
+AGENT_CMD="python radical-pilot-agent.py\
+    -b $BENCHMARK\
+    -c $CORES\
+    -d $DEBUG\
+    -j $TASK_LAUNCH_METHOD\
+    -k $MPI_LAUNCH_METHOD\
+    -l $LRMS\
+    -m mongodb://$DBURL\
+    -n $DBNAME\
+    -p $PILOTID\
+    -s $SESSIONID\
+    -t $RUNTIME\
+    -v $VERSION"
+
+echo ""
+echo "################################################################################"
+echo "## Launching radical-pilot-agent for $CORES cores."
+echo "## CMDLINE: $AGENT_CMD"
+$AGENT_CMD
+AGENT_EXITCODE=$?
 
 # cleanup
 rm -rf $WORKDIR/virtualenv*
@@ -391,4 +389,4 @@ if [[ $CLEANUP ]]; then
 fi
 
 # ... and exit
-exit 0
+exit $AGENT_EXITCODE
