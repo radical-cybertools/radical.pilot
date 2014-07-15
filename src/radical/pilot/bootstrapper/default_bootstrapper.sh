@@ -102,7 +102,7 @@ echo ""
 echo "################################################################################"
 echo "## Downloading and installing virtualenv"
 echo "## CMDLINE: $CURL_CMD"
-eval $CURL_CMD
+$CURL_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't download virtuelenv via curl! ABORTING"
@@ -121,7 +121,7 @@ echo ""
 echo "################################################################################"
 echo "## Creating virtualenv"
 echo "## CMDLINE: $BOOTSTRAP_CMD"
-eval $BOOTSTRAP_CMD
+$BOOTSTRAP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't bootstrap virtualenv! ABORTING"
@@ -136,7 +136,7 @@ echo ""
 echo "################################################################################"
 echo "## Downgrading pip to 1.2.1"
 echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
-eval $DOWNGRADE_PIP_CMD
+$DOWNGRADE_PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't downgrade pip! ABORTING"
@@ -161,7 +161,7 @@ echo ""
 echo "################################################################################"
 echo "## Installing python-hostlist"
 echo "## CMDLINE: $PIP_CMD"
-eval $PIP_CMD
+$PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
     echo "pip install failed, trying easy_install ..."
@@ -179,7 +179,7 @@ echo ""
 echo "################################################################################"
 echo "## Installing pymongo"
 echo "## CMDLINE: $PIP_CMD"
-eval $PIP_CMD
+$PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
     echo "pip install failed, trying easy_install ..."
@@ -377,7 +377,7 @@ echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
-eval $AGENT_CMD
+$AGENT_CMD
 AGENT_EXITCODE=$?
 
 # cleanup
