@@ -109,7 +109,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                         js_url = saga_job_id.split("]-[")[0][1:]
                         js = saga.job.Service(js_url, session=self._session)
                         saga_job = js.get_job(saga_job_id)
-                        if saga.job.state == saga.job.FAILED:
+                        if saga_job.state == saga.job.FAILED:
                             log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
 
                             ts = datetime.datetime.utcnow()
