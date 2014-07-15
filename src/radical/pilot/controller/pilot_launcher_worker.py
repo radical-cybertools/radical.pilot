@@ -99,7 +99,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
                     
                     # Check if the pilot was active at some point.
-                    was_runnung = False
+                    was_running = False
                     for state in pending_pilot['statehistory']:
                         if state['state'] == ACTIVE:
                             was_running = True
