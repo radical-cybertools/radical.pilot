@@ -20,6 +20,14 @@ from bson.objectid import ObjectId
 
 from radical.pilot.states import *
 
+COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
+COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
+COMMAND_KEEP_ALIVE          = "Keep_Alive"
+COMMAND_FIELD               = "commands"
+COMMAND_TYPE                = "type"
+COMMAND_ARG                 = "arg"
+COMMAND_TIME                = "time"
+
 # -----------------------------------------------------------------------------
 #
 class DBException(Exception):
@@ -383,7 +391,7 @@ class Session():
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
             "wu_queue":       [],
-            "command":        None,
+            "commands":       []
         }
 
         self._p.insert(pilot_doc, upsert=False)
@@ -443,18 +451,29 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def signal_pilots(self, pilot_manager_id, pilot_ids, cmd):
-        """ Send a signal to one or more pilots.
+    def send_command_to_pilot(self, cmd, arg=None, pilot_manager_id=None, pilot_ids=None):
+        """ Send a command to one or more pilots.
         """
         if self._s is None:
             raise Exception("No active session.")
+
+        if pilot_manager_id is None and pilot_ids is None:
+            raise Exception("Either Pilot Manager or Pilot needs to be specified.")
+
+        if pilot_manager_id is not None and pilot_ids is not None:
+            raise Exception("Pilot Manager and Pilot can not be both specified.")
+
+        command = {COMMAND_FIELD: {COMMAND_TYPE: cmd,
+                                   COMMAND_ARG:  arg,
+                                   COMMAND_TIME: datetime.datetime.utcnow()
+        }}
 
         if pilot_ids is None:
             # send command to all pilots that are known to the
             # pilot manager.
             self._p.update(
                 {"pilotmanager": pilot_manager_id},
-                {"$set": {"command": cmd}},
+                {"$push": command},
                 multi=True
             )
         else:
@@ -465,8 +484,9 @@ class Session():
             for pid in pilot_ids:
                 self._p.update(
                     {"_id": ObjectId(pid)},
-                    {"$set": {"command": cmd}}
+                    {"$push": command}
                 )
+
 
     #--------------------------------------------------------------------------
     #

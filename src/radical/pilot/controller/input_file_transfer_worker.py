@@ -72,6 +72,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                         "$push": {"statehistory": {"state": TRANSFERRING_INPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
+            state = TRANSFERRING_INPUT
 
             if compute_unit is None:
                 # Sleep a bit if no new units are available.
@@ -103,7 +104,16 @@ class InputFileTransferWorker(multiprocessing.Process):
                     logger.info("Processing input file transfers for ComputeUnit %s" % compute_unit_id)
                     # Loop over all transfer directives and execute them.
                     for td in transfer_directives:
-                        
+
+                        state_doc = um_col.find_one(
+                            {"_id": ObjectId(compute_unit_id)},
+                            fields=["state"]
+                        )
+                        if state_doc['state'] == CANCELED:
+                            logger.info("Compute Unit Canceled, interrupting input file transfers.")
+                            state = CANCELED
+                            break
+
                         st = td.split(">")
                         abs_t = os.path.abspath(st[0].strip())
                         input_file_url = saga.Url("file://localhost/%s" % abs_t)
@@ -125,14 +135,16 @@ class InputFileTransferWorker(multiprocessing.Process):
                         )
                         input_file.copy(target)
                         input_file.close()
+
+                        # Update the CU's state to 'PENDING_EXECUTION' if all
+                        # transfers were successful.
+                        state = PENDING_EXECUTION
                     
-                    # Update the CU's state to 'PENDING_EXECUTION' if all 
-                    # transfers were successfull.            
                     ts = datetime.datetime.utcnow()
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
-                        {"$set": {"state": PENDING_EXECUTION},
-                         "$push": {"statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}},
+                        {"$set": {"state": state},
+                         "$push": {"statehistory": {"state": state, "timestamp": ts}},
                          "$pushAll": {"log": log_messages}}                    
                     )
 
