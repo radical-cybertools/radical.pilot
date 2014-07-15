@@ -193,6 +193,40 @@ fi
 }
 
 # -----------------------------------------------------------------------------
+# Find available port on the remote host where we can bind to
+#
+function find_available_port()
+{
+    RANGE="23000..23100"
+    echo ""
+    echo "################################################################################"
+    echo "## Searching for available TCP port for tunnel in range $RANGE."
+    host=$1
+    for port in $(eval echo {$RANGE}); do
+
+        # Try to make connection
+        (bash -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
+        # Wait for 1 second
+        read -t1
+        # Kill child
+        kill $! 2>/dev/null
+        # If the kill command succeeds, assume that we have found our match!
+        if [ "$?" == "0" ]; then
+            break
+        fi
+
+        # Wait for children
+        wait
+
+        # Reset port, so that the last port doesn't get chosen in error
+        port=
+    done
+
+    # Assume the most recent port is available
+    AVAILABLE_PORT=$port
+}
+
+# -----------------------------------------------------------------------------
 # MAIN 
 #
 
@@ -321,16 +355,23 @@ fi
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
 if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
+
     echo ""
     echo "################################################################################"
-    echo "## Setting up forward tunnel to $FORWARD_TUNNEL_ENDPOINT."
-    # TODO: Dynamic and/or random to prevent conflicts
-    PROXY_PORT=12345
-    DBPORT=12346
+    echo "## Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
+
+    find_available_port $FORWARD_TUNNEL_ENDPOINT
+    if [ $AVAILABLE_PORT ]; then
+        echo "## Found available port: $AVAILABLE_PORT"
+    else
+        echo "## No available port found!"
+        exit 1
+    fi
+    DBPORT=$AVAILABLE_PORT
     BIND_ADDRESS=127.0.0.1
 
     # Set up tunnel
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -D $BIND_ADDRESS:$PROXY_PORT -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
