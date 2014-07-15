@@ -347,6 +347,9 @@ fi
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
 if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
+    echo ""
+    echo "################################################################################"
+    echo "## Setting up forward tunnel to $FORWARD_TUNNEL_ENDPOINT."
     # TODO: Dynamic and/or random to prevent conflicts
     PROXY_PORT=12345
     DBPORT=12346
