@@ -98,12 +98,6 @@ class PilotLauncherWorker(multiprocessing.Process):
                     saga_job_id = pending_pilot["saga_job_id"]
                     logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
                     
-                    # Check if the pilot was active at some point.
-                    was_running = False
-                    for state in pending_pilot['statehistory']:
-                        if state['state'] == ACTIVE:
-                            was_running = True
-
                     # Create a job service object:
                     try: 
                         js_url = saga_job_id.split("]-[")[0][1:]
@@ -124,18 +118,13 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     except Exception, ex:
 
-                        if was_running is False:
-                            log_message = "Couldn't determine job state for ComputePilot %s. Assuming it has failed to launch." % pilot_id
-                            state = FAILED
-                        else:
-                            log_message = "Couldn't determine job state for previously running ComputePilot %s. Assuming it was canceled." % pilot_id
-                            state = CANCELED
+                        log_message = "Couldn't determine job state for ComputePilot %s. Assuming it has failed to launch." % pilot_id
 
                         ts = datetime.datetime.utcnow()
                         pilot_col.update(
                             {"_id": pilot_id},
-                            {"$set": {"state": state},
-                             "$push": {"statehistory": {"state": state, "timestamp": ts}},
+                            {"$set": {"state": FAILED},
+                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
                              "$push": {"log": log_message}}
                         )
                         logger.error(log_message)
