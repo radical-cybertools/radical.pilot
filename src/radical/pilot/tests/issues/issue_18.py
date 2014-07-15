@@ -80,8 +80,8 @@ class TestIssue18(unittest.TestCase):
         j = s.get_job(saga_id)
         j.cancel()
 
-        pilot.wait(radical.pilot.states.CANCELED, timeout=80)
-        assert pilot.state == radical.pilot.states.CANCELED
+        pilot.wait(radical.pilot.states.FAILED, timeout=80)
+        assert pilot.state == radical.pilot.states.FAILED
 
         session.close()
 
