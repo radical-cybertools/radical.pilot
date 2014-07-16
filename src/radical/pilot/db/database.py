@@ -391,7 +391,7 @@ class Session():
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
-          # "wu_queue":       [],
+            "wu_queue":       [],
             "commands":       []
         }
 
@@ -540,7 +540,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")     
 
-        self._w.update({"pilot": pilot_id, "state": { "$in": ["Executing", "PendingExecution", "Scheduling"]}},
+        self._w.update({"pilot": pilot_id, "state": { "$in": [EXECUTING, PENDING_EXECUTION, SCHEDULING]}},
                        {"$set": {"state": state},
                         "$push": {"statehistory": {"state": state, "timestamp": ts},
                                   "log": log}
@@ -735,25 +735,20 @@ class Session():
         if not isinstance(unit_uids, list):
             unit_uids = [unit_uids]
 
-      # AM: the code below seems to be useless?
-      # self._p.update({"_id": ObjectId(pilot_uid)},
-      #                {"$pushAll":
-      #                    {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
+      # AM: the code below seems to be useless, as wu_queue is never used??  We
+      # leave it in as the radicalpilot-stats script looks at this.
+        self._p.update({"_id": ObjectId(pilot_uid)},
+                       {"$pushAll":
+                           {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
 
         unit_oids = list()
         for uid in unit_uids :
             unit_oids.append (ObjectId(uid))
 
-        print "========== %s" % unit_oids
-            
-        unit_docs  = self._w.find_and_modify(
-            query  = {"_id"  : {"$in"   : unit_oids}},
-            update = {"$set" : {"pilot" : pilot_uid}}
-        )
+        unit_docs  = self._w.update ({"_id"  : {"$in"   : unit_oids}},
+                                     {"$set" : {"pilot" : pilot_uid}},
+                                     multi   = True)
 
-        for unit_doc in unit_docs :
-            print "PUSHED:"
-            pprint.pprint (unit_doc)
 
     #--------------------------------------------------------------------------
     #

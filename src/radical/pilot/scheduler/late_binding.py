@@ -74,6 +74,7 @@ class LateBindingScheduler(Scheduler):
             self.pilots[pid]['state'] = str(pilot_doc.get ('state'))
             self.pilots[pid]['cap']   = int(pilot_doc.get ('capability', 0))
 
+        print "PILOTS"
         pprint.pprint (self.pilots)
 
 
@@ -87,8 +88,8 @@ class LateBindingScheduler(Scheduler):
             # as we cannot unregister callbacks, we simply ignore this
             # invokation.  Its probably from a unit we handled previously.
             # (although this should have been final?)
-            logger.warn ("[SchedulerCallback]: ComputeUnit %s changed to %s (ignored)" % (uid, state))
-            return
+          # return
+            pass
 
         logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
@@ -252,8 +253,10 @@ class LateBindingScheduler(Scheduler):
 
         print "Late-binding re-scheduling of %s units" % len(self.waitq)
         print "-------"
+        print "PILOTS"
         pprint.pprint (self.pilots)
         print "-------"
+        print "UNITS"
         pprint.pprint (self.waitq)
         print "-------"
 
@@ -267,8 +270,8 @@ class LateBindingScheduler(Scheduler):
 
             for pid in self.pilots :
 
+                print "scheduler checks pilot %s (%s : %s)" % (pid, self.pilots[pid]['state'], self.pilots[pid]['caps'])
                 if  self.pilots[pid]['state'] in [ACTIVE] :
-                    print "%s is   active (%s)" % (pid, self.pilots[pid]['caps'])
 
                     if  ud.cores <= self.pilots[pid]['caps'] :
 
@@ -282,12 +285,11 @@ class LateBindingScheduler(Scheduler):
                         # scheduled units are removed from the waitq
                         self.waitq.remove (unit)
                         break
-                else :
-                    print "%s is ! active" % pid
 
                 # unit was not scheduled...
                 schedule[unit] = None
                      
+        print "SCHEDULE"
         pprint.pprint (schedule)
         self.manager.handle_schedule (schedule)
 

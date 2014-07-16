@@ -436,8 +436,6 @@ class UnitManager(object):
 
             pid = schedule[unit]
 
-            print pid
-
             if  None == pid :
                 logger.info ('unit %s remains unscheduled' % unit.uid)
                 unscheduled.append (unit)
@@ -546,14 +544,12 @@ class UnitManager(object):
 
         while all_ok is False :
 
-            print " wait for %s " % state
-            print self._worker.get_compute_unit_states(unit_uids=unit_ids)
+            print " wait for %s (%s)" % (state, self._worker.get_compute_unit_states(unit_uids=unit_ids))
             all_ok = True
             states = list()
 
             for unit in units :
 
-                print "%s" % unit.state
                 if  unit.state not in state :
                     all_ok = False
                     break

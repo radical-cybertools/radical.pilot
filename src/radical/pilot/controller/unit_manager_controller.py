@@ -427,7 +427,7 @@ class UnitManagerController(threading.Thread):
            ComputePilot.
         """
 
-        wu_transfer = list()
+        wu_transfer   = list()
         wu_notransfer = list()
 
         # Get some information about the pilot sandbox from the database.
@@ -443,7 +443,7 @@ class UnitManagerController(threading.Thread):
             if unit.description.input_data is None:
                 wu_notransfer.append(unit.uid)
             else:
-                wu_transfer.append(unit)
+                wu_transfer.append(unit.uid)
 
       # # Add all units to the database.
       # results = self._db.insert_compute_units(
@@ -472,10 +472,11 @@ class UnitManagerController(threading.Thread):
             pilot_uid=pilot_uid
         )
 
-        for unit in wu_notransfer:
+        for uid in wu_notransfer:
+            print "pushing unit %s to %s" % (uid, pilot_uid)
             log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
-            self._db.set_compute_unit_state(unit, PENDING_EXECUTION, log)
-            #self._set_state(unit, PENDING_EXECUTION, log)
+            self._db.set_compute_unit_state(uid, PENDING_EXECUTION, log)
+            #self._set_state(uid, PENDING_EXECUTION, log)
 
         logger.info(
             "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
@@ -485,10 +486,10 @@ class UnitManagerController(threading.Thread):
         # Bulk-add all units that need transfer to the transfer queue.
         # Add the startup request to the request queue.
         if len(wu_transfer) > 0:
-            for unit in wu_transfer:
+            for uid in wu_transfer:
                 log = ["Scheduled for data tranfer to ComputePilot %s." % pilot_uid]
-                self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_TRANSFER, log)
-                #self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)
+                self._db.set_compute_unit_state(uid, PENDING_INPUT_TRANSFER, log)
+                #self._set_state(uid, PENDING_INPUT_TRANSFER, log)
 
 
 # ----------------------------------------------------------------------------
