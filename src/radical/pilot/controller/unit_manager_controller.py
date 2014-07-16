@@ -181,15 +181,10 @@ class UnitManagerController(threading.Thread):
         # If we have any manager-level callbacks registered, we
         # call those as well!
         for cb in self._manager_callbacks:
-            print cp
             try:
-                print 1
                 cb(self._shared_data[unit_id]['facade_object'],
                    new_state)
-                print 2
             except Exception, ex:
-                print 3
-                print ex
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
 
@@ -331,7 +326,6 @@ class UnitManagerController(threading.Thread):
     def register_manager_callback(self, callback_func):
         """Registers a manager-level callback.
         """
-        print "registered callback (%s)" % callback_func
         self._manager_callbacks.append(callback_func)
 
     # ------------------------------------------------------------------------
@@ -441,6 +435,10 @@ class UnitManagerController(threading.Thread):
         # TODO: this hack below relies on what?! That there is just one pilot?
         pilot_sandbox = pilot_info[0]['sandbox']
 
+        for unit in units:
+            # FIXME: what do I set it to in case of transfers?
+            self._db.set_compute_unit_state (unit.uid, PENDING_EXECUTION, ["pending execution"])
+
         # Split units into two different lists: the first list contains the CUs
         # that need file transfer and the second list contains the CUs that
         # don't. The latter is added to the pilot directly, while the former
@@ -451,25 +449,25 @@ class UnitManagerController(threading.Thread):
             else:
                 wu_transfer.append(unit)
 
-        # Add all units to the database.
-        results = self._db.insert_compute_units(
-            pilot_uid=pilot_uid,
-            pilot_sandbox=pilot_sandbox,
-            unit_manager_uid=self._um_id,
-            units=units,
-            unit_log=[]
-        )
-
-        assert len(units) == len(results)
-
-        # Match results with units.
-        for unit in units:
-            # Create a shared data store entry
-            self._shared_data[unit.uid] = {
-                'data':          results[unit.uid],
-                'callbacks':     [],
-                'facade_object': unit # weakref.ref(unit)
-            }
+      # # Add all units to the database.
+      # results = self._db.insert_compute_units(
+      #     pilot_uid=pilot_uid,
+      #     pilot_sandbox=pilot_sandbox,
+      #     unit_manager_uid=self._um_id,
+      #     units=units,
+      #     unit_log=[]
+      # )
+      # 
+      # assert len(units) == len(results)
+      # 
+      # # Match results with units.
+      # for unit in units:
+      #     # Create a shared data store entry
+      #     self._shared_data[unit.uid] = {
+      #         'data':          results[unit.uid],
+      #         'callbacks':     [],
+      #         'facade_object': unit # weakref.ref(unit)
+      #     }
 
         # Bulk-add all non-transfer units-
         self._db.assign_compute_units_to_pilot(

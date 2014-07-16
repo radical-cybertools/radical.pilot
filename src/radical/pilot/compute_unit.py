@@ -219,7 +219,6 @@ class ComputeUnit(object):
             cu_json = self._worker.get_compute_unit_data(self.uid)
             return cu_json['state']
         except Exception as e :
-            print e
             return self._local_state
 
     # -------------------------------------------------------------------------

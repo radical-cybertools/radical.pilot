@@ -95,8 +95,8 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         self._session = session
-        self._worker = None 
-        self._pilots = []
+        self._worker  = None 
+        self._pilots  = []
 
         if _reconnect is False:
             # Start a worker process fo this UnitManager instance. The worker
@@ -112,7 +112,9 @@ class UnitManager(object):
             self._worker.start()
 
             self._uid = self._worker.unit_manager_uid
-            self._scheduler = get_scheduler(name=scheduler, manager=self)
+            self._scheduler = get_scheduler(name=scheduler, 
+                                            manager=self, 
+                                            session=self._session)
 
             # Each pilot manager has a worker thread associated with it.
             # The task of the worker thread is to check and update the state
@@ -180,7 +182,9 @@ class UnitManager(object):
         # about the UnitManager
         um_data = obj._worker.get_unit_manager_data()
 
-        obj._scheduler = get_scheduler(name=um_data['scheduler'], manager=self)
+        obj._scheduler = get_scheduler(name=um_data['scheduler'], 
+                                       manager=self,
+                                       session=self._session)
         # FIXME: we need to tell the scheduler about all the pilots...
 
         obj._uid = unit_manager_id
@@ -261,6 +265,10 @@ class UnitManager(object):
 
         self._worker.add_pilots(pilots)
 
+        # let the scheduler know...
+        for pilot in pilots :
+            self._scheduler.pilot_added (pilot)
+
 
     # -------------------------------------------------------------------------
     #
@@ -329,6 +337,10 @@ class UnitManager(object):
 
         # FIXME: call global reschedule...
 
+        # let the scheduler know...
+        for pilot in pilots :
+            self._scheduler.pilot_removed (pilot)
+
 
     # -------------------------------------------------------------------------
     #
@@ -394,6 +406,8 @@ class UnitManager(object):
                                                unit_manager_obj=self, 
                                                local_state=NEW))
 
+        self._worker.publish_compute_units (units=units)
+
         if True :
       # try:
             self._scheduler.schedule (units=units)
@@ -416,29 +430,35 @@ class UnitManager(object):
         pilot_cu_map = dict()
         unscheduled  = list()
 
+        pilot_ids = self.list_pilots ()
+
         for unit in schedule.keys() :
 
             pid = schedule[unit]
 
+            print pid
+
             if  None == pid :
                 logger.info ('unit %s remains unscheduled' % unit.uid)
+                unscheduled.append (unit)
                 continue
 
-            if  pid not in self._pilots :
-                raise RuntimeException ("schedule points to unknown pilot %s" % pid)
+            else :
 
-            if  pid not in pilot_cu_map :
-                pilot_cu_map[pid] = list()
+                if  pid not in pilot_ids :
+                    raise RuntimeError ("schedule points to unknown pilot %s" % pid)
 
-            pilot_cu_map[pid].append (unit)
+                if  pid not in pilot_cu_map :
+                    pilot_cu_map[pid] = list()
+
+                pilot_cu_map[pid].append (unit)
                 
-
 
         # submit to all pilots which got something submitted to
         for pid in pilot_cu_map.keys():
 
             self._worker.schedule_compute_units (
-                pilot_uid=pilot_id,
+                pilot_uid=pid,
                 units=pilot_cu_map[pid]
             )
 
@@ -511,34 +531,41 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if not self._uid:
+        if  not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
             unit_ids = [unit_ids]
 
-        start_wait = time.time()
-        all_done = False
+        start  = time.time()
+        units  = self.get_units (unit_ids)
+        all_ok = False
+        states = list()
 
-        while all_done is False:
+        while all_ok is False :
 
-            all_done = True
+            print " wait for %s " % state
+            all_ok = True
+            states = list()
 
-            wu_states = self._worker.get_compute_unit_states()
-            for wu_state in wu_states:
-                if wu_state not in state:
-                    all_done = False
-                    break  # leave for loop
+            for unit in units :
+
+                print "%s" % unit.state
+                if  unit.state not in state :
+                    all_ok = False
+                    break
+                states.append (unit.state)
 
             # check timeout
-            if (None != timeout) and (timeout <= (time.time() - start_wait)):
+            if  (None != timeout) and (timeout <= (time.time() - start)):
                 break
 
-            # wait a bit
-            time.sleep(0.1)
+            time.sleep (1)
+
 
         # done waiting
-        return wu_states
+        return states
+
 
     # -------------------------------------------------------------------------
     #

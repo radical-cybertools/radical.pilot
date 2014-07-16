@@ -34,7 +34,7 @@ class LateBindingScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def __init__ (self, manager):
+    def __init__ (self, manager, session):
         """
         """
         Scheduler.__init__ (self)
@@ -42,9 +42,13 @@ class LateBindingScheduler(Scheduler):
 
         self._name   = self.__class__.__name__
         self.manager = manager
+        self.session = session
         self.waitq   = list()
         self.pmgrs   = list()
         self.pilots  = dict()
+
+        # make sure the UM notifies us on all unit state changes
+        manager.register_callback (self._unit_state_callback)
 
 
     # -------------------------------------------------------------------------
@@ -83,22 +87,25 @@ class LateBindingScheduler(Scheduler):
     def _unit_state_callback (self, unit, state) :
         
 
-        if  not pilot in self.pilots :
+        if  not unit in self.waitq :
             # as we cannot unregister callbacks, we simply ignore this
             # invokation.  Its probably from a unit we handled previously.
             # (although this should have been final?)
             logger.warn ("[SchedulerCallback]: ComputeUnit %s changed to %s (ignored)" % (unit.uid, state))
             return
 
-        logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (cu.uid, state))
+        logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (unit.uid, state))
 
         if  state in [DONE, FAILED, CANCELED] :
             # the pilot which owned this CU should now have free slots available
             # FIXME: how do I get the pilot from the CU?
             pilot = unit.pilot
 
+            if  pilot not in self.pilots :
+                raise RuntimeError ('cannot handle unit %s of pilot %s' % (unit.uid, pilot.uid))
+
             self.pilots[pilot]['caps'] += unit.description.cores
-            self._re_schedule (pilot=pilot)
+            self._reschedule (pilot=pilot)
 
             # FIXME: how can I *un*register a unit callback?
 
@@ -114,11 +121,12 @@ class LateBindingScheduler(Scheduler):
             return
 
 
+        self.pilots[pilot]['state'] = state
         logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pilot.uid, state))
 
         if  state in [ACTIVE] :
             # the pilot is now ready to be used
-            self._re_schedule (pilot=pilot)
+            self._reschedule (pilot=pilot)
 
         if  state in [DONE, FAILED, CANCELED] :
             # we can't use this pilot anymore...  
@@ -131,7 +139,7 @@ class LateBindingScheduler(Scheduler):
     #
     def pilot_added (self, pilot) :
 
-        if  pilot in pilots :
+        if  pilot in self.pilots :
             raise RuntimeError ('cannot add pilot twice (%s)' % pilot.uid)
 
         # get initial information about the pilot capabilities
@@ -143,12 +151,14 @@ class LateBindingScheduler(Scheduler):
         # code as well, thus we silently ignore this issue for now, and accept
         # this as known limitation....
         self.pilots[pilot] = dict()
-        self.pilots[pilot]['caps'] = pilot.description.cores
+        self.pilots[pilot]['caps']  = pilot.description.cores
+        self.pilots[pilot]['state'] = pilot.state
 
         # make sure we register callback only once per pmgr
+        pmgr = pilot.pilot_manager
         if  pmgr not in self.pmgrs :
             self.pmgrs.append (pmgr)
-            pilot.pilot_manager.register_callback (self._pilot_state_callback)
+            pmgr.register_callback (self._pilot_state_callback)
 
         # if we have any pending units, we better serve them now...
         self._reschedule (pilot=pilot)
@@ -158,7 +168,7 @@ class LateBindingScheduler(Scheduler):
     #
     def pilot_removed (self, pilot) :
 
-        if  not pilot in pilots :
+        if  not pilot in self.pilots :
             raise RuntimeError ('cannot remove unknown pilot (%s)' % pilot.uid)
 
         # NOTE: we don't care if that pilot had any CUs active -- its up to the
@@ -180,7 +190,7 @@ class LateBindingScheduler(Scheduler):
         # NOTE: we don't care if that pilot had any CUs active -- its up to the
         # UM what happens to those.
 
-        self.pilots.remove (pilot)
+        self.waitq.remove (unit)
         # FIXME: how can I *un*register a pilot callback?
 
 
@@ -206,7 +216,7 @@ class LateBindingScheduler(Scheduler):
     
     # -------------------------------------------------------------------------
     #
-    def _reschedule (self) :
+    def _reschedule (self, pilot=None) :
 
         # dig through the list of waiting CUs, and try to find a pilot for each
         # of them.  This enacts first-come-first-served, but will be unbalanced
@@ -223,11 +233,20 @@ class LateBindingScheduler(Scheduler):
         #     ...
         #   }
 
-        if not len(self.pilots.keys ()) :
+        if  not len(self.pilots.keys ()) :
             # no pilots to  work on, yet.
             return 
 
+        if  pilot and pilot not in self.pilots :
+            raise RuntimeError ("Invalid pilot (%s)" % pilot.uid)
+            
+
         print "Late-binding re-scheduling of %s units" % len(self.waitq)
+        print "-------"
+        pprint.pprint (self.pilots)
+        print "-------"
+        pprint.pprint (self.waitq)
+        print "-------"
 
 
         schedule = dict()
@@ -239,14 +258,17 @@ class LateBindingScheduler(Scheduler):
             for pilot in self.pilots :
 
                 if  self.pilots[pilot]['state'] in [ACTIVE] :
+                    print "%s is   active (%s)" % (pilot.uid, self.pilots[pilot]['caps'])
 
                     if  ud.cores < self.pilots[pilot]['caps'] :
                         self.pilots[pilot]['caps'] -= ud.cores
                         schedule[unit] = pilot.uid
                         break
+                else :
+                    print "%s is ! active" % pilot.uid
 
-            # unit was not scheduled...
-            schedule[ud] = None
+                # unit was not scheduled...
+                schedule[unit] = None
                      
         pprint.pprint (schedule)
         self.manager.handle_schedule (schedule)
