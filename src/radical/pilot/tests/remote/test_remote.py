@@ -94,7 +94,12 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.start_time is None
             assert cu.stop_time is None
 
-        um.wait_units(state=[radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=self.test_timeout)
+        ret = um.wait_units(state=[radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=60)
+        print "Return states from wait: %s" % ret
+
+        # With a sleep here, the test works, there seems to be an inconsistency in the state used by wait and the state reported.
+        #import time
+        #time.sleep(1)
 
         for cu in cus:
             assert cu.state == radical.pilot.states.DONE, "state: %s" % cu.state

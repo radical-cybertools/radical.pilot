@@ -116,9 +116,9 @@ class UnitManager(object):
                                             manager=self, 
                                             session=self._session)
 
-            # Each pilot manager has a worker thread associated with it.
+            # Each unit manager has a worker thread associated with it.
             # The task of the worker thread is to check and update the state
-            # of pilots, fire callbacks and so on.
+            # of units, fire callbacks and so on.
             self._session._unit_manager_objects.append(self)
             self._session._process_registry.register(self._uid, self._worker)
 
@@ -545,6 +545,7 @@ class UnitManager(object):
         while all_ok is False :
 
             print " wait for %s " % state
+            print self._worker.get_compute_unit_states(unit_uids=unit_ids)
             all_ok = True
             states = list()
 
@@ -587,7 +588,10 @@ class UnitManager(object):
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
             unit_ids = [unit_ids]
 
-        raise Exception("Not implemented")
+        cus = self.get_units(unit_ids)
+        for cu in cus:
+            cu.cancel()
+
 
     # -------------------------------------------------------------------------
     #
