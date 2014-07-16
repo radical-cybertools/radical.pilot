@@ -83,7 +83,6 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
                    "finished": ts}
 
         })
-    sys.exit (1)
 
 #---------------------------------------------------------------------------
 #
@@ -100,7 +99,6 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
                    "capability" : 0,
                    "finished": ts}
         })
-    sys.exit (0)
 
 #---------------------------------------------------------------------------
 #
@@ -116,7 +114,6 @@ def pilot_DONE(mongo_p, pilot_uid):
                   "finished": ts}
 
         })
-    sys.exit (0)
 
 #-----------------------------------------------------------------------------
 #
@@ -877,8 +874,6 @@ class ExecWorker(multiprocessing.Process):
                     pass
 
                 try:
-                    idle = False
-
                     task = self._task_queue.get_nowait()
 
                     if task.mpi:
@@ -911,8 +906,8 @@ class ExecWorker(multiprocessing.Process):
                     if task_slots is None:
                         # No resources free, put back in queue
                         self._task_queue.put(task)
-                        idle = True
                     else:
+                        idle = False
                         # We got an allocation go off and launch the process
                         task.slots = task_slots
                         self._launch_task(task, launch_method, launch_command)
@@ -921,11 +916,16 @@ class ExecWorker(multiprocessing.Process):
                     # do nothing if we don't have any queued tasks
                     pass
 
-                idle &= self._check_running()
+                # AM: idle seems always true here...
+                # idle &= self._check_running()
+                self._check_running()
 
                 # Check if something happened in this cycle, if not, zzzzz for a bit
                 if idle:
+                    self._log.debug("sleep now")
                     time.sleep(1)
+                else :
+                    self._log.debug("sleep not")
 
             # AM: we are done -- push slot history 
             # FIXME: this is never called, self._terminate is a farce :(
@@ -941,6 +941,7 @@ class ExecWorker(multiprocessing.Process):
         except Exception, ex:
             msg = ("Error in ExecWorker loop: %s", traceback.format_exc())
             pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+            return
 
 
     # ------------------------------------------------------------------------
@@ -1413,16 +1414,19 @@ class Agent(threading.Thread):
                 # process has caught a ctrl+C
                 if self._exec_worker.is_alive() is False:
                     pilot_FAILED(self._p, self._pilot_id, self._log, "Execution worker %s died." % str(self._exec_worker))
+                    return
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
                     pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set).")
+                    return
 
                 # Make sure that we haven't exceeded the agent runtime. if 
                 # we have, terminate. 
                 if time.time() >= self._starttime + (int(self._runtime) * 60):
                     self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
                     pilot_DONE(self._p, self._pilot_id)
+                    return
 
                 # Try to get new tasks from the database. for this, we check the 
                 # wu_queue of the pilot. if there are new entries, we get them,
@@ -1447,6 +1451,7 @@ class Agent(threading.Thread):
                         if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                             self._log.info("Received Cancel Pilot command.")
                             pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                            return
                         elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                             self._log.info("Received Cancel Compute Unit command for: %s" % command[COMMAND_ARG])
                             # Put it on the command queue of the ExecWorker
@@ -1504,6 +1509,7 @@ class Agent(threading.Thread):
                 # If we arrive here, there was an exception in the main loop.
                 pilot_FAILED(self._p, self._pilot_id, self._log, 
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
+                return
 
         # MAIN LOOP TERMINATED
         return
@@ -1867,12 +1873,14 @@ if __name__ == "__main__":
     # Some signal handling magic
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
-        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        sys.exit (1)
     signal.signal(signal.SIGINT, sigint_handler)
 
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
-        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        sys.exit (1)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
     #--------------------------------------------------------------------------
@@ -1889,11 +1897,13 @@ if __name__ == "__main__":
             msg = "Couldn't set up execution environment."
             logger.error(msg)
             pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+            sys.exit (1)
 
     except Exception, ex:
         msg = "Error setting up execution environment: %s" % str(ex)
         logger.error(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        sys.exit (1)
 
     #--------------------------------------------------------------------------
     # Launch the agent thread
@@ -1922,8 +1932,9 @@ if __name__ == "__main__":
     except Exception, ex:
         msg = "Error running agent: %s" % str(ex)
         logger.error(msg)
-        agent.stop()
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        agent.stop()
+        sys.exit (1)
 
     except SystemExit:
 

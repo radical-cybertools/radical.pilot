@@ -457,6 +457,8 @@ class UnitManager(object):
         # submit to all pilots which got something submitted to
         for pid in pilot_cu_map.keys():
 
+            print "pushing %s" % pilot_cu_map[pid]
+
             self._worker.schedule_compute_units (
                 pilot_uid=pid,
                 units=pilot_cu_map[pid]

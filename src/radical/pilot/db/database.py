@@ -15,6 +15,7 @@ import os
 import saga
 import datetime
 import gridfs
+import pprint
 from pymongo import *
 from bson.objectid import ObjectId
 
@@ -390,7 +391,7 @@ class Session():
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
-            "wu_queue":       [],
+          # "wu_queue":       [],
             "commands":       []
         }
 
@@ -734,9 +735,25 @@ class Session():
         if not isinstance(unit_uids, list):
             unit_uids = [unit_uids]
 
-        self._p.update({"_id": ObjectId(pilot_uid)},
-                       {"$pushAll":
-                           {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
+      # AM: the code below seems to be useless?
+      # self._p.update({"_id": ObjectId(pilot_uid)},
+      #                {"$pushAll":
+      #                    {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
+
+        unit_oids = list()
+        for uid in unit_uids :
+            unit_oids.append (ObjectId(uid))
+
+        print "========== %s" % unit_oids
+            
+        unit_docs  = self._w.find_and_modify(
+            query  = {"_id"  : {"$in"   : unit_oids}},
+            update = {"$set" : {"pilot" : pilot_uid}}
+        )
+
+        for unit_doc in unit_docs :
+            print "PUSHED:"
+            pprint.pprint (unit_doc)
 
     #--------------------------------------------------------------------------
     #

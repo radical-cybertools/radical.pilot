@@ -63,12 +63,7 @@ class LateBindingScheduler(Scheduler):
         # infrequently can result in invalid schedules.  Accuracy vs.
         # performance...
 
-        # provide revers pilot lookup
-        pilot_ids = dict()
-        for pilot in self.pilots :
-            pilod_ids[pilot.uid] = pilot
-
-        pilot_docs = self.manager._worker._db.get_pilots (pilot_ids=pilot_ids.keys ())
+        pilot_docs = self.manager._worker._db.get_pilots (pilot_ids=self.pilots.keys ())
 
         for pilot_doc in pilot_docs :
 
@@ -76,8 +71,8 @@ class LateBindingScheduler(Scheduler):
             if  not pid in pilot_ids :
                 raise RuntimeError ("Got invalid pilot doc (%s)" % pid)
 
-            self.pilots[pilot_ids]['state'] = str(pilot_doc.get ('state'))
-            self.pilots[pilot_ids]['cap']   = int(pilot_doc.get ('capability', 0))
+            self.pilots[pid]['state'] = str(pilot_doc.get ('state'))
+            self.pilots[pid]['cap']   = int(pilot_doc.get ('capability', 0))
 
         pprint.pprint (self.pilots)
 
@@ -86,26 +81,31 @@ class LateBindingScheduler(Scheduler):
     #
     def _unit_state_callback (self, unit, state) :
         
+        uid = unit.uid
 
         if  not unit in self.waitq :
             # as we cannot unregister callbacks, we simply ignore this
             # invokation.  Its probably from a unit we handled previously.
             # (although this should have been final?)
-            logger.warn ("[SchedulerCallback]: ComputeUnit %s changed to %s (ignored)" % (unit.uid, state))
+            logger.warn ("[SchedulerCallback]: ComputeUnit %s changed to %s (ignored)" % (uid, state))
             return
 
-        logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (unit.uid, state))
+        logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
         if  state in [DONE, FAILED, CANCELED] :
             # the pilot which owned this CU should now have free slots available
             # FIXME: how do I get the pilot from the CU?
-            pilot = unit.pilot
+            
+            pid = unit.execution_details.get ('pilot', None)
 
-            if  pilot not in self.pilots :
-                raise RuntimeError ('cannot handle unit %s of pilot %s' % (unit.uid, pilot.uid))
+            if  not pid :
+                raise RuntimeError ('cannot handle final unit %s w/o pilot information' % uid)
 
-            self.pilots[pilot]['caps'] += unit.description.cores
-            self._reschedule (pilot=pilot)
+            if  pid not in self.pilots :
+                raise RuntimeError ('cannot handle unit %s of pilot %s' % (uid, pid))
+
+            self.pilots[pid]['caps'] += unit.description.cores
+            self._reschedule (pid=pid)
 
             # FIXME: how can I *un*register a unit callback?
 
@@ -114,23 +114,25 @@ class LateBindingScheduler(Scheduler):
     #
     def _pilot_state_callback (self, pilot, state) :
         
-        if  not pilot in self.pilots :
+        pid = pilot.uid
+
+        if  not pid in self.pilots :
             # as we cannot unregister callbacks, we simply ignore this
             # invokation.  Its probably from a pilot we used previously.
-            logger.warn ("[SchedulerCallback]: ComputePilot %s changed to %s (ignored)" % (pilot.uid, state))
+            logger.warn ("[SchedulerCallback]: ComputePilot %s changed to %s (ignored)" % (pid, state))
             return
 
 
-        self.pilots[pilot]['state'] = state
-        logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pilot.uid, state))
+        self.pilots[pid]['state'] = state
+        logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pid, state))
 
         if  state in [ACTIVE] :
             # the pilot is now ready to be used
-            self._reschedule (pilot=pilot)
+            self._reschedule (pid=pid)
 
         if  state in [DONE, FAILED, CANCELED] :
             # we can't use this pilot anymore...  
-            self.pilots.remove (pilot)
+            self.pilots.remove (pid)
 
             # FIXME: how can I *un*register a pilot callback?
 
@@ -139,8 +141,10 @@ class LateBindingScheduler(Scheduler):
     #
     def pilot_added (self, pilot) :
 
-        if  pilot in self.pilots :
-            raise RuntimeError ('cannot add pilot twice (%s)' % pilot.uid)
+        pid = pilot.uid
+
+        if  pid in self.pilots :
+            raise RuntimeError ('cannot add pilot twice (%s)' % pid)
 
         # get initial information about the pilot capabilities
         #
@@ -150,9 +154,9 @@ class LateBindingScheduler(Scheduler):
         # to more than one UM.  This though holds true for other parts in this
         # code as well, thus we silently ignore this issue for now, and accept
         # this as known limitation....
-        self.pilots[pilot] = dict()
-        self.pilots[pilot]['caps']  = pilot.description.cores
-        self.pilots[pilot]['state'] = pilot.state
+        self.pilots[pid] = dict()
+        self.pilots[pid]['caps']  = pilot.description.cores
+        self.pilots[pid]['state'] = pilot.state
 
         # make sure we register callback only once per pmgr
         pmgr = pilot.pilot_manager
@@ -161,20 +165,22 @@ class LateBindingScheduler(Scheduler):
             pmgr.register_callback (self._pilot_state_callback)
 
         # if we have any pending units, we better serve them now...
-        self._reschedule (pilot=pilot)
+        self._reschedule (pid=pid)
 
 
     # -------------------------------------------------------------------------
     #
     def pilot_removed (self, pilot) :
 
-        if  not pilot in self.pilots :
-            raise RuntimeError ('cannot remove unknown pilot (%s)' % pilot.uid)
+        pid = pilot.uid
+
+        if  not pid in self.pilots :
+            raise RuntimeError ('cannot remove unknown pilot (%s)' % pid)
 
         # NOTE: we don't care if that pilot had any CUs active -- its up to the
         # UM what happens to those.
 
-        self.pilots.remove (pilot)
+        self.pilots.remove (pid)
         # FIXME: how can I *un*register a pilot callback?
 
 
@@ -184,8 +190,10 @@ class LateBindingScheduler(Scheduler):
 
         # the UM revokes the control over this unit from us...
 
+        uid = unit.uid
+
         if  not unit in units :
-            raise RuntimeError ('cannot remove unknown unit (%s)' % unit.uid)
+            raise RuntimeError ('cannot remove unknown unit (%s)' % uid)
 
         # NOTE: we don't care if that pilot had any CUs active -- its up to the
         # UM what happens to those.
@@ -208,15 +216,16 @@ class LateBindingScheduler(Scheduler):
             if  unit.state != NEW :
                 raise RuntimeError ('Unit %s not in NEW state (%s)' % unit.uid)
 
-        self.waitq += units
+            self.waitq.append (unit)
 
+        # lets see what we can do about the known units...
         self._reschedule ()
 
 
     
     # -------------------------------------------------------------------------
     #
-    def _reschedule (self, pilot=None) :
+    def _reschedule (self, pid=None) :
 
         # dig through the list of waiting CUs, and try to find a pilot for each
         # of them.  This enacts first-come-first-served, but will be unbalanced
@@ -237,8 +246,8 @@ class LateBindingScheduler(Scheduler):
             # no pilots to  work on, yet.
             return 
 
-        if  pilot and pilot not in self.pilots :
-            raise RuntimeError ("Invalid pilot (%s)" % pilot.uid)
+        if  pid and pid not in self.pilots :
+            raise RuntimeError ("Invalid pilot (%s)" % pid)
             
 
         print "Late-binding re-scheduling of %s units" % len(self.waitq)
@@ -251,21 +260,30 @@ class LateBindingScheduler(Scheduler):
 
         schedule = dict()
 
-        for unit in self.waitq:
+        # iterate on copy of waitq, as we manipulate the list during iteration.
+        for unit in self.waitq[:] :
 
             ud = unit.description
 
-            for pilot in self.pilots :
+            for pid in self.pilots :
 
-                if  self.pilots[pilot]['state'] in [ACTIVE] :
-                    print "%s is   active (%s)" % (pilot.uid, self.pilots[pilot]['caps'])
+                if  self.pilots[pid]['state'] in [ACTIVE] :
+                    print "%s is   active (%s)" % (pid, self.pilots[pid]['caps'])
 
-                    if  ud.cores < self.pilots[pilot]['caps'] :
-                        self.pilots[pilot]['caps'] -= ud.cores
-                        schedule[unit] = pilot.uid
+                    if  ud.cores <= self.pilots[pid]['caps'] :
+
+                        # sanity check on unit state
+                        if  unit.state not in [NEW] :
+                            raise RuntimeError ("scheduler queue should only contain NEW units (%s)" % unit.uid)
+
+                        self.pilots[pid]['caps'] -= ud.cores
+                        schedule[unit] = pid
+
+                        # scheduled units are removed from the waitq
+                        self.waitq.remove (unit)
                         break
                 else :
-                    print "%s is ! active" % pilot.uid
+                    print "%s is ! active" % pid
 
                 # unit was not scheduled...
                 schedule[unit] = None

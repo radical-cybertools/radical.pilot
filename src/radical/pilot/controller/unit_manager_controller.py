@@ -435,10 +435,6 @@ class UnitManagerController(threading.Thread):
         # TODO: this hack below relies on what?! That there is just one pilot?
         pilot_sandbox = pilot_info[0]['sandbox']
 
-        for unit in units:
-            # FIXME: what do I set it to in case of transfers?
-            self._db.set_compute_unit_state (unit.uid, PENDING_EXECUTION, ["pending execution"])
-
         # Split units into two different lists: the first list contains the CUs
         # that need file transfer and the second list contains the CUs that
         # don't. The latter is added to the pilot directly, while the former
@@ -470,6 +466,7 @@ class UnitManagerController(threading.Thread):
       #     }
 
         # Bulk-add all non-transfer units-
+        print "Pushing %s" % wu_notransfer
         self._db.assign_compute_units_to_pilot(
             unit_uids=wu_notransfer,
             pilot_uid=pilot_uid
