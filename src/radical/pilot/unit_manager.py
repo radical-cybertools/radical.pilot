@@ -98,18 +98,6 @@ class UnitManager(object):
         self._worker = None 
         self._pilots = []
 
-        # queues for managing the CUs.
-        self.wait_queue = list() # incoming CU requesus
-        self.work_queue = list() # active CUs
-        self.done_queue = list() # finished CUs
-
-        # also keep a assignment map from pilot to CUs.  This will contain all
-        # CUs -- CUs not assigned to a pilot are mapped to None.  New pilots
-        # will get a new entry in this map.
-        self.pilot_cu_map = {None: list()}
-        self.pilot_caps   = dict() # capability map, maps pid to number of free slots
-
-
         if _reconnect is False:
             # Start a worker process fo this UnitManager instance. The worker
             # process encapsulates database access et al.
@@ -124,7 +112,7 @@ class UnitManager(object):
             self._worker.start()
 
             self._uid = self._worker.unit_manager_uid
-            self._scheduler = get_scheduler(name=scheduler)
+            self._scheduler = get_scheduler(name=scheduler, manager=self)
 
             # Each pilot manager has a worker thread associated with it.
             # The task of the worker thread is to check and update the state
@@ -135,12 +123,6 @@ class UnitManager(object):
         else:
             # re-connect. do nothing
             pass
-
-        # make sure to register unit state callbacks, to trigger
-        # re-scheduling as needed...
-        self.register_callback (self._unit_state_callback)
-
-
 
 
     #--------------------------------------------------------------------------
@@ -198,7 +180,9 @@ class UnitManager(object):
         # about the UnitManager
         um_data = obj._worker.get_unit_manager_data()
 
-        obj._scheduler = get_scheduler(name=um_data['scheduler'])
+        obj._scheduler = get_scheduler(name=um_data['scheduler'], manager=self)
+        # FIXME: we need to tell the scheduler about all the pilots...
+
         obj._uid = unit_manager_id
 
         logger.info("Reconnected to existing UnitManager %s." % str(obj))
@@ -276,16 +260,6 @@ class UnitManager(object):
             pilots = [pilots]
 
         self._worker.add_pilots(pilots)
-
-        for pilot in pilots:
-
-            self._pilots.append(pilot.uid)
-            self.pilot_cu_map[pilot.uid] = list()
-
-            # make sure to register pilot state callbacks, to trigger
-            # re-scheduling as needed...
-            print 'register callback'
-            pilot.pilot_manager.register_callback (self._pilot_state_callback)
 
 
     # -------------------------------------------------------------------------
@@ -372,92 +346,6 @@ class UnitManager(object):
 
         return self._worker.get_compute_unit_uids()
 
-    # -------------------------------------------------------------------------
-    #
-    def _unit_state_callback (self, cu, state) :
-        
-        logger.debug ("[UMCallback]: Computeunit %s changed to %s" % (cu.uid, state))
-
-        if  state in [DONE, FAILED, CANCELED] :
-            # the pilot which owned this CU should now have free slots available
-            self._re_schedule (finished_cu=cu)
-
-
-    # -------------------------------------------------------------------------
-    #
-    def _pilot_state_callback (self, pilot, state) :
-        
-        logger.debug ("[UMCallback]: ComputePilot %s changed to %s" % (pilot.uid, state))
-
-        if  state in [ACTIVE] :
-            # the pilot which owned this CU should now have free slots available
-            self._re_schedule (active_pilot=pilot)
-
-        if  state in [DONE, FAILED, CANCELED] :
-            # the CUs owned by this pilot need to be re-scheduled (unless they
-            # are in a final state, then they'll be in the done_queue anyways).
-            self._re_schedule (active_pilot=pilot)
-
-
-    # -------------------------------------------------------------------------
-    #
-    def _re_schedule (self, finished_cu=None, active_pilot=None) :
-        """
-        On certain events, we attempot to re-schedule CUs which previously have
-        not been assigned to a pilot, usually due to insufficient capabilities.
-        This methid is called when a previsouly submitted CU finishes (which
-        frees resources from the pilot); 
-        """
-
-        if  finished_cu :
-
-            # check if we knew the finished CU -- if not, we have a consistency
-            # problem
-            if  finished_cu not in self.work_queue :
-                raise RuntimeError ('Unit scheduler is in inconsistent state')
-
-            # move the CU to done list
-            self.done_queue.append (finished_cu)
-            self.work_queue.remove (finished_cu)
-
-            # look through the wait queue, and try to schedule the first CU which
-            # has the same or smaller size as the finished CU -- g=that should fit.
-            # We repeat that until we find no more CUs which can (in total) occupy
-            # the freed space.
-            free_slots += finished_cu.cores
-
-            # at this point, we would *love* to know which pilot owned the
-            # finished CU -- then we could simply assign the matching CUs below
-            # to that pilot... :(
-
-
-
-        if  active_pilot :
-            # if a new pilot became active, then the number of free slots is
-            # exactly the size of that pilot
-            self.caps[active_pilot.uid] += active_pilot.description.cores
-
-
-        # we now know how many slots are *at least* free, so we attempt to
-        # schedule CUs into that space
-        for (cud, manager) in self.wait_queue :
-
-            if  free_slots < 0 :
-                raise RuntimeError ('Unit scheduler is in inconsistent state')
-
-            if  free_slots == 0 :
-                # wait for the next CU do finish...
-                break
-
-            if  cud.cores <= free_slots :
-                try :
-                    cu_id       = self.schedule (manager, cud)
-                    free_slots -= cud.cores
-                    logger.info ("re-scheduled CU %s" % cu_id)
-
-                except Exception as e :
-                    logger.debug ("Failed to reschedule CU %s" % cud)
-
 
     # -------------------------------------------------------------------------
     #
@@ -499,19 +387,27 @@ class UnitManager(object):
         # The scheduler may not be able to schedule some units - those will
         # have 'None' as pilot ID.
 
-        try:
-            schedule = self._scheduler.schedule(
-                manager=self, 
-                unit_descriptions=unit_descriptions)
+        units = list()
+        for ud in unit_descriptions :
 
-        except Exception as e:
-            raise PilotException(
-                "Internal error - unit scheduler failed: %s" % e)
+            units.append (ComputeUnit._create (unit_description=ud,
+                                               unit_manager_obj=self, 
+                                               local_state=NEW))
 
-        if  len(schedule.keys()) != len(unit_descriptions) :
-            raise PilotException(
-                "Internal error - invalid unit count")
+        if True :
+      # try:
+            self._scheduler.schedule (units=units)
 
+      # except Exception as e:
+      #     raise PilotException(
+      #         "Internal error - unit scheduler failed: %s" % e)
+
+        return units
+
+
+    # -------------------------------------------------------------------------
+    #
+    def handle_schedule (self, schedule) :
 
         # we want to use bulk submission to the pilots, so we collect all units
         # assigned to the same set of pilots.  At the same time, we select
@@ -520,80 +416,32 @@ class UnitManager(object):
         pilot_cu_map = dict()
         unscheduled  = list()
 
-        for ud in schedule.keys() :
+        for unit in schedule.keys() :
 
-            pilot_id = schedule[ud]
+            pid = schedule[unit]
 
-            if  None == pilot_id :
-                unscheduled.append (ud)
+            if  None == pid :
+                logger.info ('unit %s remains unscheduled' % unit.uid)
                 continue
 
-            if  pilot_id not in pilot_cu_map :
-                pilot_cu_map[pilot_id] = list()
+            if  pid not in self._pilots :
+                raise RuntimeException ("schedule points to unknown pilot %s" % pid)
 
-            pilot_cu_map[pilot_id].append (ud)
+            if  pid not in pilot_cu_map :
+                pilot_cu_map[pid] = list()
+
+            pilot_cu_map[pid].append (unit)
+                
 
 
         # submit to all pilots which got something submitted to
-        for pilot_id in pilot_cu_map.keys():
+        for pid in pilot_cu_map.keys():
 
-            pilot_units = list()
-
-            # sanity check on scheduler provided information
-            if not pilot_id in self.list_pilots():
-                raise PilotException(
-                    "Internal error - invalid scheduler reply, "
-                    "no such pilot %s" % pilot_id)
-
-            # submit each unit description scheduled here, all in one bulk
-            for ud in pilot_cu_map[pilot_id] :
-
-                # create a new ComputeUnit object
-                cu = ComputeUnit._create(
-                    unit_description=ud,
-                    unit_manager_obj=self, 
-                    local_state=STATE_X
-                )
-
-                pilot_units.append(cu)
-
-            self._worker.schedule_compute_units(
+            self._worker.schedule_compute_units (
                 pilot_uid=pilot_id,
-                units=pilot_units
+                units=pilot_cu_map[pid]
             )
 
-            ret += pilot_units
-
-        # The above submission will have pushed all units into the SCHEDULED
-        # state, and will have addded entries into the CUs state history.
-        # For all unscheduled units we will also create a CU object, but will
-        # set the state to 'NEW' and rely on later rescheduling to pick them
-        # up.
-        if len(unscheduled) :
-
-           new_units = list()
-
-           for ud in unscheduled :
-               # create a new ComputeUnit object
-               cu = ComputeUnit._create(
-                   unit_description=ud,
-                   unit_manager_obj=self, 
-                   local_state=NEW
-               )
-               logger.warning ("delayed scheduling of unit %s" % str(cu.uid))
-
-               new_units.append(cu)
-
-           
-           self._worker.publish_compute_units(units=new_units)
-
-           ret += new_units
-
-        # we are done -- return the little buggers...
-        if len(ret) == 1:
-            return ret[0]
-        else:
-            return ret
 
     # -------------------------------------------------------------------------
     #
@@ -729,3 +577,4 @@ class UnitManager(object):
         and ``state`` is the new state of that object.
         """
         self._worker.register_manager_callback(callback_function)
+

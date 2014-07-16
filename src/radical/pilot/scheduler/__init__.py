@@ -23,17 +23,11 @@ SCHED_LATE_BINDING      = "late_binding"
 
 # -----------------------------------------------------------------------------
 # 
-def get_scheduler(name):
+def get_scheduler(manager, name):
     """get_scheduler returns a scheduler object for 'name'.
     """
-    if name == SCHED_ROUND_ROBIN:
-        return RoundRobinScheduler()
+    if   name == SCHED_ROUND_ROBIN      : return RoundRobinScheduler       (manager) 
+    elif name == SCHED_DIRECT_SUBMISSION: return DirectSubmissionScheduler (manager) 
+    elif name == SCHED_LATE_BINDING     : return LateBindingScheduler      (manager)
+    else                                : raise RuntimeError("Scheduler '%s' doesn't exist." % name)
 
-    elif name == SCHED_DIRECT_SUBMISSION:
-        return DirectSubmissionScheduler()
-
-    elif name == SCHED_LATE_BINDING:
-        return LateBindingScheduler()
-
-    else:
-        raise RuntimeError("Scheduler '%s' doesn't exist." % name)

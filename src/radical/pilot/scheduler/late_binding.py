@@ -21,81 +21,233 @@ from radical.pilot.states              import *
 # -----------------------------------------------------------------------------
 # 
 class LateBindingScheduler(Scheduler):
-    """LateBindingScheduler implements a multi-pilot, late-binding
-    scheduling algorithm. Only schedules CUs to Pilots that are active and have a free-slot.
+    """
+    
+    LateBindingScheduler implements a multi-pilot, late-binding scheduling
+    algorithm. Only schedules CUs to Pilots that are active and have
+    a free-slot.
+
+    This scheduler is not able to handle pilots which serve more than one unit
+    manager concurrently.
+
     """
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__ (self, manager):
         """
         """
-        Scheduler.__init__(self)
+        Scheduler.__init__ (self)
         logger.info("Loaded scheduler: %s." % self.name)
 
-    # -------------------------------------------------------------------------
-    #
-    def _name(self):
-        return "LateBindingScheduler"
+        self._name   = self.__class__.__name__
+        self.manager = manager
+        self.waitq   = list()
+        self.pmgrs   = list()
+        self.pilots  = dict()
+
 
     # -------------------------------------------------------------------------
     #
-    def schedule(self, manager, unit_descriptions):
+    def _update_caps (self) :
 
-        # the scheduler will return a dictionary of the form:
+        # we keep track of available cores on our own.  However, we should sync
+        # our bookkeeping with reality now and then...  
+        #
+        # NOTE: Not sure yet when this methid will be called -- calling it too
+        # frequently will slow scheduling down significantly, calling it very
+        # infrequently can result in invalid schedules.  Accuracy vs.
+        # performance...
+
+        # provide revers pilot lookup
+        pilot_ids = dict()
+        for pilot in self.pilots :
+            pilod_ids[pilot.uid] = pilot
+
+        pilot_docs = self.manager._worker._db.get_pilots (pilot_ids=pilot_ids.keys ())
+
+        for pilot_doc in pilot_docs :
+
+            pid = str (pilot_doc['_id'])
+            if  not pid in pilot_ids :
+                raise RuntimeError ("Got invalid pilot doc (%s)" % pid)
+
+            self.pilots[pilot_ids]['state'] = str(pilot_doc.get ('state'))
+            self.pilots[pilot_ids]['cap']   = int(pilot_doc.get ('capability', 0))
+
+        pprint.pprint (self.pilots)
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _unit_state_callback (self, unit, state) :
+        
+
+        if  not pilot in self.pilots :
+            # as we cannot unregister callbacks, we simply ignore this
+            # invokation.  Its probably from a unit we handled previously.
+            # (although this should have been final?)
+            logger.warn ("[SchedulerCallback]: ComputeUnit %s changed to %s (ignored)" % (unit.uid, state))
+            return
+
+        logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (cu.uid, state))
+
+        if  state in [DONE, FAILED, CANCELED] :
+            # the pilot which owned this CU should now have free slots available
+            # FIXME: how do I get the pilot from the CU?
+            pilot = unit.pilot
+
+            self.pilots[pilot]['caps'] += unit.description.cores
+            self._re_schedule (pilot=pilot)
+
+            # FIXME: how can I *un*register a unit callback?
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _pilot_state_callback (self, pilot, state) :
+        
+        if  not pilot in self.pilots :
+            # as we cannot unregister callbacks, we simply ignore this
+            # invokation.  Its probably from a pilot we used previously.
+            logger.warn ("[SchedulerCallback]: ComputePilot %s changed to %s (ignored)" % (pilot.uid, state))
+            return
+
+
+        logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pilot.uid, state))
+
+        if  state in [ACTIVE] :
+            # the pilot is now ready to be used
+            self._re_schedule (pilot=pilot)
+
+        if  state in [DONE, FAILED, CANCELED] :
+            # we can't use this pilot anymore...  
+            self.pilots.remove (pilot)
+
+            # FIXME: how can I *un*register a pilot callback?
+
+
+    # -------------------------------------------------------------------------
+    #
+    def pilot_added (self, pilot) :
+
+        if  pilot in pilots :
+            raise RuntimeError ('cannot add pilot twice (%s)' % pilot.uid)
+
+        # get initial information about the pilot capabilities
+        #
+        # NOTE: this assumes that the pilot manages no units, yet.  This will
+        # generally be true, as the UM will call this methods before it submits
+        # any units.  This will, however, work badly with pilots which are added
+        # to more than one UM.  This though holds true for other parts in this
+        # code as well, thus we silently ignore this issue for now, and accept
+        # this as known limitation....
+        self.pilots[pilot] = dict()
+        self.pilots[pilot]['caps'] = pilot.description.cores
+
+        # make sure we register callback only once per pmgr
+        if  pmgr not in self.pmgrs :
+            self.pmgrs.append (pmgr)
+            pilot.pilot_manager.register_callback (self._pilot_state_callback)
+
+        # if we have any pending units, we better serve them now...
+        self._reschedule (pilot=pilot)
+
+
+    # -------------------------------------------------------------------------
+    #
+    def pilot_removed (self, pilot) :
+
+        if  not pilot in pilots :
+            raise RuntimeError ('cannot remove unknown pilot (%s)' % pilot.uid)
+
+        # NOTE: we don't care if that pilot had any CUs active -- its up to the
+        # UM what happens to those.
+
+        self.pilots.remove (pilot)
+        # FIXME: how can I *un*register a pilot callback?
+
+
+    # -------------------------------------------------------------------------
+    #
+    def unit_remove (self, unit) :
+
+        # the UM revokes the control over this unit from us...
+
+        if  not unit in units :
+            raise RuntimeError ('cannot remove unknown unit (%s)' % unit.uid)
+
+        # NOTE: we don't care if that pilot had any CUs active -- its up to the
+        # UM what happens to those.
+
+        self.pilots.remove (pilot)
+        # FIXME: how can I *un*register a pilot callback?
+
+
+    # -------------------------------------------------------------------------
+    #
+    def schedule (self, units) :
+
+        # this call really just adds the incoming units to the wait queue and
+        # then calls reschedule() to have them picked up.
+        for unit in units :
+            
+            if  unit in self.waitq :
+                raise RuntimeError ('Unit cannot be scheduled twice (%s)' % unit.uid)
+
+            if  unit.state != NEW :
+                raise RuntimeError ('Unit %s not in NEW state (%s)' % unit.uid)
+
+        self.waitq += units
+
+        self._reschedule ()
+
+
+    
+    # -------------------------------------------------------------------------
+    #
+    def _reschedule (self) :
+
+        # dig through the list of waiting CUs, and try to find a pilot for each
+        # of them.  This enacts first-come-first-served, but will be unbalanced
+        # if the units in the queue are of different sizes (it is kind of
+        # opposite to backfilling -- its frontfilling ;).  That problem is
+        # ignored at this point.
+        #
+        # if any units get scheduled, we push a dictionary to the UM to enact
+        # the schedule:
         #   { 
-        #     ud_1: pilot_id_1
-        #     ud_2: pilot_id_2
-        #     ud_3: None
-        #     ud_4: pilot_id_2
+        #     unit_1: pilot_id_1
+        #     unit_2: pilot_id_2
+        #     unit_4: pilot_id_2
         #     ...
         #   }
-        # The scheduler may not be able to schedule some units -- those will
-        # simply map to a 'None' pilot ID.  The UM needs to make sure
-        # that no UD from the original list is left untreated, eventually.
 
-        print "Late-binding scheduling of %s units" % len(unit_descriptions)
+        if not len(self.pilots.keys ()) :
+            # no pilots to  work on, yet.
+            return 
 
-        if not manager:
-            raise RuntimeError ('Unit scheduler is not initialized')
+        print "Late-binding re-scheduling of %s units" % len(self.waitq)
 
-        # first collect all capability information
-        pilots = manager.list_pilots()
-        print 'Pilots: %s' % pilots
 
-        if not len(pilots) :
-            raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
+        schedule = dict()
 
-        pilot_docs = manager._worker._db.get_pilots(pilot_ids=pilots)
+        for unit in self.waitq:
 
-        caps = dict()
-        for pilot_doc in pilot_docs :
-            pilot_id                = str (pilot_doc['_id'])
-            caps[pilot_id]          = dict()
-            caps[pilot_id]['state'] = str (pilot_doc['state'])
-            if 'capability' in pilot_doc : 
-                caps[pilot_id]['cap'] = int (pilot_doc['capability'])
-            else :
-                caps[pilot_id]['cap'] = 0
+            ud = unit.description
 
-        pprint.pprint (caps)
+            for pilot in self.pilots :
 
-        ret = dict()
+                if  self.pilots[pilot]['state'] in [ACTIVE] :
 
-        for ud in unit_descriptions:
-
-            for pid in caps.keys () :
-
-                if  caps[pid]['state'] in [ACTIVE] :
-
-                    if  ud.cores < caps[pid]['cap'] :
-                        caps[pid]['cap'] -= ud.cores
-                        ret[ud] = pid
+                    if  ud.cores < self.pilots[pilot]['caps'] :
+                        self.pilots[pilot]['caps'] -= ud.cores
+                        schedule[unit] = pilot.uid
                         break
 
             # unit was not scheduled...
-            ret[ud] = None
+            schedule[ud] = None
                      
-        pprint.pprint (ret)
-        return ret
+        pprint.pprint (schedule)
+        self.manager.handle_schedule (schedule)
 

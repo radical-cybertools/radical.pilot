@@ -49,4 +49,5 @@ class Scheduler(object):
     def name(self):
         """The name of the scheduler.
         """
-        return self._name()
+        return self._name
+
