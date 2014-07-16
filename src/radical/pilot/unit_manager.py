@@ -107,7 +107,7 @@ class UnitManager(object):
         # CUs -- CUs not assigned to a pilot are mapped to None.  New pilots
         # will get a new entry in this map.
         self.pilot_cu_map = {None: list()}
-
+        self.pilot_caps   = dict() # capability map, maps pid to number of free slots
 
 
         if _reconnect is False:
@@ -136,9 +136,11 @@ class UnitManager(object):
             # re-connect. do nothing
             pass
 
-      # # make sure to register unit state callbacks, to trigger re-scheduling
-      # # as needed...
-      # self.register_callback (self._unit_state_callback)
+        # make sure to register unit state callbacks, to trigger
+        # re-scheduling as needed...
+        self.register_callback (self._unit_state_callback)
+
+
 
 
     #--------------------------------------------------------------------------
@@ -280,6 +282,11 @@ class UnitManager(object):
             self._pilots.append(pilot.uid)
             self.pilot_cu_map[pilot.uid] = list()
 
+            # make sure to register pilot state callbacks, to trigger
+            # re-scheduling as needed...
+            print 'register callback'
+            pilot.pilot_manager.register_callback (self._pilot_state_callback)
+
 
     # -------------------------------------------------------------------------
     #
@@ -369,7 +376,7 @@ class UnitManager(object):
     #
     def _unit_state_callback (self, cu, state) :
         
-        logger.debug ("unit %s changed to %s" % (cu.uid, state))
+        logger.debug ("[UMCallback]: Computeunit %s changed to %s" % (cu.uid, state))
 
         if  state in [DONE, FAILED, CANCELED] :
             # the pilot which owned this CU should now have free slots available
@@ -380,7 +387,7 @@ class UnitManager(object):
     #
     def _pilot_state_callback (self, pilot, state) :
         
-        logger.debug ("pilot %s changed to %s" % (pilot.uid, state))
+        logger.debug ("[UMCallback]: ComputePilot %s changed to %s" % (pilot.uid, state))
 
         if  state in [ACTIVE] :
             # the pilot which owned this CU should now have free slots available
@@ -389,7 +396,6 @@ class UnitManager(object):
         if  state in [DONE, FAILED, CANCELED] :
             # the CUs owned by this pilot need to be re-scheduled (unless they
             # are in a final state, then they'll be in the done_queue anyways).
-            #
             self._re_schedule (active_pilot=pilot)
 
 
@@ -418,7 +424,7 @@ class UnitManager(object):
             # has the same or smaller size as the finished CU -- g=that should fit.
             # We repeat that until we find no more CUs which can (in total) occupy
             # the freed space.
-            free_slots = finished_cu.cores
+            free_slots += finished_cu.cores
 
             # at this point, we would *love* to know which pilot owned the
             # finished CU -- then we could simply assign the matching CUs below
@@ -429,7 +435,7 @@ class UnitManager(object):
         if  active_pilot :
             # if a new pilot became active, then the number of free slots is
             # exactly the size of that pilot
-            free_slots = active_pilot.cores
+            self.caps[active_pilot.uid] += active_pilot.description.cores
 
 
         # we now know how many slots are *at least* free, so we attempt to

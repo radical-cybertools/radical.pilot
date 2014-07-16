@@ -181,10 +181,15 @@ class UnitManagerController(threading.Thread):
         # If we have any manager-level callbacks registered, we
         # call those as well!
         for cb in self._manager_callbacks:
+            print cp
             try:
+                print 1
                 cb(self._shared_data[unit_id]['facade_object'],
                    new_state)
+                print 2
             except Exception, ex:
+                print 3
+                print ex
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
 
@@ -326,6 +331,7 @@ class UnitManagerController(threading.Thread):
     def register_manager_callback(self, callback_func):
         """Registers a manager-level callback.
         """
+        print "registered callback (%s)" % callback_func
         self._manager_callbacks.append(callback_func)
 
     # ------------------------------------------------------------------------
