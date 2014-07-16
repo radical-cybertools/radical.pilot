@@ -20,7 +20,7 @@ from radical.pilot.states import *
 from radical.pilot.exceptions import *
 
 from bson import ObjectId
-
+from radical.pilot.db.database import COMMAND_CANCEL_COMPUTE_UNIT
 
 # -----------------------------------------------------------------------------
 #
@@ -87,7 +87,7 @@ class ComputeUnit(object):
     #
     @staticmethod
     def _get(unit_manager_obj, unit_ids):
-        """ PRIVATE: Get one or more units via their UIDs.
+        """ PRIVATE: Get one or more Compute Units via their UIDs.
         """
         units_json = unit_manager_obj._session._dbs.get_compute_units(
             unit_manager_id=unit_manager_obj.uid,
@@ -379,13 +379,13 @@ class ComputeUnit(object):
             if(None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
 
-        # done waiting
-        return
+        # done waiting -- return the state
+        return new_state
 
     # -------------------------------------------------------------------------
     #
     def cancel(self):
-        """Terminates the ComputeUnit.
+        """Cancel the ComputeUnit.
 
         **Raises:**
 
@@ -396,13 +396,40 @@ class ComputeUnit(object):
             raise exceptions.radical.pilotException(
                 "Invalid Compute Unit instance.")
 
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        pilot_uid = cu_json['pilot']
+
         if self.state in [DONE, FAILED, CANCELED]:
             # nothing to do
-            return
+            logger.debug("Compute unit %s has state %s, can't cancel any longer." % (self._uid, self.state))
 
-        if self.state in [UNKNOWN]:
+        elif self.state in [NEW, PENDING_INPUT_TRANSFER]:
+            logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
+
+        elif self.state == TRANSFERRING_INPUT:
+            logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
+
+        elif self.state in [PENDING_EXECUTION, SCHEDULING]:
+            logger.debug("Compute unit %s has state %s, will abort start-up." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
+
+        elif self.state == EXECUTING:
+            logger.debug("Compute unit %s has state %s, will terminate the task." % (self._uid, self.state))
+            self._manager._session._dbs.send_command_to_pilot(cmd=COMMAND_CANCEL_COMPUTE_UNIT, arg=self.uid, pilot_ids=pilot_uid)
+
+        elif self.state == PENDING_OUTPUT_TRANSFER:
+            logger.debug("Compute unit %s has state %s, will abort the transfer." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
+
+        elif self.state == TRANSFERRING_OUTPUT:
+            logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, "Received Cancel")
+
+        else:
             raise exceptions.radical.pilotException(
-                "Compute Unit state is UNKNOWN, cannot cancel")
+                "Unknown Compute Unit state: %s, cannot cancel" % self.state)
 
-        # done waiting
+        # done canceling
         return

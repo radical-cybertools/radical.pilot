@@ -72,6 +72,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         "$push": {"statehistory": {"state": TRANSFERRING_OUTPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
+            state = TRANSFERRING_OUTPUT
 
             if compute_unit is None:
                 # Sleep a bit if no new units are available.
@@ -91,6 +92,15 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     logger.info("Processing output file transfers for ComputeUnit %s" % compute_unit_id)
                     # Loop over all transfer directives and execute them.
                     for td in transfer_directives:
+
+                        state_doc = um_col.find_one(
+                            {"_id": ObjectId(compute_unit_id)},
+                            fields=["state"]
+                        )
+                        if state_doc['state'] == CANCELED:
+                            logger.info("Compute Unit Canceled, interrupting output file transfers.")
+                            state = CANCELED
+                            break
 
                         st = td.split(">")
                         abs_source = "%s/%s" % (remote_sandbox, st[0].strip())
@@ -112,17 +122,19 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         output_file.copy(saga.Url(abs_target))
                         output_file.close()
 
-                    # Update the CU's state to 'DONE' if all transfers were successfull.
+                        # Update the CU's state to 'DONE' if (all) transfers were successful.
+                        state = DONE
+
                     ts = datetime.datetime.utcnow()
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
-                        {"$set": {"state": DONE},
-                         "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
+                        {"$set": {"state": state},
+                         "$push": {"statehistory": {"state": state, "timestamp": ts}},
                          "$pushAll": {"log": log_messages}}                    
                     )
 
                 except Exception, ex:
-                    # Update the CU's state 'FAILED'.
+                    # Update the CU's state to 'FAILED'.
                     ts = datetime.datetime.utcnow()
                     log_messages = "Output transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
                     um_col.update(

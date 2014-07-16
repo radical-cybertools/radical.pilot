@@ -60,6 +60,12 @@ LRMS_LSF    = 'LSF'
 LRMS_LOADL  = 'LOADL'
 LRMS_FORK   = 'FORK'
 
+COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
+COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
+COMMAND_KEEP_ALIVE          = "Keep_Alive"
+COMMAND_FIELD               = "commands"
+COMMAND_TYPE                = "type"
+COMMAND_ARG                 = "arg"
 
 #---------------------------------------------------------------------------
 #
@@ -714,7 +720,8 @@ class Task(object):
         self.stdout_id      = None
         self.stderr_id      = None
 
-        self._log            = []
+        self._log           = []
+        self._proc          = None
 
 
 # ----------------------------------------------------------------------------
@@ -726,7 +733,7 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, task_queue, node_list, cores_per_node,
+    def __init__(self, logger, task_queue, command_queue, node_list, cores_per_node,
                  launch_methods, mongodb_url, mongodb_name,
                  pilot_id, session_id, benchmark):
 
@@ -750,8 +757,12 @@ class ExecWorker(multiprocessing.Process):
         # Queued tasks by the Agent
         self._task_queue     = task_queue
 
+        # Queued commands by the Agent
+        self._command_queue = command_queue
+
         # Launched tasks by this ExecWorker
         self._running_tasks = []
+        self._cuids_to_cancel = []
 
         # Slots represents the internal process management structure.
         # The structure is as follows:
@@ -850,10 +861,21 @@ class ExecWorker(multiprocessing.Process):
 
                 self._log.debug("Slot status:\n%s", self._slot_status())
 
-                # Loop over tasks instead of slots!
+                # See if there are commands for the worker!
                 try:
-                    task = self._task_queue.get_nowait()
+                    command = self._command_queue.get_nowait()
+                    if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                        self._cuids_to_cancel.append(command[COMMAND_ARG])
+                    else:
+                        raise Exception("Command %s not applicable in this context." % command[COMMAND_TYPE])
+                except Queue.Empty:
+                    # do nothing if we don't have any queued commands
+                    pass
+
+                try:
                     idle = False
+
+                    task = self._task_queue.get_nowait()
 
                     if task.mpi:
                         launch_method = self._available_launch_methods['mpi_launch_method']
@@ -1139,9 +1161,10 @@ class ExecWorker(multiprocessing.Process):
 
         task.started=datetime.datetime.utcnow()
         task.state='Executing'
+        task._proc = proc
 
         # Add to the list of monitored tasks
-        self._running_tasks.append(proc)
+        self._running_tasks.append(task) # add task here?
 
         # Update to mongodb
         #
@@ -1166,58 +1189,66 @@ class ExecWorker(multiprocessing.Process):
         update_tasks = []
         finished_tasks = []
 
-        for proc in self._running_tasks:
+        for task in self._running_tasks:
 
+            proc = task._proc
             rc = proc.poll()
             if rc is None:
                 # subprocess is still running
-                continue
 
-            finished_tasks.append(proc)
-
-            # Make sure all stuff reached the spindles
-            proc.close_and_flush_filehandles()
-
-            # Convenience shortcut
-            task = proc.task
-
-            uid = task.uid
-            self._log.info("Task %s terminated with return code %s." % (uid, rc))
-
-            if rc != 0:
-                state = 'Failed'
-            else:
-                if task.output_data is not None:
-                    state = 'PendingOutputTransfer'
+                if task.uid in self._cuids_to_cancel:
+                    proc.kill()
+                    state = 'Canceled'
+                    finished_tasks.append(task)
                 else:
-                    state = 'Done'
+                    continue
 
-            # upload stdout and stderr to GridFS
-            workdir = task.workdir
-            task_id = task.uid
+            else:
 
-            stdout_id = None
-            stderr_id = None
+                finished_tasks.append(task)
 
-            stdout = "%s/STDOUT" % workdir
-            if os.path.isfile(stdout):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stdout, 'r') as stdout_f:
-                    stdout_id = fs.put(stdout_f.read(), filename=stdout)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+                # Make sure all stuff reached the spindles
+                proc.close_and_flush_filehandles()
 
-            stderr = "%s/STDERR" % workdir
-            if os.path.isfile(stderr):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stderr, 'r') as stderr_f:
-                    stderr_id = fs.put(stderr_f.read(), filename=stderr)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
+                # Convenience shortcut
+                uid = task.uid
+                self._log.info("Task %s terminated with return code %s." % (uid, rc))
+
+                if rc != 0:
+                    state = 'Failed'
+                else:
+                    if task.output_data is not None:
+                        state = 'PendingOutputTransfer'
+                    else:
+                        state = 'Done'
+
+                # upload stdout and stderr to GridFS
+                workdir = task.workdir
+                task_id = task.uid
+
+                stdout_id = None
+                stderr_id = None
+
+                stdout = "%s/STDOUT" % workdir
+                if os.path.isfile(stdout):
+                    fs = gridfs.GridFS(self._mongo_db)
+                    with open(stdout, 'r') as stdout_f:
+                        stdout_id = fs.put(stdout_f.read(), filename=stdout)
+                        self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+
+                stderr = "%s/STDERR" % workdir
+                if os.path.isfile(stderr):
+                    fs = gridfs.GridFS(self._mongo_db)
+                    with open(stderr, 'r') as stderr_f:
+                        stderr_id = fs.put(stderr_f.read(), filename=stderr)
+                        self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
+
+                task.stdout_id=stdout_id
+                task.stderr_id=stderr_id
+                task.exit_code=rc
 
             task.finished=datetime.datetime.utcnow()
-            task.exit_code=rc
             task.state=state
-            task.stdout_id=stdout_id
-            task.stderr_id=stderr_id
 
             update_tasks.append(task)
 
@@ -1317,10 +1348,14 @@ class Agent(threading.Thread):
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
+        # Channel for the Agent to communicate commands with the ExecWorker
+        self._command_queue = multiprocessing.Queue()
+
         # we assign each node partition to a task execution worker
         self._exec_worker = ExecWorker(
             logger          = self._log,
             task_queue      = self._task_queue,
+            command_queue   = self._command_queue,
             node_list       = self._exec_env.node_list,
             cores_per_node  = self._exec_env.cores_per_node,
             launch_methods  = self._exec_env.discovered_launch_methods,
@@ -1388,60 +1423,71 @@ class Agent(threading.Thread):
                 # get the actual pilot entries for them and remove them from 
                 # the wu_queue.
                 try:
-                    p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
 
-                    #if p_cursor.count() != 1:
-                    #    self._log.info("Pilot entry %s has disappeared from the database." % self._pilot_id)
-                    #    pilot_FAILED(self._p, self._pilot_id)
-                    if False:
-                        pass
+                    # Check if there's a command waiting
+                    retdoc = self._p.find_and_modify(
+                                query={"_id":ObjectId(self._pilot_id)},
+                                update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
+                                fields=[COMMAND_FIELD]
+                    )
+                    self._log.info("retdoc: %s" % retdoc)
 
+                    if retdoc:
+                        commands = retdoc['commands']
                     else:
-                        # Check if there's a command waiting
-                        command = p_cursor[0]['command']
-                        if command is not None:
-                            self._log.info("Received new command: %s" % command)
-                            if command.lower() == "cancel":
-                                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                        commands = []
 
-                        # Check if there are work units waiting for execution,
-                        # and log that we pulled it.
-                        ts = datetime.datetime.utcnow()
-                        wu_cursor = self._w.find_and_modify(
-                            query={"pilot" : self._pilot_id,
-                                   "state" : "PendingExecution"},
-                            update={"$set" : {"state": "Scheduling"},
-                                    "$push": {"statehistory": {"state": "Scheduling", "timestamp": ts}}}
-                        )
+                    for command in commands:
+                        if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+                            self._log.info("Received Cancel Pilot command.")
+                            pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                        elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                            self._log.info("Received Cancel Compute Unit command for: %s" % command[COMMAND_ARG])
+                            # Put it on the command queue of the ExecWorker
+                            self._command_queue.put(command)
+                        elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
+                            self._log.info("Received KeepAlive command.")
+                        else:
+                            raise Exception("Received unknown command: %s with arg: %s." % (command[COMMAND_TYPE], command[COMMAND_ARG]))
 
-                        # There are new work units in the wu_queue on the database.
-                        # Get the corresponding wu entries.
-                        if wu_cursor is not None:
-                            if not isinstance(wu_cursor, list):
-                                wu_cursor = [wu_cursor]
+                    # Check if there are work units waiting for execution,
+                    # and log that we pulled it.
+                    ts = datetime.datetime.utcnow()
+                    wu_cursor = self._w.find_and_modify(
+                        query={"pilot" : self._pilot_id,
+                               "state" : "PendingExecution"},
+                        update={"$set" : {"state": "Scheduling"},
+                                "$push": {"statehistory": {"state": "Scheduling", "timestamp": ts}}}
+                    )
 
-                            for wu in wu_cursor:
-                                # Create new task objects and put them into the task queue
-                                w_uid = str(wu["_id"])
-                                self._log.info("Found new tasks in pilot queue: %s" % w_uid)
+                    # There are new work units in the wu_queue on the database.
+                    # Get the corresponding wu entries.
+                    if wu_cursor is not None:
+                        if not isinstance(wu_cursor, list):
+                            wu_cursor = [wu_cursor]
 
-                                task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
+                        for wu in wu_cursor:
+                            # Create new task objects and put them into the task queue
+                            w_uid = str(wu["_id"])
+                            self._log.info("Found new tasks in pilot queue: %s" % w_uid)
 
-                                task = Task(uid         = w_uid,
-                                            executable  = wu["description"]["executable"], 
-                                            arguments   = wu["description"]["arguments"],
-                                            environment = wu["description"]["environment"],
-                                            numcores    = wu["description"]["cores"],
-                                            mpi         = wu["description"]["mpi"],
-                                            pre_exec    = wu["description"]["pre_exec"],
-                                            post_exec   = wu["description"]["post_exec"],
-                                            workdir     = task_dir_name,
-                                            stdout      = task_dir_name+'/STDOUT', 
-                                            stderr      = task_dir_name+'/STDERR',
-                                            output_data = wu["description"]["output_data"])
+                            task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
 
-                                task.state = 'Scheduling'
-                                self._task_queue.put(task)
+                            task = Task(uid         = w_uid,
+                                        executable  = wu["description"]["executable"],
+                                        arguments   = wu["description"]["arguments"],
+                                        environment = wu["description"]["environment"],
+                                        numcores    = wu["description"]["cores"],
+                                        mpi         = wu["description"]["mpi"],
+                                        pre_exec    = wu["description"]["pre_exec"],
+                                        post_exec   = wu["description"]["post_exec"],
+                                        workdir     = task_dir_name,
+                                        stdout      = task_dir_name+'/STDOUT',
+                                        stderr      = task_dir_name+'/STDERR',
+                                        output_data = wu["description"]["output_data"])
+
+                            task.state = 'Scheduling'
+                            self._task_queue.put(task)
 
                 except Exception, ex:
                     raise
