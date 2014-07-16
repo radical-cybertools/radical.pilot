@@ -10,8 +10,8 @@ import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
 
-_DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
 _DEFAULT_DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
 
 # for graphing events, we assign numerical pseudo values to each event.  
 # Note: make sure that those are translated back into event tags via 'set # [xy]tics'
@@ -674,7 +674,7 @@ if __name__ == '__main__' :
     url     = options.url
     session = options.session
 
-    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:4]
+    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
     dbclient = pymongo.MongoClient (host=host, port=port)
 
     print "modes   : %s" % mode

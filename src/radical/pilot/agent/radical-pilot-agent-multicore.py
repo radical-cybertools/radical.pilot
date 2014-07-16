@@ -73,6 +73,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
         {"$push": {"log" : message,
                    "statehistory": {"state": 'Failed', "timestamp": ts}},
          "$set":  {"state": 'Failed',
+                   "capability" : 0,
                    "finished": ts}
 
         })
@@ -90,6 +91,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
         {"$push": {"log" : message,
                    "statehistory": {"state": 'Canceled', "timestamp": ts}},
          "$set":  {"state": 'Canceled',
+                   "capability" : 0,
                    "finished": ts}
         })
     sys.exit (0)
@@ -104,6 +106,7 @@ def pilot_DONE(mongo_p, pilot_uid):
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push": {"statehistory": {"state": 'Done', "timestamp": ts}},
          "$set": {"state": 'Done',
+                   "capability" : 0,
                   "finished": ts}
 
         })
@@ -786,6 +789,7 @@ class ExecWorker(multiprocessing.Process):
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
             {"$set": {"slothistory" : self._slot_history,
+                      "capability"  : 0,
                       "slots"       : self._slots}}
             )
 
@@ -907,6 +911,7 @@ class ExecWorker(multiprocessing.Process):
             #     self._p.update(
             #         {"_id": ObjectId(self._pilot_id)},
             #         {"$set": {"slothistory" : self._slot_history, 
+            #                   "capability"  : 0,
             #                   "slots"       : self._slots}}
             #         )
 
@@ -1357,7 +1362,8 @@ class Agent(threading.Thread):
             {"$set": {"state"          : "Active",
                       "nodes"          : self._exec_env.node_list,
                       "cores_per_node" : self._exec_env.cores_per_node,
-                      "started"        : ts},
+                      "started"        : ts,
+                      "capability"     : 0},
              "$push": {"statehistory": {"state": 'Active', "timestamp": ts}}
             })
 

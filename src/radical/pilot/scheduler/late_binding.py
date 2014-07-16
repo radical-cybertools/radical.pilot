@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os 
+import pprint
 
 from radical.pilot.utils.logger        import logger
 from radical.pilot.scheduler.interface import Scheduler
@@ -69,53 +70,32 @@ class LateBindingScheduler(Scheduler):
 
         caps = dict()
         for pilot_doc in pilot_docs :
-            pilot_id       = str(pilot_doc['_id'])
-            caps[pilot_id] = pilot_doc['capability']
+            pilot_id                = str (pilot_doc['_id'])
+            caps[pilot_id]          = dict()
+            caps[pilot_id]['state'] = str (pilot_doc['state'])
+            if 'capability' in pilot_doc : 
+                caps[pilot_id]['cap'] = int (pilot_doc['capability'])
+            else :
+                caps[pilot_id]['cap'] = 0
 
-        import pprint
         pprint.pprint (caps)
-        sys.exit (0)
 
         ret = dict()
 
         for ud in unit_descriptions:
 
-            found_slot = False
+            for pid in caps.keys () :
 
-            if ud.cores > 1:
-                raise Exception("Late-binding scheduler only supports single core tasks for now!")
+                if  caps[pid]['state'] in [ACTIVE] :
 
-            pilots_json = manager._worker._db.get_pilots(pilot_ids=pilots)
-
-            for pilot in pilots_json:
-                pilot_uid = str(pilot['_id'])
-
-                import pprint
-                pprint.pprint (pilot)
-
-                if pilot['state'] == ACTIVE:
-                    print 'Found an active Pilot: %s' % pilot_uid
-                else:
-                    print 'Found an inactive Pilot %s, skipping ...' %  pilot_uid
-                    continue
-
-                for node in pilot['slots']:
-
-                    if 'Free' in node['cores']:
-                        print 'Found a free slot at node %s to schedule on Pilot %s!' % (node['node'], pilot_uid)
-
-                        ret[ud] = pilot_uid
-
-                        found_slot = True
+                    if  ud.cores < caps[pid]['cap'] :
+                        caps[pid]['cap'] -= ud.cores
+                        ret[ud] = pid
                         break
 
-                if  found_slot:
-                    break
-                    print 'Did not find a free slot to schedule on Pilot %s!' % pilot_uid
-
-            if  not found_slot :
-                print 'Did not find a free slot to schedule on any Pilot!'
-                ret[ud] = None
-
-
+            # unit was not scheduled...
+            ret[ud] = None
+                     
+        pprint.pprint (ret)
         return ret
+
