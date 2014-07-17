@@ -72,16 +72,4 @@ class TestIssue163(unittest.TestCase):
         s = res['testing123-localhost']
         assert s['default_queue'] == 'development'
 
-        pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource  = "testing123-localhost"
-        pdesc.runtime   = 1 
-        pdesc.cores     = 1
-        pdesc.cleanup   = True
-
-        pilot = pmgr.submit_pilots(pdesc)
-        pilot.wait(timeout=2.0*60)
-        
-        # This passes only if the pilot started succesfully. 
-        assert pilot.state == radical.pilot.states.DONE, "state: {0}".format(pilot.state)
-
         session.close()
