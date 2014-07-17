@@ -183,8 +183,8 @@ class UnitManager(object):
         um_data = obj._worker.get_unit_manager_data()
 
         obj._scheduler = get_scheduler(name=um_data['scheduler'], 
-                                       manager=self,
-                                       session=self._session)
+                                       manager=obj,
+                                       session=obj._session)
         # FIXME: we need to tell the scheduler about all the pilots...
 
         obj._uid = unit_manager_id
@@ -320,6 +320,7 @@ class UnitManager(object):
         self._worker.remove_pilots(pilot_ids)
 
 
+        # FIXME:
         # if a pilot gets removed, we need to re-assign all its units to other
         # pilots.   We thus move them all into the wait queue, and call the
         # global rescheduler.  Some of the CUs might already be in final state
@@ -327,15 +328,6 @@ class UnitManager(object):
         # it to the scheduling policy what happens to non-NEW CUs in the
         # wait_queue, i.e. if they get rescheduled, or if they'll raise an
         # error.
-
-        for pilot_id in pilot_ids :
-            for cu in self.pilot_cu_map[pilot_id] :
-                if  cu.state not in [DONE, FAILED, CANCELED] :
-                    self.wait_queue.append (cu)
-
-            self.pilot_cu_map[pilot_id] = list()
-
-        # FIXME: call global reschedule...
 
         # let the scheduler know...
         for pilot in pilots :
@@ -418,7 +410,10 @@ class UnitManager(object):
 
         self.handle_schedule (schedule)
 
-        return units
+        if len(units) == 1 :
+            return units[0]
+        else :
+            return units
 
 
     # -------------------------------------------------------------------------

@@ -184,6 +184,8 @@ class LateBindingScheduler(Scheduler):
         self.pilots.remove (pid)
         # FIXME: how can I *un*register a pilot callback?
 
+        # no need to schedule, really
+
 
     # -------------------------------------------------------------------------
     #

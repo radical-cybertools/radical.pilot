@@ -38,11 +38,12 @@ class RoundRobinScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def schedule(self, unit_descriptions):
+    def schedule(self, units):
         # the scheduler will return a dictionary of the form:
         #   { 
-        #     pilot_id_1  : [ud_1, ud_2, ...], 
-        #     pilot_id_2  : [ud_3, ud_4, ...], 
+        #     unit_1: pilot_id_1
+        #     unit_2: pilot_id_2
+        #     unit_4: pilot_id_2
         #     ...
         #   }
         # The scheduler may not be able to schedule some units -- those will
@@ -58,7 +59,7 @@ class RoundRobinScheduler(Scheduler):
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
 
-        for unit in unit_descriptions :
+        for unit in units :
             
             if  self._idx >= len(pilot_ids) : 
                 self._idx = 0
