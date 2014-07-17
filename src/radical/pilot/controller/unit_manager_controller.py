@@ -469,7 +469,8 @@ class UnitManagerController(threading.Thread):
         print "Pushing %s" % wu_notransfer
         self._db.assign_compute_units_to_pilot(
             unit_uids=wu_notransfer,
-            pilot_uid=pilot_uid
+            pilot_uid=pilot_uid,
+            pilot_sandbox=pilot_sandbox
         )
 
         for uid in wu_notransfer:

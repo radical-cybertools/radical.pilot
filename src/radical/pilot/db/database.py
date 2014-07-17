@@ -725,7 +725,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def assign_compute_units_to_pilot(self, pilot_uid, unit_uids):
+    def assign_compute_units_to_pilot(self, unit_uids, pilot_uid, pilot_sandbox):
         """Assigns one or more compute units to a pilot.
         """
         if self._s is None:
@@ -745,8 +745,9 @@ class Session():
         for uid in unit_uids :
             unit_oids.append (ObjectId(uid))
 
-        unit_docs  = self._w.update ({"_id"  : {"$in"   : unit_oids}},
-                                     {"$set" : {"pilot" : pilot_uid}},
+        unit_docs  = self._w.update ({"_id"  : {"$in"           : unit_oids}},
+                                     {"$set" : {"pilot"         : pilot_uid, 
+                                                "pilot_sandbox" : pilot_sandbox}},
                                      multi   = True)
 
 

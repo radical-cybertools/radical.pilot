@@ -85,9 +85,13 @@ class InputFileTransferWorker(multiprocessing.Process):
 
                     # We have found a new CU. Now we can process the transfer
                     # directive(s) wit SAGA.
-                    compute_unit_id = str(compute_unit["_id"])
-                    remote_sandbox = compute_unit["sandbox"]
-                    transfer_directives = compute_unit["description"]["input_data"]
+                    compute_unit_id      = str(compute_unit["_id"])
+                    unit_sandbox         = compute_unit["sandbox"]
+                    pilot_sandbox        = compute_unit["pilot_sandbox"]
+                    transfer_directives  = compute_unit["description"]["input_data"]
+                    remote_sandbox       = saga.Url (pilot_sandbox)
+                    remote_sandbox.path += "/unit-" + compute_unit_id
+
 
                     # We need to create the WU's directory in case it doesn't exist yet.
                     log_msg = "Creating ComputeUnit sandbox directory %s." % remote_sandbox
