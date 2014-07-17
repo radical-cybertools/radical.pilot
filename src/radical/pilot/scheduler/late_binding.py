@@ -37,10 +37,8 @@ class LateBindingScheduler(Scheduler):
     def __init__ (self, manager, session):
         """
         """
-        Scheduler.__init__ (self)
         logger.info("Loaded scheduler: %s." % self.name)
 
-        self._name   = self.__class__.__name__
         self.manager = manager
         self.session = session
         self.waitq   = list()
