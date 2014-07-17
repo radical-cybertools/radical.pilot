@@ -916,7 +916,9 @@ class ExecWorker(multiprocessing.Process):
                     # do nothing if we don't have any queued tasks
                     pass
 
-                # AM: idle seems always true here...
+                # AM: idle seems always true here.  But somehow the logic causes
+                # the pilot to spin very busily...  So, disable this idle check
+                # for now...
                 # idle &= self._check_running()
                 self._check_running()
 
