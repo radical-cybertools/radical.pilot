@@ -171,9 +171,7 @@ class LateBindingScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def pilot_removed (self, pilot) :
-
-        pid = pilot.uid
+    def pilot_removed (self, pid) :
 
         if  not pid in self.pilots :
             raise RuntimeError ('cannot remove unknown pilot (%s)' % pid)

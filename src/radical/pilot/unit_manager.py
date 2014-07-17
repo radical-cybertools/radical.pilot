@@ -330,8 +330,8 @@ class UnitManager(object):
         # error.
 
         # let the scheduler know...
-        for pilot in pilots :
-            self._scheduler.pilot_removed (pilot)
+        for pilot_id in pilot_ids :
+            self._scheduler.pilot_removed (pilot_id)
 
 
     # -------------------------------------------------------------------------
