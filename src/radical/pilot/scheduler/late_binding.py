@@ -187,24 +187,6 @@ class LateBindingScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def unit_remove (self, unit) :
-
-        # the UM revokes the control over this unit from us...
-
-        uid = unit.uid
-
-        if  not unit in units :
-            raise RuntimeError ('cannot remove unknown unit (%s)' % uid)
-
-        # NOTE: we don't care if that pilot had any CUs active -- its up to the
-        # UM what happens to those.
-
-        self.waitq.remove (unit)
-        # FIXME: how can I *un*register a pilot callback?
-
-
-    # -------------------------------------------------------------------------
-    #
     def schedule (self, units) :
 
         # this call really just adds the incoming units to the wait queue and
@@ -224,6 +206,26 @@ class LateBindingScheduler(Scheduler):
 
 
     
+    # -------------------------------------------------------------------------
+    #
+    def unschedule (self, units) :
+
+        # the UM revokes the control over this unit from us...
+
+        for unit in units :
+
+            uid = unit.uid
+
+            if  not unit in units :
+                raise RuntimeError ('cannot remove unknown unit (%s)' % uid)
+
+            # NOTE: we don't care if that pilot had any CUs active -- its up to the
+            # UM what happens to those.
+
+            self.waitq.remove (unit)
+            # FIXME: how can I *un*register a pilot callback?
+
+
     # -------------------------------------------------------------------------
     #
     def _reschedule (self, pid=None) :

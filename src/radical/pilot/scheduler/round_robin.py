@@ -48,7 +48,7 @@ class RoundRobinScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def schedule(self, manager, unit_descriptions):
+    def schedule(self, unit_descriptions):
         # the scheduler will return a dictionary of the form:
         #   { 
         #     pilot_id_1  : [ud_1, ud_2, ...], 
@@ -61,10 +61,7 @@ class RoundRobinScheduler(Scheduler):
 
         #print "round-robin scheduling of %s units" % len(unit_descriptions)
 
-        if  not manager :
-            raise RuntimeError ('Unit scheduler is not initialized')
-
-        pilots = manager.list_pilots ()
+        pilots = self.manager.list_pilots ()
         ret    = dict()
 
         if not len (pilots) :
@@ -81,3 +78,4 @@ class RoundRobinScheduler(Scheduler):
 
 
         return ret
+

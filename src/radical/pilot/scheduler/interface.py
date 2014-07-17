@@ -10,6 +10,8 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+from radical.pilot.utils.logger import logger
+
 # -----------------------------------------------------------------------------
 # 
 class Scheduler(object):
@@ -18,36 +20,43 @@ class Scheduler(object):
 
     # -------------------------------------------------------------------------
     # 
-    def __init__(self):
+    def __init__(self, manager, session):
         """Le constructeur.
         """
-
-    # -------------------------------------------------------------------------
-    # 
-    def __del__(self):
-        """Le destructeur.
-        """
-        pass
-
-    # -------------------------------------------------------------------------
-    # 
-    def _name(self):
-        """PRIVATE: Returns the name of the scheduler.
-        """
         raise RuntimeError ('Not Implemented!')
 
     # -------------------------------------------------------------------------
     # 
-    def schedule(self, manager, unit_descriptions):
-        """Schedules one or more ComputeUnits.
-        """
-        raise RuntimeError ('Not Implemented!')
+    def pilot_added (self, pilot) :
+        """Inform the scheduler about a new pilot"""
+
+        logger.warn ("scheduler %s does not implement 'pilot_added()'" % self.name)
+
+    # -------------------------------------------------------------------------
+    # 
+    def pilot_removed (self, pilot) :
+        """Inform the scheduler about a pilot removal"""
+
+        logger.warn ("scheduler %s does not implement 'pilot_removed()'" % self.name)
+
+    # -------------------------------------------------------------------------
+    # 
+    def schedule (self, units) :
+        """Schedules one or more ComputeUnits"""
+
+        raise RuntimeError ("scheduler %s does not implement 'pilot_removed()'" % self.name)
+
+    # -------------------------------------------------------------------------
+    # 
+    def unschedule (self, units) :
+        """Unschedule one or more ComputeUnits"""
+
+        logger.warn ("scheduler %s does not implement 'unschedule()'" % self.name)
 
     # -------------------------------------------------------------------------
     # 
     @property
     def name(self):
-        """The name of the scheduler.
-        """
-        return self._name
+        """The name of the scheduler"""
+        return self.__class__.__name__
 

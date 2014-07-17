@@ -25,10 +25,13 @@ class DirectSubmissionScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, manager, session):
         """Le constructeur.
         """
-        Scheduler.__init__(self)
+
+        self.manager = manager
+        self.session = session
+
         logger.info("Loaded scheduler: %s." % self.name)
 
     # -------------------------------------------------------------------------
@@ -46,11 +49,9 @@ class DirectSubmissionScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def schedule(self, manager, unit_descriptions):
-        if manager is None:
-            raise RuntimeError ('Unit scheduler is not initialized')
+    def schedule(self, unit_descriptions):
 
-        pilots = manager.list_pilots()
+        pilots = self.manager.list_pilots()
 
         if not len (pilots):
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
@@ -63,3 +64,4 @@ class DirectSubmissionScheduler(Scheduler):
             ret[ud] = pilots[0]
 
         return ret
+
