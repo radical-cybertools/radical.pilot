@@ -36,32 +36,20 @@ class DirectSubmissionScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): %s." % self.name)
+    def schedule(self, units):
 
-    # -------------------------------------------------------------------------
-    #
-    def _name(self):
-        return "DirectSubmissionScheduler"
+        pilot_ids = self.manager.list_pilots()
 
-    # -------------------------------------------------------------------------
-    #
-    def schedule(self, unit_descriptions):
-
-        pilots = self.manager.list_pilots()
-
-        if not len (pilots):
+        if not len (pilot_ids):
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
-        if len (pilots) > 1:
+        if len (pilot_ids) > 1:
             raise RuntimeError ('Direct Submission only works for a single pilot!')
         
-        ret            = dict()
-        for ud in unit_descriptions:
-            ret[ud] = pilots[0]
+        schedule = dict()
+        for unit in units:
 
-        return ret
+            schedule[unit] = pilot_ids[0]
+
+        return schedule
 

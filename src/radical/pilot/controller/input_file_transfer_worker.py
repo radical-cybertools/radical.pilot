@@ -88,9 +88,9 @@ class InputFileTransferWorker(multiprocessing.Process):
                     compute_unit_id      = str(compute_unit["_id"])
                     unit_sandbox         = compute_unit["sandbox"]
                     pilot_sandbox        = compute_unit["pilot_sandbox"]
-                    transfer_directives  = compute_unit["description"]["input_data"]
                     remote_sandbox       = saga.Url (pilot_sandbox)
                     remote_sandbox.path += "/unit-" + compute_unit_id
+                    transfer_directives  = compute_unit["description"]["input_data"]
 
 
                     # We need to create the WU's directory in case it doesn't exist yet.

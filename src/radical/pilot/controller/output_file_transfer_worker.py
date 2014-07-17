@@ -85,9 +85,13 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
                     # We have found a new CU. Now we can process the transfer
                     # directive(s) wit SAGA.
-                    compute_unit_id = str(compute_unit["_id"])
-                    remote_sandbox = compute_unit["sandbox"]
-                    transfer_directives = compute_unit["description"]["output_data"]
+                    compute_unit_id      = str(compute_unit["_id"])
+                    unit_sandbox         = compute_unit["sandbox"]
+                    pilot_sandbox        = compute_unit["pilot_sandbox"]
+                    remote_sandbox       = saga.Url (pilot_sandbox)
+                    remote_sandbox.path += "/unit-" + compute_unit_id
+                    transfer_directives  = compute_unit["description"]["output_data"]
+
 
                     logger.info("Processing output file transfers for ComputeUnit %s" % compute_unit_id)
                     # Loop over all transfer directives and execute them.

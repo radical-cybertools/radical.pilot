@@ -408,13 +408,15 @@ class UnitManager(object):
 
         self._worker.publish_compute_units (units=units)
 
-        if True :
-      # try:
-            self._scheduler.schedule (units=units)
+        schedule = None
+        try:
+            schedule = self._scheduler.schedule (units=units)
 
-      # except Exception as e:
-      #     raise PilotException(
-      #         "Internal error - unit scheduler failed: %s" % e)
+        except Exception as e:
+            raise PilotException(
+                "Internal error - unit scheduler failed: %s" % e)
+
+        self.handle_schedule (schedule)
 
         return units
 
@@ -426,6 +428,10 @@ class UnitManager(object):
         # we want to use bulk submission to the pilots, so we collect all units
         # assigned to the same set of pilots.  At the same time, we select
         # unscheduled units for later insertion into the wait queue.
+
+        if  not schedule :
+            logger.debug ('skipping empty unit schedule')
+            return
 
         pilot_cu_map = dict()
         unscheduled  = list()

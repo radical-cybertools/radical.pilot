@@ -133,3 +133,4 @@ if __name__ == "__main__":
         # Catch all exceptions and exit with and error.
         print "Error during execution: %s" % ex
         sys.exit(1)
+

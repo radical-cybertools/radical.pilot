@@ -763,8 +763,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_compute_units(self, pilot_uid, pilot_sandbox, unit_manager_uid,
-                             units, unit_log):
+    def insert_compute_units(self, unit_manager_uid, units, unit_log):
         """ Adds one or more compute units to the database and sets their state
             to 'PENDING'.
         """
@@ -780,31 +779,26 @@ class Session():
 
         for unit in units:
 
-            working_directory = saga.Url(pilot_sandbox)
-
-            #if unit.description.working_directory_priv is not None:
-            #    working_directory.path = u nit.description.working_directory_priv
-            #else:
-            working_directory.path += "/unit-"+unit.uid
-
             ts = datetime.datetime.utcnow()
 
             unit_json = {
-                "_id":          ObjectId(unit.uid),
-                "description":  unit.description.as_dict(),
-                "unitmanager":  unit_manager_uid,
-                "pilot":        pilot_uid,
-                "state":        unit._local_state,
-                "statehistory": [{"state": unit._local_state, "timestamp": ts}],
-                "submitted":    datetime.datetime.utcnow(),
-                "started":      None,
-                "finished":     None,
-                "exec_locs":    None,
-                "exit_code":    None,
-                "sandbox":      str(working_directory),
-                "stdout_id":    None,
-                "stderr_id":    None,
-                "log":          unit_log
+                "_id":           ObjectId(unit.uid),
+                "description":   unit.description.as_dict(),
+                "unitmanager":   unit_manager_uid,
+                "pilot":         None,
+                "pilot_sandbox": None,
+                "state":         unit._local_state,
+                "statehistory":  [{"state": unit._local_state, "timestamp": ts}],
+                "submitted":     datetime.datetime.utcnow(),
+                "started":       None,
+                "finished":      None,
+                "exec_locs":     None,
+                "exit_code":     None,
+                "workdir":       "unit-"+unit.uid,
+                "sandbox":       None,
+                "stdout_id":     None,
+                "stderr_id":     None,
+                "log":           unit_log
             }
             unit_docs.append(unit_json)
             results[unit.uid] = unit_json

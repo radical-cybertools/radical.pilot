@@ -25,26 +25,16 @@ class RoundRobinScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, manager, session):
         """Le constructeur.
         """
-        Scheduler.__init__(self)
+
+        self.manager = manager
+        self.session = session
+        self._idx    = 0
+
         logger.info("Loaded scheduler: %s." % self.name)
 
-        self._idx = 0
-
-    # -------------------------------------------------------------------------
-    #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): %s." % self.name)
-
-    # -------------------------------------------------------------------------
-    #
-    def _name(self):
-        return "RoundRobinScheduler"
 
     # -------------------------------------------------------------------------
     #
@@ -61,21 +51,20 @@ class RoundRobinScheduler(Scheduler):
 
         #print "round-robin scheduling of %s units" % len(unit_descriptions)
 
-        pilots = self.manager.list_pilots ()
-        ret    = dict()
+        pilot_ids = self.manager.list_pilots ()
+        schedule  = dict()
 
-        if not len (pilots) :
+        if not len (pilot_ids) :
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
 
-        for ud in unit_descriptions :
+        for unit in unit_descriptions :
             
-            if  self._idx >= len(pilots) : 
+            if  self._idx >= len(pilot_ids) : 
                 self._idx = 0
             
-            ret[ud]    = pilots[self._idx]
-            self._idx += 1
+            schedule[unit] = pilot_ids[self._idx]
+            self._idx     += 1
 
-
-        return ret
+        return schedule
 
