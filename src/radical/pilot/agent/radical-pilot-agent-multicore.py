@@ -822,8 +822,6 @@ class ExecWorker(multiprocessing.Process):
                     pass
 
                 try:
-                    idle = False
-
                     task = self._task_queue.get_nowait()
 
                     if task.mpi:
@@ -856,8 +854,8 @@ class ExecWorker(multiprocessing.Process):
                     if task_slots is None:
                         # No resources free, put back in queue
                         self._task_queue.put(task)
-                        idle = True
                     else:
+                        idle = False
                         # We got an allocation go off and launch the process
                         task.slots = task_slots
                         self._launch_task(task, launch_method, launch_command)
@@ -866,7 +864,7 @@ class ExecWorker(multiprocessing.Process):
                     # do nothing if we don't have any queued tasks
                     pass
 
-                idle &= self._check_running()
+                # idle &= self._check_running()
 
                 # Check if something happened in this cycle, if not, zzzzz for a bit
                 if idle:
