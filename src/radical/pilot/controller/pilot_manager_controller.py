@@ -205,7 +205,7 @@ class PilotManagerController(threading.Thread):
         # later evalutation
         if  new_state in (DONE, FAILED, CANCELED) :
             self._db.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
-        print 'publishing Callback hostory for %s" % pilot_id
+      # print 'publishing Callback hostory for %s' % pilot_id
 
 
     # ------------------------------------------------------------------------
