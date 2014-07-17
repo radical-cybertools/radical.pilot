@@ -131,7 +131,7 @@ class LateBindingScheduler(Scheduler):
 
         if  state in [DONE, FAILED, CANCELED] :
             # we can't use this pilot anymore...  
-            self.pilots.pop (pid)
+            del self.pilots[pid]
 
             # FIXME: how can I *un*register a pilot callback?
 
@@ -177,7 +177,7 @@ class LateBindingScheduler(Scheduler):
         # NOTE: we don't care if that pilot had any CUs active -- its up to the
         # UM what happens to those.
 
-        self.pilots.pop (pid)
+        del self.pilots[pid]
         # FIXME: how can I *un*register a pilot callback?
 
         # no need to schedule, really
@@ -214,13 +214,13 @@ class LateBindingScheduler(Scheduler):
 
             uid = unit.uid
 
-            if  not unit in units :
+            if  not unit in self.waitq :
                 raise RuntimeError ('cannot remove unknown unit (%s)' % uid)
 
             # NOTE: we don't care if that pilot had any CUs active -- its up to the
             # UM what happens to those.
 
-            self.waitq.pop (unit)
+            self.waitq.remove (unit)
             # FIXME: how can I *un*register a pilot callback?
 
 
@@ -252,21 +252,14 @@ class LateBindingScheduler(Scheduler):
             
 
         print "Late-binding re-scheduling of %s units" % len(self.waitq)
-        print "-------"
-        print "PILOTS"
-        pprint.pprint (self.pilots)
-        print "-------"
-        print "UNITS"
-        pprint.pprint (self.waitq)
-        print "-------"
-
 
         schedule = dict()
 
         # iterate on copy of waitq, as we manipulate the list during iteration.
         for unit in self.waitq[:] :
 
-            ud = unit.description
+            uid = unit.uid
+            ud  = unit.description
 
             for pid in self.pilots :
 
@@ -277,13 +270,13 @@ class LateBindingScheduler(Scheduler):
 
                         # sanity check on unit state
                         if  unit.state not in [NEW] :
-                            raise RuntimeError ("scheduler queue should only contain NEW units (%s)" % unit.uid)
+                            raise RuntimeError ("scheduler queue should only contain NEW units (%s)" % uid)
 
                         self.pilots[pid]['caps'] -= ud.cores
                         schedule[unit] = pid
 
                         # scheduled units are removed from the waitq
-                        self.waitq.pop (unit)
+                        self.waitq.remove (unit)
                         break
 
                 # unit was not scheduled...

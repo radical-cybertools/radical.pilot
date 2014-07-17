@@ -7,7 +7,6 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "lrms"                        : "FORK",
         "task_launch_method"          : "LOCAL",
-        "mpi_launch_method"           : "MPIRUN",
-     #  "global_virtenv"              : "/home/merzky/ve/"
+        "mpi_launch_method"           : "MPIRUN"
     }
 }

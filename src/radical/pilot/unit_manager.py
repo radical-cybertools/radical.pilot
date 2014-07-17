@@ -403,7 +403,7 @@ class UnitManager(object):
         schedule = None
         try:
             schedule = self._scheduler.schedule (units=units)
-
+       
         except Exception as e:
             import traceback
             logger.warn (traceback.format_exc())
