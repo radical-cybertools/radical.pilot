@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # Register our callback with the PilotManager. This callback will get
     # called every time any of the pilots managed by the PilotManager
     # change their state.
-  # pmgr.register_callback(pilot_state_cb)
+    pmgr.register_callback(pilot_state_cb)
 
     pdesc = rp.ComputePilotDescription()
     pdesc.resource  = "localhost"
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
     # change their state.
-  # umgr.register_callback(unit_state_change_cb)
+    umgr.register_callback(unit_state_change_cb)
 
     # Add the previsouly created ComputePilot to the UnitManager.
     umgr.add_pilots([pilot_1, pilot_2, pilot_3])
