@@ -865,6 +865,7 @@ class ExecWorker(multiprocessing.Process):
                     pass
 
                 # idle &= self._check_running()
+                idle &= self._check_running()
 
                 # Check if something happened in this cycle, if not, zzzzz for a bit
                 if idle:
