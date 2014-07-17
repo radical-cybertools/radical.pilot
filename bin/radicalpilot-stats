@@ -224,8 +224,6 @@ def get_stats (docs, events, slothist) :
 
     for pilot_doc in docs['pilot'] :
 
-        pprint.pprint (pilot_doc)
-
         n_pilots   += 1
         pid         = str(pilot_doc['_id'])
         pilot_util  = dict()
