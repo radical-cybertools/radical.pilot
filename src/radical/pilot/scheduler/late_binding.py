@@ -131,7 +131,7 @@ class LateBindingScheduler(Scheduler):
 
         if  state in [DONE, FAILED, CANCELED] :
             # we can't use this pilot anymore...  
-            self.pilots.remove (pid)
+            self.pilots.pop (pid)
 
             # FIXME: how can I *un*register a pilot callback?
 
@@ -177,7 +177,7 @@ class LateBindingScheduler(Scheduler):
         # NOTE: we don't care if that pilot had any CUs active -- its up to the
         # UM what happens to those.
 
-        self.pilots.remove (pid)
+        self.pilots.pop (pid)
         # FIXME: how can I *un*register a pilot callback?
 
         # no need to schedule, really
@@ -220,7 +220,7 @@ class LateBindingScheduler(Scheduler):
             # NOTE: we don't care if that pilot had any CUs active -- its up to the
             # UM what happens to those.
 
-            self.waitq.remove (unit)
+            self.waitq.pop (unit)
             # FIXME: how can I *un*register a pilot callback?
 
 
@@ -283,7 +283,7 @@ class LateBindingScheduler(Scheduler):
                         schedule[unit] = pid
 
                         # scheduled units are removed from the waitq
-                        self.waitq.remove (unit)
+                        self.waitq.pop (unit)
                         break
 
                 # unit was not scheduled...
