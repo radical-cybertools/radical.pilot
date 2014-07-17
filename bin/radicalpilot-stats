@@ -361,11 +361,15 @@ def plot_session (dbclient, dbname, session) :
         with open ("/tmp/rp.%s.pilot.callbacks.%s.dat" % (session, pid), "w") as dat :
             if  'callbackhistory' in pilot :
                 for event in pilot['callbackhistory'] :
+                    print event
                     etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
                     seconds = ru.time_diff (start, event['timestamp'])
                     maxtime = max (maxtime, seconds)
                     dat.write ("%10.2f  %-25s\n" % (seconds, etag))
                 dat.write ("\n")
+            else :
+                print 'no pilot callbacks?'
+                pprint.pprint (pilot)
             delete_me.append (dat.name)
 
             
@@ -461,10 +465,13 @@ def plot_session (dbclient, dbname, session) :
 
     timetics = 10
     for i in range(1,10) :
-        if  maxtime  > 5*(10**i) :
+        if  maxtime  > 4*(10**i) :
             timetics = 5*(10**(i-1))
 
     mtimetics = timetics/10
+
+    print maxtime
+    print timetics
 
     plotfile = "%s/radicalpilot-stats.plot" % os.path.dirname (__file__)
     plotname = os.environ.get ('RP_PLOTNAME', None)

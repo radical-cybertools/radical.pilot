@@ -259,8 +259,8 @@ do for [term_i=1:words(terms)] {
     if (pilotnum==1) {
       set  key center left reverse
       plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 101 t 'pilot/unit states notified to application'        , \
+           NaN ls 100 t 'pilot/unit states changes'                        , \
+           NaN ls 101 t 'pilot/unit states notifications'                  , \
            NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
            NaN ls 105 t 'total number of slots'                            , \
            NaN ls 106 t 'unit queue length'                                , \
@@ -268,40 +268,40 @@ do for [term_i=1:words(terms)] {
     }
     if (pilotnum==2) {
       set   key top left reverse maxrows 7
-      plot NaN lw   0 with steps  t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 with steps  t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 101 with points t 'pilot/unit states notified to application   '     , \
-           NaN ls 104 with steps  t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 105 with steps  t 'total number of slots'                            , \
-           NaN ls 106 with steps  t 'unit queue length'                                , \
-           NaN lw   0 with steps  t ' '                                                , \
-           NaN lw   0 with steps  t 'PILOT 2 ('.pilot_2_name.'):'                      , \
-           NaN ls 200 with steps  t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 201 with steps  t 'pilot/unit states notified to application'        , \
-           NaN ls 204 with steps  t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 205 with steps  t 'total number of slots'                            , \
-           NaN ls 206 with steps  t 'unit queue length'                                , \
-           NaN lw   0 with steps  t ' '
-    }
-    if (pilotnum==3) {
-      set   key top left reverse maxrows 14
       plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 t 'pilot/unit states recorded by RP agent'           , \
+           NaN ls 100 t 'pilot/unit states changes'                        , \
            NaN ls 101 t 'pilot/unit states notified to application   '     , \
            NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
            NaN ls 105 t 'total number of slots'                            , \
            NaN ls 106 t 'unit queue length'                                , \
            NaN lw   0 t ' '                                                , \
            NaN lw   0 t 'PILOT 2 ('.pilot_2_name.'):'                      , \
-           NaN ls 200 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 201 t 'pilot/unit states notified to application'        , \
+           NaN ls 200 t 'pilot/unit states changes'                        , \
+           NaN ls 201 t 'pilot/unit states notifications'                  , \
+           NaN ls 204 t 'busy slot (i.e. used CPU core)'                   , \
+           NaN ls 205 t 'total number of slots'                            , \
+           NaN ls 206 t 'unit queue length'                                , \
+           NaN lw   0 t ' '
+    }
+    if (pilotnum==3) {
+      set   key top left reverse maxrows 7
+      plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
+           NaN ls 100 t 'pilot/unit states changes'                        , \
+           NaN ls 101 t 'pilot/unit states notifications'                  , \
+           NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
+           NaN ls 105 t 'total number of slots'                            , \
+           NaN ls 106 t 'unit queue length'                                , \
+           NaN lw   0 t ' '                                                , \
+           NaN lw   0 t 'PILOT 2 ('.pilot_2_name.'):'                      , \
+           NaN ls 200 t 'pilot/unit states changes'                        , \
+           NaN ls 201 t 'pilot/unit states notifications'                  , \
            NaN ls 204 t 'busy slot (i.e. used CPU core)'                   , \
            NaN ls 205 t 'total number of slots'                            , \
            NaN ls 206 t 'unit queue length'                                , \
            NaN lw   0 t ' '                                                , \
            NaN lw   0 t 'PILOT 3 ('.pilot_3_name.'):'                      , \
-           NaN ls 300 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 301 t 'pilot/unit states notified to application'        , \
+           NaN ls 300 t 'pilot/unit states changes'                        , \
+           NaN ls 301 t 'pilot/unit states notifications'                  , \
            NaN ls 304 t 'busy slot (i.e. used CPU core)'                   , \
            NaN ls 305 t 'total number of slots'                            , \
            NaN ls 306 t 'unit queue length'                                , \
