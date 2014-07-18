@@ -35,6 +35,7 @@ def pilot_state_cb(pilot, state):
     if state == rp.states.FAILED:
         sys.exit(1)
 
+
 #------------------------------------------------------------------------------
 #
 def unit_state_change_cb(unit, state):
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     # Launch the pilot.
     pilot_3 = pmgr.submit_pilots(pdesc)
 
-    # Create a workload of 8 ComputeUnits (tasks). Each compute unit
+    # Create a workload of 8 ComputeUnits.  Each compute unit
     # uses /bin/cat to concatenate two input files, file1.dat and
     # file2.dat. The output is written to STDOUT. cu.environment is
     # used to demonstrate how to set environment variables withih a
@@ -116,10 +117,10 @@ if __name__ == "__main__":
     #
     cus = list()
 
-    for unit_count in range(0, 100):
+    for unit_count in range(0, 30):
         cu = rp.ComputeUnitDescription()
         cu.executable  = "/bin/sleep"
-        cu.arguments   = ["20"]
+        cu.arguments   = ["5"]
         cu.cores       = 1
       # cu.input_data  = ["/tmp/test.in.dat"]
         cus.append(cu)
@@ -150,9 +151,8 @@ if __name__ == "__main__":
     pmgr.cancel_pilots ()
 
     for unit in units:
-        print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
-            % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
-               unit.stdout)
+        print "* Unit %s state: %s, exit code: %s, started: %s, finished: %s" \
+            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
 
     # Close automatically cancels the pilot(s).
     session.close(delete=False)

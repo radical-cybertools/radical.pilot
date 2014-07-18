@@ -63,6 +63,7 @@ class LateBindingScheduler(Scheduler):
 
         pilot_docs = self.manager._worker._db.get_pilots (pilot_ids=self.pilots.keys ())
 
+        print "PILOTS"
         for pilot_doc in pilot_docs :
 
             pid = str (pilot_doc['_id'])
@@ -72,8 +73,8 @@ class LateBindingScheduler(Scheduler):
             self.pilots[pid]['state'] = str(pilot_doc.get ('state'))
             self.pilots[pid]['cap']   = int(pilot_doc.get ('capability', 0))
 
-        print "PILOTS"
-        pprint.pprint (self.pilots)
+            for pilot in self.pilots :
+                print "%s (%s)" % (pid, pilot_doc.get ('resource', ''))
 
 
     # -------------------------------------------------------------------------

@@ -184,22 +184,22 @@ class PilotManagerController(threading.Thread):
                  'state'     : new_state})
 
         for cb in self._shared_data[pilot_id]['callbacks']:
-         #  try:
-            cb(self._shared_data[pilot_id]['facade_object'](),
-                new_state)
-         #  except Exception, ex:
-         #      logger.error(
-         #          "Couldn't call callback function %s" % str(ex))
+            try:
+                cb(self._shared_data[pilot_id]['facade_object'](),
+                    new_state)
+            except Exception, ex:
+                logger.error(
+                    "Couldn't call callback function %s" % str(ex))
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
         for cb in self._manager_callbacks:
-          # try:
-            cb(self._shared_data[pilot_id]['facade_object'](),
-                 new_state)
-          # except Exception, ex:
-          #     logger.error(
-          #         "Couldn't call callback function %s" % str(ex))
+            try:
+                cb(self._shared_data[pilot_id]['facade_object'](),
+                     new_state)
+            except Exception, ex:
+                logger.error(
+                    "Couldn't call callback function %s" % str(ex))
 
         # if we meet a final state, we record the object's callback history for
         # later evalutation
