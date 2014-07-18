@@ -47,11 +47,11 @@ def unit_state_change_cb(unit, state):
 #
 try:
     rp_user     = str(os.getenv ("RP_USER",     "merzky"))
-    rp_cores    = int(os.getenv ("RP_CORES",    4))
+    rp_cores    = int(os.getenv ("RP_CORES",    16))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
-    rp_units    = int(os.getenv ("RP_UNITS",    10))
-    rp_runtime  = int(os.getenv ("RP_RUNTIME",  10))
-    rp_host     = str(os.getenv ("RP_HOST",     "localhost"))
+    rp_units    = int(os.getenv ("RP_UNITS",    64))
+    rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
+    rp_host     = str(os.getenv ("RP_HOST",     "sierra.futuregrid.org"))
     rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
     rp_project  = str(os.getenv ("RP_PROJECT",  ""))
 
@@ -116,8 +116,8 @@ try:
     for unit_count in range(0, rp_units):
         cu = radical.pilot.ComputeUnitDescription()
         cu.executable  = "/bin/sleep"
-        cu.arguments   = [str(int(rp_cores/32)+10)]
-        cu.cores       = 32
+        cu.arguments   = ["60"]
+        cu.cores       = rp_cu_cores
         cu.mpi         = True
 
         import pprint
