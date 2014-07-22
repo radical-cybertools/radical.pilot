@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id = 'merzky'
+        #c.user_id = 'merzky'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -90,9 +90,9 @@ if __name__ == "__main__":
             #       so test pre_exec's on a worker node and not on the headnode!
             mpi_test_task.pre_exec = ["module load openmpi/1.4.3-gnu python",
                                       "module list",
-                                      "(rm -r $HOME/mpive && virtualenv $HOME/mpive)",
+                                      "virtualenv $HOME/mpive",
                                       "source $HOME/mpive/bin/activate",
-                                      "(pip freeze | grep -q mpi4py || pip install mpi4py)"
+                                      "(pip freeze | grep -q mpi4py || pip install --force-reinstall mpi4py)"
             ]
             mpi_test_task.input_data  = ["{0}/helloworld_mpi.py".format(os.path.dirname(os.path.realpath(__file__)))]
             mpi_test_task.executable  = "python"
