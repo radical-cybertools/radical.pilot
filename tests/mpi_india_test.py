@@ -90,7 +90,7 @@ if __name__ == "__main__":
             #       so test pre_exec's on a worker node and not on the headnode!
             mpi_test_task.pre_exec = ["module load openmpi/1.4.3-gnu python",
                                       "module list",
-                                      "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
+                                      "(rm -r $HOME/mpive && virtualenv $HOME/mpive)",
                                       "source $HOME/mpive/bin/activate",
                                       "(pip freeze | grep -q mpi4py || pip install mpi4py)"
             ]
