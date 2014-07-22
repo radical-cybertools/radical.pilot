@@ -16,12 +16,12 @@ to install RADICAL-Pilot first:
 .. code-block:: bash
 
     export RADICAL_PILOT_VERBOSE=debug
-    export RADICAL_PILOT_TEST_DBNAME=rbtest_`date | md5`
+    export RADICAL_PILOT_TEST_DBNAME=rbtest_`date | md5sum | cut -c 1-32`
     python setup.py test
 
 .. note:: 
 
-    The ``RADICAL_PILOT_TEST_DBNAME`` creates a somewhat of a random database
+    ``RADICAL_PILOT_TEST_DBNAME`` creates a somewhat of a random database
     name for the tests. This prevents interference caused by tests run against 
     the same MongoDB concurrently.
 
