@@ -130,7 +130,7 @@ class PilotManager(Object):
 
     #--------------------------------------------------------------------------
     #
-    def close(self, terminate=False):
+    def close(self, terminate=True):
         """Shuts down the PilotManager and its background workers in a 
         coordinated fashion.
 
