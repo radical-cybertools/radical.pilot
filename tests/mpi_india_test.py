@@ -73,7 +73,7 @@ if __name__ == "__main__":
         # Define a N-core on fs2 that runs for X minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "sierra.futuregrid.org"
+        pdesc.resource         = "india.futuregrid.org"
         pdesc.runtime          = 5 # X minutes
         pdesc.cores            = 16 # N cores
         pdesc.cleanup          = False
