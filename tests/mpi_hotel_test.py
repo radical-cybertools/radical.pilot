@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
         cud_list = []
 
-        for unit_count in range(0, 4):
+        for unit_count in range(0, 1):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
             mpi_test_task.pre_exec = ["module load openmpi/1.4.5 python",
