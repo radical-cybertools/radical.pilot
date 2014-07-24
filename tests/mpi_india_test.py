@@ -73,7 +73,7 @@ if __name__ == "__main__":
         # Define a N-core on fs2 that runs for X minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "sierra.futuregrid.org"
+        pdesc.resource         = "india.futuregrid.org"
         pdesc.runtime          = 5 # X minutes
         pdesc.cores            = 16 # N cores
         pdesc.cleanup          = False
@@ -88,14 +88,15 @@ if __name__ == "__main__":
 
             # NOTE: Default module versions are different on worker nodes and head node,
             #       so test pre_exec's on a worker node and not on the headnode!
-            mpi_test_task.pre_exec = ["module load openmpi/1.4.3-intel python",
+            mpi_test_task.pre_exec = ["module load openmpi/1.4.3-gnu python",
                                       "module list",
-                                      "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
+                                      "virtualenv $HOME/mpive",
                                       "source $HOME/mpive/bin/activate",
-                                      "(pip freeze | grep -q mpi4py || pip install mpi4py)"
+                                      "(pip freeze | grep -q mpi4py || pip install --force-reinstall mpi4py)"
             ]
+            mpi_test_task.input_data  = ["{0}/helloworld_mpi.py".format(os.path.dirname(os.path.realpath(__file__)))]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["helloworld_mpi.py"]
             mpi_test_task.mpi         = True
 
             mpi_test_task.cores       = 4
@@ -128,7 +129,7 @@ if __name__ == "__main__":
             units = [units]
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
+                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
             if  unit.state == radical.pilot.FAILED :
                 print "STDERR: %s" % unit.stderr
                 print "STDOUT: %s" % unit.stdout

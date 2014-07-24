@@ -6,6 +6,7 @@ import sys
 import radical.pilot
 import unittest
 import time
+import uuid
 
 from pymongo import MongoClient
 
@@ -17,7 +18,10 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radicalpilot_unittests'
+DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME")
+if DBNAME is None:
+    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
+    sys.exit(1)
 
 
 #-----------------------------------------------------------------------------
