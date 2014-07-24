@@ -98,7 +98,7 @@ The content of the file should look like this (make sure to change the class nam
     # http://docs.mongodb.org/manual/installation/
     DBURL = os.getenv("RADICAL_PILOT_DBURL")
     if DBURL is None:
-        print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
+        print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
         sys.exit(1)
         
     DBNAME = 'radicalpilot_unittests'
