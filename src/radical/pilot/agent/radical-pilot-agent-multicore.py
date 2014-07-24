@@ -1367,7 +1367,6 @@ class Agent(threading.Thread):
                                 update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
                                 fields=[COMMAND_FIELD]
                     )
-                    self._log.info("retdoc: %s" % retdoc)
 
                     if retdoc:
                         commands = retdoc['commands']
