@@ -203,6 +203,9 @@ class Session (saga.Session, Object):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
+
+        uid = self._uid
+
         if not self._uid:
             logger.warning("Session object already closed.")
             return
@@ -219,8 +222,7 @@ class Session (saga.Session, Object):
         if delete is True:
             self._destroy_db_entry()
 
-        logger.info("Closed Session %s." % str(self._uid))
-        self._uid = None
+        logger.info("Closed Session %s." % str(uid))
 
 
     #---------------------------------------------------------------------------
