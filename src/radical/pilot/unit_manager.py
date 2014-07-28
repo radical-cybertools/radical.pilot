@@ -434,9 +434,9 @@ class UnitManager(object):
 
         pilot_ids = self.list_pilots ()
 
-        for unit in schedule.keys() :
+        for unit in schedule['units'].keys() :
 
-            pid = schedule[unit]
+            pid = schedule['units'][unit]
 
             if  None == pid :
                 logger.info ('unit %s remains unscheduled' % unit.uid)
@@ -453,6 +453,7 @@ class UnitManager(object):
 
                 pilot_cu_map[pid].append (unit)
                 
+        pilot_instances = dict()
 
         # submit to all pilots which got something submitted to
         for pid in pilot_cu_map.keys():
@@ -462,7 +463,7 @@ class UnitManager(object):
 
                 ud = unit.description
 
-                if  kernel in ud and ud.kernel :
+                if  'kernel' in ud and ud['kernel'] :
 
                     try :
                         from radical.ensemblemd.mdkernels import MDTaskDescription
@@ -471,9 +472,7 @@ class UnitManager(object):
                               "compute unit descriptions -- install " \
                               "radical.ensemblemd!")
 
-                    # need to get the resource from the pilot
-                    pilot = radical.pilot.ComputePilot (session=self._session, pilot_uid=pilot_id)
-                    pilot_resource = pilot.resource
+                    pilot_resource = schedule['pilots'][pid]['resource']
 
                     mdtd           = MDTaskDescription ()
                     mdtd.kernel    = ud.kernel
@@ -482,8 +481,6 @@ class UnitManager(object):
                     ud.pre_exec    = mdtd_bound.pre_exec
                     ud.executable  = mdtd_bound.executable
                     ud.mpi         = mdtd_bound.mpi
-
-                unit.description = ud
 
             print "pushing %s" % pilot_cu_map[pid]
 

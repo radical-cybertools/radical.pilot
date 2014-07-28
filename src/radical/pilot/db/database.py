@@ -727,7 +727,11 @@ class Session():
     def assign_compute_units_to_pilot(self, units, pilot_uid, pilot_sandbox):
         """Assigns one or more compute units to a pilot.
         """
-        if self._s is None:
+
+        if  not units :
+            return
+
+        if  self._s is None:
             raise Exception("No active session.")
 
         # Make sure we work on a list.
@@ -739,10 +743,9 @@ class Session():
         for unit in units :
 
             bulk.find   ({"_id" : ObjectId(unit.uid)}) \
-                .update ({"$set": {"description"   : unit.description,
+                .update ({"$set": {"description"   : unit.description.as_dict(),
                                    "pilot"         : pilot_uid, 
-                                   "pilot_sandbox" : pilot_sandbox}},
-                    }})
+                                   "pilot_sandbox" : pilot_sandbox}})
 
         result = bulk.execute()
 
