@@ -20,9 +20,9 @@ EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
+INPUT_STAGING          = 'input_staging'
+OUTPUT_STAGING         = 'output_staging'
 MPI                    = 'mpi'
-INPUT_DATA             = 'input_data'
-OUTPUT_DATA            = 'output_data'
 PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
 KERNEL                 = 'kernel'
@@ -65,17 +65,17 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        (`Attribute`) Environment variables to set in the execution environment (`dict`) [`optional`].
 
-    .. data:: input_data 
+    .. data:: input_staging
 
-       (`Attribute`) The input files that need to be transferred before execution (`transfer directive string`) [`optional`].
+       (`Attribute`) The files that need to be staged before execution (`list` of `staging directives`) [`optional`].
 
-       .. note:: TODO: Explain transfer directives.
+       .. note:: TODO: Explain input staging.
 
-    .. data:: output_data 
+    .. data:: output_staging
 
-       (`Attribute`) The output files that need to be transferred back after execution (`transfer directive string`) [`optional`].
+       (`Attribute`) The files that need to be staged after execution (`list` of `staging directives`) [`optional`].
 
-       .. note:: TODO: Explain transfer directives.
+       .. note:: TODO: Explain output staging.
 
     .. data:: pre_exec
 
@@ -120,8 +120,8 @@ class ComputeUnitDescription(attributes.Attributes) :
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
-        self._attributes_register(INPUT_DATA,             None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(OUTPUT_DATA,            None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(INPUT_STAGING,          None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(OUTPUT_STAGING,         None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
 
         # resource requirements
         self._attributes_register(CORES,                  1, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
@@ -151,12 +151,25 @@ class ComputeUnitDescription(attributes.Attributes) :
             ENVIRONMENT            : self.environment,
             CORES                  : self.cores,
             MPI                    : self.mpi,
-            INPUT_DATA             : self.input_data, 
-            OUTPUT_DATA            : self.output_data,
             PRE_EXEC               : self.pre_exec,
             POST_EXEC              : self.post_exec
         }
+        if not self.input_staging:
+            obj_dict[INPUT_STAGING] = []
+        elif not isinstance(self.input_staging, list):
+            obj_dict[INPUT_STAGING] = [self.input_staging.as_dict()]
+        else:
+            obj_dict[INPUT_STAGING] = [x.as_dict() for x in self.input_staging]
+
+        if not self.output_staging:
+            obj_dict[OUTPUT_STAGING] = []
+        elif not isinstance(self.output_staging, list):
+            obj_dict[OUTPUT_STAGING] = [self.output_staging.as_dict()]
+        else:
+            obj_dict[OUTPUT_STAGING] = [x.as_dict() for x in self.output_staging]
+
         return obj_dict
+
 
     #------------------------------------------------------------------------------
     #

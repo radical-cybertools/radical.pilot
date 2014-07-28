@@ -158,6 +158,7 @@ class LateBindingScheduler(Scheduler):
         self.pilots[pid]['caps']     = pilot.description.cores
         self.pilots[pid]['state']    = pilot.state
         self.pilots[pid]['resource'] = pilot.resource
+        self.pilots[pid]['sandbox']  = pilot.sandbox
 
         # make sure we register callback only once per pmgr
         pmgr = pilot.pilot_manager

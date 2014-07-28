@@ -121,7 +121,15 @@ class ComputeUnit(object):
             'submission_time':   self.submission_time,
             'working_directory': self.working_directory,
             'start_time':        self.start_time,
-            'stop_time':         self.stop_time
+            'stop_time':         self.stop_time,
+            "FTW_Input_Status":  self.FTunit.FTW_Input_Status,
+            "FTW_Input_Directives": unit.FTW_Input_Directives,
+            "Agent_Input_Status": unit.Agent_Input_Status,
+            "Agent_Input_Directives": unit.Agent_Input_Directives,
+            "FTW_Output_Status": unit.FTW_Output_Status,
+            "FTW_Output_Directives": unit.FTW_Output_Directives,
+            "Agent_Output_Status": unit.Agent_Output_Status,
+            "Agent_Output_Directives": unit.Agent_Output_Directives
         }
         return obj_dict
 
@@ -407,11 +415,11 @@ class ComputeUnit(object):
             # nothing to do
             logger.debug("Compute unit %s has state %s, can't cancel any longer." % (self._uid, self.state))
 
-        elif self.state in [NEW, PENDING_INPUT_TRANSFER]:
+        elif self.state in [NEW, PENDING_INPUT_STAGING]:
             logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
-        elif self.state == TRANSFERRING_INPUT:
+        elif self.state == STAGING_INPUT:
             logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
@@ -423,11 +431,11 @@ class ComputeUnit(object):
             logger.debug("Compute unit %s has state %s, will terminate the task." % (self._uid, self.state))
             self._manager._session._dbs.send_command_to_pilot(cmd=COMMAND_CANCEL_COMPUTE_UNIT, arg=self.uid, pilot_ids=pilot_uid)
 
-        elif self.state == PENDING_OUTPUT_TRANSFER:
+        elif self.state == PENDING_OUTPUT_STAGING:
             logger.debug("Compute unit %s has state %s, will abort the transfer." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
-        elif self.state == TRANSFERRING_OUTPUT:
+        elif self.state == STAGING_OUTPUT:
             logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 

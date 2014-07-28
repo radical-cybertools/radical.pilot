@@ -49,7 +49,8 @@ class DirectSubmissionScheduler(Scheduler):
         schedule = dict()
         for unit in units:
 
-            schedule[unit] = pilot_ids[0]
+            schedule['units']       = dict()
+            schedule['units'][unit] = pilot_ids[0]
 
         return schedule
 

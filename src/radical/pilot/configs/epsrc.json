@@ -9,7 +9,7 @@
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "forward_tunnel_endpoint"     : "10.60.0.52",
-        "global_virtenv"              : "/fs4/e290/shared/shared_pilot_ve_20140630",
+        "global_virtenv"              : "/fs4/e290/shared/shared_pilot_ve_20140703",
         "pre_bootstrap"               : ["module load python"],
         "default_remote_workdir"      : "/fs4/e290/e290/$USER",
         "valid_roots"                 : ["/work"],

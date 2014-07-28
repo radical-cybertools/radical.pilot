@@ -40,7 +40,8 @@ class OutputFileTransferWorker(multiprocessing.Process):
         self.db_connection_info = db_connection_info
         self.unit_manager_id = unit_manager_id
 
-        self.name = "OutputFileTransferWorker-%s" % str(number)
+        self._worker_number = number
+        self.name = "OutputFileTransferWorker-%s" % str(self._worker_number)
 
     # ------------------------------------------------------------------------
     #
@@ -67,17 +68,21 @@ class OutputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             compute_unit = um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "state" : PENDING_OUTPUT_TRANSFER},
-                update={"$set" : {"state": TRANSFERRING_OUTPUT},
-                        "$push": {"statehistory": {"state": TRANSFERRING_OUTPUT, "timestamp": ts}}},
+                       "FTW_Output_Status": PENDING},
+                update={"$set" : {"FTW_Output_Status": EXECUTING,
+                                  "state": STAGING_OUTPUT},
+                        "$push": {"statehistory": {"state": STAGING_OUTPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
-            state = TRANSFERRING_OUTPUT
+            state = STAGING_OUTPUT
 
+            #logger.info("OFTW after finding pending wus")
             if compute_unit is None:
+                #logger.info("OFTW no wus, sleep")
                 # Sleep a bit if no new units are available.
                 time.sleep(1)
             else:
+                logger.info("OFTW wu found, progressing ...")
                 # AM: The code below seems wrong when BULK_LIMIT != 1 -- the
                 # compute_unit will be a list then I assume.
                 try:
@@ -85,18 +90,16 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
                     # We have found a new CU. Now we can process the transfer
                     # directive(s) wit SAGA.
-                    compute_unit_id      = str(compute_unit["_id"])
-                    unit_sandbox         = compute_unit["sandbox"]
-                    pilot_sandbox        = compute_unit["pilot_sandbox"]
-                    remote_sandbox       = saga.Url (pilot_sandbox)
-                    remote_sandbox.path += "/unit-" + compute_unit_id
-                    transfer_directives  = compute_unit["description"]["output_data"]
+                    compute_unit_id = str(compute_unit["_id"])
+                    remote_sandbox = compute_unit["sandbox"]
+                    staging_directives = compute_unit["description"]["output_staging"]
 
 
                     logger.info("Processing output file transfers for ComputeUnit %s" % compute_unit_id)
-                    # Loop over all transfer directives and execute them.
-                    for td in transfer_directives:
+                    # Loop over all staging directives and execute them.
+                    for sd in staging_directives:
 
+                        # Check if there was a cancel request
                         state_doc = um_col.find_one(
                             {"_id": ObjectId(compute_unit_id)},
                             fields=["state"]
@@ -106,17 +109,32 @@ class OutputFileTransferWorker(multiprocessing.Process):
                             state = CANCELED
                             break
 
-                        st = td.split(">")
-                        abs_source = "%s/%s" % (remote_sandbox, st[0].strip())
+                        action = sd['action']
+                        source = sd['source']
+                        target = sd['target']
 
-                        if len(st) == 1:
-                            abs_target = "file://localhost/%s" % os.getcwd()
-                        elif len(st) == 2:
-                            abs_target = "file://localhost/%s" % os.path.abspath(st[1].strip())
+                        # Mark the beginning of transfer this StagingDirective
+                        um_col.find_and_modify(
+                            query={"_id" : ObjectId(compute_unit_id),
+                                   'FTW_Output_Status': EXECUTING,
+                                   'FTW_Output_Directives.state': PENDING,
+                                   'FTW_Output_Directives.source': sd['source'],
+                                   'FTW_Output_Directives.target': sd['target'],
+                                   },
+                            update={'$set': {'FTW_Output_Directives.$.state': EXECUTING},
+                                    '$push': {'log': 'Starting transfer of %s' % source}
+                            }
+                        )
+
+                        abs_source = "%s/%s" % (remote_sandbox, source)
+
+                        if os.path.basename(target) == target:
+                            abs_target = "file://localhost%s" % os.path.join(os.getcwd(), target)
                         else:
-                            raise Exception("Invalid transfer directive: %s" % td)
+                            abs_target = "file://localhost%s" % os.path.abspath(target)
 
                         log_msg = "Transferring output file %s -> %s" % (abs_source, abs_target)
+                        logmessage = "Transferred output file %s -> %s" % (abs_source, abs_target)
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
@@ -126,21 +144,24 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         output_file.copy(saga.Url(abs_target))
                         output_file.close()
 
-                        # Update the CU's state to 'DONE' if (all) transfers were successful.
-                        state = DONE
-
-                    ts = datetime.datetime.utcnow()
-                    um_col.update(
-                        {"_id": ObjectId(compute_unit_id)},
-                        {"$set": {"state": state},
-                         "$push": {"statehistory": {"state": state, "timestamp": ts}},
-                         "$pushAll": {"log": log_messages}}                    
-                    )
+                        # If all went fine, update the state of this StagingDirective to Done
+                        um_col.find_and_modify(
+                            query={"_id" : ObjectId(compute_unit_id),
+                                   'FTW_Output_Status': EXECUTING,
+                                   'FTW_Output_Directives.state': EXECUTING,
+                                   'FTW_Output_Directives.source': sd['source'],
+                                   'FTW_Output_Directives.target': sd['target'],
+                                   },
+                            update={'$set': {'FTW_Output_Directives.$.state': DONE},
+                                    '$push': {'log': logmessage}
+                            }
+                        )
 
                 except Exception, ex:
                     # Update the CU's state to 'FAILED'.
                     ts = datetime.datetime.utcnow()
                     log_messages = "Output transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
+                    # TODO: not only mark the CU as failed, but also the specific Directive
                     um_col.update(
                         {"_id": ObjectId(compute_unit_id)},
                         {"$set": {"state": FAILED},
@@ -149,3 +170,58 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     )
                     logger.error(log_messages)
 
+
+            # Code below is only to be run by the "first" or only worker
+            if self._worker_number > 1:
+                continue
+
+            # If the CU was canceled we can skip the remainder of this loop.
+            if state == CANCELED:
+                continue
+
+            #
+            # Check to see if there are more active Directives, if not, we are Done
+            #
+            cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
+                                    "$or": [ {"Agent_Output_Status": EXECUTING},
+                                             {"FTW_Output_Status": EXECUTING}
+                                    ]
+            }
+            )
+            # Iterate over all the returned CUs (if any)
+            for wu in cursor_w:
+                # See if there are any FTW Output Directives still pending
+                if wu['FTW_Output_Status'] == EXECUTING and \
+                        not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['FTW_Output_Directives']):
+                    # All Output Directives for this FTW are done, mark the WU accordingly
+                    um_col.update({"_id": ObjectId(wu["_id"])},
+                                  {'$set': {'FTW_Output_Status': DONE},
+                                   '$push': {'log': 'All FTW output staging directives done - %d.' % self._worker_number}})
+
+                # See if there are any Agent Output Directives still pending
+                if wu['Agent_Output_Status'] == EXECUTING and \
+                        not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['Agent_Output_Directives']):
+                    # All Output Directives for this Agent are done, mark the WU accordingly
+                    um_col.update({"_id": ObjectId(wu["_id"])},
+                                  {'$set': {'Agent_Output_Status': DONE},
+                                   '$push': {'log': 'All Agent Output Staging Directives done-%d.' % self._worker_number}
+                                  })
+
+            #
+            # Check for all CUs if both Agent and FTW staging is done, we can then mark the CU Done
+            #
+            ts = datetime.datetime.utcnow()
+            um_col.find_and_modify(
+                query={"unitmanager": self.unit_manager_id,
+                       "Agent_Output_Status": { "$in": [ NULL, DONE ] },
+                       "FTW_Output_Status": { "$in": [ NULL, DONE ] },
+                       "state": STAGING_OUTPUT
+                },
+                update={"$set": {
+                    "state": DONE
+                },
+                        "$push": {
+                            "statehistory": {"state": DONE, "timestamp": ts}
+                        }
+                }
+            )

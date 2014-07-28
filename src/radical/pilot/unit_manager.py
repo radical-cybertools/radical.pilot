@@ -461,9 +461,14 @@ class UnitManager(object):
             # if a kernel name is in the cu descriptions set, do kernel expansion
             for unit in pilot_cu_map[pid] :
 
+                unit.sandbox = schedule['pilots'][pid]['sandbox'] + "/unit-" + str(unit.uid)
+
                 ud = unit.description
 
                 if  'kernel' in ud and ud['kernel'] :
+
+                    if  not 'pilots' in schedule :
+                        raise RuntimeError ("Kernels are not supported for this unit scheduler")
 
                     try :
                         from radical.ensemblemd.mdkernels import MDTaskDescription
@@ -481,6 +486,7 @@ class UnitManager(object):
                     ud.pre_exec    = mdtd_bound.pre_exec
                     ud.executable  = mdtd_bound.executable
                     ud.mpi         = mdtd_bound.mpi
+
 
             print "pushing %s" % pilot_cu_map[pid]
 

@@ -155,6 +155,19 @@ fi
 #   exit 1
 #fi
 
+# On india/fg pip install doesn't work for saga
+INSTALL_CMD="easy_install saga-python"
+echo ""
+echo "################################################################################"
+echo "## Installing SAGA-Python"
+echo "## CMDLINE: $INSTALL_CMD"
+$INSTALL_CMD
+OUT=$?
+if [ $OUT -ne 0 ];then
+   echo "Couldn't install SAGA-Python! ABORTING"
+   exit 1
+fi
+
 PIP_CMD="pip install python-hostlist"
 EASY_INSTALL_CMD="easy_install python-hostlist"
 echo ""

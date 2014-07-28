@@ -531,13 +531,13 @@ class Session():
     #--------------------------------------------------------------------------
     #
     def set_all_running_compute_units(self, pilot_id, state, log):
-        """Update the state and the log of all compute units belonging to 
+        """Update the state and the log of all compute units belonging to
            a specific pilot.
         """
         ts = datetime.datetime.utcnow()
 
         if self._s is None:
-            raise Exception("No active session.")     
+            raise Exception("No active session.")
 
         self._w.update({"pilot": pilot_id, "state": { "$in": [EXECUTING, PENDING_EXECUTION, SCHEDULING]}},
                        {"$set": {"state": state},
@@ -744,9 +744,18 @@ class Session():
 
             bulk.find   ({"_id" : ObjectId(unit.uid)}) \
                 .update ({"$set": {"description"   : unit.description.as_dict(),
-                                   "pilot"         : pilot_uid, 
-                                   "pilot_sandbox" : pilot_sandbox}})
-
+                                   "pilot"         : pilot_uid,
+                                   "pilot_sandbox" : pilot_sandbox,
+                                   "sandbox"       : unit.sandbox,
+                                   "FTW_Input_Status": unit.FTW_Input_Status,
+                                   "FTW_Input_Directives": unit.FTW_Input_Directives,
+                                   "Agent_Input_Status": unit.Agent_Input_Status,
+                                   "Agent_Input_Directives": unit.Agent_Input_Directives,
+                                   "FTW_Output_Status": unit.FTW_Output_Status,
+                                   "FTW_Output_Directives": unit.FTW_Output_Directives,
+                                   "Agent_Output_Status": unit.Agent_Output_Status,
+                                   "Agent_Output_Directives": unit.Agent_Output_Directives
+                        }})
         result = bulk.execute()
 
         # TODO: log result.
@@ -796,11 +805,19 @@ class Session():
                 "finished":      None,
                 "exec_locs":     None,
                 "exit_code":     None,
-                "workdir":       "unit-"+unit.uid,
+                #"workdir":       "unit-"+unit.uid,
                 "sandbox":       None,
                 "stdout_id":     None,
                 "stderr_id":     None,
-                "log":           unit_log
+                "log":           unit_log,
+                "FTW_Input_Status": None,
+                "FTW_Input_Directives": None,
+                "Agent_Input_Status": None,
+                "Agent_Input_Directives": None,
+                "FTW_Output_Status": None,
+                "FTW_Output_Directives": None,
+                "Agent_Output_Status": None,
+                "Agent_Output_Directives": None
             }
             unit_docs.append(unit_json)
             results[unit.uid] = unit_json

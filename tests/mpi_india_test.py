@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id = 'merzky'
+        #c.user_id = 'merzky'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -83,6 +83,12 @@ if __name__ == "__main__":
 
         cud_list = []
 
+        # Configure the staging directive for input file.
+        sd_exec = radical.pilot.StagingDirectives()
+        sd_exec.source = 'helloworld_mpi.py'
+        sd_exec.target = 'helloworld_mpi.py'
+        sd_exec.action = radical.pilot.TRANSFER
+
         for unit_count in range(0, 4):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
@@ -93,7 +99,7 @@ if __name__ == "__main__":
                                       "source $HOME/mpive/bin/activate",
                                       "(pip freeze | grep -q mpi4py || pip install mpi4py)"
             ]
-            mpi_test_task.input_data  = ["{0}/helloworld_mpi.py".format(os.path.dirname(os.path.realpath(__file__)))]
+            mpi_test_task.input_staging  = [sd_exec]
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["helloworld_mpi.py"]
             mpi_test_task.mpi         = True
@@ -106,7 +112,8 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+            #scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+            scheduler=radical.pilot.SCHED_LATE_BINDING)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager

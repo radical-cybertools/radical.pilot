@@ -18,6 +18,7 @@ from multiprocessing import Pool
 from radical.utils import which
 from radical.pilot.states import *
 from radical.pilot.utils.logger import logger
+from radical.utils import Url
 
 from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
 from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
@@ -438,10 +439,90 @@ class UnitManagerController(threading.Thread):
         # don't. The latter is added to the pilot directly, while the former
         # is added to the transfer queue.
         for unit in units:
-            if unit.description.input_data is None:
-                wu_notransfer.append(unit)
-            else:
+
+            # Create object for staging status tracking
+            unit.FTW_Input_Status = NULL
+            unit.FTW_Input_Directives = []
+            unit.Agent_Input_Status = NULL
+            unit.Agent_Input_Directives = []
+            unit.FTW_Output_Status = NULL
+            unit.FTW_Output_Directives = []
+            unit.Agent_Output_Status = NULL
+            unit.Agent_Output_Directives = []
+
+            # Split the input staging directives over the transfer worker and the agent
+            inp_sd = unit.description.input_staging
+            if not isinstance(inp_sd, list):
+                # Ugly, but is a workaround for iterating on att iface
+                if inp_sd:
+                    inp_sd = [inp_sd]
+                else:
+                    inp_sd = []
+            for sd_obj in inp_sd:
+                sd = sd_obj.as_dict()
+
+                action = sd['action']
+                source = Url(sd['source'])
+                target = Url(sd['target'])
+
+                # Add a field to maintain the state of this individual directive
+                sd['state'] = PENDING
+
+                if action == 'Link' or action == 'Copy' or action == 'Move':
+                    unit.Agent_Input_Directives.append(sd)
+                    unit.Agent_Input_Status = PENDING
+                elif action == 'Transfer':
+                    if source.schema and source.schema != 'file':
+                        # If there is a schema and it is different than "file",
+                        # assume a remote pull from the agent
+                        unit.Agent_Input_Directives.append(sd)
+                        unit.Agent_Input_Status = PENDING
+                    else:
+                        # Transfer from local to sandbox
+                        unit.FTW_Input_Directives.append(sd)
+                        unit.FTW_Input_Status = PENDING
+                else:
+                    logger.error('Not sure if action %s makes sense for input staging' % action)
+
+            # Split the output staging directives over the transfer worker and the agent
+            outp_sd = unit.description.output_staging
+            if not isinstance(outp_sd, list):
+                # Ugly, but is a workaround for iterating on att iface
+                if outp_sd:
+                    outp_sd = [outp_sd]
+                else:
+                    outp_sd = []
+            for sd_obj in outp_sd:
+                sd = sd_obj.as_dict()
+                action = sd['action']
+                source = Url(sd['source'])
+                target = Url(sd['target'])
+
+                # Add a field to maintain the state of this individual directive
+                sd['state'] = PENDING
+
+                if action == 'Link' or action == 'Copy' or action == 'Move':
+                    unit.Agent_Output_Directives.append(sd)
+                    unit.Agent_Output_Status = NEW
+                elif action == 'Transfer':
+                    if target.schema and target.schema != 'file':
+                        # If there is a schema and it is different than "file",
+                        # assume a remote push from the agent
+                        unit.Agent_Output_Directives.append(sd)
+                        unit.Agent_Output_Status = NEW
+                    else:
+                        # Transfer from sandbox back to local
+                        unit.FTW_Output_Directives.append(sd)
+                        unit.FTW_Output_Status = NEW
+                else:
+                    logger.error('Not sure if action %s makes sense for output staging' % action)
+
+            if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
+                log = ["Scheduled for data transfer to ComputePilot %s." % pilot_uid]
+                self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
                 wu_transfer.append(unit)
+            else:
+                wu_notransfer.append(unit.uid)
 
         # Bulk-add all non-transfer units-
         print "Pushing w/o transfer %s" % wu_notransfer
@@ -468,15 +549,3 @@ class UnitManagerController(threading.Thread):
             "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
             (wu_notransfer, pilot_uid)
         )
-
-        # Bulk-add all units that need transfer to the transfer queue.
-        # Add the startup request to the request queue.
-        if len(wu_transfer) > 0:
-            for unit in wu_transfer:
-                log = ["Scheduled for data tranfer to ComputePilot %s." % pilot_uid]
-                self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_TRANSFER, log)
-                #self._set_state(uid, PENDING_INPUT_TRANSFER, log)
-
-
-# ----------------------------------------------------------------------------
-

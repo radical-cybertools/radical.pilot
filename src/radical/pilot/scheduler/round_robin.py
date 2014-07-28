@@ -64,8 +64,9 @@ class RoundRobinScheduler(Scheduler):
             if  self._idx >= len(pilot_ids) : 
                 self._idx = 0
             
-            schedule[unit] = pilot_ids[self._idx]
-            self._idx     += 1
+            schedule['units']       = dict()
+            schedule['units'][unit] = pilot_ids[self._idx]
+            self._idx              += 1
 
         return schedule
 

@@ -129,6 +129,7 @@ def get_session_events (dbclient, dbname, session) :
         oid   = str(doc['_id'])
         pid   = str(doc['pilot'])
 
+        # TODO: change states to look for
         for event in [# 'submitted', 'started',    'finished',  # redundant to states..
                       'input_transfer_started',  'input_transfer_finished', 
                       'output_transfer_started', 'output_transfer_finished'
@@ -141,6 +142,7 @@ def get_session_events (dbclient, dbname, session) :
         for event in doc['statehistory'] :
             ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], odoc])
 
+        # TODO: this probably needs to be "doc"
         if  'callbackhistory' in event :
             for event in doc['callbackhistory'] :
                 ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], odoc])
