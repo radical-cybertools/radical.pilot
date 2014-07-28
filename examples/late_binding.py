@@ -127,7 +127,7 @@ if __name__ == "__main__":
 
     for unit_count in range(0, 30):
         cu = rp.ComputeUnitDescription()
-        cu.kernel      = 'test'
+        cu.kernel      = 'TEST'
         cu.arguments   = ["5"]
         cus.append(cu)
 
