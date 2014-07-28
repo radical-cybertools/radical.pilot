@@ -31,9 +31,9 @@ time a ComputePilot changes its state.
 """
     print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
-
     if state == radical.pilot.states.FAILED:
-        sys.exit(1)
+        print "            Log: %s" % pilot.log[-1]
+
 
 #------------------------------------------------------------------------------
 #

@@ -26,7 +26,7 @@ if DBNAME is None:
 
 #-----------------------------------------------------------------------------
 #
-class TestIssue169(unittest.TestCase):
+class TestIssue18(unittest.TestCase):
     # silence deprecation warnings under py3
 
     def setUp(self):
@@ -49,9 +49,11 @@ class TestIssue169(unittest.TestCase):
 
     #-------------------------------------------------------------------------
     #
-    def test__issue_169_part_1(self):
-        """ https://github.com/radical-cybertools/radical.pilot/issues/169
+    def test__issue_18_part_1(self):
+        """ https://github.com/radical-cybertools/radical.pilot/issues/18
         """
+        import saga
+
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
         pm = radical.pilot.PilotManager(session=session)
@@ -59,48 +61,31 @@ class TestIssue169(unittest.TestCase):
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
         cpd.cores = 1
-        cpd.runtime = 1
-        cpd.sandbox = "/non-/existing/directory..."
+        cpd.runtime = 5
+        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
         cpd.cleanup = True
 
-        for i in range(0, 8):
-            pilot = pm.submit_pilots(pilot_descriptions=cpd)
-            pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
-            assert pilot.state == radical.pilot.states.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
+        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+
+        pilot.wait(radical.pilot.states.ACTIVE)
+
+        # Now we extract the saga job id from the logs and KILL THE PROCESS
+        saga_id = None
+        for log_entry in pilot.log:
+            if "SAGA job submitted with job id" in log_entry:
+                saga_id = log_entry.replace("SAGA job submitted with job id ", "")
+
+        if saga_id is None:
+            assert False, "Couldn't find SAGA Job ID in logs."
+
+        # KILL THE AGENT PROCESS. 
+        s = saga.job.Service("fork://localhost")
+        j = s.get_job(saga_id)
+        j.cancel()
+
+        pilot.wait(radical.pilot.states.FAILED, timeout=80)
+        assert pilot.state == radical.pilot.states.FAILED
 
         session.close()
 
-    #-------------------------------------------------------------------------
-    #
-    def test__issue_169_part_2(self):
-        """ https://github.com/radical-cybertools/radical.pilot/issues/169
-        """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-
-        pmgr = radical.pilot.PilotManager(session=session)
-        
-        cpd1 = radical.pilot.ComputePilotDescription()
-        cpd1.resource = "localhost"
-        cpd1.cores = 1
-        cpd1.runtime = 1
-        cpd1.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd1.cleanup = True
-
-        cpd2 = radical.pilot.ComputePilotDescription()
-        cpd2.resource = "localhost"
-        cpd2.cores = 1
-        cpd2.runtime = 1
-        cpd2.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd2.cleanup = True
-
-        pilots = pmgr.submit_pilots([cpd1, cpd2])
-
-        pmgr.wait_pilots()
-        
-        for pilot in pilots:
-            assert pilot.state == radical.pilot.states.DONE
-            assert pilot.stop_time is not None
-            assert pilot.start_time is not None
-
-        session.close()
-
+    

@@ -74,7 +74,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "alamo.futuregrid.org"
         pdesc.runtime          = 5 # X minutes
-        pdesc.cores            = 8 # N cores
+        pdesc.cores            = 32 # N cores
         pdesc.cleanup          = False
 
         # Launch the pilot.
@@ -82,16 +82,18 @@ if __name__ == "__main__":
 
         cud_list = []
 
-        for unit_count in range(0, 1):
+        for unit_count in range(0, 4):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
-            # On sierra, environment is not passed with multi-node MPI jobs,
-            # so the environment needs to be setup in the users .bashrc
+            # On alamo, environment is not passed with multi-node MPI jobs,
+            # so the environment needs to be setup in the user's .bashrc.
+            # (module load python intel openmpi && source $HOME/cuve/bin/activate)
+            # The virtual env in $home/cuve needs to have mpi4py installed.
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["helloworld_mpi.py"]
             mpi_test_task.input_data  = ["helloworld_mpi.py"]
             mpi_test_task.mpi         = True
-            mpi_test_task.cores       = 4
+            mpi_test_task.cores       = 16
 
             cud_list.append(mpi_test_task)
 

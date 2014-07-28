@@ -8,32 +8,15 @@ Installation
 Requirements 
 ============
 
-RADICAL-Pilot relies on a set of external software packages, all of which get 
-installed automatically as dependencies. 
+RADICAL-Pilot needs Python >= 2.6. All dependencies are installed automatically 
+by the installer. Besides that, RADICAL-Pilot needs access to a MongoDB 
+database that is reachable from the internet. User groups within the same 
+institution or project can share a single MongoDB instance. 
 
-
-* Python >= 2.6
-    
-
-* setuptools (https://pypi.python.org/pypi/setuptools)
-* saga-python (https://pypi.python.org/pypi/saga-python)
-* radical.utils (https://pypi.python.org/pypi/radical.utils/)
-* python-hostlist (https://pypi.python.org/pypi/python-hostlist)
-* pymongo (https://pypi.python.org/pypi/pymongo/)
-
-.. note::
-
-  Note that some Python installations have a broken multiprocessing module -- if you
-  experience the following error during installation::
-
-    Traceback (most recent call last):
-      File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
-        func(*targs, **kargs)
-      File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
-        info('process shutting down')
-    TypeError: 'NoneType' object is not callable
-
-  you may need to move to Python 2.7 (see http://bugs.python.org/issue15881).
+MongoDB is standard software and available in most Linux distributions. At the 
+end of this section, we provide brief instructions how to set up a MongoDB 
+server and discuss some advanced topics, like SSL support and authentication 
+to increased the security of RADICAL-Pilot. 
 
 
 Installation
@@ -56,6 +39,21 @@ been installed properly. In the same virtualenv, run:
 
 This should return the version of the RADICAL-Pilot installation, e.g., `0.X.Y`.
 
+.. note::
+
+  Note that some Python installations have a broken multiprocessing module -- if you
+  experience the following error during installation::
+
+    Traceback (most recent call last):
+      File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
+        func(*targs, **kargs)
+      File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
+        info('process shutting down')
+    TypeError: 'NoneType' object is not callable
+
+  you may need to move to Python 2.7 (see http://bugs.python.org/issue15881).
+
+
 Installation from Source
 ========================
 
@@ -76,10 +74,22 @@ set up a vritualenv):
  
     python setup.py install
 
-Optionally, you can try to run the unit tests:
+
+Installing MongoDB
+==================
+
+
+With SSL Support
+----------------
+
+The standard MongoDB distribution doesn't come with SSL-support enabled, so 
+you have to build it from sources. On Ubuntu Linux, the following steps 
+should do the trick:
 
 .. code-block:: bash
 
-    python setup.py test
-
-.. note:: More on testing can be found in chapter :ref:`chapter_testing`.
+    apt-get -y install scons libssl-dev libboost-filesystem-dev libboost-program-options-dev libboost-system-dev libboost-thread-dev
+    git clone -b r2.6.3 https://github.com/mongodb/mongo.git
+    cd mongo
+    scons --64 --ssl all
+    scons --64 --ssl --prefix=/usr install

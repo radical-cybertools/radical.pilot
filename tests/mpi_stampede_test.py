@@ -77,6 +77,7 @@ if __name__ == "__main__":
         pdesc.runtime          = 15 # N minutes
         pdesc.cores            = 64 # X cores
         pdesc.cleanup          = False
+        pdesc.project          = 'TG-MCB090174'
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)

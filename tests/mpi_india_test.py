@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id = 'merzky'
+        #c.user_id = 'merzky'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -83,19 +83,26 @@ if __name__ == "__main__":
 
         cud_list = []
 
+        # Configure the staging directive for input file.
+        sd_exec = radical.pilot.StagingDirectives()
+        sd_exec.source = 'helloworld_mpi.py'
+        sd_exec.target = 'helloworld_mpi.py'
+        sd_exec.action = radical.pilot.TRANSFER
+
         for unit_count in range(0, 4):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
             # NOTE: Default module versions are different on worker nodes and head node,
             #       so test pre_exec's on a worker node and not on the headnode!
-            mpi_test_task.pre_exec = ["module load openmpi/1.4.3-intel python",
-                                      "module list",
-                                      "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
+            mpi_test_task.pre_exec = ["module load openmpi/1.4.3-gnu python",
+                                      "(test -d $HOME/mpive || rm -rf $HOME/mpive && virtualenv $HOME/mpive)",
                                       "source $HOME/mpive/bin/activate",
                                       "(pip freeze | grep -q mpi4py || pip install mpi4py)"
             ]
+            mpi_test_task.input_staging  = [sd_exec]
             mpi_test_task.executable  = "python"
-            mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
+            #mpi_test_task.arguments   = ["$HOME/bin/helloworld_mpi.py"]
+            mpi_test_task.arguments   = ["helloworld_mpi.py"]
             mpi_test_task.mpi         = True
 
             mpi_test_task.cores       = 4
@@ -128,7 +135,7 @@ if __name__ == "__main__":
             units = [units]
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
+                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
             if  unit.state == radical.pilot.FAILED :
                 print "STDERR: %s" % unit.stderr
                 print "STDOUT: %s" % unit.stdout

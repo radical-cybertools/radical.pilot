@@ -27,9 +27,8 @@ def pilot_state_cb(pilot, state):
     """
     print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
-
     if state == radical.pilot.states.FAILED:
-        sys.exit(1)
+        print "            Log: %s" % pilot.log[-1]
 
 #------------------------------------------------------------------------------
 #
@@ -87,6 +86,9 @@ if __name__ == "__main__":
         for unit_count in range(0, 16):
             cu = radical.pilot.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
+            cu.pre_exec    = ["touch /tmp/pre_test.%d" % unit_count]
+            cu.post_exec   = ["touch /tmp/post_test_1.%d" % unit_count, 
+                              "touch /tmp/post_test_2.%d" % unit_count, ]
             cu.executable  = "/bin/cat"
             cu.arguments   = ["$INPUT1", "$INPUT2"]
             cu.cores       = 1
@@ -121,7 +123,9 @@ if __name__ == "__main__":
                 % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
         # Close automatically cancels the pilot(s).
-        session.close()
+        pmgr.cancel_pilots ()
+        print session.uid
+        session.close(delete=False)
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

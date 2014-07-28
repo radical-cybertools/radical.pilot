@@ -80,6 +80,7 @@ class InputFileTransferWorker(multiprocessing.Process):
                         "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT # TODO: bulklimit is probably not the best way to ensure there is just one
             )
+            state = STAGING_INPUT
 
             if compute_unit is None:
                 # Sleep a bit if no new units are available.
@@ -115,6 +116,15 @@ class InputFileTransferWorker(multiprocessing.Process):
                     logger.info("Processing input file transfers for ComputeUnit %s" % compute_unit_id)
                     # Loop over all transfer directives and execute them.
                     for sd in input_staging:
+
+                        state_doc = um_col.find_one(
+                            {"_id": ObjectId(compute_unit_id)},
+                            fields=["state"]
+                        )
+                        if state_doc['state'] == CANCELED:
+                            logger.info("Compute Unit Canceled, interrupting input file transfers.")
+                            state = CANCELED
+                            break
 
                         abs_src = os.path.abspath(sd['source'])
                         input_file_url = saga.Url("file://localhost/%s" % abs_src)
@@ -168,6 +178,10 @@ class InputFileTransferWorker(multiprocessing.Process):
 
             # Code below is only to be run by the "first" or only worker
             if self._worker_number > 1:
+                continue
+
+            # If the CU was canceled we can skip the remainder of this loop.
+            if state == CANCELED:
                 continue
 
             #

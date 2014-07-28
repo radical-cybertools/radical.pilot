@@ -47,13 +47,14 @@ def unit_state_change_cb(unit, state):
 #
 try:
     rp_user     = str(os.getenv ("RP_USER",     "merzky"))
-    rp_cores    = int(os.getenv ("RP_CORES",    16))
+    rp_cores    = int(os.getenv ("RP_CORES",    4))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
-    rp_units    = int(os.getenv ("RP_UNITS",    64))
-    rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
-    rp_host     = str(os.getenv ("RP_HOST",     "sierra.futuregrid.org"))
+    rp_units    = int(os.getenv ("RP_UNITS",    10))
+    rp_runtime  = int(os.getenv ("RP_RUNTIME",  10))
+    rp_host     = str(os.getenv ("RP_HOST",     "localhost"))
     rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
     rp_project  = str(os.getenv ("RP_PROJECT",  ""))
+    rp_name     = str(os.getenv ("RP_NAME",     ""))
 
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
@@ -116,7 +117,7 @@ try:
     for unit_count in range(0, rp_units):
         cu = radical.pilot.ComputeUnitDescription()
         cu.executable  = "/bin/sleep"
-        cu.arguments   = ["60"]
+        cu.arguments   = ["600"]
         cu.cores       = rp_cu_cores
         cu.mpi         = True
 
@@ -165,8 +166,10 @@ try:
     print "session id: %s" % sid
 
     # run the stats plotter
-    os.system ("bin/radicalpilot-stats -m plot -s %s" % sid) 
+    os.system ("radicalpilot-stats -m plot -s %s" % sid) 
     os.system ("cp -v %s.png report/rp.benchmark.png" % sid) 
+    os.system ("mv -v %s.png %s.png" % (sid, rp_name)) 
+    os.system ("mv -v %s.pdf %s.pdf" % (sid, rp_name)) 
 
 
 except radical.pilot.PilotException, ex:

@@ -74,6 +74,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         "$push": {"statehistory": {"state": STAGING_OUTPUT, "timestamp": ts}}},
                 limit=BULK_LIMIT
             )
+            state = STAGING_OUTPUT
 
             #logger.info("OFTW after finding pending wus")
             if compute_unit is None:
@@ -96,6 +97,16 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     logger.info("Processing output file transfers for ComputeUnit %s" % compute_unit_id)
                     # Loop over all staging directives and execute them.
                     for sd in staging_directives:
+
+                        # Check if there was a cancel request
+                        state_doc = um_col.find_one(
+                            {"_id": ObjectId(compute_unit_id)},
+                            fields=["state"]
+                        )
+                        if state_doc['state'] == CANCELED:
+                            logger.info("Compute Unit Canceled, interrupting output file transfers.")
+                            state = CANCELED
+                            break
 
                         action = sd['action']
                         source = sd['source']
@@ -145,9 +156,8 @@ class OutputFileTransferWorker(multiprocessing.Process):
                             }
                         )
 
-
                 except Exception, ex:
-                    # Update the CU's state 'FAILED'.
+                    # Update the CU's state to 'FAILED'.
                     ts = datetime.datetime.utcnow()
                     log_messages = "Output transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
                     # TODO: not only mark the CU as failed, but also the specific Directive
@@ -159,8 +169,13 @@ class OutputFileTransferWorker(multiprocessing.Process):
                     )
                     logger.error(log_messages)
 
+
             # Code below is only to be run by the "first" or only worker
             if self._worker_number > 1:
+                continue
+
+            # If the CU was canceled we can skip the remainder of this loop.
+            if state == CANCELED:
                 continue
 
             #
@@ -209,4 +224,3 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         }
                 }
             )
-

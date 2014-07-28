@@ -11,7 +11,7 @@ if DBURL is None:
 FG_CONF     = "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"
 XSEDE_CONF  = "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json"
 PILOT_DESCR = {'project':     None, 
-               'resource':    'india.futuregrid.org', 
+               'resource':    'sierra.futuregrid.org', 
                'queue':       'interactive', 
                'sandbox':     '/N/u/merzky//troy_agents/', 
                'cleanup':     None, 

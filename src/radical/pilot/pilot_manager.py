@@ -130,7 +130,7 @@ class PilotManager(Object):
 
     #--------------------------------------------------------------------------
     #
-    def close(self, terminate=False):
+    def close(self, terminate=True):
         """Shuts down the PilotManager and its background workers in a 
         coordinated fashion.
 
@@ -406,20 +406,19 @@ class PilotManager(Object):
 
         start_wait = time.time()
         all_done = False
-        return_states = []
 
         while all_done is False:
 
             all_done = True
 
-            pilots_json = self._worker.get_compute_pilot_data()
+            p_states = []
+            for pd in self._worker.get_compute_pilot_data():
+                p_states.append(pd['state'])
 
-            for pilot in pilots_json:
-                if pilot['state'] not in state:
+            for p_state in p_states:
+                if p_state not in state:
                     all_done = False
-                    break  # leave for loop
-                else:
-                    return_states.append(pilot['state'])
+                    break  # leave 'for' loop
 
             # check timeout
             if (None != timeout) and (timeout <= (time.time() - start_wait)):
@@ -429,7 +428,7 @@ class PilotManager(Object):
             time.sleep(1)
 
         # done waiting
-        return return_states
+        return p_states
 
     # -------------------------------------------------------------------------
     #

@@ -40,6 +40,8 @@ This script launches a RADICAL-Pilot agent.
 OPTIONS:
    -a      The name of project / allocation to charge.
 
+   -b      Enable benchmarks.
+
    -c      Number of requested cores.
 
    -d      Specify debug level.
@@ -100,7 +102,7 @@ echo ""
 echo "################################################################################"
 echo "## Downloading and installing virtualenv"
 echo "## CMDLINE: $CURL_CMD"
-eval $CURL_CMD
+$CURL_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't download virtuelenv via curl! ABORTING"
@@ -119,7 +121,7 @@ echo ""
 echo "################################################################################"
 echo "## Creating virtualenv"
 echo "## CMDLINE: $BOOTSTRAP_CMD"
-eval $BOOTSTRAP_CMD
+$BOOTSTRAP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't bootstrap virtualenv! ABORTING"
@@ -134,7 +136,7 @@ echo ""
 echo "################################################################################"
 echo "## Downgrading pip to 1.2.1"
 echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
-eval $DOWNGRADE_PIP_CMD
+$DOWNGRADE_PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
    echo "Couldn't downgrade pip! ABORTING"
@@ -172,7 +174,7 @@ echo ""
 echo "################################################################################"
 echo "## Installing python-hostlist"
 echo "## CMDLINE: $PIP_CMD"
-eval $PIP_CMD
+$PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
     echo "pip install failed, trying easy_install ..."
@@ -190,7 +192,7 @@ echo ""
 echo "################################################################################"
 echo "## Installing pymongo"
 echo "## CMDLINE: $PIP_CMD"
-eval $PIP_CMD
+$PIP_CMD
 OUT=$?
 if [[ $OUT != 0 ]]; then
     echo "pip install failed, trying easy_install ..."
@@ -204,28 +206,37 @@ fi
 }
 
 # -----------------------------------------------------------------------------
-# launch the radical agent 
+# Find available port on the remote host where we can bind to
 #
-launchagent()
+function find_available_port()
 {
-AGENT_CMD="python radical-pilot-agent.py\
-    -c $CORES\
-    -d $DEBUG\
-    -j $TASK_LAUNCH_METHOD\
-    -k $MPI_LAUNCH_METHOD\
-    -l $LRMS\
-    -m mongodb://$DBURL\
-    -n $DBNAME\
-    -p $PILOTID\
-    -s $SESSIONID\
-    -t $RUNTIME\
-    -v $VERSION"
+    RANGE="23000..23100"
+    echo ""
+    echo "################################################################################"
+    echo "## Searching for available TCP port for tunnel in range $RANGE."
+    host=$1
+    for port in $(eval echo {$RANGE}); do
 
-echo ""
-echo "################################################################################"
-echo "## Launching radical-pilot-agent for $CORES cores."
-echo "## CMDLINE: $AGENT_CMD"
-eval $AGENT_CMD
+        # Try to make connection
+        (bash -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
+        # Wait for 1 second
+        read -t1
+        # Kill child
+        kill $! 2>/dev/null
+        # If the kill command succeeds, assume that we have found our match!
+        if [ "$?" == "0" ]; then
+            break
+        fi
+
+        # Reset port, so that the last port doesn't get chosen in error
+        port=
+    done
+
+    # Wait for children
+    wait 2>/dev/null
+
+    # Assume the most recent port is available
+    AVAILABLE_PORT=$port
 }
 
 # -----------------------------------------------------------------------------
@@ -243,8 +254,13 @@ echo "## Environment of bootstrapper process:"
 printenv
 
 # parse command line arguments
+BENCHMARK=0
 while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
     case $OPTION in
+        b)
+            # Passed to agent
+            BENCHMARK=1
+            ;;
         c)
             # Passed to agent
             CORES=$OPTARG
@@ -352,13 +368,23 @@ fi
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
 if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
-    # TODO: Dynamic and/or random to prevent conflicts
-    PROXY_PORT=12345
-    DBPORT=12346
+
+    echo ""
+    echo "################################################################################"
+    echo "## Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
+
+    find_available_port $FORWARD_TUNNEL_ENDPOINT
+    if [ $AVAILABLE_PORT ]; then
+        echo "## Found available port: $AVAILABLE_PORT"
+    else
+        echo "## No available port found!"
+        exit 1
+    fi
+    DBPORT=$AVAILABLE_PORT
     BIND_ADDRESS=127.0.0.1
 
     # Set up tunnel
-    ssh -x -a -4 -T -N -D $BIND_ADDRESS:$PROXY_PORT -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
@@ -384,8 +410,29 @@ else
     installvenv
 fi
 
-# launch the agent
-launchagent
+# -----------------------------------------------------------------------------
+# launch the radical agent
+#
+AGENT_CMD="python radical-pilot-agent.py\
+    -b $BENCHMARK\
+    -c $CORES\
+    -d $DEBUG\
+    -j $TASK_LAUNCH_METHOD\
+    -k $MPI_LAUNCH_METHOD\
+    -l $LRMS\
+    -m mongodb://$DBURL\
+    -n $DBNAME\
+    -p $PILOTID\
+    -s $SESSIONID\
+    -t $RUNTIME\
+    -v $VERSION"
+
+echo ""
+echo "################################################################################"
+echo "## Launching radical-pilot-agent for $CORES cores."
+echo "## CMDLINE: $AGENT_CMD"
+$AGENT_CMD
+AGENT_EXITCODE=$?
 
 # cleanup
 rm -rf $WORKDIR/virtualenv*
@@ -396,4 +443,4 @@ if [[ $CLEANUP ]]; then
 fi
 
 # ... and exit
-exit 0
+exit $AGENT_EXITCODE

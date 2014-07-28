@@ -24,6 +24,7 @@ from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
 
+from radical.pilot.db.database import COMMAND_CANCEL_PILOT
 
 # ----------------------------------------------------------------------------
 #
@@ -272,6 +273,14 @@ class PilotManagerController(threading.Thread):
 
                 self._shared_data[pilot_id]['data'] = pilot
 
+                # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
+                # set the state of the compute unit accordingly
+                if new_state in ['Failed', 'Done', 'Canceled']:
+                    self._db.set_all_running_compute_units(
+                        pilot_id=pilot_id, 
+                        state="Canceled",
+                        log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
+
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
                     self._initialized.set()
@@ -386,11 +395,10 @@ class PilotManagerController(threading.Thread):
     def register_cancel_pilots_request(self, pilot_ids):
         """Registers one or more pilots for cancelation.
         """
-        self._db.signal_pilots(
-            pilot_manager_id=self._pm_id,
-            pilot_ids=pilot_ids, cmd="CANCEL")
 
         if pilot_ids is None:
-            logger.info("Sent 'CANCEL' command to all pilots.")
+            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_manager_id=self._pm_id)
+            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to all pilots.")
         else:
-            logger.info("Sent 'CANCEL' command to pilots %s.", pilot_ids)
+            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
+            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)

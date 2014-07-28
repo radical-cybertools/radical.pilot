@@ -138,6 +138,7 @@ do for [term_i=1:words(terms)] {
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set xtics  timetics
+    set mxtics mtimetics
     set yrange [0:8]
     set ytics  ("PENDING LAUNCH" 1, \
                 "LAUNCHING     " 2, \
@@ -212,12 +213,13 @@ do for [term_i=1:words(terms)] {
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set yrange [1:maxslots+nodesize/2]
-    set ytics  nodesize
+    set mytics nodesize
+    set ytics  autofreq
     set y2tics autofreq
 
     set xlabel ''
     set ylabel "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
-    set grid
+    set grid 
   unset format
 
     if (pilotnum==1) {

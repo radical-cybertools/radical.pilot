@@ -30,9 +30,9 @@ def pilot_state_cb(pilot, state):
     """
     print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % pilot.log[-1]
 
+    if state == radical.pilot.states.FAILED:
+        sys.exit(1)
 
 #------------------------------------------------------------------------------
 #
@@ -52,11 +52,11 @@ if __name__ == "__main__":
     try:
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security contexts.
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        c = radical.pilot.context('ssh')
+        c = radical.pilot.Context('ssh')
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -70,10 +70,11 @@ if __name__ == "__main__":
         # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "stampede.tacc.utexas.edu"
-        pdesc.runtime          = 15 # N minutes
-        pdesc.cores            = 64 # X cores
-        pdesc.cleanup          = True
+        pdesc.resource         = "bigred2.uits.indiana.edu"
+        pdesc.runtime          = 9 # N minutes
+        pdesc.cores            = 32 # X cores
+        pdesc.queue            = "debug_cpu"
+        pdesc.cleanup          = False
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -81,19 +82,15 @@ if __name__ == "__main__":
         cud_list = []
 
         for unit_count in range(0, 4):
-            cu = radical.pilot.ComputeUnitDescription()
-            cu.pre_exec    = ["module load python intel mvapich2 mpi4py"]
-            cu.executable  = "python"
-            cu.arguments   = ["./mpi4py_hello_world.py"]
-            cu.input_data  = ["./mpi4py_hello_world.py"]
-            # These two parameters are relevant to MPI execution:
-            #   'cores' sets the number of cores required by the task
-            #   'mpi' identifies the task as an MPI taskg
-            cu.cores       = 32
-            cu.mpi         = True
+            mpi_test_task = radical.pilot.ComputeUnitDescription()
+            mpi_test_task.pre_exec    = ["module load python"]
+            mpi_test_task.executable  = "python"
+            mpi_test_task.arguments   = ["helloworld_mpi.py"]
+            mpi_test_task.input_data  = ["helloworld_mpi.py"]
+            mpi_test_task.cores       = 16
 
-
-            cud_list.append(cu)
+            mpi_test_task.mpi         = True
+            cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -121,7 +118,7 @@ if __name__ == "__main__":
             units = [units]
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
 
         session.close(delete=False)
         sys.exit(0)

@@ -1,13 +1,13 @@
 """ (Compute) Unit tests
 """
-
 import os
 import sys
 import radical.pilot
 import unittest
-import time
-import uuid
 
+import uuid
+from copy import deepcopy
+from radical.pilot.db import Session
 from pymongo import MongoClient
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
@@ -26,7 +26,7 @@ if DBNAME is None:
 
 #-----------------------------------------------------------------------------
 #
-class TestUnit(unittest.TestCase):
+class TestIssue114(unittest.TestCase):
     # silence deprecation warnings under py3
 
     def setUp(self):
@@ -35,7 +35,7 @@ class TestUnit(unittest.TestCase):
         client.drop_database(DBNAME)
 
     def tearDown(self):
-        # clean up after ourselves
+        # clean up after ourselves 
         client = MongoClient(DBURL)
         client.drop_database(DBNAME)
 
@@ -49,8 +49,8 @@ class TestUnit(unittest.TestCase):
 
     #-------------------------------------------------------------------------
     #
-    def test__unit_wait(self):
-        """ Test if we can wait for different unit states.
+    def test__issue_114_part_1(self):
+        """ https://github.com/radical-cybertools/radical.pilot/issues/114
         """
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
@@ -58,7 +58,91 @@ class TestUnit(unittest.TestCase):
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
-        cpd.cores = 1
+        cpd.cores   = 1
+        cpd.runtime = 5
+        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup = True
+
+        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+
+        um = radical.pilot.UnitManager(
+            session=session,
+            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
+        )
+        um.add_pilots(pilot)
+
+        all_tasks = []
+
+        for i in range(0,4):
+            cudesc = radical.pilot.ComputeUnitDescription()
+            cudesc.cores      = 1
+            cudesc.executable = "/bin/sleep"
+            cudesc.arguments = ['180']
+            all_tasks.append(cudesc)
+
+        cu = um.submit_units(all_tasks)
+        states = um.wait_units(timeout=60)
+
+        assert states is not None
+        assert radical.pilot.states.SCHEDULING in states
+        assert radical.pilot.states.EXECUTING in states
+
+        session.close()
+
+    #-------------------------------------------------------------------------
+    #
+    def test__issue_114_part_2(self):
+        """ https://github.com/radical-cybertools/radical.pilot/issues/114
+        """
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+
+        pm = radical.pilot.PilotManager(session=session)
+
+        cpd = radical.pilot.ComputePilotDescription()
+        cpd.resource = "localhost"
+        cpd.cores   = 1
+        cpd.runtime = 5
+        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup = True
+
+        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+
+        um = radical.pilot.UnitManager(
+            session=session,
+            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
+        )
+        um.add_pilots(pilot)
+
+        cudesc = radical.pilot.ComputeUnitDescription()
+        cudesc.cores      = 1
+        cudesc.executable = "/bin/sleep"
+        cudesc.arguments = ['80']
+
+        cu = um.submit_units(cudesc)
+        state = um.wait_units(timeout=30)
+
+        assert state == [radical.pilot.states.EXECUTING]
+        assert cu.state == radical.pilot.states.EXECUTING
+
+        state = um.wait_units()
+
+        assert state == [radical.pilot.states.DONE]
+        assert cu.state == radical.pilot.states.DONE
+
+        session.close()
+
+    #-------------------------------------------------------------------------
+    #
+    def test__issue_114_part_3(self):
+        """ https://github.com/radical-cybertools/radical.pilot/issues/114
+        """
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+
+        pm = radical.pilot.PilotManager(session=session)
+
+        cpd = radical.pilot.ComputePilotDescription()
+        cpd.resource = "localhost"
+        cpd.cores   = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
         cpd.cleanup = True
@@ -71,131 +155,14 @@ class TestUnit(unittest.TestCase):
         )
         um.add_pilots(pilot)
 
-        cudesc = radical.pilot.ComputeUnitDescription()
-        cudesc.cores = 1
-        cudesc.executable = "/bin/sleep"
-        cudesc.arguments = ['10']
+        state = pm.wait_pilots(timeout=30)
 
-        cu = um.submit_units(cudesc)
+        assert state == [radical.pilot.states.ACTIVE]
+        assert pilot.state == radical.pilot.states.ACTIVE
 
-        assert cu is not None
-        assert cu.submission_time is not None
-        assert cu.start_time is None # MS: I dont understand this assertion
+        state = pm.wait_pilots()
 
-        cu.wait([radical.pilot.states.EXECUTING, radical.pilot.states.FAILED], timeout=5*60)
-        assert cu.state == radical.pilot.states.EXECUTING
-        assert cu.start_time is not None
-
-        cu.wait([radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=5*60)
-        assert cu.state == radical.pilot.states.DONE
-        assert cu.stop_time is not None
-
-        session.close()
-
-    #-------------------------------------------------------------------------
-    #
-    def test__unit_cancel(self):
-        """ Test if we can cancel a compute unit
-        """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-
-        pm = radical.pilot.PilotManager(session=session)
-
-        cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
-        cpd.cores = 1
-        cpd.runtime = 60
-        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd.cleanup = True
-
-        pilot = pm.submit_pilots(pilot_descriptions=cpd)
-
-        um = radical.pilot.UnitManager(
-            session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
-        )
-        um.add_pilots(pilot)
-
-        # Wait until the pilot starts
-        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=10)
-
-        cudesc = radical.pilot.ComputeUnitDescription()
-        cudesc.cores = 1
-        cudesc.executable = "/bin/sleep"
-        cudesc.arguments = ["30"]
-
-        cu = um.submit_units(cudesc)
-
-        assert cu is not None
-        assert cu.submission_time is not None
-
-        # Let it start!
-        time.sleep(10)
-
-        # Make sure it is running!
-        cu.wait(radical.pilot.states.EXECUTING, timeout=5)
-        assert cu.state == radical.pilot.states.EXECUTING
-        assert cu.start_time is not None
-
-        # Cancel the CU!
-        cu.cancel()
-
-        cu.wait(radical.pilot.states.CANCELED, timeout=10)
-        assert cu.state == radical.pilot.states.CANCELED
-        assert cu.stop_time is not None
-
-        session.close()
-
-    #-------------------------------------------------------------------------
-    #
-    def test__unit_cancel_um(self):
-        """ Test if we can cancel a compute unit through the UM
-        """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-
-        pm = radical.pilot.PilotManager(session=session)
-
-        cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
-        cpd.cores = 1
-        cpd.runtime = 60
-        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd.cleanup = True
-
-        pilot = pm.submit_pilots(pilot_descriptions=cpd)
-
-        um = radical.pilot.UnitManager(
-            session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
-        )
-        um.add_pilots(pilot)
-
-        # Wait until the pilot starts
-        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=10)
-
-        cudesc = radical.pilot.ComputeUnitDescription()
-        cudesc.cores = 1
-        cudesc.executable = "/bin/sleep"
-        cudesc.arguments = ["30"]
-
-        cu = um.submit_units(cudesc)
-
-        assert cu is not None
-        assert cu.submission_time is not None
-
-        # Let it start!
-        time.sleep(10)
-
-        # Make sure it is running!
-        cu.wait(radical.pilot.states.EXECUTING, timeout=5)
-        assert cu.state == radical.pilot.states.EXECUTING
-        assert cu.start_time is not None
-
-        # Cancel the CU!
-        um.cancel_units(cu.uid)
-
-        cu.wait(radical.pilot.states.CANCELED, timeout=10)
-        assert cu.state == radical.pilot.states.CANCELED
-        assert cu.stop_time is not None
+        assert state == [radical.pilot.states.DONE]
+        assert pilot.state == radical.pilot.states.DONE
 
         session.close()

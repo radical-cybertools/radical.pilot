@@ -27,7 +27,7 @@ BULK_LIMIT=1
 
 # The interval at which we check 
 # the saga jobs.
-JOB_CHECK_INTERVAL=10 # seconds
+JOB_CHECK_INTERVAL=30 # seconds
 
 # ----------------------------------------------------------------------------
 #
@@ -42,6 +42,7 @@ class PilotLauncherWorker(multiprocessing.Process):
         """Creates a new pilot launcher background process.
         """
         self._session = session
+        self._local_pilots = []
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
@@ -82,29 +83,27 @@ class PilotLauncherWorker(multiprocessing.Process):
 
         while True:
             # Periodically, we pull up all ComputePilots that are pending 
-            # execution and check if the corresponding  SAGA
-            # job is still pending in the queue. If that is not the case, 
+            # execution or were last seen executing and check if the corresponding  
+            # SAGA job is still pending in the queue. If that is not the case, 
             # we assume that the job has failed for some reasons and update
             # the state of the ComputePilot accordingly.
             if last_job_check + JOB_CHECK_INTERVAL < time.time():
                 pending_pilots = pilot_col.find(
                     {"pilotmanager": self.pilot_manager_id,
-                     "state"       : PENDING_EXECUTION}
+                     "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]}}
                 )
 
                 for pending_pilot in pending_pilots:
                     pilot_id    = pending_pilot["_id"]
                     saga_job_id = pending_pilot["saga_job_id"]
                     logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
-
-                    log_message = None
-
+                    
                     # Create a job service object:
                     try: 
                         js_url = saga_job_id.split("]-[")[0][1:]
                         js = saga.job.Service(js_url, session=self._session)
                         saga_job = js.get_job(saga_job_id)
-                        if saga.job.state == saga.job.FAILED:
+                        if saga_job.state == saga.job.FAILED:
                             log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
 
                             ts = datetime.datetime.utcnow()
@@ -118,7 +117,8 @@ class PilotLauncherWorker(multiprocessing.Process):
                         js.close()
 
                     except Exception, ex:
-                        log_message = "Couldn't determine SAGA job state for ComputePilot %s. Assuming it failed to launch." % pilot_id
+
+                        log_message = "Couldn't determine job state for ComputePilot %s. Assuming it has failed to launch." % pilot_id
 
                         ts = datetime.datetime.utcnow()
                         pilot_col.update(
@@ -321,6 +321,9 @@ class PilotLauncherWorker(multiprocessing.Process):
                     if cleanup is True: 
                         bootstrap_args += " -x "               # the cleanup flag
 
+                    if  'RADICAL_PILOT_BENCHMARK' in os.environ :
+                        bootstrap_args += " -b"
+
                     jd.executable = "/bin/bash"
                     jd.arguments = ["-l", "-c", '"chmod +x %s && ./%s %s"' % (bootstrapper, bootstrapper, bootstrap_args)]
 
@@ -350,7 +353,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                     if compute_pilot['description']['memory'] is not None:
                         jd.total_physical_memory = compute_pilot['description']['memory']
 
-                    log_msg = "Submitting SAGA job with description: %s" % str(jd)
+                    log_msg = "Submitting SAGA job with description: %s" % str(jd.as_dict())
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
 
@@ -363,6 +366,9 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     saga_job_id = pilotjob.id
                     log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
+
+                    self._local_pilots.append(saga_job_id)
+
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
 

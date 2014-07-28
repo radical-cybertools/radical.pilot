@@ -24,6 +24,7 @@ INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
 MPI                    = 'mpi'
 PRE_EXEC               = 'pre_exec'
+POST_EXEC              = 'post_exec'
 
 # ------------------------------------------------------------------------------
 #
@@ -79,6 +80,10 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        (`Attribute`) Actions to perform before this task starts (`list` of `strings`) [`optional`].
 
+    .. data:: post_exec
+
+       (`Attribute`) Actions to perform after this task finishes (`list` of `strings`) [`optional`].
+
        .. note:: Before the BigBang, there was nothing ...
 
     """
@@ -100,6 +105,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self._attributes_register(ARGUMENTS,              None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(ENVIRONMENT,            None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
         self._attributes_register(PRE_EXEC,               None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(POST_EXEC,              None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         #self._attributes_register(CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(START_TIME,        None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
@@ -135,7 +141,8 @@ class ComputeUnitDescription(attributes.Attributes) :
             ENVIRONMENT            : self.environment,
             CORES                  : self.cores,
             MPI                    : self.mpi,
-            PRE_EXEC               : self.pre_exec
+            PRE_EXEC               : self.pre_exec,
+            POST_EXEC              : self.post_exec
         }
         if not self.input_staging:
             obj_dict[INPUT_STAGING] = []

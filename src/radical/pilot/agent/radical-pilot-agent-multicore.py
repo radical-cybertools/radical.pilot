@@ -62,6 +62,12 @@ LRMS_LSF    = 'LSF'
 LRMS_LOADL  = 'LOADL'
 LRMS_FORK   = 'FORK'
 
+COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
+COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
+COMMAND_KEEP_ALIVE          = "Keep_Alive"
+COMMAND_FIELD               = "commands"
+COMMAND_TYPE                = "type"
+COMMAND_ARG                 = "arg"
 
 #
 # Staging Action operators
@@ -714,9 +720,8 @@ class ExecutionEnvironment(object):
 #
 class Task(object):
 
-    #
     def __init__(self, uid, executable, arguments, environment, numcores, mpi,
-                 pre_exec, workdir, stdout, stderr, agent_output_staging, ftw_output_staging):
+                 pre_exec, post_exec, workdir, stdout, stderr, agent_output_staging, ftw_output_staging):
 
         self._log         = None
         self._description = None
@@ -734,6 +739,7 @@ class Task(object):
         self.numcores       = numcores
         self.mpi            = mpi
         self.pre_exec       = pre_exec
+        self.post_exec      = post_exec
 
         # Location
         self.slots          = None
@@ -748,7 +754,8 @@ class Task(object):
         self.stdout_id      = None
         self.stderr_id      = None
 
-        self._log            = []
+        self._log           = []
+        self._proc          = None
 
 
 # ----------------------------------------------------------------------------
@@ -760,9 +767,9 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, task_queue, output_staging_queue, node_list, cores_per_node,
-                 launch_methods, mongodb_url, mongodb_name,
-                 pilot_id, session_id):
+    def __init__(self, logger, task_queue, command_queue, output_staging_queue,
+                 node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name,
+                 pilot_id, session_id, benchmark):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
@@ -772,7 +779,8 @@ class ExecWorker(multiprocessing.Process):
 
         self._log = logger
 
-        self._pilot_id = pilot_id
+        self._pilot_id  = pilot_id
+        self._benchmark = benchmark
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
@@ -786,8 +794,12 @@ class ExecWorker(multiprocessing.Process):
         # Queued transfers
         self._output_staging_queue = output_staging_queue
 
+        # Queued commands by the Agent
+        self._command_queue = command_queue
+
         # Launched tasks by this ExecWorker
         self._running_tasks = []
+        self._cuids_to_cancel = []
 
         # Slots represents the internal process management structure.
         # The structure is as follows:
@@ -838,10 +850,19 @@ class ExecWorker(multiprocessing.Process):
 
                 self._log.debug("Slot status:\n%s", self._slot_status())
 
-                # Loop over tasks instead of slots!
+                # See if there are commands for the worker!
+                try:
+                    command = self._command_queue.get_nowait()
+                    if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                        self._cuids_to_cancel.append(command[COMMAND_ARG])
+                    else:
+                        raise Exception("Command %s not applicable in this context." % command[COMMAND_TYPE])
+                except Queue.Empty:
+                    # do nothing if we don't have any queued commands
+                    pass
+
                 try:
                     task = self._task_queue.get_nowait()
-                    idle = False
 
                     if task.mpi:
                         launch_method = self._available_launch_methods['mpi_launch_method']
@@ -873,8 +894,8 @@ class ExecWorker(multiprocessing.Process):
                     if task_slots is None:
                         # No resources free, put back in queue
                         self._task_queue.put(task)
-                        idle = True
                     else:
+                        idle = False
                         # We got an allocation go off and launch the process
                         task.slots = task_slots
                         self._launch_task(task, launch_method, launch_command)
@@ -883,6 +904,7 @@ class ExecWorker(multiprocessing.Process):
                     # do nothing if we don't have any queued tasks
                     pass
 
+                # idle &= self._check_running()
                 idle &= self._check_running()
 
                 # Check if something happened in this cycle, if not, zzzzz for a bit
@@ -891,11 +913,12 @@ class ExecWorker(multiprocessing.Process):
 
             # AM: we are done -- push slot history 
             # FIXME: this is never called, self._terminate is a farce :(
-            self._p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._slot_history, 
-                          "slots"       : self._slots}}
-                )
+            if  self._benchmark :
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)},
+                    {"$set": {"slothistory" : self._slot_history, 
+                              "slots"       : self._slots}}
+                    )
 
 
         except Exception, ex:
@@ -992,7 +1015,7 @@ class ExecWorker(multiprocessing.Process):
 
             # Glue all slot core lists together
             all_slot_cores = [core for node in [node['cores'] for node in all_slots] for core in node]
-            self._log.debug("all_slot_cores: %s" % all_slot_cores)
+          # self._log.debug("all_slot_cores: %s" % all_slot_cores)
 
             # Find the start of the first available region
             all_slots_first_core_offset = find_cores_cont(all_slot_cores, cores_requested, FREE)
@@ -1078,10 +1101,10 @@ class ExecWorker(multiprocessing.Process):
         # Convenience alias
         all_slots = self._slots
 
-        logger.debug("change_slot_states: task slots: %s" % task_slots)
+      # logger.debug("change_slot_states: task slots: %s" % task_slots)
 
         for slot in task_slots:
-            logger.debug("change_slot_states: slot content: %s" % slot)
+          # logger.debug("change_slot_states: slot content: %s" % slot)
             # Get the node and the core part
             [slot_node, slot_core] = slot.split(':')
             # Find the entry in the the all_slots list
@@ -1090,7 +1113,14 @@ class ExecWorker(multiprocessing.Process):
             slot_entry['cores'][int(slot_core)] = new_state
 
         # something changed - write history!
-        self._slot_history.append (self._slot_status (short=True))
+        # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
+        # ensue.  We thus limit the slot history size to 4MB, to keep suffient
+        # space for the actual operational data
+        if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
+            self._slot_history.append (self._slot_status (short=True))
+        else :
+            # just replace the last entry with the current one.
+            self._slot_history[-1]  =  self._slot_status (short=True)
 
 
     # ------------------------------------------------------------------------
@@ -1119,9 +1149,10 @@ class ExecWorker(multiprocessing.Process):
 
         task.started=datetime.datetime.utcnow()
         task.state = EXECUTING
+        task._proc = proc
 
         # Add to the list of monitored tasks
-        self._running_tasks.append(proc)
+        self._running_tasks.append(task) # add task here?
 
         # Update to mongodb
         self._update_tasks(task)
@@ -1138,23 +1169,30 @@ class ExecWorker(multiprocessing.Process):
         update_tasks = []
         finished_tasks = []
 
-        for proc in self._running_tasks:
+        for task in self._running_tasks:
 
+            proc = task._proc
             rc = proc.poll()
             if rc is None:
                 # subprocess is still running
-                continue
 
-            finished_tasks.append(proc)
+                if task.uid in self._cuids_to_cancel:
+                    proc.kill()
+                    state = 'Canceled'
+                    finished_tasks.append(task)
+                else:
+                    continue
 
-            # Make sure all stuff reached the spindles
-            proc.close_and_flush_filehandles()
+            else:
 
-            # Convenience shortcut
-            task = proc.task
+                finished_tasks.append(task)
 
-            uid = task.uid
-            self._log.info("Task %s terminated with return code %s." % (uid, rc))
+                # Make sure all stuff reached the spindles
+                proc.close_and_flush_filehandles()
+
+                # Convenience shortcut
+                uid = task.uid
+                self._log.info("Task %s terminated with return code %s." % (uid, rc))
 
             if rc != 0:
                 state = FAILED
@@ -1200,32 +1238,33 @@ class ExecWorker(multiprocessing.Process):
                 else:
                     state = DONE
 
-            # upload stdout and stderr to GridFS
-            workdir = task.workdir
-            task_id = task.uid
+                # upload stdout and stderr to GridFS
+                workdir = task.workdir
+                task_id = task.uid
 
-            stdout_id = None
-            stderr_id = None
+                stdout_id = None
+                stderr_id = None
 
-            stdout = "%s/STDOUT" % workdir
-            if os.path.isfile(stdout):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stdout, 'r') as stdout_f:
-                    stdout_id = fs.put(stdout_f.read(), filename=stdout)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+                stdout = "%s/STDOUT" % workdir
+                if os.path.isfile(stdout):
+                    fs = gridfs.GridFS(self._mongo_db)
+                    with open(stdout, 'r') as stdout_f:
+                        stdout_id = fs.put(stdout_f.read(), filename=stdout)
+                        self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
 
-            stderr = "%s/STDERR" % workdir
-            if os.path.isfile(stderr):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stderr, 'r') as stderr_f:
-                    stderr_id = fs.put(stderr_f.read(), filename=stderr)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
+                stderr = "%s/STDERR" % workdir
+                if os.path.isfile(stderr):
+                    fs = gridfs.GridFS(self._mongo_db)
+                    with open(stderr, 'r') as stderr_f:
+                        stderr_id = fs.put(stderr_f.read(), filename=stderr)
+                        self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
+
+                task.stdout_id=stdout_id
+                task.stderr_id=stderr_id
+                task.exit_code=rc
 
             task.finished=datetime.datetime.utcnow()
-            task.exit_code=rc
             task.state=state
-            task.stdout_id=stdout_id
-            task.stderr_id=stderr_id
 
             update_tasks.append(task)
 
@@ -1256,11 +1295,12 @@ class ExecWorker(multiprocessing.Process):
         # shutdown.  Well, alas, there is currently no way for it to find out
         # when it is shut down... Some quick and  superficial measurements 
         # though show no negative impact on agent performance.
-        self._p.update(
-            {"_id": ObjectId(self._pilot_id)},
-            {"$set": {"slothistory" : self._slot_history, 
-                      "slots"       : self._slots}}
-            )
+        if  self._benchmark :
+            self._p.update(
+                {"_id": ObjectId(self._pilot_id)},
+                {"$set": {"slothistory" : self._slot_history, 
+                          "slots"       : self._slots}}
+                )
 
         if not isinstance(tasks, list):
             tasks = [tasks]
@@ -1507,7 +1547,8 @@ class Agent(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, workdir, runtime,
-                 mongodb_url, mongodb_name, pilot_id, session_id):
+                 mongodb_url, mongodb_name, pilot_id, session_id, 
+                 benchmark):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -1525,6 +1566,8 @@ class Agent(threading.Thread):
         self._runtime    = runtime
         self._starttime  = None
 
+        self._benchmark  = benchmark
+
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
         self._p = mongo_db["%s.p"  % session_id]
@@ -1539,18 +1582,23 @@ class Agent(threading.Thread):
         self._input_staging_queue = multiprocessing.Queue()
         self._output_staging_queue = multiprocessing.Queue()
 
+        # Channel for the Agent to communicate commands with the ExecWorker
+        self._command_queue = multiprocessing.Queue()
+
         # we assign each node partition to a task execution worker
         self._exec_worker = ExecWorker(
             logger          = self._log,
             task_queue      = self._task_queue,
             output_staging_queue   = self._output_staging_queue,
+            command_queue   = self._command_queue,
             node_list       = self._exec_env.node_list,
             cores_per_node  = self._exec_env.cores_per_node,
             launch_methods  = self._exec_env.discovered_launch_methods,
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
             pilot_id        = pilot_id,
-            session_id      = session_id
+            session_id      = session_id,
+            benchmark       = benchmark
         )
         self._exec_worker.start()
         self._log.info("Started up %s serving nodes %s" % (self._exec_worker, self._exec_env.node_list))
@@ -1646,63 +1694,75 @@ class Agent(threading.Thread):
                 # get the actual pilot entries for them and remove them from 
                 # the wu_queue.
                 try:
-                    p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
 
-                    #if p_cursor.count() != 1:
-                    #    self._log.info("Pilot entry %s has disappeared from the database." % self._pilot_id)
-                    #    pilot_FAILED(self._p, self._pilot_id)
-                    #    break
-                    if False:
-                        pass
+                    # Check if there's a command waiting
+                    retdoc = self._p.find_and_modify(
+                                query={"_id":ObjectId(self._pilot_id)},
+                                update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
+                                fields=[COMMAND_FIELD]
+                    )
 
+                    if retdoc:
+                        commands = retdoc['commands']
                     else:
-                        # Check if there's a command waiting
-                        command = p_cursor[0]['command']
-                        if command is not None:
-                            self._log.info("Received new command: %s" % command)
-                            if command.lower() == "cancel":
-                                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                                break
+                        commands = []
 
-                        # Check if there are work units waiting for execution,
-                        # and log that we pulled it.
-                        ts = datetime.datetime.utcnow()
-                        wu_cursor = self._w.find_and_modify(
-                            query={"pilot" : self._pilot_id,
-                                   "state" : PENDING_EXECUTION},
-                            update={"$set" : {"state": SCHEDULING},
-                                    "$push": {"statehistory": {"state": SCHEDULING, "timestamp": ts}}}
-                        )
+                    for command in commands:
+                        if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+                            self._log.info("Received Cancel Pilot command.")
+                            pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                            return # terminate loop
 
-                        # There are new work units in the wu_queue on the database.
-                        # Get the corresponding wu entries.
-                        if wu_cursor is not None:
-                            if not isinstance(wu_cursor, list):
-                                wu_cursor = [wu_cursor]
+                        elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                            self._log.info("Received Cancel Compute Unit command for: %s" % command[COMMAND_ARG])
+                            # Put it on the command queue of the ExecWorker
+                            self._command_queue.put(command)
 
-                            for wu in wu_cursor:
-                                # Create new task objects and put them into the task queue
-                                w_uid = str(wu["_id"])
-                                self._log.info("Found new tasks in pilot queue: %s" % w_uid)
+                        elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
+                            self._log.info("Received KeepAlive command.")
+                        else:
+                            raise Exception("Received unknown command: %s with arg: %s." % (command[COMMAND_TYPE], command[COMMAND_ARG]))
 
-                                task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
+                    # Check if there are work units waiting for execution,
+                    # and log that we pulled it.
+                    ts = datetime.datetime.utcnow()
+                    wu_cursor = self._w.find_and_modify(
+                        query={"pilot" : self._pilot_id,
+                               "state" : PENDING_EXECUTION},
+                        update={"$set" : {"state": SCHEDULING},
+                                "$push": {"statehistory": {"state": SCHEDULING, "timestamp": ts}}}
+                    )
 
-                                task = Task(uid         = w_uid,
-                                            executable  = wu["description"]["executable"], 
-                                            arguments   = wu["description"]["arguments"],
-                                            environment = wu["description"]["environment"],
-                                            numcores    = wu["description"]["cores"],
-                                            mpi         = wu["description"]["mpi"],
-                                            pre_exec    = wu["description"]["pre_exec"],
-                                            workdir     = task_dir_name,
-                                            stdout      = task_dir_name+'/STDOUT', 
-                                            stderr      = task_dir_name+'/STDERR',
-                                            agent_output_staging = True if wu['Agent_Output_Directives'] else False,
-                                            ftw_output_staging   = True if wu['FTW_Output_Directives'] else False
-                                            )
+                    # There are new work units in the wu_queue on the database.
+                    # Get the corresponding wu entries.
+                    if wu_cursor is not None:
+                        if not isinstance(wu_cursor, list):
+                            wu_cursor = [wu_cursor]
 
-                                task.state = SCHEDULING
-                                self._task_queue.put(task)
+                        for wu in wu_cursor:
+                            # Create new task objects and put them into the task queue
+                            w_uid = str(wu["_id"])
+                            self._log.info("Found new tasks in pilot queue: %s" % w_uid)
+
+                            task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
+
+                            task = Task(uid         = w_uid,
+                                        executable  = wu["description"]["executable"],
+                                        arguments   = wu["description"]["arguments"],
+                                        environment = wu["description"]["environment"],
+                                        numcores    = wu["description"]["cores"],
+                                        mpi         = wu["description"]["mpi"],
+                                        pre_exec    = wu["description"]["pre_exec"],
+                                        post_exec   = wu["description"]["post_exec"],
+                                        workdir     = task_dir_name,
+                                        stdout      = task_dir_name+'/STDOUT',
+                                        stderr      = task_dir_name+'/STDERR',
+                                        agent_output_staging = True if wu['Agent_Output_Directives'] else False,
+                                        ftw_output_staging   = True if wu['FTW_Output_Directives'] else False
+                                        )
+
+                            task.state = SCHEDULING
+                            self._task_queue.put(task)
 
                         #
                         # Check if there are work units waiting for input staging
@@ -1780,8 +1840,15 @@ class _Process(subprocess.Popen):
                 pre_exec = [pre_exec]
             for bb in pre_exec:
                 pre_exec_string += "%s\n" % bb
-        if pre_exec_string:
-            launch_script.write('%s' % pre_exec_string)
+
+        # After the universe dies the infrared death, there will be nothing
+        post_exec = task.post_exec
+        post_exec_string = ''
+        if post_exec:
+            if not isinstance(post_exec, list):
+                post_exec = [post_exec]
+            for bb in post_exec:
+                post_exec_string += "%s\n" % bb
 
         # executable and arguments
         if task.executable is not None:
@@ -1798,21 +1865,20 @@ class _Process(subprocess.Popen):
 
         # Create string for environment variable setting
         env_string = ''
-        if task.environment is not None:
+        if task.environment is not None and len(task.environment.keys()):
             env_string += 'export'
             for key in task.environment:
                 env_string += ' %s=%s' % (key, task.environment[key])
 
-            # make sure we didnt have an empty dict
-            if env_string == 'export':
-                env_string = ''
-        if env_string:
-            launch_script.write('%s\n' % env_string)
 
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
-            launch_script.write('%s\n' % task_exec_string)
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s\n'    % task_exec_string)
+            launch_script.write('%s\n'    % post_exec_string)
+
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_MPIRUN:
@@ -1824,7 +1890,11 @@ class _Process(subprocess.Popen):
 
             mpirun_command = "%s -np %s -host %s" % (launch_command,
                                                      task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1836,13 +1906,22 @@ class _Process(subprocess.Popen):
                 hosts_string += '%s,' % host
 
             mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpiexec_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
+            
             aprun_command = "%s -n %s" % (launch_command, task.numcores)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (aprun_command, task_exec_string))
+            launch_script.write('%s\n' % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1865,7 +1944,10 @@ class _Process(subprocess.Popen):
                              ibrun_offset)
 
             # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
@@ -1891,7 +1973,10 @@ class _Process(subprocess.Popen):
                 hosts_string, launch_command)
 
             # Continue to build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (poe_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
 
             # Command line to execute launch script
             cmdline = launch_script.name
@@ -1900,11 +1985,13 @@ class _Process(subprocess.Popen):
             host = task.slots[0].split(':')[0] # Get the host of the first entry in the acquired slot
 
             # Continue to build launch script
-            launch_script.write('%s\n' % task_exec_string)
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s\n'    % task_exec_string)
+            launch_script.write('%s\n'    % post_exec_string)
 
             # Command line to execute launch script
-            cmdline = '%s %s %s' % (launch_command, host,
-                                                  launch_script.name)
+            cmdline = '%s %s %s' % (launch_command, host, launch_script.name)
 
         else:
             raise NotImplementedError("Launch method %s not implemented in executor!" % launch_method)
@@ -1957,6 +2044,12 @@ class _Process(subprocess.Popen):
 def parse_commandline():
 
     parser = optparse.OptionParser()
+
+    parser.add_option('-b', '--benchmark',
+                      metavar='BENCHMARK',
+                      type='int',
+                      dest='benchmark',
+                      help='Enables timing for benchmarking purposes.')
 
     parser.add_option('-c', '--cores',
                       metavar='CORES',
@@ -2128,7 +2221,8 @@ if __name__ == "__main__":
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
                       pilot_id=options.pilot_id,
-                      session_id=options.session_id)
+                      session_id=options.session_id, 
+                      benchmark=options.benchmark)
 
         # AM: why is this done in a thread?  This thread blocks anyway, so it
         # could just *do* the things.  That would avoid those global vars and
