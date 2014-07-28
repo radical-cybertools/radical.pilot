@@ -15,10 +15,15 @@ to install RADICAL-Pilot first:
 
 .. code-block:: bash
 
-    RADICAL_PILOT_VERBOSE=debug \
+    export RADICAL_PILOT_VERBOSE=debug
+    export RADICAL_PILOT_TEST_DBNAME=rbtest_`date | md5sum | cut -c 1-32`
     python setup.py test
 
 .. note:: 
+
+    ``RADICAL_PILOT_TEST_DBNAME`` creates a somewhat of a random database
+    name for the tests. This prevents interference caused by tests run against 
+    the same MongoDB concurrently.
 
     If you run the same command in an environment where RADICAL-Pilot is already
     installed, the unit tests will test the installed version instead of the 
@@ -93,7 +98,7 @@ The content of the file should look like this (make sure to change the class nam
     # http://docs.mongodb.org/manual/installation/
     DBURL = os.getenv("RADICAL_PILOT_DBURL")
     if DBURL is None:
-        print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
+        print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
         sys.exit(1)
         
     DBNAME = 'radicalpilot_unittests'
@@ -127,6 +132,8 @@ Now you can re-install RADICAL-Pilot and run you new test. In the source root,
 run:
 
 .. code-block:: python
+
+
 
     easy_install . && python -m unittest -v -q radical.pilot.tests.issues.issue_123.TestIssue123
 

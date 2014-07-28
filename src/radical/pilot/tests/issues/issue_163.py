@@ -15,10 +15,13 @@ from pymongo import MongoClient
 # http://docs.mongodb.org/manual/installation/
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radicalpilot_unittests'
+DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME")
+if DBNAME is None:
+    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
+    sys.exit(1)
 
 
 #-----------------------------------------------------------------------------
@@ -71,17 +74,5 @@ class TestIssue163(unittest.TestCase):
         res = session.list_resource_configs()
         s = res['testing123-localhost']
         assert s['default_queue'] == 'development'
-
-        pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource  = "testing123-localhost"
-        pdesc.runtime   = 1 
-        pdesc.cores     = 1
-        pdesc.cleanup   = True
-
-        pilot = pmgr.submit_pilots(pdesc)
-        pilot.wait(timeout=2.0*60)
-        
-        # This passes only if the pilot started succesfully. 
-        assert pilot.state == radical.pilot.states.DONE, "state: {0}".format(pilot.state)
 
         session.close()

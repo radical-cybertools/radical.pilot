@@ -187,7 +187,7 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
-    def close(self, delete=True):
+    def close(self, delete=True, terminate_pilots=True):
         """Closes the session.
 
         All subsequent attempts access objects attached to the session will 
@@ -196,6 +196,8 @@ class Session (saga.Session, Object):
 
         **Arguments:**
             * **delete** (`bool`): Remove session data from MongoDB. 
+            * **terminate_pilots** (`bool`): Shut down all pilots associated with the session. 
+
 
         **Raises:**
             * :class:`radical.pilot.IncorrectState` if the session is closed
@@ -206,10 +208,10 @@ class Session (saga.Session, Object):
             return
 
         for pmngr in self._pilot_manager_objects:
-            # If delete is true, we also set the terminate flag in the 
+            # If terminate_pilots is true, we set the terminate flag in the 
             # pilot manager's close method, which causes it to send a 
             # CANCEL request to all pilots.
-            pmngr.close(terminate=delete)
+            pmngr.close(terminate=terminate_pilots)
 
         for umngr in self._unit_manager_objects:
             umngr.close()
