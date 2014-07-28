@@ -89,10 +89,9 @@ if __name__ == "__main__":
             # NOTE: Default module versions are different on worker nodes and head node,
             #       so test pre_exec's on a worker node and not on the headnode!
             mpi_test_task.pre_exec = ["module load openmpi/1.4.3-gnu python",
-                                      "module list",
-                                      "virtualenv $HOME/mpive",
+                                      "(test -d $HOME/mpive || rm -rf $HOME/mpive && virtualenv $HOME/mpive)",
                                       "source $HOME/mpive/bin/activate",
-                                      "(pip freeze | grep -q mpi4py || pip install --force-reinstall mpi4py)"
+                                      "(pip freeze | grep -q mpi4py || pip install mpi4py)"
             ]
             mpi_test_task.input_data  = ["{0}/helloworld_mpi.py".format(os.path.dirname(os.path.realpath(__file__)))]
             mpi_test_task.executable  = "python"
