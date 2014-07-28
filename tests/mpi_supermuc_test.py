@@ -17,6 +17,9 @@ import radical.pilot
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to http://docs.mongodb.org.
+#
+# Note: because of firewall issues, your MongoDB needs to run on a port within
+# the range 20000-25000.
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."

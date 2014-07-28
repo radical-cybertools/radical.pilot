@@ -58,8 +58,9 @@ if __name__ == "__main__":
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        cred = radical.pilot.SSHCredential()
-        session.add_credential(cred)
+        c = radical.pilot.Context('ssh')
+        #c.user_id = 'merzky'
+        session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
@@ -74,7 +75,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "hotel.futuregrid.org"
         pdesc.runtime          = 5 # X minutes
-        pdesc.cores            = 32 # N cores
+        pdesc.cores            = 16 # N cores
         pdesc.cleanup          = False
 
         # Launch the pilot.
@@ -82,20 +83,22 @@ if __name__ == "__main__":
 
         cud_list = []
 
-        for unit_count in range(0, 2):
+        for unit_count in range(0, 1):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
-            mpi_test_task.pre_exec = ["module load python",
-                                      "module load openmpi",
-                                      "(test -d $HOME/mpive || python ../virtualenv-1.9/virtualenv.py $HOME/mpive)",
-                                      "source $HOME/mpive/bin/activate",
-                                      "(pip freeze | grep -q mpi4py || pip install mpi4py)"
+            mpi_test_task.pre_exec = ["module load openmpi/1.4.5 python",
+                                      "module list",
+                                      "wget --no-check-certificate https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py",
+                                      "python virtualenv.py ./mpive",
+                                      "source ./mpive/bin/activate",
+                                      "(pip freeze | grep -q mpi4py || pip install --force-reinstall mpi4py)"
             ]
+            mpi_test_task.input_data  = ["{0}/helloworld_mpi.py".format(os.path.dirname(os.path.realpath(__file__)))]
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["helloworld_mpi.py"]
-            mpi_test_task.input_data  = ["helloworld_mpi.py"]
             mpi_test_task.mpi         = True
-            mpi_test_task.cores       = 16
+
+            mpi_test_task.cores       = 4
 
             cud_list.append(mpi_test_task)
 
