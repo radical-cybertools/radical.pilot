@@ -1246,7 +1246,7 @@ class ExecWorker(multiprocessing.Process):
 
                 if task.uid in self._cuids_to_cancel:
                     proc.kill()
-                    state = 'Canceled'
+                    state = CANCELED
                     finished_tasks.append(task)
                 else:
                     continue
@@ -1327,12 +1327,12 @@ class ExecWorker(multiprocessing.Process):
                         stderr_id = fs.put(stderr_f.read(), filename=stderr)
                         self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
 
-                task.stdout_id=stdout_id
-                task.stderr_id=stderr_id
-                task.exit_code=rc
+                task.stdout_id = stdout_id
+                task.stderr_id = stderr_id
+                task.exit_code = rc
 
             task.finished=datetime.datetime.utcnow()
-            task.state=state
+            task.state = state
 
             update_tasks.append(task)
 
@@ -1839,61 +1839,33 @@ class Agent(threading.Thread):
                             task.state = SCHEDULING
                             self._task_queue.put(task)
 
-                        #
-                        # Check if there are work units waiting for input staging
-                        #
-                        ts = datetime.datetime.utcnow()
+                    #
+                    # Check if there are work units waiting for input staging
+                    #
+                    ts = datetime.datetime.utcnow()
+                    wu_cursor = self._w.find_and_modify(
+                        query={'pilot' : self._pilot_id,
+                               'Agent_Input_Status': PENDING},
+                        # TODO: This might/will create double state history for StagingInput
+                        update={'$set' : {'Agent_Input_Status': EXECUTING,
+                                          'state': STAGING_INPUT},
+                                '$push': {'statehistory': {'state': STAGING_INPUT, 'timestamp': ts}}}#,
+                        #limit=BULK_LIMIT
+                    )
+                    if wu_cursor is not None:
+                        if not isinstance(wu_cursor, list):
+                            wu_cursor = [wu_cursor]
 
-                        wu_cursor = self._w.find_and_modify(
-                            query={'pilot' : self._pilot_id,
-                                   'Agent_Input_Status': PENDING},
-                            # TODO: This might/will create double state history for StagingInput
-                            update={'$set' : {'Agent_Input_Status': EXECUTING,
-                                              'state': STAGING_INPUT},
-                                    '$push': {'statehistory': {'state': STAGING_INPUT, 'timestamp': ts}}}#,
-                            #limit=BULK_LIMIT
-                        )
+                        for wu in wu_cursor:
+                            for directive in wu['Agent_Input_Directives']:
+                                input_staging = {
+                                    'directive': directive,
+                                    'sandbox': '%s/unit-%s' % (self._workdir, str(wu['_id'])),
+                                    'wu_id': str(wu['_id'])
+                                }
 
-                        # There are new work units in the wu_queue on the database.
-                        # Get the corresponding wu entries
-                        if wu_cursor is not None:
-                            #    self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
-                            #    wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
-                            if not isinstance(wu_cursor, list):
-                                wu_cursor = [wu_cursor]
-
-                            for wu in wu_cursor:
-
-                                for directive in wu['Agent_Input_Directives']:
-                                    input_staging = {
-                                        'directive': directive,
-                                        'sandbox': '%s/unit-%s' % (self._workdir, str(wu['_id'])),
-                                        'wu_id': str(wu['_id'])
-                                    }
-
-                                    # Put the input staging directives in the queue
-                                    self._input_staging_queue.put(input_staging)
-
-                                task.state = 'Scheduling'
-                                self._task_queue.put(task)
-
-                            task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
-
-                            task = Task(uid         = w_uid,
-                                        executable  = wu["description"]["executable"],
-                                        arguments   = wu["description"]["arguments"],
-                                        environment = wu["description"]["environment"],
-                                        numcores    = wu["description"]["cores"],
-                                        mpi         = wu["description"]["mpi"],
-                                        pre_exec    = wu["description"]["pre_exec"],
-                                        post_exec   = wu["description"]["post_exec"],
-                                        workdir     = task_dir_name,
-                                        stdout      = task_dir_name+'/STDOUT',
-                                        stderr      = task_dir_name+'/STDERR',
-                                        output_data = wu["description"]["output_data"])
-
-                            task.state = 'Scheduling'
-                            self._task_queue.put(task)
+                                # Put the input staging directives in the queue
+                                self._input_staging_queue.put(input_staging)
 
                 except Exception, ex:
                     raise
