@@ -391,7 +391,6 @@ class Session():
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
-            "wu_queue":       [],
             "commands":       []
         }
 
@@ -725,30 +724,33 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def assign_compute_units_to_pilot(self, unit_uids, pilot_uid, pilot_sandbox):
+    def assign_compute_units_to_pilot(self, units, pilot_uid, pilot_sandbox):
         """Assigns one or more compute units to a pilot.
         """
-        if self._s is None:
+
+        if  not units :
+            return
+
+        if  self._s is None:
             raise Exception("No active session.")
 
         # Make sure we work on a list.
-        if not isinstance(unit_uids, list):
-            unit_uids = [unit_uids]
+        if not isinstance(units, list):
+            units = [units]
 
-      # AM: the code below seems to be useless, as wu_queue is never used??  We
-      # leave it in as the radicalpilot-stats script looks at this.
-        self._p.update({"_id": ObjectId(pilot_uid)},
-                       {"$pushAll":
-                           {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
+        bulk = self._w.initialize_ordered_bulk_op ()
 
-        unit_oids = list()
-        for uid in unit_uids :
-            unit_oids.append (ObjectId(uid))
+        for unit in units :
 
-        unit_docs  = self._w.update ({"_id"  : {"$in"           : unit_oids}},
-                                     {"$set" : {"pilot"         : pilot_uid, 
-                                                "pilot_sandbox" : pilot_sandbox}},
-                                     multi   = True)
+            bulk.find   ({"_id" : ObjectId(unit.uid)}) \
+                .update ({"$set": {"description"   : unit.description.as_dict(),
+                                   "pilot"         : pilot_uid, 
+                                   "pilot_sandbox" : pilot_sandbox}})
+
+        result = bulk.execute()
+
+        # TODO: log result.
+        # WHY DON'T WE HAVE A LOGGER HERE?
 
 
     #--------------------------------------------------------------------------

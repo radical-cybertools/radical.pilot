@@ -1,4 +1,4 @@
-#pylint: disable=C0301, C0103, W0212, E1101, R0903
+# pylint: disable=C0301, C0103, W0212, E1101, R0903
 
 """
 .. module:: radical.pilot.compute_unit_description
@@ -25,6 +25,7 @@ INPUT_DATA             = 'input_data'
 OUTPUT_DATA            = 'output_data'
 PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
+KERNEL                 = 'kernel'
 
 # ------------------------------------------------------------------------------
 #
@@ -86,6 +87,13 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        .. note:: Before the BigBang, there was nothing ...
 
+    .. data:: kernel
+
+       (`Attribute`) Name of a simulation kernel which expands to description
+       attributes once the unit is scheduled to a pilot (and resource).
+
+       .. note:: TODO: explain in detal, reference ENMDTK.
+
     """
     def __init__(self):
         """Le constructeur.
@@ -100,6 +108,7 @@ class ComputeUnitDescription(attributes.Attributes) :
 
         # register properties with the attribute interface
         # action description
+        self._attributes_register(KERNEL,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(NAME,                   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(EXECUTABLE,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ARGUMENTS,              None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
@@ -135,6 +144,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         # Apparently the attribute interface only handles 'non-None' attributes,
         # so we do it manually. More explicit anyways.
         obj_dict = {
+            KERNEL                 : self.kernel,
             NAME                   : self.name,
             EXECUTABLE             : self.executable,
             ARGUMENTS              : self.arguments,
@@ -154,3 +164,4 @@ class ComputeUnitDescription(attributes.Attributes) :
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+

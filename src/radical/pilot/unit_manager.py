@@ -434,9 +434,9 @@ class UnitManager(object):
 
         pilot_ids = self.list_pilots ()
 
-        for unit in schedule.keys() :
+        for unit in schedule['units'].keys() :
 
-            pid = schedule[unit]
+            pid = schedule['units'][unit]
 
             if  None == pid :
                 logger.info ('unit %s remains unscheduled' % unit.uid)
@@ -453,9 +453,34 @@ class UnitManager(object):
 
                 pilot_cu_map[pid].append (unit)
                 
+        pilot_instances = dict()
 
         # submit to all pilots which got something submitted to
         for pid in pilot_cu_map.keys():
+
+            # if a kernel name is in the cu descriptions set, do kernel expansion
+            for unit in pilot_cu_map[pid] :
+
+                ud = unit.description
+
+                if  'kernel' in ud and ud['kernel'] :
+
+                    try :
+                        from radical.ensemblemd.mdkernels import MDTaskDescription
+                    except Exception as ex :
+                        raise RuntimeError ("Kernels are not supported in" \
+                              "compute unit descriptions -- install " \
+                              "radical.ensemblemd!")
+
+                    pilot_resource = schedule['pilots'][pid]['resource']
+
+                    mdtd           = MDTaskDescription ()
+                    mdtd.kernel    = ud.kernel
+                    mdtd_bound     = mdtd.bind (resource=pilot_resource)
+                    ud.environment = mdtd_bound.environment
+                    ud.pre_exec    = mdtd_bound.pre_exec
+                    ud.executable  = mdtd_bound.executable
+                    ud.mpi         = mdtd_bound.mpi
 
             print "pushing %s" % pilot_cu_map[pid]
 
