@@ -439,29 +439,29 @@ class UnitManagerController(threading.Thread):
         # is added to the transfer queue.
         for unit in units:
             if unit.description.input_data is None:
-                wu_notransfer.append(unit.uid)
+                wu_notransfer.append(unit)
             else:
-                wu_transfer.append(unit.uid)
+                wu_transfer.append(unit)
 
         # Bulk-add all non-transfer units-
         print "Pushing w/o transfer %s" % wu_notransfer
         self._db.assign_compute_units_to_pilot(
-            unit_uids=wu_notransfer,
+            units=wu_notransfer,
             pilot_uid=pilot_uid,
             pilot_sandbox=pilot_sandbox
         )
 
         print "Pushing w/  transfer %s" % wu_transfer
         self._db.assign_compute_units_to_pilot(
-            unit_uids=wu_transfer,
+            units=wu_transfer,
             pilot_uid=pilot_uid,
             pilot_sandbox=pilot_sandbox
         )
 
-        for uid in wu_notransfer:
-            print "pushing unit %s to %s" % (uid, pilot_uid)
+        for unit in wu_notransfer:
+            print "pushing unit %s to %s" % (unit.uid, pilot_uid)
             log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
-            self._db.set_compute_unit_state(uid, PENDING_EXECUTION, log)
+            self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
             #self._set_state(uid, PENDING_EXECUTION, log)
 
         logger.info(
@@ -472,9 +472,9 @@ class UnitManagerController(threading.Thread):
         # Bulk-add all units that need transfer to the transfer queue.
         # Add the startup request to the request queue.
         if len(wu_transfer) > 0:
-            for uid in wu_transfer:
+            for unit in wu_transfer:
                 log = ["Scheduled for data tranfer to ComputePilot %s." % pilot_uid]
-                self._db.set_compute_unit_state(uid, PENDING_INPUT_TRANSFER, log)
+                self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_TRANSFER, log)
                 #self._set_state(uid, PENDING_INPUT_TRANSFER, log)
 
 

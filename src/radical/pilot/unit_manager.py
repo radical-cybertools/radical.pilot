@@ -457,6 +457,34 @@ class UnitManager(object):
         # submit to all pilots which got something submitted to
         for pid in pilot_cu_map.keys():
 
+            # if a kernel name is in the cu descriptions set, do kernel expansion
+            for unit in pilot_cu_map[pid] :
+
+                ud = unit.description
+
+                if  kernel in ud and ud.kernel :
+
+                    try :
+                        from radical.ensemblemd.mdkernels import MDTaskDescription
+                    except Exception as ex :
+                        raise RuntimeError ("Kernels are not supported in" \
+                              "compute unit descriptions -- install " \
+                              "radical.ensemblemd!")
+
+                    # need to get the resource from the pilot
+                    pilot = radical.pilot.ComputePilot (session=self._session, pilot_uid=pilot_id)
+                    pilot_resource = pilot.resource
+
+                    mdtd           = MDTaskDescription ()
+                    mdtd.kernel    = ud.kernel
+                    mdtd_bound     = mdtd.bind (resource=pilot_resource)
+                    ud.environment = mdtd_bound.environment
+                    ud.pre_exec    = mdtd_bound.pre_exec
+                    ud.executable  = mdtd_bound.executable
+                    ud.mpi         = mdtd_bound.mpi
+
+                unit.description = ud
+
             print "pushing %s" % pilot_cu_map[pid]
 
             self._worker.schedule_compute_units (
