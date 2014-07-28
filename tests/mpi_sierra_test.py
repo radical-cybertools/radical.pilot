@@ -86,7 +86,9 @@ if __name__ == "__main__":
             mpi_test_task = radical.pilot.ComputeUnitDescription()
 
             # On sierra, environment is not passed with multi-node MPI jobs,
-            # so the environment needs to be setup in the users .bashrc
+            # so the environment needs to be setup in the users .bashrc.
+            # (module load openmpi python && source $HOME/cuve/bin/activate)
+            # The virtual env in $HOME/cuve needs to have mpi4py installed.
             mpi_test_task.executable  = "python"
             mpi_test_task.arguments   = ["helloworld_mpi.py"]
             mpi_test_task.input_data  = ["helloworld_mpi.py"]
