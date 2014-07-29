@@ -113,82 +113,82 @@ class TestRemoteSubmission(unittest.TestCase):
 
         session.close()
 
-  # #-------------------------------------------------------------------------
-  # #
-  # def test__remote_pilot_wait(self):
-  #     """ Test if we can wait for different pilot states. 
-  #     """
-  #     session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-  #     c = radical.pilot.Context('ssh')
-  #     c.user_id  = self.test_ssh_uid
-  #     c.user_key = self.test_ssh_key
-  #
-  #     session.add_context(c)
-  #
-  #     pm = radical.pilot.PilotManager(session=session)
-  #
-  #     cpd = radical.pilot.ComputePilotDescription()
-  #     cpd.resource          = self.test_resource
-  #     cpd.cores             = self.test_cores
-  #     cpd.runtime           = 2
-  #     cpd.sandbox           = self.test_workdir 
-  #
-  #     pilot = pm.submit_pilots(pilot_descriptions=cpd)
-  #
-  #     assert pilot is not None
-  #     #assert cu.start_time is None
-  #     #assert cu.start_time is None
-  #
-  #     pilot.wait(radical.pilot.states.ACTIVE, timeout=5.0*60)
-  #     assert pilot.state == radical.pilot.states.ACTIVE
-  #     assert pilot.start_time is not None
-  #     assert pilot.submission_time is not None
-  #
-  #
-  #     # the pilot should finish after it has reached run_time
-  #     pilot.wait(radical.pilot.states.DONE, timeout=5.0*60)
-  #     assert pilot.state == radical.pilot.states.DONE
-  #     assert pilot.stop_time is not None
-  #
-  #     session.close()
-  #
-  # #-------------------------------------------------------------------------
-  # #
-  # def test__remote_pilot_cancel(self):
-  #     """ Test if we can cancel a pilot. 
-  #     """
-  #     session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-  #     c = radical.pilot.Context('ssh')
-  #     c.user_id  = self.test_ssh_uid
-  #     c.user_key = self.test_ssh_key
-  #
-  #     session.add_context(c)
-  #
-  #     pm = radical.pilot.PilotManager(session=session)
-  #
-  #     cpd = radical.pilot.ComputePilotDescription()
-  #     cpd.resource          = self.test_resource
-  #     cpd.cores             = self.test_cores
-  #     cpd.runtime           = 2
-  #     cpd.sandbox           = self.test_workdir 
-  #
-  #     pilot = pm.submit_pilots(pilot_descriptions=cpd)
-  #
-  #     assert pilot is not None
-  #     #assert cu.start_time is None
-  #     #assert cu.start_time is None
-  #
-  #     pilot.wait(radical.pilot.states.ACTIVE)
-  #     assert pilot.state == radical.pilot.states.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
-  #     assert pilot.submission_time is not None
-  #     assert pilot.start_time is not None
-  #
-  #     # the pilot should finish after it has reached run_time
-  #     pilot.cancel()
-  #
-  #     pilot.wait(radical.pilot.states.CANCELED, timeout=5.0*60)
-  #     assert pilot.state == radical.pilot.states.CANCELED
-  #     assert pilot.stop_time is not None
-  #
-  #     session.close()
+    #-------------------------------------------------------------------------
+    #
+    def test__remote_pilot_wait(self):
+        """ Test if we can wait for different pilot states. 
+        """
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        c = radical.pilot.Context('ssh')
+        c.user_id  = self.test_ssh_uid
+        c.user_key = self.test_ssh_key
+
+        session.add_context(c)
+
+        pm = radical.pilot.PilotManager(session=session)
+
+        cpd = radical.pilot.ComputePilotDescription()
+        cpd.resource          = self.test_resource
+        cpd.cores             = self.test_cores
+        cpd.runtime           = 2
+        cpd.sandbox           = self.test_workdir 
+
+        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+
+        assert pilot is not None
+        #assert cu.start_time is None
+        #assert cu.start_time is None
+
+        pilot.wait(radical.pilot.states.ACTIVE, timeout=5.0*60)
+        assert pilot.state == radical.pilot.states.ACTIVE
+        assert pilot.start_time is not None
+        assert pilot.submission_time is not None
+
+
+        # the pilot should finish after it has reached run_time
+        pilot.wait(radical.pilot.states.DONE, timeout=5.0*60)
+        assert pilot.state == radical.pilot.states.DONE
+        assert pilot.stop_time is not None
+
+        session.close()
+
+    #-------------------------------------------------------------------------
+    #
+    def test__remote_pilot_cancel(self):
+        """ Test if we can cancel a pilot. 
+        """
+        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        c = radical.pilot.Context('ssh')
+        c.user_id  = self.test_ssh_uid
+        c.user_key = self.test_ssh_key
+
+        session.add_context(c)
+
+        pm = radical.pilot.PilotManager(session=session)
+
+        cpd = radical.pilot.ComputePilotDescription()
+        cpd.resource          = self.test_resource
+        cpd.cores             = self.test_cores
+        cpd.runtime           = 2
+        cpd.sandbox           = self.test_workdir 
+
+        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+
+        assert pilot is not None
+        #assert cu.start_time is None
+        #assert cu.start_time is None
+
+        pilot.wait(radical.pilot.states.ACTIVE)
+        assert pilot.state == radical.pilot.states.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
+        assert pilot.submission_time is not None
+        assert pilot.start_time is not None
+
+        # the pilot should finish after it has reached run_time
+        pilot.cancel()
+
+        pilot.wait(radical.pilot.states.CANCELED, timeout=5.0*60)
+        assert pilot.state == radical.pilot.states.CANCELED
+        assert pilot.stop_time is not None
+
+        session.close()
 

@@ -143,9 +143,6 @@ class LateBindingScheduler(Scheduler):
 
         pid = pilot.uid
 
-        if  pid in self.pilots :
-            raise RuntimeError ('cannot add pilot twice (%s)' % pid)
-
         # get initial information about the pilot capabilities
         #
         # NOTE: this assumes that the pilot manages no units, yet.  This will

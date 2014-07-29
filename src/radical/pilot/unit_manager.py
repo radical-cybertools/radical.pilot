@@ -263,6 +263,12 @@ class UnitManager(object):
         if not isinstance(pilots, list):
             pilots = [pilots]
 
+        pilot_ids = self.list_pilots()
+
+        for pilot in pilots :
+            if  pilot.uid in pilot_ids :
+                logger.warning ('adding the same pilot twice (%s)' % pilot.uid)
+
         self._worker.add_pilots(pilots)
 
         # let the scheduler know...

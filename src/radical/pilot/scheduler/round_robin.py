@@ -43,9 +43,6 @@ class RoundRobinScheduler(Scheduler):
 
         pid = pilot.uid
 
-        if  pid in self.pilots :
-            raise RuntimeError ('cannot add pilot twice (%s)' % pid)
-
         self.pilots[pid] = dict()
         self.pilots[pid]['resource'] = pilot.resource
         self.pilots[pid]['sandbox']  = pilot.sandbox
