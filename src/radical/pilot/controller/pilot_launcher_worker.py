@@ -12,8 +12,8 @@ import saga
 import datetime
 import traceback
 import multiprocessing
+import radical.utils as ru
 
-from radical.utils import which
 from bson.objectid import ObjectId
 
 from radical.pilot.states import * 
@@ -190,9 +190,21 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     ########################################################
                     # database connection parameters
-                    database_url = self.db_connection_info.url.split("://")[1]
-                    database_name = self.db_connection_info.dbname
+                    # AM: FIXME: this should use the DB connection tool from
+                    # dbutils...
+                    #
+                    # AM: FIXME: we used to be able to specify DBURLs w/o
+                    #     database name in the path -- that seems broken.
+                    #     A crude fix is included below.
+
+                    db_url        = ru.Url (self.db_connection_info.url)
+                    database_name = db_url.path[1:]
+                    db_url.path   = ''
+                    database_url  = str(db_url)
                     session_uid   = self.db_connection_info.session_id
+
+                    if  not database_name :
+                        database_name = 'radicalpilot'
 
                     cwd = os.path.dirname(os.path.realpath(__file__))
 
