@@ -117,7 +117,7 @@ class TestUnit(unittest.TestCase):
         um.add_pilots(pilot)
 
         # Wait until the pilot starts
-        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=10)
+        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=120)
 
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores = 1
@@ -171,7 +171,7 @@ class TestUnit(unittest.TestCase):
         um.add_pilots(pilot)
 
         # Wait until the pilot starts
-        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=10)
+        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=120)
 
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores = 1
