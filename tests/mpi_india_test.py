@@ -86,7 +86,7 @@ if __name__ == "__main__":
         # Configure the staging directive for input file.
         sd_exec = radical.pilot.StagingDirectives()
         sd_exec.source = 'helloworld_mpi.py'
-        sd_exec.target = 'helloworld_mpi.py'
+        sd_exec.target = 'helloworld_mpi.py' # optional if remote filename can be the same
         sd_exec.action = radical.pilot.TRANSFER
 
         for unit_count in range(0, 4):
