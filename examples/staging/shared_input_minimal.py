@@ -11,11 +11,7 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-REMOTE_STAGING = '///N/u/marksant/staging_area/'
-REMOTE_HOST = 'india.futuregrid.org'
-
-# REMOTE_STAGING = '///tmp/marksant/staging_area/'
-# REMOTE_HOST = 'localhost'
+RESOURCE = 'india.futuregrid.org'
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
 
@@ -25,51 +21,46 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-        # well as security crendetials.
+        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
 
-        # Define a 32-core on stamped that runs for 15 mintutes and
-        # uses $HOME/radical.pilot.sandbox as sandbox directoy.
+        # Define a N-core on $RESOURCE that runs for M minutes and
+        # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = REMOTE_HOST
-        pdesc.runtime = 15 # minutes
-        pdesc.cores = 8
+        pdesc.resource = RESOURCE
+        pdesc.runtime = 5 # M minutes
+        pdesc.cores = 8 # C cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Define and open staging directory on the remote machine
-        remote_dir_url = saga.Url()
-        remote_dir_url.scheme = 'sftp'
-        remote_dir_url.host = REMOTE_HOST
-        remote_dir_url.path = REMOTE_STAGING
-        remote_dir = saga.filesystem.Directory(remote_dir_url)
-
         # Define the url of the local file in the local directory
         shared_input_file_url = saga.Url('file://%s/%s' % (os.getcwd(), SHARED_INPUT_FILE))
-        # Upload the local file to the remote staging area
-        remote_dir.copy(shared_input_file_url, '.')
+        # Define and open staging directory on the remote machine
+        remote_dir_url = saga.Url(os.path.join(pilot.sandbox, 'staging_area'))
+        remote_dir = saga.filesystem.Directory(remote_dir_url, flags=saga.filesystem.CREATE_PARENTS)
+        # Copy the local file to the remote staging area
+        remote_dir.copy(shared_input_file_url, '.') # Change to pilot.stage_in(shared_input_file_url)
 
         # Configure the staging directive for shared input file.
         sd_shared = radical.pilot.StagingDirectives()
-        sd_shared.source = os.path.join(REMOTE_STAGING, SHARED_INPUT_FILE)
+        sd_shared.source = 'staging:///%s' % SHARED_INPUT_FILE # Note the triple slash
         sd_shared.target = SHARED_INPUT_FILE
         sd_shared.action = radical.pilot.LINK
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
-            session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+            session=session, scheduler=radical.pilot.SCHED_LATE_BINDING)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
-        compute_units = []
+        compute_unit_descs = []
 
         for unit_count in range(4):
 
@@ -87,19 +78,19 @@ if __name__ == "__main__":
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
-            cu = radical.pilot.ComputeUnitDescription()
-            cu.executable = '/bin/bash'
-            cu.arguments = ['-l', '-c', 'cat shared_input_file.txt input_file-%d.txt > output_file-%d.txt' % (unit_count, unit_count)]
-            cu.cores = 1
-            cu.input_staging = [sd_shared, sd_input]
-            cu.output_staging = sd_output
+            cud = radical.pilot.ComputeUnitDescription()
+            cud.executable = '/bin/bash'
+            cud.arguments = ['-l', '-c', 'cat shared_input_file.txt input_file-%d.txt > output_file-%d.txt' % (unit_count, unit_count)]
+            cud.cores = 1
+            cud.input_staging = [sd_shared, sd_input]
+            cud.output_staging = sd_output
 
-            compute_units.append(cu)
+            compute_unit_descs.append(cud)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_units)
+        units = umgr.submit_units(compute_unit_descs)
 
         # Wait for all compute units to finish.
         umgr.wait_units()
