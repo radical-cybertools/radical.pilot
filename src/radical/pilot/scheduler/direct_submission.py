@@ -71,9 +71,9 @@ class DirectSubmissionScheduler(Scheduler):
         if len (pilot_ids) > 1:
             raise RuntimeError ('Direct Submission only works for a single pilot!')
         
-        schedule = dict()
-        schedule['pilots'] = self.pilots
+        schedule           = dict()
         schedule['units']  = dict()
+        schedule['pilots'] = self.pilots
 
         for unit in units:
 

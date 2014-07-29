@@ -65,7 +65,6 @@ class RoundRobinScheduler(Scheduler):
     #
     def schedule(self, units):
 
-        pilot_ids = self.pilots.keys ()
         # the scheduler will return a dictionary of the form:
         #   { 
         #     unit_1: pilot_id_1
@@ -77,14 +76,12 @@ class RoundRobinScheduler(Scheduler):
         # simply not be listed for any pilot.  The UM needs to make sure
         # that no UD from the original list is left untreated, eventually.
 
-        #print "round-robin scheduling of %s units" % len(unit_descriptions)
-
-        pilot_ids = self.manager.list_pilots ()
+        pilot_ids          = self.pilots.keys ()
         schedule           = dict()
-        schedule['pilots'] = dict()
-        schedule['units']  = self.pilots
+        schedule['units']  = dict()
+        schedule['pilots'] = self.pilots
 
-        if not len (pilot_ids) :
+        if  not len (pilot_ids) :
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
 
@@ -98,4 +95,7 @@ class RoundRobinScheduler(Scheduler):
 
 
         return schedule
+
+
+    # -------------------------------------------------------------------------
 
