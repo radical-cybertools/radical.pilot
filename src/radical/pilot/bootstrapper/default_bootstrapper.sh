@@ -420,7 +420,7 @@ AGENT_CMD="python radical-pilot-agent.py\
     -j $TASK_LAUNCH_METHOD\
     -k $MPI_LAUNCH_METHOD\
     -l $LRMS\
-    -m mongodb://$DBURL\
+    -m $DBURL\
     -n $DBNAME\
     -p $PILOTID\
     -s $SESSIONID\
