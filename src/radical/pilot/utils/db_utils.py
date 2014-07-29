@@ -6,7 +6,9 @@ import pymongo
 #
 def get_session_ids (dbclient, dbname) :
 
-    if not dbname : usage ("require specific database name to list session IDs")
+    if not dbname : 
+        
+        raise RuntimeError ("require specific database name to list session IDs")
 
     database = dbclient[dbname]
     cnames = database.collection_names ()
@@ -135,17 +137,17 @@ def get_session_events (dbclient, dbname, session) :
                       'output_transfer_started', 'output_transfer_finished'
                       ] :
             if  event in doc :
-                ret.append (['state', otype, oid, pid, doc[event], event, odoc])
+                ret.append (['state', otype, oid, pid, doc[event], event, doc])
             else :                                
-                ret.append (['state', otype, oid, pid, None,       event, odoc])
+                ret.append (['state', otype, oid, pid, None,       event, doc])
 
         for event in doc['statehistory'] :
-            ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], odoc])
+            ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], doc])
 
         # TODO: this probably needs to be "doc"
         if  'callbackhistory' in event :
             for event in doc['callbackhistory'] :
-                ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], odoc])
+                ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], doc])
 
     # we don't want None times, actually
     for r in list(ret) :

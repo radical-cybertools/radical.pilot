@@ -37,16 +37,17 @@ _EVENT_ENCODING = {
         }, 
         'unit': {
             rp.NEW                     :  1,
-            rp.PENDING_INPUT_TRANSFER  :  2,
-            rp.TRANSFERRING_INPUT      :  3,
-            rp.PENDING_EXECUTION       :  4,
-            rp.SCHEDULING              :  5,
-            rp.EXECUTING               :  6,
-            rp.PENDING_OUTPUT_TRANSFER :  7,
-            rp.TRANSFERRING_OUTPUT     :  8,
-            rp.DONE                    :  9,
-            rp.CANCELED                : 10,
-            rp.FAILED                  : 11
+            rp.STATE_X                 :  2,
+            rp.PENDING_INPUT_STAGING   :  3,
+            rp.STAGING_INPUT           :  4,
+            rp.PENDING_EXECUTION       :  5,
+            rp.SCHEDULING              :  6,
+            rp.EXECUTING               :  7,
+            rp.PENDING_OUTPUT_STAGING  :  8,
+            rp.STAGING_OUTPUT          :  9,
+            rp.DONE                    : 10,
+            rp.CANCELED                : 11,
+            rp.FAILED                  : 12
         }
     }
 
@@ -193,7 +194,7 @@ def hist_session (dbclient, dbname, session) :
     # ascii output of time sorted events and slot history
 
     print "session : %s" % session
-    print "          %s" % str(start)
+    print "start   : %s" % str(start)
 
     for e in events :
         seconds = ru.time_diff (start, e[4])
@@ -361,7 +362,7 @@ def plot_session (dbclient, dbname, session) :
         with open ("/tmp/rp.%s.pilot.callbacks.%s.dat" % (session, pid), "w") as dat :
             if  'callbackhistory' in pilot :
                 for event in pilot['callbackhistory'] :
-                    print event
+                  # print event
                     etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
                     seconds = ru.time_diff (start, event['timestamp'])
                     maxtime = max (maxtime, seconds)
@@ -369,7 +370,7 @@ def plot_session (dbclient, dbname, session) :
                 dat.write ("\n")
             else :
                 print 'no pilot callbacks?'
-                pprint.pprint (pilot)
+              # pprint.pprint (pilot)
             delete_me.append (dat.name)
 
             
@@ -389,12 +390,13 @@ def plot_session (dbclient, dbname, session) :
             for unit_id in pilot['wu_queue'] :
                 for unit in docs['unit'] :
                     if  unit_id == unit['_id'] :
-                        for event in unit['callbackhistory'] :
-                            etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
-                            seconds = ru.time_diff (start, event['timestamp'])
-                            maxtime = max (maxtime, seconds)
-                            dat.write (" %10.2f  %-25s\n" % (seconds, etag))
-                        dat.write ("\n")
+                        if  'callbackhistory' in unit :
+                            for event in unit['callbackhistory'] :
+                                etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
+                                seconds = ru.time_diff (start, event['timestamp'])
+                                maxtime = max (maxtime, seconds)
+                                dat.write (" %10.2f  %-25s\n" % (seconds, etag))
+                            dat.write ("\n")
             delete_me.append (dat.name)
 
             
@@ -511,6 +513,73 @@ def plot_session (dbclient, dbname, session) :
         except Exception as e :
             print "Error removing %s: %s" % (filename, str(e))
 
+    # --------------------------------------------------------------------------
+    #
+    # also do splots
+    #
+    entity_states = dict ()
+
+    BEGIN  = ">"
+    END    = "<"
+    ONCE   = "!"
+    COLORS = {rp.NEW                     : 'NEW'                   ,
+              rp.STATE_X                 : 'STATE_X'               ,
+              rp.PENDING_INPUT_STAGING   : 'PENDING_INPUT_STAGING' ,
+              rp.STAGING_INPUT           : 'STAGING_INPUT'         ,
+              rp.PENDING_EXECUTION       : 'PENDING_EXECUTION'     ,
+              rp.SCHEDULING              : 'SCHEDULING'            ,
+              rp.EXECUTING               : 'EXECUTING'             ,
+              rp.PENDING_OUTPUT_STAGING  : 'PENDING_OUTPUT_STAGING',
+              rp.STAGING_OUTPUT          : 'STAGING_OUTPUT'        ,
+              rp.DONE                    : 'DONE'                  ,
+              rp.CANCELED                : 'CANCELED'              ,
+              rp.FAILED                  : 'FAILED'                }
+
+    for pilot in docs['pilot'] :
+
+        this_pid = str(pilot['_id'])
+
+        with open ("/tmp/rp.%s.pilot.slots.%s.sdat" % (session, pid), "w") as dat :
+
+            for e in events :
+
+                etype   = e[0]
+                otype   = e[1]
+                uid     = e[2]
+                pid     = e[3]
+                ts      = e[4]
+                state   = e[5]
+                doc     = e[6]
+
+
+                if  pid != this_pid :
+                    continue
+
+                if  otype == 'unit' :
+
+                    if 'slots' in doc :
+                        slots = doc['slots']
+                    else :
+                        pprint.pprint (doc)
+                        slots = '?'
+
+                    color = COLORS[state]
+
+                    for slot in slots :
+
+                        if  not uid in entity_states :
+                            entity_states[uid] = state
+                            print      "%s %s%s %s"   % (ts, BEGIN, uid, state)
+                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, state))
+
+                        else :
+                            old_state = entity_states[uid]
+                            print      "%s %s%s %s"   % (ts, END,   uid, old_state)
+                            dat.write ("%s %s%s %s\n" % (ts, END,   uid, old_state))
+
+                            entity_states[uid] = state
+                            print      "%s %s%s %s"   % (ts, BEGIN, uid, state)
+                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, state))
 
 
 # ------------------------------------------------------------------------------

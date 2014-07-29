@@ -64,7 +64,7 @@ if __name__ == "__main__":
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "localhost"
         pdesc.runtime  = 5 # minutes
-        pdesc.cores    = 2
+        pdesc.cores    = 4
         pdesc.cleanup  = True
 
         # Launch the pilot.
@@ -85,14 +85,9 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 16):
             cu = radical.pilot.ComputeUnitDescription()
-            cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
-            cu.pre_exec    = ["touch /tmp/pre_test.%d" % unit_count]
-            cu.post_exec   = ["touch /tmp/post_test_1.%d" % unit_count, 
-                              "touch /tmp/post_test_2.%d" % unit_count, ]
-            cu.executable  = "/bin/cat"
-            cu.arguments   = ["$INPUT1", "$INPUT2"]
+            cu.executable  = "/bin/sleep"
+            cu.arguments   = ["10"]
             cu.cores       = 1
-            cu.input_data  = ["./file1.dat", "./file2.dat"]
 
             compute_units.append(cu)
 
@@ -117,6 +112,12 @@ if __name__ == "__main__":
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
+
+        print 'units all done'
+        print '----------------------------------------------------------------------'
+
+        for unit in units :
+            unit.wait ()
 
         for unit in units:
             print "* Task %s (executed @ %s) state %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
