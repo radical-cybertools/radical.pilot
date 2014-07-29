@@ -522,7 +522,7 @@ class UnitManagerController(threading.Thread):
                 self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
                 wu_transfer.append(unit)
             else:
-                wu_notransfer.append(unit.uid)
+                wu_notransfer.append(unit)
 
         # Bulk-add all non-transfer units-
         print "Pushing w/o transfer %s" % wu_notransfer
