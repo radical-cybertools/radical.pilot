@@ -472,8 +472,8 @@ class UnitManagerController(threading.Thread):
                     unit.Agent_Input_Directives.append(sd)
                     unit.Agent_Input_Status = PENDING
                 elif action == 'Transfer':
-                    if source.schema and source.schema != 'file':
-                        # If there is a schema and it is different than "file",
+                    if source.scheme and source.scheme != 'file':
+                        # If there is a scheme and it is different than "file",
                         # assume a remote pull from the agent
                         unit.Agent_Input_Directives.append(sd)
                         unit.Agent_Input_Status = PENDING
@@ -505,8 +505,8 @@ class UnitManagerController(threading.Thread):
                     unit.Agent_Output_Directives.append(sd)
                     unit.Agent_Output_Status = NEW
                 elif action == 'Transfer':
-                    if target.schema and target.schema != 'file':
-                        # If there is a schema and it is different than "file",
+                    if target.scheme and target.scheme != 'file':
+                        # If there is a scheme and it is different than "file",
                         # assume a remote push from the agent
                         unit.Agent_Output_Directives.append(sd)
                         unit.Agent_Output_Status = NEW

@@ -947,38 +947,22 @@ class ExecWorker(multiprocessing.Process):
                         # No resources free, put back in queue
                         self._task_queue.put(task)
                     else:
-                        idle = False
                         # We got an allocation go off and launch the process
                         task.slots = task_slots
                         self._launch_task(task, launch_method, launch_command)
+                        idle = False
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
                     pass
 
-                # AM: idle seems always true here.  But somehow the logic causes
-                # the pilot to spin very busily...  So, disable this idle check
-                # for now...
-                # idle &= self._check_running()
-                self._check_running()
+                # Record if there was activity in launching or monitoring tasks.
+                idle &= self._check_running()
 
-                # Check if something happened in this cycle, if not, zzzzz for a bit
+                # If nothing happened in this cycle, zzzzz for a bit.
                 if idle:
-                    self._log.debug("sleep now")
-                    time.sleep(1)
-                else :
-                    self._log.debug("sleep not")
-
-            # AM: we are done -- push slot history 
-            # FIXME: this is never called, self._terminate is a farce :(
-            # if  self._benchmark :
-            #     self._p.update(
-            #         {"_id": ObjectId(self._pilot_id)},
-            #         {"$set": {"slothistory" : self._slot_history, 
-            #                   "capability"  : 0,
-            #                   "slots"       : self._slots}}
-            #         )
-
+                    self._log.debug("Sleep now for a jiffy ...")
+                    time.sleep(0.1)
 
         except Exception, ex:
             msg = ("Error in ExecWorker loop: %s", traceback.format_exc())
@@ -1227,7 +1211,8 @@ class ExecWorker(multiprocessing.Process):
 
 
     # ------------------------------------------------------------------------
-    #
+    # Iterate over all running tasks, check their status, and decide on the next step.
+    # Also check for a requested cancellation for the task.
     def _check_running(self):
 
         idle = True
@@ -1235,24 +1220,28 @@ class ExecWorker(multiprocessing.Process):
         # we update tasks in 'bulk' after each iteration.
         # all tasks that require DB updates are in update_tasks
         update_tasks = []
+
+        # We record all completed tasks
         finished_tasks = []
 
         for task in self._running_tasks:
 
+            # Get the subprocess object to poll on
             proc = task._proc
-            rc = proc.poll()
-            if rc is None:
-                # subprocess is still running
+            ret_code = proc.poll()
+            if ret_code is None:
+                # Process is still running
 
                 if task.uid in self._cuids_to_cancel:
+                    # We got a request to cancel this task.
                     proc.kill()
                     state = CANCELED
                     finished_tasks.append(task)
                 else:
+                    # No need to continue [sic] further for this iteration
                     continue
-
             else:
-
+                # The task ended (eventually FAILED or DONE).
                 finished_tasks.append(task)
 
                 # Make sure all stuff reached the spindles
@@ -1260,92 +1249,107 @@ class ExecWorker(multiprocessing.Process):
 
                 # Convenience shortcut
                 uid = task.uid
-                self._log.info("Task %s terminated with return code %s." % (uid, rc))
+                self._log.info("Task %s terminated with return code %s." % (uid, ret_code))
 
-            if rc != 0:
-                state = FAILED
-            else:
+                if ret_code != 0:
+                    # The task failed, no need to deal with its output data.
+                    state = FAILED
+                else:
+                    # The task finished cleanly, see if we need to deal with output data.
 
-                # Check if there is either Agent or FTW output staging required
-                if task.agent_output_staging or task.ftw_output_staging:
+                    if task.agent_output_staging or task.ftw_output_staging:
 
-                    state = STAGING_OUTPUT # TODO: this should ideally be PendingOutputStaging,
-                                            # but that introduces a race condition currently
+                        state = STAGING_OUTPUT # TODO: this should ideally be PendingOutputStaging,
+                                               # but that introduces a race condition currently
 
-                    # Check if there are Directives that need to be performed
-                    # by the Agent.
-                    if task.agent_output_staging:
+                        # Check if there are Directives that need to be performed by the Agent.
+                        if task.agent_output_staging:
 
-                        wu = self._w.find_one({"_id": ObjectId(uid)})
-                        for directive in wu['Agent_Output_Directives']:
-                            output_staging = {
-                                'directive': directive,
-                                'sandbox': task.workdir,
-                                'wu_id': uid
-                            }
+                            # Find the task in the database
+                            # TODO: shouldnt this be available somewhere already, that would save a roundtrip?!
+                            wu = self._w.find_one({"_id": ObjectId(uid)})
 
-                            # Put the output staging directives in the queue
-                            self._output_staging_queue.put(output_staging)
+                            for directive in wu['Agent_Output_Directives']:
+                                output_staging = {
+                                    'directive': directive,
+                                    'sandbox': task.workdir,
+                                    'wu_id': uid
+                                }
 
+                                # Put the output staging directives in the queue
+                                self._output_staging_queue.put(output_staging)
+
+                                self._w.update(
+                                    {"_id": ObjectId(uid)},
+                                    {"$set": {"Agent_Output_Status": EXECUTING}}
+                                )
+
+                        # Check if there are Directives that need to be performed
+                        # by the FTW.
+                        # Obviously these are not executed here (by the Agent),
+                        # but we need this code to set the state so that the FTW
+                        # gets notified that it can start its work.
+                        if task.ftw_output_staging:
                             self._w.update(
                                 {"_id": ObjectId(uid)},
-                                {"$set": {"Agent_Output_Status": EXECUTING}}
+                                {"$set": {"FTW_Output_Status": PENDING}}
                             )
+                    else:
+                        # If there is no output data to deal with, the task becomes DONE
+                        state = DONE
 
-                    # Check if there are Directives that need to be performed
-                    # by the FTW.
-                    # Obviously these are not executed here (by the Agent),
-                    # but we need this code to set the state so that the FTW
-                    # gets notified that it can start its work.
-                    if task.ftw_output_staging:
+            #
+            # At this stage the task is ended: DONE, FAILED or CANCELED.
+            #
 
-                        self._w.update(
-                            {"_id": ObjectId(uid)},
-                            {"$set": {"FTW_Output_Status": PENDING}}
-                        )
-                else:
-                    state = DONE
+            idle = False
 
-                # upload stdout and stderr to GridFS
-                workdir = task.workdir
-                task_id = task.uid
+            # Upload the stdout and stderr to GridFS
+            workdir = task.workdir
+            task_id = task.uid
 
-                stdout_id = None
-                stderr_id = None
+            stdout_id = None
+            stderr_id = None
 
-                stdout = "%s/STDOUT" % workdir
-                if os.path.isfile(stdout):
-                    fs = gridfs.GridFS(self._mongo_db)
-                    with open(stdout, 'r') as stdout_f:
-                        stdout_id = fs.put(stdout_f.read(), filename=stdout)
-                        self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+            stdout = "%s/STDOUT" % workdir
+            if os.path.isfile(stdout):
+                fs = gridfs.GridFS(self._mongo_db)
+                with open(stdout, 'r') as stdout_f:
+                    stdout_id = fs.put(stdout_f.read(), filename=stdout)
+                    self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
 
-                stderr = "%s/STDERR" % workdir
-                if os.path.isfile(stderr):
-                    fs = gridfs.GridFS(self._mongo_db)
-                    with open(stderr, 'r') as stderr_f:
-                        stderr_id = fs.put(stderr_f.read(), filename=stderr)
-                        self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
+            stderr = "%s/STDERR" % workdir
+            if os.path.isfile(stderr):
+                fs = gridfs.GridFS(self._mongo_db)
+                with open(stderr, 'r') as stderr_f:
+                    stderr_id = fs.put(stderr_f.read(), filename=stderr)
+                    self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
 
-                task.stdout_id = stdout_id
-                task.stderr_id = stderr_id
-                task.exit_code = rc
+            task.stdout_id = stdout_id
+            task.stderr_id = stderr_id
+            task.exit_code = ret_code
 
-            task.finished=datetime.datetime.utcnow()
+            # Record the time and state
+            task.finished = datetime.datetime.utcnow()
             task.state = state
 
+            # Put it on the list of tasks to update in bulk
             update_tasks.append(task)
 
+            # Free the Slots, Flee the Flots, Ree the Frots!
             self._change_slot_states(task.slots, FREE)
 
-        # update all the tasks that are marked for update.
+        #
+        # At this stage we are outside the for loop of running tasks.
+        #
+
+        # Update all the tasks that were marked for update.
         self._update_tasks(update_tasks)
 
+        # Remove all tasks that don't require monitoring anymore.
         for e in finished_tasks:
             self._running_tasks.remove(e)
 
-        # AM: why is idle always True?  Whats the point here?  Not to run too
-        # fast? :P
         return idle
 
     # ------------------------------------------------------------------------
@@ -1451,6 +1455,7 @@ class InputStagingWorker(multiprocessing.Process):
                         directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
                     sandbox = staging['sandbox']
+                    staging_area = staging['staging_area']
                     wu_id = staging['wu_id']
                     self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
 
@@ -1464,12 +1469,25 @@ class InputStagingWorker(multiprocessing.Process):
                         else:
                             raise
 
-                    source = directive['source']
+                    # Convert the source_url into a SAGA Url object
+                    source_url = saga.Url(directive['source'])
+
+                    if source_url.scheme == 'staging':
+                        self._log.info('Operating from staging')
+                        # Remove the leading slash to get a relative path from the staging area
+                        rel2staging = source_url.path.split('/',1)[1]
+                        source = os.path.join(staging_area, rel2staging)
+                    else:
+                        self._log.info('Operating from absolute path')
+                        source = source_url.path
+
+                    # Get the target from the directive and convert it to the location in the sandbox
                     target = directive['target']
                     abs_target = os.path.join(sandbox, target)
+
                     if directive['action'] == LINK:
                         self._log.info('Going to link %s to %s' % (source, abs_target))
-                        logmessage = 'Linked %s to %s' % (source, abs_target)
+                        logmessage = 'Linked %s to %s' % (source, abs_target) # TODO: don't like the logging logic here
                         os.symlink(source, abs_target)
                     elif directive['action'] == COPY:
                         self._log.info('Going to copy %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
@@ -1492,8 +1510,8 @@ class InputStagingWorker(multiprocessing.Process):
                         query={"_id" : ObjectId(wu_id),
                                'Agent_Input_Status': EXECUTING,
                                'Agent_Input_Directives.state': PENDING,
-                               'Agent_Input_Directives.source': source,
-                               'Agent_Input_Directives.target': target,
+                               'Agent_Input_Directives.source': directive['source'],
+                               'Agent_Input_Directives.target': directive['target'],
                                },
                         update={'$set': {'Agent_Input_Directives.$.state': DONE},
                                 '$push': {'log': logmessage}
@@ -1860,7 +1878,9 @@ class Agent(threading.Thread):
                             for directive in wu['Agent_Input_Directives']:
                                 input_staging = {
                                     'directive': directive,
-                                    'sandbox': '%s/unit-%s' % (self._workdir, str(wu['_id'])),
+                                    'sandbox': os.path.join(self._workdir,
+                                                            'unit-%s' % str(wu['_id'])),
+                                    'staging_area': os.path.join(self._workdir, 'staging_area'),
                                     'wu_id': str(wu['_id'])
                                 }
 
