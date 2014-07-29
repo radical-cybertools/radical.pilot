@@ -14,6 +14,7 @@ SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
 CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing to staging area
 
 
+# TODO: Consider migrating to dict?
 class StagingDirectives(dict):
 
     def __init__(self):
