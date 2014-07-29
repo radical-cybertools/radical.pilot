@@ -47,3 +47,28 @@ class StagingDirectives(dict):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+
+
+    #------------------------------------------------------------------------------
+    #
+    def __repr__ (self):
+        """Returns a string representation of the object.
+        """
+        return str(self)
+
+
+    #------------------------------------------------------------------------------
+    #
+    def __deepcopy__ (self, memo):
+
+        other = StagingDirectives ()
+
+        other.source   = self.source   
+        other.target   = self.target   
+        other.action   = self.action   
+        other.flags    = self.flags    
+        other.priority = self.priority 
+
+        return other
+
+

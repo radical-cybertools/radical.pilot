@@ -135,6 +135,18 @@ class ComputeUnitDescription(attributes.Attributes) :
         #self._attributes_register(START_AFTER,       None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         #self._attributes_register(CONCURRENT_WITH,   None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
+        # explicitly set attribs so they get listed and included via as_dict()
+        self.set_attribute (KERNEL,         None)
+        self.set_attribute (NAME,           None)
+        self.set_attribute (EXECUTABLE,     None)
+        self.set_attribute (ARGUMENTS,      None)
+        self.set_attribute (ENVIRONMENT,    None)
+        self.set_attribute (PRE_EXEC,       None)
+        self.set_attribute (POST_EXEC,      None)
+        self.set_attribute (INPUT_STAGING,  None)
+        self.set_attribute (OUTPUT_STAGING, None)
+        self.set_attribute (CORES,             1)
+        self.set_attribute (MPI,           False)
 
     #------------------------------------------------------------------------------
     #
@@ -154,6 +166,7 @@ class ComputeUnitDescription(attributes.Attributes) :
             PRE_EXEC               : self.pre_exec,
             POST_EXEC              : self.post_exec
         }
+
         if not self.input_staging:
             obj_dict[INPUT_STAGING] = []
         elif not isinstance(self.input_staging, list):
@@ -184,12 +197,11 @@ class ComputeUnitDescription(attributes.Attributes) :
     def __deepcopy__ (self, memo):
         """Returns a string representation of the object.
         """
-
+   
         other = ComputeUnitDescription ()
-
-        d = self.as_dict ()
-        for key in d :
-            self[key] = d[key]
-
+   
+        for key in self.list_attributes () :
+            other.set_attribute (key, self.get_attribute (key))
+   
         return other
 
