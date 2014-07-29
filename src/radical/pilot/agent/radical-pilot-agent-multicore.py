@@ -1455,6 +1455,7 @@ class InputStagingWorker(multiprocessing.Process):
                         directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
                     sandbox = staging['sandbox']
+                    staging_area = staging['staging_area']
                     wu_id = staging['wu_id']
                     self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
 
@@ -1468,12 +1469,25 @@ class InputStagingWorker(multiprocessing.Process):
                         else:
                             raise
 
-                    source = directive['source']
+                    # Convert the source_url into a SAGA Url object
+                    source_url = saga.Url(directive['source'])
+
+                    if source_url.scheme == 'staging':
+                        self._log.info('Operating from staging')
+                        # Remove the leading slash to get a relative path from the staging area
+                        rel2staging = source_url.path.split('/',1)[1]
+                        source = os.path.join(staging_area, rel2staging)
+                    else:
+                        self._log.info('Operating from absolute path')
+                        source = source_url.path
+
+                    # Get the target from the directive and convert it to the location in the sandbox
                     target = directive['target']
                     abs_target = os.path.join(sandbox, target)
+
                     if directive['action'] == LINK:
                         self._log.info('Going to link %s to %s' % (source, abs_target))
-                        logmessage = 'Linked %s to %s' % (source, abs_target)
+                        logmessage = 'Linked %s to %s' % (source, abs_target) # TODO: don't like the logging logic here
                         os.symlink(source, abs_target)
                     elif directive['action'] == COPY:
                         self._log.info('Going to copy %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
@@ -1496,8 +1510,8 @@ class InputStagingWorker(multiprocessing.Process):
                         query={"_id" : ObjectId(wu_id),
                                'Agent_Input_Status': EXECUTING,
                                'Agent_Input_Directives.state': PENDING,
-                               'Agent_Input_Directives.source': source,
-                               'Agent_Input_Directives.target': target,
+                               'Agent_Input_Directives.source': directive['source'],
+                               'Agent_Input_Directives.target': directive['target'],
                                },
                         update={'$set': {'Agent_Input_Directives.$.state': DONE},
                                 '$push': {'log': logmessage}
@@ -1864,7 +1878,9 @@ class Agent(threading.Thread):
                             for directive in wu['Agent_Input_Directives']:
                                 input_staging = {
                                     'directive': directive,
-                                    'sandbox': '%s/unit-%s' % (self._workdir, str(wu['_id'])),
+                                    'sandbox': os.path.join(self._workdir,
+                                                            'unit-%s' % str(wu['_id'])),
+                                    'staging_area': os.path.join(self._workdir, 'staging_area'),
                                     'wu_id': str(wu['_id'])
                                 }
 
