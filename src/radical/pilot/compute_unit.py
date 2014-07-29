@@ -78,10 +78,8 @@ class ComputeUnit(object):
         # create and return pilot object
         computeunit = ComputeUnit()
 
-        # Make a copy of the UD to work on without side-effects
+        # Make a copy of the UD to work on without side-effects.
         ud_copy = copy.deepcopy(unit_description)
-        print 'UD: %s' % unit_description
-        print 'Copy of UD: %s' % ud_copy
 
         if ud_copy.input_staging:
             new_input_staging = []
@@ -120,7 +118,6 @@ class ComputeUnit(object):
             ud_copy.output_staging = new_output_staging
 
         computeunit._description = ud_copy
-        #computeunit._description = unit_description
         computeunit._manager     = unit_manager_obj
         computeunit._worker      = unit_manager_obj._worker
         computeunit._uid         = str(ObjectId())
