@@ -171,12 +171,12 @@ class TestUnit(unittest.TestCase):
         um.add_pilots(pilot)
 
         # Wait until the pilot starts
-        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=120)
+        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=240)
 
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores = 1
         cudesc.executable = "/bin/sleep"
-        cudesc.arguments = ["30"]
+        cudesc.arguments = ["60"]
 
         cu = um.submit_units(cudesc)
 
