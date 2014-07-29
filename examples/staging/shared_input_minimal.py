@@ -47,10 +47,10 @@ if __name__ == "__main__":
         remote_dir.copy(shared_input_file_url, '.') # Change to pilot.stage_in(shared_input_file_url)
 
         # Configure the staging directive for shared input file.
-        sd_shared = radical.pilot.StagingDirectives()
-        sd_shared.source = 'staging:///%s' % SHARED_INPUT_FILE # Note the triple slash
-        sd_shared.target = SHARED_INPUT_FILE
-        sd_shared.action = radical.pilot.LINK
+        sd_shared = {'source': 'staging:///%s' % SHARED_INPUT_FILE, # Note the triple slash
+                     'target': SHARED_INPUT_FILE,
+                     'action': radical.pilot.staging_directives.LINK
+        }
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -65,16 +65,18 @@ if __name__ == "__main__":
         for unit_count in range(4):
 
             # Configure the staging directive for input file.
-            sd_input = radical.pilot.StagingDirectives()
-            sd_input.source = 'input_file-%d.txt' % unit_count
-            sd_input.target = 'input_file-%d.txt' % unit_count
-            sd_input.action = radical.pilot.TRANSFER
+            sd_input = {'source': 'input_file-%d.txt' % unit_count,
+                        'target': 'input_file-%d.txt' % unit_count,
+                        'action':  radical.pilot.staging_directives.TRANSFER
+            }
+            # Above sd_input is semantically identical to sd_input below
+            sd_input = 'input_file-%d.txt' % unit_count
 
             # Configure the staging directive for output file.
-            sd_output = radical.pilot.StagingDirectives()
-            sd_output.source = 'output_file-%d.txt' % unit_count
-            sd_output.target = 'output_file-%d.txt' % unit_count
-            sd_output.action = radical.pilot.TRANSFER
+            sd_output = {'source': 'output_file-%d.txt' % unit_count,
+                         'target': 'output_file-%d.txt' % unit_count,
+                         'action': radical.pilot.staging_directives.TRANSFER
+            }
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
