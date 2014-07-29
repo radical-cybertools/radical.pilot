@@ -257,8 +257,8 @@ class LateBindingScheduler(Scheduler):
         print "Late-binding re-scheduling of %s units" % len(self.waitq)
 
         schedule = dict()
+        schedule['pilots'] = self.pilots
         schedule['units']  = dict()
-        schedule['pilots'] = dict()
 
         # iterate on copy of waitq, as we manipulate the list during iteration.
         for unit in self.waitq[:] :
@@ -287,9 +287,7 @@ class LateBindingScheduler(Scheduler):
                 # unit was not scheduled...
                 schedule['units'][unit] = None
 
-        for pilot in self.pilots :
 
-            schedule['pilots'] = self.pilots
 
                      
         print "SCHEDULE"

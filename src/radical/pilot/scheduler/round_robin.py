@@ -31,14 +31,41 @@ class RoundRobinScheduler(Scheduler):
 
         self.manager = manager
         self.session = session
-        self._idx    = 0
+        self.pilots  = dict()
+        self.idx     = 0
 
         logger.info("Loaded scheduler: %s." % self.name)
 
 
     # -------------------------------------------------------------------------
     #
+    def pilot_added (self, pilot) :
+
+        pid = pilot.uid
+
+        if  pid in self.pilots :
+            raise RuntimeError ('cannot add pilot twice (%s)' % pid)
+
+        self.pilots[pid] = dict()
+        self.pilots[pid]['resource'] = pilot.resource
+        self.pilots[pid]['sandbox']  = pilot.sandbox
+
+
+    # -------------------------------------------------------------------------
+    #
+    def pilot_removed (self, pid) :
+
+        if  not pid in self.pilots :
+            raise RuntimeError ('cannot remove unknown pilot (%s)' % pid)
+
+        del self.pilots[pid]
+
+
+    # -------------------------------------------------------------------------
+    #
     def schedule(self, units):
+
+        pilot_ids = self.pilots.keys ()
         # the scheduler will return a dictionary of the form:
         #   { 
         #     unit_1: pilot_id_1
@@ -61,12 +88,12 @@ class RoundRobinScheduler(Scheduler):
 
         for unit in units :
             
-            if  self._idx >= len(pilot_ids) : 
-                self._idx = 0
+            if  self.idx >= len(pilot_ids) : 
+                self.idx = 0
             
             schedule['units']       = dict()
-            schedule['units'][unit] = pilot_ids[self._idx]
-            self._idx              += 1
+            schedule['units'][unit] = pilot_ids[self.idx]
+            self.idx               += 1
 
         return schedule
 

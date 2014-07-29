@@ -31,14 +31,39 @@ class DirectSubmissionScheduler(Scheduler):
 
         self.manager = manager
         self.session = session
+        self.pilots  = dict()
 
         logger.info("Loaded scheduler: %s." % self.name)
 
     # -------------------------------------------------------------------------
     #
+    def pilot_added (self, pilot) :
+
+        pid = pilot.uid
+
+        if  pid in self.pilots :
+            raise RuntimeError ('cannot add pilot twice (%s)' % pid)
+
+        self.pilots[pid] = dict()
+        self.pilots[pid]['resource'] = pilot.resource
+        self.pilots[pid]['sandbox']  = pilot.sandbox
+
+
+    # -------------------------------------------------------------------------
+    #
+    def pilot_removed (self, pid) :
+
+        if  not pid in self.pilots :
+            raise RuntimeError ('cannot remove unknown pilot (%s)' % pid)
+
+        del self.pilots[pid]
+
+
+    # -------------------------------------------------------------------------
+    #
     def schedule(self, units):
 
-        pilot_ids = self.manager.list_pilots()
+        pilot_ids = self.pilots.keys ()
 
         if not len (pilot_ids):
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
@@ -47,9 +72,11 @@ class DirectSubmissionScheduler(Scheduler):
             raise RuntimeError ('Direct Submission only works for a single pilot!')
         
         schedule = dict()
+        schedule['pilots'] = self.pilots
+        schedule['units']  = dict()
+
         for unit in units:
 
-            schedule['units']       = dict()
             schedule['units'][unit] = pilot_ids[0]
 
         return schedule

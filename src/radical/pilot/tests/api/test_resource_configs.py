@@ -75,6 +75,9 @@ class TestResourceConfigs(unittest.TestCase):
 
         rc = radical.pilot.ResourceConfig()
         rc.name = "mylocalhost"
+        rc.lrms = "FORK"
+        rc.task_launch_method = "LOCAL"
+        rc.mpi_launch_method = "MPIRUN"
         rc.remote_job_manager_endpoint = "fork://localhost"
         rc.remote_filesystem_endpoint = "file://localhost/"
         rc.bootstrapper = "default_bootstrapper.sh"
