@@ -178,3 +178,18 @@ class ComputeUnitDescription(attributes.Attributes) :
         """
         return str(self.as_dict())
 
+
+    #------------------------------------------------------------------------------
+    #
+    def __deepcopy__ (self, memo):
+        """Returns a string representation of the object.
+        """
+
+        other = ComputeUnitDescription ()
+
+        d = self.as_dict ()
+        for key in d :
+            self[key] = d[key]
+
+        return other
+

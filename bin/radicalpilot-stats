@@ -522,23 +522,24 @@ def plot_session (dbclient, dbname, session) :
     BEGIN  = ">"
     END    = "<"
     ONCE   = "!"
-    COLORS = {rp.NEW                     : '0xFF3333',
-              rp.STATE_X                 : '0xFF9999',
-              rp.PENDING_INPUT_STAGING   : '0x33FF33',
-              rp.STAGING_INPUT           : '0x99FF99',
-              rp.PENDING_EXECUTION       : '0x3333FF',
-              rp.SCHEDULING              : '0x9999FF',
-              rp.EXECUTING               : '0xFFFF33',
-              rp.PENDING_OUTPUT_STAGING  : '0xFFFF99',
-              rp.STAGING_OUTPUT          : '0xFF33FF',
-              rp.DONE                    : '0xFF99FF',
-              rp.CANCELED                : '0x33FFFF',
-              rp.FAILED                  : '0x99FFFF'}
+    COLORS = {rp.NEW                     : ' 1',
+              rp.STATE_X                 : ' 2',
+              rp.PENDING_INPUT_STAGING   : ' 3',
+              rp.STAGING_INPUT           : ' 4',
+              rp.PENDING_EXECUTION       : ' 5',
+              rp.SCHEDULING              : ' 6',
+              rp.EXECUTING               : ' 7',
+              rp.PENDING_OUTPUT_STAGING  : ' 8',
+              rp.STAGING_OUTPUT          : ' 9',
+              rp.DONE                    : '10',
+              rp.CANCELED                : '11',
+              rp.FAILED                  : '12'}
 
     for pilot in docs['pilot'] :
 
         this_pid = str(pilot['_id'])
 
+        with open ("/tmp/rp.%s.pilot.slots.%s.sdat" % (session, pid), "w") as dat :
         with open ("/tmp/rp.%s.pilot.slots.%s.sdat" % (session, pid), "w") as dat :
 
             for e in events :
