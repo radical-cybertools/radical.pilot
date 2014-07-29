@@ -120,8 +120,8 @@ class ComputeUnitDescription(attributes.Attributes) :
         #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
-        self._attributes_register(INPUT_STAGING,          None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(OUTPUT_STAGING,         None, attributes.ANY, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(INPUT_STAGING,          None, attributes.ANY, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(OUTPUT_STAGING,         None, attributes.ANY, attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
         self._attributes_register(CORES,                  1, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
