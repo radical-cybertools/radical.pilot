@@ -80,7 +80,9 @@ class RoundRobinScheduler(Scheduler):
         #print "round-robin scheduling of %s units" % len(unit_descriptions)
 
         pilot_ids = self.manager.list_pilots ()
-        schedule  = dict()
+        schedule           = dict()
+        schedule['pilots'] = dict()
+        schedule['units']  = self.pilots
 
         if not len (pilot_ids) :
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
@@ -91,9 +93,9 @@ class RoundRobinScheduler(Scheduler):
             if  self.idx >= len(pilot_ids) : 
                 self.idx = 0
             
-            schedule['units']       = dict()
             schedule['units'][unit] = pilot_ids[self.idx]
             self.idx               += 1
+
 
         return schedule
 
