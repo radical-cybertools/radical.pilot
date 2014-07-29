@@ -245,7 +245,7 @@ def get_stats (docs, events, slothist) :
             state = s
             start = ts
 
-        for cu in pilot_doc['wu_queue'] :
+        for cu in pilot_doc['unit_ids'] :
             uid                    = str(cu)
             n_units               += 1
             pilot_util['n_units'] += 1
@@ -375,7 +375,7 @@ def plot_session (dbclient, dbname, session) :
 
             
         with open ("/tmp/rp.%s.unit.states.%s.dat" % (session, pid), "w") as dat :
-            for unit_id in pilot['wu_queue'] :
+            for unit_id in pilot['unit_ids'] :
                 for unit in docs['unit'] :
                     if  unit_id == unit['_id'] :
                         for event in unit['statehistory'] :
@@ -387,7 +387,7 @@ def plot_session (dbclient, dbname, session) :
             delete_me.append (dat.name)
             
         with open ("/tmp/rp.%s.unit.callbacks.%s.dat" % (session, pid), "w") as dat :
-            for unit_id in pilot['wu_queue'] :
+            for unit_id in pilot['unit_ids'] :
                 for unit in docs['unit'] :
                     if  unit_id == unit['_id'] :
                         if  'callbackhistory' in unit :
@@ -522,18 +522,18 @@ def plot_session (dbclient, dbname, session) :
     BEGIN  = ">"
     END    = "<"
     ONCE   = "!"
-    COLORS = {rp.NEW                     : 'NEW'                   ,
-              rp.STATE_X                 : 'STATE_X'               ,
-              rp.PENDING_INPUT_STAGING   : 'PENDING_INPUT_STAGING' ,
-              rp.STAGING_INPUT           : 'STAGING_INPUT'         ,
-              rp.PENDING_EXECUTION       : 'PENDING_EXECUTION'     ,
-              rp.SCHEDULING              : 'SCHEDULING'            ,
-              rp.EXECUTING               : 'EXECUTING'             ,
-              rp.PENDING_OUTPUT_STAGING  : 'PENDING_OUTPUT_STAGING',
-              rp.STAGING_OUTPUT          : 'STAGING_OUTPUT'        ,
-              rp.DONE                    : 'DONE'                  ,
-              rp.CANCELED                : 'CANCELED'              ,
-              rp.FAILED                  : 'FAILED'                }
+    COLORS = {rp.NEW                     : '0xFF3333',
+              rp.STATE_X                 : '0xFF9999',
+              rp.PENDING_INPUT_STAGING   : '0x33FF33',
+              rp.STAGING_INPUT           : '0x99FF99',
+              rp.PENDING_EXECUTION       : '0x3333FF',
+              rp.SCHEDULING              : '0x9999FF',
+              rp.EXECUTING               : '0xFFFF33',
+              rp.PENDING_OUTPUT_STAGING  : '0xFFFF99',
+              rp.STAGING_OUTPUT          : '0xFF33FF',
+              rp.DONE                    : '0xFF99FF',
+              rp.CANCELED                : '0x33FFFF',
+              rp.FAILED                  : '0x99FFFF'}
 
     for pilot in docs['pilot'] :
 
@@ -551,7 +551,6 @@ def plot_session (dbclient, dbname, session) :
                 state   = e[5]
                 doc     = e[6]
 
-
                 if  pid != this_pid :
                     continue
 
@@ -568,18 +567,95 @@ def plot_session (dbclient, dbname, session) :
                     for slot in slots :
 
                         if  not uid in entity_states :
+                            
+                            if  state not in [rp.EXECUTING] :
+                                continue
+
                             entity_states[uid] = state
-                            print      "%s %s%s %s"   % (ts, BEGIN, uid, state)
-                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, state))
+                          # print      "%s %s%s %s"   % (ts, BEGIN, slot, COLORS[state])
+                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, slot, COLORS[state]))
 
                         else :
                             old_state = entity_states[uid]
-                            print      "%s %s%s %s"   % (ts, END,   uid, old_state)
-                            dat.write ("%s %s%s %s\n" % (ts, END,   uid, old_state))
+                          # print      "%s %s%s %s"   % (ts, END,   slot, COLORS[old_state])
+                            dat.write ("%s %s%s %s\n" % (ts, END,   slot, COLORS[old_state]))
 
                             entity_states[uid] = state
-                            print      "%s %s%s %s"   % (ts, BEGIN, uid, state)
-                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, state))
+                          # print      "%s %s%s %s"   % (ts, BEGIN, slot, COLORS[state])
+                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, slot, COLORS[state]))
+
+
+    for pilot in docs['pilot'] :
+
+        this_pid = str(pilot['_id'])
+
+        with open ("/tmp/rp.%s.pilot.units.%s.sdat" % (session, pid), "w") as dat :
+
+            entity_states = dict()
+            idxs          = list()
+
+            # index the units by the start of their EXECUTING state
+            for e in events :
+
+                etype = e[0]
+                otype = e[1]
+                uid   = e[2]
+                pid   = e[3]
+                ts    = e[4]
+                state = e[5]
+                doc   = e[6]
+
+                if  pid != this_pid :
+                    continue
+
+                if  otype == 'unit' :
+                    if  state in [rp.EXECUTING] :
+                        idxs.append (uid)
+
+            for idx_id in idxs :
+
+                for e in events :
+
+                    etype = e[0]
+                    otype = e[1]
+                    uid   = e[2]
+                    pid   = e[3]
+                    ts    = e[4]
+                    state = e[5]
+                    doc   = e[6]
+
+                    if  idx_id != uid :
+                        continue
+
+                    if  pid != this_pid :
+                        continue
+
+                    if  otype == 'unit' :
+
+                        if 'slots' in doc :
+                            slots = doc['slots']
+                        else :
+                            pprint.pprint (doc)
+                            slots = '?'
+
+                        for slot in slots :
+
+                            if  not uid in entity_states :
+
+                                entity_states[uid] = state
+
+                              # print      "%s %s%s %s"   % (ts, BEGIN, uid, COLORS[state])
+                                dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, COLORS[state]))
+
+                            else :
+
+                                old_state = entity_states[uid]
+                              # print      "%s %s%s %s"   % (ts, END,   uid, COLORS[old_state])
+                                dat.write ("%s %s%s %s\n" % (ts, END,   uid, COLORS[old_state]))
+
+                                entity_states[uid] = state
+                              # print      "%s %s%s %s"   % (ts, BEGIN, uid, COLORS[state])
+                                dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, COLORS[state]))
 
 
 # ------------------------------------------------------------------------------

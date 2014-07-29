@@ -42,6 +42,16 @@ def get_session_docs (dbclient, dbname, session) :
     ret['umgr'   ] = list(database["%s.wm" % session].find ())
     ret['unit'   ] = list(database["%s.w"  % session].find ())
 
+    # we want to add a list of handled units to each pilot doc
+    for pilot in ret['pilot'] :
+
+        pilot['unit_ids'] = list()
+
+        for unit in ret['unit'] :
+
+            if  unit['pilot'] == str(pilot['_id']) :
+                pilot['unit_ids'].append (str(unit['_id']))
+
     return ret
 
 
