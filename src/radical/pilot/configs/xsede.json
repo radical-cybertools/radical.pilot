@@ -45,7 +45,7 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
 
-        "gordon.sdsc.xsede.org": {
+    "gordon.sdsc.xsede.org": {
         "remote_job_manager_endpoint" : "pbs+ssh://gordon.sdsc.xsede.org",
         "remote_filesystem_endpoint"  : "sftp://gordon.sdsc.xsede.org/",
         "local_filesystem_endpoint"   : "pbs://localhost",
@@ -60,7 +60,7 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
 
-        "blacklight.psc.xsede.org": {
+    "blacklight.psc.xsede.org": {
         "remote_job_manager_endpoint" : "pbs+ssh://blacklight.psc.xsede.org",
         "remote_filesystem_endpoint"  : "sftp://blacklight.psc.xsede.org/",
         "local_filesystem_endpoint"   : "pbs://localhost",
