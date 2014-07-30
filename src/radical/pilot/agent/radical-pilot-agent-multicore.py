@@ -1444,89 +1444,96 @@ class InputStagingWorker(multiprocessing.Process):
 
         self._log.info('InputStagingWorker started ...')
 
-        try:
-            while self._terminate is False:
-                try:
-                    staging = self._staging_queue.get_nowait()
+        while self._terminate is False:
+            try:
+                staging = self._staging_queue.get_nowait()
+            except Queue.Empty:
+                # do nothing and sleep if we don't have any queued staging
+                time.sleep(1)
+                continue
 
-                    # Perform input staging
-                    directive = staging['directive']
-                    if isinstance(directive, tuple):
-                        self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
-                        directive = directive[0] # TODO: Why is it a fscking tuple?!?!
+            # Perform input staging
+            directive = staging['directive']
+            if isinstance(directive, tuple):
+                self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
+                directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
-                    sandbox = staging['sandbox']
-                    staging_area = staging['staging_area']
-                    wu_id = staging['wu_id']
-                    self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
+            sandbox = staging['sandbox']
+            staging_area = staging['staging_area']
+            wu_id = staging['wu_id']
+            self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
 
-                    # Create working directory in case it doesn't exist yet
-                    try :
-                        os.makedirs(sandbox)
-                    except OSError as e:
-                        # ignore failure on existing directory
-                        if e.errno == errno.EEXIST and os.path.isdir(sandbox):
-                            pass
-                        else:
-                            raise
+            # Create working directory in case it doesn't exist yet
+            try :
+                os.makedirs(sandbox)
+            except OSError as e:
+                # ignore failure on existing directory
+                if e.errno == errno.EEXIST and os.path.isdir(sandbox):
+                    pass
+                else:
+                    raise
 
-                    # Convert the source_url into a SAGA Url object
-                    source_url = saga.Url(directive['source'])
+            # Convert the source_url into a SAGA Url object
+            source_url = saga.Url(directive['source'])
 
-                    if source_url.scheme == 'staging':
-                        self._log.info('Operating from staging')
-                        # Remove the leading slash to get a relative path from the staging area
-                        rel2staging = source_url.path.split('/',1)[1]
-                        source = os.path.join(staging_area, rel2staging)
-                    else:
-                        self._log.info('Operating from absolute path')
-                        source = source_url.path
+            if source_url.scheme == 'staging':
+                self._log.info('Operating from staging')
+                # Remove the leading slash to get a relative path from the staging area
+                rel2staging = source_url.path.split('/',1)[1]
+                source = os.path.join(staging_area, rel2staging)
+            else:
+                self._log.info('Operating from absolute path')
+                source = source_url.path
 
-                    # Get the target from the directive and convert it to the location in the sandbox
-                    target = directive['target']
-                    abs_target = os.path.join(sandbox, target)
+            # Get the target from the directive and convert it to the location in the sandbox
+            target = directive['target']
+            abs_target = os.path.join(sandbox, target)
 
-                    if directive['action'] == LINK:
-                        self._log.info('Going to link %s to %s' % (source, abs_target))
-                        logmessage = 'Linked %s to %s' % (source, abs_target) # TODO: don't like the logging logic here
-                        os.symlink(source, abs_target)
-                    elif directive['action'] == COPY:
-                        self._log.info('Going to copy %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
-                        shutil.copyfile(source, abs_target)
-                        logmessage = 'Copy %s to %s' % (source, abs_target)
-                    elif directive['action'] == MOVE:
-                        self._log.info('Going to move %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
-                        shutil.move(source, abs_target)
-                        logmessage = 'Moved %s to %s' % (source, abs_target)
-                    elif directive['action'] == TRANSFER:
-                        self._log.info('Going to transfer %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
-                        # TODO: SAGA REMOTE TRANSFER
-                        logmessage = 'Transferred %s to %s' % (source, abs_target)
-                    else:
-                        # TODO: raise
-                        self._log.error('Action %s not supported' % directive['action'])
+            log_message = ''
+            try:
+                # Act upon the directive now.
 
-                    # If all went fine, update the state of this StagingDirective to Done
-                    self._w.find_and_modify(
-                        query={"_id" : ObjectId(wu_id),
-                               'Agent_Input_Status': EXECUTING,
-                               'Agent_Input_Directives.state': PENDING,
-                               'Agent_Input_Directives.source': directive['source'],
-                               'Agent_Input_Directives.target': directive['target'],
-                               },
-                        update={'$set': {'Agent_Input_Directives.$.state': DONE},
-                                '$push': {'log': logmessage}
-                        }
-                    )
+                if directive['action'] == LINK:
+                    log_message = 'Linking %s to %s' % (source, abs_target)
+                    os.symlink(source, abs_target)
+                elif directive['action'] == COPY:
+                    log_message = 'Copying %s to %s' % (source, abs_target)
+                    shutil.copyfile(source, abs_target)
+                elif directive['action'] == MOVE:
+                    log_message = 'Moving %s to %s' % (source, abs_target)
+                    shutil.move(source, abs_target)
+                elif directive['action'] == TRANSFER:
+                    # TODO: SAGA REMOTE TRANSFER
+                    log_message = 'Transferring %s to %s' % (source, abs_target)
+                else:
+                    raise Exception('Action %s not supported' % directive['action'])
 
-                except Queue.Empty:
-                    # do nothing and sleep if we don't have any queued staging
-                    time.sleep(1)
+                # If we reached this far, assume the staging succeeded
+                staging_state = DONE
+                log_message += ' succeeded.'
+                self._log.info(log_message)
+
+            except:
+                # If we catch an exception, assume the staging failed
+                staging_state = FAILED
+                log_message += ' failed.'
+                self._log.error(log_message)
+
+            # If all went fine, update the state of this StagingDirective to Done
+            self._w.find_and_modify(
+                query={"_id" : ObjectId(wu_id),
+                       'Agent_Input_Status': EXECUTING,
+                       'Agent_Input_Directives.state': PENDING,
+                       'Agent_Input_Directives.source': directive['source'],
+                       'Agent_Input_Directives.target': directive['target'],
+                       },
+                update={'$set': {'Agent_Input_Directives.$.state': staging_state},
+                        '$push': {'log': log_message}
+                }
+            )
 
 
-        except Exception, ex:
-            self._log.error("Error in InputStagingWorker loop: %s", traceback.format_exc())
-            raise
+
 
 
 # ----------------------------------------------------------------------------
