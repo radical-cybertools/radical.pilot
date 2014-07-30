@@ -193,6 +193,7 @@ class ExecutionEnvironment(object):
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
             command = self._find_executable(['mpirun',           # General case
+                                             'mpirun_rsh',       # Gordon @ SDSC
                                              'mpirun-openmpi-mp' # Mac OSX MacPorts
                                             ])
             if command is not None:
