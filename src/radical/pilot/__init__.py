@@ -36,6 +36,8 @@ from compute_pilot_description import ComputePilotDescription
 
 from resource_config import ResourceConfig
 
+from staging_directives import COPY, LINK, MOVE, TRANSFER, SKIP_FAILED, CREATE_PARENTS
+
 # ------------------------------------------------------------------------------
 #
 from utils.version             import version

@@ -49,7 +49,7 @@ if __name__ == "__main__":
         # Configure the staging directive for shared input file.
         sd_shared = {'source': 'staging:///%s' % SHARED_INPUT_FILE, # Note the triple slash
                      'target': SHARED_INPUT_FILE,
-                     'action': radical.pilot.staging_directives.LINK
+                     'action': radical.pilot.LINK
         }
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -67,7 +67,7 @@ if __name__ == "__main__":
             # Configure the staging directive for input file.
             sd_input = {'source': 'input_file-%d.txt' % unit_count,
                         'target': 'input_file-%d.txt' % unit_count,
-                        'action':  radical.pilot.staging_directives.TRANSFER
+                        'action':  radical.pilot.TRANSFER
             }
             # Above sd_input is semantically identical to sd_input below
             sd_input = 'input_file-%d.txt' % unit_count
@@ -75,7 +75,7 @@ if __name__ == "__main__":
             # Configure the staging directive for output file.
             sd_output = {'source': 'output_file-%d.txt' % unit_count,
                          'target': 'output_file-%d.txt' % unit_count,
-                         'action': radical.pilot.staging_directives.TRANSFER
+                         'action': radical.pilot.TRANSFER
             }
 
             # Actual task description.

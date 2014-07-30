@@ -16,7 +16,6 @@ import multiprocessing
 from bson.objectid import ObjectId
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
-from radical.pilot.staging_directives import TRANSFER
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
