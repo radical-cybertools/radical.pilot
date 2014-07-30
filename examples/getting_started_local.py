@@ -47,8 +47,8 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-        # well as security crendetials.
+        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -59,11 +59,11 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 2-core local pilot that runs for 10 minutes and cleans up
+        # Define a 4-core local pilot that runs for 10 minutes and cleans up
         # after itself.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "localhost"
-        pdesc.runtime  = 5 # minutes
+        pdesc.runtime  = 10 # minutes
         pdesc.cores    = 4
         pdesc.cleanup  = True
 
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
         # uses /bin/cat to concatenate two input files, file1.dat and
         # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables withih a
+        # used to demonstrate how to set environment variables within a
         # ComputeUnit - it's not strictly necessary for this example. As
         # a shell script, the ComputeUnits would look something like this:
         #
@@ -81,15 +81,16 @@ if __name__ == "__main__":
         #    export INPUT2=file2.dat
         #    /bin/cat $INPUT1 $INPUT2
         #
-        compute_units = []
+        cuds = []
+        for unit_count in range(0, 8):
+            cud = radical.pilot.ComputeUnitDescription()
+            cud.executable    = "/bin/bash"
+            cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
+            cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
+            cud.cores         = 1
+            cud.input_staging = ['file1.dat', 'file2.dat']
 
-        for unit_count in range(0, 16):
-            cu = radical.pilot.ComputeUnitDescription()
-            cu.executable  = "/bin/sleep"
-            cu.arguments   = ["10"]
-            cu.cores       = 1
-
-            compute_units.append(cu)
+            cuds.append(cud)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -102,13 +103,13 @@ if __name__ == "__main__":
         # change their state.
         umgr.register_callback(unit_state_change_cb)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
+        # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_units)
+        units = umgr.submit_units(cuds)
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()

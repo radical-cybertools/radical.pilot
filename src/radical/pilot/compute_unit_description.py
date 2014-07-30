@@ -124,8 +124,8 @@ class ComputeUnitDescription(attributes.Attributes) :
         self._attributes_register(OUTPUT_STAGING,         None, attributes.ANY, attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
-        self._attributes_register(CORES,                  1, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(MPI,                    False, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CORES,                  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(MPI,                    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(CPU_ARCHITECTURE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(OPERATING_SYSTEM,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         #self._attributes_register(MEMORY,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
@@ -148,49 +148,6 @@ class ComputeUnitDescription(attributes.Attributes) :
         self.set_attribute (CORES,             1)
         self.set_attribute (MPI,           False)
 
-    #------------------------------------------------------------------------------
-    #
-    def as_dict(self):
-        """Returns a Python dictionary representation of the object.
-        """
-        # Apparently the attribute interface only handles 'non-None' attributes,
-        # so we do it manually. More explicit anyways.
-        obj_dict = {
-            KERNEL                 : self.kernel,
-            NAME                   : self.name,
-            EXECUTABLE             : self.executable,
-            ARGUMENTS              : self.arguments,
-            ENVIRONMENT            : self.environment,
-            CORES                  : self.cores,
-            MPI                    : self.mpi,
-            PRE_EXEC               : self.pre_exec,
-            POST_EXEC              : self.post_exec
-        }
-
-        if not self.input_staging:
-            obj_dict[INPUT_STAGING] = []
-        elif not isinstance(self.input_staging, list):
-            obj_dict[INPUT_STAGING] = [self.input_staging.as_dict()]
-        else:
-            obj_dict[INPUT_STAGING] = [x.as_dict() for x in self.input_staging]
-
-        if not self.output_staging:
-            obj_dict[OUTPUT_STAGING] = []
-        elif not isinstance(self.output_staging, list):
-            obj_dict[OUTPUT_STAGING] = [self.output_staging.as_dict()]
-        else:
-            obj_dict[OUTPUT_STAGING] = [x.as_dict() for x in self.output_staging]
-
-        return obj_dict
-
-
-    #------------------------------------------------------------------------------
-    #
-    def __str__(self):
-        """Returns a string representation of the object.
-        """
-        return str(self.as_dict())
-
 
     #------------------------------------------------------------------------------
     #
@@ -204,4 +161,3 @@ class ComputeUnitDescription(attributes.Attributes) :
             other.set_attribute (key, self.get_attribute (key))
    
         return other
-

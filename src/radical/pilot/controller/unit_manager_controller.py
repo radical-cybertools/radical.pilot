@@ -458,8 +458,7 @@ class UnitManagerController(threading.Thread):
                     inp_sd = [inp_sd]
                 else:
                     inp_sd = []
-            for sd_obj in inp_sd:
-                sd = sd_obj.as_dict()
+            for sd in inp_sd:
 
                 action = sd['action']
                 source = Url(sd['source'])
@@ -492,8 +491,8 @@ class UnitManagerController(threading.Thread):
                     outp_sd = [outp_sd]
                 else:
                     outp_sd = []
-            for sd_obj in outp_sd:
-                sd = sd_obj.as_dict()
+            for sd in outp_sd:
+
                 action = sd['action']
                 source = Url(sd['source'])
                 target = Url(sd['target'])

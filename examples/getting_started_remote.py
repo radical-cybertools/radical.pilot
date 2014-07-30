@@ -6,7 +6,7 @@ import radical.pilot
 #   http://radicalpilot.readthedocs.org/en/latest
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scences!
+# you want to see what happens behind the scenes!
 #
 # RADICAL-Pilot uses ssh to communicate with the remote resource. The 
 # easiest way to make this work seamlessly is to set up ssh key-based
@@ -52,13 +52,13 @@ if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-        # well as security crendetials.
+        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+        # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id = "tg803521"
+        #c.user_id = "tg803521"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -71,15 +71,15 @@ if __name__ == "__main__":
         pdescs = list()
 
         for i in range (1) :
-            # Define a 32-core on stamped that runs for 15 mintutes and 
-            # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
+            # Define a 32-core on stampede that runs for 15 minutes and
+            # uses $HOME/radical.pilot.sandbox as sandbox directory.
             pdesc = radical.pilot.ComputePilotDescription()
             pdesc.resource  = "stampede.tacc.utexas.edu"
-            pdesc.runtime   = 60 # minutes
-            pdesc.cores     = 1024
+            pdesc.runtime   = 15 # minutes
+            pdesc.cores     = 32
             pdesc.cleanup   = True
             pdesc.queue     = "normal"
-            pdesc.project   = "TG-MCB140109"
+            #pdesc.project   = "TG-MCB140109"
 
             pdescs.append (pdesc)
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
         # uses /bin/cat to concatenate two input files, file1.dat and
         # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables withih a
+        # used to demonstrate how to set environment variables within a
         # ComputeUnit - it's not strictly necessary for this example. As
         # a shell script, the ComputeUnits would look something like this:
         #
@@ -97,15 +97,16 @@ if __name__ == "__main__":
         #    export INPUT2=file2.dat
         #    /bin/cat $INPUT1 $INPUT2
         #
-        cus = list()
+        cuds = list()
 
-        for unit_count in range(0, 5120):
-            cu = radical.pilot.ComputeUnitDescription()
-            cu.executable  = "/bin/sleep"
-            cu.arguments   = ["1800"]
-            cu.cores       = 1
-          # cu.input_data  = ["/tmp/test.in.dat"]
-            cus.append(cu)
+        for unit_count in range(0, 8):
+            cud = radical.pilot.ComputeUnitDescription()
+            cud.executable    = "/bin/bash"
+            cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
+            cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
+            cud.cores         = 1
+            cud.input_staging = ['file1.dat', 'file2.dat']
+            cuds.append(cud)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -127,7 +128,7 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cus)
+        units = umgr.submit_units(cuds)
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
