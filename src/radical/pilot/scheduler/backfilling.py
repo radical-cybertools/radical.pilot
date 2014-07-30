@@ -88,8 +88,8 @@ class BackfillingScheduler(Scheduler):
             # as we cannot unregister callbacks, we simply ignore this
             # invokation.  Its probably from a unit we handled previously.
             # (although this should have been final?)
-          # return
-            pass
+            # FIXME: how can I *un*register a unit callback?
+            return
 
         logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
@@ -105,11 +105,12 @@ class BackfillingScheduler(Scheduler):
             if  pid not in self.pilots :
                 raise RuntimeError ('cannot handle unit %s of pilot %s' % (uid, pid))
 
-            self.pilots[pid]['caps'] += unit.description.cores
-            self._reschedule (pid=pid)
-            self.runq.remove (unit)
-
-            # FIXME: how can I *un*register a unit callback?
+            if  unit in self.runq :
+                # only interpret this event once, on any of the states above,
+                # whichever occurs first
+                self.pilots[pid]['caps'] += unit.description.cores
+                self.runq.remove (unit)
+                self._reschedule (pid=pid)
 
 
     # -------------------------------------------------------------------------
@@ -285,7 +286,7 @@ class BackfillingScheduler(Scheduler):
                             raise RuntimeError ("scheduler queue should only contain NEW units (%s)" % uid)
 
                         self.pilots[pid]['caps'] -= ud.cores
-                        schedule['units'][unit] = pid
+                        schedule['units'][unit]   = pid
 
                         # scheduled units are removed from the waitq
                         self.waitq.remove (unit)
