@@ -42,6 +42,7 @@ class BackfillingScheduler(Scheduler):
         self.manager = manager
         self.session = session
         self.waitq   = list()
+        self.runq    = list()
         self.pmgrs   = list()
         self.pilots  = dict()
 
@@ -83,7 +84,7 @@ class BackfillingScheduler(Scheduler):
         
         uid = unit.uid
 
-        if  not unit in self.waitq :
+        if  not unit in self.runq :
             # as we cannot unregister callbacks, we simply ignore this
             # invokation.  Its probably from a unit we handled previously.
             # (although this should have been final?)
@@ -106,6 +107,7 @@ class BackfillingScheduler(Scheduler):
 
             self.pilots[pid]['caps'] += unit.description.cores
             self._reschedule (pid=pid)
+            self.runq.remove (unit)
 
             # FIXME: how can I *un*register a unit callback?
 
@@ -194,6 +196,9 @@ class BackfillingScheduler(Scheduler):
             if  unit in self.waitq :
                 raise RuntimeError ('Unit cannot be scheduled twice (%s)' % unit.uid)
 
+            if  unit in self.runq :
+                raise RuntimeError ('Unit cannot be scheduled twice (%s)' % unit.uid)
+
             if  unit.state != NEW :
                 raise RuntimeError ('Unit %s not in NEW state (%s)' % unit.uid)
 
@@ -214,6 +219,9 @@ class BackfillingScheduler(Scheduler):
 
             uid = unit.uid
 
+            if  unit in self.runq  :
+                raise RuntimeError ('cannot unschedule assigned unit (%s)' % uid)
+
             if  not unit in self.waitq :
                 raise RuntimeError ('cannot remove unknown unit (%s)' % uid)
 
@@ -222,6 +230,8 @@ class BackfillingScheduler(Scheduler):
 
             self.waitq.remove (unit)
             # FIXME: how can I *un*register a pilot callback?
+            # FIXME: is this is a race condition with the unit state callback
+            #        actions on the queues?
 
 
     # -------------------------------------------------------------------------
@@ -279,6 +289,7 @@ class BackfillingScheduler(Scheduler):
 
                         # scheduled units are removed from the waitq
                         self.waitq.remove (unit)
+                        self.runq.append  (unit)
                         break
 
                 # unit was not scheduled...
