@@ -11,7 +11,8 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-RESOURCE = 'india.futuregrid.org'
+#RESOURCE = 'sierra.futuregrid.org'
+RESOURCE = 'localhost'
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
 
@@ -55,7 +56,7 @@ if __name__ == "__main__":
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
-            session=session, scheduler=radical.pilot.SCHED_LATE_BINDING)
+            session=session, scheduler=radical.pilot.SCHED_BACKFILLING)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
@@ -70,7 +71,7 @@ if __name__ == "__main__":
                         'action':  radical.pilot.TRANSFER
             }
             # Above sd_input is semantically identical to sd_input below
-            sd_input = 'input_file-%d.txt' % unit_count
+            #sd_input = 'input_file-%d.txt' % unit_count
 
             # Configure the staging directive for output file.
             sd_output = {'source': 'output_file-%d.txt' % unit_count,
