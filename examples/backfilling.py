@@ -128,12 +128,12 @@ if __name__ == "__main__":
     for unit_count in range(0, 30):
         cu = rp.ComputeUnitDescription()
         cu.kernel      = 'TEST'
-        cu.arguments   = ["5"]
+      # cu.arguments   = ["5"]
         cus.append(cu)
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
-    umgr = rp.UnitManager (session=session, scheduler=rp.SCHED_LATE_BINDING)
+    umgr = rp.UnitManager (session=session, scheduler=rp.SCHED_BACKFILLING)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager

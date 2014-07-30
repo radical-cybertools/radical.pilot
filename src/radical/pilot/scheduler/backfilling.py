@@ -1,9 +1,9 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: radical.pilot.scheduler.LateBindingScheduler
+.. module:: radical.pilot.scheduler.BackfillingScheduler
    :platform: Unix
-   :synopsis: A multi-pilot, late-binding scheduler.
+   :synopsis: A multi-pilot, backfilling scheduler.
 
 .. moduleauthor:: Mark Santcroos <mark.santcroos@rutgers.edu>
 """
@@ -20,10 +20,10 @@ from radical.pilot.states              import *
 
 # -----------------------------------------------------------------------------
 # 
-class LateBindingScheduler(Scheduler):
+class BackfillingScheduler(Scheduler):
     """
     
-    LateBindingScheduler implements a multi-pilot, late-binding scheduling
+    BackfillingScheduler implements a multi-pilot, backfilling scheduling
     algorithm. Only schedules CUs to Pilots that are active and have
     a free-slot.
 
@@ -42,6 +42,7 @@ class LateBindingScheduler(Scheduler):
         self.manager = manager
         self.session = session
         self.waitq   = list()
+        self.runq    = list()
         self.pmgrs   = list()
         self.pilots  = dict()
 
@@ -83,7 +84,7 @@ class LateBindingScheduler(Scheduler):
         
         uid = unit.uid
 
-        if  not unit in self.waitq :
+        if  not unit in self.runq :
             # as we cannot unregister callbacks, we simply ignore this
             # invokation.  Its probably from a unit we handled previously.
             # (although this should have been final?)
@@ -92,7 +93,7 @@ class LateBindingScheduler(Scheduler):
 
         logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
-        if  state in [DONE, FAILED, CANCELED] :
+        if  state in [PENDING_OUTPUT_STAGING, STAGING_OUTPUT, DONE, FAILED, CANCELED] :
             # the pilot which owned this CU should now have free slots available
             # FIXME: how do I get the pilot from the CU?
             
@@ -106,6 +107,7 @@ class LateBindingScheduler(Scheduler):
 
             self.pilots[pid]['caps'] += unit.description.cores
             self._reschedule (pid=pid)
+            self.runq.remove (unit)
 
             # FIXME: how can I *un*register a unit callback?
 
@@ -194,6 +196,9 @@ class LateBindingScheduler(Scheduler):
             if  unit in self.waitq :
                 raise RuntimeError ('Unit cannot be scheduled twice (%s)' % unit.uid)
 
+            if  unit in self.runq :
+                raise RuntimeError ('Unit cannot be scheduled twice (%s)' % unit.uid)
+
             if  unit.state != NEW :
                 raise RuntimeError ('Unit %s not in NEW state (%s)' % unit.uid)
 
@@ -214,6 +219,9 @@ class LateBindingScheduler(Scheduler):
 
             uid = unit.uid
 
+            if  unit in self.runq  :
+                raise RuntimeError ('cannot unschedule assigned unit (%s)' % uid)
+
             if  not unit in self.waitq :
                 raise RuntimeError ('cannot remove unknown unit (%s)' % uid)
 
@@ -222,6 +230,8 @@ class LateBindingScheduler(Scheduler):
 
             self.waitq.remove (unit)
             # FIXME: how can I *un*register a pilot callback?
+            # FIXME: is this is a race condition with the unit state callback
+            #        actions on the queues?
 
 
     # -------------------------------------------------------------------------
@@ -251,7 +261,7 @@ class LateBindingScheduler(Scheduler):
             raise RuntimeError ("Invalid pilot (%s)" % pid)
             
 
-        print "Late-binding re-scheduling of %s units" % len(self.waitq)
+        print "backfilling re-scheduling of %s units" % len(self.waitq)
 
         schedule           = dict()
         schedule['units']  = dict()
@@ -279,6 +289,7 @@ class LateBindingScheduler(Scheduler):
 
                         # scheduled units are removed from the waitq
                         self.waitq.remove (unit)
+                        self.runq.append  (unit)
                         break
 
                 # unit was not scheduled...
