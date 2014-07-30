@@ -92,7 +92,7 @@ class BackfillingScheduler(Scheduler):
 
         logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
-        if  state in [DONE, FAILED, CANCELED] :
+        if  state in [PENDING_OUTPUT_STAGING, STAGING_OUTPUT, DONE, FAILED, CANCELED] :
             # the pilot which owned this CU should now have free slots available
             # FIXME: how do I get the pilot from the CU?
             
