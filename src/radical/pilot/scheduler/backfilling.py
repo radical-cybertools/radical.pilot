@@ -1,9 +1,9 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: radical.pilot.scheduler.LateBindingScheduler
+.. module:: radical.pilot.scheduler.BackfillingScheduler
    :platform: Unix
-   :synopsis: A multi-pilot, late-binding scheduler.
+   :synopsis: A multi-pilot, backfilling scheduler.
 
 .. moduleauthor:: Mark Santcroos <mark.santcroos@rutgers.edu>
 """
@@ -20,10 +20,10 @@ from radical.pilot.states              import *
 
 # -----------------------------------------------------------------------------
 # 
-class LateBindingScheduler(Scheduler):
+class BackfillingScheduler(Scheduler):
     """
     
-    LateBindingScheduler implements a multi-pilot, late-binding scheduling
+    BackfillingScheduler implements a multi-pilot, backfilling scheduling
     algorithm. Only schedules CUs to Pilots that are active and have
     a free-slot.
 
@@ -251,7 +251,7 @@ class LateBindingScheduler(Scheduler):
             raise RuntimeError ("Invalid pilot (%s)" % pid)
             
 
-        print "Late-binding re-scheduling of %s units" % len(self.waitq)
+        print "backfilling re-scheduling of %s units" % len(self.waitq)
 
         schedule           = dict()
         schedule['units']  = dict()

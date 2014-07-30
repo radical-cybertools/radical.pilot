@@ -12,14 +12,14 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 from direct_submission import DirectSubmissionScheduler
-from round_robin import RoundRobinScheduler
-from late_binding import LateBindingScheduler
+from round_robin       import RoundRobinScheduler
+from backfilling       import BackfillingScheduler
 
 # -----------------------------------------------------------------------------
 # Constants
 SCHED_ROUND_ROBIN       = "round_robin"
 SCHED_DIRECT_SUBMISSION = "direct_submission"
-SCHED_LATE_BINDING      = "late_binding"
+SCHED_BACKFILLING       = "backfilling"
 
 # -----------------------------------------------------------------------------
 # 
@@ -28,6 +28,6 @@ def get_scheduler(manager, name, session):
     """
     if   name == SCHED_ROUND_ROBIN      : return RoundRobinScheduler       (manager, session)
     elif name == SCHED_DIRECT_SUBMISSION: return DirectSubmissionScheduler (manager, session)
-    elif name == SCHED_LATE_BINDING     : return LateBindingScheduler      (manager, session)
+    elif name == SCHED_BACKFILLING      : return BackfillingScheduler      (manager, session)
     else                                : raise RuntimeError("Scheduler '%s' doesn't exist." % name)
 
