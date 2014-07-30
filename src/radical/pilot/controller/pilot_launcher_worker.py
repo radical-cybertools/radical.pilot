@@ -53,7 +53,7 @@ class PilotLauncherWorker(multiprocessing.Process):
 
     # --------------------------------------------------------------------------
     #
-    def check_pilot_states (self) :
+    def check_pilot_states (self, pilot_col) :
 
         pending_pilots = pilot_col.find(
             {"pilotmanager": self.pilot_manager_id,
@@ -143,7 +143,7 @@ class PilotLauncherWorker(multiprocessing.Process):
             # we assume that the job has failed for some reasons and update
             # the state of the ComputePilot accordingly.
             if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
-                self.check_pilot_states ()
+                self.check_pilot_states (pilot_col)
                 last_job_check = time.time()
 
 
