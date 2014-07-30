@@ -362,28 +362,23 @@ def plot_session (dbclient, dbname, session) :
         with open ("/tmp/rp.%s.pilot.callbacks.%s.dat" % (session, pid), "w") as dat :
             if  'callbackhistory' in pilot :
                 for event in pilot['callbackhistory'] :
-                  # print event
                     etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
                     seconds = ru.time_diff (start, event['timestamp'])
                     maxtime = max (maxtime, seconds)
                     dat.write ("%10.2f  %-25s\n" % (seconds, etag))
                 dat.write ("\n")
             else :
-                print 'no pilot callbacks?'
-              # pprint.pprint (pilot)
+                print 'no pilot callbacks'
             delete_me.append (dat.name)
 
             
         with open ("/tmp/rp.%s.unit.states.%s.dat" % (session, pid), "w") as dat :
 
             for unit_id in pilot['unit_ids'] :
-                print unit_id
 
                 for unit in docs['unit'] :
-                    print "  %s == %s?" % (unit_id, str(unit['_id']))
                     if  unit_id == str(unit['_id']) :
                         for event in unit['statehistory'] :
-                            print "  %s" % event
                             etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
                             seconds = ru.time_diff (start, event['timestamp'])
                             maxtime = max (maxtime, seconds)

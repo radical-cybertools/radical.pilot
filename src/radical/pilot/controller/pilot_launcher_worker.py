@@ -42,16 +42,71 @@ class PilotLauncherWorker(multiprocessing.Process):
         """Creates a new pilot launcher background process.
         """
         self._session = session
-        self._local_pilots = []
 
         # Multiprocessing stuff
         multiprocessing.Process.__init__(self)
         self.daemon = True
 
         self.db_connection_info = db_connection_info
-        self.pilot_manager_id = pilot_manager_id
+        self.pilot_manager_id   = pilot_manager_id
+        self.name               = "PilotLauncherWorker-%s" % str(number)
 
-        self.name = "PilotLauncherWorker-%s" % str(number)
+    # --------------------------------------------------------------------------
+    #
+    def check_pilot_states (self, pilot_col) :
+
+        pending_pilots = pilot_col.find(
+            {"pilotmanager": self.pilot_manager_id,
+             "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]}}
+        )
+
+        for pending_pilot in pending_pilots:
+
+            reconnected = False
+            pilot_id    = pending_pilot["_id"]
+            saga_job_id = pending_pilot["saga_job_id"]
+            logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
+            
+            # Create a job service object:
+            try: 
+                js_url      = saga_job_id.split("]-[")[0][1:]
+                js          = saga.job.Service(js_url, session=self._session)
+                saga_job    = js.get_job(saga_job_id)
+                reconnected = True
+
+                if saga_job.state == saga.job.FAILED:
+                    log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
+
+                    ts = datetime.datetime.utcnow()
+                    pilot_col.update(
+                        {"_id": pilot_id},
+                        {"$set": {"state": FAILED},
+                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                         "$push": {"log": log_message}}
+                    )
+                    logger.error(log_message)
+                js.close()
+
+            except Exception as e:
+
+                if  not reconnected :
+                    logger.warning ('could not reconnect to pilot for state check')
+
+                else :
+
+                    logger.warning ('pilot state check failed: %s' % e)
+                    log_message = "Couldn't determine job state for ComputePilot %s. " \
+                                  "Assuming it has failed." % pilot_id
+
+                    ts = datetime.datetime.utcnow()
+                    pilot_col.update(
+                        {"_id": pilot_id},
+                        {"$set": {"state": FAILED},
+                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                         "$push": {"log": log_message}}
+                    )
+                    logger.error(log_message)
+
 
     # ------------------------------------------------------------------------
     #
@@ -87,50 +142,10 @@ class PilotLauncherWorker(multiprocessing.Process):
             # SAGA job is still pending in the queue. If that is not the case, 
             # we assume that the job has failed for some reasons and update
             # the state of the ComputePilot accordingly.
-            if last_job_check + JOB_CHECK_INTERVAL < time.time():
-                pending_pilots = pilot_col.find(
-                    {"pilotmanager": self.pilot_manager_id,
-                     "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]}}
-                )
-
-                for pending_pilot in pending_pilots:
-                    pilot_id    = pending_pilot["_id"]
-                    saga_job_id = pending_pilot["saga_job_id"]
-                    logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
-                    
-                    # Create a job service object:
-                    try: 
-                        js_url = saga_job_id.split("]-[")[0][1:]
-                        js = saga.job.Service(js_url, session=self._session)
-                        saga_job = js.get_job(saga_job_id)
-                        if saga_job.state == saga.job.FAILED:
-                            log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
-
-                            ts = datetime.datetime.utcnow()
-                            pilot_col.update(
-                                {"_id": pilot_id},
-                                {"$set": {"state": FAILED},
-                                 "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                                 "$push": {"log": log_message}}
-                            )
-                            logger.error(log_message)
-                        js.close()
-
-                    except Exception, ex:
-
-                        log_message = "Couldn't determine job state for ComputePilot %s. Assuming it has failed to launch." % pilot_id
-
-                        ts = datetime.datetime.utcnow()
-                        pilot_col.update(
-                            {"_id": pilot_id},
-                            {"$set": {"state": FAILED},
-                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                             "$push": {"log": log_message}}
-                        )
-                        logger.error(log_message)
-
-                # Update timer
+            if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
+                self.check_pilot_states (pilot_col)
                 last_job_check = time.time()
+
 
             # See if we can find a ComputePilot that is waiting to be launched.
             # If we find one, we use SAGA to create a job service, a job 
@@ -378,8 +393,6 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     saga_job_id = pilotjob.id
                     log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
-
-                    self._local_pilots.append(saga_job_id)
 
                     log_messages.append(log_msg)
                     logger.debug(log_msg)
