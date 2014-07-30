@@ -6,8 +6,8 @@ import os
 #       'source':   None, # radical.pilot.Url() or string
 #       'target':   None, # radical.pilot.Url() or string
 #       'action':   None, # COPY, LINK, MOVE, TRANSFER
-#       'flags':    None, # SKIP_FAILED, CREATE_PARENTS
-#       'priority': 0     # Control ordering of actions, mainly interesting for output probably
+#       'flags':    None, # CREATE_PARENTS
+#       'priority': 0     # Control ordering of actions
 #   }
 
 #
@@ -21,15 +21,15 @@ TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special 
 #
 # Flags
 #
+CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing file
 SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
-CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing to staging area
 
 #
 # Defaults
 #
 DEFAULT_ACTION   = TRANSFER
 DEFAULT_PRIORITY = 0
-DEFAULT_FLAGS    = None
+DEFAULT_FLAGS    = [CREATE_PARENTS, SKIP_FAILED]
 
 #-----------------------------------------------------------------------------
 #
