@@ -143,7 +143,7 @@ class PilotLauncherWorker(multiprocessing.Process):
             # we assume that the job has failed for some reasons and update
             # the state of the ComputePilot accordingly.
             if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
-                check_pilot_states ()
+                self.check_pilot_states ()
                 last_job_check = time.time()
 
 
