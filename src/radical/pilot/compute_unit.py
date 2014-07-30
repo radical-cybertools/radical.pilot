@@ -23,7 +23,7 @@ from radical.pilot.exceptions import *
 from bson import ObjectId
 from radical.pilot.db.database import COMMAND_CANCEL_COMPUTE_UNIT
 
-from radical.pilot.staging_directives import TRANSFER
+from radical.pilot.staging_directives import expand_staging_directive
 
 # -----------------------------------------------------------------------------
 #
@@ -81,41 +81,11 @@ class ComputeUnit(object):
         # Make a copy of the UD to work on without side-effects.
         ud_copy = copy.deepcopy(unit_description)
 
+        # If staging directives exist, try to expand them
         if ud_copy.input_staging:
-            new_input_staging = []
-            for sd in ud_copy.input_staging:
-                if isinstance(sd, str):
-                    print 'STRING: %s' % sd
-                    new_sd = {'source': sd,
-                              'target': sd,
-                              'action': TRANSFER
-                    }
-                    logger.debug("Converting string '%s' into dict '%s'" % (sd, new_sd))
-                    new_input_staging.append(new_sd)
-                elif isinstance(sd, dict):
-                    print 'DICT: %s' % sd
-                    new_input_staging.append(sd)
-                else:
-                    print 'UNKNOWN: %s' % sd
-            ud_copy.input_staging = new_input_staging
-
+            ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging, logger)
         if ud_copy.output_staging:
-            new_output_staging = []
-            for sd in ud_copy.output_staging:
-                if isinstance(sd, str):
-                    print 'STRING: %s' % sd
-                    new_sd = {'source': sd,
-                              'target': sd,
-                              'action': TRANSFER
-                    }
-                    logger.debug("Converting string '%s' into dict '%s'" % (sd, new_sd))
-                    new_output_staging.append(new_sd)
-                elif isinstance(sd, dict):
-                    print 'DICT: %s' % sd
-                    new_output_staging.append(sd)
-                else:
-                    print 'UNKNOWN: %s' % sd
-            ud_copy.output_staging = new_output_staging
+            ud_copy.output_staging = expand_staging_directive(ud_copy.output_staging, logger)
 
         computeunit._description = ud_copy
         computeunit._manager     = unit_manager_obj
