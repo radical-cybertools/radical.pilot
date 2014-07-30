@@ -540,7 +540,6 @@ def plot_session (dbclient, dbname, session) :
         this_pid = str(pilot['_id'])
 
         with open ("/tmp/rp.%s.pilot.slots.%s.sdat" % (session, pid), "w") as dat :
-        with open ("/tmp/rp.%s.pilot.slots.%s.sdat" % (session, pid), "w") as dat :
 
             for e in events :
 
