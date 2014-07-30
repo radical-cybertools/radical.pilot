@@ -1,4 +1,5 @@
 #from radical.pilot.utils.logger import logger
+import os
 
 # The Staging Directives are specified using a dict in the following form:
 #   staging_directive = {
@@ -47,7 +48,7 @@ def expand_staging_directive(staging_directive, logger):
             # We detected a string, convert into dict
 
             new_sd = {'source':   sd,
-                      'target':   sd,
+                      'target':   os.path.basename(sd),
                       'action':   DEFAULT_ACTION,
                       'flags':    DEFAULT_FLAGS,
                       'priority': DEFAULT_PRIORITY
@@ -72,14 +73,14 @@ def expand_staging_directive(staging_directive, logger):
             else:
                 priority = DEFAULT_PRIORITY
 
-            if 'target' in sd:
-                target = sd['target']
-            else:
-                target = None
-
             if not 'source' in sd:
                 raise Exception("Staging directive dict has no source member!")
             source = sd['source']
+
+            if 'target' in sd:
+                target = sd['target']
+            else:
+                target = os.path.basename(source)
 
             if isinstance(source, str):
                 # This is a regular entry, complete and append it
@@ -124,7 +125,7 @@ def expand_staging_directive(staging_directive, logger):
                     for src_entry in source:
 
                         new_sd = {'source':   src_entry,
-                                  'target':   src_entry,
+                                  'target':   os.path.basename(src_entry),
                                   'action':   action,
                                   'flags':    flags,
                                   'priority': priority

@@ -11,7 +11,8 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-RESOURCE = 'sierra.futuregrid.org'
+#RESOURCE = 'sierra.futuregrid.org'
+RESOURCE = 'localhost'
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
 
@@ -41,7 +42,7 @@ if __name__ == "__main__":
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
-            session=session, scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+            session=session, scheduler=radical.pilot.SCHED_BACKFILLING)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
