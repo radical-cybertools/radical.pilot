@@ -199,7 +199,6 @@ class InputFileTransferWorker(multiprocessing.Process):
                     if wu['FTW_Input_Status'] == EXECUTING and \
                             not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['FTW_Input_Directives']):
                         # All Input Directives for this FTW are done, mark the WU accordingly
-                        #wu['FTW_Input_Status'] = DONE # TODO: Is this changing of the "local" copy required?
                         um_col.update({"_id": ObjectId(wu["_id"])},
                                       {'$set': {'FTW_Input_Status': DONE},
                                        '$push': {'log': 'All FTW Input Staging Directives done - %d.' % self._worker_number}})
@@ -208,7 +207,6 @@ class InputFileTransferWorker(multiprocessing.Process):
                     if wu['Agent_Input_Status'] == EXECUTING and \
                             not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['Agent_Input_Directives']):
                         # All Input Directives for this Agent are done, mark the WU accordingly
-                        #wu['Agent_Input_Status'] = DONE # TODO: Is this changing of the "local" copy required?
                         um_col.update({"_id": ObjectId(wu["_id"])},
                                        {'$set': {'Agent_Input_Status': DONE},
                                         '$push': {'log': 'All Agent Input Staging Directives done - %d.' % self._worker_number}
