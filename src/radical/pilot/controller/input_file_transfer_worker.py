@@ -220,8 +220,8 @@ class InputFileTransferWorker(multiprocessing.Process):
                 ts = datetime.datetime.utcnow()
                 um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
-                           "Agent_Input_Status": { "$in": [ NULL, DONE ] },
-                           "FTW_Input_Status": { "$in": [ NULL, DONE ] },
+                           "Agent_Input_Status": { "$in": [ None, DONE ] },
+                           "FTW_Input_Status": { "$in": [ None, DONE ] },
                            "state": STAGING_INPUT
                     },
                     update={"$set": {

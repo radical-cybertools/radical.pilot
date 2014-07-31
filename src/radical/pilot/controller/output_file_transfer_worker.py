@@ -16,6 +16,7 @@ import multiprocessing
 from bson.objectid import ObjectId
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
+from radical.pilot.staging_directives import CREATE_PARENTS
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
@@ -112,6 +113,7 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         action = sd['action']
                         source = sd['source']
                         target = sd['target']
+                        flags  = sd['flags']
 
                         # Mark the beginning of transfer this StagingDirective
                         um_col.find_and_modify(
@@ -141,7 +143,12 @@ class OutputFileTransferWorker(multiprocessing.Process):
                         output_file = saga.filesystem.File(saga.Url(abs_source),
                             session=self._session
                         )
-                        output_file.copy(saga.Url(abs_target))
+
+                        if CREATE_PARENTS in flags:
+                            copy_flags = saga.filesystem.CREATE_PARENTS
+                        else:
+                            copy_flags = 0
+                        output_file.copy(saga.Url(abs_target), flags=copy_flags)
                         output_file.close()
 
                         # If all went fine, update the state of this StagingDirective to Done
@@ -213,8 +220,8 @@ class OutputFileTransferWorker(multiprocessing.Process):
             ts = datetime.datetime.utcnow()
             um_col.find_and_modify(
                 query={"unitmanager": self.unit_manager_id,
-                       "Agent_Output_Status": { "$in": [ NULL, DONE ] },
-                       "FTW_Output_Status": { "$in": [ NULL, DONE ] },
+                       "Agent_Output_Status": { "$in": [ None, DONE ] },
+                       "FTW_Output_Status": { "$in": [ None, DONE ] },
                        "state": STAGING_OUTPUT
                 },
                 update={"$set": {
