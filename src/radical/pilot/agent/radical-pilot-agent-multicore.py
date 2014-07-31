@@ -80,7 +80,6 @@ TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special 
 # -----------------------------------------------------------------------------
 # Common States
 NEW                         = 'New'
-NULL                        = 'Null'
 PENDING                     = 'Pending'
 DONE                        = 'Done'
 CANCELED                    = 'Canceled'

@@ -444,13 +444,13 @@ class UnitManagerController(threading.Thread):
             for unit in units:
 
                 # Create object for staging status tracking
-                unit.FTW_Input_Status = NULL
+                unit.FTW_Input_Status = None
                 unit.FTW_Input_Directives = []
-                unit.Agent_Input_Status = NULL
+                unit.Agent_Input_Status = None
                 unit.Agent_Input_Directives = []
-                unit.FTW_Output_Status = NULL
+                unit.FTW_Output_Status = None
                 unit.FTW_Output_Directives = []
-                unit.Agent_Output_Status = NULL
+                unit.Agent_Output_Status = None
                 unit.Agent_Output_Directives = []
 
                 # Split the input staging directives over the transfer worker and the agent
