@@ -204,32 +204,31 @@ class PilotLauncherWorker(multiprocessing.Process):
                         agent_worker = None
 
                     ########################################################
-                    # database connection parameters
-                    # AM: FIXME: this should use the DB connection tool from
-                    # dbutils...
-                    #
-                    # AM: FIXME: we used to be able to specify DBURLs w/o
-                    #     database name in the path -- that seems broken.
-                    #     A crude fix is included below.
+                    # Database connection parameters
+                    session_uid = self.db_connection_info.session_id
 
-                    db_url        = ru.Url (self.db_connection_info.url)
-                    database_name = db_url.path[1:]
-                    db_url.path   = ''
-                    database_url  = str(db_url)
-                    session_uid   = self.db_connection_info.session_id
+                    database_url = ru.Url(self.db_connection_info.url)
+                    # Set default port if not specified
+                    # (explicit is better than implicit!)
+                    if not database_url.port:
+                        database_url.port = 27017
 
-                    if  not database_name :
+                    database_name = self.db_connection_info.dbname
+                    # Set default database name if not specified
+                    if not database_name:
                         database_name = 'radicalpilot'
 
-                    cwd = os.path.dirname(os.path.realpath(__file__))
+                    ########################################################
+                    # Get directory where pilot_launcher_worker.py lives
+                    plw_dir = os.path.dirname(os.path.realpath(__file__))
 
                     ########################################################
-                    # take 'pilot_agent' as defined in the reosurce configuration
+                    # take 'pilot_agent' as defined in the resource configuration
                     # by default, but override it if set in the Pilot description. 
                     pilot_agent = resource_cfg['pilot_agent']
                     if compute_pilot['description']['pilot_agent_priv'] is not None:
                         pilot_agent = compute_pilot['description']['pilot_agent_priv']
-                    agent_path = os.path.abspath("%s/../agent/%s" % (cwd, pilot_agent))
+                    agent_path = os.path.abspath("%s/../agent/%s" % (plw_dir, pilot_agent))
 
                     log_msg = "Using pilot agent %s" % agent_path
                     log_messages.append(log_msg)
@@ -242,7 +241,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                         bootstrapper = resource_cfg['bootstrapper']
                     else:
                         bootstrapper = 'default_bootstrapper.sh'
-                    bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (cwd, bootstrapper))
+                    bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (plw_dir, bootstrapper))
                     
                     log_msg = "Using bootstrapper %s" % bootstrapper_path
                     log_messages.append(log_msg)
@@ -285,11 +284,10 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     # copying agent-worker.py script to sandbox
                     #########################################################
-                    cwd = os.path.dirname(os.path.abspath(__file__))
 
                     if agent_worker is not None:
                         logger.warning("Using custom agent worker script: %s" % agent_worker)
-                        worker_path = os.path.abspath("%s/../agent/%s" % (cwd, agent_worker))
+                        worker_path = os.path.abspath("%s/../agent/%s" % (plw_dir, agent_worker))
 
                         worker_script_url = saga.Url("file://localhost/%s" % worker_path)
 
@@ -319,9 +317,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                          runtime, logger.level, number_cores, VERSION)
 
                     if 'agent_mongodb_endpoint' in resource_cfg and resource_cfg['agent_mongodb_endpoint'] is not None:
-                        bootstrap_args += " -m %s " % resource_cfg['agent_mongodb_endpoint']
+                        agent_db_url = ru.Url(resource_cfg['agent_mongodb_endpoint'])
+                        bootstrap_args += " -m %s:%d " % (agent_db_url.host, agent_db_url.port)
                     else:
-                        bootstrap_args += " -m %s " % database_url
+                        bootstrap_args += " -m %s:%d " % (database_url.host, database_url.port)
 
                     if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
