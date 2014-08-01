@@ -208,10 +208,15 @@ class PilotLauncherWorker(multiprocessing.Process):
                     session_uid = self.db_connection_info.session_id
 
                     database_url = ru.Url(self.db_connection_info.url)
+
                     # Set default port if not specified
                     # (explicit is better than implicit!)
                     if not database_url.port:
                         database_url.port = 27017
+
+                    # Set default host to localhost if not specified
+                    if not database_url.host:
+                        database_url.host = 'localhost'
 
                     database_name = self.db_connection_info.dbname
                     # Set default database name if not specified
