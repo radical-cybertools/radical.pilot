@@ -485,7 +485,7 @@ def plot_session (dbclient, dbname, session) :
         if  maxtime  > 5*(10**i) :
             timetics = 5*(10**(i-1))
 
-    mtimetics = timetics/10
+    mtimetics = 10
 
     print maxtime
     print timetics
