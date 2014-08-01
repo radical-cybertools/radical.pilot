@@ -138,7 +138,7 @@ do for [term_i=1:words(terms)] {
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set xtics  timetics
-    set mxtics mtimetics
+  # set mxtics mtimetics
     set yrange [0:8]
     set ytics  ("PENDING LAUNCH" 1, \
                 "LAUNCHING     " 2, \
