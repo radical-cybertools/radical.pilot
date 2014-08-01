@@ -190,6 +190,7 @@ class UnitManagerController(threading.Thread):
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+                raise
 
         # If we meet a final state, we record the object's callback history for
         # later evaluation.
@@ -348,6 +349,7 @@ class UnitManagerController(threading.Thread):
             except Exception, ex:
                 logger.error ("Couldn't call '%s' callback function %s: " \
                            % (metric, cb, ex))
+                raise
 
     # ------------------------------------------------------------------------
     #

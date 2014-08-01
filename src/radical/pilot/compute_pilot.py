@@ -393,3 +393,4 @@ class ComputePilot (object):
 
         # now we can send a 'cancel' command to the pilot.
         self._manager.cancel_pilots(self.uid)
+

@@ -96,7 +96,7 @@ class UnitManager(object):
         """
         self._session = session
         self._worker  = None 
-        self._pilots  = []
+        self._pilots  = list()
 
         # keep track of some changing metrics
         self.wait_queue_size = 0
@@ -278,6 +278,10 @@ class UnitManager(object):
         for pilot in pilots :
             self._scheduler.pilot_added (pilot)
 
+        # also keep the instances around
+        for pilot in pilots :
+            self._pilots.append (pilot)
+
 
     # -------------------------------------------------------------------------
     #
@@ -297,6 +301,26 @@ class UnitManager(object):
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         return self._worker.get_pilot_uids()
+
+
+    # -------------------------------------------------------------------------
+    #
+    def get_pilots(self):
+        """get the pilots instances currently associated with
+        the unit manager.
+
+        **Returns:**
+
+              * A list of :class:`radical.pilot.ComputePilot` instances.
+
+        **Raises:**
+
+            * :class:`radical.pilot.PilotException`
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
+        return self._pilots
 
     # -------------------------------------------------------------------------
     #
@@ -342,6 +366,11 @@ class UnitManager(object):
         for pilot_id in pilot_ids :
             self._scheduler.pilot_removed (pilot_id)
 
+        # update instance list
+        for pilot_id in pilot_ids :
+            for pilot in self._pilots[:] :
+                if  pilot_id == pilots.uid :
+                    self._pilots.remove (pilot)
 
     # -------------------------------------------------------------------------
     #

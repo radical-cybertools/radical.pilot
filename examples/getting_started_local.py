@@ -29,6 +29,19 @@ def wait_queue_size_cb(umgr, wait_queue_size):
     print "[Callback]: UnitManager  '%s' wait_queue_size changed to %s." \
         % (umgr.uid, wait_queue_size)
 
+    pilots = umgr.get_pilots ()
+    for pilot in pilots :
+        print "pilot %s: %s" % (pilot.uid, pilot.state)
+
+    if  wait_queue_size == 0 :
+        for pilot in pilots :
+            if  pilot.state in [radical.pilot.PENDING_LAUNCH,
+                                radical.pilot.LAUNCHING     ,
+                                radical.pilot.PENDING_ACTIVE] :
+                print "cancel pilot %s" % pilot.uid
+                umgr.remove_pilot (pilot.uid)
+                pilot.cancel ()
+
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
@@ -80,6 +93,15 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
+        pdesc2 = radical.pilot.ComputePilotDescription()
+        pdesc2.resource = "localhost"
+        pdesc2.runtime  = 10 # minutes
+        pdesc2.cores    = 4
+        pdesc2.cleanup  = True
+
+        # Launch the pilot.
+        pilot2 = pmgr.submit_pilots(pdesc)
+
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
         # uses /bin/cat to concatenate two input files, file1.dat and
         # file2.dat. The output is written to STDOUT. cu.environment is
@@ -112,15 +134,18 @@ if __name__ == "__main__":
         # called every time any of the units managed by the UnitManager
         # change their state.
         umgr.register_callback(unit_state_change_cb, radical.pilot.UNIT_STATE)
-        umgr.register_callback(wait_queue_size_cb,   radical.pilot.WAIT_QUEUE_SIZE)
 
         # Add the previously created ComputePilot to the UnitManager.
-        umgr.add_pilots(pilot)
+        umgr.add_pilots([pilot, pilot2])
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
+
+        # Register also a callback which tells us when all units have been
+        # assigned to pilots
+        umgr.register_callback(wait_queue_size_cb,   radical.pilot.WAIT_QUEUE_SIZE)
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
