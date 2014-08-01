@@ -18,11 +18,11 @@ import weakref
 from radical.pilot.compute_unit import ComputeUnit
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.controller import UnitManagerController
-from radical.pilot.scheduler import get_scheduler
+from radical.pilot.controller   import UnitManagerController
+from radical.pilot.scheduler    import get_scheduler
 
-from radical.pilot.states import *
-from radical.pilot.exceptions import PilotException
+from radical.pilot.states       import *
+from radical.pilot.exceptions   import PilotException
 
 
 # -----------------------------------------------------------------------------
@@ -494,8 +494,6 @@ class UnitManager(object):
                     ud.mpi         = mdtd_bound.mpi
 
 
-            print "pushing %s" % pilot_cu_map[pid]
-
             self._worker.schedule_compute_units (
                 pilot_uid=pid,
                 units=pilot_cu_map[pid]
@@ -583,7 +581,6 @@ class UnitManager(object):
 
         while all_ok is False :
 
-            print " wait for %s (%s)" % (state, self._worker.get_compute_unit_states(unit_uids=unit_ids))
             all_ok = True
             states = list()
 

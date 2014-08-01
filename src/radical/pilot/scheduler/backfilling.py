@@ -64,7 +64,6 @@ class BackfillingScheduler(Scheduler):
 
         pilot_docs = self.manager._worker._db.get_pilots (pilot_ids=self.pilots.keys ())
 
-        print "PILOTS"
         for pilot_doc in pilot_docs :
 
             pid = str (pilot_doc['_id'])
@@ -73,9 +72,6 @@ class BackfillingScheduler(Scheduler):
 
             self.pilots[pid]['state'] = str(pilot_doc.get ('state'))
             self.pilots[pid]['cap']   = int(pilot_doc.get ('capability', 0))
-
-            for pilot in self.pilots :
-                print "%s (%s)" % (pid, pilot_doc.get ('resource', ''))
 
 
     # -------------------------------------------------------------------------
@@ -262,8 +258,6 @@ class BackfillingScheduler(Scheduler):
             raise RuntimeError ("Invalid pilot (%s)" % pid)
             
 
-        print "backfilling re-scheduling of %s units" % len(self.waitq)
-
         schedule           = dict()
         schedule['units']  = dict()
         schedule['pilots'] = self.pilots
@@ -276,7 +270,6 @@ class BackfillingScheduler(Scheduler):
 
             for pid in self.pilots :
 
-                print "scheduler checks pilot %s (%s : %s)" % (pid, self.pilots[pid]['state'], self.pilots[pid]['caps'])
                 if  self.pilots[pid]['state'] in [ACTIVE] :
 
                     if  ud.cores <= self.pilots[pid]['caps'] :
@@ -296,10 +289,8 @@ class BackfillingScheduler(Scheduler):
                 # unit was not scheduled...
                 schedule['units'][unit] = None
 
-
-
-                     
-        print "SCHEDULE"
-        pprint.pprint (schedule)
+        # tell the UM about the schedule
         self.manager.handle_schedule (schedule)
+
+    # --------------------------------------------------------------------------
 

@@ -539,14 +539,12 @@ class UnitManagerController(threading.Thread):
                     wu_notransfer.append(unit)
 
             # Bulk-add all non-transfer units-
-            print "Pushing w/o transfer %s" % wu_notransfer
             self._db.assign_compute_units_to_pilot(
                 units=wu_notransfer,
                 pilot_uid=pilot_uid,
                 pilot_sandbox=pilot_sandbox
             )
 
-            print "Pushing w/  transfer %s" % wu_transfer
             self._db.assign_compute_units_to_pilot(
                 units=wu_transfer,
                 pilot_uid=pilot_uid,
@@ -554,7 +552,6 @@ class UnitManagerController(threading.Thread):
             )
 
             for unit in wu_notransfer:
-                print "pushing unit %s to %s" % (unit.uid, pilot_uid)
                 log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
                 self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
                 #self._set_state(uid, PENDING_EXECUTION, log)
