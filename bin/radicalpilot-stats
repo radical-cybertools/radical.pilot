@@ -421,7 +421,6 @@ def plot_session (dbclient, dbname, session) :
                             seconds     = ru.time_diff (start, event[4])
                             queue_size += 1
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-                            print "  -> %s : %-20s : %s" % (event[4], event[5], queue_size)
 
                     if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.EXECUTING] :
                         if  not uid in dequeued :
@@ -429,7 +428,6 @@ def plot_session (dbclient, dbname, session) :
                             seconds     = ru.time_diff (start, event[4])
                             queue_size -= 1
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-                            print " <-  %s : %-20s : %s" % (event[4], event[5], queue_size)
 
 
 
@@ -465,11 +463,11 @@ def plot_session (dbclient, dbname, session) :
                             if  used :
                                 dat.write ("%10.2f  %6d\n" % (seconds, number+1))
                                 dat.write ("\n")
-                                used    = False
+                                used = False
 
                         elif  slotstate == '+' : 
                             dat.write ("%10.2f  %6d\n" % (seconds, number+1))
-                            used    = True
+                            used = True
 
                         else :
                             print "oops?  invalid slotstate '%s'" % slotstate
@@ -486,9 +484,6 @@ def plot_session (dbclient, dbname, session) :
             timetics = 5*(10**(i-1))
 
   # mtimetics = 10
-
-    print maxtime
-    print timetics
 
     plotfile = "%s/radicalpilot-stats.plot" % os.path.dirname (__file__)
     plotname = os.environ.get ('RP_PLOTNAME', None)
@@ -522,7 +517,7 @@ def plot_session (dbclient, dbname, session) :
         os.system ("mv %s.pdf %s.pdf" % (session, plotname))
 
     for filename in delete_me :
-        print "removing %s" % filename
+      # print "removing %s" % filename
         try :
           # os.remove (filename)
             pass
