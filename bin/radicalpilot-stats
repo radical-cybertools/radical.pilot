@@ -485,7 +485,7 @@ def plot_session (dbclient, dbname, session) :
         if  maxtime  > 5*(10**i) :
             timetics = 5*(10**(i-1))
 
-    mtimetics = 10
+  # mtimetics = 10
 
     print maxtime
     print timetics
@@ -496,7 +496,7 @@ def plot_session (dbclient, dbname, session) :
                                          
     cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
     cmd +=        " -e  timetics=%d "       % timetics
-    cmd +=        " -e  mtimetics=%d "      % mtimetics
+  # cmd +=        " -e  mtimetics=%d "      % mtimetics
     cmd +=        " -e  maxslots=%d "       % maxslots
     for idx,pid in enumerate(pids) :
         cmd +=    " -e  slotnum_%d=%d "     % (idx+1, slots[idx])
