@@ -1508,31 +1508,33 @@ class InputStagingWorker(multiprocessing.Process):
                     raise Exception('Action %s not supported' % directive['action'])
 
                 # If we reached this far, assume the staging succeeded
-                staging_state = DONE
                 log_message += ' succeeded.'
                 self._log.info(log_message)
 
+                # If all went fine, update the state of this StagingDirective to Done
+                self._w.update({'_id': ObjectId(wu_id),
+                                'Agent_Input_Status': EXECUTING,
+                                'Agent_Input_Directives.state': PENDING,
+                                'Agent_Input_Directives.source': directive['source'],
+                                'Agent_Input_Directives.target': directive['target']},
+                               {'$set': {'Agent_Input_Directives.$.state': DONE},
+                                '$push': {'log': log_message}})
+
             except:
                 # If we catch an exception, assume the staging failed
-                staging_state = FAILED
                 log_message += ' failed.'
                 self._log.error(log_message)
 
-            # If all went fine, update the state of this StagingDirective to Done
-            self._w.find_and_modify(
-                query={"_id" : ObjectId(wu_id),
-                       'Agent_Input_Status': EXECUTING,
-                       'Agent_Input_Directives.state': PENDING,
-                       'Agent_Input_Directives.source': directive['source'],
-                       'Agent_Input_Directives.target': directive['target'],
-                       },
-                update={'$set': {'Agent_Input_Directives.$.state': staging_state},
-                        '$push': {'log': log_message}
-                }
-            )
-
-
-
+                # If a staging directive fails, fail the CU also.
+                self._w.update({'_id': ObjectId(wu_id),
+                                'Agent_Input_Status': EXECUTING,
+                                'Agent_Input_Directives.state': PENDING,
+                                'Agent_Input_Directives.source': directive['source'],
+                                'Agent_Input_Directives.target': directive['target']},
+                               {'$set': {'Agent_Input_Directives.$.state': FAILED,
+                                         'Agent_Input_Status': FAILED,
+                                         'state': FAILED},
+                                '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
 
 
 # ----------------------------------------------------------------------------
@@ -1620,17 +1622,13 @@ class OutputStagingWorker(multiprocessing.Process):
                         self._log.error('Action %s not supported' % directive['action'])
 
                     # If all went fine, update the state of this StagingDirective to Done
-                    self._w.find_and_modify(
-                        query={"_id" : ObjectId(wu_id),
-                               'Agent_Output_Status': EXECUTING,
-                               'Agent_Output_Directives.state': PENDING,
-                               'Agent_Output_Directives.source': source,
-                               'Agent_Output_Directives.target': target,
-                               },
-                        update={'$set': {'Agent_Output_Directives.$.state': DONE},
-                                '$push': {'log': logmessage}
-                        }
-                    )
+                    self._w.update({'_id' : ObjectId(wu_id),
+                                    'Agent_Output_Status': EXECUTING,
+                                    'Agent_Output_Directives.state': PENDING,
+                                    'Agent_Output_Directives.source': source,
+                                    'Agent_Output_Directives.target': target},
+                                   {'$set': {'Agent_Output_Directives.$.state': DONE},
+                                    '$push': {'log': logmessage}})
 
                 except Queue.Empty:
                     # do nothing and sleep if we don't have any queued staging
