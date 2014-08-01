@@ -21,6 +21,16 @@ if DBURL is None:
 
 #------------------------------------------------------------------------------
 #
+def wait_queue_size_cb(umgr, wait_queue_size):
+    """ 
+    this callback is called when the size of the unit managers wait_queue
+    changes.
+    """
+    print "[Callback]: UnitManager  '%s' wait_queue_size changed to %s." \
+        % (umgr.uid, wait_queue_size)
+
+#------------------------------------------------------------------------------
+#
 def pilot_state_cb(pilot, state):
     """pilot_state_change_cb() is a callback function. It gets called very
     time a ComputePilot changes its state.
@@ -36,7 +46,7 @@ def unit_state_change_cb(unit, state):
     """unit_state_change_cb() is a callback function. It gets called very
     time a ComputeUnit changes its state.
     """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
+    print "[Callback]: ComputeUnit  '{0}' state changed to {1}.".format(
         unit.uid, state)
     if state == radical.pilot.states.FAILED:
         print "            Log: %s" % unit.log[-1]
@@ -96,12 +106,13 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+            scheduler=radical.pilot.SCHED_BACKFILLING)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
         # change their state.
-        umgr.register_callback(unit_state_change_cb)
+        umgr.register_callback(unit_state_change_cb, radical.pilot.UNIT_STATE)
+        umgr.register_callback(wait_queue_size_cb,   radical.pilot.WAIT_QUEUE_SIZE)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)

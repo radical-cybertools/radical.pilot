@@ -15,10 +15,11 @@ import threading
 
 from multiprocessing import Pool
 
-from radical.utils import which
+from radical.utils        import which
+from radical.utils        import Url
+from radical.pilot.types  import *
 from radical.pilot.states import *
 from radical.pilot.utils.logger import logger
-from radical.utils import Url
 
 from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
 from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
@@ -68,7 +69,7 @@ class UnitManagerController(threading.Thread):
 
         # The manager-level list.
         #
-        self._manager_callbacks = list()
+        self._manager_callbacks = dict()
 
         # The MongoDB database handle.
         self._db = db_connection
@@ -159,7 +160,7 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def call_callbacks(self, unit_id, new_state):
+    def call_unit_state_callbacks(self, unit_id, new_state):
         """Wrapper function to call all all relevant callbacks, on unit-level
         as well as manager-level.
         """
@@ -182,7 +183,7 @@ class UnitManagerController(threading.Thread):
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
-        for cb in self._manager_callbacks:
+        for cb in self._manager_callbacks[UNIT_STATE]:
             try:
                 cb(self._shared_data[unit_id]['facade_object'],
                    new_state)
@@ -226,7 +227,7 @@ class UnitManagerController(threading.Thread):
 
     #         # The state of the unit has changed, We call all
     #         # unit-level callbacks to propagate this.
-    #         self.call_callbacks(unit_uid, state)
+    #         self.call_unit_state_callbacks(unit_uid, state)
 
     #     # Release the shared data lock.
     #     self._shared_data_lock.release()
@@ -279,7 +280,7 @@ class UnitManagerController(threading.Thread):
 
                     # The state of the unit has changed, We call all
                     # unit-level callbacks to propagate this.
-                    self.call_callbacks(unit_id, new_state)
+                    self.call_unit_state_callbacks(unit_id, new_state)
 
             # After the first iteration, we are officially initialized!
             if not self._initialized.is_set():
@@ -315,20 +316,38 @@ class UnitManagerController(threading.Thread):
             self._shared_data[unit_uid]['facade_object'] = unit # weakref.ref(unit)
             self._shared_data_lock.release()
 
-        # Callbacks can only be registered when the ComputeAlready has a
+        # Callbacks can only be registered when the ComputeUnit lready has a
         # state. To partially address this shortcomming we call the callback
-        # with the current ComputePilot state as soon as it is registered.
-        self.call_callbacks(
+        # with the current ComputeUnit state as soon as it is registered.
+        self.call_unit_state_callbacks(
             unit_uid,
             self._shared_data[unit_uid]["data"]["state"]
         )
 
     # ------------------------------------------------------------------------
     #
-    def register_manager_callback(self, callback_func):
+    def register_manager_callback(self, callback_func, metric):
         """Registers a manager-level callback.
         """
-        self._manager_callbacks.append(callback_func)
+        if not metric in self._manager_callbacks :
+            self._manager_callbacks[metric] = list()
+
+        self._manager_callbacks[metric].append(callback_func)
+
+    # ------------------------------------------------------------------------
+    #
+    def fire_manager_callback(self, metric, obj, value):
+        """Fire a manager-level callback.
+        """
+        if  not metric in self._manager_callbacks :
+            self._manager_callbacks[metric] = list()
+
+        for cb in self._manager_callbacks[metric] :
+            try:
+                cb (obj, value)
+            except Exception, ex:
+                logger.error ("Couldn't call '%s' callback function %s: " \
+                           % (metric, cb, ex))
 
     # ------------------------------------------------------------------------
     #

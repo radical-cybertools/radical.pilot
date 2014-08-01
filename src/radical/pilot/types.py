@@ -24,3 +24,15 @@ DATA              = 1
 COMPUTE           = 2
 ANY               = DATA | COMPUTE
 
+# -----------------------------------------------------------------------------
+#
+# definitions of metrics
+#
+UNIT_STATE           = 'UNIT_STATE'
+WAIT_QUEUE_SIZE      = 'WAIT_QUEUE_SIZE'
+
+UNIT_MANAGER_METRICS = [UNIT_STATE, 
+                        WAIT_QUEUE_SIZE]
+
+
+

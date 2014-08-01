@@ -21,9 +21,9 @@ from radical.pilot.utils.logger import logger
 from radical.pilot.controller   import UnitManagerController
 from radical.pilot.scheduler    import get_scheduler
 
+from radical.pilot.types        import *
 from radical.pilot.states       import *
 from radical.pilot.exceptions   import PilotException
-
 
 # -----------------------------------------------------------------------------
 #
@@ -97,6 +97,9 @@ class UnitManager(object):
         self._session = session
         self._worker  = None 
         self._pilots  = []
+
+        # keep track of some changing metrics
+        self.wait_queue_size = 0
 
         if _reconnect is False:
             # Start a worker process fo this UnitManager instance. The worker
@@ -430,7 +433,7 @@ class UnitManager(object):
         # we want to use bulk submission to the pilots, so we collect all units
         # assigned to the same set of pilots.  At the same time, we select
         # unscheduled units for later insertion into the wait queue.
-
+        
         if  not schedule :
             logger.debug ('skipping empty unit schedule')
             return
@@ -498,6 +501,16 @@ class UnitManager(object):
                 pilot_uid=pid,
                 units=pilot_cu_map[pid]
             )
+
+
+        # report any change in wait_queue_size
+        old_wait_queue_size = self.wait_queue_size
+
+        self.wait_queue_size = len(unscheduled)
+        if  old_wait_queue_size != self.wait_queue_size :
+      # if True :
+            self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
+                                                self.wait_queue_size)
 
 
     # -------------------------------------------------------------------------
@@ -629,17 +642,36 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_function):
-        """Registers a new callback function with the UnitManager.
-        Manager-level callbacks get called if any of the ComputeUnits managed
-        by the PilotManager change their state.
+    def register_callback(self, callback_function, metric=UNIT_STATE):
+
+        """
+        Registers a new callback function with the UnitManager.  Manager-level
+        callbacks get called if the specified metric changes.  The default
+        metric `UNIT_STATE` fires the callback if any of the ComputeUnits
+        managed by the PilotManager change their state.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state)
+            def callback_func(obj, value)
 
         where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.
+        and ``value`` is the metric.  In the example of `UNIT_STATE` above, the
+        object would be the unit in question, and the value would be the new
+        state of the unit.
+
+        Available metrics are:
+
+          * `UNIT_STATE`: fires when the state of any of the units which are
+            managed by this unit manager instance is changing.  It communicates
+            the unit object instance and the units new state.
+
+          * `WAIT_QUEUE_SIZE`: fires when the number of unscheduled units (i.e.
+            of units which have not been assigned to a pilot for execution)
+            changes.
         """
-        self._worker.register_manager_callback(callback_function)
+
+        if  metric not in UNIT_MANAGER_METRICS :
+            raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
+
+        self._worker.register_manager_callback(callback_function, metric)
 
