@@ -11,7 +11,7 @@ import time
 import saga
 import datetime
 import traceback
-import multiprocessing
+import threading
 import radical.utils as ru
 
 from bson.objectid import ObjectId
@@ -31,7 +31,7 @@ JOB_CHECK_INTERVAL=30 # seconds
 
 # ----------------------------------------------------------------------------
 #
-class PilotLauncherWorker(multiprocessing.Process):
+class PilotLauncherWorker(threading.Thread):
     """PilotLauncherWorker handles bootstrapping and launching of
        the pilot agents.
     """
@@ -43,8 +43,8 @@ class PilotLauncherWorker(multiprocessing.Process):
         """
         self._session = session
 
-        # Multiprocessing stuff
-        multiprocessing.Process.__init__(self)
+        # threading stuff
+        threading.Thread.__init__(self)
         self.daemon = True
 
         self.db_connection_info = db_connection_info

@@ -11,7 +11,7 @@ import time
 import saga
 import datetime
 import traceback
-import multiprocessing
+import threading
 
 from bson.objectid import ObjectId
 from radical.pilot.states import * 
@@ -23,7 +23,7 @@ BULK_LIMIT=1
 
 # ----------------------------------------------------------------------------
 #
-class OutputFileTransferWorker(multiprocessing.Process):
+class OutputFileTransferWorker(threading.Thread):
     """OutputFileTransferWorker handles the staging of the output files
     for a UnitManagerController.
     """
@@ -34,8 +34,8 @@ class OutputFileTransferWorker(multiprocessing.Process):
 
         self._session = session
 
-        # Multiprocessing stuff
-        multiprocessing.Process.__init__(self)
+        # threading stuff
+        threading.Thread.__init__(self)
         self.daemon = True
 
         self.db_connection_info = db_connection_info

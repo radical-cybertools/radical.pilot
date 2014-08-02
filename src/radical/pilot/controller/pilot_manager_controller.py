@@ -289,9 +289,9 @@ class PilotManagerController(threading.Thread):
 
         # shut down the autonomous pilot launcher worker(s)
         for worker in self._pilot_launcher_worker_pool:
-            worker.terminate()
-            worker.join()
+          # worker.terminate()
             logger.debug("PilotManager.close(): %s terminated." % worker.name)
+          # worker.join()
 
     # ------------------------------------------------------------------------
     #

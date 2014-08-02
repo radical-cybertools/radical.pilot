@@ -291,14 +291,14 @@ class UnitManagerController(threading.Thread):
 
         # shut down the autonomous input / output transfer worker(s)
         for worker in self._input_file_transfer_worker_pool:
-            worker.terminate()
-            worker.join()
+          # worker.terminate()
             logger.debug("UnitManager.close(): %s terminated." % worker.name)
+          # worker.join()
 
         for worker in self._output_file_transfer_worker_pool:
-            worker.terminate()
-            worker.join()
+          # worker.terminate()
             logger.debug("UnitManager.close(): %s terminated." % worker.name)
+          # worker.join()
 
     # ------------------------------------------------------------------------
     #
