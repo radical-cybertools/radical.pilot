@@ -153,22 +153,22 @@ do for [term_i=1:words(terms)] {
     set grid
 
     if (pilotnum==1) {
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101
-    }                                               
-    if (pilotnum==2) {                              
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             pilot_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             pilot_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201
-    }                                               
-    if (pilotnum==3) {                              
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             pilot_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             pilot_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201 , \
-             pilot_states_3_dat    using 1:($2-0.1) title '' with steps  ls 300 , \
-             pilot_callbacks_3_dat using 1:($2+0.1) title '' with points ls 301
+        plot pilot_states_1_dat    using 1:($2-0.05) title '' with steps  ls 100 , \
+             pilot_callbacks_1_dat using 1:($2+0.05) title '' with points ls 101
+    }                                                
+    if (pilotnum==2) {                               
+        plot pilot_states_1_dat    using 1:($2-0.05) title '' with steps  ls 100 , \
+             pilot_callbacks_1_dat using 1:($2+0.00) title '' with points ls 101 , \
+             pilot_states_2_dat    using 1:($2+0.05) title '' with steps  ls 200 , \
+             pilot_callbacks_2_dat using 1:($2+0.10) title '' with points ls 201
+    }                                                
+    if (pilotnum==3) {                               
+        plot pilot_states_1_dat    using 1:($2-0.10) title '' with steps  ls 100 , \
+             pilot_callbacks_1_dat using 1:($2-0.05) title '' with points ls 101 , \
+             pilot_states_2_dat    using 1:($2-0.00) title '' with steps  ls 200 , \
+             pilot_callbacks_2_dat using 1:($2+0.05) title '' with points ls 201 , \
+             pilot_states_3_dat    using 1:($2+0.10) title '' with steps  ls 300 , \
+             pilot_callbacks_3_dat using 1:($2+0.15) title '' with points ls 301
     }
  
     # ------------------------------------------------------------------------------------
@@ -193,22 +193,22 @@ do for [term_i=1:words(terms)] {
     set grid
 
     if (pilotnum==1) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101
+        plot unit_states_1_dat    using 1:($2-0.05) title '' with steps ls 100 , \
+             unit_callbacks_1_dat using 1:($2+0.05) title '' with points ls 101
     }
     if (pilotnum==2) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201
+        plot unit_states_1_dat    using 1:($2-0.05) title '' with steps  ls 100 , \
+             unit_callbacks_1_dat using 1:($2+0.00) title '' with points ls 101 , \
+             unit_states_2_dat    using 1:($2+0.05) title '' with steps  ls 200 , \
+             unit_callbacks_2_dat using 1:($2+0.10) title '' with points ls 201
     }
     if (pilotnum==3) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201 , \
-             unit_states_3_dat    using 1:($2-0.1) title '' with steps  ls 300 , \
-             unit_callbacks_3_dat using 1:($2+0.1) title '' with points ls 301
+        plot unit_states_1_dat    using 1:($2-0.10) title '' with steps  ls 100 , \
+             unit_callbacks_1_dat using 1:($2-0.05) title '' with points ls 101 , \
+             unit_states_2_dat    using 1:($2-0.00) title '' with steps  ls 200 , \
+             unit_callbacks_2_dat using 1:($2+0.05) title '' with points ls 201 , \
+             unit_states_3_dat    using 1:($2+0.10) title '' with steps  ls 300 , \
+             unit_callbacks_3_dat using 1:($2+0.15) title '' with points ls 301
     }
 
     # ------------------------------------------------------------------------------------

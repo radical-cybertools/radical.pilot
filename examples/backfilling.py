@@ -83,7 +83,7 @@ if __name__ == "__main__":
     pdesc = rp.ComputePilotDescription()
     pdesc.resource  = "india.futuregrid.org"
     pdesc.runtime   = 20 # minutes
-    pdesc.cores     = 8
+    pdesc.cores     = 32
     pdesc.cleanup   = True
   # pdesc.queue     = "normal"
   # pdesc.project   = "TG-MCB140109"
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     pdesc = rp.ComputePilotDescription()
     pdesc.resource  = "stampede.tacc.utexas.edu"
     pdesc.runtime   = 20 # minutes
-    pdesc.cores     = 16
+    pdesc.cores     = 128
     pdesc.cleanup   = True
     pdesc.queue     = "normal"
     pdesc.project   = "TG-MCB090174"
@@ -123,10 +123,10 @@ if __name__ == "__main__":
   #   # cu.input_data  = ["/tmp/test.in.dat"]
   #     cus.append(cu)
 
-    for unit_count in range(0, 60):
+    for unit_count in range(0, 512):
         cu = rp.ComputeUnitDescription()
         cu.kernel      = 'SLEEP'
-        cu.arguments   = ["60"]
+        cu.arguments   = ["300"]
         cus.append(cu)
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -159,5 +159,8 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
 
     # Close automatically cancels the pilot(s).
+    print "========================="
+    print session.uid
+    print "========================="
     session.close(delete=False)
 
