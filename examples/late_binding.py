@@ -77,21 +77,8 @@ if __name__ == "__main__":
     pdesc.runtime   = 20 # minutes
     pdesc.cores     = 1
     pdesc.cleanup   = True
-  # pdesc.queue     = "normal"
-  # pdesc.project   = "TG-MCB140109"
 
     pilot_1 = pmgr.submit_pilots(pdesc)
-
-    pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "india.futuregrid.org"
-    pdesc.runtime   = 20 # minutes
-    pdesc.cores     = 16
-    pdesc.cleanup   = True
-  # pdesc.queue     = "normal"
-  # pdesc.project   = "TG-MCB140109"
-
-    # Launch the pilot.
-    pilot_2 = pmgr.submit_pilots(pdesc)
 
     pdesc = rp.ComputePilotDescription()
     pdesc.resource  = "india.futuregrid.org"
@@ -100,6 +87,17 @@ if __name__ == "__main__":
     pdesc.cleanup   = True
   # pdesc.queue     = "normal"
   # pdesc.project   = "TG-MCB140109"
+
+    # Launch the pilot.
+    pilot_2 = pmgr.submit_pilots(pdesc)
+
+    pdesc = rp.ComputePilotDescription()
+    pdesc.resource  = "stampede.tacc.utexas.edu"
+    pdesc.runtime   = 20 # minutes
+    pdesc.cores     = 16
+    pdesc.cleanup   = True
+    pdesc.queue     = "normal"
+    pdesc.project   = "TG-MCB090174"
 
     # Launch the pilot.
     pilot_3 = pmgr.submit_pilots(pdesc)
@@ -125,10 +123,10 @@ if __name__ == "__main__":
   #   # cu.input_data  = ["/tmp/test.in.dat"]
   #     cus.append(cu)
 
-    for unit_count in range(0, 30):
+    for unit_count in range(0, 60):
         cu = rp.ComputeUnitDescription()
-        cu.kernel      = 'TEST'
-        cu.arguments   = ["5"]
+        cu.kernel      = 'SLEEP'
+        cu.arguments   = ["60"]
         cus.append(cu)
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via

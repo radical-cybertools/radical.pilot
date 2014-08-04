@@ -37,13 +37,13 @@ _EVENT_ENCODING = {
         }, 
         'unit': {
             rp.NEW                     :  1,
-            rp.PENDING_INPUT_TRANSFER  :  2,
-            rp.TRANSFERRING_INPUT      :  3,
+            rp.PENDING_INPUT_STAGING   :  2,
+            rp.STAGING_INPUT           :  3,
             rp.PENDING_EXECUTION       :  4,
             rp.SCHEDULING              :  5,
             rp.EXECUTING               :  6,
-            rp.PENDING_OUTPUT_TRANSFER :  7,
-            rp.TRANSFERRING_OUTPUT     :  8,
+            rp.PENDING_OUTPUT_STAGING  :  7,
+            rp.STAGING_OUTPUT          :  8,
             rp.DONE                    :  9,
             rp.CANCELED                : 10,
             rp.FAILED                  : 11
