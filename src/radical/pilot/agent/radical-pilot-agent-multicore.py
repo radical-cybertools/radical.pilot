@@ -1160,12 +1160,12 @@ class ExecWorker(multiprocessing.Process):
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
         # ensue.  We thus limit the slot history size to 4MB, to keep suffient
         # space for the actual operational data
-      # if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
-      #     self._slot_history.append (self._slot_status (short=True))
-      # else :
-      #     # just replace the last entry with the current one.
-      #     self._slot_history[-1]  =  self._slot_status (short=True)
-        self._slot_history.append (self._slot_status (short=True))
+        if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
+            self._slot_history.append (self._slot_status (short=True))
+        else :
+            # just replace the last entry with the current one.
+            self._slot_history[-1]  =  self._slot_status (short=True)
+      # self._slot_history.append (self._slot_status (short=True))
 
 
 
