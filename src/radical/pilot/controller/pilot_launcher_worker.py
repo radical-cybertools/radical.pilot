@@ -11,9 +11,9 @@ import time
 import saga
 import datetime
 import traceback
-import multiprocessing
+import threading
+import radical.utils as ru
 
-from radical.utils import which
 from bson.objectid import ObjectId
 
 from radical.pilot.states import * 
@@ -31,7 +31,7 @@ JOB_CHECK_INTERVAL=30 # seconds
 
 # ----------------------------------------------------------------------------
 #
-class PilotLauncherWorker(multiprocessing.Process):
+class PilotLauncherWorker(threading.Thread):
     """PilotLauncherWorker handles bootstrapping and launching of
        the pilot agents.
     """
@@ -42,16 +42,71 @@ class PilotLauncherWorker(multiprocessing.Process):
         """Creates a new pilot launcher background process.
         """
         self._session = session
-        self._local_pilots = []
 
-        # Multiprocessing stuff
-        multiprocessing.Process.__init__(self)
+        # threading stuff
+        threading.Thread.__init__(self)
         self.daemon = True
 
         self.db_connection_info = db_connection_info
-        self.pilot_manager_id = pilot_manager_id
+        self.pilot_manager_id   = pilot_manager_id
+        self.name               = "PilotLauncherWorker-%s" % str(number)
 
-        self.name = "PilotLauncherWorker-%s" % str(number)
+    # --------------------------------------------------------------------------
+    #
+    def check_pilot_states (self, pilot_col) :
+
+        pending_pilots = pilot_col.find(
+            {"pilotmanager": self.pilot_manager_id,
+             "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]}}
+        )
+
+        for pending_pilot in pending_pilots:
+
+            reconnected = False
+            pilot_id    = pending_pilot["_id"]
+            saga_job_id = pending_pilot["saga_job_id"]
+            logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
+            
+            # Create a job service object:
+            try: 
+                js_url      = saga_job_id.split("]-[")[0][1:]
+                js          = saga.job.Service(js_url, session=self._session)
+                saga_job    = js.get_job(saga_job_id)
+                reconnected = True
+
+                if saga_job.state == saga.job.FAILED:
+                    log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
+
+                    ts = datetime.datetime.utcnow()
+                    pilot_col.update(
+                        {"_id": pilot_id},
+                        {"$set": {"state": FAILED},
+                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                         "$push": {"log": log_message}}
+                    )
+                    logger.error(log_message)
+                js.close()
+
+            except Exception as e:
+
+                if  not reconnected :
+                    logger.warning ('could not reconnect to pilot for state check')
+
+                else :
+
+                    logger.warning ('pilot state check failed: %s' % e)
+                    log_message = "Couldn't determine job state for ComputePilot %s. " \
+                                  "Assuming it has failed." % pilot_id
+
+                    ts = datetime.datetime.utcnow()
+                    pilot_col.update(
+                        {"_id": pilot_id},
+                        {"$set": {"state": FAILED},
+                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                         "$push": {"log": log_message}}
+                    )
+                    logger.error(log_message)
+
 
     # ------------------------------------------------------------------------
     #
@@ -87,50 +142,10 @@ class PilotLauncherWorker(multiprocessing.Process):
             # SAGA job is still pending in the queue. If that is not the case, 
             # we assume that the job has failed for some reasons and update
             # the state of the ComputePilot accordingly.
-            if last_job_check + JOB_CHECK_INTERVAL < time.time():
-                pending_pilots = pilot_col.find(
-                    {"pilotmanager": self.pilot_manager_id,
-                     "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]}}
-                )
-
-                for pending_pilot in pending_pilots:
-                    pilot_id    = pending_pilot["_id"]
-                    saga_job_id = pending_pilot["saga_job_id"]
-                    logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
-                    
-                    # Create a job service object:
-                    try: 
-                        js_url = saga_job_id.split("]-[")[0][1:]
-                        js = saga.job.Service(js_url, session=self._session)
-                        saga_job = js.get_job(saga_job_id)
-                        if saga_job.state == saga.job.FAILED:
-                            log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
-
-                            ts = datetime.datetime.utcnow()
-                            pilot_col.update(
-                                {"_id": pilot_id},
-                                {"$set": {"state": FAILED},
-                                 "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                                 "$push": {"log": log_message}}
-                            )
-                            logger.error(log_message)
-                        js.close()
-
-                    except Exception, ex:
-
-                        log_message = "Couldn't determine job state for ComputePilot %s. Assuming it has failed to launch." % pilot_id
-
-                        ts = datetime.datetime.utcnow()
-                        pilot_col.update(
-                            {"_id": pilot_id},
-                            {"$set": {"state": FAILED},
-                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                             "$push": {"log": log_message}}
-                        )
-                        logger.error(log_message)
-
-                # Update timer
+            if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
+                self.check_pilot_states (pilot_col)
                 last_job_check = time.time()
+
 
             # See if we can find a ComputePilot that is waiting to be launched.
             # If we find one, we use SAGA to create a job service, a job 
@@ -189,20 +204,36 @@ class PilotLauncherWorker(multiprocessing.Process):
                         agent_worker = None
 
                     ########################################################
-                    # database connection parameters
-                    database_url = self.db_connection_info.url.split("://")[1]
-                    database_name = self.db_connection_info.dbname
-                    session_uid   = self.db_connection_info.session_id
+                    # Database connection parameters
+                    session_uid = self.db_connection_info.session_id
 
-                    cwd = os.path.dirname(os.path.realpath(__file__))
+                    database_url = ru.Url(self.db_connection_info.url)
+
+                    # Set default port if not specified
+                    # (explicit is better than implicit!)
+                    if not database_url.port:
+                        database_url.port = 27017
+
+                    # Set default host to localhost if not specified
+                    if not database_url.host:
+                        database_url.host = 'localhost'
+
+                    database_name = self.db_connection_info.dbname
+                    # Set default database name if not specified
+                    if not database_name:
+                        database_name = 'radicalpilot'
 
                     ########################################################
-                    # take 'pilot_agent' as defined in the reosurce configuration
+                    # Get directory where pilot_launcher_worker.py lives
+                    plw_dir = os.path.dirname(os.path.realpath(__file__))
+
+                    ########################################################
+                    # take 'pilot_agent' as defined in the resource configuration
                     # by default, but override it if set in the Pilot description. 
                     pilot_agent = resource_cfg['pilot_agent']
                     if compute_pilot['description']['pilot_agent_priv'] is not None:
                         pilot_agent = compute_pilot['description']['pilot_agent_priv']
-                    agent_path = os.path.abspath("%s/../agent/%s" % (cwd, pilot_agent))
+                    agent_path = os.path.abspath("%s/../agent/%s" % (plw_dir, pilot_agent))
 
                     log_msg = "Using pilot agent %s" % agent_path
                     log_messages.append(log_msg)
@@ -215,7 +246,7 @@ class PilotLauncherWorker(multiprocessing.Process):
                         bootstrapper = resource_cfg['bootstrapper']
                     else:
                         bootstrapper = 'default_bootstrapper.sh'
-                    bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (cwd, bootstrapper))
+                    bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (plw_dir, bootstrapper))
                     
                     log_msg = "Using bootstrapper %s" % bootstrapper_path
                     log_messages.append(log_msg)
@@ -258,11 +289,10 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     # copying agent-worker.py script to sandbox
                     #########################################################
-                    cwd = os.path.dirname(os.path.abspath(__file__))
 
                     if agent_worker is not None:
                         logger.warning("Using custom agent worker script: %s" % agent_worker)
-                        worker_path = os.path.abspath("%s/../agent/%s" % (cwd, agent_worker))
+                        worker_path = os.path.abspath("%s/../agent/%s" % (plw_dir, agent_worker))
 
                         worker_script_url = saga.Url("file://localhost/%s" % worker_path)
 
@@ -292,9 +322,10 @@ class PilotLauncherWorker(multiprocessing.Process):
                          runtime, logger.level, number_cores, VERSION)
 
                     if 'agent_mongodb_endpoint' in resource_cfg and resource_cfg['agent_mongodb_endpoint'] is not None:
-                        bootstrap_args += " -m %s " % resource_cfg['agent_mongodb_endpoint']
+                        agent_db_url = ru.Url(resource_cfg['agent_mongodb_endpoint'])
+                        bootstrap_args += " -m %s:%d " % (agent_db_url.host, agent_db_url.port)
                     else:
-                        bootstrap_args += " -m %s " % database_url
+                        bootstrap_args += " -m %s:%d " % (database_url.host, database_url.port)
 
                     if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                         bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
@@ -366,8 +397,6 @@ class PilotLauncherWorker(multiprocessing.Process):
 
                     saga_job_id = pilotjob.id
                     log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
-
-                    self._local_pilots.append(saga_job_id)
 
                     log_messages.append(log_msg)
                     logger.debug(log_msg)

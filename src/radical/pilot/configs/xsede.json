@@ -20,6 +20,9 @@
         "local_job_manager_endpoint"  : "sge://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "normal",
+        "lrms"                        : "SGE",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "IBRUN",
         "spmd_variation"              : "24way",
         "python_interpreter"          : "/opt/apps/python/epd/7.2.2/bin/python",
         "pre_bootstrap"               : ["module purge", "module load TACC", "module load cluster", "module load mvapich2", "module load python/2.7.2-epd"],
@@ -39,6 +42,36 @@
         "python_interpreter"          : "/usr/bin/python",
         "pre_bootstrap"               : ["module purge", "module load pgi", "module load mvapich2_ib", "module load gnubase"],
         "valid_roots"                 : ["/home"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+
+    "gordon.sdsc.xsede.org": {
+        "remote_job_manager_endpoint" : "pbs+ssh://gordon.sdsc.xsede.org",
+        "remote_filesystem_endpoint"  : "sftp://gordon.sdsc.xsede.org/",
+        "local_filesystem_endpoint"   : "pbs://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "normal",
+        "lrms"                        : "TORQUE",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "python_interpreter"          : "/usr/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load mvapich2_ib", "module load gnubase"],
+        "valid_roots"                 : ["/home"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+
+    "blacklight.psc.xsede.org": {
+        "remote_job_manager_endpoint" : "pbs+ssh://blacklight.psc.xsede.org",
+        "remote_filesystem_endpoint"  : "sftp://blacklight.psc.xsede.org/",
+        "local_filesystem_endpoint"   : "pbs://localhost",
+        "local_filesystem_endpoint"   : "file://localhost/",
+        "default_queue"               : "batch",
+        "lrms"                        : "TORQUE",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "python_interpreter"          : "/usr/bin/python",
+        "pre_bootstrap"               : ["module purge", "module load mvapich2_ib", "module load gnubase"],
+        "valid_roots"                 : ["/home", "/scratch"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }

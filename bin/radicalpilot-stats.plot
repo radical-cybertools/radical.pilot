@@ -138,7 +138,7 @@ do for [term_i=1:words(terms)] {
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set xtics  timetics
-    set mxtics mtimetics
+  # set mxtics mtimetics
     set yrange [0:8]
     set ytics  ("PENDING LAUNCH" 1, \
                 "LAUNCHING     " 2, \
@@ -175,16 +175,17 @@ do for [term_i=1:words(terms)] {
     set xrange [0:maxtime]
     set yrange [0:12]
     set ytics  ("NEW            "  1, \
-                "PEND.   INPUT  "  2, \
-                "TRANSF. INPUT  "  3, \
-                "PEND. EXECUTION"  4, \
-                "SCHEDULING     "  5, \
-                "EXECUTING      "  6, \
-                "PEND.   OUTPUT "  7, \
-                "TRANSF. OUTPUT "  8, \
-                "DONE           "  9, \
-                "CANCELED       " 10, \
-                "FAILED         " 11)
+                "STATE_X        "  2, \
+                "PEND.   INPUT  "  3, \
+                "TRANSF. INPUT  "  4, \
+                "PEND. EXECUTION"  5, \
+                "SCHEDULING     "  6, \
+                "EXECUTING      "  7, \
+                "PEND.   OUTPUT "  8, \
+                "TRANSF. OUTPUT "  9, \
+                "DONE           " 10, \
+                "CANCELED       " 11, \
+                "FAILED         " 12)
 
     set xlabel ''
     set ylabel "UNITS\n[states]" offset second -0.06,0

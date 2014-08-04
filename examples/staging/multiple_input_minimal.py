@@ -39,20 +39,6 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Define the url of the local file in the local directory
-        shared_input_file_url = saga.Url('file://%s/%s' % (os.getcwd(), SHARED_INPUT_FILE))
-        # Define and open staging directory on the remote machine
-        remote_dir_url = saga.Url(os.path.join(pilot.sandbox, 'staging_area'))
-        remote_dir = saga.filesystem.Directory(remote_dir_url, flags=saga.filesystem.CREATE_PARENTS)
-        # Copy the local file to the remote staging area
-        remote_dir.copy(shared_input_file_url, '.') # Change to pilot.stage_in(shared_input_file_url)
-
-        # Configure the staging directive for shared input file.
-        sd_shared = {'source': 'staging:///%s' % SHARED_INPUT_FILE, # Note the triple slash
-                     'target': SHARED_INPUT_FILE,
-                     'action': radical.pilot.LINK
-        }
-
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
@@ -63,18 +49,22 @@ if __name__ == "__main__":
 
         compute_unit_descs = []
 
-        for unit_count in range(4):
+        for unit_count in range(2):
 
             # Configure the staging directive for input file.
-            sd_input = {'source': 'input_file-%d.txt' % unit_count,
-                        'target': 'input_file-%d.txt' % unit_count,
+            sd_inputs = {'source': ['input_file-0.txt',
+                                    'input_file-1.txt',
+                                    'input_file-2.txt',
+                                    'input_file-3.txt'],
+                        'target': ['input_file-0.txt',
+                                   'input_file-1.txt',
+                                   'input_file-2.txt',
+                                   'input_file-3.txt'],
                         'action':  radical.pilot.TRANSFER
             }
-            # Above sd_input is semantically identical to sd_input below
-            #sd_input = 'input_file-%d.txt' % unit_count
 
             # Configure the staging directive for output file.
-            sd_output = {'source': 'output_file-%d.txt' % unit_count,
+            sd_output = {'source': 'output_file.txt',
                          'target': 'output_file-%d.txt' % unit_count,
                          'action': radical.pilot.TRANSFER
             }
@@ -83,9 +73,9 @@ if __name__ == "__main__":
             # Concatenate the shared input and the task specific input.
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/bash'
-            cud.arguments = ['-l', '-c', 'cat shared_input_file.txt input_file-%d.txt > output_file-%d.txt' % (unit_count, unit_count)]
+            cud.arguments = ['-l', '-c', 'cat input_file*.txt > output_file.txt']
             cud.cores = 1
-            cud.input_staging = [sd_shared, sd_input]
+            cud.input_staging = sd_inputs
             cud.output_staging = sd_output
 
             compute_unit_descs.append(cud)

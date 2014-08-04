@@ -6,7 +6,9 @@ import pymongo
 #
 def get_session_ids (dbclient, dbname) :
 
-    if not dbname : usage ("require specific database name to list session IDs")
+    if not dbname : 
+        
+        raise RuntimeError ("require specific database name to list session IDs")
 
     database = dbclient[dbname]
     cnames = database.collection_names ()
@@ -39,6 +41,16 @@ def get_session_docs (dbclient, dbname, session) :
     ret['pilot'  ] = list(database["%s.p"  % session].find ())
     ret['umgr'   ] = list(database["%s.wm" % session].find ())
     ret['unit'   ] = list(database["%s.w"  % session].find ())
+
+    # we want to add a list of handled units to each pilot doc
+    for pilot in ret['pilot'] :
+
+        pilot['unit_ids'] = list()
+
+        for unit in ret['unit'] :
+
+            if  unit['pilot'] == str(pilot['_id']) :
+                pilot['unit_ids'].append (str(unit['_id']))
 
     return ret
 
@@ -135,17 +147,17 @@ def get_session_events (dbclient, dbname, session) :
                       'output_transfer_started', 'output_transfer_finished'
                       ] :
             if  event in doc :
-                ret.append (['state', otype, oid, pid, doc[event], event, odoc])
+                ret.append (['state', otype, oid, pid, doc[event], event, doc])
             else :                                
-                ret.append (['state', otype, oid, pid, None,       event, odoc])
+                ret.append (['state', otype, oid, pid, None,       event, doc])
 
         for event in doc['statehistory'] :
-            ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], odoc])
+            ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], doc])
 
         # TODO: this probably needs to be "doc"
         if  'callbackhistory' in event :
             for event in doc['callbackhistory'] :
-                ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], odoc])
+                ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], doc])
 
     # we don't want None times, actually
     for r in list(ret) :

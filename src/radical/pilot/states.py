@@ -66,7 +66,6 @@ class State(object):
 # -----------------------------------------------------------------------------
 # Common States
 NEW                         = 'New'
-NULL                        = 'Null'
 DONE                        = 'Done'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
@@ -89,3 +88,4 @@ SCHEDULING                  = 'Scheduling'
 EXECUTING                   = 'Executing'
 PENDING_OUTPUT_STAGING      = 'PendingOutputStaging'
 STAGING_OUTPUT              = 'StagingOutput'
+

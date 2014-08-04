@@ -384,7 +384,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     BIND_ADDRESS=127.0.0.1
 
     # Set up tunnel
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$DBURL $FORWARD_TUNNEL_ENDPOINT &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
@@ -420,7 +420,7 @@ AGENT_CMD="python radical-pilot-agent.py\
     -j $TASK_LAUNCH_METHOD\
     -k $MPI_LAUNCH_METHOD\
     -l $LRMS\
-    -m mongodb://$DBURL\
+    -m $DBURL\
     -n $DBNAME\
     -p $PILOTID\
     -s $SESSIONID\
