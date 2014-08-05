@@ -1165,8 +1165,6 @@ class ExecWorker(multiprocessing.Process):
         else :
             # just replace the last entry with the current one.
             self._slot_history[-1]  =  self._slot_status (short=True)
-      # self._slot_history.append (self._slot_status (short=True))
-
 
 
     # ------------------------------------------------------------------------

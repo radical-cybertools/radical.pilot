@@ -74,15 +74,15 @@ if __name__ == "__main__":
 
     pdesc = rp.ComputePilotDescription()
     pdesc.resource  = "localhost"
-    pdesc.runtime   = 20 # minutes
-    pdesc.cores     = 1
+    pdesc.runtime   = 12 # minutes
+    pdesc.cores     = 4
     pdesc.cleanup   = True
 
     pilot_1 = pmgr.submit_pilots(pdesc)
 
     pdesc = rp.ComputePilotDescription()
     pdesc.resource  = "india.futuregrid.org"
-    pdesc.runtime   = 20 # minutes
+    pdesc.runtime   = 40 # minutes
     pdesc.cores     = 32
     pdesc.cleanup   = True
   # pdesc.queue     = "normal"
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     pdesc = rp.ComputePilotDescription()
     pdesc.resource  = "stampede.tacc.utexas.edu"
-    pdesc.runtime   = 20 # minutes
+    pdesc.runtime   = 40 # minutes
     pdesc.cores     = 128
     pdesc.cleanup   = True
     pdesc.queue     = "normal"

@@ -477,7 +477,7 @@ class UnitManager(object):
             pid = schedule['units'][unit]
 
             if  None == pid :
-                logger.info ('unit %s remains unscheduled' % unit.uid)
+             #  logger.info ('unit %s remains unscheduled' % unit.uid)
                 unscheduled.append (unit)
                 continue
 
