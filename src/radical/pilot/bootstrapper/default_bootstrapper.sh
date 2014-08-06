@@ -32,7 +32,7 @@ WORKDIR=`pwd`
 #
 usage()
 {
-cat << EOF > /dev/stderr
+    cat << EOF > /dev/stderr
 usage: $0 options
 
 This script launches a RADICAL-Pilot agent.
@@ -88,121 +88,121 @@ EOF
 #
 installvenv()
 {
-R_SYS_DIR=$WORKDIR/virtualenv/
-# remove any old versionsion
-if [[ -d $R_SYS_DIR ]]; then
-    echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Removing previous virtualenv: $R_SYS_DIR"
-    rm -r $R_SYS_DIR
-fi
-
-# create a fresh virtualenv. we use and older 1.9.x version of 
-# virtualenv as this seems to work more reliable than newer versions.
-CURL_CMD="curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
-echo ""
-echo "################################################################################"
-echo "## Downloading and installing virtualenv"
-echo "## CMDLINE: $CURL_CMD"
-$CURL_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-   echo "Couldn't download virtuelenv via curl! ABORTING"
-   exit 1
-fi
-
-tar xvfz virtualenv-1.9.tar.gz
-OUT=$?
-if [[ $OUT != 0 ]]; then
-   echo "Couldn't unpack virtualenv! ABORTING"
-   exit 1
-fi
-
-BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $R_SYS_DIR"
-echo ""
-echo "################################################################################"
-echo "## Creating virtualenv"
-echo "## CMDLINE: $BOOTSTRAP_CMD"
-$BOOTSTRAP_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-   echo "Couldn't bootstrap virtualenv! ABORTING"
-   exit 1
-fi
-
-# active the virtualenv
-source $R_SYS_DIR/bin/activate
-
-DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
-echo ""
-echo "################################################################################"
-echo "## Downgrading pip to 1.2.1"
-echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
-$DOWNGRADE_PIP_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-   echo "Couldn't downgrade pip! ABORTING"
-   exit 1
-fi
-
-#UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
-#echo ""
-#echo "################################################################################"
-#echo "## Updating virtualenv"
-#echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
-#$UPDATE_SETUPTOOLS_CMD
-#OUT=$?
-#if [ $OUT -ne 0 ]; then
-#   echo "Couldn't update virtualenv! ABORTING"
-#   exit 1
-#fi
-
-# On india/fg pip install doesn't work for saga
-INSTALL_CMD="easy_install saga-python"
-echo ""
-echo "################################################################################"
-echo "## Installing SAGA-Python"
-echo "## CMDLINE: $INSTALL_CMD"
-$INSTALL_CMD
-OUT=$?
-if [ $OUT -ne 0 ];then
-   echo "Couldn't install SAGA-Python! ABORTING"
-   exit 1
-fi
-
-PIP_CMD="pip install python-hostlist"
-EASY_INSTALL_CMD="easy_install python-hostlist"
-echo ""
-echo "################################################################################"
-echo "## Installing python-hostlist"
-echo "## CMDLINE: $PIP_CMD"
-$PIP_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-    echo "pip install failed, trying easy_install ..."
-    $EASY_INSTALL_CMD
+    R_SYS_DIR=$WORKDIR/virtualenv/
+    # remove any old versionsion
+    if [[ -d $R_SYS_DIR ]]; then
+        echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Removing previous virtualenv: $R_SYS_DIR"
+        rm -r $R_SYS_DIR
+    fi
+    
+    # create a fresh virtualenv. we use and older 1.9.x version of 
+    # virtualenv as this seems to work more reliable than newer versions.
+    CURL_CMD="curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
+    echo ""
+    echo "################################################################################"
+    echo "## Downloading and installing virtualenv"
+    echo "## CMDLINE: $CURL_CMD"
+    $CURL_CMD
     OUT=$?
     if [[ $OUT != 0 ]]; then
-        echo "Easy install failed too, couldn't install python-hostlist! ABORTING"
-        exit 1
+       echo "Couldn't download virtuelenv via curl! ABORTING"
+       exit 1
     fi
-fi
-
-PIP_CMD="pip install pymongo"
-EASY_INSTALL_CMD="easy_install pymongo"
-echo ""
-echo "################################################################################"
-echo "## Installing pymongo"
-echo "## CMDLINE: $PIP_CMD"
-$PIP_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-    echo "pip install failed, trying easy_install ..."
-    $EASY_INSTALL_CMD
+    
+    tar xvfz virtualenv-1.9.tar.gz
     OUT=$?
     if [[ $OUT != 0 ]]; then
-        echo "Easy install failed too, couldn't install pymongo! ABORTING"
-        exit 1
+       echo "Couldn't unpack virtualenv! ABORTING"
+       exit 1
     fi
-fi
+    
+    BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $R_SYS_DIR"
+    echo ""
+    echo "################################################################################"
+    echo "## Creating virtualenv"
+    echo "## CMDLINE: $BOOTSTRAP_CMD"
+    $BOOTSTRAP_CMD
+    OUT=$?
+    if [[ $OUT != 0 ]]; then
+       echo "Couldn't bootstrap virtualenv! ABORTING"
+       exit 1
+    fi
+    
+    # active the virtualenv
+    source $R_SYS_DIR/bin/activate
+    
+    DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
+    echo ""
+    echo "################################################################################"
+    echo "## Downgrading pip to 1.2.1"
+    echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
+    $DOWNGRADE_PIP_CMD
+    OUT=$?
+    if [[ $OUT != 0 ]]; then
+       echo "Couldn't downgrade pip! ABORTING"
+       exit 1
+    fi
+    
+    #UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
+    #echo ""
+    #echo "################################################################################"
+    #echo "## Updating virtualenv"
+    #echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
+    #$UPDATE_SETUPTOOLS_CMD
+    #OUT=$?
+    #if [ $OUT -ne 0 ]; then
+    #   echo "Couldn't update virtualenv! ABORTING"
+    #   exit 1
+    #fi
+    
+    # On india/fg pip install doesn't work for saga
+    INSTALL_CMD="easy_install saga-python"
+    echo ""
+    echo "################################################################################"
+    echo "## Installing SAGA-Python"
+    echo "## CMDLINE: $INSTALL_CMD"
+    $INSTALL_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+       echo "Couldn't install SAGA-Python! ABORTING"
+       exit 1
+    fi
+    
+    PIP_CMD="pip install python-hostlist"
+    EASY_INSTALL_CMD="easy_install python-hostlist"
+    echo ""
+    echo "################################################################################"
+    echo "## Installing python-hostlist"
+    echo "## CMDLINE: $PIP_CMD"
+    $PIP_CMD
+    OUT=$?
+    if [[ $OUT != 0 ]]; then
+        echo "pip install failed, trying easy_install ..."
+        $EASY_INSTALL_CMD
+        OUT=$?
+        if [[ $OUT != 0 ]]; then
+            echo "Easy install failed too, couldn't install python-hostlist! ABORTING"
+            exit 1
+        fi
+    fi
+    
+    PIP_CMD="pip install pymongo"
+    EASY_INSTALL_CMD="easy_install pymongo"
+    echo ""
+    echo "################################################################################"
+    echo "## Installing pymongo"
+    echo "## CMDLINE: $PIP_CMD"
+    $PIP_CMD
+    OUT=$?
+    if [[ $OUT != 0 ]]; then
+        echo "pip install failed, trying easy_install ..."
+        $EASY_INSTALL_CMD
+        OUT=$?
+        if [[ $OUT != 0 ]]; then
+            echo "Easy install failed too, couldn't install pymongo! ABORTING"
+            exit 1
+        fi
+    fi
 }
 
 # -----------------------------------------------------------------------------
@@ -444,3 +444,4 @@ fi
 
 # ... and exit
 exit $AGENT_EXITCODE
+
