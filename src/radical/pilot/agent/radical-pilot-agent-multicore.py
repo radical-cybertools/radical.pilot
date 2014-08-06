@@ -1950,6 +1950,10 @@ class _Process(subprocess.Popen):
             raise Exception("No executable specified!") # TODO: This should be catched earlier problaby
         if task.arguments is not None:
             for arg in task.arguments:
+
+                if  not arg :
+                    continue # ignore empty args
+
                 arg = arg.replace ('"', '\\"') # Escape all double quotes
                 if  arg[0] == arg[-1] == "'" : # If a string is between outer single quotes,
                     task_exec_string += ' %s' % arg # ... pass it as is.
