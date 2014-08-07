@@ -180,6 +180,7 @@ class UnitManagerController(threading.Thread):
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+                raise
 
         # If we have any manager-level callbacks registered, we
         # call those as well!

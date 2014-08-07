@@ -190,6 +190,7 @@ class PilotManagerController(threading.Thread):
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+                raise
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
@@ -200,6 +201,7 @@ class PilotManagerController(threading.Thread):
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+                raise
 
         # if we meet a final state, we record the object's callback history for
         # later evalutation
