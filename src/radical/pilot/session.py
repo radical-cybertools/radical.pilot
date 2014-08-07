@@ -157,7 +157,7 @@ class Session (saga.Session, Object):
                 logger.info("New Session created%s." % str(self))
 
             except Exception, ex:
-                raise PilotException("Couldn't create new session: %s" % ex)  
+                raise PilotException("Couldn't create new session (database URL incorrect?): %s" % ex)  
 
         ######################################
         ## RECONNECT TO AN EXISTING SESSION ##
