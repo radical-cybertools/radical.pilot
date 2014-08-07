@@ -212,11 +212,14 @@ do for [term_i=1:words(terms)] {
     }
 
     # ------------------------------------------------------------------------------------
-    set xrange [0:maxtime]
-    set yrange [1:maxslots+nodesize/2]
-    set mytics nodesize
-    set ytics  autofreq
-    set y2tics autofreq
+    set xrange  [0:maxtime]
+    set yrange  [0:slotsscale]
+    set mytics  nodesize
+    set ytics   autofreq
+    set mytics  0
+    set y2tics  autofreq
+    set y2range [0:queuescale]
+    set my2tics 0
 
     set xlabel ''
     set ylabel "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
@@ -225,27 +228,27 @@ do for [term_i=1:words(terms)] {
 
     if (pilotnum==1) {
       plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
-           pilot_queue_1_dat using 1:($2+0.1) title '' with steps ls 106 axes x1y2 , \
+           pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 106 axes x1y2 , \
            slotnum_1                          title '' with lines ls 105 
     }
     if (pilotnum==2) {
       plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
            pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 106 axes x1y2 , \
-           slotnum_1                          title '' with lines ls 105 , \
-           pilot_slots_2_dat using 1:($2+0.3) title '' with lines ls 204 , \
-           pilot_queue_2_dat using 1:($2+0.3) title '' with steps ls 206 axes x1y2 , \
-           slotnum_2                          title '' with lines ls 205  
+           (slotnum_1+0.0)                    title '' with lines ls 105 , \
+           pilot_slots_2_dat using 1:($2+0.1) title '' with lines ls 204 , \
+           pilot_queue_2_dat using 1:($2+0.1) title '' with steps ls 206 axes x1y2 , \
+           (slotnum_2+0.1)                    title '' with lines ls 205  
     }
     if (pilotnum==3) {
       plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
            pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 106 axes x1y2 , \
-           slotnum_1                          title '' with lines ls 105 , \
-           pilot_slots_2_dat using 1:($2+0.2) title '' with lines ls 204 , \
-           pilot_queue_2_dat using 1:($2+0.2) title '' with steps ls 206 axes x1y2 , \
-           slotnum_2                          title '' with lines ls 205 , \
-           pilot_slots_3_dat using 1:($2+0.4) title '' with lines ls 304 , \
-           pilot_queue_3_dat using 1:($2+0.4) title '' with steps ls 306 axes x1y2 , \
-           slotnum_3                          title '' with lines ls 305 
+           (slotnum_1+0.0)                    title '' with lines ls 105 , \
+           pilot_slots_2_dat using 1:($2+0.1) title '' with lines ls 204 , \
+           pilot_queue_2_dat using 1:($2+0.1) title '' with steps ls 206 axes x1y2 , \
+           (slotnum_2+0.1)                    title '' with lines ls 205 , \
+           pilot_slots_3_dat using 1:($2+0.2) title '' with lines ls 304 , \
+           pilot_queue_3_dat using 1:($2+0.2) title '' with steps ls 306 axes x1y2 , \
+           (slotnum_3+0.2)                    title '' with lines ls 305 
     }
 
     # ------------------------------------------------------------------------------------

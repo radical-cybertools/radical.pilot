@@ -60,8 +60,10 @@ if __name__ == "__main__":
     c = rp.Context('ssh')
   # c.user_id = "tg803521"
     session.add_context(c)
+
+    session_id = session.uid
     print "========================="
-    print session.uid
+    print session_id
     print "========================="
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -160,7 +162,9 @@ if __name__ == "__main__":
 
     # Close automatically cancels the pilot(s).
     print "========================="
-    print session.uid
+    print session_id
     print "========================="
     session.close(delete=False)
+
+    os.system ('radicalpilot-stats -m stat,plot -s %s' % session_id)
 

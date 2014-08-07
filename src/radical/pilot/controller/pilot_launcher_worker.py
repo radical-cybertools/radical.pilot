@@ -50,6 +50,8 @@ class PilotLauncherWorker(threading.Thread):
         self.db_connection_info = db_connection_info
         self.pilot_manager_id   = pilot_manager_id
         self.name               = "PilotLauncherWorker-%s" % str(number)
+        self.missing_pilots     = dict()
+        self.job_services       = dict()
 
     # --------------------------------------------------------------------------
     #
@@ -62,50 +64,75 @@ class PilotLauncherWorker(threading.Thread):
 
         for pending_pilot in pending_pilots:
 
-            reconnected = False
-            pilot_id    = pending_pilot["_id"]
-            saga_job_id = pending_pilot["saga_job_id"]
+
+            pilot_failed = False
+            reconnected  = False
+            pilot_id     = pending_pilot["_id"]
+            log_message  = ""
+            saga_job_id  = pending_pilot["saga_job_id"]
             logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
             
+            if  not pilot_id in self.missing_pilots :
+                self.missing_pilots[pilot_id] = 0
+
             # Create a job service object:
             try: 
-                js_url      = saga_job_id.split("]-[")[0][1:]
-                js          = saga.job.Service(js_url, session=self._session)
-                saga_job    = js.get_job(saga_job_id)
-                reconnected = True
+                js_url       = saga_job_id.split("]-[")[0][1:]
 
-                if saga_job.state == saga.job.FAILED:
-                    log_message = "SAGA job state for ComputePilot %s is FAILED." % pilot_id
+                if  js_url in self.job_services :
+                    js = self.job_services[js_url]
+                else :
+                    js = saga.job.Service(js_url, session=self._session)
+                    self.job_services[js_url] = js
 
-                    ts = datetime.datetime.utcnow()
-                    pilot_col.update(
-                        {"_id": pilot_id},
-                        {"$set": {"state": FAILED},
-                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                         "$push": {"log": log_message}}
-                    )
-                    logger.error(log_message)
-                js.close()
+                saga_job     = js.get_job(saga_job_id)
+                reconnected  = True
+
+                if  saga_job.state in [saga.job.FAILED, saga.job.CANCELED] :
+                    pilot_failed = True
+                    log_message  = "SAGA job state for ComputePilot %s is %s."\
+                                 % (pilot_id, saga_job.state)
+
+              # js.close()
 
             except Exception as e:
 
                 if  not reconnected :
                     logger.warning ('could not reconnect to pilot for state check')
+                    self.missing_pilots[pilot_id] += 1
+
+                    if  self.missing_pilots[pilot_id] >= 10 :
+                        logger.error ('giving up after 10 attempts')
+                        pilot_failed = True
+                        log_message  = "Could not reconnect to pilot %s "\
+                                       "multiple times - giving up" % pilot_id
+
 
                 else :
 
                     logger.warning ('pilot state check failed: %s' % e)
-                    log_message = "Couldn't determine job state for ComputePilot %s. " \
-                                  "Assuming it has failed." % pilot_id
+                    pilot_failed = True
+                    log_message  = "Couldn't determine job state for ComputePilot %s. " \
+                                   "Assuming it has failed." % pilot_id
 
-                    ts = datetime.datetime.utcnow()
-                    pilot_col.update(
-                        {"_id": pilot_id},
-                        {"$set": {"state": FAILED},
-                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                         "$push": {"log": log_message}}
-                    )
-                    logger.error(log_message)
+
+          
+            if  pilot_failed :
+
+                ts = datetime.datetime.utcnow()
+                pilot_col.update(
+                    {"_id": pilot_id},
+                    {"$set": {"state": FAILED},
+                     "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                     "$push": {"log": log_message}}
+                )
+                logger.error (log_message)
+
+                logger.error ('pilot %s declared dead' % pilot_id)
+
+            else :
+                logger.error ('pilot %s alive and well (%s)' \
+                           % (pilot_id, self.missing_pilots[pilot_id]))
 
 
     # ------------------------------------------------------------------------
@@ -350,7 +377,12 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -f %s " % resource_cfg['forward_tunnel_endpoint']
 
                     if cleanup is True: 
-                        bootstrap_args += " -x "               # the cleanup flag
+                        # cleanup flags:
+                        #   l : pilot log files
+                        #   u : unit work dirs
+                        #   v : virtualenv
+                        # FIXME: get cleanup flags from somewhere
+                        bootstrap_args += " -x %s" % 'luv' # the cleanup flag
 
                     if  'RADICAL_PILOT_BENCHMARK' in os.environ :
                         bootstrap_args += " -b"

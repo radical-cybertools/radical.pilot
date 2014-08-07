@@ -78,62 +78,72 @@ class BackfillingScheduler(Scheduler):
     #
     def _unit_state_callback (self, unit, state) :
         
-        uid = unit.uid
+        try :
 
-        if  not unit in self.runq :
-            # as we cannot unregister callbacks, we simply ignore this
-            # invokation.  Its probably from a unit we handled previously.
-            # (although this should have been final?)
-            # FIXME: how can I *un*register a unit callback?
-            return
+            uid = unit.uid
 
-        logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
+            if  not unit in self.runq :
+                # as we cannot unregister callbacks, we simply ignore this
+                # invokation.  Its probably from a unit we handled previously.
+                # (although this should have been final?)
+                # FIXME: how can I *un*register a unit callback?
+                return
 
-        if  state in [PENDING_OUTPUT_STAGING, STAGING_OUTPUT, DONE, FAILED, CANCELED] :
-            # the pilot which owned this CU should now have free slots available
-            # FIXME: how do I get the pilot from the CU?
-            
-            pid = unit.execution_details.get ('pilot', None)
+            logger.debug ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
-            if  not pid :
-                raise RuntimeError ('cannot handle final unit %s w/o pilot information' % uid)
+            if  state in [PENDING_OUTPUT_STAGING, STAGING_OUTPUT, DONE, FAILED, CANCELED] :
+                # the pilot which owned this CU should now have free slots available
+                # FIXME: how do I get the pilot from the CU?
+                
+                pid = unit.execution_details.get ('pilot', None)
 
-            if  pid not in self.pilots :
-                raise RuntimeError ('cannot handle unit %s of pilot %s' % (uid, pid))
+                if  not pid :
+                    raise RuntimeError ('cannot handle final unit %s w/o pilot information' % uid)
 
-            if  unit in self.runq :
-                # only interpret this event once, on any of the states above,
-                # whichever occurs first
-                self.pilots[pid]['caps'] += unit.description.cores
-                self.runq.remove (unit)
-                self._reschedule (pid=pid)
+                if  pid not in self.pilots :
+                    logger.warning ('cannot handle unit %s cb for pilot %s (pilot is gone)' % (uid, pid))
+
+                if  unit in self.runq :
+                    # only interpret this event once, on any of the states above,
+                    # whichever occurs first
+                    self.pilots[pid]['caps'] += unit.description.cores
+                    self.runq.remove (unit)
+                    self._reschedule (pid=pid)
+
+        except Exception as e :
+            logger.error ("error in unit callback for backfiller (%s) - ignored" % e)
 
 
     # -------------------------------------------------------------------------
     #
     def _pilot_state_callback (self, pilot, state) :
         
-        pid = pilot.uid
+        try :
 
-        if  not pid in self.pilots :
-            # as we cannot unregister callbacks, we simply ignore this
-            # invokation.  Its probably from a pilot we used previously.
-            logger.warn ("[SchedulerCallback]: ComputePilot %s changed to %s (ignored)" % (pid, state))
-            return
-
-
-        self.pilots[pid]['state'] = state
-        logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pid, state))
-
-        if  state in [ACTIVE] :
-            # the pilot is now ready to be used
-            self._reschedule (pid=pid)
-
-        if  state in [DONE, FAILED, CANCELED] :
-            # we can't use this pilot anymore...  
-            del self.pilots[pid]
-
-            # FIXME: how can I *un*register a pilot callback?
+            pid = pilot.uid
+    
+            if  not pid in self.pilots :
+                # as we cannot unregister callbacks, we simply ignore this
+                # invokation.  Its probably from a pilot we used previously.
+                logger.warn ("[SchedulerCallback]: ComputePilot %s changed to %s (ignored)" % (pid, state))
+                return
+    
+    
+            self.pilots[pid]['state'] = state
+            logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pid, state))
+    
+            if  state in [ACTIVE] :
+                # the pilot is now ready to be used
+                self._reschedule (pid=pid)
+    
+            if  state in [DONE, FAILED, CANCELED] :
+                # we can't use this pilot anymore...  
+                del self.pilots[pid]
+    
+                # FIXME: how can I *un*register a pilot callback?
+    
+        except Exception as e :
+            logger.error ("error in pilot callback for backfiller (%s) - ignored" % e)
 
 
     # -------------------------------------------------------------------------
@@ -252,9 +262,11 @@ class BackfillingScheduler(Scheduler):
 
         if  not len(self.pilots.keys ()) :
             # no pilots to  work on, yet.
+            logger.warning ("cannot schedule -- no pilots available")
             return 
 
         if  pid and pid not in self.pilots :
+            logger.warning ("cannot schedule -- invalid target pilot %s" % pid)
             raise RuntimeError ("Invalid pilot (%s)" % pid)
             
 

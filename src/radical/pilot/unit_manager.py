@@ -444,7 +444,7 @@ class UnitManager(object):
        
         except Exception as e:
             import traceback
-            logger.warn (traceback.format_exc())
+            logger.error (traceback.format_exc())
             raise PilotException("Internal error - unit scheduler failed: %s" % e)
 
         self.handle_schedule (schedule)
@@ -496,8 +496,15 @@ class UnitManager(object):
         # submit to all pilots which got something submitted to
         for pid in pilot_cu_map.keys():
 
+            units_to_schedule = list()
+
             # if a kernel name is in the cu descriptions set, do kernel expansion
             for unit in pilot_cu_map[pid] :
+
+                if  not pid in schedule['pilots'] :
+                    # lost pilot, do not schedule unit
+                    logger.warn ("unschedule unit %s, lost pilot %s" % (unit.uid, pid))
+                    continue
 
                 unit.sandbox = schedule['pilots'][pid]['sandbox'] + "/unit-" + str(unit.uid)
 
@@ -525,11 +532,14 @@ class UnitManager(object):
                     ud.executable  = mdtd_bound.executable
                     ud.mpi         = mdtd_bound.mpi
 
+                    units_to_schedule.append (unit)
 
-            self._worker.schedule_compute_units (
-                pilot_uid=pid,
-                units=pilot_cu_map[pid]
-            )
+
+            if  len(units_to_schedule) :
+                self._worker.schedule_compute_units (
+                    pilot_uid=pid,
+                    units=units_to_schedule
+                )
 
 
         # report any change in wait_queue_size
@@ -630,7 +640,8 @@ class UnitManager(object):
 
                 if  unit.state not in state :
                     all_ok = False
-                    break
+                  # break
+
                 states.append (unit.state)
 
             # check timeout
@@ -638,6 +649,8 @@ class UnitManager(object):
                 break
 
             time.sleep (1)
+
+          # print "wait %s === %s" % (state, states)
 
 
         # done waiting

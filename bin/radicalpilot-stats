@@ -335,14 +335,15 @@ def plot_session (dbclient, dbname, session) :
         print "no slot configuration for session %s" % session
         print "Please enable benchmarking: export RADICAL_PILOT_BENCHMARK="
 
-    start       = events[0][4]
-    pids        = list()
-    maxtime     = 0.0
-    maxslots    = 0
-    nodesize    = 0
-    slots       = list()
-    hosts       = list()
-    delete_me   = list()
+    start      = events[0][4]
+    pids       = list()
+    maxtime    = 0.0
+    maxslots   = 0
+    nodesize   = 0
+    slots      = list()
+    hosts      = list()
+    delete_me  = list()
+    maxqueue   = 0
 
     # the plots look nicer if the largest pilots are plotted first, and smaller
     # ones are overlayed.  Thus we sort the pilot docs by by size (reversed).
@@ -435,7 +436,9 @@ def plot_session (dbclient, dbname, session) :
                             queued.append (uid)
                             seconds     = ru.time_diff (start, event[4])
                             queue_size += 1
+                            maxqueue    = max (maxqueue, queue_size)
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+                          # print "+ %10.2f  %6d" % (seconds, queue_size)
 
                     if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.EXECUTING] :
                         if  not uid in dequeued :
@@ -443,6 +446,7 @@ def plot_session (dbclient, dbname, session) :
                             seconds     = ru.time_diff (start, event[4])
                             queue_size -= 1
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+                          # print "- %10.2f  %6d" % (seconds, queue_size)
 
 
 
@@ -456,14 +460,11 @@ def plot_session (dbclient, dbname, session) :
 
                 slotidxs = list()
                 slotstr  = pilot['slothistory'][0]['slotstate']
-
-                for idx in range (0, len(slotstr)) :
-                    if  slotstr[idx] in ['-', '+'] :
-                        slotidxs.append (idx)
+                slotnum  = slotstr.count ('-') + slotstr.count ('+')
 
                 nodesize = max (nodesize, pilot['cores_per_node'])
-                maxslots = max (maxslots, len(slotidxs))
-                slots.append (len(slotidxs))
+                maxslots = max (maxslots, slotnum)
+                slots.append (slotnum)
 
                 for number,slotidx in enumerate(slotidxs) :
 
@@ -503,11 +504,34 @@ def plot_session (dbclient, dbname, session) :
     plotfile = "%s/radicalpilot-stats.plot" % os.path.dirname (__file__)
     plotname = os.environ.get ('RP_PLOTNAME', None)
 
+    # if maxslots and maxqueue differ by max 25% then we use the same scale.  If
+    # maxslots is larger we also use the same scale.
+    max_scale  = max(maxslots, maxqueue)
+    min_scale  = min(maxslots, maxqueue)
+    mean_scale = (maxslots+maxqueue)/2
+    scale_25   = 0.25 * mean_scale
+
+    if  maxslots > maxqueue :
+        slotsscale = maxslots+(nodesize/2)
+        queuescale = maxslots+(nodesize/2)
+
+    elif (mean_scale + scale_25) > max_scale and \
+        (mean_scale - scale_25) < min_scale :
+        slotsscale = maxslots+(nodesize/2)
+        queuescale = maxslots+(nodesize/2)
+
+    else :
+        slotsscale = maxslots+(nodesize/2)
+        queuescale = maxqueue+(nodesize/2)
+
                                          
     cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
     cmd +=        " -e  timetics=%d "       % timetics
   # cmd +=        " -e  mtimetics=%d "      % mtimetics
     cmd +=        " -e  maxslots=%d "       % maxslots
+    cmd +=        " -e  maxqueue=%d "       % maxqueue
+    cmd +=        " -e  slotsscale=%d "     % slotsscale
+    cmd +=        " -e  queuescale=%d "     % queuescale
     for idx,pid in enumerate(pids) :
         cmd +=    " -e  slotnum_%d=%d "     % (idx+1, slots[idx])
     cmd +=        " -e  nodesize=%d "       % nodesize

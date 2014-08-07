@@ -582,5 +582,7 @@ class UnitManagerController(threading.Thread):
                 (wu_notransfer, pilot_uid)
             )
         except Exception, e:
+            import traceback
+            logger.error (traceback.format_exc())
             raise Exception('error in unit manager controler: %s' % e)
 

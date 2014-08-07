@@ -42,8 +42,8 @@ def get_session_docs (dbclient, dbname, session) :
     ret['umgr'   ] = list(database["%s.wm" % session].find ())
     ret['unit'   ] = list(database["%s.w"  % session].find ())
 
-    if  len(ret['session']) > 1 :
-        print 'more than one session document -- pick first one'
+  # if  len(ret['session']) > 1 :
+  #     print 'more than one session document -- pick first one'
     ret['session'] = ret['session'][0]
 
     # we want to add a list of handled units to each pilot doc
@@ -111,7 +111,8 @@ def get_session_events (dbclient, dbname, session) :
 
     ret = list()
 
-    for doc in docs['session'] :
+    if  'session' in docs :
+        doc = docs['session']
         odoc  = dict()
         otype = 'session'
         oid   = str(doc['_id'])
