@@ -26,7 +26,7 @@ def pilot_state_cb(pilot, state):
         % (pilot.uid, state)
 
     if state == rp.FAILED:
-        sys.exit (-1)
+        sys.exit (0)
         thread.interrupt_main()
 
 
