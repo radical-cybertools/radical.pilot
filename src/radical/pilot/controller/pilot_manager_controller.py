@@ -216,84 +216,94 @@ class PilotManagerController(threading.Thread):
         """run() is called when the process is started via
            PilotManagerController.start().
         """
-        logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s started." %
-                    (self.name, self.ident, self._pm_id))
 
-        while not self._stop.is_set():
+        # make sure to catch sys.exit (which raises SystemExit)
+        try :
 
-            # # Check if one or more startup requests have finished.
-            # self.startup_results_lock.acquire()
+            logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s started." %
+                        (self.name, self.ident, self._pm_id))
 
-            # new_startup_results = list()
+            while not self._stop.is_set():
 
-            # for transfer_result in self.startup_results:
-            #     if transfer_result.ready():
-            #         result = transfer_result.get()
+                # # Check if one or more startup requests have finished.
+                # self.startup_results_lock.acquire()
 
-            #         self._db.update_pilot_state(
-            #             pilot_uid=result["pilot_uid"],
-            #             state=result["state"],
-            #             sagajobid=result["saga_job_id"],
-            #             sandbox=result["sandbox"],
-            #             submitted=result["submitted"],
-            #             logs=result["logs"]
-            #         )
+                # new_startup_results = list()
 
-            #     else:
-            #         new_startup_results.append(transfer_result)
+                # for transfer_result in self.startup_results:
+                #     if transfer_result.ready():
+                #         result = transfer_result.get()
 
-            # self.startup_results = new_startup_results
+                #         self._db.update_pilot_state(
+                #             pilot_uid=result["pilot_uid"],
+                #             state=result["state"],
+                #             sagajobid=result["saga_job_id"],
+                #             sandbox=result["sandbox"],
+                #             submitted=result["submitted"],
+                #             logs=result["logs"]
+                #         )
 
-            # self.startup_results_lock.release()
+                #     else:
+                #         new_startup_results.append(transfer_result)
 
-            # Check and update pilots. This needs to be optimized at
-            # some point, i.e., state pulling should be conditional
-            # or triggered by a tailable MongoDB cursor, etc.
-            pilot_list = self._db.get_pilots(pilot_manager_id=self._pm_id)
+                # self.startup_results = new_startup_results
 
-            for pilot in pilot_list:
-                pilot_id = str(pilot["_id"])
+                # self.startup_results_lock.release()
 
-                new_state = pilot["state"]
-                if pilot_id in self._shared_data:
-                    old_state = self._shared_data[pilot_id]["data"]["state"]
-                else:
-                    old_state = None
-                    self._shared_data[pilot_id] = {
-                        'data':          pilot,
-                        'callbacks':     [],
-                        'facade_object': None
-                    }
+                # Check and update pilots. This needs to be optimized at
+                # some point, i.e., state pulling should be conditional
+                # or triggered by a tailable MongoDB cursor, etc.
+                pilot_list = self._db.get_pilots(pilot_manager_id=self._pm_id)
 
-                if new_state != old_state:
-                    # On a state change, we fire zee callbacks.
-                    logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
+                for pilot in pilot_list:
+                    pilot_id = str(pilot["_id"])
 
-                    # The state of the pilot has changed, We call all
-                    # pilot-level callbacks to propagate this.
-                    self.call_callbacks(pilot_id, new_state)
+                    new_state = pilot["state"]
+                    if pilot_id in self._shared_data:
+                        old_state = self._shared_data[pilot_id]["data"]["state"]
+                    else:
+                        old_state = None
+                        self._shared_data[pilot_id] = {
+                            'data':          pilot,
+                            'callbacks':     [],
+                            'facade_object': None
+                        }
 
-                self._shared_data[pilot_id]['data'] = pilot
+                    if new_state != old_state:
+                        # On a state change, we fire zee callbacks.
+                        logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
 
-                # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
-                # set the state of the compute unit accordingly
-                if new_state in ['Failed', 'Done', 'Canceled']:
-                    self._db.set_all_running_compute_units(
-                        pilot_id=pilot_id, 
-                        state="Canceled",
-                        log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
+                        # The state of the pilot has changed, We call all
+                        # pilot-level callbacks to propagate this.
+                        self.call_callbacks(pilot_id, new_state)
 
-                # After the first iteration, we are officially initialized!
-                if not self._initialized.is_set():
-                    self._initialized.set()
+                    self._shared_data[pilot_id]['data'] = pilot
 
-            time.sleep(1)
+                    # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
+                    # set the state of the compute unit accordingly
+                    if new_state in ['Failed', 'Done', 'Canceled']:
+                        self._db.set_all_running_compute_units(
+                            pilot_id=pilot_id, 
+                            state="Canceled",
+                            log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
 
-        # shut down the autonomous pilot launcher worker(s)
-        for worker in self._pilot_launcher_worker_pool:
-          # worker.terminate()
-            logger.debug("PilotManager.close(): %s terminated." % worker.name)
-          # worker.join()
+                    # After the first iteration, we are officially initialized!
+                    if not self._initialized.is_set():
+                        self._initialized.set()
+
+                time.sleep(1)
+
+            # shut down the autonomous pilot launcher worker(s)
+            for worker in self._pilot_launcher_worker_pool:
+              # worker.terminate()
+                logger.debug("PilotManager.close(): %s terminated." % worker.name)
+              # worker.join()
+
+        except SystemExit as e :
+            print "pilot manager controller thread caught system exit -- forcing application shutdown"
+            import thread
+            thread.interrupt_main ()
+            
 
     # ------------------------------------------------------------------------
     #

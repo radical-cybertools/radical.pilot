@@ -140,323 +140,333 @@ class PilotLauncherWorker(threading.Thread):
     def run(self):
         """Starts the process when Process.start() is called.
         """
-        # Try to connect to the database 
-        try:
-            connection = self.db_connection_info.get_db_handle()
-            db = connection[self.db_connection_info.dbname]
-            pilot_col = db["%s.p" % self.db_connection_info.session_id]
-            logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
-            # AM: this list is only read once, at startup, so this worker
-            # will not pick up any changes.  I am not sure how to trigger
-            # re-initialization, as doing it once per iteration seems a rather
-            # bad idea (list_resource_configs() goes via mongodb).  OTOH, there
-            # is no direct communication between worker and manager, AFACIS.
-            #
-            # Update the known resource configurations
-            resource_configurations = self._session.list_resource_configs()
+        # make sure to catch sys.exit (which raises SystemExit)
+        try :
 
-        except Exception, ex:
-            tb = traceback.format_exc()
-            logger.error("Connection error: %s. %s" % (str(ex), tb))
-            return
+            # Try to connect to the database 
+            try:
+                connection = self.db_connection_info.get_db_handle()
+                db = connection[self.db_connection_info.dbname]
+                pilot_col = db["%s.p" % self.db_connection_info.session_id]
+                logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
-        last_job_check = time.time()
+                # AM: this list is only read once, at startup, so this worker
+                # will not pick up any changes.  I am not sure how to trigger
+                # re-initialization, as doing it once per iteration seems a rather
+                # bad idea (list_resource_configs() goes via mongodb).  OTOH, there
+                # is no direct communication between worker and manager, AFACIS.
+                #
+                # Update the known resource configurations
+                resource_configurations = self._session.list_resource_configs()
 
-        while True:
-            # Periodically, we pull up all ComputePilots that are pending 
-            # execution or were last seen executing and check if the corresponding  
-            # SAGA job is still pending in the queue. If that is not the case, 
-            # we assume that the job has failed for some reasons and update
-            # the state of the ComputePilot accordingly.
-            if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
-                self.check_pilot_states (pilot_col)
-                last_job_check = time.time()
+            except Exception, ex:
+                tb = traceback.format_exc()
+                logger.error("Connection error: %s. %s" % (str(ex), tb))
+                return
+
+            last_job_check = time.time()
+
+            while True:
+                # Periodically, we pull up all ComputePilots that are pending 
+                # execution or were last seen executing and check if the corresponding  
+                # SAGA job is still pending in the queue. If that is not the case, 
+                # we assume that the job has failed for some reasons and update
+                # the state of the ComputePilot accordingly.
+                if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
+                    self.check_pilot_states (pilot_col)
+                    last_job_check = time.time()
 
 
-            # See if we can find a ComputePilot that is waiting to be launched.
-            # If we find one, we use SAGA to create a job service, a job 
-            # description and a job that is then send to the local or remote
-            # queueing system. If this succedes, we set the ComputePilot's 
-            # state to pending, otherwise to failed.
-            compute_pilot = None
+                # See if we can find a ComputePilot that is waiting to be launched.
+                # If we find one, we use SAGA to create a job service, a job 
+                # description and a job that is then send to the local or remote
+                # queueing system. If this succedes, we set the ComputePilot's 
+                # state to pending, otherwise to failed.
+                compute_pilot = None
 
-            ts = datetime.datetime.utcnow()
-            compute_pilot = pilot_col.find_and_modify(
-                query={"pilotmanager": self.pilot_manager_id,
-                       "state" : PENDING_LAUNCH},
-                update={"$set" : {"state": LAUNCHING},
-                        "$push": {"statehistory": {"state": LAUNCHING, "timestamp": ts}}},
-                limit=BULK_LIMIT
-            )
+                ts = datetime.datetime.utcnow()
+                compute_pilot = pilot_col.find_and_modify(
+                    query={"pilotmanager": self.pilot_manager_id,
+                           "state" : PENDING_LAUNCH},
+                    update={"$set" : {"state": LAUNCHING},
+                            "$push": {"statehistory": {"state": LAUNCHING, "timestamp": ts}}},
+                    limit=BULK_LIMIT
+                )
 
-            if compute_pilot is None:
-                # Sleep a bit if no new units are available.
-                time.sleep(1)
-            else:
-                try:
-                    ######################################################################
-                    ##
-                    ## LAUNCH THE PILOT AGENT VIA SAGA
-                    log_messages = []
+                if compute_pilot is None:
+                    # Sleep a bit if no new units are available.
+                    time.sleep(1)
+                else:
+                    try:
+                        ######################################################################
+                        ##
+                        ## LAUNCH THE PILOT AGENT VIA SAGA
+                        log_messages = []
 
-                    compute_pilot_id = str(compute_pilot["_id"])
-                    logger.info("Launching ComputePilot %s" % compute_pilot)
+                        compute_pilot_id = str(compute_pilot["_id"])
+                        logger.info("Launching ComputePilot %s" % compute_pilot)
 
-                    number_cores = compute_pilot['description']['cores']
-                    runtime      = compute_pilot['description']['runtime']
-                    queue        = compute_pilot['description']['queue']
-                    project      = compute_pilot['description']['project']
-                    cleanup      = compute_pilot['description']['cleanup']
-                    #pilot_agent  = compute_pilot['description']['pilot_agent_priv']
-                    #agent_worker = compute_pilot['description']['agent_worker']
-                    sandbox      = compute_pilot['sandbox']
+                        number_cores = compute_pilot['description']['cores']
+                        runtime      = compute_pilot['description']['runtime']
+                        queue        = compute_pilot['description']['queue']
+                        project      = compute_pilot['description']['project']
+                        cleanup      = compute_pilot['description']['cleanup']
+                        #pilot_agent  = compute_pilot['description']['pilot_agent_priv']
+                        #agent_worker = compute_pilot['description']['agent_worker']
+                        sandbox      = compute_pilot['sandbox']
 
-                    use_local_endpoints = False
-                    resource_key = compute_pilot['description']['resource']
-                    s = compute_pilot['description']['resource'].split(":")
-                    if len(s) == 2:
-                        if s[1].lower() == "local":
-                            use_local_endpoints = True
-                            resource_key = s[0]
+                        use_local_endpoints = False
+                        resource_key = compute_pilot['description']['resource']
+                        s = compute_pilot['description']['resource'].split(":")
+                        if len(s) == 2:
+                            if s[1].lower() == "local":
+                                use_local_endpoints = True
+                                resource_key = s[0]
+                            else:
+                                error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], compute_pilot['description']['resource'])
+                                raise Exception(error_msg)
+
+                        resource_cfg = resource_configurations[resource_key]
+
+                        if 'pilot_agent_worker' in resource_cfg and resource_cfg['pilot_agent_worker'] is not None:
+                            agent_worker = resource_cfg['pilot_agent_worker']
                         else:
-                            error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], compute_pilot['description']['resource'])
-                            raise Exception(error_msg)
+                            agent_worker = None
 
-                    resource_cfg = resource_configurations[resource_key]
+                        ########################################################
+                        # Database connection parameters
+                        session_uid = self.db_connection_info.session_id
 
-                    if 'pilot_agent_worker' in resource_cfg and resource_cfg['pilot_agent_worker'] is not None:
-                        agent_worker = resource_cfg['pilot_agent_worker']
-                    else:
-                        agent_worker = None
+                        database_url = ru.Url(self.db_connection_info.url)
 
-                    ########################################################
-                    # Database connection parameters
-                    session_uid = self.db_connection_info.session_id
+                        # Set default port if not specified
+                        # (explicit is better than implicit!)
+                        if not database_url.port:
+                            database_url.port = 27017
 
-                    database_url = ru.Url(self.db_connection_info.url)
+                        # Set default host to localhost if not specified
+                        if not database_url.host:
+                            database_url.host = 'localhost'
 
-                    # Set default port if not specified
-                    # (explicit is better than implicit!)
-                    if not database_url.port:
-                        database_url.port = 27017
+                        database_name = self.db_connection_info.dbname
+                        # Set default database name if not specified
+                        if not database_name:
+                            database_name = 'radicalpilot'
 
-                    # Set default host to localhost if not specified
-                    if not database_url.host:
-                        database_url.host = 'localhost'
+                        ########################################################
+                        # Get directory where pilot_launcher_worker.py lives
+                        plw_dir = os.path.dirname(os.path.realpath(__file__))
 
-                    database_name = self.db_connection_info.dbname
-                    # Set default database name if not specified
-                    if not database_name:
-                        database_name = 'radicalpilot'
+                        ########################################################
+                        # take 'pilot_agent' as defined in the resource configuration
+                        # by default, but override it if set in the Pilot description. 
+                        pilot_agent = resource_cfg['pilot_agent']
+                        if compute_pilot['description']['pilot_agent_priv'] is not None:
+                            pilot_agent = compute_pilot['description']['pilot_agent_priv']
+                        agent_path = os.path.abspath("%s/../agent/%s" % (plw_dir, pilot_agent))
 
-                    ########################################################
-                    # Get directory where pilot_launcher_worker.py lives
-                    plw_dir = os.path.dirname(os.path.realpath(__file__))
+                        log_msg = "Using pilot agent %s" % agent_path
+                        log_messages.append(log_msg)
+                        logger.info(log_msg)
 
-                    ########################################################
-                    # take 'pilot_agent' as defined in the resource configuration
-                    # by default, but override it if set in the Pilot description. 
-                    pilot_agent = resource_cfg['pilot_agent']
-                    if compute_pilot['description']['pilot_agent_priv'] is not None:
-                        pilot_agent = compute_pilot['description']['pilot_agent_priv']
-                    agent_path = os.path.abspath("%s/../agent/%s" % (plw_dir, pilot_agent))
+                        ########################################################
+                        # we use always "default_bootstrapper.sh" unless a resource 
+                        # configuration explicitly defines another bootstrapper. 
+                        if 'bootstrapper' in resource_cfg and resource_cfg['bootstrapper'] is not None:
+                            bootstrapper = resource_cfg['bootstrapper']
+                        else:
+                            bootstrapper = 'default_bootstrapper.sh'
+                        bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (plw_dir, bootstrapper))
+                        
+                        log_msg = "Using bootstrapper %s" % bootstrapper_path
+                        log_messages.append(log_msg)
+                        logger.info(log_msg)
 
-                    log_msg = "Using pilot agent %s" % agent_path
-                    log_messages.append(log_msg)
-                    logger.info(log_msg)
+                        ########################################################
+                        # Create SAGA Job description and submit the pilot job #
+                        ########################################################
 
-                    ########################################################
-                    # we use always "default_bootstrapper.sh" unless a resource 
-                    # configuration explicitly defines another bootstrapper. 
-                    if 'bootstrapper' in resource_cfg and resource_cfg['bootstrapper'] is not None:
-                        bootstrapper = resource_cfg['bootstrapper']
-                    else:
-                        bootstrapper = 'default_bootstrapper.sh'
-                    bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (plw_dir, bootstrapper))
-                    
-                    log_msg = "Using bootstrapper %s" % bootstrapper_path
-                    log_messages.append(log_msg)
-                    logger.info(log_msg)
-
-                    ########################################################
-                    # Create SAGA Job description and submit the pilot job #
-                    ########################################################
-
-                    log_msg = "Creating agent sandbox '%s'." % str(sandbox)
-                    log_messages.append(log_msg)
-                    logger.debug(log_msg)
-
-                    agent_dir = saga.filesystem.Directory(
-                        saga.Url(sandbox),
-                        saga.filesystem.CREATE_PARENTS, session=self._session)
-                    agent_dir.close()
-
-                    ########################################################
-                    # Copy the bootstrap shell script
-                    bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
-                    log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
-                    log_messages.append(log_msg)
-                    logger.debug(log_msg)
-
-                    bs_script = saga.filesystem.File(bs_script_url)
-                    bs_script.copy(saga.Url(sandbox))
-                    bs_script.close()
-
-                    ########################################################
-                    # Copy the agent script
-                    agent_script_url = saga.Url("file://localhost/%s" % agent_path)
-                    log_msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_script_url, sandbox)
-                    log_messages.append(log_msg)
-                    logger.debug(log_msg)
-
-                    agent_script = saga.filesystem.File(agent_script_url)
-                    agent_script.copy("%s/radical-pilot-agent.py" % str(sandbox))
-                    agent_script.close()
-
-                    # copying agent-worker.py script to sandbox
-                    #########################################################
-
-                    if agent_worker is not None:
-                        logger.warning("Using custom agent worker script: %s" % agent_worker)
-                        worker_path = os.path.abspath("%s/../agent/%s" % (plw_dir, agent_worker))
-
-                        worker_script_url = saga.Url("file://localhost/%s" % worker_path)
-
-                        log_msg = "Copying '%s' to agent sandbox (%s)." % (worker_script_url, sandbox)
+                        log_msg = "Creating agent sandbox '%s'." % str(sandbox)
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
-                        worker_script = saga.filesystem.File(worker_script_url)
-                        worker_script.copy("%s/agent-worker.py" % str(sandbox))
-                        worker_script.close()
+                        agent_dir = saga.filesystem.Directory(
+                            saga.Url(sandbox),
+                            saga.filesystem.CREATE_PARENTS, session=self._session)
+                        agent_dir.close()
 
-                    #########################################################
-                    # now that the script is in place and we know where it is,
-                    # we can launch the agent
-                    if use_local_endpoints is True:
-                        job_service_url = saga.Url(resource_cfg['local_job_manager_endpoint'])
-                    else:
-                        job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
+                        ########################################################
+                        # Copy the bootstrap shell script
+                        bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
+                        log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
+                        log_messages.append(log_msg)
+                        logger.debug(log_msg)
 
-                    js = saga.job.Service(job_service_url, session=self._session)
+                        bs_script = saga.filesystem.File(bs_script_url)
+                        bs_script.copy(saga.Url(sandbox))
+                        bs_script.close()
 
-                    jd = saga.job.Description()
-                    jd.working_directory = saga.Url(sandbox).path
+                        ########################################################
+                        # Copy the agent script
+                        agent_script_url = saga.Url("file://localhost/%s" % agent_path)
+                        log_msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_script_url, sandbox)
+                        log_messages.append(log_msg)
+                        logger.debug(log_msg)
 
-                    bootstrap_args = "-n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
-                        (database_name, session_uid, str(compute_pilot_id),
-                         runtime, logger.level, number_cores, VERSION)
+                        agent_script = saga.filesystem.File(agent_script_url)
+                        agent_script.copy("%s/radical-pilot-agent.py" % str(sandbox))
+                        agent_script.close()
 
-                    if 'agent_mongodb_endpoint' in resource_cfg and resource_cfg['agent_mongodb_endpoint'] is not None:
-                        agent_db_url = ru.Url(resource_cfg['agent_mongodb_endpoint'])
-                        bootstrap_args += " -m %s:%d " % (agent_db_url.host, agent_db_url.port)
-                    else:
-                        bootstrap_args += " -m %s:%d " % (database_url.host, database_url.port)
+                        # copying agent-worker.py script to sandbox
+                        #########################################################
 
-                    if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
-                        bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
-                    if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:
-                        for command in resource_cfg['pre_bootstrap']:
-                            bootstrap_args += " -e '%s' " % command
-                    if 'global_virtenv' in resource_cfg and resource_cfg['global_virtenv'] is not None:
-                        bootstrap_args += " -g %s " % resource_cfg['global_virtenv']
-                    if 'lrms' in resource_cfg and resource_cfg['lrms'] is not None:
-                        bootstrap_args += " -l %s " % resource_cfg['lrms']
-                    else:
-                        raise Exception("LRMS not specified.")
-                    if 'task_launch_method' in resource_cfg and resource_cfg['task_launch_method'] is not None:
-                        bootstrap_args += " -j %s " % resource_cfg['task_launch_method']
-                    else:
-                        raise Exception("Task launch method not set.")
-                    if 'mpi_launch_method' in resource_cfg and resource_cfg['mpi_launch_method'] is not None:
-                        bootstrap_args += " -k %s " % resource_cfg['mpi_launch_method']
-                    else:
-                        raise Exception("MPI launch method not set.")
-                    if 'forward_tunnel_endpoint' in resource_cfg and resource_cfg['forward_tunnel_endpoint'] is not None:
-                        bootstrap_args += " -f %s " % resource_cfg['forward_tunnel_endpoint']
+                        if agent_worker is not None:
+                            logger.warning("Using custom agent worker script: %s" % agent_worker)
+                            worker_path = os.path.abspath("%s/../agent/%s" % (plw_dir, agent_worker))
 
-                    if cleanup is True: 
-                        # cleanup flags:
-                        #   l : pilot log files
-                        #   u : unit work dirs
-                        #   v : virtualenv
-                        # FIXME: get cleanup flags from somewhere
-                        bootstrap_args += " -x %s" % 'luv' # the cleanup flag
+                            worker_script_url = saga.Url("file://localhost/%s" % worker_path)
 
-                    if  'RADICAL_PILOT_BENCHMARK' in os.environ :
-                        bootstrap_args += " -b"
+                            log_msg = "Copying '%s' to agent sandbox (%s)." % (worker_script_url, sandbox)
+                            log_messages.append(log_msg)
+                            logger.debug(log_msg)
 
-                    jd.executable = "/bin/bash"
-                    jd.arguments = ["-l", bootstrapper, bootstrap_args]
+                            worker_script = saga.filesystem.File(worker_script_url)
+                            worker_script.copy("%s/agent-worker.py" % str(sandbox))
+                            worker_script.close()
 
-                    logger.debug("Bootstrap command line: /bin/bash %s" % jd.arguments)
+                        #########################################################
+                        # now that the script is in place and we know where it is,
+                        # we can launch the agent
+                        if use_local_endpoints is True:
+                            job_service_url = saga.Url(resource_cfg['local_job_manager_endpoint'])
+                        else:
+                            job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
 
-                    # fork:// and ssh:// don't support 'queue' and 'project'
-                    if (job_service_url.schema != "fork") and (job_service_url.schema != "ssh"):
+                        js = saga.job.Service(job_service_url, session=self._session)
 
-                        # process the 'queue' attribute
-                        if queue is not None:
-                            jd.queue = queue
-                        elif 'default_queue' in resource_cfg:
-                            jd.queue = resource_cfg['default_queue']
+                        jd = saga.job.Description()
+                        jd.working_directory = saga.Url(sandbox).path
 
-                        # process the project / allocation 
-                        if project is not None:
-                            jd.project = project
+                        bootstrap_args = "-n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
+                            (database_name, session_uid, str(compute_pilot_id),
+                             runtime, logger.level, number_cores, VERSION)
 
-                    # set the SPMD variation if required
-                    if 'spmd_variation' in resource_cfg and resource_cfg['spmd_variation'] is not None:
-                        jd.spmd_variation = resource_cfg['spmd_variation']
+                        if 'agent_mongodb_endpoint' in resource_cfg and resource_cfg['agent_mongodb_endpoint'] is not None:
+                            agent_db_url = ru.Url(resource_cfg['agent_mongodb_endpoint'])
+                            bootstrap_args += " -m %s:%d " % (agent_db_url.host, agent_db_url.port)
+                        else:
+                            bootstrap_args += " -m %s:%d " % (database_url.host, database_url.port)
 
-                    jd.output = "AGENT.STDOUT"
-                    jd.error  = "AGENT.STDERR"
-                    jd.total_cpu_count = number_cores
-                    jd.wall_time_limit = runtime
-                    if compute_pilot['description']['memory'] is not None:
-                        jd.total_physical_memory = compute_pilot['description']['memory']
+                        if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
+                            bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
+                        if 'pre_bootstrap' in resource_cfg and resource_cfg['pre_bootstrap'] is not None:
+                            for command in resource_cfg['pre_bootstrap']:
+                                bootstrap_args += " -e '%s' " % command
+                        if 'global_virtenv' in resource_cfg and resource_cfg['global_virtenv'] is not None:
+                            bootstrap_args += " -g %s " % resource_cfg['global_virtenv']
+                        if 'lrms' in resource_cfg and resource_cfg['lrms'] is not None:
+                            bootstrap_args += " -l %s " % resource_cfg['lrms']
+                        else:
+                            raise Exception("LRMS not specified.")
+                        if 'task_launch_method' in resource_cfg and resource_cfg['task_launch_method'] is not None:
+                            bootstrap_args += " -j %s " % resource_cfg['task_launch_method']
+                        else:
+                            raise Exception("Task launch method not set.")
+                        if 'mpi_launch_method' in resource_cfg and resource_cfg['mpi_launch_method'] is not None:
+                            bootstrap_args += " -k %s " % resource_cfg['mpi_launch_method']
+                        else:
+                            raise Exception("MPI launch method not set.")
+                        if 'forward_tunnel_endpoint' in resource_cfg and resource_cfg['forward_tunnel_endpoint'] is not None:
+                            bootstrap_args += " -f %s " % resource_cfg['forward_tunnel_endpoint']
 
-                    log_msg = "Submitting SAGA job with description: %s" % str(jd.as_dict())
-                    log_messages.append(log_msg)
-                    logger.debug(log_msg)
+                        if cleanup is True: 
+                            # cleanup flags:
+                            #   l : pilot log files
+                            #   u : unit work dirs
+                            #   v : virtualenv
+                            # FIXME: get cleanup flags from somewhere
+                            bootstrap_args += " -x %s" % 'luv' # the cleanup flag
 
-                    pilotjob = js.create_job(jd)
-                    pilotjob.run()
+                        if  'RADICAL_PILOT_BENCHMARK' in os.environ :
+                            bootstrap_args += " -b"
 
-                    # do a quick error check
-                    if pilotjob.state == saga.FAILED:
-                        raise Exception("SAGA Job state was FAILED.")
+                        jd.executable = "/bin/bash"
+                        jd.arguments = ["-l", bootstrapper, bootstrap_args]
 
-                    saga_job_id = pilotjob.id
-                    log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
+                        logger.debug("Bootstrap command line: /bin/bash %s" % jd.arguments)
 
-                    log_messages.append(log_msg)
-                    logger.debug(log_msg)
+                        # fork:// and ssh:// don't support 'queue' and 'project'
+                        if (job_service_url.schema != "fork") and (job_service_url.schema != "ssh"):
 
-                    js.close()                    
-                    ##
-                    ##
-                    ######################################################################
+                            # process the 'queue' attribute
+                            if queue is not None:
+                                jd.queue = queue
+                            elif 'default_queue' in resource_cfg:
+                                jd.queue = resource_cfg['default_queue']
 
-                    # Update the CU's state to 'DONE' if all transfers were successfull.
-                    ts = datetime.datetime.utcnow()
-                    pilot_col.update(
-                        {"_id": ObjectId(compute_pilot_id)},
-                        {"$set": {"state": PENDING_ACTIVE,
-                                  "saga_job_id": saga_job_id},
-                         "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                         "$pushAll": {"log": log_messages}}                    
-                    )
+                            # process the project / allocation 
+                            if project is not None:
+                                jd.project = project
 
-                except Exception, ex:
-                    # Update the Pilot's state 'FAILED'.
-                    ts = datetime.datetime.utcnow()
-                    log_messages = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
-                    pilot_col.update(
-                        {"_id": ObjectId(compute_pilot_id)},
-                        {"$set": {"state": FAILED},
-                         "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                         "$push": {"log": log_messages}}
-                    )
-                    logger.error(log_messages)
+                        # set the SPMD variation if required
+                        if 'spmd_variation' in resource_cfg and resource_cfg['spmd_variation'] is not None:
+                            jd.spmd_variation = resource_cfg['spmd_variation']
+
+                        jd.output = "AGENT.STDOUT"
+                        jd.error  = "AGENT.STDERR"
+                        jd.total_cpu_count = number_cores
+                        jd.wall_time_limit = runtime
+                        if compute_pilot['description']['memory'] is not None:
+                            jd.total_physical_memory = compute_pilot['description']['memory']
+
+                        log_msg = "Submitting SAGA job with description: %s" % str(jd.as_dict())
+                        log_messages.append(log_msg)
+                        logger.debug(log_msg)
+
+                        pilotjob = js.create_job(jd)
+                        pilotjob.run()
+
+                        # do a quick error check
+                        if pilotjob.state == saga.FAILED:
+                            raise Exception("SAGA Job state was FAILED.")
+
+                        saga_job_id = pilotjob.id
+                        log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
+
+                        log_messages.append(log_msg)
+                        logger.debug(log_msg)
+
+                        js.close()                    
+                        ##
+                        ##
+                        ######################################################################
+
+                        # Update the CU's state to 'DONE' if all transfers were successfull.
+                        ts = datetime.datetime.utcnow()
+                        pilot_col.update(
+                            {"_id": ObjectId(compute_pilot_id)},
+                            {"$set": {"state": PENDING_ACTIVE,
+                                      "saga_job_id": saga_job_id},
+                             "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
+                             "$pushAll": {"log": log_messages}}                    
+                        )
+
+                    except Exception, ex:
+                        # Update the Pilot's state 'FAILED'.
+                        ts = datetime.datetime.utcnow()
+                        log_messages = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+                        pilot_col.update(
+                            {"_id": ObjectId(compute_pilot_id)},
+                            {"$set": {"state": FAILED},
+                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                             "$push": {"log": log_messages}}
+                        )
+                        logger.error(log_messages)
+
+        except SystemExit as e :
+            print "pilot launcher thread caught system exit -- forcing application shutdown"
+            import thread
+            thread.interrupt_main ()
+            
 
