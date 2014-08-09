@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import numpy
+import pprint
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+_DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+
+
+# ------------------------------------------------------------------------------
+#
+def usage (msg=None, noexit=False) :
+
+    if  msg :
+        print "\n      Error: %s" % msg
+
+    print """
+      usage   : %s -m <mode> [-d dburl] [-s session]
+      example : %s -m close   -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
+
+      modes (-m) :
+
+        help  : show this message
+        list  : show  a  list   of sessions in the database
+        close : reconnect to a session and close it
+
+      Closing a session will cancel all its compute units and pilots.
+      The default MongoDB is '%s'
+      
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+
+    if  msg :
+        sys.exit (1)
+
+    if  not noexit :
+        sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+#
+def list_sessions (dbclient, dbname, session) :
+
+    if  session :
+        print "invalid session parameter on 'list'"
+        sys.exit (-1)
+
+    sids = rpu.get_session_ids (dbclient, dbname)
+
+
+    if not sids :
+        print 'no session recorded in database at %s' % url
+
+    else :
+        print "Session IDs:"
+        for sid in sids :
+            print "  %s" % sid
+
+
+# ------------------------------------------------------------------------------
+def close_session (dburl, session) :
+
+    print "session : %s" % session
+    print "mode    : close"
+
+    rp.Session (database_url=dburl, session_uid=session).close ()
+
+# ------------------------------------------------------------------------------
+# 
+def parse_commandline():
+
+    return options
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__' :
+
+    import optparse
+    parser = optparse.OptionParser (add_help_option=False)
+
+    parser.add_option('-s', '--session', dest='session')
+    parser.add_option('-d', '--dburl',   dest='url')
+    parser.add_option('-m', '--mode',    dest='mode')
+    parser.add_option('-h', '--help',    dest='help', action="store_true")
+
+    options, args = parser.parse_args ()
+
+    if  args :
+        usage ("Too many arguments (%s)" % args)
+
+    if  options.help :
+        usage ()
+
+    if  options.mode in ['help'] : 
+        usage ()
+
+    if  not options.mode :
+        usage ("No mode specified")
+
+    if  not options.url : 
+        options.url = _DEFAULT_DBURL 
+
+
+    mode    = options.mode 
+    url     = options.url
+    session = options.session
+
+    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
+    dbclient = pymongo.MongoClient (host=host, port=port)
+
+    print "modes   : %s" % mode
+    print "db url  : %s" % url
+
+    if  not session and mode != 'list' :
+        print usage ("no session sepcified")
+
+    for m in mode.split (',') :
+
+        if  m not in ['list', 'close', 'help'] : 
+            usage ("Unsupported mode '%s'" % m)
+
+        if   m == 'list' : list_sessions (dbclient, dbname, session)
+        elif m == 'close': close_session (url, session) 
+        elif m == 'help' : usage (noexit=True)
+        else             : usage ("unknown mode '%s'" % mode)
+
+    # ------------------------------------------------------------------------------------
+    dbclient.disconnect ()
+
+# ------------------------------------------------------------------------------
+
