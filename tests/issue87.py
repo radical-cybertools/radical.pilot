@@ -2,41 +2,6 @@ import os
 import sys
 import sagapilot
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/futuregrid.json"]
-
-
-#------------------------------------------------------------------------------
-#
-def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
-
-    if state == sagapilot.states.FAILED:
-        sys.exit(1)
-
-#------------------------------------------------------------------------------
-#
-def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
-    if state == sagapilot.states.FAILED:
-        print "            Log: %s" % unit.log[-1]
-
 #------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
@@ -45,10 +10,10 @@ if __name__ == "__main__":
         # Create a new session. A session is the 'root' object for all other
         # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
-        session = sagapilot.Session(database_url=DBURL)
+        session = sagapilot.Session()
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
+        pmgr = sagapilot.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -112,11 +77,9 @@ if __name__ == "__main__":
 
         for unit in umgr.get_units():
             # Print some information about the unit.
-            print "\n{0}".format(str(unit))
-
-            # Get the stdout and stderr streams of the ComputeUnit.
-            print "  STDOUT: {0}".format(unit.stdout)
-            print "  STDERR: {0}".format(unit.stderr)
+            print " UNIT  : %s" % str(unit)
+            print " STDOUT: %s" % unit.stdout
+            print " STDERR: %s" % unit.stderr
 
         # Cancel all pilots.
         pmgr.cancel_pilots()

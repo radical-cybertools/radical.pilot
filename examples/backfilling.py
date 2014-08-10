@@ -2,51 +2,39 @@ import os
 import sys
 import radical.pilot as rp
 
+# ATTENTION:
+#
+# This example needs significant time to run, and there is some probability that
+# the larger futuregrid pilots are not getting through the batch queue at all.
+# It is thus not part of the RP test suite.
+
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!
-#
-# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
-# easiest way to make this work seamlessly is to set up ssh key-based
-# authentication and add the key to your keychain so you won't be 
-# prompted for a password. The following article explains how to set 
-# this up on Linux:
-#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
-
-
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
 
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
-    print "[AppCallback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
 
-    if state == rp.states.FAILED:
-        sys.exit(1)
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
-def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
-    print "[AppCallback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
-    if state == rp.states.FAILED:
-        print "            Log: %s" % unit.log[-1]
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
+
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
@@ -56,11 +44,11 @@ if __name__ == "__main__":
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
     # well as security crendetials.
-    session = rp.Session(database_url=DBURL)
+    session = rp.Session()
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
-  # c.user_id = "tg803521"
+    c.user_id = "merzky"
     session.add_context(c)
 
     session_id = session.uid
@@ -89,19 +77,15 @@ if __name__ == "__main__":
     pdesc.runtime   = 40 # minutes
     pdesc.cores     = 32
     pdesc.cleanup   = True
-  # pdesc.queue     = "normal"
-  # pdesc.project   = "TG-MCB140109"
 
     # Launch the pilot.
     pilot_2 = pmgr.submit_pilots(pdesc)
 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "stampede.tacc.utexas.edu"
+    pdesc.resource  = "sierra.futuregrid.org"
     pdesc.runtime   = 40 # minutes
     pdesc.cores     = 128
     pdesc.cleanup   = True
-    pdesc.queue     = "normal"
-    pdesc.project   = "TG-MCB090174"
 
     # Launch the pilot.
     pilot_3 = pmgr.submit_pilots(pdesc)

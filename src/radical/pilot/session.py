@@ -14,6 +14,7 @@ __license__   = "MIT"
 import os 
 import glob
 import saga
+import radical.utils as ru
 
 from radical.pilot.object          import Object
 from radical.pilot.unit_manager    import UnitManager
@@ -88,7 +89,7 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
-    def __init__ (self, database_url, database_name="radicalpilot", session_uid=None):
+    def __init__ (self, database_url=None, database_name="radicalpilot", session_uid=None):
         """Creates a new or reconnects to an exising session.
 
         If called without a session_uid, a new Session instance is created and 
@@ -96,7 +97,9 @@ class Session (saga.Session, Object):
         retrieved from the database. 
 
         **Arguments:**
-            * **database_url** (`string`): The MongoDB URL. 
+            * **database_url** (`string`): The MongoDB URL.  If none is given,
+              RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
+              not set, an error will be raises.
 
             * **database_name** (`string`): An alternative database name 
               (default: 'radical.pilot').
@@ -131,6 +134,18 @@ class Session (saga.Session, Object):
 
         self._database_url  = database_url
         self._database_name = database_name 
+
+        if  not self._database_url :
+            self._database_url = os.getenv ("RADICAL_PILOT_DBURL", None)
+
+        if  not self._database_url :
+            raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
+
+        # if the database url contains a path element, we interpret that as
+        # database name (without the leading slash)
+        tmp_url = ru.Url (self._database_url)
+        if  tmp_url.path and tmp_url.path != '/' :
+            self._database_name = tmp_url.path[1:]
 
         ##########################
         ## CREATE A NEW SESSION ##

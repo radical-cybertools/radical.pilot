@@ -2,52 +2,6 @@ import os
 import sys
 import radical.pilot
 
-# READ: The RADICAL-Pilot documentation: 
-#   http://radicalpilot.readthedocs.org/en/latest
-#
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scenes!
-#
-# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
-# easiest way to make this work seamlessly is to set up ssh key-based
-# authentication and add the key to your keychain so you won't be 
-# prompted for a password. The following article explains how to set 
-# this up on Linux:
-#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
-
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
-#
-# Note: because of firewall issues, your MongoDB needs to run on a port within
-# the range 20000-25000.
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-#------------------------------------------------------------------------------
-#
-def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
-
-    if state == radical.pilot.states.FAILED:
-        sys.exit(1)
-
-#------------------------------------------------------------------------------
-#
-def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % unit.log[-1]
-
 #------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
@@ -56,7 +10,7 @@ if __name__ == "__main__":
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
-        session = radical.pilot.Session(database_url=DBURL)
+        session = radical.pilot.Session()
 
         # Add an x509 identity to the session.
         c = radical.pilot.Context('x509')

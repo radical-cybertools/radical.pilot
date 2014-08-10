@@ -1,15 +1,6 @@
 import sagapilot as sp
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
 
-FG_CONF     = "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"
-XSEDE_CONF  = "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json"
 PILOT_DESCR = {'project':     None, 
                'resource':    'sierra.futuregrid.org', 
                'queue':       'interactive', 
@@ -27,11 +18,10 @@ UNIT_DESCR  = {'environment': None,
                'arguments':   ['topol.tpr']}
 
 
-session = sp.Session           (database_url = DBURL)
+session = sp.Session           ()
 sp_um    = sp.UnitManager      (session      = session, 
                                 scheduler    = 'direct_submission')
-sp_pm    = sp.PilotManager     (session      = session,
-                                resource_configurations = [FG_CONF, XSEDE_CONF])
+sp_pm    = sp.PilotManager     (session      = session)
 sp_pilot_descr = sp.ComputePilotDescription ()
 sp_pilot_descr.resource = PILOT_DESCR['resource']
 sp_pilot_descr.cores    = PILOT_DESCR['cores']

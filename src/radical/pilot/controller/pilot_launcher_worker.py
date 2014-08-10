@@ -27,7 +27,7 @@ BULK_LIMIT=1
 
 # The interval at which we check 
 # the saga jobs.
-JOB_CHECK_INTERVAL=30 # seconds
+JOB_CHECK_INTERVAL=60 # seconds
 
 # ----------------------------------------------------------------------------
 #
@@ -63,7 +63,6 @@ class PilotLauncherWorker(threading.Thread):
         )
 
         for pending_pilot in pending_pilots:
-
 
             pilot_failed = False
             reconnected  = False
@@ -106,19 +105,13 @@ class PilotLauncherWorker(threading.Thread):
                         pilot_failed = True
                         log_message  = "Could not reconnect to pilot %s "\
                                        "multiple times - giving up" % pilot_id
-
-
                 else :
-
                     logger.warning ('pilot state check failed: %s' % e)
                     pilot_failed = True
                     log_message  = "Couldn't determine job state for ComputePilot %s. " \
                                    "Assuming it has failed." % pilot_id
 
-
-          
             if  pilot_failed :
-
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
                     {"_id": pilot_id},
@@ -127,7 +120,6 @@ class PilotLauncherWorker(threading.Thread):
                      "$push": {"log": log_message}}
                 )
                 logger.error (log_message)
-
                 logger.error ('pilot %s declared dead' % pilot_id)
 
             else :
@@ -174,6 +166,8 @@ class PilotLauncherWorker(threading.Thread):
                 # we assume that the job has failed for some reasons and update
                 # the state of the ComputePilot accordingly.
                 if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
+                    logger.warn ('checking job state: %s + %s < %s' \
+                              % (last_job_check, JOB_CHECK_INTERVAL, time.time()))
                     last_job_check = time.time()
                     self.check_pilot_states (pilot_col)
 

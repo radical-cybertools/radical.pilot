@@ -184,7 +184,7 @@ class UnitManagerController(threading.Thread):
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
-        if  not metric in self._manager_callbacks :
+        if  not UNIT_STATE in self._manager_callbacks :
             self._manager_callbacks[UNIT_STATE] = list()
 
         for cb in self._manager_callbacks[UNIT_STATE]:

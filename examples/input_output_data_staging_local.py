@@ -43,7 +43,7 @@ def unit_state_change_cb(unit, state):
 
     print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
 
-    if state == radical.pilot.states.FAILED:
+    if state == radical.pilot.FAILED:
         print "            Log: %s" % unit.log[-1]
 
 

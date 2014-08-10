@@ -1,4 +1,3 @@
-helloworld_mpi.py
 issue124.py
 issue133.py
 issue165.py

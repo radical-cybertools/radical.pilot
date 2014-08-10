@@ -1,16 +1,8 @@
 import sagapilot
 
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-session = sagapilot.Session(database_url=DBURL)
-print "Session: {0} ".format(session)
+session = sagapilot.Session()
+print "Session 1: %s " % session.uid
 
 # Add an ssh identity to the session.
 c1 = sagapilot.Context('ssh')
@@ -32,8 +24,8 @@ for c in session.list_contexts():
     print c
 
 
-session2 = sagapilot.Session(database_url=DBURL, session_uid=session.uid)
-print "Session: {0} ".format(session2)
+session2 = sagapilot.Session(session_uid=session.uid)
+print "Session 2: %s " % session2.uid
 
 for c in session2.list_contexts():
     # contexts are *not* serialized as part of the session information, but need

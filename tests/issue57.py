@@ -4,19 +4,6 @@ import time
 import numpy
 import os
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-# RCONF points to the resource configuration files. Read more about resource 
-# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
-RCONF  = ["https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/xsede.json",
-          "https://raw.github.com/radical-cybertools/radical.pilot/devel/configs/futuregrid.json"]
-
 #-------------------------------------------------------------------------------
 
 def cu_bulk_submit_test():
@@ -31,8 +18,8 @@ def cu_bulk_submit_test():
             runtime = []
             for j in range(0, 1):
 
-                session = sagapilot.Session(database_url=DBURL)
-                pm = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
+                session = sagapilot.Session()
+                pm = sagapilot.PilotManager(session=session)
                 um = sagapilot.UnitManager(session=session, scheduler=sagapilot.SCHED_ROUND_ROBIN) 
 
                 compute_units = []
@@ -54,7 +41,7 @@ def cu_bulk_submit_test():
 
                 pilot_object = pm.submit_pilots(pilot)
 
-                if pilot_object.state in [sagapilot.states.FAILED]:
+                if pilot_object.state in [sagapilot.FAILED]:
                     print " * [ERROR] Pilot failed"
                 else:
                     print " * [OK] Pilot %s submitted successfully" % (pilot_object)
