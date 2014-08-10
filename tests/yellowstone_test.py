@@ -72,7 +72,7 @@ if __name__ == "__main__":
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
-        session.close(delete=False)
+        session.close(cleanup=False)
         sys.exit(0)
 
     except rp.PilotException, ex:

@@ -26,7 +26,7 @@ RUNTIME=
 SESSIONID=
 TASK_LAUNCH_METHOD=
 VERSION=
-WORKDIR=`pwd`
+SANDBOX=`pwd`
 
 # -----------------------------------------------------------------------------
 # contains(string, substring)
@@ -57,7 +57,7 @@ This script launches a RADICAL-Pilot agent.
 OPTIONS:
    -a      The name of project / allocation to charge.
 
-   -b      Enable benchmarks.
+   -b      enable agent benchmarking
 
    -c      Number of requested cores.
 
@@ -90,12 +90,14 @@ OPTIONS:
 
    -t      Runtime in minutes.
 
+   -u      sandbox is user defined
+
    -v      Version - the RADICAL-Pilot package version.
 
-   -w      The working (base) directory of the pilot.
+   -w      The working directory (sandbox) of the pilot.
            (default is '.')
 
-   -x      Cleanup - delete virtualenv after execution (ignored when using -g).
+   -x      Cleanup - delete pilot sandbox, virtualenv etc. after completion
 
 EOF
 }
@@ -240,7 +242,7 @@ installvenv()
 # -----------------------------------------------------------------------------
 # Find available port on the remote host where we can bind to
 #
-function find_available_port()
+find_available_port()
 {
     RANGE="23000..23100"
     echo ""
@@ -286,6 +288,7 @@ echo "## Environment of bootstrapper process:"
 printenv
 
 # parse command line arguments
+USER_SANDBOX=0
 BENCHMARK=0
 while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
     case $OPTION in
@@ -361,12 +364,15 @@ while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
             # Passed to agent
             RUNTIME=$OPTARG
             ;;
+        u)
+            USER_SANDBOX=1
+            ;;
         v)
             # Passed to agent
             VERSION=$OPTARG
             ;;
         w)
-            WORKDIR=$OPTARG
+            SANDBOX=$OPTARG
             ;;
         x)
             CLEANUP=$OPTARG
@@ -438,9 +444,19 @@ if [[ $GLOBAL_VIRTENV ]]; then
     # we never clean up virtualenvs -- remove the 'v' cleanup flag
     CLEANUP=$(echo $CLEANUP | tr -d 'v')
 
+    # this assumes that the VE lives outside of the pilot sandbox, which MUST be
+    # true, as at the point where a global VE can be specified, the pilot UID is
+    # still unknown.  That only conflicts if the pilot sandbox is specified
+    # explicitly, and the global VE lives therein.  In that case, we have to
+    # remove the 'everything' cleanup flag, too.
+    if  test "$USER_SANDBOX" = "1"
+    then
+      CLEANUP=$(echo $CLEANUP | tr -d 'e')
+    fi
+
 else
     # bootstrap virtualenv at default location
-    VIRTENV=$WORKDIR/virtualenv/
+    VIRTENV=$SANDBOX/virtualenv/
 fi
 
 
@@ -481,9 +497,11 @@ AGENT_EXITCODE=$?
 #   l : pilot log files
 #   u : unit work dirs
 #   v : virtualenv
-contains $CLEANUP 'l' && rm -r $WORKDIR/AGENT.*
-contains $CLEANUP 'u' && rm -r $WORKDIR/unit-*
+#   e : everything
+contains $CLEANUP 'l' && rm -r $SANDBOX/AGENT.*
+contains $CLEANUP 'u' && rm -r $SANDBOX/unit-*
 contains $CLEANUP 'v' && rm -r $VIRTENV/
+contains $CLEANUP 'e' && rm -r $SANDBOX/
 
 # ... and exit
 exit $AGENT_EXITCODE

@@ -86,7 +86,7 @@ if __name__ == "__main__":
                 print "STDOUT: %s" % unit.stdout
                 retval = 1
 
-        session.close(delete=False)
+        session.close(cleanup=False)
         sys.exit(retval)
 
     except rp.PilotException, ex:

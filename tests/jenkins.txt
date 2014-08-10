@@ -9,7 +9,6 @@ issue57.py
 issue79.py
 issue87.py
 issue88.py
-mpi4py_env.py
 mpi_alamo_test.py
 mpi_archer_test.py
 mpi_bigred2_test.py

@@ -150,7 +150,7 @@ if __name__ == "__main__":
     print "========================="
     print session_id
     print "========================="
-    session.close(delete=False)
+    session.close(cleanup=False)
 
     os.system ('radicalpilot-stats -m stat,plot -s %s' % session_id)
 

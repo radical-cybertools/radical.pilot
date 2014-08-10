@@ -1646,9 +1646,8 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, workdir, runtime,
-                 mongodb_url, mongodb_name, pilot_id, session_id, 
-                 benchmark):
+    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, 
+                 pilot_id, session_id, benchmark):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -1657,16 +1656,13 @@ class Agent(threading.Thread):
         self._terminate  = threading.Event()
 
         self._log        = logger
-
-        self._workdir    = workdir
         self._pilot_id   = pilot_id
-
         self._exec_env   = exec_env
-
         self._runtime    = runtime
         self._starttime  = None
-
         self._benchmark  = benchmark
+
+        self._workdir    = os.getcwd()
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
@@ -2205,12 +2201,6 @@ def parse_commandline():
                       dest='package_version',
                       help='The RADICAL-Pilot package version.')
 
-    parser.add_option('-w', '--workdir',
-                      metavar='DIRECTORY',
-                      dest='workdir',
-                      help='Specifies the base (working) directory for the agent. [default: %default]',
-                      default='.')
-
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
@@ -2305,15 +2295,10 @@ if __name__ == "__main__":
 
     #--------------------------------------------------------------------------
     # Launch the agent thread
+    agent = None
     try:
-        if options.workdir is '.':
-            workdir = os.getcwd()
-        else:
-            workdir = options.workdir
-
         agent = Agent(logger=logger,
                       exec_env=exec_env,
-                      workdir=workdir,
                       runtime=options.runtime,
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
@@ -2331,11 +2316,13 @@ if __name__ == "__main__":
         msg = "Error running agent: %s" % str(ex)
         logger.error(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        agent.stop()
+        if  agent :
+            agent.stop()
         sys.exit (1)
 
     except SystemExit:
 
         logger.error("Caught keyboard interrupt. EXITING")
-        agent.stop()
+        if  agent :
+            agent.stop()
 

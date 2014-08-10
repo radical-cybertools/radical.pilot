@@ -26,6 +26,7 @@ MPI                    = 'mpi'
 PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
 KERNEL                 = 'kernel'
+CLEANUP                = 'cleanup'
 
 # ------------------------------------------------------------------------------
 #
@@ -94,6 +95,13 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        .. note:: TODO: explain in detal, reference ENMDTK.
 
+    .. data:: cleanup
+
+       [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
+       delete the entire unit sandbox upon termination. This includes all 
+       generated output data in that sandbox.  Output staging will be performed
+       before cleanup.
+
     """
     def __init__(self):
         """Le constructeur.
@@ -108,34 +116,35 @@ class ComputeUnitDescription(attributes.Attributes) :
 
         # register properties with the attribute interface
         # action description
-        self._attributes_register(KERNEL,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(NAME,                   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(EXECUTABLE,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(ARGUMENTS,              None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(ENVIRONMENT,            None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
-        self._attributes_register(PRE_EXEC,               None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(POST_EXEC,              None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        #self._attributes_register(CLEANUP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(START_TIME,        None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(RUN_TIME,          None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(KERNEL,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(NAME,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(EXECUTABLE,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(ARGUMENTS,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(ENVIRONMENT,      None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
+        self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+
+      # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
-        self._attributes_register(INPUT_STAGING,          None, attributes.ANY, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(OUTPUT_STAGING,         None, attributes.ANY, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(INPUT_STAGING,    None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(OUTPUT_STAGING,   None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
-        self._attributes_register(CORES,                  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(MPI,                    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(CPU_ARCHITECTURE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(OPERATING_SYSTEM,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        #self._attributes_register(MEMORY,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(MPI,              None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
         # dependencies
-        #self._attributes_register(RUN_AFTER,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        #self._attributes_register(START_AFTER,       None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        #self._attributes_register(CONCURRENT_WITH,   None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+      # self._attributes_register(RUN_AFTER,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+      # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+      # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
-        # explicitly set attribs so they get listed and included via as_dict()
+        # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (KERNEL,         None)
         self.set_attribute (NAME,           None)
         self.set_attribute (EXECUTABLE,     None)
@@ -147,6 +156,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self.set_attribute (OUTPUT_STAGING, None)
         self.set_attribute (CORES,             1)
         self.set_attribute (MPI,           False)
+        self.set_attribute (CLEANUP,       False)
 
 
     #------------------------------------------------------------------------------
@@ -161,3 +171,6 @@ class ComputeUnitDescription(attributes.Attributes) :
             other.set_attribute (key, self.get_attribute (key))
    
         return other
+
+# ---------------------------------------------------------------------------------
+

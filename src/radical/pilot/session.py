@@ -202,17 +202,16 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
-    def close(self, delete=True, terminate_pilots=True):
+    def close(self, cleanup=True, terminate=True):
         """Closes the session.
 
         All subsequent attempts access objects attached to the session will 
-        result in an error. If delete is set to True (default) the session
+        result in an error. If cleanup is set to True (default) the session
         data is removed from the database.
 
         **Arguments:**
-            * **delete** (`bool`): Remove session data from MongoDB. 
-            * **terminate_pilots** (`bool`): Shut down all pilots associated with the session. 
-
+            * **cleanup** (`bool`): Remove session from MongoDB (implies * terminate)
+            * **terminate** (`bool`): Shut down all pilots associated with the session. 
 
         **Raises:**
             * :class:`radical.pilot.IncorrectState` if the session is closed
@@ -225,16 +224,20 @@ class Session (saga.Session, Object):
             logger.warning("Session object already closed.")
             return
 
-        for pmngr in self._pilot_manager_objects:
-            # If terminate_pilots is true, we set the terminate flag in the 
+        if  cleanup :
+            # cleanup implies terminate
+            terminate = True
+
+        for pmgr in self._pilot_manager_objects:
+            # If terminate is true, we set the terminate flag in the 
             # pilot manager's close method, which causes it to send a 
             # CANCEL request to all pilots.
-            pmngr.close(terminate=terminate_pilots)
+            pmgr.close(terminate=terminate)
 
         for umngr in self._unit_manager_objects:
             umngr.close()
 
-        if delete is True:
+        if  cleanup :
             self._destroy_db_entry()
 
         logger.info("Closed Session %s." % str(uid))
@@ -343,7 +346,7 @@ class Session (saga.Session, Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException` if a PilotManager with 
+            * :class:`radical.pilot.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         self._assert_obj_is_valid()
@@ -412,7 +415,7 @@ class Session (saga.Session, Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException` if a PilotManager with 
+            * :class:`radical.pilot.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         self._assert_obj_is_valid()

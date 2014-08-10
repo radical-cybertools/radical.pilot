@@ -98,7 +98,7 @@ if __name__ == "__main__":
                    unit.stdout)
 
         # Close automatically cancels the pilot(s).
-        session.close(delete=False)
+        session.close(cleanup=False)
         sys.exit(0)
 
     except rp.PilotException, ex:

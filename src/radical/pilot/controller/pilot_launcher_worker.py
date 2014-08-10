@@ -210,6 +210,15 @@ class PilotLauncherWorker(threading.Thread):
                         #agent_worker = compute_pilot['description']['agent_worker']
                         sandbox      = compute_pilot['sandbox']
 
+                        # check if the user specified a sandbox:
+                        if  'sandbox' in compute_pilot['description'] and \
+                            compute_pilot['description']['sandbox']   and \
+                            compute_pilot['description']['sandbox'] == sandbox :
+                            user_sandbox = True
+                        else :
+                            user_sandbox = False
+
+
                         use_local_endpoints = False
                         resource_key = compute_pilot['description']['resource']
                         s = compute_pilot['description']['resource'].split(":")
@@ -346,6 +355,9 @@ class PilotLauncherWorker(threading.Thread):
                             (database_name, session_uid, str(compute_pilot_id),
                              runtime, logger.level, number_cores, VERSION)
 
+                        if  user_sandbox :
+                            bootstrap_args += " -u"
+
                         if 'agent_mongodb_endpoint' in resource_cfg and resource_cfg['agent_mongodb_endpoint'] is not None:
                             agent_db_url = ru.Url(resource_cfg['agent_mongodb_endpoint'])
                             bootstrap_args += " -m %s:%d " % (agent_db_url.host, agent_db_url.port)
@@ -379,8 +391,9 @@ class PilotLauncherWorker(threading.Thread):
                             #   l : pilot log files
                             #   u : unit work dirs
                             #   v : virtualenv
+                            #   e : everything (== pilot sandbox)
                             # FIXME: get cleanup flags from somewhere
-                            bootstrap_args += " -x %s" % 'luv' # the cleanup flag
+                            bootstrap_args += " -x %s" % 'luve' # the cleanup flag
 
                         if  'RADICAL_PILOT_BENCHMARK' in os.environ :
                             bootstrap_args += " -b"

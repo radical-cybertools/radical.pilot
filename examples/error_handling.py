@@ -32,62 +32,53 @@ def pilot_state_cb(pilot, state):
 
 #-------------------------------------------------------------------------------
 #
-def synchronous_error_handling():
-    """This example shows how simple error handling can be implemented 
+if __name__ == "__main__":
+
+    """
+    This example shows how simple error handling can be implemented 
     synchronously using blocking wait() calls.
 
     The code launches a pilot with 128 cores on 'localhost'. Unless localhost
     has 128 or more cores available, this is bound to fail. This example shows
     how this error can be caught and handled. 
     """
-    try:
-        # Create a new session. A session is a set of Pilot Managers
-        # and Unit Managers (with associated Pilots and ComputeUnits).
-        session = rp.Session(database_url=DBURL)
 
-        # Create a new pilot manager.
-        pmgr = rp.PilotManager(session=session)
+    # Create a new session. A session is a set of Pilot Managers
+    # and Unit Managers (with associated Pilots and ComputeUnits).
+    session = rp.Session(database_url=DBURL)
 
-        # Register our callback with the PilotManager. This callback will get
-        # called every time any of the pilots managed by the PilotManager
-        # change their state.
-        pmgr.register_callback(pilot_state_cb)
+    # Create a new pilot manager.
+    pmgr = rp.PilotManager(session=session)
 
-        # Create a new pilot with 128 cores. This will most definetly 
-        # fail on 'localhost' because not enough cores are available. 
-        pd = rp.ComputePilotDescription()
-        pd.resource  = "localhost"
-        pd.cores     = 128
-        pd.runtime   = 10 
+    # Register our callback with the PilotManager. This callback will get
+    # called every time any of the pilots managed by the PilotManager
+    # change their state.
+    pmgr.register_callback(pilot_state_cb)
 
-        pilot = pmgr.submit_pilots(pd)
-        state = pilot.wait(state=[rp.ACTIVE, rp.FAILED], timeout=60)
+    # Create a new pilot with 128 cores. This will most definetly 
+    # fail on 'localhost' because not enough cores are available. 
+    pd = rp.ComputePilotDescription()
+    pd.resource  = "localhost"
+    pd.cores     = 128
+    pd.runtime   = 10 
 
-        # If the pilot is in FAILED state it probably didn't start up properly. 
-        if state == rp.FAILED:
-            print pilot.log[-1] # Get the last log message
-            return 0
-        # The timeout was reached if the pilot state is still FAILED.
-        elif state == rp.PENDING:
-            print "Timeout..."
-            return 1
-        # If the pilot is not in FAILED or PENDING state, it is probably running.
-        else:
-            print "Pilot in state '%s'" % state
-            # Since the pilot is running, we can cancel it now.
-            # We should not hve gooten that far.
-            pilot.cancel()
-            return 1
+    pilot = pmgr.submit_pilots(pd)
+    state = pilot.wait(state=[rp.ACTIVE, rp.FAILED], timeout=60)
 
-    except Exception as ex:
-        print "Error: %s" % ex
+    # If the pilot is in FAILED state it probably didn't start up properly. 
+    if state == rp.FAILED:
+        print pilot.log[-1] # Get the last log message
         return 0
-
-    # Oh, we should have seen an error!
-    return -1
+    # The timeout was reached if the pilot state is still FAILED.
+    elif state == rp.PENDING:
+        print "Timeout..."
+        return 1
+    # If the pilot is not in FAILED or PENDING state, it is probably running.
+    else:
+        print "Pilot in state '%s'" % state
+        # Since the pilot is running, we can cancel it now.
+        # We should not hve gooten that far.
+        pilot.cancel()
 
 #-------------------------------------------------------------------------------
-#
-if __name__ == "__main__":
-    sys.exit(synchronous_error_handling())
 

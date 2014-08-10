@@ -45,7 +45,8 @@ def unit_state_change_cb(unit, state):
 
 #------------------------------------------------------------------------------
 #
-try:
+if __name__ == "__main__":
+
     rp_user     = str(os.getenv ("RP_USER",     "merzky"))
     rp_cores    = int(os.getenv ("RP_CORES",    16))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
@@ -160,7 +161,6 @@ try:
     time.sleep (3)
   
     sid = session.uid
-    # session.close(delete=False)
 
     print "session id: %s" % sid
 
@@ -168,9 +168,5 @@ try:
     os.system ("bin/radicalpilot-stats -m plot -s %s" % sid) 
     os.system ("cp -v %s.png report/rp.benchmark.png" % sid) 
 
-
-except radical.pilot.PilotException, ex:
-    # Catch all exceptions and exit with and error.
-    print "Error during execution: %s" % ex
-    sys.exit(1)
+    session.close ()
 
