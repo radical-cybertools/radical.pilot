@@ -1,6 +1,28 @@
-import os
+
 import sys
 import radical.pilot as rp
+
+#------------------------------------------------------------------------------
+#
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
+
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
+
+
+#------------------------------------------------------------------------------
+#
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
+
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
+
 
 #------------------------------------------------------------------------------
 #
@@ -26,10 +48,9 @@ if __name__ == "__main__":
     # Define a pilot on stampede of in total 32 cores that spans two nodes,
     # runs for 15 mintutes and uses $HOME/radical.pilot.sandbox as sandbox directory.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "stampede.tacc.utexas.edu"
+    pdesc.resource  = "sierra.futuregrid.org"
     pdesc.runtime   = 15 # minutes
     pdesc.cores     = 32 
-    pdesc.cleanup   = False
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
@@ -45,7 +66,7 @@ if __name__ == "__main__":
     compute_unit_descriptions = []
     for unit_no in range(32):
         cud = rp.ComputeUnitDescription()
-        #cud.executable  = ""
+      # cud.executable  = ""
         cud.arguments   = ["/bin/sleep %d && /bin/date > unit-%s.dat" % (task_sleep[unit_no], unit_no)]
         cud.cores       = task_cores[unit_no]
 

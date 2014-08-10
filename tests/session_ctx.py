@@ -1,7 +1,6 @@
 
 import radical.pilot as rp
 
-
 session = rp.Session()
 print "Session 1: %s " % session.uid
 

@@ -913,48 +913,63 @@ class ExecWorker(multiprocessing.Process):
                     # do nothing if we don't have any queued commands
                     pass
 
+                task = None
                 try:
                     task = self._task_queue.get_nowait()
-
-                    if task.mpi:
-                        launch_method = self._available_launch_methods['mpi_launch_method']
-                        launch_command = self._available_launch_methods['mpi_launch_command']
-                        if not launch_command:
-                            raise Exception("Can't launch MPI tasks without MPI launcher.")
-                    else:
-                        launch_method = self._available_launch_methods['task_launch_method']
-                        launch_command = self._available_launch_methods['task_launch_command']
-
-                    self._log.debug("Launching task with %s (%s)." % (
-                        launch_method, launch_command))
-
-                    # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
-                    # TODO: Dont have scattered scheduler yet, so test disabled.
-                    if True: # launch_method in [LAUNCH_METHOD_IBRUN]:
-                        req_cont = True
-                    else:
-                        req_cont = False
-
-                    # First try to find all cores on a single node
-                    task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
-
-                    # If that failed, and our launch method supports multiple nodes, try that
-                    if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
-                        task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
-
-                    # Check if we got results
-                    if task_slots is None:
-                        # No resources free, put back in queue
-                        self._task_queue.put(task)
-                    else:
-                        # We got an allocation go off and launch the process
-                        task.slots = task_slots
-                        self._launch_task(task, launch_method, launch_command)
-                        idle = False
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
                     pass
+
+                # any work to do?
+                if  task :
+
+                    try :
+
+                        if task.mpi:
+                            launch_method = self._available_launch_methods['mpi_launch_method']
+                            launch_command = self._available_launch_methods['mpi_launch_command']
+                            if not launch_command:
+                                raise Exception("Can't launch MPI tasks without MPI launcher.")
+                        else:
+                            launch_method = self._available_launch_methods['task_launch_method']
+                            launch_command = self._available_launch_methods['task_launch_command']
+
+                        self._log.debug("Launching task with %s (%s)." % (
+                            launch_method, launch_command))
+
+                        # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
+                        # TODO: Dont have scattered scheduler yet, so test disabled.
+                        if True: # launch_method in [LAUNCH_METHOD_IBRUN]:
+                            req_cont = True
+                        else:
+                            req_cont = False
+
+                        # First try to find all cores on a single node
+                        task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
+
+                        # If that failed, and our launch method supports multiple nodes, try that
+                        if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
+                            task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
+
+                        # Check if we got results
+                        if task_slots is None:
+                            # No resources free, put back in queue
+                            self._task_queue.put(task)
+                        else:
+                            # We got an allocation go off and launch the process
+                            task.slots = task_slots
+                            self._launch_task(task, launch_method, launch_command)
+                            idle = False
+
+                    except Exception as e :
+                        self._log.error ("Launching task failed: %s." % e)
+                        task.state = FAILED
+                        
+                        # Free the Slots, Flee the Flots, Ree the Frots!
+                        self._change_slot_states(task.slots, FREE)
+                        self._update_tasks (task)
+
 
                 # Record if there was activity in launching or monitoring tasks.
                 idle &= self._check_running()
@@ -1944,6 +1959,7 @@ class _Process(subprocess.Popen):
             task_exec_string = task.executable # TODO: Do we allow $ENV/bin/program constructs here?
         else:
             raise Exception("No executable specified!") # TODO: This should be catched earlier problaby
+
         if task.arguments is not None:
             for arg in task.arguments:
 

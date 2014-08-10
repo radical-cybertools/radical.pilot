@@ -1,3 +1,4 @@
+
 import os
 import sys
 import radical.pilot as rp
@@ -107,8 +108,8 @@ if __name__ == "__main__":
                                "(pip freeze | grep -q mpi4py || pip install mpi4py)"
                               ]
         cud.executable      = "python"
-        cud.input_staging   = ["mpi4py_env.py"]
-        cud.arguments       = 'mpi4py_env.py'
+      # cud.input_staging   = ["mpi4py_env.py"]
+        cud.arguments       = '$HOME/mpi4py_env.py'
         cud.cores           = 2
         cud.mpi             = True
         if  env != 'UNDEFINED' :
@@ -136,5 +137,5 @@ if __name__ == "__main__":
         assert (unit.state == rp.DONE)
         # FIXME: add some more asserts
 
-    session.close()
+    session.close(cleanup=False)
 

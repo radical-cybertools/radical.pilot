@@ -1,6 +1,29 @@
+
 import os
 import sys
 import radical.pilot as rp
+
+#------------------------------------------------------------------------------
+#
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
+
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
+
+
+#------------------------------------------------------------------------------
+#
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
+
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
+
 
 #------------------------------------------------------------------------------
 #

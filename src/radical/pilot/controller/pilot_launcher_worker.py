@@ -393,6 +393,7 @@ class PilotLauncherWorker(threading.Thread):
                             #   v : virtualenv
                             #   e : everything (== pilot sandbox)
                             # FIXME: get cleanup flags from somewhere
+                            logger.info ('request cleanup for pilot %s' % compute_pilot_id)
                             bootstrap_args += " -x %s" % 'luve' # the cleanup flag
 
                         if  'RADICAL_PILOT_BENCHMARK' in os.environ :

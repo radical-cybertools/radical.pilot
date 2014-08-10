@@ -165,8 +165,8 @@ class Session (saga.Session, Object):
                         self._resource_configs[rc.name] = rc.as_dict() 
 
                 self._dbs, self._created = dbSession.new(sid=self._uid, 
-                                                         db_url=database_url, 
-                                                         db_name=database_name,
+                                                         db_url=self._database_url, 
+                                                         db_name=self._database_name,
                                                          resource_configs=self._resource_configs)
 
                 logger.info("New Session created%s." % str(self))
@@ -181,8 +181,8 @@ class Session (saga.Session, Object):
             try:
                 # otherwise, we reconnect to an existing session
                 self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
-                                                              db_url=database_url, 
-                                                              db_name=database_name)
+                                                              db_url=self._database_url, 
+                                                              db_name=self._database_name)
 
                 self._uid              = session_uid
                 self._created          = session_info["created"]
@@ -196,8 +196,8 @@ class Session (saga.Session, Object):
 
         self._connection_info = DBConnectionInfo(
             session_id=self._uid,
-            dbname=database_name,
-            url=database_url
+            dbname=self._database_name,
+            url=self._database_url
         )
 
     #---------------------------------------------------------------------------

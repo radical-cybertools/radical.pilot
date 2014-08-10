@@ -1,7 +1,6 @@
 
 import sys
 import radical.pilot as rp
-import os
 
 # ##############################################################################
 # #124: CUs are failing on Trestles

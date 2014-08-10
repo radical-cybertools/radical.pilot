@@ -498,10 +498,15 @@ AGENT_EXITCODE=$?
 #   u : unit work dirs
 #   v : virtualenv
 #   e : everything
-contains $CLEANUP 'l' && rm -r $SANDBOX/AGENT.*
-contains $CLEANUP 'u' && rm -r $SANDBOX/unit-*
-contains $CLEANUP 'v' && rm -r $VIRTENV/
-contains $CLEANUP 'e' && rm -r $SANDBOX/
+echo "CLEANUP: $CLEANUP"
+contains $CLEANUP 'l' && echo "rm -r $SANDBOX/AGENT.*"
+contains $CLEANUP 'u' && echo "rm -r $SANDBOX/unit-*"
+contains $CLEANUP 'v' && echo "rm -r $VIRTENV/"
+contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
+# contains $CLEANUP 'l' && rm -r $SANDBOX/AGENT.*
+# contains $CLEANUP 'u' && rm -r $SANDBOX/unit-*
+# contains $CLEANUP 'v' && rm -r $VIRTENV/
+# contains $CLEANUP 'e' && rm -r $SANDBOX/
 
 # ... and exit
 exit $AGENT_EXITCODE

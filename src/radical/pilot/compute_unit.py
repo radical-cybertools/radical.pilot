@@ -81,10 +81,16 @@ class ComputeUnit(object):
         # Make a copy of the UD to work on without side-effects.
         ud_copy = copy.deepcopy(unit_description)
 
+        # sanity check on description
+        if  not 'executable' in unit_description or \
+            not unit_description['executable'] :
+            raise PilotException ("ComputeUnitDescription needs an executable")
+
         # If staging directives exist, try to expand them
-        if ud_copy.input_staging:
+        if  ud_copy.input_staging:
             ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging, logger)
-        if ud_copy.output_staging:
+
+        if  ud_copy.output_staging:
             ud_copy.output_staging = expand_staging_directive(ud_copy.output_staging, logger)
 
         computeunit._description = ud_copy

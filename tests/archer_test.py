@@ -1,7 +1,5 @@
 
-import os
 import sys
-
 import radical.pilot as rp
 
 # user ID on archer
