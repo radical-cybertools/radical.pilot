@@ -19,15 +19,15 @@ if DBURL is None:
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
+    """
+    pilot_state_change_cb() is a callback function. It gets called very
     time a ComputePilot changes its state.
     """
-    print "[Callback]: ComputePilot '%s' state changed to %s." \
-        % (pilot.uid, state)
+
+    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
 
     if state == rp.FAILED:
         sys.exit (0)
-        thread.interrupt_main()
 
 
 #-------------------------------------------------------------------------------
@@ -61,14 +61,14 @@ def synchronous_error_handling():
         pd.runtime   = 10 
 
         pilot = pmgr.submit_pilots(pd)
-        state = pilot.wait(state=[rp.states.ACTIVE, rp.states.FAILED], timeout=60)
+        state = pilot.wait(state=[rp.ACTIVE, rp.FAILED], timeout=60)
 
         # If the pilot is in FAILED state it probably didn't start up properly. 
-        if state == rp.states.FAILED:
+        if state == rp.FAILED:
             print pilot.log[-1] # Get the last log message
             return 0
         # The timeout was reached if the pilot state is still FAILED.
-        elif state == rp.states.PENDING:
+        elif state == rp.PENDING:
             print "Timeout..."
             return 1
         # If the pilot is not in FAILED or PENDING state, it is probably running.

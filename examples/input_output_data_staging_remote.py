@@ -23,33 +23,44 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
+    """
+    pilot_state_change_cb() is a callback function. It gets called very
     time a ComputePilot changes its state.
     """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % pilot.log[-1]
+
+    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
+
+    if state == radical.pilot.FAILED:
+        sys.exit (1)
+
 
 #------------------------------------------------------------------------------
 #
 def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
+    """
+    unit_state_change_cb() is a callback function. It gets called very
     time a ComputeUnit changes its state.
     """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
+
+    print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
+
     if state == radical.pilot.states.FAILED:
         print "            Log: %s" % unit.log[-1]
+
 
 #------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
     try:
+        # prepare some input files for the compute units
+        os.system ('hostname > file1.dat')
+        os.system ('date     > file2.dat')
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
@@ -57,7 +68,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id = "tg802352"
+      # c.user_id = "merzky"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -71,9 +82,9 @@ if __name__ == "__main__":
         # Define a 2-core local pilot that runs for 10 minutes and cleans up
         # after itself.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource  = "stampede.tacc.utexas.edu"
+        pdesc.resource  = "sierra.futuregrid.org"
         pdesc.runtime   = 15 # minutes
-        pdesc.cores     = 32 
+        pdesc.cores     = 8
         # pdesc.project = "TG-MCB090174"
         pdesc.cleanup   = True
 
@@ -88,13 +99,14 @@ if __name__ == "__main__":
         #
         compute_units = []
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 32):
             cu = radical.pilot.ComputeUnitDescription()
-            cu.executable  = "/bin/bash"
-            cu.arguments   = ["-l", "-c", "'cat ./file1.txt ./file2.dat > result.dat'"]
-            cu.cores       = 1
-            cu.input_data  = ["./file1.dat > file1.txt", "./file2.dat"]
-            cu.output_data = ["result.dat > result-%s.dat" % unit_count]
+            cu.executable     = "/bin/bash"
+            cu.arguments      = ["-l", "-c", "'cat ./file1.dat ./file2.dat " \
+                                 " > result-%s.dat'" % unit_count]
+            cu.cores          = 1
+            cu.input_staging  = ["./file1.dat", "./file2.dat"]
+            cu.output_staging = ["result-%s.dat" % unit_count]
 
             compute_units.append(cu)
 
@@ -123,10 +135,16 @@ if __name__ == "__main__":
         for unit in units:
             print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
                 % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
-                   unit.description.output_data[0].split(">")[1].strip())
+                   unit.description.output_staging[0])
 
         # Close automatically cancels the pilot(s).
         session.close()
+
+        # delete the test data files
+        os.system ('rm file1.dat')
+        os.system ('rm file2.dat')
+        os.system ('rm result-*.dat')
+
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

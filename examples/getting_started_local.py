@@ -45,23 +45,28 @@ def wait_queue_size_cb(umgr, wait_queue_size):
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
+    """
+    pilot_state_change_cb() is a callback function. It gets called very
     time a ComputePilot changes its state.
     """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % pilot.log[-1]
+
+    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
+
+    if state == radical.pilot.FAILED:
+        sys.exit (1)
+
 
 #------------------------------------------------------------------------------
 #
 def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
+    """
+    unit_state_change_cb() is a callback function. It gets called very
     time a ComputeUnit changes its state.
     """
-    print "[Callback]: ComputeUnit  '{0}' state changed to {1}.".format(
-        unit.uid, state)
-    if state == radical.pilot.states.FAILED:
+
+    print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
+
+    if state == radical.pilot.FAILED:
         print "            Log: %s" % unit.log[-1]
 
 #------------------------------------------------------------------------------
@@ -69,10 +74,15 @@ def unit_state_change_cb(unit, state):
 if __name__ == "__main__":
 
     try:
+        # prepare some input files for the compute units
+        os.system ('hostname > file1.dat')
+        os.system ('date     > file2.dat')
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
         session = radical.pilot.Session(database_url=DBURL)
+        print "session id: %s" % session.uid
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
@@ -102,28 +112,6 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilot2 = pmgr.submit_pilots(pdesc)
 
-        # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables within a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
-        #
-        cuds = []
-        for unit_count in range(0, 8):
-            cud = radical.pilot.ComputeUnitDescription()
-            cud.executable    = "/bin/bash"
-            cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
-            cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
-            cud.cores         = 1
-            cud.input_staging = ['file1.dat', 'file2.dat']
-
-            cuds.append(cud)
-
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = radical.pilot.UnitManager(
@@ -137,6 +125,28 @@ if __name__ == "__main__":
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots([pilot, pilot2])
+
+        # Create a workload of ComputeUnits (tasks). Each compute unit
+        # uses /bin/cat to concatenate two input files, file1.dat and
+        # file2.dat. The output is written to STDOUT. cu.environment is
+        # used to demonstrate how to set environment variables within a
+        # ComputeUnit - it's not strictly necessary for this example. As
+        # a shell script, the ComputeUnits would look something like this:
+        #
+        #    export INPUT1=file1.dat
+        #    export INPUT2=file2.dat
+        #    /bin/cat $INPUT1 $INPUT2
+        #
+        cuds = []
+        for unit_count in range(0, 16):
+            cud = radical.pilot.ComputeUnitDescription()
+            cud.executable    = "/bin/bash"
+            cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
+            cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
+            cud.cores         = 1
+            cud.input_staging = ['file1.dat', 'file2.dat']
+
+            cuds.append(cud)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
@@ -164,6 +174,11 @@ if __name__ == "__main__":
         pmgr.cancel_pilots ()
         print session.uid
         session.close(delete=False)
+
+        # delete the test data files
+        os.system ('rm file1.dat')
+        os.system ('rm file2.dat')
+
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

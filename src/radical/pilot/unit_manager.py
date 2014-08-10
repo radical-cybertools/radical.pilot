@@ -467,6 +467,10 @@ class UnitManager(object):
             logger.debug ('skipping empty unit schedule')
             return
 
+      # print 'handle schedule:'
+      # import pprint
+      # pprint.pprint (schedule)
+      #
         pilot_cu_map = dict()
         unscheduled  = list()
 
@@ -477,7 +481,7 @@ class UnitManager(object):
             pid = schedule['units'][unit]
 
             if  None == pid :
-             #  logger.info ('unit %s remains unscheduled' % unit.uid)
+                logger.info ('unit %s remains unscheduled' % unit.uid)
                 unscheduled.append (unit)
                 continue
 
@@ -490,8 +494,7 @@ class UnitManager(object):
                     pilot_cu_map[pid] = list()
 
                 pilot_cu_map[pid].append (unit)
-                
-        pilot_instances = dict()
+
 
         # submit to all pilots which got something submitted to
         for pid in pilot_cu_map.keys():
@@ -532,8 +535,8 @@ class UnitManager(object):
                     ud.executable  = mdtd_bound.executable
                     ud.mpi         = mdtd_bound.mpi
 
-                    units_to_schedule.append (unit)
 
+                units_to_schedule.append (unit)
 
             if  len(units_to_schedule) :
                 self._worker.schedule_compute_units (
@@ -547,7 +550,6 @@ class UnitManager(object):
 
         self.wait_queue_size = len(unscheduled)
         if  old_wait_queue_size != self.wait_queue_size :
-      # if True :
             self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
                                                 self.wait_queue_size)
 

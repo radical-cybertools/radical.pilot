@@ -23,34 +23,44 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
+    """
+    pilot_state_change_cb() is a callback function. It gets called very
     time a ComputePilot changes its state.
     """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % pilot.log[-1]
+
+    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
+
+    if state == radical.pilot.FAILED:
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
 def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
+    """
+    unit_state_change_cb() is a callback function. It gets called very
     time a ComputeUnit changes its state.
     """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
+
+    print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
+
     if state == radical.pilot.states.FAILED:
         print "            Log: %s" % unit.log[-1]
+
 
 #------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
     try:
+        # prepare some input files for the compute units
+        os.system ('hostname > file1.dat')
+        os.system ('date     > file2.dat')
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
@@ -58,7 +68,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        #c.user_id = "tg803521"
+      # c.user_id = "merzky"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -74,17 +84,31 @@ if __name__ == "__main__":
             # Define a 32-core on stampede that runs for 15 minutes and
             # uses $HOME/radical.pilot.sandbox as sandbox directory.
             pdesc = radical.pilot.ComputePilotDescription()
-            pdesc.resource  = "stampede.tacc.utexas.edu"
+            pdesc.resource  = "sierra.futuregrid.org"
             pdesc.runtime   = 15 # minutes
-            pdesc.cores     = 32
+            pdesc.cores     = 8
             pdesc.cleanup   = True
-            pdesc.queue     = "normal"
-            #pdesc.project   = "TG-MCB140109"
+          # pdesc.queue     = "normal"
+          # pdesc.project   = "TG-MCB140109"
 
             pdescs.append (pdesc)
 
         # Launch the pilot.
         pilots = pmgr.submit_pilots(pdescs)
+
+        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # a UnitManager object.
+        umgr = radical.pilot.UnitManager(
+            session=session,
+            scheduler=radical.pilot.SCHED_BACKFILLING)
+
+        # Register our callback with the UnitManager. This callback will get
+        # called every time any of the units managed by the UnitManager
+        # change their state.
+        umgr.register_callback(unit_state_change_cb)
+
+        # Add the previsouly created ComputePilot to the UnitManager.
+        umgr.add_pilots(pilots)
 
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
         # uses /bin/cat to concatenate two input files, file1.dat and
@@ -99,7 +123,7 @@ if __name__ == "__main__":
         #
         cuds = list()
 
-        for unit_count in range(0, 8):
+        for unit_count in range(0, 32):
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable    = "/bin/bash"
             cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
@@ -107,23 +131,6 @@ if __name__ == "__main__":
             cud.cores         = 1
             cud.input_staging = ['file1.dat', 'file2.dat']
             cuds.append(cud)
-
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        umgr = radical.pilot.UnitManager(
-            session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
-
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
-        # change their state.
-        umgr.register_callback(unit_state_change_cb)
-
-        # Add the previsouly created ComputePilot to the UnitManager.
-        umgr.add_pilots(pilots)
-
-        # wait til pilots become active
-        pmgr.wait_pilots (state=[radical.pilot.ACTIVE])
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
@@ -140,6 +147,11 @@ if __name__ == "__main__":
 
         # Close automatically cancels the pilot(s).
         session.close()
+
+        # delete the test data files
+        os.system ('rm file1.dat')
+        os.system ('rm file2.dat')
+
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

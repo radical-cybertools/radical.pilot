@@ -23,34 +23,44 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
-time a ComputePilot changes its state.
-"""
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % pilot.log[-1]
+    """
+    pilot_state_change_cb() is a callback function. It gets called very
+    time a ComputePilot changes its state.
+    """
+
+    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
+
+    if state == radical.pilot.FAILED:
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
 def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
-time a ComputeUnit changes its state.
-"""
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
+    """
+    unit_state_change_cb() is a callback function. It gets called very
+    time a ComputeUnit changes its state.
+    """
+
+    print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
+
     if state == radical.pilot.states.FAILED:
-        print " Log: %s" % unit.log[-1]
+        print "            Log: %s" % unit.log[-1]
+
 
 #------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
     try:
+        # prepare some input files for the compute units
+        os.system ('hostname > file1.dat')
+        os.system ('date     > file2.dat')
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
@@ -58,7 +68,7 @@ if __name__ == "__main__":
 
         # Add an ssh identity to the session.
         c = radical.pilot.Context('ssh')
-        c.user_id = "tg802352"
+      # c.user_id = "merzky"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -69,12 +79,11 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a 32-core on stamped that runs for 15 mintutes and
-        # uses $HOME/radical.pilot.sandbox as sandbox directoy.
+        # Define a pilot that runs for 15 minutes 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "stampede.tacc.utexas.edu"
+        pdesc.resource = "sierra.futuregrid.org"
         pdesc.runtime  = 15 # minutes
-        pdesc.cores    = 32
+        pdesc.cores    = 8
         pdesc.cleanup  = True
 
         # Launch the pilot.
@@ -100,17 +109,17 @@ if __name__ == "__main__":
         # the tasks use the same data, it is better to transfer all the
         # shared data once than with each individual task.
 
-        data_transfer_task =  radical.pilot.ComputeUnitDescription()
-        data_transfer_task.executable = "/bin/true"
-        data_transfer_task.cores      = 1
-        data_transfer_task.input_data = ["./file1.dat","./file2.dat"]
+        staging_unit_descr =  radical.pilot.ComputeUnitDescription()
+        staging_unit_descr.executable    = "/bin/true"
+        staging_unit_descr.cores         = 1
+        staging_unit_descr.input_staging = ["file1.dat", "file2.dat"]
 
-        units=umgr.submit_units(data_transfer_task)
+        staging_unit = umgr.submit_units(staging_unit_descr)
 
         umgr.wait_units()
 
         # Get the path to the directory containing the shared data
-        shared_input_url = radical.pilot.Url(units.working_directory).path
+        shared_input_url = radical.pilot.Url(staging_unit.working_directory).path
 
         # Create a workload of 8 ComputeUnits (tasks). Each compute unit
         # will create a symbolic link of the shared data within its current
@@ -122,10 +131,11 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 16):
             cu = radical.pilot.ComputeUnitDescription()
-            cu.executable = "/bin/bash"
-            cu.arguments  = ["-c",'"ln -s %s/file* . && /bin/cat file1.dat file2.dat > result.dat"' % shared_input_url]
-            cu.cores      = 1
-            cu.output_data = ["result.dat > result-%s.dat" % unit_count]
+            cu.executable     = "/bin/bash"
+            cu.arguments      = ["-c",'"ln -s %s/file* . && /bin/cat file1.dat " \
+                                 "file2.dat > result-%s.dat"' % (shared_input_url, unit_count)]
+            cu.cores          = 1
+            cu.output_staging = ["result-%s.dat" % unit_count]
 
             compute_units.append(cu)
 
@@ -150,10 +160,16 @@ if __name__ == "__main__":
         for unit in units:
             print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
                 % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
-                   unit.description.output_data[0].split(">")[1].strip())
+                   unit.description.output_staging[0])
 
         # Close automatically cancels the pilot(s).
         session.close()
+
+        # delete the test data files
+        os.system ('rm file1.dat')
+        os.system ('rm file2.dat')
+        os.system ('rm result-*.dat')
+
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:

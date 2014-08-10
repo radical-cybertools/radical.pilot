@@ -22,28 +22,34 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
+    """
+    pilot_state_change_cb() is a callback function. It gets called very
     time a ComputePilot changes its state.
     """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % pilot.log[-1]
+
+    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
+
+    if state == radical.pilot.FAILED:
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
 def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
+    """
+    unit_state_change_cb() is a callback function. It gets called very
     time a ComputeUnit changes its state.
     """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
+
+    print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
+
     if state == radical.pilot.states.FAILED:
         print "            Log: %s" % unit.log[-1]
+
 
 #------------------------------------------------------------------------------
 #
@@ -56,7 +62,8 @@ if __name__ == "__main__":
         session = radical.pilot.Session(database_url=DBURL)
 
         # Add an ssh identity to the session.
-        c = radical.pilot.context('ssh')
+        c = radical.pilot.Context('ssh')
+      # c.user_id = "merzky"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -70,9 +77,9 @@ if __name__ == "__main__":
         # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "stampede.tacc.utexas.edu"
+        pdesc.resource         = "sierra.futuregrid.org"
         pdesc.runtime          = 15 # N minutes
-        pdesc.cores            = 64 # X cores
+        pdesc.cores            = 16 # X cores
         pdesc.cleanup          = True
 
         # Launch the pilot.
@@ -82,15 +89,16 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 4):
             cu = radical.pilot.ComputeUnitDescription()
-            cu.pre_exec    = ["module load python intel mvapich2 mpi4py"]
-            cu.executable  = "python"
-            cu.arguments   = ["./mpi4py_hello_world.py"]
-            cu.input_data  = ["./mpi4py_hello_world.py"]
+            cu.pre_exec      = ["module load python intel mvapich2 mpi4py"]
+            cu.executable    = "python"
+            cu.arguments     = ["mpi4py_hello_world.py"]
+            cu.input_staging = ["mpi4py_hello_world.py"]
+
             # These two parameters are relevant to MPI execution:
             #   'cores' sets the number of cores required by the task
             #   'mpi' identifies the task as an MPI taskg
-            cu.cores       = 32
-            cu.mpi         = True
+            cu.cores         = 8
+            cu.mpi           = True
 
 
             cud_list.append(cu)

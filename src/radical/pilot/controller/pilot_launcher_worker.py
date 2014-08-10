@@ -131,8 +131,8 @@ class PilotLauncherWorker(threading.Thread):
                 logger.error ('pilot %s declared dead' % pilot_id)
 
             else :
-                logger.error ('pilot %s alive and well (%s)' \
-                           % (pilot_id, self.missing_pilots[pilot_id]))
+                logger.info ('pilot %s alive and well (%s)' \
+                          % (pilot_id, self.missing_pilots[pilot_id]))
 
 
     # ------------------------------------------------------------------------

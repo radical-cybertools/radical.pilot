@@ -240,66 +240,75 @@ class UnitManagerController(threading.Thread):
         """run() is called when the process is started via
            PilotManagerController.start().
         """
-        logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
-                    (self.name, self.ident, self._um_id))
 
-        # transfer results contains the futures to the results of the
-        # asynchronous transfer operations.
-        transfer_results = list()
+        # make sure to catch sys.exit (which raises SystemExit)
+        try :
 
-        while not self._stop.is_set():
+            logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
+                        (self.name, self.ident, self._um_id))
 
-            # =================================================================
-            #
-            # Check and update units. This needs to be optimized at
-            # some point, i.e., state pulling should be conditional
-            # or triggered by a tailable MongoDB cursor, etc.
-            unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
+            # transfer results contains the futures to the results of the
+            # asynchronous transfer operations.
+            transfer_results = list()
 
-            for unit in unit_list:
-                unit_id = str(unit["_id"])
+            while not self._stop.is_set():
 
-                new_state = unit["state"]
-                if unit_id in self._shared_data:
-                    old_state = self._shared_data[unit_id]["data"]["state"]
-                else:
-                    old_state = None
+                # =================================================================
+                #
+                # Check and update units. This needs to be optimized at
+                # some point, i.e., state pulling should be conditional
+                # or triggered by a tailable MongoDB cursor, etc.
+                unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
+
+                for unit in unit_list:
+                    unit_id = str(unit["_id"])
+
+                    new_state = unit["state"]
+                    if unit_id in self._shared_data:
+                        old_state = self._shared_data[unit_id]["data"]["state"]
+                    else:
+                        old_state = None
+                        self._shared_data_lock.acquire()
+                        self._shared_data[unit_id] = {
+                            'data':          unit,
+                            'callbacks':     [],
+                            'facade_object': None
+                        }
+                        self._shared_data_lock.release()
+
                     self._shared_data_lock.acquire()
-                    self._shared_data[unit_id] = {
-                        'data':          unit,
-                        'callbacks':     [],
-                        'facade_object': None
-                    }
+                    self._shared_data[unit_id]["data"] = unit
                     self._shared_data_lock.release()
 
-                self._shared_data_lock.acquire()
-                self._shared_data[unit_id]["data"] = unit
-                self._shared_data_lock.release()
+                    if new_state != old_state:
+                        # On a state change, we fire zee callbacks.
+                        logger.info("RUN ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
 
-                if new_state != old_state:
-                    # On a state change, we fire zee callbacks.
-                    logger.info("RUN ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
+                        # The state of the unit has changed, We call all
+                        # unit-level callbacks to propagate this.
+                        self.call_unit_state_callbacks(unit_id, new_state)
 
-                    # The state of the unit has changed, We call all
-                    # unit-level callbacks to propagate this.
-                    self.call_unit_state_callbacks(unit_id, new_state)
+                # After the first iteration, we are officially initialized!
+                if not self._initialized.is_set():
+                    self._initialized.set()
 
-            # After the first iteration, we are officially initialized!
-            if not self._initialized.is_set():
-                self._initialized.set()
+                time.sleep(1)
 
-            time.sleep(1)
+            # shut down the autonomous input / output transfer worker(s)
+            for worker in self._input_file_transfer_worker_pool:
+              # worker.terminate()
+                logger.debug("UnitManager.close(): %s terminated." % worker.name)
+              # worker.join()
 
-        # shut down the autonomous input / output transfer worker(s)
-        for worker in self._input_file_transfer_worker_pool:
-          # worker.terminate()
-            logger.debug("UnitManager.close(): %s terminated." % worker.name)
-          # worker.join()
-
-        for worker in self._output_file_transfer_worker_pool:
-          # worker.terminate()
-            logger.debug("UnitManager.close(): %s terminated." % worker.name)
-          # worker.join()
+            for worker in self._output_file_transfer_worker_pool:
+              # worker.terminate()
+                logger.debug("UnitManager.close(): %s terminated." % worker.name)
+              # worker.join()
+        except SystemExit as e :
+            print "unit manager controller thread caught system exit -- forcing application shutdown"
+            import thread
+            thread.interrupt_main ()
+            
 
     # ------------------------------------------------------------------------
     #
@@ -348,7 +357,7 @@ class UnitManagerController(threading.Thread):
             try:
                 cb (obj, value)
             except Exception, ex:
-                logger.error ("Couldn't call '%s' callback function %s: " \
+                logger.error ("Couldn't call '%s' callback function %s: %s" \
                            % (metric, cb, ex))
                 raise
 
@@ -449,148 +458,140 @@ class UnitManagerController(threading.Thread):
            ComputePilot.
         """
 
-        # make sure to catch sys.exit (which raises SystemExit)
-        try :
+        try:
+            wu_transfer   = list()
+            wu_notransfer = list()
 
-            try:
-                wu_transfer   = list()
-                wu_notransfer = list()
+            # Get some information about the pilot sandbox from the database.
+            pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
+            # TODO: this hack below relies on what?! That there is just one pilot?
+            pilot_sandbox = pilot_info[0]['sandbox']
 
-                # Get some information about the pilot sandbox from the database.
-                pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
-                # TODO: this hack below relies on what?! That there is just one pilot?
-                pilot_sandbox = pilot_info[0]['sandbox']
+            # Split units into two different lists: the first list contains the CUs
+            # that need file transfer and the second list contains the CUs that
+            # don't. The latter is added to the pilot directly, while the former
+            # is added to the transfer queue.
+            for unit in units:
 
-                # Split units into two different lists: the first list contains the CUs
-                # that need file transfer and the second list contains the CUs that
-                # don't. The latter is added to the pilot directly, while the former
-                # is added to the transfer queue.
-                for unit in units:
+                # Create object for staging status tracking
+                unit.FTW_Input_Status = None
+                unit.FTW_Input_Directives = []
+                unit.Agent_Input_Status = None
+                unit.Agent_Input_Directives = []
+                unit.FTW_Output_Status = None
+                unit.FTW_Output_Directives = []
+                unit.Agent_Output_Status = None
+                unit.Agent_Output_Directives = []
 
-                    # Create object for staging status tracking
-                    unit.FTW_Input_Status = None
-                    unit.FTW_Input_Directives = []
-                    unit.Agent_Input_Status = None
-                    unit.Agent_Input_Directives = []
-                    unit.FTW_Output_Status = None
-                    unit.FTW_Output_Directives = []
-                    unit.Agent_Output_Status = None
-                    unit.Agent_Output_Directives = []
+                # Split the input staging directives over the transfer worker and the agent
+                input_sds = unit.description.input_staging
+                if not isinstance(input_sds, list):
+                    # Ugly, but is a workaround for iterating on attribute interface
+                    # TODO: Verify if this piece of code is actually still required
+                    if input_sds:
+                        input_sds = [input_sds]
+                    else:
+                        input_sds = []
+                for input_sd_entry in input_sds:
 
-                    # Split the input staging directives over the transfer worker and the agent
-                    input_sds = unit.description.input_staging
-                    if not isinstance(input_sds, list):
-                        # Ugly, but is a workaround for iterating on attribute interface
-                        # TODO: Verify if this piece of code is actually still required
-                        if input_sds:
-                            input_sds = [input_sds]
-                        else:
-                            input_sds = []
-                    for input_sd_entry in input_sds:
+                    action = input_sd_entry['action']
+                    source = Url(input_sd_entry['source'])
+                    target = Url(input_sd_entry['target'])
 
-                        action = input_sd_entry['action']
-                        source = Url(input_sd_entry['source'])
-                        target = Url(input_sd_entry['target'])
+                    new_sd = {'action':   action,
+                              'source':   str(source),
+                              'target':   str(target),
+                              'flags':    input_sd_entry['flags'],
+                              'priority': input_sd_entry['priority'],
+                              'state':    PENDING
+                    }
 
-                        new_sd = {'action':   action,
-                                  'source':   str(source),
-                                  'target':   str(target),
-                                  'flags':    input_sd_entry['flags'],
-                                  'priority': input_sd_entry['priority'],
-                                  'state':    PENDING
-                        }
-
-                        if action == LINK or action == COPY or action == MOVE:
+                    if action == LINK or action == COPY or action == MOVE:
+                        unit.Agent_Input_Directives.append(new_sd)
+                        unit.Agent_Input_Status = PENDING
+                    elif action == TRANSFER:
+                        if source.scheme and source.scheme != 'file':
+                            # If there is a scheme and it is different than "file",
+                            # assume a remote pull from the agent
                             unit.Agent_Input_Directives.append(new_sd)
                             unit.Agent_Input_Status = PENDING
-                        elif action == TRANSFER:
-                            if source.scheme and source.scheme != 'file':
-                                # If there is a scheme and it is different than "file",
-                                # assume a remote pull from the agent
-                                unit.Agent_Input_Directives.append(new_sd)
-                                unit.Agent_Input_Status = PENDING
-                            else:
-                                # Transfer from local to sandbox
-                                unit.FTW_Input_Directives.append(new_sd)
-                                unit.FTW_Input_Status = PENDING
                         else:
-                            logger.error('Not sure if action %s makes sense for input staging' % action)
+                            # Transfer from local to sandbox
+                            unit.FTW_Input_Directives.append(new_sd)
+                            unit.FTW_Input_Status = PENDING
+                    else:
+                        logger.error('Not sure if action %s makes sense for input staging' % action)
 
-                    # Split the output staging directives over the transfer worker and the agent
-                    output_sds = unit.description.output_staging
-                    if not isinstance(output_sds, list):
-                        # Ugly, but is a workaround for iterating on att iface
-                        # TODO: Verify if this piece of code is actually still required
-                        if output_sds:
-                            output_sds = [output_sds]
-                        else:
-                            output_sds = []
-                    for output_sds_entry in output_sds:
+                # Split the output staging directives over the transfer worker and the agent
+                output_sds = unit.description.output_staging
+                if not isinstance(output_sds, list):
+                    # Ugly, but is a workaround for iterating on att iface
+                    # TODO: Verify if this piece of code is actually still required
+                    if output_sds:
+                        output_sds = [output_sds]
+                    else:
+                        output_sds = []
+                for output_sds_entry in output_sds:
 
-                        action = output_sds_entry['action']
-                        source = Url(output_sds_entry['source'])
-                        target = Url(output_sds_entry['target'])
+                    action = output_sds_entry['action']
+                    source = Url(output_sds_entry['source'])
+                    target = Url(output_sds_entry['target'])
 
-                        new_sd = {'action':   action,
-                                  'source':   str(source),
-                                  'target':   str(target),
-                                  'flags':    output_sds_entry['flags'],
-                                  'priority': output_sds_entry['priority'],
-                                  'state':    PENDING
-                        }
+                    new_sd = {'action':   action,
+                              'source':   str(source),
+                              'target':   str(target),
+                              'flags':    output_sds_entry['flags'],
+                              'priority': output_sds_entry['priority'],
+                              'state':    PENDING
+                    }
 
-                        if action == LINK or action == COPY or action == MOVE:
+                    if action == LINK or action == COPY or action == MOVE:
+                        unit.Agent_Output_Directives.append(new_sd)
+                        unit.Agent_Output_Status = NEW
+                    elif action == TRANSFER:
+                        if target.scheme and target.scheme != 'file':
+                            # If there is a scheme and it is different than "file",
+                            # assume a remote push from the agent
                             unit.Agent_Output_Directives.append(new_sd)
                             unit.Agent_Output_Status = NEW
-                        elif action == TRANSFER:
-                            if target.scheme and target.scheme != 'file':
-                                # If there is a scheme and it is different than "file",
-                                # assume a remote push from the agent
-                                unit.Agent_Output_Directives.append(new_sd)
-                                unit.Agent_Output_Status = NEW
-                            else:
-                                # Transfer from sandbox back to local
-                                unit.FTW_Output_Directives.append(new_sd)
-                                unit.FTW_Output_Status = NEW
                         else:
-                            logger.error('Not sure if action %s makes sense for output staging' % action)
-
-                    if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
-                        log = ["Scheduled for data transfer to ComputePilot %s." % pilot_uid]
-                        self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
-                        wu_transfer.append(unit)
+                            # Transfer from sandbox back to local
+                            unit.FTW_Output_Directives.append(new_sd)
+                            unit.FTW_Output_Status = NEW
                     else:
-                        wu_notransfer.append(unit)
+                        logger.error('Not sure if action %s makes sense for output staging' % action)
 
-                # Bulk-add all non-transfer units-
-                self._db.assign_compute_units_to_pilot(
-                    units=wu_notransfer,
-                    pilot_uid=pilot_uid,
-                    pilot_sandbox=pilot_sandbox
-                )
+                if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
+                    log = ["Scheduled for data transfer to ComputePilot %s." % pilot_uid]
+                    self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
+                    wu_transfer.append(unit)
+                else:
+                    wu_notransfer.append(unit)
 
-                self._db.assign_compute_units_to_pilot(
-                    units=wu_transfer,
-                    pilot_uid=pilot_uid,
-                    pilot_sandbox=pilot_sandbox
-                )
+            # Bulk-add all non-transfer units-
+            self._db.assign_compute_units_to_pilot(
+                units=wu_notransfer,
+                pilot_uid=pilot_uid,
+                pilot_sandbox=pilot_sandbox
+            )
 
-                for unit in wu_notransfer:
-                    log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
-                    self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
-                    #self._set_state(uid, PENDING_EXECUTION, log)
+            self._db.assign_compute_units_to_pilot(
+                units=wu_transfer,
+                pilot_uid=pilot_uid,
+                pilot_sandbox=pilot_sandbox
+            )
 
-                logger.info(
-                    "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
-                    (wu_notransfer, pilot_uid)
-                )
-            except Exception, e:
-                import traceback
-                logger.error (traceback.format_exc())
-                raise Exception('error in unit manager controler: %s' % e)
+            for unit in wu_notransfer:
+                log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
+                self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
+                #self._set_state(uid, PENDING_EXECUTION, log)
 
-        except SystemExit as e :
-            print "unit manager controller thread caught system exit -- forcing application shutdown"
-            import thread
-            thread.interrupt_main ()
-            
+            logger.info(
+                "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
+                (wu_notransfer, pilot_uid)
+            )
+        except Exception, e:
+            import traceback
+            logger.error (traceback.format_exc())
+            raise Exception('error in unit manager controler: %s' % e)
+
