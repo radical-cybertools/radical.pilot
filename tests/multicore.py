@@ -28,10 +28,11 @@ def unit_state_change_cb (unit, state) :
 #
 if __name__ == "__main__":
 
+    session = rp.Session()
+
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
     # well as security crendetials.
-    session = rp.Session()
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
@@ -99,5 +100,8 @@ if __name__ == "__main__":
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
                unit.stdout)
 
+    # always clean up the session
     session.close()
+
+# ------------------------------------------------------------------------------
 
