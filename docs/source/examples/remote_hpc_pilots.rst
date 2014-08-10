@@ -53,7 +53,7 @@ MongoDB (see diagram below).
 
 In order to allow SAGA-Pilot to launch ComputePilot agents on a remote  host
 via SSH, you need to provided it with the right credentials. This  is done via
-the :class:`sagapilot.Context` class.
+the :class:`radical.pilot.Context` class.
 
 .. note:: In order for Context to work, you need to be able to manually
           SSH into the target host, i.e., you need to have either a username
@@ -68,9 +68,9 @@ user name you use on the remote host:
 
 .. code-block:: python
 
-      session = sagapilot.Session(database_url=DBURL)
+      session = radical.pilot.Session(database_url=DBURL)
 
-      c = sagapilot.Context('ssh')
+      c = radical.pilot.Context('ssh')
       c.user_id = "tg802352"
       session.add_context(c)
 
@@ -80,11 +80,11 @@ PilotManagers that are created withing this session.
 Launching an HPC ComputePilot
 -----------------------------
 
-You can describe a :class:`sagapilot.ComputePilot` via a :class:`sagapilot.ComputePilotDescription` to the PilotManager:
+You can describe a :class:`radical.pilot.ComputePilot` via a :class:`radical.pilot.ComputePilotDescription` to the PilotManager:
 
 .. code-block:: python
 
-    pdesc = sagapilot.ComputePilotDescription()
+    pdesc = radical.pilot.ComputePilotDescription()
     pdesc.resource  = "stampede.tacc.utexas.edu"
     pdesc.runtime   = 15
     pdesc.cores     = 32 

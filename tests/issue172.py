@@ -136,7 +136,5 @@ if __name__ == "__main__":
         assert (unit.state == rp.DONE)
         # FIXME: add some more asserts
 
-    session.close(cleanup=False)
-
-    sys.exit(0)
+    session.close()
 

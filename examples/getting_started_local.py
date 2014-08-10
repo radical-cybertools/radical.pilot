@@ -1,22 +1,35 @@
 import os
 import sys
 import time
-import radical.pilot
+import radical.pilot as rp
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!
+
+
+#------------------------------------------------------------------------------
 #
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
+
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
+#------------------------------------------------------------------------------
+#
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
+
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
@@ -35,39 +48,13 @@ def wait_queue_size_cb(umgr, wait_queue_size):
 
     if  wait_queue_size == 0 :
         for pilot in pilots :
-            if  pilot.state in [radical.pilot.PENDING_LAUNCH,
-                                radical.pilot.LAUNCHING     ,
-                                radical.pilot.PENDING_ACTIVE] :
+            if  pilot.state in [rp.PENDING_LAUNCH,
+                                rp.LAUNCHING     ,
+                                rp.PENDING_ACTIVE] :
                 print "cancel pilot %s" % pilot.uid
                 umgr.remove_pilot (pilot.uid)
                 pilot.cancel ()
 
-#------------------------------------------------------------------------------
-#
-def pilot_state_cb(pilot, state):
-    """
-    pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
-
-    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
-
-    if state == radical.pilot.FAILED:
-        sys.exit (1)
-
-
-#------------------------------------------------------------------------------
-#
-def unit_state_change_cb(unit, state):
-    """
-    unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
-
-    print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
-
-    if state == radical.pilot.FAILED:
-        print "            Log: %s" % unit.log[-1]
 
 #------------------------------------------------------------------------------
 #
@@ -80,11 +67,11 @@ if __name__ == "__main__":
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
     # well as security credentials.
-    session = radical.pilot.Session(database_url=DBURL)
+    session = rp.Session()
     print "session id: %s" % session.uid
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-    pmgr = radical.pilot.PilotManager(session=session)
+    pmgr = rp.PilotManager(session=session)
 
     # Register our callback with the PilotManager. This callback will get
     # called every time any of the pilots managed by the PilotManager
@@ -93,7 +80,7 @@ if __name__ == "__main__":
 
     # Define a 4-core local pilot that runs for 10 minutes and cleans up
     # after itself.
-    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc = rp.ComputePilotDescription()
     pdesc.resource = "localhost"
     pdesc.runtime  = 10 # minutes
     pdesc.cores    = 4
@@ -102,7 +89,7 @@ if __name__ == "__main__":
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
-    pdesc2 = radical.pilot.ComputePilotDescription()
+    pdesc2 = rp.ComputePilotDescription()
     pdesc2.resource = "localhost"
     pdesc2.runtime  = 10 # minutes
     pdesc2.cores    = 4
@@ -113,14 +100,14 @@ if __name__ == "__main__":
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
-    umgr = radical.pilot.UnitManager(
+    umgr = rp.UnitManager(
         session=session,
-        scheduler=radical.pilot.SCHED_BACKFILLING)
+        scheduler=rp.SCHED_BACKFILLING)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
     # change their state.
-    umgr.register_callback(unit_state_change_cb, radical.pilot.UNIT_STATE)
+    umgr.register_callback(unit_state_change_cb, rp.UNIT_STATE)
 
     # Add the previously created ComputePilot to the UnitManager.
     umgr.add_pilots([pilot, pilot2])
@@ -138,7 +125,7 @@ if __name__ == "__main__":
     #
     cuds = []
     for unit_count in range(0, 16):
-        cud = radical.pilot.ComputeUnitDescription()
+        cud = rp.ComputeUnitDescription()
         cud.executable    = "/bin/bash"
         cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
         cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
@@ -154,7 +141,7 @@ if __name__ == "__main__":
 
     # Register also a callback which tells us when all units have been
     # assigned to pilots
-    umgr.register_callback(wait_queue_size_cb,   radical.pilot.WAIT_QUEUE_SIZE)
+    umgr.register_callback(wait_queue_size_cb,   rp.WAIT_QUEUE_SIZE)
 
     # Wait for all compute units to reach a terminal state (DONE or FAILED).
     umgr.wait_units()

@@ -8,26 +8,33 @@ import sys
 import radical.pilot as rp
 import time
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
+# READ: The RADICAL-Pilot documentation: 
+#   http://radicalpilot.readthedocs.org/en/latest
+#
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# you want to see what happens behind the scences!
+
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb(pilot, state):
-    """
-    pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
 
-    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if state == rp.FAILED:
-        sys.exit (0)
+    if  state == rp.FAILED :
+        sys.exit (1)
+
+
+#------------------------------------------------------------------------------
+#
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
+
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
 #-------------------------------------------------------------------------------
@@ -45,7 +52,7 @@ if __name__ == "__main__":
 
     # Create a new session. A session is a set of Pilot Managers
     # and Unit Managers (with associated Pilots and ComputeUnits).
-    session = rp.Session(database_url=DBURL)
+    session = rp.Session()
 
     # Create a new pilot manager.
     pmgr = rp.PilotManager(session=session)

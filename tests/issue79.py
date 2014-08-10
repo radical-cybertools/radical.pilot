@@ -1,4 +1,4 @@
-import sagapilot as sp
+import radical.pilot as rp
 
 
 PILOT_DESCR = {'project':     None, 

@@ -99,7 +99,6 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
 
     session.close()
-    sys.exit(0)
 
 # ------------------------------------------------------------------------------
 

@@ -1,54 +1,34 @@
 import os
 import sys
-import radical.pilot
+import radical.pilot as rp
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scenes!
-#
-# RADICAL-Pilot uses ssh to communicate with the remote resource. The 
-# easiest way to make this work seamlessly is to set up ssh key-based
-# authentication and add the key to your keychain so you won't be 
-# prompted for a password. The following article explains how to set 
-# this up on Linux:
-#   http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/
-
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
 
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb(pilot, state):
-    """
-    pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
 
-    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if state == radical.pilot.FAILED:
+    if  state == rp.FAILED :
         sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
-def unit_state_change_cb(unit, state):
-    """
-    unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
-    if state == radical.pilot.states.FAILED:
-        print "            Log: %s" % unit.log[-1]
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
 # ------------------------------------------------------------------------------
@@ -58,15 +38,15 @@ if __name__ == "__main__":
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
     # well as security contexts.
-    session = radical.pilot.Session(database_url=DBURL)
+    session = rp.Session()
 
     # Add an ssh identity to the session.
-    c = radical.pilot.Context('ssh')
+    c = rp.Context('ssh')
     c.user_id = "merzky"
     session.add_context(c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-    pmgr = radical.pilot.PilotManager(session=session)
+    pmgr = rp.PilotManager(session=session)
 
     # Register our callback with the PilotManager. This callback will get
     # called every time any of the pilots managed by the PilotManager
@@ -75,7 +55,7 @@ if __name__ == "__main__":
 
     # Define a X-core on stamped that runs for N minutes and
     # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
-    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc = rp.ComputePilotDescription()
     pdesc.resource         = "sierra.futuregrid.org"
     pdesc.runtime          = 15 # N minutes
     pdesc.cores            = 16 # X cores
@@ -87,7 +67,7 @@ if __name__ == "__main__":
     cud_list = []
 
     for unit_count in range(0, 4):
-        cu = radical.pilot.ComputeUnitDescription()
+        cu = rp.ComputeUnitDescription()
         cu.pre_exec      = ["module load python intel mvapich2 mpi4py"]
         cu.executable    = "python"
         cu.arguments     = ["helloworld_mpi.py"]
@@ -104,9 +84,9 @@ if __name__ == "__main__":
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
-    umgr = radical.pilot.UnitManager(
+    umgr = rp.UnitManager(
         session=session,
-        scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+        scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager

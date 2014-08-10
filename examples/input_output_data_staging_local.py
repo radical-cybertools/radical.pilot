@@ -1,50 +1,35 @@
 import os
 import sys
 import time
-import radical.pilot
+import radical.pilot as rp
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!
-#
-
-
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
 
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb(pilot, state):
-    """
-    pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
 
-    print "[Callback]: ComputePilot '%s' state changed to %s." % (pilot.uid, state)
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if state == radical.pilot.FAILED:
+    if  state == rp.FAILED :
         sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
-def unit_state_change_cb(unit, state):
-    """
-    unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit '%s' state changed to %s." % (unit.uid, state)
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
-    if state == radical.pilot.FAILED:
-        print "            Log: %s" % unit.log[-1]
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
@@ -58,10 +43,10 @@ if __name__ == "__main__":
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
     # well as security crendetials.
-    session = radical.pilot.Session(database_url=DBURL)
+    session = rp.Session()
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-    pmgr = radical.pilot.PilotManager(session=session)
+    pmgr = rp.PilotManager(session=session)
 
     # Register our callback with the PilotManager. This callback will get
     # called every time any of the pilots managed by the PilotManager
@@ -70,7 +55,7 @@ if __name__ == "__main__":
 
     # Define a 2-core local pilot that runs for 10 minutes and cleans up
     # after itself.
-    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc = rp.ComputePilotDescription()
     pdesc.resource = "localhost"
     pdesc.runtime  = 5 # Minutes
     pdesc.cores    = 2
@@ -88,7 +73,7 @@ if __name__ == "__main__":
     compute_units = []
 
     for unit_count in range(0, 16):
-        cu = radical.pilot.ComputeUnitDescription()
+        cu = rp.ComputeUnitDescription()
         cu.executable     = "/bin/bash"
         cu.arguments      = ["-l", "-c", "'cat ./file1.dat ./file2.dat " \
                              " > result-%s.dat'" % unit_count]
@@ -100,9 +85,9 @@ if __name__ == "__main__":
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
-    umgr = radical.pilot.UnitManager(
+    umgr = rp.UnitManager(
         session=session,
-        scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+        scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
