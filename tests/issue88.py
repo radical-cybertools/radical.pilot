@@ -5,9 +5,9 @@ import sagapilot
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
+DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
 RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",

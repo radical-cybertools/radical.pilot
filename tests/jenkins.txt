@@ -1,6 +1,4 @@
-archer_test.py
 helloworld_mpi.py
-issue104.py
 issue124.py
 issue133.py
 issue165.py

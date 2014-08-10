@@ -1,18 +1,26 @@
 import os
 import sys
-import sagapilot
+import radical.pilot as rp
+
+# #104: Some ExecWorker(s) out of memory with a bag of 4096 tasks
+
+# ATTENTION:
+#
+# This test consumes about 20   CPU hours on stampede -- it is thus not run as
+# part of the usual issue testing.
+
+# NOTE:
+#
+# as is, this script will not be able to reproduce issue #104
+
 
 # DBURL defines the MongoDB server URL and has the format mongodb://host:port.
 # For the installation of a MongoDB server, refer to the MongoDB website:
 # http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
+DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
-
-RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
-          "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
-
 
 #------------------------------------------------------------------------------
 #
@@ -23,7 +31,7 @@ def pilot_state_cb(pilot, state):
     print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
 
-    if state == sagapilot.states.FAILED:
+    if state == rp.FAILED:
         sys.exit(1)
 
 #------------------------------------------------------------------------------
@@ -34,7 +42,7 @@ def unit_state_change_cb(unit, state):
     """
     print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
         unit.uid, state)
-    if state == sagapilot.states.FAILED:
+    if state == rp.FAILED:
         print "            Log: %s" % unit.log[-1]
 
 #------------------------------------------------------------------------------
@@ -45,10 +53,10 @@ if __name__ == "__main__":
         # Create a new session. A session is the 'root' object for all other
         # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
-        session = sagapilot.Session(database_url=DBURL)
+        session = rp.Session(database_url=DBURL)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
+        pmgr = rp.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -56,7 +64,7 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         # Define a 2-core local pilot that runs for 10 minutes.
-        pdesc = sagapilot.ComputePilotDescription()
+        pdesc = rp.ComputePilotDescription()
         pdesc.resource = "stampede.tacc.utexas.edu"
         pdesc.runtime = 30
         pdesc.cores = 4096
@@ -78,7 +86,7 @@ if __name__ == "__main__":
         compute_units = []
 
         for unit_count in range(0, 4 * 4096):
-            cu = sagapilot.ComputeUnitDescription()
+            cu = rp.ComputeUnitDescription()
             cu.executable = "/bin/sleep"
             cu.arguments = ["60"]
             cu.cores = 1
@@ -87,9 +95,9 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = sagapilot.UnitManager(
+        umgr = rp.UnitManager(
             session=session,
-            scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+            scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -121,5 +129,6 @@ if __name__ == "__main__":
         # Remove session from database
         session.destroy()
 
-    except sagapilot.SagapilotException, ex:
+    except rp.RadicalpilotException, ex:
         print "Error: %s" % ex
+

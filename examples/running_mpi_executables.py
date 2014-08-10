@@ -91,8 +91,8 @@ if __name__ == "__main__":
             cu = radical.pilot.ComputeUnitDescription()
             cu.pre_exec      = ["module load python intel mvapich2 mpi4py"]
             cu.executable    = "python"
-            cu.arguments     = ["mpi4py_hello_world.py"]
-            cu.input_staging = ["mpi4py_hello_world.py"]
+            cu.arguments     = ["helloworld_mpi.py"]
+            cu.input_staging = ["helloworld_mpi.py"]
 
             # These two parameters are relevant to MPI execution:
             #   'cores' sets the number of cores required by the task
