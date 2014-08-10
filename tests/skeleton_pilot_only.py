@@ -1,6 +1,6 @@
 import os
 import sys
-import radical.pilot
+import radical.pilot as rp
 
 #------------------------------------------------------------------------------
 #
@@ -10,10 +10,10 @@ if __name__ == "__main__":
         # Create a new session. A session is the 'root' object for all other
         # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
-        session = radical.pilot.Session()
+        session = rp.Session()
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session)
+        pmgr = rp.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -21,7 +21,7 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         # Define a 2-core local pilot that runs for 10 minutes.
-        pdesc = radical.pilot.ComputePilotDescription()
+        pdesc = rp.ComputePilotDescription()
         pdesc.resource = "localhost"
         pdesc.runtime = 10
         pdesc.cores = 2
@@ -39,5 +39,5 @@ if __name__ == "__main__":
         # Remove session from database
         session.close()
 
-    except radical.pilot.PilotException, ex:
+    except rp.PilotException, ex:
         print "Error: %s" % ex

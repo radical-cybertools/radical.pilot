@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-import radical.pilot
+import radical.pilot as rp
 
 #------------------------------------------------------------------------------
 #
@@ -11,10 +11,10 @@ if __name__ == "__main__":
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
         # well as security crendetials.
-        session = radical.pilot.Session()
+        session = rp.Session()
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session)
+        pmgr = rp.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
         # Define a 2-core local pilot that runs for 10 minutes and cleans up
         # after itself.
-        pdesc = radical.pilot.ComputePilotDescription()
+        pdesc = rp.ComputePilotDescription()
         pdesc.resource = "localhost"
         pdesc.runtime  = 5 # minutes
         pdesc.cores    = 2
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         compute_units = []
 
         for unit_count in range(0, 16):
-            cu = radical.pilot.ComputeUnitDescription()
+            cu = rp.ComputeUnitDescription()
             cu.environment = {"INPUT1": "file1.dat", "INPUT2": "file2.dat"}
             cu.executable  = "/bin/cat"
             cu.arguments   = ["$INPUT1", "$INPUT2"]
@@ -57,9 +57,9 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = radical.pilot.UnitManager(
+        umgr = rp.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+            scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         session.close()
         sys.exit(0)
 
-    except radical.pilot.PilotException, ex:
+    except rp.PilotException, ex:
         # Catch all exceptions and exit with and error.
         print "Error during execution: %s" % ex
         sys.exit(1)

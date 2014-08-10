@@ -1,6 +1,6 @@
 import os
 import sys
-import radical.pilot
+import radical.pilot as rp
 
 #------------------------------------------------------------------------------
 #
@@ -12,15 +12,15 @@ if __name__ == "__main__":
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security contexts.
-        session = radical.pilot.Session()
+        session = rp.Session()
 
         # Add an ssh identity to the session.
-        c = radical.pilot.Context('ssh')
+        c = rp.Context('ssh')
         #c.user_id = 'merzky'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session)
+        pmgr = rp.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
         # Define a N-core on fs2 that runs for X minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
-        pdesc = radical.pilot.ComputePilotDescription()
+        pdesc = rp.ComputePilotDescription()
         pdesc.resource         = "india.futuregrid.org"
         pdesc.runtime          = 5 # X minutes
         pdesc.cores            = 16 # N cores
@@ -41,13 +41,13 @@ if __name__ == "__main__":
         cud_list = []
 
         # Configure the staging directive for input file.
-        sd_exec = radical.pilot.StagingDirectives()
+        sd_exec = rp.StagingDirectives()
         sd_exec.source = 'helloworld_mpi.py'
         sd_exec.target = 'helloworld_mpi.py' # optional if remote filename can be the same
-        sd_exec.action = radical.pilot.TRANSFER
+        sd_exec.action = rp.TRANSFER
 
         for unit_count in range(0, 4):
-            mpi_test_task = radical.pilot.ComputeUnitDescription()
+            mpi_test_task = rp.ComputeUnitDescription()
 
             # NOTE: Default module versions are different on worker nodes and head node,
             #       so test pre_exec's on a worker node and not on the headnode!
@@ -67,10 +67,10 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = radical.pilot.UnitManager(
+        umgr = rp.UnitManager(
             session=session,
-            #scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
-            scheduler=radical.pilot.SCHED_LATE_BINDING)
+            #scheduler=rp.SCHED_DIRECT_SUBMISSION)
+            scheduler=rp.SCHED_LATE_BINDING)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         for unit in units:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
-            if  unit.state == radical.pilot.FAILED :
+            if  unit.state == rp.FAILED :
                 print "STDERR: %s" % unit.stderr
                 print "STDOUT: %s" % unit.stdout
                 retval = 1
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         session.close(delete=False)
         sys.exit(retval)
 
-    except radical.pilot.PilotException, ex:
+    except rp.PilotException, ex:
         # Catch all exceptions and exit with and error.
         print "Error during execution: %s" % ex
         sys.exit(1)

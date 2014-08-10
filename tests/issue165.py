@@ -1,6 +1,6 @@
 import os
 import sys
-import radical.pilot
+import radical.pilot as rp
 
 # ##############################################################################
 # #165: proper handling of quotes in arguments for the multicore agent
@@ -35,14 +35,14 @@ if __name__ == "__main__":
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
     # well as security contexts.
-    session = radical.pilot.Session()
+    session = rp.Session()
 
     # prepare some input files for the compute units
     os.system ('hostname > file1.dat')
     os.system ('date     > file2.dat')
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-    pmgr = radical.pilot.PilotManager(session=session)
+    pmgr = rp.PilotManager(session=session)
 
     # Register our callback with the PilotManager. This callback will get
     # called every time any of the pilots managed by the PilotManager
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     # Define a X-core on stamped that runs for N minutes and
     # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
-    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc = rp.ComputePilotDescription()
     pdesc.resource = "localhost"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 1 # X cores
@@ -62,9 +62,9 @@ if __name__ == "__main__":
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
-    umgr = radical.pilot.UnitManager(
+    umgr = rp.UnitManager(
         session=session,
-        scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+        scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
@@ -75,17 +75,17 @@ if __name__ == "__main__":
     umgr.add_pilots(pilot)
 
 
-    cud = radical.pilot.ComputeUnitDescription()
+    cud = rp.ComputeUnitDescription()
     ###
     ### Arguments are all treated as strings and don't need special quoting in the CUD.
     ###
     cud.executable = "/bin/bash"
-    cud.arguments = ["-l", "-c", "cat ./file1.txt ./file2.dat > result.dat"]
+    cud.arguments = ["-l", "-c", "cat ./file1.dat ./file2.dat > result.dat"]
     ###
     ### In the backend, arguments containing spaces will get special treatment, so that they
     ### remain intact as strings.
     ###
-    ### This CUD will thus be executed as: /bin/bash -l -c "cat ./file1.txt ./file2.dat > result.dat"
+    ### This CUD will thus be executed as: /bin/bash -l -c "cat ./file1.dat ./file2.dat > result.dat"
     ###
     cud.input_staging  = ['file1.dat', 'file2.dat']
     cud.output_staging = ['result.dat']
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     # delete the test data files
     os.system ('rm file1.dat')
     os.system ('rm file2.dat')
-    os.system ('rm result-*.dat')
+    os.system ('rm result.dat')
 
     sys.exit(0)
 
