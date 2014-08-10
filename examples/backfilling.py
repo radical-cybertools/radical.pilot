@@ -23,6 +23,7 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
@@ -46,6 +47,7 @@ def unit_state_change_cb(unit, state):
         unit.uid, state)
     if state == rp.states.FAILED:
         print "            Log: %s" % unit.log[-1]
+
 
 #------------------------------------------------------------------------------
 #

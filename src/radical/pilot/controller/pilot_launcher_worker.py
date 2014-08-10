@@ -174,8 +174,8 @@ class PilotLauncherWorker(threading.Thread):
                 # we assume that the job has failed for some reasons and update
                 # the state of the ComputePilot accordingly.
                 if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
-                    self.check_pilot_states (pilot_col)
                     last_job_check = time.time()
+                    self.check_pilot_states (pilot_col)
 
 
                 # See if we can find a ComputePilot that is waiting to be launched.

@@ -40,17 +40,19 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
+
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb(pilot, state):
     """pilot_state_change_cb() is a callback function. It gets called very
     time a ComputePilot changes its state.
     """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
+    print "[AppCallback]: ComputePilot '{0}' state changed to {1}.".format(
         pilot.uid, state)
 
-    if state == radical.pilot.states.FAILED:
+    if state == rp.states.FAILED:
         sys.exit(1)
+
 
 #------------------------------------------------------------------------------
 #
@@ -58,9 +60,9 @@ def unit_state_change_cb(unit, state):
     """unit_state_change_cb() is a callback function. It gets called very
     time a ComputeUnit changes its state.
     """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
+    print "[AppCallback]: ComputeUnit '{0}' state changed to {1}.".format(
         unit.uid, state)
-    if state == radical.pilot.states.FAILED:
+    if state == rp.states.FAILED:
         print "            Log: %s" % unit.log[-1]
 
 #------------------------------------------------------------------------------
@@ -86,7 +88,7 @@ if __name__ == "__main__":
         pdesc.project          = "e290"  # archer 'project group'
         pdesc.runtime          = 10
         pdesc.cores            = 56      # there are 24 cores per node on Archer, so this allocates 3 nodes
-        pdesc.sandbox          = "/work/e290/e290/oweidner/RPTEST/" 
+        pdesc.sandbox          = "/work/e290/e290/merzky/radical.pilot.sandbox/" 
         pdesc.cleanup          = False
 
 
