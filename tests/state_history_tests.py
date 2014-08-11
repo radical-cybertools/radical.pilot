@@ -44,33 +44,11 @@ if __name__ == "__main__":
     # Define a 2-core local pilot that runs for 10 minutes.
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "localhost"
-    pdesc.runtime = 10
-    pdesc.cores = 2
+    pdesc.runtime  = 10
+    pdesc.cores    = 2
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
-
-    # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-    # uses /bin/cat to concatenate two input files, file1.dat and
-    # file2.dat. The output is written to STDOUT. cu.environment is
-    # used to demonstrate how to set environment variables withih a
-    # ComputeUnit - it's not strictly necessary for this example. As
-    # a shell script, the ComputeUnits would look something like this:
-    #
-    #    export INPUT1=file1.dat
-    #    export INPUT2=file2.dat
-    #    /bin/cat $INPUT1 $INPUT2
-    #
-    compute_units = []
-
-    for unit_count in range(0, 8):
-        cu = rp.ComputeUnitDescription()
-        cu.executable = "/bin/date"
-        cu.cores = 1
-        cu.input_data = ["skeleton.py"]
-        cu.output_data = ["STDOUT"]
-
-        compute_units.append(cu)
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
@@ -88,6 +66,14 @@ if __name__ == "__main__":
     # Add the previsouly created ComputePilot to the UnitManager.
     umgr.add_pilots(pilot)
 
+    # Create a workload of 8 ComputeUnits (tasks).
+    compute_units = []
+    for unit_count in range(0, 8):
+        cu = rp.ComputeUnitDescription()
+        cu.executable = "/bin/date"
+
+        compute_units.append(cu)
+
     # Submit the previously created ComputeUnit descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning ComputeUnits to the ComputePilots.
@@ -98,20 +84,33 @@ if __name__ == "__main__":
 
     pmgr.cancel_pilots()
 
-    import time
-    time.sleep(2)
-
     print "\n== UNIT STATE HISTORY==\n"
 
     for unit in umgr.get_units():
         # Print some information about the unit.
-        for state in unit.state_history:
-            print " * %s: %s\n" % (state.timestamp, state.state)
+        print "unit %s" % unit.uid
+        states = list()
+        for entry in unit.state_history:
+            print " * %s: %s" % (entry.timestamp, entry.state)
+            states.append (entry.state)
+        assert (rp.NEW               in states)
+        assert (rp.PENDING_EXECUTION in states)
+        assert (rp.SCHEDULING        in states)
+        assert (rp.EXECUTING         in states)
+        assert (rp.DONE              in states)
 
     print "\n== PILOT STATE HISTORY==\n"
 
-    for state in pilot.state_history:
-        print " * %s: %s\n" % (state.timestamp, state.state)
+    print "pilot %s" % pilot.uid
+    states = list()
+    for entry in pilot.state_history:
+        print " * %s: %s" % (entry.timestamp, entry.state)
+        states.append (entry.state)
+    assert (rp.PENDING_LAUNCH in states)
+    assert (rp.LAUNCHING      in states)
+    assert (rp.PENDING_ACTIVE in states)
+    assert (rp.ACTIVE         in states)
+    assert (rp.CANCELED       in states)
 
     # Remove session from database
     session.close()

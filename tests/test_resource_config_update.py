@@ -35,13 +35,11 @@ if __name__ == "__main__":
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
+  # c.user_id = 'merzky'
     session.add_context(c)
 
-    # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-    pmgr = rp.PilotManager(session=session)
-
     # Get all configs,
-    res = pmgr.list_resource_configs()
+    res = session.list_resource_configs()
     # ... and the entry specific for stampede
     s = res['stampede.tacc.utexas.edu']
     print 'Default queue of stampede is: "%s".' % s['default_queue']
@@ -54,14 +52,19 @@ if __name__ == "__main__":
     rc.default_queue = 'development'
 
     # Now add the entry back to the PM
-    pmgr.add_resource_config(rc)
+    session.add_resource_config(rc)
 
     # Get all configs,
-    res = pmgr.list_resource_configs()
+    res = session.list_resource_configs()
     # ... and the entry specific for stampede
     s = res['stampede.tacc.utexas.edu']
     #s = res['testing']
     print 'Default queue of stampede after change is: "%s".' % s['default_queue']
+    assert (s['default_queue'] == 'development')
+
+    # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+    pmgr = rp.PilotManager(session=session)
+
 
     # Register our callback with the PilotManager. This callback will get
     # called every time any of the pilots managed by the PilotManager
@@ -72,22 +75,13 @@ if __name__ == "__main__":
     # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
     pdesc = rp.ComputePilotDescription()
     pdesc.resource  = "stampede.tacc.utexas.edu"
-    #pdesc.resource  = "testing"
-    pdesc.runtime   = 15 # minutes
-    pdesc.cores     = 16
+    pdesc.runtime   = 10 # minutes
+    pdesc.cores     = 4
     pdesc.cleanup   = True
+    pdesc.project   = 'TG-MCB090174'
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
-
-    compute_units = []
-
-    for unit_count in range(0, 1):
-        cu = rp.ComputeUnitDescription()
-        cu.executable  = "/bin/date"
-        cu.cores       = 1
-
-        compute_units.append(cu)
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
@@ -103,6 +97,14 @@ if __name__ == "__main__":
     # Add the previsouly created ComputePilot to the UnitManager.
     umgr.add_pilots(pilot)
 
+    compute_units = []
+    for unit_count in range(0, 4):
+        cu = rp.ComputeUnitDescription()
+        cu.executable  = "/bin/date"
+        cu.cores       = 1
+
+        compute_units.append(cu)
+
     # Submit the previously created ComputeUnit descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning ComputeUnits to the ComputePilots.
@@ -117,6 +119,8 @@ if __name__ == "__main__":
         print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
                unit.stdout)
+
+        assert (unit.state == rp.DONE)
 
     # Close automatically cancels the pilot(s).
     session.close()
