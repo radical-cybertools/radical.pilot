@@ -138,26 +138,32 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_pilot_data(self, pilot_uids=None):
+    def get_compute_pilot_data(self, pilot_ids=None):
         """Returns the raw data (json dicts) of one or more ComputePilots
            registered with this Worker / PilotManager
         """
         # Wait for the initialized event to assert proper operation.
         self._initialized.wait()
 
-        if pilot_uids is None:
-            # AM: this code branch is never used
-            data = self._db.get_pilots(pilot_manager_id=self._pm_id)
-            return data
+        try:
 
-        else:
-            if not isinstance(pilot_uids, list):
-                return self._shared_data[pilot_uids]['data']
-            else:
-                data = list()
-                for pilot_uid in pilot_uids:
-                    data.append(self._shared_data[pilot_uid]['data'])
+            if pilot_ids is None:
+                data = self._db.get_pilots(pilot_manager_id=self._pm_id)
                 return data
+
+            else:
+                if not isinstance(pilot_ids, list):
+                    return self._shared_data[pilot_ids]['data']
+                else:
+                    data = list()
+                    for pilot_id in pilot_ids:
+                        data.append(self._shared_data[pilot_id]['data'])
+                    return data
+
+        except KeyError, ke:
+            msg = "Unknown Pilot ID {0}".format(str(ke))
+            logger.error(msg)
+            raise Exception(msg)
 
     # ------------------------------------------------------------------------
     #
@@ -281,9 +287,9 @@ class PilotManagerController(threading.Thread):
                         state="Canceled",
                         log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
 
-                # After the first iteration, we are officially initialized!
-                if not self._initialized.is_set():
-                    self._initialized.set()
+            # After the first iteration, we are officially initialized!
+            if not self._initialized.is_set():
+                self._initialized.set()
 
             time.sleep(1)
 

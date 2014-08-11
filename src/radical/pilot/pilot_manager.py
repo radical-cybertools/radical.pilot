@@ -412,7 +412,8 @@ class PilotManager(Object):
             all_done = True
 
             p_states = []
-            for pd in self._worker.get_compute_pilot_data():
+
+            for pd in self._worker.get_compute_pilot_data(pilot_ids=pilot_ids):
                 p_states.append(pd['state'])
 
             for p_state in p_states:
