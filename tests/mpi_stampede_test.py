@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
-    c.user_id="tg803521"
+  # c.user_id = 'merzky'
     session.add_context(c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -46,14 +46,12 @@ if __name__ == "__main__":
     # change their state.
     pmgr.register_callback(pilot_state_cb)
 
-    # Define a X-core on stamped that runs for N minutes and
-    # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
+    # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource         = "stampede.tacc.utexas.edu"
-    pdesc.runtime          = 15 # N minutes
-    pdesc.cores            = 64 # X cores
-    pdesc.cleanup          = False
-    pdesc.project          = 'TG-MCB090174'
+    pdesc.resource = "stampede.tacc.utexas.edu"
+    pdesc.project  = 'TG-MCB090174'
+    pdesc.runtime  = 5 # N minutes
+    pdesc.cores    = 8 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
@@ -61,12 +59,15 @@ if __name__ == "__main__":
     cud_list = []
 
     for unit_count in range(0, 4):
+
         mpi_test_task = rp.ComputeUnitDescription()
-        mpi_test_task.pre_exec    = ["module load python intel mvapich2 mpi4py"]
-        mpi_test_task.executable  = "python"
-        mpi_test_task.arguments   = ["$HOME/software/bin/helloworld_mpi.py"]
-        mpi_test_task.cores       = 32
-        mpi_test_task.mpi         = True
+
+        mpi_test_task.pre_exec      = ["module load python intel mvapich2 mpi4py"]
+        mpi_test_task.input_staging = ["helloworld_mpi.py"]
+        mpi_test_task.executable    = "python"
+        mpi_test_task.arguments     = ["helloworld_mpi.py"]
+        mpi_test_task.mpi           = True
+        mpi_test_task.cores         = 4
 
         cud_list.append(mpi_test_task)
 
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        scheduler=rp.SCHED_DIRECT_SUBMISSION)
+        scheduler=rp.SCHED_LATE_BINDING)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
@@ -94,10 +95,11 @@ if __name__ == "__main__":
 
     if not isinstance(units, list):
         units = [units]
+
     for unit in units:
         print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
-
+            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+        
         assert (unit.state == rp.DONE)
 
     session.close()

@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
-    #c.user_id = 'merzky'
+  # c.user_id = 'merzky'
     session.add_context(c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -46,41 +46,30 @@ if __name__ == "__main__":
     # change their state.
     pmgr.register_callback(pilot_state_cb)
 
-    # Define a N-core on fs2 that runs for X minutes and
-    # uses $HOME/radical.pilot.sandbox as sandbox directory.
+    # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource         = "india.futuregrid.org"
-    pdesc.runtime          = 5 # X minutes
-    pdesc.cores            = 16 # N cores
-    pdesc.cleanup          = False
+    pdesc.resource = "india.futuregrid.org"
+    pdesc.runtime  = 5 # N minutes
+    pdesc.cores    = 8 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
     cud_list = []
 
-    # Configure the staging directive for input file.
-    sd_exec = rp.StagingDirectives()
-    sd_exec.source = 'helloworld_mpi.py'
-    sd_exec.target = 'helloworld_mpi.py' # optional if remote filename can be the same
-    sd_exec.action = rp.TRANSFER
-
     for unit_count in range(0, 4):
+
         mpi_test_task = rp.ComputeUnitDescription()
 
-        # NOTE: Default module versions are different on worker nodes and head node,
-        #       so test pre_exec's on a worker node and not on the headnode!
-        mpi_test_task.pre_exec = ["module load openmpi/1.4.3-gnu python",
-                                  "(test -d $HOME/mpive || rm -rf $HOME/mpive && virtualenv $HOME/mpive)",
-                                  "source $HOME/mpive/bin/activate",
-                                  "(pip freeze | grep -q mpi4py || pip install mpi4py)"
-        ]
-        mpi_test_task.input_staging  = [sd_exec]
-        mpi_test_task.executable  = "python"
-        mpi_test_task.arguments   = ["helloworld_mpi.py"]
-        mpi_test_task.mpi         = True
-
-        mpi_test_task.cores       = 4
+        mpi_test_task.pre_exec      = ["module load openmpi/gnu/1.6.3",
+                                       "virtualenv ./mpive",
+                                       "source     ./mpive/bin/activate",
+                                       "pip install mpi4py"]
+        mpi_test_task.input_staging = ["helloworld_mpi.py"]
+        mpi_test_task.executable    = "python"
+        mpi_test_task.arguments     = ["helloworld_mpi.py"]
+        mpi_test_task.mpi           = True
+        mpi_test_task.cores         = 4
 
         cud_list.append(mpi_test_task)
 
@@ -88,7 +77,6 @@ if __name__ == "__main__":
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        #scheduler=rp.SCHED_DIRECT_SUBMISSION)
         scheduler=rp.SCHED_LATE_BINDING)
 
     # Register our callback with the UnitManager. This callback will get
@@ -109,6 +97,7 @@ if __name__ == "__main__":
 
     if not isinstance(units, list):
         units = [units]
+
     for unit in units:
         print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)

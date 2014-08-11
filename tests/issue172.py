@@ -103,13 +103,12 @@ if __name__ == "__main__":
         # MPI
         cud = rp.ComputeUnitDescription()
         cud.pre_exec        = ["module load openmpi/1.4.3-intel python",
-                               "(test -d $HOME/mpive || virtualenv $HOME/mpive)",
-                               "source $HOME/mpive/bin/activate",
-                               "(pip freeze | grep -q mpi4py || pip install mpi4py)"
-                              ]
+                               "virtualenv ./mpive",
+                               "source     ./mpive/bin/activate",
+                               "pip install mpi4py"]
         cud.executable      = "python"
-      # cud.input_staging   = ["mpi4py_env.py"]
-        cud.arguments       = '$HOME/mpi4py_env.py'
+        cud.input_staging   = ["mpi4py_env.py"]
+        cud.arguments       = './mpi4py_env.py'
         cud.cores           = 2
         cud.mpi             = True
         if  env != 'UNDEFINED' :
