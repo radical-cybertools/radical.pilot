@@ -22,8 +22,6 @@ issue88.py
 # ---------------------------------------
 mpi_alamo_test.py
 mpi_archer_test.py
-mpi_bigred2_test.py
-mpi_das4_test.py
 mpi_hotel_test.py
 mpi_india_test.py
 mpi_localhost_test.py
@@ -37,9 +35,6 @@ mpi_supermuc_test.py
 # ---------------------------------------
 multicore.py
 session_ctx.py
-simple-skeleton.py
-skeleton_pilot_only.py
-skeleton.py
 state_history_tests.py
 test_resource_config_update.py
 
@@ -49,4 +44,12 @@ test_resource_config_update.py
 # ---------------------------------------
 # mpi_yellowstone_test.py
 # yellowstone_test.py
+
+# ---------------------------------------
+# jenkins does not have access to 
+# these machines:
+# ---------------------------------------
+# mpi_bigred2_test.py  # no account for AM
+# mpi_das4_test.py     # no account for AM
+
 
