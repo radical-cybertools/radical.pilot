@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # Define a pilot on stampede of in total 32 cores that spans two nodes,
     # runs for 15 mintutes and uses $HOME/radical.pilot.sandbox as sandbox directory.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "sierra.futuregrid.org"
+    pdesc.resource  = "india.futuregrid.org"
     pdesc.runtime   = 15 # minutes
     pdesc.cores     = 32 
 
