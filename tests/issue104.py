@@ -43,7 +43,7 @@ def unit_state_change_cb (unit, state) :
 if __name__ == "__main__":
 
     # Create a new session. A session is the 'root' object for all other
-    # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
+    # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
     # well as security crendetials.
     session = rp.Session()
 

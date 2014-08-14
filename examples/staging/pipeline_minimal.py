@@ -12,7 +12,7 @@ if DBURL is None:
     sys.exit(1)
 
 # RCONF points to the resource configuration files. Read more about resource
-# configuration files at http://saga-pilot.readthedocs.org/en/latest/machconf.html
+# configuration files at http://radicalpilot.readthedocs.org/en/latest/machconf.html
 RCONF = ["https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json",
           "https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json"]
 

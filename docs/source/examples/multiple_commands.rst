@@ -9,7 +9,7 @@ a  ComputeUnit. For example, you might have to create and cange into a
 directory or load a module or a specific version of a software package before
 you call your *main* executable.
 
-In SAGA-Pilot this can be easily achieved by using ``/bin/bash`` as the 
+In RADICAL-Pilot this can be easily achieved by using ``/bin/bash`` as the 
 executable in the :class:`radical.pilot.ComputeUnitDescription` and either pass
 a shell script directly as a string argument or transfer a shell script file
 as part of the ComputeUnit. The former works well for a small set of simple 

@@ -180,7 +180,7 @@ html_show_copyright = True
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'SAGAPilotdoc'
+htmlhelp_basename = 'radical.pilot.doc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -199,7 +199,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'SAGA-Pilot.tex', u'SAGA-Pilot Documentation',
+  ('index', 'RADICAL-Pilot.tex', u'RADICAL-Pilot Documentation',
    u'The RADICAL Group at Rutgers University', 'manual'),
 ]
 
@@ -243,8 +243,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'SAGA-Pilot', u'SAGA-Pilot Documentation',
-   u'The RADICAL Group at Rutgers University', 'SAGA-Pilot', 'One line description of project.',
+  ('index', 'RADICAL-Pilot', u'RADICAL-Pilot Documentation',
+   u'The RADICAL Group at Rutgers University', 'RADICAL-Pilot', 'One line description of project.',
    'Miscellaneous'),
 ]
 
