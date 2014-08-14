@@ -48,9 +48,9 @@ if __name__ == "__main__":
 
     # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "india.futuregrid.org"
-    pdesc.runtime  = 5 # N minutes
-    pdesc.cores    = 8 # X cores
+    pdesc.resource = "localhost"
+    pdesc.runtime  = 10 # N minutes
+    pdesc.cores    =  1 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
+        mpi_test_task.cores         = 1
 
         cud_list.append(mpi_test_task)
 

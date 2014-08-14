@@ -45,7 +45,7 @@ if __name__ == "__main__":
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "localhost"
     pdesc.runtime  = 10
-    pdesc.cores    = 2
+    pdesc.cores    = 1
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
