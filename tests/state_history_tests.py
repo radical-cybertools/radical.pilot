@@ -83,6 +83,8 @@ if __name__ == "__main__":
     umgr.wait_units()
 
     pmgr.cancel_pilots()
+    pmgr.wait_pilots (state=[rp.CANCELED, rp.DONE, rp.FAILED])
+
 
     print "\n== UNIT STATE HISTORY==\n"
 
