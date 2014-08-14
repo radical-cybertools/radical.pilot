@@ -62,9 +62,8 @@ if __name__ == "__main__":
         mpi_test_task = rp.ComputeUnitDescription()
 
         # On alamo, environment is not passed with multi-node MPI jobs,
-        # so the environment needs to be setup in the user's .bashrc.
-        # (module load python intel openmpi && source $HOME/cuve/bin/activate)
-        # The virtual env in $home/cuve needs to have mpi4py installed.
+        # so the environment needs to be setup in the user's .bashrc:
+        #   module load python intel openmpi
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]

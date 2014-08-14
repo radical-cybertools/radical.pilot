@@ -144,7 +144,7 @@ class Session (saga.Session, Object):
         # if the database url contains a path element, we interpret that as
         # database name (without the leading slash)
         tmp_url = ru.Url (self._database_url)
-        if  tmp_url.path and tmp_url.path != '/' :
+        if  tmp_url.path and tmp_url.path[0] == '/' :
             self._database_name = tmp_url.path[1:]
 
         ##########################

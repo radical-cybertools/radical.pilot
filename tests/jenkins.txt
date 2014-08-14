@@ -20,15 +20,12 @@ issue88.py
 # ---------------------------------------
 # mpi tests
 # ---------------------------------------
-mpi_alamo_test.py
 mpi_archer_test.py
 mpi_hotel_test.py
 mpi_india_test.py
 mpi_localhost_test.py
-mpi_quarry.py
-mpi_sierra_test.py
 mpi_stampede_test.py
-mpi_supermuc_test.py
+# mpi_supermuc_test.py    # supermuc is offline for a while
 
 # ---------------------------------------
 # misc tests
@@ -51,5 +48,13 @@ test_resource_config_update.py
 # ---------------------------------------
 # mpi_bigred2_test.py  # no account for AM
 # mpi_das4_test.py     # no account for AM
+# mpi_quarry.py
 
+# ---------------------------------------
+# these machines don't pass environment
+# to worker nodes, so seting up mpi4py
+# on the fly is difficult... (#285)
+# ---------------------------------------
+# mpi_alamo_test.py
+# mpi_sierra_test.py
 
