@@ -141,11 +141,17 @@ class Session (saga.Session, Object):
         if  not self._database_url :
             raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
 
+        logger.info("using database url  %s" % self._database_url)
+
         # if the database url contains a path element, we interpret that as
         # database name (without the leading slash)
         tmp_url = ru.Url (self._database_url)
         if  tmp_url.path and tmp_url.path[0] == '/' :
             self._database_name = tmp_url.path[1:]
+            logger.info("using database path %s" % self._database_name)
+        else :
+            logger.info("using database name %s" % self._database_name)
+
 
         ##########################
         ## CREATE A NEW SESSION ##
