@@ -67,8 +67,8 @@ if __name__ == "__main__":
     compute_unit_descriptions = []
     for unit_no in range(32):
         cud = rp.ComputeUnitDescription()
-      # cud.executable  = ""
-        cud.arguments   = ["/bin/sleep %d && /bin/date > unit-%s.dat" % (task_sleep[unit_no], unit_no)]
+        cud.executable  =  "/bin/sh"
+        cud.arguments   = ["-c", "/bin/sleep %d && /bin/date > unit-%s.dat" % (task_sleep[unit_no], unit_no)]
         cud.cores       = task_cores[unit_no]
 
         compute_unit_descriptions.append(cud)
