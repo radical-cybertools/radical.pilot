@@ -131,7 +131,7 @@ if __name__ == "__main__":
     for unit in units:
         print "* Task %s - env: %s state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
             % (unit.uid, unit.description.environment, unit.state, \
-               unit.exit_code, unit.start_time, unit.stop_time, unit.stdout.decode('utf-8'))
+               unit.exit_code, unit.start_time, unit.stop_time, repr(unit.stdout))
 
         assert (unit.state == rp.DONE)
         # FIXME: add some more asserts
