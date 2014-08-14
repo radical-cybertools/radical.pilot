@@ -41,7 +41,7 @@ if __name__ == "__main__":
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
     rp_units    = int(os.getenv ("RP_UNITS",    64))
     rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
-    rp_host     = str(os.getenv ("RP_HOST",     "sierra.futuregrid.org"))
+    rp_host     = str(os.getenv ("RP_HOST",     "india.futuregrid.org"))
     rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
     rp_project  = str(os.getenv ("RP_PROJECT",  ""))
 

@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     # Define a pilot that runs for 15 minutes 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "sierra.futuregrid.org"
+    pdesc.resource = "india.futuregrid.org"
     pdesc.runtime  = 15 # minutes
     pdesc.cores    = 8
     pdesc.cleanup  = True

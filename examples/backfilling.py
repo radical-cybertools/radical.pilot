@@ -82,7 +82,7 @@ if __name__ == "__main__":
     pilot_2 = pmgr.submit_pilots(pdesc)
 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "sierra.futuregrid.org"
+    pdesc.resource  = "india.futuregrid.org"
     pdesc.runtime   = 40 # minutes
     pdesc.cores     = 128
     pdesc.cleanup   = True
