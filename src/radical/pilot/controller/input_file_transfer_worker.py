@@ -54,9 +54,6 @@ class InputFileTransferWorker(threading.Thread):
 
             logger.info("Starting InputFileTransferWorker")
 
-            # saga_session holds the SSH context infos.
-            saga_session = saga.Session()
-
             # Try to connect to the database and create a tailable cursor.
             try:
                 connection = self.db_connection_info.get_db_handle()
