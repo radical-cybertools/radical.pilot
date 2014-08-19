@@ -98,7 +98,7 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.start_time is None
             assert cu.stop_time is None
 
-        ret = um.wait_units(state=[radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=240)
+        ret = um.wait_units(state=[radical.pilot.DONE, radical.pilot.FAILED], timeout=240)
         print "Return states from wait: %s" % ret
 
         # With a sleep here, the test works, there seems to be an inconsistency in the state used by wait and the state reported.
@@ -106,7 +106,7 @@ class TestRemoteSubmission(unittest.TestCase):
         #time.sleep(1)
 
         for cu in cus:
-            assert cu.state == radical.pilot.states.DONE, "state: %s" % cu.state
+            assert cu.state == radical.pilot.DONE, "state: %s" % cu.state
             assert cu.stop_time is not None
 
         pm.cancel_pilots()
@@ -139,15 +139,15 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(radical.pilot.states.ACTIVE, timeout=5.0*60)
-        assert pilot.state == radical.pilot.states.ACTIVE
+        pilot.wait(radical.pilot.ACTIVE, timeout=5.0*60)
+        assert pilot.state == radical.pilot.ACTIVE
         assert pilot.start_time is not None
         assert pilot.submission_time is not None
 
 
         # the pilot should finish after it has reached run_time
-        pilot.wait(radical.pilot.states.DONE, timeout=5.0*60)
-        assert pilot.state == radical.pilot.states.DONE
+        pilot.wait(radical.pilot.DONE, timeout=5.0*60)
+        assert pilot.state == radical.pilot.DONE
         assert pilot.stop_time is not None
 
         session.close()
@@ -178,16 +178,16 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(radical.pilot.states.ACTIVE)
-        assert pilot.state == radical.pilot.states.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
+        pilot.wait(radical.pilot.ACTIVE)
+        assert pilot.state == radical.pilot.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
         assert pilot.submission_time is not None
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait(radical.pilot.states.CANCELED, timeout=5.0*60)
-        assert pilot.state == radical.pilot.states.CANCELED
+        pilot.wait(radical.pilot.CANCELED, timeout=5.0*60)
+        assert pilot.state == radical.pilot.CANCELED
         assert pilot.stop_time is not None
 
         session.close()

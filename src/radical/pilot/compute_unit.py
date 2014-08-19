@@ -82,9 +82,11 @@ class ComputeUnit(object):
         ud_copy = copy.deepcopy(unit_description)
 
         # sanity check on description
-        if  not 'executable' in unit_description or \
-            not unit_description['executable'] :
-            raise PilotException ("ComputeUnitDescription needs an executable")
+        if  (not 'executable' in unit_description or \
+             not unit_description['executable']   )  and \
+            (not 'kernel'     in unit_description or \
+             not unit_description['kernel']       )  :
+            raise PilotException ("ComputeUnitDescription needs an executable or application kernel")
 
         # If staging directives exist, try to expand them
         if  ud_copy.input_staging:
