@@ -65,8 +65,8 @@ class TestIssue169(unittest.TestCase):
 
         for i in range(0, 8):
             pilot = pm.submit_pilots(pilot_descriptions=cpd)
-            pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
-            assert pilot.state == radical.pilot.states.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
+            pilot.wait(radical.pilot.FAILED, timeout=2.0*60)
+            assert pilot.state == radical.pilot.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
 
         session.close()
 
@@ -98,7 +98,7 @@ class TestIssue169(unittest.TestCase):
         pmgr.wait_pilots()
         
         for pilot in pilots:
-            assert pilot.state == radical.pilot.states.DONE
+            assert pilot.state == radical.pilot.DONE
             assert pilot.stop_time is not None
             assert pilot.start_time is not None
 

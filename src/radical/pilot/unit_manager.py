@@ -369,7 +369,7 @@ class UnitManager(object):
         # update instance list
         for pilot_id in pilot_ids :
             for pilot in self._pilots[:] :
-                if  pilot_id == pilots.uid :
+                if  pilot_id == pilot.uid :
                     self._pilots.remove (pilot)
 
     # -------------------------------------------------------------------------

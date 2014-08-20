@@ -25,9 +25,9 @@ from radical.pilot.context import Context
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
 
-# The interval at which we check 
-# the saga jobs.
-JOB_CHECK_INTERVAL=60 # seconds
+# The interval at which we check the saga jobs.
+JOB_CHECK_INTERVAL   = 60 # seconds
+JOB_CHECK_MAX_MISSES =  3 # how often to miss a job be declaring it dead
 
 # ----------------------------------------------------------------------------
 #
@@ -100,7 +100,7 @@ class PilotLauncherWorker(threading.Thread):
                     logger.warning ('could not reconnect to pilot for state check')
                     self.missing_pilots[pilot_id] += 1
 
-                    if  self.missing_pilots[pilot_id] >= 10 :
+                    if  self.missing_pilots[pilot_id] >= JOB_CHECK_MAX_MISSES :
                         logger.error ('giving up after 10 attempts')
                         pilot_failed = True
                         log_message  = "Could not reconnect to pilot %s "\
@@ -123,8 +123,12 @@ class PilotLauncherWorker(threading.Thread):
                 logger.error ('pilot %s declared dead' % pilot_id)
 
             else :
-                logger.info ('pilot %s alive and well (%s)' \
-                          % (pilot_id, self.missing_pilots[pilot_id]))
+                if self.missing_pilots[pilot_id] :
+                    logger.info ('pilot %s *assumed* alive and well (%s)' \
+                              % (pilot_id, self.missing_pilots[pilot_id]))
+                else :
+                    logger.info ('pilot %s seems alive and well' \
+                              % (pilot_id))
 
 
     # ------------------------------------------------------------------------

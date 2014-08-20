@@ -81,7 +81,7 @@ class TestIssue147(unittest.TestCase):
 
         session_id = session.uid
 
-        session.close(delete=False)
+        session.close(cleanup=False)
 
         # NOW LET'S TRY TO RECONNECT
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME, session_uid=session_id)
