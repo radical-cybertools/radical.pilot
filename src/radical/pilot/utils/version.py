@@ -13,4 +13,6 @@ __license__   = "MIT"
 
 import os
 
-version = open(os.path.dirname (os.path.abspath (__file__)) + "/../VERSION", 'r').read().strip()
+version        = open(os.path.dirname (os.path.abspath (__file__)) + "/../VERSION",     'r').read().strip()
+version_detail = open(os.path.dirname (os.path.abspath (__file__)) + "/../VERSION.git", 'r').read().strip()
+

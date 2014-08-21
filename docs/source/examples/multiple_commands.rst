@@ -9,8 +9,8 @@ a  ComputeUnit. For example, you might have to create and cange into a
 directory or load a module or a specific version of a software package before
 you call your *main* executable.
 
-In SAGA-Pilot this can be easily achieved by using ``/bin/bash`` as the 
-executable in the :class:`sagapilot.ComputeUnitDescription` and either pass
+In RADICAL-Pilot this can be easily achieved by using ``/bin/bash`` as the 
+executable in the :class:`radical.pilot.ComputeUnitDescription` and either pass
 a shell script directly as a string argument or transfer a shell script file
 as part of the ComputeUnit. The former works well for a small set of simple 
 commands, while the second works best for more complex scripts. 
@@ -22,7 +22,7 @@ TODO - explain -c and -l
 
 .. code-block:: python
     
-    cu = sagapilot.ComputeUnitDescription()
+    cu = radical.pilot.ComputeUnitDescription()
     cu.executable  = "/bin/bash"
     cu.arguments   = ["-l", "-c", " this && and && that """]
     cu.cores       = 1

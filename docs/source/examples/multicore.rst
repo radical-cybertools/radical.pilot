@@ -15,7 +15,7 @@ To define an MPI ComputeUnit, all you need to do is to set the ``cores`` and the
 
 .. code-block:: python
 
-    pdesc = sagapilot.ComputeUnitDescription()
+    pdesc = radical.pilot.ComputeUnitDescription()
     [...]
     pdesc.mpi      = True
     pdesc.cores    = 32

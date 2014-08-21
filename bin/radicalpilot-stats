@@ -2,6 +2,7 @@
 
 import os
 import sys
+import numpy
 import pprint
 import pymongo
 import radical.utils       as ru
@@ -11,6 +12,15 @@ import radical.pilot.utils as rpu
 
 _DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
 _DEFAULT_DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+
+if  'RADICAL_PILOT_DBURL' in os.environ :
+    _DEFAULT_DBURL = os.environ['RADICAL_PILOT_DBURL']
+
+_DEFAULT_DBURL = ru.Url (_DEFAULT_DBURL)
+if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path :
+    _DEFAULT_DBURL.path = 'radicalpilot'
+
+_DEFAULT_DBURL = str(_DEFAULT_DBURL)
 
 # for graphing events, we assign numerical pseudo values to each event.  
 # Note: make sure that those are translated back into event tags via 'set # [xy]tics'
@@ -36,16 +46,17 @@ _EVENT_ENCODING = {
         }, 
         'unit': {
             rp.NEW                     :  1,
-            rp.PENDING_INPUT_TRANSFER  :  2,
-            rp.TRANSFERRING_INPUT      :  3,
-            rp.PENDING_EXECUTION       :  4,
-            rp.SCHEDULING              :  5,
-            rp.EXECUTING               :  6,
-            rp.PENDING_OUTPUT_TRANSFER :  7,
-            rp.TRANSFERRING_OUTPUT     :  8,
-            rp.DONE                    :  9,
-            rp.CANCELED                : 10,
-            rp.FAILED                  : 11
+            rp.STATE_X                 :  2,
+            rp.PENDING_INPUT_STAGING   :  3,
+            rp.STAGING_INPUT           :  4,
+            rp.PENDING_EXECUTION       :  5,
+            rp.SCHEDULING              :  6,
+            rp.EXECUTING               :  7,
+            rp.PENDING_OUTPUT_STAGING  :  8,
+            rp.STAGING_OUTPUT          :  9,
+            rp.DONE                    : 10,
+            rp.CANCELED                : 11,
+            rp.FAILED                  : 12
         }
     }
 
@@ -83,7 +94,7 @@ def my_round (x, base=5) :
 
 # ------------------------------------------------------------------------------
 #
-def usage (msg=None) :
+def usage (msg=None, noexit=False) :
 
     if  msg :
         print "\n      Error: %s" % msg
@@ -112,16 +123,13 @@ def usage (msg=None) :
     if  msg :
         sys.exit (1)
 
-    sys.exit (0)
+    if  not noexit :
+        sys.exit (0)
 
 
 # ------------------------------------------------------------------------------
 #
 def dump_session (dbclient, dbname, session) :
-
-    if  not session :
-        print "need session parameter on 'dump'"
-        sys.exit (-1)
 
     print "session : %s" % session
     handle_session (dbclient, 'dump', dbname, session, None)
@@ -130,10 +138,6 @@ def dump_session (dbclient, dbname, session) :
 # ------------------------------------------------------------------------------
 #
 def tree_session (dbclient, dbname, session) :
-
-    if  not session :
-        print "need session parameter on 'tree'"
-        sys.exit (-1)
 
     handle_session (dbclient, 'tree', dbname, session, None)
 
@@ -161,10 +165,6 @@ def list_sessions (dbclient, dbname, session) :
 # ------------------------------------------------------------------------------
 def sort_session (dbclient, dbname, session) :
 
-    if  not session :
-        print "need session parameter on 'sort'"
-        sys.exit (-1)
-
     docs = rpu.get_session_docs (dbclient, dbname, session)
 
     print "pilot managers :" 
@@ -187,10 +187,6 @@ def sort_session (dbclient, dbname, session) :
 # ------------------------------------------------------------------------------
 def hist_session (dbclient, dbname, session) :
 
-    if  not session :
-        print "need session parameter on 'hist'"
-        sys.exit (-1)
-
     events    = rpu.get_session_events   (dbclient, dbname, session)
     slothists = rpu.get_session_slothist (dbclient, dbname, session)
 
@@ -207,7 +203,7 @@ def hist_session (dbclient, dbname, session) :
     # ascii output of time sorted events and slot history
 
     print "session : %s" % session
-    print "          %s" % str(start)
+    print "start   : %s" % str(start)
 
     for e in events :
         seconds = ru.time_diff (start, e[4])
@@ -223,17 +219,120 @@ def hist_session (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
+def get_stats (docs, events, slothist) :
+
+    n_units               = 0
+    n_pilots              = 0
+    unit_state_durations  = dict()
+    pilot_utilization     = dict()
+    units                 = dict()
+
+    pilot_utilization['pilots'] = dict()
+
+    for cu in docs['unit'] :
+        units[str(cu['_id'])] = cu
+
+    for doc in docs['pilot'] :
+
+        n_pilots   += 1
+        pid         = str(doc['_id'])
+        pilot_util  = dict()
+
+        pilot_util['resource']     = doc['description']['resource']
+        pilot_util['n_units']      = 0
+        pilot_util['unit_states']  = dict()
+        pilot_util['pilot_states'] = list()
+
+        # we assume that states are time-ordered
+        state = doc['statehistory'][0]['state']
+        start = doc['statehistory'][0]['timestamp']
+        for t in doc['statehistory'][1:] :
+            ts = t['timestamp']
+            s  = t['state']
+            pilot_util['pilot_states'].append ({'state'    : state, 
+                                                'duration' : ru.time_diff(start, ts)})
+            state = s
+            start = ts
+
+        for cu in doc['unit_ids'] :
+            uid                    = str(cu)
+            n_units               += 1
+            pilot_util['n_units'] += 1
+
+            if  not uid in units :
+                print 'unknonwn unit %s' % uid
+                sys.exit ()
+
+            unit_doc = units[uid]
+            state    = unit_doc['statehistory'][0]['state']
+            start    = unit_doc['statehistory'][0]['timestamp']
+
+            for t in unit_doc['statehistory'][1:] :
+                ts = t['timestamp']
+                s  = t['state']
+
+                if not state in pilot_util['unit_states'] :
+                    pilot_util['unit_states'][state]        = dict()
+                    pilot_util['unit_states'][state]['dur'] = list()
+
+                pilot_util['unit_states'][state]['dur'].append (ru.time_diff(start, ts))
+                state = s
+                start = ts
+
+        for s in pilot_util['unit_states'] :
+            array = numpy.array (pilot_util['unit_states'][s]['dur'])
+            pilot_util['unit_states'][s]['num' ] = len        (array)
+            pilot_util['unit_states'][s]['mean'] = numpy.mean (array)
+            pilot_util['unit_states'][s]['std' ] = numpy.std  (array)
+            pilot_util['unit_states'][s]['dur' ] = list()
+
+
+        pilot_utilization['pilots'][pid] = pilot_util
+
+    pilot_utilization['n_pilots'] = n_pilots
+
+    return pilot_utilization
+
+
+
+    
+# ------------------------------------------------------------------------------
+def stat_session (dbclient, dbname, session) :
+
+    docs      = rpu.get_session_docs     (dbclient, dbname, session)
+    events    = rpu.get_session_events   (dbclient, dbname, session)
+    slothists = rpu.get_session_slothist (dbclient, dbname, session)
+
+    stats     = get_stats (docs, events, slothists)
+
+    print "Session Statistics"
+    print "------------------"
+    print ""
+    print "  pilots : %s" % stats['n_pilots']
+
+    for pid in stats['pilots'] :
+
+        pilot = stats['pilots'][pid]
+
+        print "  pilot [%s] [%s]" % (pid, pilot['resource'])
+        print "      pilot states:"
+        for ps in pilot['pilot_states'] :
+            print "        state %-18s : %10.1fs" % (ps['state'], ps['duration'])
+        print "      units : %d" % pilot['n_units']
+        print "      unit states:"
+        for us  in pilot['unit_states'] :
+            data = pilot['unit_states'][us]
+            print "        state %-18s : %10.1fs  +/- %8.1fs" % (us, data['mean'], data['std'])
+
+
+
+# ------------------------------------------------------------------------------
 def plot_session (dbclient, dbname, session) :
     """
     plot results :P
     """
 
-    if  not session :
-        print "need session parameter on 'plot'"
-        sys.exit (-1)
-
-
-    docs      = rpu.get_session_docs (dbclient, dbname, session)
+    docs      = rpu.get_session_docs     (dbclient, dbname, session)
     events    = rpu.get_session_events   (dbclient, dbname, session)
     slothists = rpu.get_session_slothist (dbclient, dbname, session)
 
@@ -245,16 +344,32 @@ def plot_session (dbclient, dbname, session) :
         print "no slot configuration for session %s" % session
         print "Please enable benchmarking: export RADICAL_PILOT_BENCHMARK="
 
-    start       = events[0][4]
-    pids        = list()
-    maxtime     = 0.0
-    maxslots    = 0
-    nodesize    = 0
-    slots       = list()
-    hosts       = list()
-    delete_me   = list()
+    start      = events[0][4]
+    pids       = list()
+    maxtime    = 0.0
+    maxslots   = 0
+    nodesize   = 0
+    slots      = list()
+    hosts      = list()
+    delete_me  = list()
+    maxqueue   = 0
 
-    for pilot in docs['pilot'] :
+    # the plots look nicer if the largest pilots are plotted first, and smaller
+    # ones are overlayed.  Thus we sort the pilot docs by by size (reversed).
+    # Pilot's of same sizes are ordered as-is.
+    pilot_sizes = list()
+    for doc in docs['pilot'] :
+        cores = len(doc['nodes']) * int(doc['cores_per_node'])
+        pilot_sizes.append (cores)
+
+    pilot_docs = list()
+    for pilot_size in sorted (pilot_sizes, reverse=True) :
+        for doc in docs['pilot'] :
+            cores = len(doc['nodes']) * int(doc['cores_per_node'])
+            if  cores == pilot_size :
+                pilot_docs.append (doc)
+
+    for pilot in pilot_docs :
 
         pid = str(pilot['_id'])
         pids.append (pid)
@@ -277,13 +392,17 @@ def plot_session (dbclient, dbname, session) :
                     maxtime = max (maxtime, seconds)
                     dat.write ("%10.2f  %-25s\n" % (seconds, etag))
                 dat.write ("\n")
+            else :
+                print 'no pilot callbacks'
             delete_me.append (dat.name)
 
             
         with open ("/tmp/rp.%s.unit.states.%s.dat" % (session, pid), "w") as dat :
-            for unit_id in pilot['wu_queue'] :
+
+            for unit_id in pilot['unit_ids'] :
+
                 for unit in docs['unit'] :
-                    if  unit_id == unit['_id'] :
+                    if  unit_id == str(unit['_id']) :
                         for event in unit['statehistory'] :
                             etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
                             seconds = ru.time_diff (start, event['timestamp'])
@@ -293,35 +412,50 @@ def plot_session (dbclient, dbname, session) :
             delete_me.append (dat.name)
             
         with open ("/tmp/rp.%s.unit.callbacks.%s.dat" % (session, pid), "w") as dat :
-            for unit_id in pilot['wu_queue'] :
+            for unit_id in pilot['unit_ids'] :
                 for unit in docs['unit'] :
-                    if  unit_id == unit['_id'] :
-                        for event in unit['callbackhistory'] :
-                            etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
-                            seconds = ru.time_diff (start, event['timestamp'])
-                            maxtime = max (maxtime, seconds)
-                            dat.write (" %10.2f  %-25s\n" % (seconds, etag))
-                        dat.write ("\n")
+                    if  unit_id == str(unit['_id']) :
+                        if  'callbackhistory' in unit :
+                            for event in unit['callbackhistory'] :
+                                etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
+                                seconds = ru.time_diff (start, event['timestamp'])
+                                maxtime = max (maxtime, seconds)
+                                dat.write (" %10.2f  %-25s\n" % (seconds, etag))
+                            dat.write ("\n")
             delete_me.append (dat.name)
 
             
         with open ("/tmp/rp.%s.pilot.queue.%s.dat" % (session, pid), "w") as dat :
 
             queue_size = 0
+            queued     = list()
+            dequeued   = list()
+
             dat.write ("%10.2f  %6d\n" % (0, queue_size))
+
 
             for event in events :
                 if  event[0] == 'state' and \
                     event[1] == 'unit'  and \
                     event[3] ==  pid    :
-                    if  event[5] == rp.NEW :
-                        seconds     = ru.time_diff (start, event[4])
-                        queue_size += 1
-                        dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-                    if  event[5] == rp.EXECUTING :
-                        seconds     = ru.time_diff (start, event[4])
-                        queue_size -= 1
-                        dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+                    uid = event[2]
+
+                    if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.NEW] :
+                        if  not uid in queued :
+                            queued.append (uid)
+                            seconds     = ru.time_diff (start, event[4])
+                            queue_size += 1
+                            maxqueue    = max (maxqueue, queue_size)
+                            dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+                          # print "+ %10.2f  %6d" % (seconds, queue_size)
+
+                    if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.EXECUTING] :
+                        if  not uid in dequeued :
+                            dequeued.append (uid)
+                            seconds     = ru.time_diff (start, event[4])
+                            queue_size -= 1
+                            dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+                          # print "- %10.2f  %6d" % (seconds, queue_size)
 
 
 
@@ -335,14 +469,11 @@ def plot_session (dbclient, dbname, session) :
 
                 slotidxs = list()
                 slotstr  = pilot['slothistory'][0]['slotstate']
-
-                for idx in range (0, len(slotstr)) :
-                    if  slotstr[idx] in ['-', '+'] :
-                        slotidxs.append (idx)
+                slotnum  = slotstr.count ('-') + slotstr.count ('+')
 
                 nodesize = max (nodesize, pilot['cores_per_node'])
-                maxslots = max (maxslots, len(slotidxs))
-                slots.append (len(slotidxs))
+                maxslots = max (maxslots, slotnum)
+                slots.append (slotnum)
 
                 for number,slotidx in enumerate(slotidxs) :
 
@@ -357,11 +488,11 @@ def plot_session (dbclient, dbname, session) :
                             if  used :
                                 dat.write ("%10.2f  %6d\n" % (seconds, number+1))
                                 dat.write ("\n")
-                                used    = False
+                                used = False
 
                         elif  slotstate == '+' : 
                             dat.write ("%10.2f  %6d\n" % (seconds, number+1))
-                            used    = True
+                            used = True
 
                         else :
                             print "oops?  invalid slotstate '%s'" % slotstate
@@ -372,20 +503,52 @@ def plot_session (dbclient, dbname, session) :
 
     timetics = 10
     for i in range(1,10) :
-        if  maxtime  > 10**i :
-            timetics = 10**(i-1)
+        if  maxtime  > 1*(10**i) :
+            timetics = 1*(10**(i-1))
+        if  maxtime  > 5*(10**i) :
+            timetics = 5*(10**(i-1))
+
+  # mtimetics = 10
 
     plotfile = "%s/radicalpilot-stats.plot" % os.path.dirname (__file__)
+    plotname = os.environ.get ('RP_PLOTNAME', None)
+
+    # if maxslots and maxqueue differ by max 25% then we use the same scale.  If
+    # maxslots is larger we also use the same scale.
+    max_scale  = max(maxslots, maxqueue)
+    min_scale  = min(maxslots, maxqueue)
+    mean_scale = (maxslots+maxqueue)/2
+    scale_25   = 0.25 * mean_scale
+
+    if  maxslots > maxqueue :
+        slotsscale = maxslots+(nodesize/2)
+        queuescale = maxslots+(nodesize/2)
+
+    elif (mean_scale + scale_25) > max_scale and \
+        (mean_scale - scale_25) < min_scale :
+        slotsscale = maxslots+(nodesize/2)
+        queuescale = maxslots+(nodesize/2)
+
+    else :
+        slotsscale = maxslots+(nodesize/2)
+        queuescale = maxqueue+(nodesize/2)
 
                                          
     cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
     cmd +=        " -e  timetics=%d "       % timetics
+  # cmd +=        " -e  mtimetics=%d "      % mtimetics
     cmd +=        " -e  maxslots=%d "       % maxslots
+    cmd +=        " -e  maxqueue=%d "       % maxqueue
+    cmd +=        " -e  slotsscale=%d "     % slotsscale
+    cmd +=        " -e  queuescale=%d "     % queuescale
     for idx,pid in enumerate(pids) :
         cmd +=    " -e  slotnum_%d=%d "     % (idx+1, slots[idx])
     cmd +=        " -e  nodesize=%d "       % nodesize
     cmd +=        " -e 'session=\"%s\"' "   % session
-    cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n=============\\n\\nPilot and Unit Event Traces\"'  "
+    cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n============="
+    if plotname :
+        cmd +=    "\\n[%s]" % plotname
+    cmd +=        "\\nPilot and Unit Event Traces\"'  "
     cmd +=        " -e  pilotnum=%d "       % len(pids)
     for idx,pid in enumerate(pids) :
         cmd +=    " -e 'pilot_%d_name=\"%s[%d]\"' " % (idx+1, hosts[idx], slots[idx])
@@ -393,17 +556,169 @@ def plot_session (dbclient, dbname, session) :
         cmd +=    " -e 'pilot_%d_id=\"%s\"' "       % (idx+1, pids[idx])
     cmd +=        "     %s "                        % plotfile
 
-    print cmd
+  # print cmd
+    print "\nplotting..."
     os.system (cmd) 
 
+    if  plotname :
+        os.system ("mv %s.png %s.png" % (session, plotname))
+        os.system ("mv %s.pdf %s.pdf" % (session, plotname))
+
     for filename in delete_me :
-        print "removing %s" % filename
+      # print "removing %s" % filename
         try :
-         #  os.remove (filename)
+          # os.remove (filename)
             pass
         except Exception as e :
-            print "Error: %s" % str(e)
+            print "Error removing %s: %s" % (filename, str(e))
 
+    DO_SPLOTS = False
+    if  not DO_SPLOTS :
+        return
+
+
+    # --------------------------------------------------------------------------
+    #
+    # also do splots
+    #
+    entity_states = dict ()
+
+    BEGIN  = ">"
+    END    = "<"
+    ONCE   = "!"
+    COLORS = {rp.NEW                     : ' 1',
+              rp.STATE_X                 : ' 2',
+              rp.PENDING_INPUT_STAGING   : ' 3',
+              rp.STAGING_INPUT           : ' 4',
+              rp.PENDING_EXECUTION       : ' 5',
+              rp.SCHEDULING              : ' 6',
+              rp.EXECUTING               : ' 7',
+              rp.PENDING_OUTPUT_STAGING  : ' 8',
+              rp.STAGING_OUTPUT          : ' 9',
+              rp.DONE                    : '10',
+              rp.CANCELED                : '11',
+              rp.FAILED                  : '12'}
+
+    for pilot in docs['pilot'] :
+
+        this_pid = str(pilot['_id'])
+
+        with open ("/tmp/rp.%s.pilot.slots.%s.sdat" % (session, pid), "w") as dat :
+
+            for e in events :
+
+                etype   = e[0]
+                otype   = e[1]
+                uid     = e[2]
+                pid     = e[3]
+                ts      = e[4]
+                state   = e[5]
+                doc     = e[6]
+
+                if  pid != this_pid :
+                    continue
+
+                if  otype == 'unit' :
+
+                    if 'slots' in doc :
+                        slots = doc['slots']
+                    else :
+                        pprint.pprint (doc)
+                        slots = '?'
+
+                    color = COLORS[state]
+
+                    for slot in slots :
+
+                        if  not uid in entity_states :
+                            
+                            if  state not in [rp.EXECUTING] :
+                                continue
+
+                            entity_states[uid] = state
+                          # print      "%s %s%s %s"   % (ts, BEGIN, slot, COLORS[state])
+                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, slot, COLORS[state]))
+
+                        else :
+                            old_state = entity_states[uid]
+                          # print      "%s %s%s %s"   % (ts, END,   slot, COLORS[old_state])
+                            dat.write ("%s %s%s %s\n" % (ts, END,   slot, COLORS[old_state]))
+
+                            entity_states[uid] = state
+                          # print      "%s %s%s %s"   % (ts, BEGIN, slot, COLORS[state])
+                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, slot, COLORS[state]))
+
+
+    for pilot in docs['pilot'] :
+
+        this_pid = str(pilot['_id'])
+
+        with open ("/tmp/rp.%s.pilot.units.%s.sdat" % (session, pid), "w") as dat :
+
+            entity_states = dict()
+            idxs          = list()
+
+            # index the units by the start of their EXECUTING state
+            for e in events :
+
+                etype = e[0]
+                otype = e[1]
+                uid   = e[2]
+                pid   = e[3]
+                ts    = e[4]
+                state = e[5]
+                doc   = e[6]
+
+                if  pid != this_pid :
+                    continue
+
+                if  otype == 'unit' :
+                    if  state in [rp.EXECUTING] :
+                        idxs.append (uid)
+
+            for idx_id in idxs :
+
+                for e in events :
+
+                    etype = e[0]
+                    otype = e[1]
+                    uid   = e[2]
+                    pid   = e[3]
+                    ts    = e[4]
+                    state = e[5]
+                    doc   = e[6]
+
+                    if  idx_id != uid :
+                        continue
+
+                    if  pid != this_pid :
+                        continue
+
+                    if  otype == 'unit' :
+
+                        if 'slots' in doc :
+                            slots = doc['slots']
+                        else :
+                            slots = '?'
+
+                        for slot in slots :
+
+                            if  not uid in entity_states :
+
+                                entity_states[uid] = state
+
+                              # print      "%s %s%s %s"   % (ts, BEGIN, uid, COLORS[state])
+                                dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, COLORS[state]))
+
+                            else :
+
+                                old_state = entity_states[uid]
+                              # print      "%s %s%s %s"   % (ts, END,   uid, COLORS[old_state])
+                                dat.write ("%s %s%s %s\n" % (ts, END,   uid, COLORS[old_state]))
+
+                                entity_states[uid] = state
+                              # print      "%s %s%s %s"   % (ts, BEGIN, uid, COLORS[state])
+                                dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, COLORS[state]))
 
 
 # ------------------------------------------------------------------------------
@@ -516,6 +831,36 @@ def parse_commandline():
 #
 if __name__ == '__main__' :
 
+    # import datetime
+    # h = [ {'s' : 'PendingLaunch',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 3, 959000)},
+    #       {'s' : 'Launching',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 4, 124000)},
+    #       {'s' : 'PendingActive',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 26)},
+    #       {'s' : 'Active',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 21, 11, 498000)},
+    #       {'s' : 'Canceled',
+    #        'ts': datetime.datetime(2014, 7, 11, 19, 32, 26, 764000)}]
+
+    # d     = dict()
+    # print h
+    # print h[0]
+
+    # state = h[0]['s']
+    # start = h[0]['ts']
+
+    # for t in h :
+    #     s = t['s']
+    #     x = ru.time_diff(start, t['ts'])
+    #     d[state] = x
+    #     start = t['ts']
+    #     state = t['s']
+
+    # print d
+    # sys.exit (0)
+
+
     import optparse
     parser = optparse.OptionParser (add_help_option=False)
 
@@ -538,9 +883,6 @@ if __name__ == '__main__' :
     if  not options.mode :
         usage ("No mode specified")
 
-    if  options.mode not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot'] : 
-        usage ("Unsupported mode '%s'" % options.mode)
-
     if  not options.url : 
         options.url = _DEFAULT_DBURL 
 
@@ -549,27 +891,32 @@ if __name__ == '__main__' :
     url     = options.url
     session = options.session
 
-    [host, port, dbname, cname, pname] = ru.split_dburl (url, _DEFAULT_DBURL)
+    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
     dbclient = pymongo.MongoClient (host=host, port=port)
 
-    print "url     : %s" % url
-    print "mode    : %s" % mode
-    print "session : %s" % session
+    print "modes   : %s" % mode
+    print "db url  : %s" % url
 
     if  not session and mode != 'list' :
         session = rpu.get_last_session  (dbclient, dbname)
         print "session : %s (last session in database)" % session
+    else :
+        print "session : %s" % session
 
+    for m in mode.split (',') :
 
-    if   mode == 'list' : list_sessions (dbclient, dbname, session)
-    elif mode == 'tree' : tree_session  (dbclient, dbname, session) 
-    elif mode == 'dump' : dump_session  (dbclient, dbname, session) 
-    elif mode == 'sort' : sort_session  (dbclient, dbname, session) 
-    elif mode == 'hist' : hist_session  (dbclient, dbname, session) 
-    elif mode == 'stat' : stat_session  (dbclient, dbname, session) 
-    elif mode == 'plot' : plot_session  (dbclient, dbname, session) 
-    elif mode == 'help' : usage ()
-    else                : usage ("unknown mode '%s'" % mode)
+        if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
+            usage ("Unsupported mode '%s'" % m)
+
+        if   m == 'list' : list_sessions (dbclient, dbname, session)
+        elif m == 'tree' : tree_session  (dbclient, dbname, session) 
+        elif m == 'dump' : dump_session  (dbclient, dbname, session) 
+        elif m == 'sort' : sort_session  (dbclient, dbname, session) 
+        elif m == 'hist' : hist_session  (dbclient, dbname, session) 
+        elif m == 'stat' : stat_session  (dbclient, dbname, session) 
+        elif m == 'plot' : plot_session  (dbclient, dbname, session) 
+        elif m == 'help' : usage (noexit=True)
+        else             : usage ("unknown mode '%s'" % mode)
 
     # ------------------------------------------------------------------------------------
     dbclient.disconnect ()

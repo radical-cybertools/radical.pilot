@@ -15,10 +15,19 @@ import os
 import saga
 import datetime
 import gridfs
+import pprint
 from pymongo import *
 from bson.objectid import ObjectId
 
 from radical.pilot.states import *
+
+COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
+COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
+COMMAND_KEEP_ALIVE          = "Keep_Alive"
+COMMAND_FIELD               = "commands"
+COMMAND_TYPE                = "type"
+COMMAND_ARG                 = "arg"
+COMMAND_TIME                = "time"
 
 # -----------------------------------------------------------------------------
 #
@@ -382,8 +391,7 @@ class Session():
             "log":            [],
             "pilotmanager":   pilot_manager_uid,
             "unitmanager":    None,
-            "wu_queue":       [],
-            "command":        None,
+            "commands":       []
         }
 
         self._p.insert(pilot_doc, upsert=False)
@@ -443,18 +451,29 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def signal_pilots(self, pilot_manager_id, pilot_ids, cmd):
-        """ Send a signal to one or more pilots.
+    def send_command_to_pilot(self, cmd, arg=None, pilot_manager_id=None, pilot_ids=None):
+        """ Send a command to one or more pilots.
         """
         if self._s is None:
             raise Exception("No active session.")
+
+        if pilot_manager_id is None and pilot_ids is None:
+            raise Exception("Either Pilot Manager or Pilot needs to be specified.")
+
+        if pilot_manager_id is not None and pilot_ids is not None:
+            raise Exception("Pilot Manager and Pilot can not be both specified.")
+
+        command = {COMMAND_FIELD: {COMMAND_TYPE: cmd,
+                                   COMMAND_ARG:  arg,
+                                   COMMAND_TIME: datetime.datetime.utcnow()
+        }}
 
         if pilot_ids is None:
             # send command to all pilots that are known to the
             # pilot manager.
             self._p.update(
                 {"pilotmanager": pilot_manager_id},
-                {"$set": {"command": cmd}},
+                {"$push": command},
                 multi=True
             )
         else:
@@ -465,8 +484,9 @@ class Session():
             for pid in pilot_ids:
                 self._p.update(
                     {"_id": ObjectId(pid)},
-                    {"$set": {"command": cmd}}
+                    {"$push": command}
                 )
+
 
     #--------------------------------------------------------------------------
     #
@@ -511,15 +531,15 @@ class Session():
     #--------------------------------------------------------------------------
     #
     def set_all_running_compute_units(self, pilot_id, state, log):
-        """Update the state and the log of all compute units belonging to 
+        """Update the state and the log of all compute units belonging to
            a specific pilot.
         """
         ts = datetime.datetime.utcnow()
 
         if self._s is None:
-            raise Exception("No active session.")     
+            raise Exception("No active session.")
 
-        self._w.update({"pilot": pilot_id, "state": { "$in": ["Executing", "PendingExecution", "Scheduling"]}},
+        self._w.update({"pilot": pilot_id, "state": { "$in": [EXECUTING, PENDING_EXECUTION, SCHEDULING]}},
                        {"$set": {"state": state},
                         "$push": {"statehistory": {"state": state, "timestamp": ts},
                                   "log": log}
@@ -704,19 +724,43 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def assign_compute_units_to_pilot(self, pilot_uid, unit_uids):
+    def assign_compute_units_to_pilot(self, units, pilot_uid, pilot_sandbox):
         """Assigns one or more compute units to a pilot.
         """
-        if self._s is None:
+
+        if  not units :
+            return
+
+        if  self._s is None:
             raise Exception("No active session.")
 
         # Make sure we work on a list.
-        if not isinstance(unit_uids, list):
-            unit_uids = [unit_uids]
+        if not isinstance(units, list):
+            units = [units]
 
-        self._p.update({"_id": ObjectId(pilot_uid)},
-                       {"$pushAll":
-                           {"wu_queue": [ObjectId(uid) for uid in unit_uids]}})
+        bulk = self._w.initialize_ordered_bulk_op ()
+
+        for unit in units :
+
+            bulk.find   ({"_id" : ObjectId(unit.uid)}) \
+                .update ({"$set": {"description"   : unit.description.as_dict(),
+                                   "pilot"         : pilot_uid,
+                                   "pilot_sandbox" : pilot_sandbox,
+                                   "sandbox"       : unit.sandbox,
+                                   "FTW_Input_Status": unit.FTW_Input_Status,
+                                   "FTW_Input_Directives": unit.FTW_Input_Directives,
+                                   "Agent_Input_Status": unit.Agent_Input_Status,
+                                   "Agent_Input_Directives": unit.Agent_Input_Directives,
+                                   "FTW_Output_Status": unit.FTW_Output_Status,
+                                   "FTW_Output_Directives": unit.FTW_Output_Directives,
+                                   "Agent_Output_Status": unit.Agent_Output_Status,
+                                   "Agent_Output_Directives": unit.Agent_Output_Directives
+                        }})
+        result = bulk.execute()
+
+        # TODO: log result.
+        # WHY DON'T WE HAVE A LOGGER HERE?
+
 
     #--------------------------------------------------------------------------
     #
@@ -730,8 +774,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_compute_units(self, pilot_uid, pilot_sandbox, unit_manager_uid,
-                             units, unit_log):
+    def insert_compute_units(self, unit_manager_uid, units, unit_log):
         """ Adds one or more compute units to the database and sets their state
             to 'PENDING'.
         """
@@ -747,31 +790,34 @@ class Session():
 
         for unit in units:
 
-            working_directory = saga.Url(pilot_sandbox)
-
-            #if unit.description.working_directory_priv is not None:
-            #    working_directory.path = unit.description.working_directory_priv
-            #else:
-            working_directory.path += "/unit-"+unit.uid
-
             ts = datetime.datetime.utcnow()
 
             unit_json = {
-                "_id":          ObjectId(unit.uid),
-                "description":  unit.description.as_dict(),
-                "unitmanager":  unit_manager_uid,
-                "pilot":        pilot_uid,
-                "state":        NEW,
-                "statehistory": [{"state": NEW, "timestamp": ts}],
-                "submitted":    datetime.datetime.utcnow(),
-                "started":      None,
-                "finished":     None,
-                "exec_locs":    None,
-                "exit_code":    None,
-                "sandbox":      str(working_directory),
-                "stdout_id":    None,
-                "stderr_id":    None,
-                "log":          unit_log
+                "_id":           ObjectId(unit.uid),
+                "description":   unit.description.as_dict(),
+                "unitmanager":   unit_manager_uid,
+                "pilot":         None,
+                "pilot_sandbox": None,
+                "state":         unit._local_state,
+                "statehistory":  [{"state": unit._local_state, "timestamp": ts}],
+                "submitted":     datetime.datetime.utcnow(),
+                "started":       None,
+                "finished":      None,
+                "exec_locs":     None,
+                "exit_code":     None,
+                #"workdir":       "unit-"+unit.uid,
+                "sandbox":       None,
+                "stdout_id":     None,
+                "stderr_id":     None,
+                "log":           unit_log,
+                "FTW_Input_Status": None,
+                "FTW_Input_Directives": None,
+                "Agent_Input_Status": None,
+                "Agent_Input_Directives": None,
+                "FTW_Output_Status": None,
+                "FTW_Output_Directives": None,
+                "Agent_Output_Status": None,
+                "Agent_Output_Directives": None
             }
             unit_docs.append(unit_json)
             results[unit.uid] = unit_json

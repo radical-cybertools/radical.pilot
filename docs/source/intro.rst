@@ -4,10 +4,10 @@
 Introduction
 ************
 
-SAGA-Pilot is a `Pilot Job <https://en.wikipedia.org/wiki/Pilot_job>`_ system
+RADICAL-Pilot is a `Pilot Job <https://en.wikipedia.org/wiki/Pilot_job>`_ system
 written in Python. It allows a user to run large numbers of computational
 tasks (called ``ComputeUnits``) concurrently on one or more remote
-``ComputePilots`` that SAGA-Pilot can start transparently on a multitude of
+``ComputePilots`` that RADICAL-Pilot can start transparently on a multitude of
 different distributed resources, like  HPC clusters and Clouds.
 
 In this model, the resource is acquired by a user's application so that the
@@ -24,7 +24,7 @@ MPI or OpenMP.
 
 .. image:: architecture.png
 
-SAGA-Pilot is not a static system, but it rather provides the user with a
+RADICAL-Pilot is not a static system, but it rather provides the user with a
 programming library ("Pilot-API") that  provides abstractions for resource
 access and task management. With this  library, the user can develop everything
 from simple "submission scripts" to arbitrarily complex applications, higher-

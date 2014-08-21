@@ -5,67 +5,105 @@ __license__   = "MIT"
 
 import os
 import sys
-import sagapilot
+import radical.pilot as rp
 import time
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
-if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
+# READ: The RADICAL-Pilot documentation: 
+#   http://radicalpilot.readthedocs.org/en/latest
+#
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# you want to see what happens behind the scences!
+
+
+#------------------------------------------------------------------------------
+#
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
+
+    # callbacks happen in a different thread than the main application thread --
+    # they are truly asynchronous.  That means, however, that a 'sys.exit()'
+    # will not end the application, but will end the thread (in this case the
+    # pilot_manager_controller thread).  For that reason we wrapped all threads
+    # in their own try/except clauses, and the translate that exception into an
+    # 'thread.interrupt_main()' call -- this will raise a 'KeyboardInterrupt' in
+    # the main thread which in turn can be caughte that exception into an
+    # 'thread.interrupt_main()' call -- this will raise a 'KeyboardInterrupt'
+    # exception in the main thread, which in turn can then be caught for clean
+    # shutdown (see code later below.)
+
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if  state == rp.FAILED :
+        print 'Pilot failed -- ABORT!  ABORT!  ABORT!'
+        print pilot.log[-1] # Get the last log message
+        sys.exit (1)
+
 
 #-------------------------------------------------------------------------------
 #
-def synchronous_error_handling():
-    """This example shows how simple error handling can be implemented 
+if __name__ == "__main__":
+
+    """
+    This example shows how simple error handling can be implemented 
     synchronously using blocking wait() calls.
 
     The code launches a pilot with 128 cores on 'localhost'. Unless localhost
     has 128 or more cores available, this is bound to fail. This example shows
     how this error can be caught and handled. 
     """
-    try:
-        # Create a new session. A session is a set of Pilot Managers
-        # and Unit Managers (with associated Pilots and ComputeUnits).
-        session = sagapilot.Session(database_url=DBURL)
 
-        # Create a new pilot manager.
-        pm = sagapilot.PilotManager(session=session)
+    # Create a new session. No need to try/except this: if session creation
+    # fails, there is not much we can do anyways...
+    session = rp.Session()
 
-        # Create a new pilot with 128 cores. This will most definetly 
-        # fail on 'localhost' because not enough cores are available. 
-        pd = sagapilot.ComputePilotDescription()
+    
+    # all other pilot code is now tried/excepted.  If an exception is caught, we
+    # can rely on the session object to exist and be valid, and we can thus tear
+    # the whole RP stack down via a 'session.close()' call in the 'finally'
+    # clause...
+    try :
+
+        # do pilot thingies
+        pmgr = rp.PilotManager(session=session)
+
+        # Register our callback with the PilotManager. This callback will get
+        # called every time any of the pilots managed by the PilotManager
+        # change their state -- in particular also on failing pilots.
+        pmgr.register_callback(pilot_state_cb)
+
+        # Create a local pilot with a million cores. This will most likely
+        # fail as not enough cores will be available.  That means the pilot will
+        # go quickly into failed state, and trigger the callback from above.
+        pd = rp.ComputePilotDescription()
         pd.resource  = "localhost"
-        pd.cores     = 128
-        pd.runtime   = 10 
+        pd.cores     = 1000000
+        pd.runtime   = 60
 
-        pilot = pm.submit_pilots(pd)
-        state = pilot.wait(state=[sagapilot.states.RUNNING, sagapilot.states.FAILED], timeout=60)
+        pilot = pmgr.submit_pilots(pd)
 
-        # If the pilot is in FAILED state it probably didn't start up properly. 
-        if state == sagapilot.states.FAILED:
-            print pilot.log[-1] # Get the last log message
-            return 1
-        # The timeout was reached if the pilot state is still FAILED.
-        elif state == sagapilot.states.PENDING:
-            print "Timeout..."
-            return 1
-        # If the pilot is not in FAILED or PENDING state, it is probably running.
-        else:
-            print "Pilot in state '%s'" % state
-            # Since the pilot is running, we can cancel it now.
-            pilot.cancel()
-            return 0
+        # this will basically wait forever (the pilot won't reach DONE state...
+        state = pilot.wait (state=[rp.DONE])
 
-    except sagapilot.SagapilotException, ex:
-        # This catches all exeptions but no runtime errors.
-        print "Error: %s" % ex
-        return -1
+    except Exception as e :
+        # Something unexpected happened in the pilot code above
+        print "caught Exception: %s" % e
+
+    except (KeyboardInterrupt, SystemExit) as e :
+        # the callback called sys.exit(), and we can here catch the
+        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+        # SystemExit (which gets raised if the main threads exits for some
+        # reason).
+        print "need to exit now: %s" % e
+
+    finally :
+        # always clean up the session, no matter if we caught an exception or
+        # not.
+        print "closing session"
+        session.close ()
+
+        # the above is equivalent to
+        # session.close (cleanup=True, terminate=True)
+
 
 #-------------------------------------------------------------------------------
-#
-if __name__ == "__main__":
-    sys.exit(synchronous_error_handling())
 

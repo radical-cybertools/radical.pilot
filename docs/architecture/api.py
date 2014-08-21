@@ -7,7 +7,7 @@ Discussion
 ----------
 
 
-SAGA-Pilot API spec
+RADICAL-Pilot API spec
 ===================
 
 
@@ -129,7 +129,7 @@ The documentation below again documents the exact meaning of the states for DUs.
 Exceptions
 ----------
 
-As SAGA-Pilot is obviously based on SAGA, the exceptions are derived from
+As RADICAL-Pilot is obviously based on SAGA, the exceptions are derived from
 SAGA's exception model, and can be extended where we see fit.
 """
 

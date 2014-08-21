@@ -12,23 +12,22 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 from direct_submission import DirectSubmissionScheduler
-from round_robin import RoundRobinScheduler
+from round_robin       import RoundRobinScheduler
+from backfilling       import BackfillingScheduler
 
 # -----------------------------------------------------------------------------
 # Constants
 SCHED_ROUND_ROBIN       = "round_robin"
 SCHED_DIRECT_SUBMISSION = "direct_submission"
+SCHED_BACKFILLING       = "backfilling"
 
 # -----------------------------------------------------------------------------
 # 
-def get_scheduler(name):
+def get_scheduler(manager, name, session):
     """get_scheduler returns a scheduler object for 'name'.
     """
-    if name == SCHED_ROUND_ROBIN:
-        return RoundRobinScheduler()
+    if   name == SCHED_ROUND_ROBIN      : return RoundRobinScheduler       (manager, session)
+    elif name == SCHED_DIRECT_SUBMISSION: return DirectSubmissionScheduler (manager, session)
+    elif name == SCHED_BACKFILLING      : return BackfillingScheduler      (manager, session)
+    else                                : raise RuntimeError("Scheduler '%s' doesn't exist." % name)
 
-    elif name == SCHED_DIRECT_SUBMISSION:
-        return DirectSubmissionScheduler()
-
-    else:
-        raise RuntimeError("Scheduler '%s' doesn't exist." % name)

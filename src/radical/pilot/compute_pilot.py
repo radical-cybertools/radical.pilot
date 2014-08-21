@@ -85,7 +85,7 @@ class ComputePilot (object):
         """ PRIVATE: Get one or more pilot via their UIDs.
         """
         pilots_json = pilot_manager_obj._worker.get_compute_pilot_data(
-            pilot_uids=pilot_ids)
+            pilot_ids=pilot_ids)
 
         # create and return pilot objects
         pilots = []
@@ -163,7 +163,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['sandbox']
 
     # -------------------------------------------------------------------------
@@ -175,7 +175,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['state']
 
     # -------------------------------------------------------------------------
@@ -189,7 +189,7 @@ class ComputePilot (object):
 
         states = []
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         for state in pilot_json['statehistory']:
             states.append(State(state=state["state"], timestamp=state["timestamp"]))
 
@@ -207,7 +207,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['log']
 
     # -------------------------------------------------------------------------
@@ -220,7 +220,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         resource_details = {
             'nodes':          pilot_json['nodes'],
             'cores_per_node': pilot_json['cores_per_node']
@@ -268,7 +268,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['submitted']
 
     # -------------------------------------------------------------------------
@@ -280,7 +280,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['started']
 
     # -------------------------------------------------------------------------
@@ -292,7 +292,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['finished']
 
     # -------------------------------------------------------------------------
@@ -304,7 +304,7 @@ class ComputePilot (object):
         if not self._uid:
             raise exceptions.IncorrectState("Invalid instance.")
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_uids=self.uid)
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['description']['resource']
 
     # -------------------------------------------------------------------------
@@ -370,7 +370,7 @@ class ComputePilot (object):
             if (timeout is not None) and (timeout <= (time.time() - start_wait)):
                 break
 
-        # done waiting
+        # done waiting -- return the state
         return new_state
 
     # -------------------------------------------------------------------------
@@ -393,3 +393,4 @@ class ComputePilot (object):
 
         # now we can send a 'cancel' command to the pilot.
         self._manager.cancel_pilots(self.uid)
+

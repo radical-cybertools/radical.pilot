@@ -58,17 +58,12 @@ class ComputePilotDescription(attributes.Attributes):
        If the key exists, the machine-specifc configuration is loaded from the
        configuration once the ComputePilotDescription is passed to
        :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't exist,
-       a :class:`radical.pilot.radical.pilotException` is thrown.
+       a :class:`radical.pilot.pilotException` is thrown.
 
     .. data:: runtime
 
        [Type: `int`] [**mandatory**] The maximum run time (wall-clock time) in
        **minutes** of the ComputePilot.
-
-    .. data:: cores
-
-       [Type: `int`] [**mandatory**] The number of cores the pilot should
-       allocate on the target resource.
 
     .. data:: sandbox
 
@@ -80,6 +75,16 @@ class ComputePilotDescription(attributes.Attributes):
                  to set `sandbox` manually, make sure that it points to a
                  directory on a shared filesystem that can be reached from all
                  compute nodes.
+
+    .. data:: cores
+
+       [Type: `int`] [**mandatory**] The number of cores the pilot should
+       allocate on the target resource.
+
+    .. data:: memory
+
+       [Type: `int`] [**optional**] The amount of memorty (in MB) the pilot
+       should allocate on the target resource.
 
     .. data:: queue
 
@@ -115,58 +120,30 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register            (RUNTIME, None, attributes.INT, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RESOURCE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RUNTIME,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (SANDBOX,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (CORES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (MEMORY,   None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (QUEUE,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (PROJECT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (CLEANUP,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
-        self._attributes_register            (CLEANUP, None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register            (PROJECT, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-
-        self._attributes_register            (SANDBOX, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-
-        self._attributes_register             (RESOURCE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register             (CORES, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register             (MEMORY, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register             (QUEUE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # Allows to select a different pilot agent - for DEVELOPMENT purposes only !!
-        self._attributes_register            (PILOT_AGENT_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (PILOT_AGENT_PRIV, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
-    #--------------------------------------------------------------------------
-    #
-    def as_dict(self):
-        """Returns a Python dictionary representation of the object.
-        """
-        # Apparently the atribute interface only handles 'non-None' attributes,
-        # so we do some manual check-and-set.
-        d = attributes.Attributes.as_dict(self)
+        # explicitly set attrib defaults so they get listed and included via as_dict()
+        self.set_attribute (RESOURCE,         None)
+        self.set_attribute (RUNTIME,          None)
+        self.set_attribute (SANDBOX,          None)
+        self.set_attribute (CORES,            None)
+        self.set_attribute (MEMORY,           None)
+        self.set_attribute (QUEUE,            None)
+        self.set_attribute (PROJECT,          None)
+        self.set_attribute (CLEANUP,          None)
+        self.set_attribute (PILOT_AGENT_PRIV, None)
 
-        if RUNTIME not in d:
-            d[RUNTIME] = None
-
-        if CLEANUP not in d:
-            d[CLEANUP] = None
-
-        if PROJECT not in d:
-            d[PROJECT] = None
-
-        if SANDBOX not in d:
-            d[SANDBOX] = None
-
-        if RESOURCE not in d:
-            d[RESOURCE] = None
-
-        if CORES not in d:
-            d[CORES] = None
-
-        if MEMORY not in d:
-            d[MEMORY] = None
-
-        if QUEUE not in d:
-            d[QUEUE] = None
-
-        if PILOT_AGENT_PRIV not in d:
-            d[PILOT_AGENT_PRIV] = None
-
-        return d
 
     # -------------------------------------------------------------------------
     #
@@ -174,3 +151,7 @@ class ComputePilotDescription(attributes.Attributes):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+
+
+# -----------------------------------------------------------------------------
+

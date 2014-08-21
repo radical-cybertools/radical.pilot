@@ -1,8 +1,40 @@
-#!/bin/sh
+#!/bin/bash
 
 export RADICAL_PILOT_DBURL=mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/
 export RADICAL_PILOT_VERBOSE=DEBUG
 export RADICAL_PILOT_BENCHMARK=
+
+
+if true
+then 
+  for size in 1
+  do
+  
+    host=stampede
+    for mult in 10
+    do 
+  
+      jobs="$(($size * $mult))"
+      echo "size: $size"
+      echo "jobs: $jobs"
+  
+      export RP_USER=merzky
+      export RP_CORES=$size
+      export RP_UNITS=$jobs
+      export RP_CU_CORES=1
+      export RP_HOST=localhost
+      export RP_QUEUE=
+      export RP_PROJECT=
+      export RP_RUNTIME=10
+      export RP_NAME="$host.$size.$jobs"
+  
+      time python ./benchmark_driver.py 2>&1 | tee $RP_NAME.log
+  
+    done
+  
+  done
+fi
+
 
 if false
 then 

@@ -1,0 +1,149 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import bson
+import pprint
+import datetime
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+_DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:24242/radicalpilot/'
+
+if  'RADICAL_PILOT_DBURL' in os.environ :
+    _DEFAULT_DBURL = os.environ['RADICAL_PILOT_DBURL']
+
+_DEFAULT_DBURL = ru.Url (_DEFAULT_DBURL)
+if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path :
+    _DEFAULT_DBURL.path = 'radicalpilot'
+
+_DEFAULT_DBURL = str(_DEFAULT_DBURL)
+
+# ------------------------------------------------------------------------------
+#
+def usage (msg=None, noexit=False) :
+
+    if  msg :
+        print "\n      Error: %s" % msg
+
+    print """
+      usage      : %s [-d <dburl>] [-m <mode>] [-p <pid>]
+      example    : %s -m sid -p 53e124edd1969c73e56f0eb2
+                   find ID of the session which created that pilot
+
+      modes :
+
+        help     : show this message
+        sid      : find session ID
+
+      options :
+        -p <pid> : apply mode to pilot   with given ID
+        -s <sid> : apply mode to session with given ID
+        -d <url> : use given database URL instead of default (%s).
+
+      The default mode is 'help'.  
+      
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+
+    if  msg :
+        sys.exit (1)
+
+    if  not noexit :
+        sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+#
+def find_sid_by_pid (dbclient, dbname, pid) :
+
+    sids = rpu.get_session_ids (dbclient, dbname)
+
+    print "%d sessions" % len(sids)
+
+    # IDs are globally time ordered.  We start looking from last session
+    # (request is likely of recent run), but only look at session IDs which have
+    # IDs older than the pilot ID
+
+    for sid in sorted (sids, reverse=True) :
+        if  sid > pid :
+            continue
+
+        docs = rpu.get_session_docs (dbclient, dbname, sid)
+
+        for doc in docs['pilot'] :
+            if  str(doc['_id']) == pid :
+                print "found pilot %s in session %s" % (pid, sid)
+                return
+
+    print "pilot %s not found in any session"
+
+
+# ------------------------------------------------------------------------------
+# 
+def parse_commandline():
+
+    return options
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__' :
+
+    import optparse
+    parser = optparse.OptionParser (add_help_option=False)
+
+    parser.add_option('-d', '--dburl',   dest='url')
+    parser.add_option('-m', '--mode',    dest='mode')
+    parser.add_option('-p', '--pid',     dest='pid')
+    parser.add_option('-h', '--help',    dest='help', action="store_true")
+
+    options, args = parser.parse_args ()
+
+    if  args :
+        usage ("Too many arguments (%s)" % args)
+
+    if  options.help :
+        usage ()
+
+    if  options.mode in ['help'] : 
+        usage ()
+
+    if  not options.mode :
+        usage ("No mode specified")
+
+    if  not options.url : 
+        options.url = _DEFAULT_DBURL 
+
+
+    mode    = options.mode 
+    url     = options.url
+    pid     = options.pid
+
+    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
+    dbclient = pymongo.MongoClient (host=host, port=port)
+
+    print "modes   : %s" % mode
+    print "db url  : %s" % url
+
+    if  pid :
+        print "pid     : %s" % pid
+
+
+    for m in mode.split (',') :
+
+        if  m not in ['sid', 'help'] : 
+            usage ("Unsupported mode '%s'" % m)
+
+        if   m == 'sid'   : find_sid_by_pid (dbclient, dbname, pid)
+        elif m == 'help'  : usage (noexit=True)
+        else              : usage ("unknown mode '%s'" % mode)
+
+    # ------------------------------------------------------------------------------------
+    dbclient.disconnect ()
+
+# ------------------------------------------------------------------------------
+

@@ -14,6 +14,7 @@ __license__   = "MIT"
 import os 
 import glob
 import saga
+import radical.utils as ru
 
 from radical.pilot.object          import Object
 from radical.pilot.unit_manager    import UnitManager
@@ -88,7 +89,7 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
-    def __init__ (self, database_url, database_name="radicalpilot", session_uid=None):
+    def __init__ (self, database_url=None, database_name="radicalpilot", session_uid=None):
         """Creates a new or reconnects to an exising session.
 
         If called without a session_uid, a new Session instance is created and 
@@ -96,7 +97,9 @@ class Session (saga.Session, Object):
         retrieved from the database. 
 
         **Arguments:**
-            * **database_url** (`string`): The MongoDB URL. 
+            * **database_url** (`string`): The MongoDB URL.  If none is given,
+              RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
+              not set, an error will be raises.
 
             * **database_name** (`string`): An alternative database name 
               (default: 'radical.pilot').
@@ -132,6 +135,26 @@ class Session (saga.Session, Object):
         self._database_url  = database_url
         self._database_name = database_name 
 
+        if  not self._database_url :
+            self._database_url = os.getenv ("RADICAL_PILOT_DBURL", None)
+
+        if  not self._database_url :
+            raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
+
+        logger.info("using database url  %s" % self._database_url)
+
+        # if the database url contains a path element, we interpret that as
+        # database name (without the leading slash)
+        tmp_url = ru.Url (self._database_url)
+        if  tmp_url.path            and \
+            tmp_url.path[0]  == '/' and \
+            len(tmp_url.path) >  1  :
+            self._database_name = tmp_url.path[1:]
+            logger.info("using database path %s" % self._database_name)
+        else :
+            logger.info("using database name %s" % self._database_name)
+
+
         ##########################
         ## CREATE A NEW SESSION ##
         ##########################
@@ -150,14 +173,14 @@ class Session (saga.Session, Object):
                         self._resource_configs[rc.name] = rc.as_dict() 
 
                 self._dbs, self._created = dbSession.new(sid=self._uid, 
-                                                         db_url=database_url, 
-                                                         db_name=database_name,
+                                                         db_url=self._database_url, 
+                                                         db_name=self._database_name,
                                                          resource_configs=self._resource_configs)
 
                 logger.info("New Session created%s." % str(self))
 
             except Exception, ex:
-                raise PilotException("Couldn't create new session: %s" % ex)  
+                raise PilotException("Couldn't create new session (database URL incorrect?): %s" % ex)  
 
         ######################################
         ## RECONNECT TO AN EXISTING SESSION ##
@@ -166,8 +189,8 @@ class Session (saga.Session, Object):
             try:
                 # otherwise, we reconnect to an existing session
                 self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
-                                                              db_url=database_url, 
-                                                              db_name=database_name)
+                                                              db_url=self._database_url, 
+                                                              db_name=self._database_name)
 
                 self._uid              = session_uid
                 self._created          = session_info["created"]
@@ -181,44 +204,51 @@ class Session (saga.Session, Object):
 
         self._connection_info = DBConnectionInfo(
             session_id=self._uid,
-            dbname=database_name,
-            url=database_url
+            dbname=self._database_name,
+            url=self._database_url
         )
 
     #---------------------------------------------------------------------------
     #
-    def close(self, delete=True):
+    def close(self, cleanup=True, terminate=True):
         """Closes the session.
 
         All subsequent attempts access objects attached to the session will 
-        result in an error. If delete is set to True (default) the session
+        result in an error. If cleanup is set to True (default) the session
         data is removed from the database.
 
         **Arguments:**
-            * **delete** (`bool`): Remove session data from MongoDB. 
+            * **cleanup** (`bool`): Remove session from MongoDB (implies * terminate)
+            * **terminate** (`bool`): Shut down all pilots associated with the session. 
 
         **Raises:**
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
+
+        uid = self._uid
+
         if not self._uid:
             logger.warning("Session object already closed.")
             return
 
-        for pmngr in self._pilot_manager_objects:
-            # If delete is true, we also set the terminate flag in the 
+        if  cleanup :
+            # cleanup implies terminate
+            terminate = True
+
+        for pmgr in self._pilot_manager_objects:
+            # If terminate is true, we set the terminate flag in the 
             # pilot manager's close method, which causes it to send a 
             # CANCEL request to all pilots.
-            pmngr.close(terminate=delete)
+            pmgr.close(terminate=terminate)
 
         for umngr in self._unit_manager_objects:
             umngr.close()
 
-        if delete is True:
+        if  cleanup :
             self._destroy_db_entry()
 
-        logger.info("Closed Session %s." % str(self._uid))
-        self._uid = None
+        logger.info("Closed Session %s." % str(uid))
 
 
     #---------------------------------------------------------------------------
@@ -324,7 +354,7 @@ class Session (saga.Session, Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException` if a PilotManager with 
+            * :class:`radical.pilot.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         self._assert_obj_is_valid()
@@ -393,7 +423,7 @@ class Session (saga.Session, Object):
 
         **Raises:**
 
-            * :class:`radical.pilot.radical.pilotException` if a PilotManager with 
+            * :class:`radical.pilot.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
         self._assert_obj_is_valid()

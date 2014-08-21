@@ -24,6 +24,7 @@ from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
 
+from radical.pilot.db.database import COMMAND_CANCEL_PILOT
 
 # ----------------------------------------------------------------------------
 #
@@ -137,26 +138,31 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def get_compute_pilot_data(self, pilot_uids=None):
+    def get_compute_pilot_data(self, pilot_ids=None):
         """Returns the raw data (json dicts) of one or more ComputePilots
            registered with this Worker / PilotManager
         """
         # Wait for the initialized event to assert proper operation.
         self._initialized.wait()
 
-        if pilot_uids is None:
-            # AM: this code branch is never used
-            data = self._db.get_pilots(pilot_manager_id=self._pm_id)
-            return data
-
-        else:
-            if not isinstance(pilot_uids, list):
-                return self._shared_data[pilot_uids]['data']
-            else:
-                data = list()
-                for pilot_uid in pilot_uids:
-                    data.append(self._shared_data[pilot_uid]['data'])
+        try:
+            if pilot_ids is None:
+                data = self._db.get_pilots(pilot_manager_id=self._pm_id)
                 return data
+
+            else:
+                if not isinstance(pilot_ids, list):
+                    return self._shared_data[pilot_ids]['data']
+                else:
+                    data = list()
+                    for pilot_id in pilot_ids:
+                        data.append(self._shared_data[pilot_id]['data'])
+                    return data
+
+        except KeyError, ke:
+            msg = "Unknown Pilot ID {0}".format(str(ke))
+            logger.error(msg)
+            raise Exception(msg)
 
     # ------------------------------------------------------------------------
     #
@@ -186,25 +192,28 @@ class PilotManagerController(threading.Thread):
         for cb in self._shared_data[pilot_id]['callbacks']:
             try:
                 cb(self._shared_data[pilot_id]['facade_object'](),
-                   new_state)
+                    new_state)
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+                raise
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
         for cb in self._manager_callbacks:
             try:
                 cb(self._shared_data[pilot_id]['facade_object'](),
-                   new_state)
+                     new_state)
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+                raise
 
         # if we meet a final state, we record the object's callback history for
         # later evalutation
         if  new_state in (DONE, FAILED, CANCELED) :
             self._db.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
+      # print 'publishing Callback history for %s' % pilot_id
 
 
     # ------------------------------------------------------------------------
@@ -213,84 +222,94 @@ class PilotManagerController(threading.Thread):
         """run() is called when the process is started via
            PilotManagerController.start().
         """
-        logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s started." %
-                    (self.name, self.ident, self._pm_id))
 
-        while not self._stop.is_set():
+        # make sure to catch sys.exit (which raises SystemExit)
+        try :
 
-            # # Check if one or more startup requests have finished.
-            # self.startup_results_lock.acquire()
+            logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s started." %
+                        (self.name, self.ident, self._pm_id))
 
-            # new_startup_results = list()
+            while not self._stop.is_set():
 
-            # for transfer_result in self.startup_results:
-            #     if transfer_result.ready():
-            #         result = transfer_result.get()
+                # # Check if one or more startup requests have finished.
+                # self.startup_results_lock.acquire()
 
-            #         self._db.update_pilot_state(
-            #             pilot_uid=result["pilot_uid"],
-            #             state=result["state"],
-            #             sagajobid=result["saga_job_id"],
-            #             sandbox=result["sandbox"],
-            #             submitted=result["submitted"],
-            #             logs=result["logs"]
-            #         )
+                # new_startup_results = list()
 
-            #     else:
-            #         new_startup_results.append(transfer_result)
+                # for transfer_result in self.startup_results:
+                #     if transfer_result.ready():
+                #         result = transfer_result.get()
 
-            # self.startup_results = new_startup_results
+                #         self._db.update_pilot_state(
+                #             pilot_uid=result["pilot_uid"],
+                #             state=result["state"],
+                #             sagajobid=result["saga_job_id"],
+                #             sandbox=result["sandbox"],
+                #             submitted=result["submitted"],
+                #             logs=result["logs"]
+                #         )
 
-            # self.startup_results_lock.release()
+                #     else:
+                #         new_startup_results.append(transfer_result)
 
-            # Check and update pilots. This needs to be optimized at
-            # some point, i.e., state pulling should be conditional
-            # or triggered by a tailable MongoDB cursor, etc.
-            pilot_list = self._db.get_pilots(pilot_manager_id=self._pm_id)
+                # self.startup_results = new_startup_results
 
-            for pilot in pilot_list:
-                pilot_id = str(pilot["_id"])
+                # self.startup_results_lock.release()
 
-                new_state = pilot["state"]
-                if pilot_id in self._shared_data:
-                    old_state = self._shared_data[pilot_id]["data"]["state"]
-                else:
-                    old_state = None
-                    self._shared_data[pilot_id] = {
-                        'data':          pilot,
-                        'callbacks':     [],
-                        'facade_object': None
-                    }
+                # Check and update pilots. This needs to be optimized at
+                # some point, i.e., state pulling should be conditional
+                # or triggered by a tailable MongoDB cursor, etc.
+                pilot_list = self._db.get_pilots(pilot_manager_id=self._pm_id)
 
-                if new_state != old_state:
-                    # On a state change, we fire zee callbacks.
-                    logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
+                for pilot in pilot_list:
+                    pilot_id = str(pilot["_id"])
 
-                    # The state of the pilot has changed, We call all
-                    # pilot-level callbacks to propagate this.
-                    self.call_callbacks(pilot_id, new_state)
+                    new_state = pilot["state"]
+                    if pilot_id in self._shared_data:
+                        old_state = self._shared_data[pilot_id]["data"]["state"]
+                    else:
+                        old_state = None
+                        self._shared_data[pilot_id] = {
+                            'data':          pilot,
+                            'callbacks':     [],
+                            'facade_object': None
+                        }
 
-                self._shared_data[pilot_id]['data'] = pilot
+                    if new_state != old_state:
+                        # On a state change, we fire zee callbacks.
+                        logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
 
-                # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
-                # set the state of the compute unit accordingly
-                if new_state in ['Failed', 'Done', 'Canceled']:
-                    self._db.set_all_running_compute_units(
-                        pilot_id=pilot_id, 
-                        state="Canceled",
-                        log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
+                        # The state of the pilot has changed, We call all
+                        # pilot-level callbacks to propagate this.
+                        self.call_callbacks(pilot_id, new_state)
+
+                    self._shared_data[pilot_id]['data'] = pilot
+
+                    # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
+                    # set the state of the compute unit accordingly
+                    if new_state in ['Failed', 'Done', 'Canceled']:
+                        self._db.set_all_running_compute_units(
+                            pilot_id=pilot_id, 
+                            state="Canceled",
+                            log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
                     self._initialized.set()
 
-            time.sleep(1)
+                time.sleep(1)
 
-        # shut down the autonomous pilot launcher worker(s)
-        for worker in self._pilot_launcher_worker_pool:
-            worker.terminate()
-            worker.join()
-            logger.debug("PilotManager.close(): %s terminated." % worker.name)
+            # shut down the autonomous pilot launcher worker(s)
+            for worker in self._pilot_launcher_worker_pool:
+              # worker.terminate()
+              # worker.join()
+                logger.debug("PilotManager.close(): %s terminated." % worker.name)
+
+        except SystemExit as e :
+            print "pilot manager controller thread caught system exit -- forcing application shutdown"
+            import thread
+            thread.interrupt_main ()
+            
 
     # ------------------------------------------------------------------------
     #
@@ -394,11 +413,10 @@ class PilotManagerController(threading.Thread):
     def register_cancel_pilots_request(self, pilot_ids):
         """Registers one or more pilots for cancelation.
         """
-        self._db.signal_pilots(
-            pilot_manager_id=self._pm_id,
-            pilot_ids=pilot_ids, cmd="CANCEL")
 
         if pilot_ids is None:
-            logger.info("Sent 'CANCEL' command to all pilots.")
+            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_manager_id=self._pm_id)
+            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to all pilots.")
         else:
-            logger.info("Sent 'CANCEL' command to pilots %s.", pilot_ids)
+            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
+            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
