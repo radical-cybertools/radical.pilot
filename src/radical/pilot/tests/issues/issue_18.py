@@ -60,10 +60,10 @@ class TestIssue18(unittest.TestCase):
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
-        cpd.cores = 1
-        cpd.runtime = 5
-        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd.cleanup = True
+        cpd.cores    = 1
+        cpd.runtime  = 5
+        cpd.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup  = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -83,7 +83,7 @@ class TestIssue18(unittest.TestCase):
         j = s.get_job(saga_id)
         j.cancel()
 
-        pilot.wait(radical.pilot.FAILED, timeout=200)
+        pilot.wait(radical.pilot.FAILED, timeout=60)
         assert pilot.state == radical.pilot.FAILED
 
         session.close()

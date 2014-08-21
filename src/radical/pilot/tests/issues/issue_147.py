@@ -58,10 +58,10 @@ class TestIssue147(unittest.TestCase):
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
-        cpd.cores = 1
-        cpd.runtime = 1
-        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd.cleanup = True
+        cpd.cores    = 1
+        cpd.runtime  = 1
+        cpd.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup  = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -72,9 +72,9 @@ class TestIssue147(unittest.TestCase):
         um.add_pilots(pilot)
 
         cudesc = radical.pilot.ComputeUnitDescription()
-        cudesc.cores = 1
+        cudesc.cores      = 1
         cudesc.executable = "/bin/sleep"
-        cudesc.arguments = ['1']
+        cudesc.arguments  = ['1']
 
         cu = um.submit_units(cudesc)
         um.wait_units()
