@@ -92,12 +92,10 @@ class PilotLauncherWorker(threading.Thread):
                     log_message  = "SAGA job state for ComputePilot %s is %s."\
                                  % (pilot_id, saga_job.state)
 
-              # js.close()
-
             except Exception as e:
 
                 if  not reconnected :
-                    logger.warning ('could not reconnect to pilot for state check')
+                    logger.warning ('could not reconnect to pilot for state check (%s)' % e)
                     self.missing_pilots[pilot_id] += 1
 
                     if  self.missing_pilots[pilot_id] >= JOB_CHECK_MAX_MISSES :
