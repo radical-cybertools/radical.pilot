@@ -481,7 +481,6 @@ class UnitManager(object):
             pid = schedule['units'][unit]
 
             if  None == pid :
-                logger.info ('unit %s remains unscheduled' % unit.uid)
                 unscheduled.append (unit)
                 continue
 
@@ -552,6 +551,8 @@ class UnitManager(object):
         if  old_wait_queue_size != self.wait_queue_size :
             self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
                                                 self.wait_queue_size)
+
+        logger.info ('%s units remain unscheduled' % len(unscheduled))
 
 
     # -------------------------------------------------------------------------
