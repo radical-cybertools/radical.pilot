@@ -84,7 +84,7 @@ class InputFileTransferWorker(threading.Thread):
 
                     if compute_unit is None:
                         # Sleep a bit if no new units are available.
-                        time.sleep(1) # TODO: Probably need better sleep logic as we also have the logic on the end now
+                        time.sleep(0.1) # TODO: Probably need better sleep logic as we also have the logic on the end now
                     else:
                         # AM: The code below seems wrong when BULK_LIMIT != 1 -- the
                         # compute_unit will be a list then I assume.

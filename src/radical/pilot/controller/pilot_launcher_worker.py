@@ -189,8 +189,8 @@ class PilotLauncherWorker(threading.Thread):
                 )
 
                 if compute_pilot is None:
-                    # Sleep a bit if no new units are available.
-                    time.sleep(1)
+                    # Sleep a bit if no new pilots are available.
+                    time.sleep(0.1)
                 else:
                     try:
                         ######################################################################

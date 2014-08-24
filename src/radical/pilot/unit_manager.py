@@ -651,7 +651,9 @@ class UnitManager(object):
             if  (None != timeout) and (timeout <= (time.time() - start)):
                 break
 
-            time.sleep (1)
+            # sleep a little if this cycle was idle
+            if  not len (units) :
+                time.sleep (0.1)
 
           # print "wait %s === %s" % (state, states)
 

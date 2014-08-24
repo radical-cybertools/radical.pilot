@@ -263,6 +263,7 @@ class UnitManagerController(threading.Thread):
                 # or triggered by a tailable MongoDB cursor, etc.
                 unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
 
+
                 for unit in unit_list:
                     unit_id = str(unit["_id"])
 
@@ -295,7 +296,10 @@ class UnitManagerController(threading.Thread):
                 if not self._initialized.is_set():
                     self._initialized.set()
 
-                time.sleep(1)
+                # sleep a little if this cycle was idle
+                if  not len(unit_list) :
+                    time.sleep(0.1)
+
 
             # shut down the autonomous input / output transfer worker(s)
             for worker in self._input_file_transfer_worker_pool:

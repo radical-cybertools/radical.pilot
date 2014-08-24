@@ -1463,7 +1463,7 @@ class InputStagingWorker(multiprocessing.Process):
                 staging = self._staging_queue.get_nowait()
             except Queue.Empty:
                 # do nothing and sleep if we don't have any queued staging
-                time.sleep(1)
+                time.sleep(0.1)
                 continue
 
             # Perform input staging
@@ -1647,7 +1647,7 @@ class OutputStagingWorker(multiprocessing.Process):
 
                 except Queue.Empty:
                     # do nothing and sleep if we don't have any queued staging
-                    time.sleep(1)
+                    time.sleep(0.1)
 
 
         except Exception, ex:
@@ -1779,6 +1779,8 @@ class Agent(threading.Thread):
 
             try:
 
+                idle = True
+
                 # Check the workers periodically. If they have died, we 
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
@@ -1817,6 +1819,9 @@ class Agent(threading.Thread):
                         commands = []
 
                     for command in commands:
+
+                        idle = False
+
                         if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                             self._log.info("Received Cancel Pilot command.")
                             pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
@@ -1845,6 +1850,9 @@ class Agent(threading.Thread):
                     # There are new work units in the wu_queue on the database.
                     # Get the corresponding wu entries.
                     if wu_cursor is not None:
+
+                        idle = False
+
                         if not isinstance(wu_cursor, list):
                             wu_cursor = [wu_cursor]
 
@@ -1887,6 +1895,9 @@ class Agent(threading.Thread):
                         #limit=BULK_LIMIT
                     )
                     if wu_cursor is not None:
+
+                        idle = False
+
                         if not isinstance(wu_cursor, list):
                             wu_cursor = [wu_cursor]
 
@@ -1906,7 +1917,8 @@ class Agent(threading.Thread):
                 except Exception, ex:
                     raise
 
-                time.sleep(1)
+                if  idle :
+                    time.sleep(1)
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.

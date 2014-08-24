@@ -84,7 +84,7 @@ class OutputFileTransferWorker(threading.Thread):
                 if compute_unit is None:
                     #logger.info("OFTW no wus, sleep")
                     # Sleep a bit if no new units are available.
-                    time.sleep(1)
+                    time.sleep(0.1)
                 else:
                     logger.info("OFTW wu found, progressing ...")
                     # AM: The code below seems wrong when BULK_LIMIT != 1 -- the

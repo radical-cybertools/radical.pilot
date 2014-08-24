@@ -364,7 +364,7 @@ class ComputePilot (object):
         new_state = self.state
 
         while new_state not in state:
-            time.sleep(1)
+            time.sleep(0.1)
             new_state = self.state
 
             if (timeout is not None) and (timeout <= (time.time() - start_wait)):

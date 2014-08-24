@@ -426,7 +426,7 @@ class PilotManager(Object):
                 break
 
             # wait a bit
-            time.sleep(1)
+            time.sleep(0.1)
 
         # done waiting
         return p_states

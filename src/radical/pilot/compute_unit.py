@@ -402,7 +402,7 @@ class ComputeUnit(object):
         # the self.state property pulls the state from the back end.
         new_state = self.state
         while new_state not in state:
-            time.sleep(1)
+            time.sleep(0.1)
 
             new_state = self.state
             logger.debug(

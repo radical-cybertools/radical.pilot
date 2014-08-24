@@ -42,8 +42,12 @@ def get_session_docs (dbclient, dbname, session) :
     ret['umgr'   ] = list(database["%s.wm" % session].find ())
     ret['unit'   ] = list(database["%s.w"  % session].find ())
 
+    if  len(ret['session']) == 0 :
+        raise ValueError ('no such session %s' % session)
+
   # if  len(ret['session']) > 1 :
   #     print 'more than one session document -- pick first one'
+
     ret['session'] = ret['session'][0]
 
     # we want to add a list of handled units to each pilot doc
