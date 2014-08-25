@@ -31,7 +31,7 @@ In order to use RADICAL-Pilot in your Python application, you need to import the
 
     import radical.pilot
 
-You can check / print the version of your SAGA-Pilot installation via the
+You can check / print the version of your RADICAL-Pilot installation via the
 ``version`` property.
 
 .. code-block:: python

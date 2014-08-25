@@ -1,131 +1,100 @@
-import os
+
 import sys
-import sagapilot
+import radical.pilot as rp
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
-if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
 
-RCONF  = ["https://raw.github.com/saga-project/saga-pilot/devel/configs/xsede.json",
-          "https://raw.github.com/saga-project/saga-pilot/devel/configs/futuregrid.json"]
+# ##############################################################################
+# #88: unit callbacks not called or with 'None' unit
+# ##############################################################################
+
+cb_counter = 0
+
+#------------------------------------------------------------------------------
+#
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
+
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-        pilot.uid, state)
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
 
-    if state == sagapilot.states.FAILED:
-        sys.exit(1)
+    if  not unit :
+        return
 
-#------------------------------------------------------------------------------
-#
-def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
-    print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-        unit.uid, state)
-    if state == sagapilot.states.FAILED:
-        print "            Log: %s" % unit.log[-1]
+    global cb_counter
+    cb_counter += 1
+
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
+
 
 #------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
-    try:
-        # Create a new session. A session is the 'root' object for all other
-        # SAGA-Pilot objects. It encapsualtes the MongoDB connection(s) as
-        # well as security crendetials.
-        session = sagapilot.Session(database_url=DBURL)
+    # Create a new session. A session is the 'root' object for all other
+    # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
+    # well as security crendetials.
+    session = rp.Session()
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = sagapilot.PilotManager(session=session, resource_configurations=RCONF)
+    # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+    pmgr = rp.PilotManager(session=session)
 
-        # Register our callback with the PilotManager. This callback will get
-        # called every time any of the pilots managed by the PilotManager
-        # change their state.
-        # pmgr.register_callback(pilot_state_cb)
+    # Register our callback with the PilotManager. This callback will get
+    # called every time any of the pilots managed by the PilotManager
+    # change their state.
+    # pmgr.register_callback(pilot_state_cb)
 
-        # Define a 2-core local pilot that runs for 10 minutes.
-        pdesc = sagapilot.ComputePilotDescription()
-        pdesc.resource = "stampede.tacc.utexas.edu"
-        pdesc.runtime = 10
-        pdesc.cores = 2
+    # Define a 2-core local pilot that runs for 10 minutes.
+    pdesc = rp.ComputePilotDescription()
+    pdesc.resource = "localhost"
+    pdesc.runtime  = 10
+    pdesc.cores    = 1
 
-        # Launch the pilot.
-        pilot = pmgr.submit_pilots(pdesc)
-        pilot.register_callback(pilot_state_cb)
+    # Launch the pilot.
+    pilot = pmgr.submit_pilots(pdesc)
+    pilot.register_callback(pilot_state_cb)
 
-        # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables withih a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
-        #
-        compute_units = []
+    # Combine the ComputePilot, the ComputeUnits and a scheduler via
+    # a UnitManager object.
+    umgr = rp.UnitManager (session=session,
+                           scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
-        for unit_count in range(0, 1):
-            cu = sagapilot.ComputeUnitDescription()
-            cu.environment = {'ARGS' : '--help'}
-            cu.executable = "/bin/hostname"
-            cu.arguments = ["$ARGS"]
-            cu.cores = 1
-            cu.working_directory_priv = "/home1/00988/tg802352/PRIV"
+    # Add the previsouly created ComputePilot to the UnitManager.
+    umgr.add_pilots(pilot)
 
-            compute_units.append(cu)
+    # Create a workload of 8 ComputeUnits (tasks).
+    unit_descr = rp.ComputeUnitDescription()
+    unit_descr.executable = "/bin/sleep"
+    unit_descr.arguments  = ['10']
+    unit_descr.cores = 1
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        umgr = sagapilot.UnitManager(
-            session=session,
-            scheduler=sagapilot.SCHED_DIRECT_SUBMISSION)
+    # Submit the previously created ComputeUnit descriptions to the
+    # PilotManager. This will trigger the selected scheduler to start
+    # assigning ComputeUnits to the ComputePilots.
+    units = umgr.submit_units(unit_descr)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
-        # change their state.
-        #umgr.register_callback(unit_state_change_cb)
+    # Wait for all compute units to finish.
+    for unit in umgr.get_units():
+        unit.register_callback(unit_state_change_cb)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
-        umgr.add_pilots(pilot)
+    umgr.wait_units()
 
-        # Submit the previously created ComputeUnit descriptions to the
-        # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_units)
+    global cb_counter
+    assert (cb_counter > 1) # one invokation to capture final state
 
-        # Wait for all compute units to finish.
-        for unit in umgr.get_units():
-            unit.register_callback(unit_state_change_cb)
+    # Cancel all pilots.
+    pmgr.cancel_pilots()
 
-        umgr.wait_units()
+    # Remove session from database
+    session.close()
 
-        for unit in umgr.get_units():
-            # Print some information about the unit.
-            print "\n{0}".format(str(unit))
-
-            # Get the stdout and stderr streams of the ComputeUnit.
-            print "  STDOUT: {0}".format(unit.stdout)
-            print "  STDERR: {0}".format(unit.stderr)
-
-        # Cancel all pilots.
-        pmgr.cancel_pilots()
-
-        # Remove session from database
-        session.destroy()
-
-    except sagapilot.SagapilotException, ex:
-        print "Error: %s" % ex

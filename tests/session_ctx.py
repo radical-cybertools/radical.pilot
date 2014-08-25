@@ -1,42 +1,35 @@
-import sagapilot
 
+import radical.pilot as rp
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
-if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-session = sagapilot.Session(database_url=DBURL)
-print "Session: {0} ".format(session)
+s1 = rp.Session()
+print "Session 1: %s (%d)" % (s1.uid, len(s1.list_contexts()))
 
 # Add an ssh identity to the session.
-c1 = sagapilot.Context('ssh')
+c1 = rp.Context('ssh')
 c1.user_id = "tg802352"
 
-print c1
+print 'context 1: %s' % c1
 
-session.add_context(c1)
+s1.add_context(c1)
 
 # Add an ssh identity to the session.
-c2 = sagapilot.Context('ssh')
+c2 = rp.Context('ssh')
 c2.user_id = "abcedesds"
 
-print c2
+print 'context 2: %s' % c2
 
-session.add_context(c2)
+s1.add_context(c2)
 
-for c in session.list_contexts():
+for c in s1.list_contexts():
     print c
 
 
-session2 = sagapilot.Session(database_url=DBURL, session_uid=session.uid)
-print "Session: {0} ".format(session2)
+s2 = rp.Session(session_uid=s1.uid)
+print "Session 2: %s (%d)" % (s2.uid, len(s2.list_contexts()))
 
-for c in session2.list_contexts():
-    # contexts are *not* serialized as part of the session information, but need
-    # to be added again!
+
+for c in s2.list_contexts():
     print c
+
+assert (len(s1.list_contexts()) == len(s2.list_contexts()))
 

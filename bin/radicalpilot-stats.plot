@@ -138,7 +138,7 @@ do for [term_i=1:words(terms)] {
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set xtics  timetics
-    set mxtics mtimetics
+  # set mxtics mtimetics
     set yrange [0:8]
     set ytics  ("PENDING LAUNCH" 1, \
                 "LAUNCHING     " 2, \
@@ -153,38 +153,39 @@ do for [term_i=1:words(terms)] {
     set grid
 
     if (pilotnum==1) {
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101
-    }                                               
-    if (pilotnum==2) {                              
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             pilot_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             pilot_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201
-    }                                               
-    if (pilotnum==3) {                              
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             pilot_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             pilot_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201 , \
-             pilot_states_3_dat    using 1:($2-0.1) title '' with steps  ls 300 , \
-             pilot_callbacks_3_dat using 1:($2+0.1) title '' with points ls 301
+        plot pilot_states_1_dat    using 1:($2-0.05) title '' with steps  ls 100 , \
+             pilot_callbacks_1_dat using 1:($2+0.05) title '' with points ls 101
+    }                                                
+    if (pilotnum==2) {                               
+        plot pilot_states_1_dat    using 1:($2-0.05) title '' with steps  ls 100 , \
+             pilot_callbacks_1_dat using 1:($2+0.00) title '' with points ls 101 , \
+             pilot_states_2_dat    using 1:($2+0.05) title '' with steps  ls 200 , \
+             pilot_callbacks_2_dat using 1:($2+0.10) title '' with points ls 201
+    }                                                
+    if (pilotnum==3) {                               
+        plot pilot_states_1_dat    using 1:($2-0.10) title '' with steps  ls 100 , \
+             pilot_callbacks_1_dat using 1:($2-0.05) title '' with points ls 101 , \
+             pilot_states_2_dat    using 1:($2-0.00) title '' with steps  ls 200 , \
+             pilot_callbacks_2_dat using 1:($2+0.05) title '' with points ls 201 , \
+             pilot_states_3_dat    using 1:($2+0.10) title '' with steps  ls 300 , \
+             pilot_callbacks_3_dat using 1:($2+0.15) title '' with points ls 301
     }
  
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set yrange [0:12]
     set ytics  ("NEW            "  1, \
-                "PEND.   INPUT  "  2, \
-                "TRANSF. INPUT  "  3, \
-                "PEND. EXECUTION"  4, \
-                "SCHEDULING     "  5, \
-                "EXECUTING      "  6, \
-                "PEND.   OUTPUT "  7, \
-                "TRANSF. OUTPUT "  8, \
-                "DONE           "  9, \
-                "CANCELED       " 10, \
-                "FAILED         " 11)
+                "STATE_X        "  2, \
+                "PEND.   INPUT  "  3, \
+                "TRANSF. INPUT  "  4, \
+                "PEND. EXECUTION"  5, \
+                "SCHEDULING     "  6, \
+                "EXECUTING      "  7, \
+                "PEND.   OUTPUT "  8, \
+                "TRANSF. OUTPUT "  9, \
+                "DONE           " 10, \
+                "CANCELED       " 11, \
+                "FAILED         " 12)
 
     set xlabel ''
     set ylabel "UNITS\n[states]" offset second -0.06,0
@@ -192,30 +193,33 @@ do for [term_i=1:words(terms)] {
     set grid
 
     if (pilotnum==1) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101
+        plot unit_states_1_dat    using 1:($2-0.05) title '' with steps ls 100 , \
+             unit_callbacks_1_dat using 1:($2+0.05) title '' with points ls 101
     }
     if (pilotnum==2) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201
+        plot unit_states_1_dat    using 1:($2-0.05) title '' with steps  ls 100 , \
+             unit_callbacks_1_dat using 1:($2+0.00) title '' with points ls 101 , \
+             unit_states_2_dat    using 1:($2+0.05) title '' with steps  ls 200 , \
+             unit_callbacks_2_dat using 1:($2+0.10) title '' with points ls 201
     }
     if (pilotnum==3) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201 , \
-             unit_states_3_dat    using 1:($2-0.1) title '' with steps  ls 300 , \
-             unit_callbacks_3_dat using 1:($2+0.1) title '' with points ls 301
+        plot unit_states_1_dat    using 1:($2-0.10) title '' with steps  ls 100 , \
+             unit_callbacks_1_dat using 1:($2-0.05) title '' with points ls 101 , \
+             unit_states_2_dat    using 1:($2-0.00) title '' with steps  ls 200 , \
+             unit_callbacks_2_dat using 1:($2+0.05) title '' with points ls 201 , \
+             unit_states_3_dat    using 1:($2+0.10) title '' with steps  ls 300 , \
+             unit_callbacks_3_dat using 1:($2+0.15) title '' with points ls 301
     }
 
     # ------------------------------------------------------------------------------------
-    set xrange [0:maxtime]
-    set yrange [1:maxslots+nodesize/2]
-    set mytics nodesize
-    set ytics  autofreq
-    set y2tics autofreq
+    set xrange  [0:maxtime]
+    set yrange  [0:slotsscale]
+    set mytics  nodesize
+    set ytics   autofreq
+    set mytics  0
+    set y2tics  autofreq
+    set y2range [0:queuescale]
+    set my2tics 0
 
     set xlabel ''
     set ylabel "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
@@ -224,27 +228,27 @@ do for [term_i=1:words(terms)] {
 
     if (pilotnum==1) {
       plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
-           pilot_queue_1_dat using 1:($2+0.1) title '' with steps ls 106 axes x1y2 , \
+           pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 106 axes x1y2 , \
            slotnum_1                          title '' with lines ls 105 
     }
     if (pilotnum==2) {
       plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
            pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 106 axes x1y2 , \
-           slotnum_1                          title '' with lines ls 105 , \
-           pilot_slots_2_dat using 1:($2+0.3) title '' with lines ls 204 , \
-           pilot_queue_2_dat using 1:($2+0.3) title '' with steps ls 206 axes x1y2 , \
-           slotnum_2                          title '' with lines ls 205  
+           (slotnum_1+0.0)                    title '' with lines ls 105 , \
+           pilot_slots_2_dat using 1:($2+0.1) title '' with lines ls 204 , \
+           pilot_queue_2_dat using 1:($2+0.1) title '' with steps ls 206 axes x1y2 , \
+           (slotnum_2+0.1)                    title '' with lines ls 205  
     }
     if (pilotnum==3) {
       plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
            pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 106 axes x1y2 , \
-           slotnum_1                          title '' with lines ls 105 , \
-           pilot_slots_2_dat using 1:($2+0.2) title '' with lines ls 204 , \
-           pilot_queue_2_dat using 1:($2+0.2) title '' with steps ls 206 axes x1y2 , \
-           slotnum_2                          title '' with lines ls 205 , \
-           pilot_slots_3_dat using 1:($2+0.4) title '' with lines ls 304 , \
-           pilot_queue_3_dat using 1:($2+0.4) title '' with steps ls 306 axes x1y2 , \
-           slotnum_3                          title '' with lines ls 305 
+           (slotnum_1+0.0)                    title '' with lines ls 105 , \
+           pilot_slots_2_dat using 1:($2+0.1) title '' with lines ls 204 , \
+           pilot_queue_2_dat using 1:($2+0.1) title '' with steps ls 206 axes x1y2 , \
+           (slotnum_2+0.1)                    title '' with lines ls 205 , \
+           pilot_slots_3_dat using 1:($2+0.2) title '' with lines ls 304 , \
+           pilot_queue_3_dat using 1:($2+0.2) title '' with steps ls 306 axes x1y2 , \
+           (slotnum_3+0.2)                    title '' with lines ls 305 
     }
 
     # ------------------------------------------------------------------------------------
@@ -259,8 +263,8 @@ do for [term_i=1:words(terms)] {
     if (pilotnum==1) {
       set  key center left reverse
       plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 101 t 'pilot/unit states notified to application'        , \
+           NaN ls 100 t 'pilot/unit states changes'                        , \
+           NaN ls 101 t 'pilot/unit states notifications'                  , \
            NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
            NaN ls 105 t 'total number of slots'                            , \
            NaN ls 106 t 'unit queue length'                                , \
@@ -268,40 +272,40 @@ do for [term_i=1:words(terms)] {
     }
     if (pilotnum==2) {
       set   key top left reverse maxrows 7
-      plot NaN lw   0 with steps  t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 with steps  t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 101 with points t 'pilot/unit states notified to application   '     , \
-           NaN ls 104 with steps  t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 105 with steps  t 'total number of slots'                            , \
-           NaN ls 106 with steps  t 'unit queue length'                                , \
-           NaN lw   0 with steps  t ' '                                                , \
-           NaN lw   0 with steps  t 'PILOT 2 ('.pilot_2_name.'):'                      , \
-           NaN ls 200 with steps  t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 201 with steps  t 'pilot/unit states notified to application'        , \
-           NaN ls 204 with steps  t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 205 with steps  t 'total number of slots'                            , \
-           NaN ls 206 with steps  t 'unit queue length'                                , \
-           NaN lw   0 with steps  t ' '
-    }
-    if (pilotnum==3) {
-      set   key top left reverse maxrows 14
       plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 t 'pilot/unit states recorded by RP agent'           , \
+           NaN ls 100 t 'pilot/unit states changes'                        , \
            NaN ls 101 t 'pilot/unit states notified to application   '     , \
            NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
            NaN ls 105 t 'total number of slots'                            , \
            NaN ls 106 t 'unit queue length'                                , \
            NaN lw   0 t ' '                                                , \
            NaN lw   0 t 'PILOT 2 ('.pilot_2_name.'):'                      , \
-           NaN ls 200 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 201 t 'pilot/unit states notified to application'        , \
+           NaN ls 200 t 'pilot/unit states changes'                        , \
+           NaN ls 201 t 'pilot/unit states notifications'                  , \
+           NaN ls 204 t 'busy slot (i.e. used CPU core)'                   , \
+           NaN ls 205 t 'total number of slots'                            , \
+           NaN ls 206 t 'unit queue length'                                , \
+           NaN lw   0 t ' '
+    }
+    if (pilotnum==3) {
+      set   key top left reverse maxrows 7
+      plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
+           NaN ls 100 t 'pilot/unit states changes'                        , \
+           NaN ls 101 t 'pilot/unit states notifications'                  , \
+           NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
+           NaN ls 105 t 'total number of slots'                            , \
+           NaN ls 106 t 'unit queue length'                                , \
+           NaN lw   0 t ' '                                                , \
+           NaN lw   0 t 'PILOT 2 ('.pilot_2_name.'):'                      , \
+           NaN ls 200 t 'pilot/unit states changes'                        , \
+           NaN ls 201 t 'pilot/unit states notifications'                  , \
            NaN ls 204 t 'busy slot (i.e. used CPU core)'                   , \
            NaN ls 205 t 'total number of slots'                            , \
            NaN ls 206 t 'unit queue length'                                , \
            NaN lw   0 t ' '                                                , \
            NaN lw   0 t 'PILOT 3 ('.pilot_3_name.'):'                      , \
-           NaN ls 300 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 301 t 'pilot/unit states notified to application'        , \
+           NaN ls 300 t 'pilot/unit states changes'                        , \
+           NaN ls 301 t 'pilot/unit states notifications'                  , \
            NaN ls 304 t 'busy slot (i.e. used CPU core)'                   , \
            NaN ls 305 t 'total number of slots'                            , \
            NaN ls 306 t 'unit queue length'                                , \

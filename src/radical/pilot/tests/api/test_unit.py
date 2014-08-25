@@ -82,12 +82,12 @@ class TestUnit(unittest.TestCase):
         assert cu.submission_time is not None
         assert cu.start_time is None # MS: I dont understand this assertion
 
-        cu.wait([radical.pilot.states.EXECUTING, radical.pilot.states.FAILED], timeout=5*60)
-        assert cu.state == radical.pilot.states.EXECUTING
+        cu.wait([radical.pilot.EXECUTING, radical.pilot.FAILED], timeout=5*60)
+        assert cu.state == radical.pilot.EXECUTING
         assert cu.start_time is not None
 
-        cu.wait([radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=5*60)
-        assert cu.state == radical.pilot.states.DONE
+        cu.wait([radical.pilot.DONE, radical.pilot.FAILED], timeout=5*60)
+        assert cu.state == radical.pilot.DONE
         assert cu.stop_time is not None
 
         session.close()
@@ -117,7 +117,7 @@ class TestUnit(unittest.TestCase):
         um.add_pilots(pilot)
 
         # Wait until the pilot starts
-        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=10)
+        pm.wait_pilots(state=radical.pilot.ACTIVE, timeout=120)
 
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores = 1
@@ -133,15 +133,15 @@ class TestUnit(unittest.TestCase):
         time.sleep(10)
 
         # Make sure it is running!
-        cu.wait(radical.pilot.states.EXECUTING, timeout=5)
-        assert cu.state == radical.pilot.states.EXECUTING
+        cu.wait(radical.pilot.EXECUTING, timeout=5)
+        assert cu.state == radical.pilot.EXECUTING
         assert cu.start_time is not None
 
         # Cancel the CU!
         cu.cancel()
 
-        cu.wait(radical.pilot.states.CANCELED, timeout=10)
-        assert cu.state == radical.pilot.states.CANCELED
+        cu.wait(radical.pilot.CANCELED, timeout=10)
+        assert cu.state == radical.pilot.CANCELED
         assert cu.stop_time is not None
 
         session.close()
@@ -171,12 +171,12 @@ class TestUnit(unittest.TestCase):
         um.add_pilots(pilot)
 
         # Wait until the pilot starts
-        pm.wait_pilots(radical.pilot.states.ACTIVE, timeout=10)
+        pm.wait_pilots(state=radical.pilot.ACTIVE, timeout=240)
 
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores = 1
         cudesc.executable = "/bin/sleep"
-        cudesc.arguments = ["30"]
+        cudesc.arguments = ["60"]
 
         cu = um.submit_units(cudesc)
 
@@ -187,15 +187,15 @@ class TestUnit(unittest.TestCase):
         time.sleep(10)
 
         # Make sure it is running!
-        cu.wait(radical.pilot.states.EXECUTING, timeout=5)
-        assert cu.state == radical.pilot.states.EXECUTING
+        cu.wait(radical.pilot.EXECUTING, timeout=5)
+        assert cu.state == radical.pilot.EXECUTING
         assert cu.start_time is not None
 
         # Cancel the CU!
         um.cancel_units(cu.uid)
 
-        cu.wait(radical.pilot.states.CANCELED, timeout=10)
-        assert cu.state == radical.pilot.states.CANCELED
+        cu.wait(radical.pilot.CANCELED, timeout=10)
+        assert cu.state == radical.pilot.CANCELED
         assert cu.stop_time is not None
 
         session.close()

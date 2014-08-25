@@ -18,14 +18,12 @@ import weakref
 from radical.pilot.compute_unit import ComputeUnit
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.controller import UnitManagerController
-from radical.pilot.scheduler import get_scheduler
+from radical.pilot.controller   import UnitManagerController
+from radical.pilot.scheduler    import get_scheduler
 
-from radical.pilot.states import *
-from radical.pilot.exceptions import PilotException
-
-from bson import ObjectId
-
+from radical.pilot.types        import *
+from radical.pilot.states       import *
+from radical.pilot.exceptions   import PilotException
 
 # -----------------------------------------------------------------------------
 #
@@ -97,8 +95,11 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         self._session = session
-        self._worker = None 
-        self._pilots = []
+        self._worker  = None 
+        self._pilots  = list()
+
+        # keep track of some changing metrics
+        self.wait_queue_size = 0
 
         if _reconnect is False:
             # Start a worker process fo this UnitManager instance. The worker
@@ -114,7 +115,9 @@ class UnitManager(object):
             self._worker.start()
 
             self._uid = self._worker.unit_manager_uid
-            self._scheduler = get_scheduler(name=scheduler)
+            self._scheduler = get_scheduler(name=scheduler, 
+                                            manager=self, 
+                                            session=self._session)
 
             # Each unit manager has a worker thread associated with it.
             # The task of the worker thread is to check and update the state
@@ -125,6 +128,7 @@ class UnitManager(object):
         else:
             # re-connect. do nothing
             pass
+
 
     #--------------------------------------------------------------------------
     #
@@ -181,7 +185,11 @@ class UnitManager(object):
         # about the UnitManager
         um_data = obj._worker.get_unit_manager_data()
 
-        obj._scheduler = get_scheduler(name=um_data['scheduler'])
+        obj._scheduler = get_scheduler(name=um_data['scheduler'], 
+                                       manager=obj,
+                                       session=obj._session)
+        # FIXME: we need to tell the scheduler about all the pilots...
+
         obj._uid = unit_manager_id
 
         logger.info("Reconnected to existing UnitManager %s." % str(obj))
@@ -258,10 +266,22 @@ class UnitManager(object):
         if not isinstance(pilots, list):
             pilots = [pilots]
 
+        pilot_ids = self.list_pilots()
+
+        for pilot in pilots :
+            if  pilot.uid in pilot_ids :
+                logger.warning ('adding the same pilot twice (%s)' % pilot.uid)
+
         self._worker.add_pilots(pilots)
 
-        for pilot in pilots:
-            self._pilots.append(pilot.uid)
+        # let the scheduler know...
+        for pilot in pilots :
+            self._scheduler.pilot_added (pilot)
+
+        # also keep the instances around
+        for pilot in pilots :
+            self._pilots.append (pilot)
+
 
     # -------------------------------------------------------------------------
     #
@@ -281,6 +301,26 @@ class UnitManager(object):
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         return self._worker.get_pilot_uids()
+
+
+    # -------------------------------------------------------------------------
+    #
+    def get_pilots(self):
+        """get the pilots instances currently associated with
+        the unit manager.
+
+        **Returns:**
+
+              * A list of :class:`radical.pilot.ComputePilot` instances.
+
+        **Raises:**
+
+            * :class:`radical.pilot.PilotException`
+        """
+        if not self._uid:
+            raise exceptions.IncorrectState(msg="Invalid object instance.")
+
+        return self._pilots
 
     # -------------------------------------------------------------------------
     #
@@ -312,6 +352,26 @@ class UnitManager(object):
 
         self._worker.remove_pilots(pilot_ids)
 
+
+        # FIXME:
+        # if a pilot gets removed, we need to re-assign all its units to other
+        # pilots.   We thus move them all into the wait queue, and call the
+        # global rescheduler.  Some of the CUs might already be in final state
+        # -- those are ignored (they'll be in the done_queue anyways).  We leave
+        # it to the scheduling policy what happens to non-NEW CUs in the
+        # wait_queue, i.e. if they get rescheduled, or if they'll raise an
+        # error.
+
+        # let the scheduler know...
+        for pilot_id in pilot_ids :
+            self._scheduler.pilot_removed (pilot_id)
+
+        # update instance list
+        for pilot_id in pilot_ids :
+            for pilot in self._pilots[:] :
+                if  pilot_id == pilot.uid :
+                    self._pilots.remove (pilot)
+
     # -------------------------------------------------------------------------
     #
     def list_units(self):
@@ -327,6 +387,7 @@ class UnitManager(object):
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         return self._worker.get_compute_unit_uids()
+
 
     # -------------------------------------------------------------------------
     #
@@ -348,94 +409,151 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
+
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         if not isinstance(unit_descriptions, list):
             unit_descriptions = [unit_descriptions]
 
-        # always use the scheduler for now...
-        if True:
-           # if not self._scheduler :
-           #     raise PilotException("Internal error - no unit scheduler")
+        # we return a list of compute units
+        ret = list()
 
-            # the scheduler will return a dictionary of the form:
-            #   {
-            #     pilot_id_1  : [ud_1, ud_2, ...],
-            #     pilot_id_2  : [ud_3, ud_4, ...],
-            #     ...
-            #   }
-            # The scheduler may not be able to schedule some units - those will
-            # simply not be listed for any pilot.  The UM needs to make sure
-            # that no UD from the original list is left untreated, eventually.
+        # the scheduler will return a dictionary of the form:
+        #   {
+        #     ud_1 : pilot_id_a,
+        #     ud_2 : pilot_id_b
+        #     ...
+        #   }
+        #
+        # The scheduler may not be able to schedule some units - those will
+        # have 'None' as pilot ID.
 
-            try:
-                schedule = self._scheduler.schedule(
-                    manager=self, 
-                    unit_descriptions=unit_descriptions)
+        units = list()
+        for ud in unit_descriptions :
 
-            except Exception as e:
-                raise PilotException(
-                    "Internal error - unit scheduler failed: %s" % e)
+            units.append (ComputeUnit._create (unit_description=ud,
+                                               unit_manager_obj=self, 
+                                               local_state=NEW))
 
-            unscheduled = list()  # unscheduled unit descriptions
+        self._worker.publish_compute_units (units=units)
 
-            # we copy all unit descriptions into unscheduled, and then remove
-            # the scheduled ones...
-            unscheduled = unit_descriptions[:]  # python semi-deep-copy magic
+        schedule = None
+        try:
+            schedule = self._scheduler.schedule (units=units)
+       
+        except Exception as e:
+            import traceback
+            logger.error (traceback.format_exc())
+            raise PilotException("Internal error - unit scheduler failed: %s" % e)
 
-            units = list()  # compute unit instances to return
+        self.handle_schedule (schedule)
+
+        if len(units) == 1 :
+            return units[0]
+        else :
+            return units
 
 
-            # submit to all pilots which got something submitted to
-            for pilot_id in schedule.keys():
+    # -------------------------------------------------------------------------
+    #
+    def handle_schedule (self, schedule) :
 
-                pilot_units = list()
+        # we want to use bulk submission to the pilots, so we collect all units
+        # assigned to the same set of pilots.  At the same time, we select
+        # unscheduled units for later insertion into the wait queue.
+        
+        if  not schedule :
+            logger.debug ('skipping empty unit schedule')
+            return
 
-                # sanity check on scheduler provided information
-                if not pilot_id in self.list_pilots():
-                    raise PilotException(
-                        "Internal error - invalid scheduler reply, "
-                        "no such pilot %s" % pilot_id)
+      # print 'handle schedule:'
+      # import pprint
+      # pprint.pprint (schedule)
+      #
+        pilot_cu_map = dict()
+        unscheduled  = list()
 
-                # get the scheduled unit descriptions for this pilot
-                uds = schedule[pilot_id]
+        pilot_ids = self.list_pilots ()
 
-                # submit each unit description scheduled here, all in one bulk
-                for ud in uds:
-                    # sanity check on scheduler provided information
-                    if not ud in unscheduled:
-                        raise PilotException(
-                            "Internal error - invalid scheduler reply, "
-                            "no such unit description %s" % ud)
+        for unit in schedule['units'].keys() :
 
-                    # this unit is not unscheduled anymore...
-                    unscheduled.remove(ud)
+            pid = schedule['units'][unit]
 
-                    unit_uid = str(ObjectId())
+            if  None == pid :
+                unscheduled.append (unit)
+                continue
 
-                    # create a new ComputeUnit object
-                    compute_unit = ComputeUnit._create(
-                        unit_uid=unit_uid,
-                        unit_description=ud,
-                        unit_manager_obj=self
-                    )
+            else :
 
-                    pilot_units.append(compute_unit)
+                if  pid not in pilot_ids :
+                    raise RuntimeError ("schedule points to unknown pilot %s" % pid)
 
-                self._worker.schedule_compute_units(
-                    pilot_uid=pilot_id,
-                    units=pilot_units
+                if  pid not in pilot_cu_map :
+                    pilot_cu_map[pid] = list()
+
+                pilot_cu_map[pid].append (unit)
+
+
+        # submit to all pilots which got something submitted to
+        for pid in pilot_cu_map.keys():
+
+            units_to_schedule = list()
+
+            # if a kernel name is in the cu descriptions set, do kernel expansion
+            for unit in pilot_cu_map[pid] :
+
+                if  not pid in schedule['pilots'] :
+                    # lost pilot, do not schedule unit
+                    logger.warn ("unschedule unit %s, lost pilot %s" % (unit.uid, pid))
+                    continue
+
+                unit.sandbox = schedule['pilots'][pid]['sandbox'] + "/unit-" + str(unit.uid)
+
+                ud = unit.description
+
+                if  'kernel' in ud and ud['kernel'] :
+
+                    if  not 'pilots' in schedule :
+                        raise RuntimeError ("Kernels are not supported for this unit scheduler")
+
+                    try :
+                        from radical.ensemblemd.mdkernels import MDTaskDescription
+                    except Exception as ex :
+                        raise RuntimeError ("Kernels are not supported in" \
+                              "compute unit descriptions -- install " \
+                              "radical.ensemblemd!")
+
+                    pilot_resource = schedule['pilots'][pid]['resource']
+
+                    mdtd           = MDTaskDescription ()
+                    mdtd.kernel    = ud.kernel
+                    mdtd_bound     = mdtd.bind (resource=pilot_resource)
+                    ud.environment = mdtd_bound.environment
+                    ud.pre_exec    = mdtd_bound.pre_exec
+                    ud.executable  = mdtd_bound.executable
+                    ud.mpi         = mdtd_bound.mpi
+
+
+                units_to_schedule.append (unit)
+
+            if  len(units_to_schedule) :
+                self._worker.schedule_compute_units (
+                    pilot_uid=pid,
+                    units=units_to_schedule
                 )
 
-                assert len(pilot_units) == len(uds)
 
-                units += pilot_units
+        # report any change in wait_queue_size
+        old_wait_queue_size = self.wait_queue_size
 
-            if len(units) == 1:
-                return units[0]
-            else:
-                return units
+        self.wait_queue_size = len(unscheduled)
+        if  old_wait_queue_size != self.wait_queue_size :
+            self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
+                                                self.wait_queue_size)
+
+        logger.info ('%s units remain unscheduled' % len(unscheduled))
+
 
     # -------------------------------------------------------------------------
     #
@@ -505,37 +623,44 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if not self._uid:
+        if  not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
             unit_ids = [unit_ids]
 
-        start_wait = time.time()
-        all_done = False
+        start  = time.time()
+        units  = self.get_units (unit_ids)
+        all_ok = False
+        states = list()
 
-        while all_done is False:
+        while all_ok is False :
 
-            all_done = True
+            all_ok = True
+            states = list()
 
-            wu_states = self._worker.get_compute_unit_states(unit_uids=unit_ids)
+            for unit in units :
 
+                if  unit.state not in state :
+                    all_ok = False
+                  # break
 
-
-            for wu_state in wu_states:
-                if wu_state not in state:
-                    all_done = False
-                    break  # leave 'for' loop
+                states.append (unit.state)
 
             # check timeout
-            if (None != timeout) and (timeout <= (time.time() - start_wait)):
+            if  (None != timeout) and (timeout <= (time.time() - start)):
                 break
 
-            # wait a bit
-            time.sleep(1)
+            # sleep a little if this cycle was idle
+            if  not len (units) :
+                time.sleep (0.1)
+
+          # print "wait %s === %s" % (state, states)
+
 
         # done waiting
-        return wu_states
+        return states
+
 
     # -------------------------------------------------------------------------
     #
@@ -564,16 +689,36 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_function):
-        """Registers a new callback function with the UnitManager.
-        Manager-level callbacks get called if any of the ComputeUnits managed
-        by the PilotManager change their state.
+    def register_callback(self, callback_function, metric=UNIT_STATE):
+
+        """
+        Registers a new callback function with the UnitManager.  Manager-level
+        callbacks get called if the specified metric changes.  The default
+        metric `UNIT_STATE` fires the callback if any of the ComputeUnits
+        managed by the PilotManager change their state.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state)
+            def callback_func(obj, value)
 
         where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.
+        and ``value`` is the metric.  In the example of `UNIT_STATE` above, the
+        object would be the unit in question, and the value would be the new
+        state of the unit.
+
+        Available metrics are:
+
+          * `UNIT_STATE`: fires when the state of any of the units which are
+            managed by this unit manager instance is changing.  It communicates
+            the unit object instance and the units new state.
+
+          * `WAIT_QUEUE_SIZE`: fires when the number of unscheduled units (i.e.
+            of units which have not been assigned to a pilot for execution)
+            changes.
         """
-        self._worker.register_manager_callback(callback_function)
+
+        if  metric not in UNIT_MANAGER_METRICS :
+            raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
+
+        self._worker.register_manager_callback(callback_function, metric)
+

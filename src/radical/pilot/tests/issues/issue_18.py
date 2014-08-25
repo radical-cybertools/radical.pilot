@@ -60,14 +60,14 @@ class TestIssue18(unittest.TestCase):
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
-        cpd.cores = 1
-        cpd.runtime = 5
-        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd.cleanup = True
+        cpd.cores    = 1
+        cpd.runtime  = 5
+        cpd.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup  = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
-        pilot.wait(radical.pilot.states.ACTIVE)
+        pilot.wait(radical.pilot.ACTIVE)
 
         # Now we extract the saga job id from the logs and KILL THE PROCESS
         saga_id = None
@@ -83,8 +83,8 @@ class TestIssue18(unittest.TestCase):
         j = s.get_job(saga_id)
         j.cancel()
 
-        pilot.wait(radical.pilot.states.FAILED, timeout=80)
-        assert pilot.state == radical.pilot.states.FAILED
+        pilot.wait(radical.pilot.FAILED, timeout=60)
+        assert pilot.state == radical.pilot.FAILED
 
         session.close()
 

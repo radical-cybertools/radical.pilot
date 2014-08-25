@@ -58,10 +58,10 @@ class TestIssue114(unittest.TestCase):
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
-        cpd.cores   = 1
-        cpd.runtime = 5
-        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd.cleanup = True
+        cpd.cores    = 1
+        cpd.runtime  = 5
+        cpd.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup  = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -77,15 +77,15 @@ class TestIssue114(unittest.TestCase):
             cudesc = radical.pilot.ComputeUnitDescription()
             cudesc.cores      = 1
             cudesc.executable = "/bin/sleep"
-            cudesc.arguments = ['180']
+            cudesc.arguments  = ['180']
             all_tasks.append(cudesc)
 
         cu = um.submit_units(all_tasks)
         states = um.wait_units(timeout=60)
 
         assert states is not None
-        assert radical.pilot.states.SCHEDULING in states
-        assert radical.pilot.states.EXECUTING in states
+        assert radical.pilot.SCHEDULING in states
+        assert radical.pilot.EXECUTING  in states
 
         session.close()
 
@@ -113,21 +113,23 @@ class TestIssue114(unittest.TestCase):
         )
         um.add_pilots(pilot)
 
+        pm.wait_pilots(state=[radical.pilot.ACTIVE, radical.pilot.DONE, radical.pilot.FAILED])
+
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores      = 1
         cudesc.executable = "/bin/sleep"
-        cudesc.arguments = ['80']
+        cudesc.arguments  = ['80']
 
-        cu = um.submit_units(cudesc)
+        cu    = um.submit_units(cudesc)
         state = um.wait_units(timeout=30)
 
-        assert state == [radical.pilot.states.EXECUTING]
-        assert cu.state == radical.pilot.states.EXECUTING
+        assert state    == [radical.pilot.EXECUTING]
+        assert cu.state ==  radical.pilot.EXECUTING
 
         state = um.wait_units()
 
-        assert state == [radical.pilot.states.DONE]
-        assert cu.state == radical.pilot.states.DONE
+        assert state    == [radical.pilot.DONE]
+        assert cu.state ==  radical.pilot.DONE
 
         session.close()
 
@@ -150,19 +152,20 @@ class TestIssue114(unittest.TestCase):
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
         um = radical.pilot.UnitManager(
-            session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
+            session   = session,
+            scheduler = radical.pilot.SCHED_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
-        state = pm.wait_pilots(timeout=30)
+        state = pm.wait_pilots(timeout=60)
 
-        assert state == [radical.pilot.states.ACTIVE]
-        assert pilot.state == radical.pilot.states.ACTIVE
+        assert state       == [radical.pilot.ACTIVE]
+        assert pilot.state ==  radical.pilot.ACTIVE
 
         state = pm.wait_pilots()
 
-        assert state == [radical.pilot.states.DONE]
-        assert pilot.state == radical.pilot.states.DONE
+        assert state       == [radical.pilot.DONE]
+        assert pilot.state ==  radical.pilot.DONE
 
         session.close()
+

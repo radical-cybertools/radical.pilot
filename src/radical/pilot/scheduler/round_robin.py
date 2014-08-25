@@ -25,65 +25,74 @@ class RoundRobinScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, manager, session):
         """Le constructeur.
         """
-        Scheduler.__init__(self)
+
+        self.manager = manager
+        self.session = session
+        self.pilots  = dict()
+        self.idx     = 0
+
         logger.info("Loaded scheduler: %s." % self.name)
 
-        self._idx = 0
 
     # -------------------------------------------------------------------------
     #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): %s." % self.name)
+    def pilot_added (self, pilot) :
+
+        pid = pilot.uid
+
+        self.pilots[pid] = dict()
+        self.pilots[pid]['resource'] = pilot.resource
+        self.pilots[pid]['sandbox']  = pilot.sandbox
+
 
     # -------------------------------------------------------------------------
     #
-    def _name(self):
-        return "RoundRobinScheduler"
+    def pilot_removed (self, pid) :
+
+        if  not pid in self.pilots :
+            raise RuntimeError ('cannot remove unknown pilot (%s)' % pid)
+
+        del self.pilots[pid]
+
 
     # -------------------------------------------------------------------------
     #
-    def schedule(self, manager, unit_descriptions):
+    def schedule(self, units):
+
         # the scheduler will return a dictionary of the form:
         #   { 
-        #     pilot_id_1  : [ud_1, ud_2, ...], 
-        #     pilot_id_2  : [ud_3, ud_4, ...], 
+        #     unit_1: pilot_id_1
+        #     unit_2: pilot_id_2
+        #     unit_4: pilot_id_2
         #     ...
         #   }
         # The scheduler may not be able to schedule some units -- those will
         # simply not be listed for any pilot.  The UM needs to make sure
         # that no UD from the original list is left untreated, eventually.
 
-        #print "round-robin scheduling of %s units" % len(unit_descriptions)
+        pilot_ids          = self.pilots.keys ()
+        schedule           = dict()
+        schedule['units']  = dict()
+        schedule['pilots'] = self.pilots
 
-        if  not manager :
-            raise RuntimeError ('Unit scheduler is not initialized')
-
-        pilots = manager.list_pilots ()
-        ret    = dict()
-
-        if not len (pilots) :
+        if  not len (pilot_ids) :
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
 
-        for ud in unit_descriptions :
+        for unit in units :
             
-            if  self._idx >= len(pilots) : 
-                self._idx = 0
+            if  self.idx >= len(pilot_ids) : 
+                self.idx = 0
             
-            pilot = pilots[self._idx]
-
-            if  pilot not in ret :
-                ret[pilot] = []
-
-            ret[pilot].append (ud)
-
-            self._idx += 1
+            schedule['units'][unit] = pilot_ids[self.idx]
+            self.idx               += 1
 
 
-        return ret
+        return schedule
+
+
+    # -------------------------------------------------------------------------
+

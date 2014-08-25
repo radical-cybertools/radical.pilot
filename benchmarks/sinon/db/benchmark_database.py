@@ -12,15 +12,7 @@ from copy import deepcopy
 from sinon.db import Session
 from pymongo import MongoClient
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("SAGAPILOT_DBURL")
-if DBURL is None:
-    print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-DBNAME = 'sagapilot_benchmark'
+DBNAME = 'radicalpilot_benchmark'
 
 SAMPLE_WU = {
     "description"  : {"A": "foo", "B": "bar" },
@@ -38,7 +30,7 @@ def benchmark__add_workunits():
 
     # new session
     sid = str(uuid.uuid4())
-    s = Session.new(sid=sid, db_url=DBURL, db_name=DBNAME)
+    s = Session.new(sid=sid, database_name=DBNAME)
 
     # new pilot
     pilot = {"X": "foo",

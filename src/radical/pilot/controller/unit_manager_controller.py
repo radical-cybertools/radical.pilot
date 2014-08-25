@@ -15,13 +15,16 @@ import threading
 
 from multiprocessing import Pool
 
-from radical.utils import which
+from radical.utils        import which
+from radical.utils        import Url
+from radical.pilot.types  import *
 from radical.pilot.states import *
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
 from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
 
+from radical.pilot.staging_directives import TRANSFER, LINK, COPY, MOVE
 
 # ----------------------------------------------------------------------------
 #
@@ -66,7 +69,7 @@ class UnitManagerController(threading.Thread):
 
         # The manager-level list.
         #
-        self._manager_callbacks = list()
+        self._manager_callbacks = dict()
 
         # The MongoDB database handle.
         self._db = db_connection
@@ -157,7 +160,7 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def call_callbacks(self, unit_id, new_state):
+    def call_unit_state_callbacks(self, unit_id, new_state):
         """Wrapper function to call all all relevant callbacks, on unit-level
         as well as manager-level.
         """
@@ -177,19 +180,24 @@ class UnitManagerController(threading.Thread):
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+                raise
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
-        for cb in self._manager_callbacks:
+        if  not UNIT_STATE in self._manager_callbacks :
+            self._manager_callbacks[UNIT_STATE] = list()
+
+        for cb in self._manager_callbacks[UNIT_STATE]:
             try:
                 cb(self._shared_data[unit_id]['facade_object'],
                    new_state)
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
+                raise
 
-        # if we meet a final state, we record the object's callback history for
-        # later evalutation
+        # If we meet a final state, we record the object's callback history for
+        # later evaluation.
         if  new_state in (DONE, FAILED, CANCELED) :
             self._db.publish_compute_unit_callback_history (unit_id, self._callback_histories[unit_id])
 
@@ -224,7 +232,7 @@ class UnitManagerController(threading.Thread):
 
     #         # The state of the unit has changed, We call all
     #         # unit-level callbacks to propagate this.
-    #         self.call_callbacks(unit_uid, state)
+    #         self.call_unit_state_callbacks(unit_uid, state)
 
     #     # Release the shared data lock.
     #     self._shared_data_lock.release()
@@ -235,66 +243,79 @@ class UnitManagerController(threading.Thread):
         """run() is called when the process is started via
            PilotManagerController.start().
         """
-        logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
-                    (self.name, self.ident, self._um_id))
 
-        # transfer results contains the futures to the results of the
-        # asynchronous transfer operations.
-        transfer_results = list()
+        # make sure to catch sys.exit (which raises SystemExit)
+        try :
 
-        while not self._stop.is_set():
+            logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
+                        (self.name, self.ident, self._um_id))
 
-            # =================================================================
-            #
-            # Check and update units. This needs to be optimized at
-            # some point, i.e., state pulling should be conditional
-            # or triggered by a tailable MongoDB cursor, etc.
-            unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
+            # transfer results contains the futures to the results of the
+            # asynchronous transfer operations.
+            transfer_results = list()
 
-            for unit in unit_list:
-                unit_id = str(unit["_id"])
+            while not self._stop.is_set():
 
-                new_state = unit["state"]
-                if unit_id in self._shared_data:
-                    old_state = self._shared_data[unit_id]["data"]["state"]
-                else:
-                    old_state = None
+                # =================================================================
+                #
+                # Check and update units. This needs to be optimized at
+                # some point, i.e., state pulling should be conditional
+                # or triggered by a tailable MongoDB cursor, etc.
+                unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
+
+
+                for unit in unit_list:
+                    unit_id = str(unit["_id"])
+
+                    new_state = unit["state"]
+                    if unit_id in self._shared_data:
+                        old_state = self._shared_data[unit_id]["data"]["state"]
+                    else:
+                        old_state = None
+                        self._shared_data_lock.acquire()
+                        self._shared_data[unit_id] = {
+                            'data':          unit,
+                            'callbacks':     [],
+                            'facade_object': None
+                        }
+                        self._shared_data_lock.release()
+
                     self._shared_data_lock.acquire()
-                    self._shared_data[unit_id] = {
-                        'data':          unit,
-                        'callbacks':     [],
-                        'facade_object': None
-                    }
+                    self._shared_data[unit_id]["data"] = unit
                     self._shared_data_lock.release()
 
-                self._shared_data_lock.acquire()
-                self._shared_data[unit_id]["data"] = unit
-                self._shared_data_lock.release()
+                    if new_state != old_state:
+                        # On a state change, we fire zee callbacks.
+                        logger.info("RUN ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
 
-                if new_state != old_state:
-                    # On a state change, we fire zee callbacks.
-                    logger.info("RUN ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
+                        # The state of the unit has changed, We call all
+                        # unit-level callbacks to propagate this.
+                        self.call_unit_state_callbacks(unit_id, new_state)
 
-                    # The state of the unit has changed, We call all
-                    # unit-level callbacks to propagate this.
-                    self.call_callbacks(unit_id, new_state)
+                # After the first iteration, we are officially initialized!
+                if not self._initialized.is_set():
+                    self._initialized.set()
 
-            # After the first iteration, we are officially initialized!
-            if not self._initialized.is_set():
-                self._initialized.set()
+                # sleep a little if this cycle was idle
+                if  not len(unit_list) :
+                    time.sleep(0.1)
 
-            time.sleep(1)
 
-        # shut down the autonomous input / output transfer worker(s)
-        for worker in self._input_file_transfer_worker_pool:
-            worker.terminate()
-            worker.join()
-            logger.debug("UnitManager.close(): %s terminated." % worker.name)
+            # shut down the autonomous input / output transfer worker(s)
+            for worker in self._input_file_transfer_worker_pool:
+              # worker.terminate()
+                logger.debug("UnitManager.close(): %s terminated." % worker.name)
+              # worker.join()
 
-        for worker in self._output_file_transfer_worker_pool:
-            worker.terminate()
-            worker.join()
-            logger.debug("UnitManager.close(): %s terminated." % worker.name)
+            for worker in self._output_file_transfer_worker_pool:
+              # worker.terminate()
+                logger.debug("UnitManager.close(): %s terminated." % worker.name)
+              # worker.join()
+        except SystemExit as e :
+            print "unit manager controller thread caught system exit -- forcing application shutdown"
+            import thread
+            thread.interrupt_main ()
+            
 
     # ------------------------------------------------------------------------
     #
@@ -313,20 +334,39 @@ class UnitManagerController(threading.Thread):
             self._shared_data[unit_uid]['facade_object'] = unit # weakref.ref(unit)
             self._shared_data_lock.release()
 
-        # Callbacks can only be registered when the ComputeAlready has a
+        # Callbacks can only be registered when the ComputeUnit lready has a
         # state. To partially address this shortcomming we call the callback
-        # with the current ComputePilot state as soon as it is registered.
-        self.call_callbacks(
+        # with the current ComputeUnit state as soon as it is registered.
+        self.call_unit_state_callbacks(
             unit_uid,
             self._shared_data[unit_uid]["data"]["state"]
         )
 
     # ------------------------------------------------------------------------
     #
-    def register_manager_callback(self, callback_func):
+    def register_manager_callback(self, callback_func, metric):
         """Registers a manager-level callback.
         """
-        self._manager_callbacks.append(callback_func)
+        if not metric in self._manager_callbacks :
+            self._manager_callbacks[metric] = list()
+
+        self._manager_callbacks[metric].append(callback_func)
+
+    # ------------------------------------------------------------------------
+    #
+    def fire_manager_callback(self, metric, obj, value):
+        """Fire a manager-level callback.
+        """
+        if  not metric in self._manager_callbacks :
+            self._manager_callbacks[metric] = list()
+
+        for cb in self._manager_callbacks[metric] :
+            try:
+                cb (obj, value)
+            except Exception, ex:
+                logger.error ("Couldn't call '%s' callback function %s: %s" \
+                           % (metric, cb, ex))
+                raise
 
     # ------------------------------------------------------------------------
     #
@@ -396,33 +436,11 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def schedule_compute_units(self, pilot_uid, units):
-        """Request the scheduling of one or more ComputeUnits on a
-           ComputePilot.
-        """
-
-        unit_descriptions = list()
-        wu_transfer = list()
-        wu_notransfer = list()
-
-        # Get some information about the pilot sandbox from the database.
-        pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
-        pilot_sandbox = pilot_info[0]['sandbox']
-
-        # Split units into two different lists: the first list contains the CUs
-        # that need file transfer and the second list contains the CUs that
-        # don't. The latter is added to the pilot directly, while the former
-        # is added to the transfer queue.
-        for unit in units:
-            if unit.description.input_data is None:
-                wu_notransfer.append(unit.uid)
-            else:
-                wu_transfer.append(unit)
+    def publish_compute_units(self, units):
+        """register the unscheduled units in the database"""
 
         # Add all units to the database.
         results = self._db.insert_compute_units(
-            pilot_uid=pilot_uid,
-            pilot_sandbox=pilot_sandbox,
             unit_manager_uid=self._um_id,
             units=units,
             unit_log=[]
@@ -439,26 +457,148 @@ class UnitManagerController(threading.Thread):
                 'facade_object': unit # weakref.ref(unit)
             }
 
-        # Bulk-add all non-transfer units-
-        self._db.assign_compute_units_to_pilot(
-            unit_uids=wu_notransfer,
-            pilot_uid=pilot_uid
-        )
 
-        for unit in wu_notransfer:
-            log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
-            self._db.set_compute_unit_state(unit, PENDING_EXECUTION, log)
-            #self._set_state(unit, PENDING_EXECUTION, log)
+    # ------------------------------------------------------------------------
+    #
+    def schedule_compute_units(self, pilot_uid, units):
+        """Request the scheduling of one or more ComputeUnits on a
+           ComputePilot.
+        """
 
-        logger.info(
-            "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
-            (wu_notransfer, pilot_uid)
-        )
+        try:
+            wu_transfer   = list()
+            wu_notransfer = list()
 
-        # Bulk-add all units that need transfer to the transfer queue.
-        # Add the startup request to the request queue.
-        if len(wu_transfer) > 0:
-            for unit in wu_transfer:
-                log = ["Scheduled for data tranfer to ComputePilot %s." % pilot_uid]
-                self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_TRANSFER, log)
-                #self._set_state(unit.uid, PENDING_INPUT_TRANSFER, log)
+            # Get some information about the pilot sandbox from the database.
+            pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
+            # TODO: this hack below relies on what?! That there is just one pilot?
+            pilot_sandbox = pilot_info[0]['sandbox']
+
+            # Split units into two different lists: the first list contains the CUs
+            # that need file transfer and the second list contains the CUs that
+            # don't. The latter is added to the pilot directly, while the former
+            # is added to the transfer queue.
+            for unit in units:
+
+                # Create object for staging status tracking
+                unit.FTW_Input_Status = None
+                unit.FTW_Input_Directives = []
+                unit.Agent_Input_Status = None
+                unit.Agent_Input_Directives = []
+                unit.FTW_Output_Status = None
+                unit.FTW_Output_Directives = []
+                unit.Agent_Output_Status = None
+                unit.Agent_Output_Directives = []
+
+                # Split the input staging directives over the transfer worker and the agent
+                input_sds = unit.description.input_staging
+                if not isinstance(input_sds, list):
+                    # Ugly, but is a workaround for iterating on attribute interface
+                    # TODO: Verify if this piece of code is actually still required
+                    if input_sds:
+                        input_sds = [input_sds]
+                    else:
+                        input_sds = []
+                for input_sd_entry in input_sds:
+
+                    action = input_sd_entry['action']
+                    source = Url(input_sd_entry['source'])
+                    target = Url(input_sd_entry['target'])
+
+                    new_sd = {'action':   action,
+                              'source':   str(source),
+                              'target':   str(target),
+                              'flags':    input_sd_entry['flags'],
+                              'priority': input_sd_entry['priority'],
+                              'state':    PENDING
+                    }
+
+                    if action == LINK or action == COPY or action == MOVE:
+                        unit.Agent_Input_Directives.append(new_sd)
+                        unit.Agent_Input_Status = PENDING
+                    elif action == TRANSFER:
+                        if source.scheme and source.scheme != 'file':
+                            # If there is a scheme and it is different than "file",
+                            # assume a remote pull from the agent
+                            unit.Agent_Input_Directives.append(new_sd)
+                            unit.Agent_Input_Status = PENDING
+                        else:
+                            # Transfer from local to sandbox
+                            unit.FTW_Input_Directives.append(new_sd)
+                            unit.FTW_Input_Status = PENDING
+                    else:
+                        logger.error('Not sure if action %s makes sense for input staging' % action)
+
+                # Split the output staging directives over the transfer worker and the agent
+                output_sds = unit.description.output_staging
+                if not isinstance(output_sds, list):
+                    # Ugly, but is a workaround for iterating on att iface
+                    # TODO: Verify if this piece of code is actually still required
+                    if output_sds:
+                        output_sds = [output_sds]
+                    else:
+                        output_sds = []
+                for output_sds_entry in output_sds:
+
+                    action = output_sds_entry['action']
+                    source = Url(output_sds_entry['source'])
+                    target = Url(output_sds_entry['target'])
+
+                    new_sd = {'action':   action,
+                              'source':   str(source),
+                              'target':   str(target),
+                              'flags':    output_sds_entry['flags'],
+                              'priority': output_sds_entry['priority'],
+                              'state':    PENDING
+                    }
+
+                    if action == LINK or action == COPY or action == MOVE:
+                        unit.Agent_Output_Directives.append(new_sd)
+                        unit.Agent_Output_Status = NEW
+                    elif action == TRANSFER:
+                        if target.scheme and target.scheme != 'file':
+                            # If there is a scheme and it is different than "file",
+                            # assume a remote push from the agent
+                            unit.Agent_Output_Directives.append(new_sd)
+                            unit.Agent_Output_Status = NEW
+                        else:
+                            # Transfer from sandbox back to local
+                            unit.FTW_Output_Directives.append(new_sd)
+                            unit.FTW_Output_Status = NEW
+                    else:
+                        logger.error('Not sure if action %s makes sense for output staging' % action)
+
+                if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
+                    log = ["Scheduled for data transfer to ComputePilot %s." % pilot_uid]
+                    self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
+                    wu_transfer.append(unit)
+                else:
+                    wu_notransfer.append(unit)
+
+            # Bulk-add all non-transfer units-
+            self._db.assign_compute_units_to_pilot(
+                units=wu_notransfer,
+                pilot_uid=pilot_uid,
+                pilot_sandbox=pilot_sandbox
+            )
+
+            self._db.assign_compute_units_to_pilot(
+                units=wu_transfer,
+                pilot_uid=pilot_uid,
+                pilot_sandbox=pilot_sandbox
+            )
+
+            for unit in wu_notransfer:
+                log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
+                self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
+                #self._set_state(uid, PENDING_EXECUTION, log)
+
+            logger.info(
+                "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
+                (wu_notransfer, pilot_uid)
+            )
+        except Exception, e:
+            import traceback
+            logger.error (traceback.format_exc())
+            raise Exception('error in unit manager controler: %s' % e)
+

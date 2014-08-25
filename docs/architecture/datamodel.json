@@ -1,6 +1,6 @@
 # MongoDB allows creation of 'collections' on-the-fly with a simple 
 # API call. We use this to distinguish sessions, i.e., as the top-level
-# (root) namespace for a SAGA-Pilot instance. This also makes 
+# (root) namespace for a RADICAL-Pilot instance. This also makes 
 # reconnactability pretty intuitive. 
 
 # This is a pilot manager document. It represents a pilot manager.
