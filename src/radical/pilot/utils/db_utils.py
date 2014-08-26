@@ -39,8 +39,8 @@ def get_session_docs (dbclient, dbname, session) :
     ret['session'] = list(database["%s"    % session].find ())
     ret['pmgr'   ] = list(database["%s.pm" % session].find ())
     ret['pilot'  ] = list(database["%s.p"  % session].find ())
-    ret['umgr'   ] = list(database["%s.wm" % session].find ())
-    ret['unit'   ] = list(database["%s.w"  % session].find ())
+    ret['umgr'   ] = list(database["%s.um" % session].find ())
+    ret['unit'   ] = list(database["%s.cu" % session].find ())
 
     if  len(ret['session']) == 0 :
         raise ValueError ('no such session %s' % session)

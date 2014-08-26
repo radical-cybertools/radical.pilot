@@ -466,8 +466,8 @@ class UnitManagerController(threading.Thread):
         """
 
         try:
-            wu_transfer   = list()
-            wu_notransfer = list()
+            cu_transfer   = list()
+            cu_notransfer = list()
 
             # Get some information about the pilot sandbox from the database.
             pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
@@ -571,31 +571,31 @@ class UnitManagerController(threading.Thread):
                 if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
                     log = ["Scheduled for data transfer to ComputePilot %s." % pilot_uid]
                     self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
-                    wu_transfer.append(unit)
+                    cu_transfer.append(unit)
                 else:
-                    wu_notransfer.append(unit)
+                    cu_notransfer.append(unit)
 
             # Bulk-add all non-transfer units-
             self._db.assign_compute_units_to_pilot(
-                units=wu_notransfer,
+                units=cu_notransfer,
                 pilot_uid=pilot_uid,
                 pilot_sandbox=pilot_sandbox
             )
 
             self._db.assign_compute_units_to_pilot(
-                units=wu_transfer,
+                units=cu_transfer,
                 pilot_uid=pilot_uid,
                 pilot_sandbox=pilot_sandbox
             )
 
-            for unit in wu_notransfer:
+            for unit in cu_notransfer:
                 log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
                 self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
                 #self._set_state(uid, PENDING_EXECUTION, log)
 
             logger.info(
                 "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
-                (wu_notransfer, pilot_uid)
+                (cu_notransfer, pilot_uid)
             )
         except Exception, e:
             import traceback

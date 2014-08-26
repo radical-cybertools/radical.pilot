@@ -126,7 +126,7 @@ if __name__ == "__main__":
     cuds = []
     for unit_count in range(0, 16):
         cud = rp.ComputeUnitDescription()
-        cud.executable    = "/bin/bash"
+        cud.executable    = "/bash"
         cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
         cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
         cud.cores         = 1
@@ -157,7 +157,6 @@ if __name__ == "__main__":
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
     # Close automatically cancels the pilot(s).
-    pmgr.cancel_pilots ()
     print session.uid
     session.close (cleanup=False)
 

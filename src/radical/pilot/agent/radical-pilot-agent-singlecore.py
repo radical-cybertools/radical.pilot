@@ -318,9 +318,9 @@ class ExecWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._p = mongo_db["%s.p"   % session_id]
+        self._w = mongo_db["%s.cu"  % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         self._task_queue     = task_queue
         self._output_staging_queue = output_staging_queue
@@ -433,12 +433,12 @@ class ExecWorker(multiprocessing.Process):
                                         # by the Agent.
                                         if self._slots[host][slot].task.agent_output_staging:
 
-                                            wu = self._w.find_one({"_id": ObjectId(uid)})
-                                            for directive in wu['Agent_Output_Directives']:
+                                            cu = self._w.find_one({"_id": ObjectId(uid)})
+                                            for directive in cu['Agent_Output_Directives']:
                                                 output_staging = {
                                                     'directive': directive,
                                                     'sandbox': self._slots[host][slot].task.workdir,
-                                                    'wu_id': uid
+                                                    'cu_id': uid
                                                 }
 
                                                 # Put the output staging directives in the queue
@@ -576,9 +576,9 @@ class InputStagingWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._p = mongo_db["%s.p"   % session_id]
+        self._w = mongo_db["%s.cu"  % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
 
@@ -609,8 +609,8 @@ class InputStagingWorker(multiprocessing.Process):
                         directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
                     sandbox = staging['sandbox']
-                    wu_id = staging['wu_id']
-                    self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
+                    cu_id = staging['cu_id']
+                    self._log.info('Task input staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
 
                     # Create working directory in case it doesn't exist yet
                     try :
@@ -647,7 +647,7 @@ class InputStagingWorker(multiprocessing.Process):
 
                     # If all went fine, update the state of this StagingDirective to Done
                     self._w.find_and_modify(
-                        query={"_id" : ObjectId(wu_id),
+                        query={"_id" : ObjectId(cu_id),
                                'Agent_Input_Status': 'Executing',
                                'Agent_Input_Directives.state': 'Pending',
                                'Agent_Input_Directives.source': source,
@@ -692,9 +692,9 @@ class OutputStagingWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._p = mongo_db["%s.p"   % session_id]
+        self._w = mongo_db["%s.cu"  % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
 
@@ -725,8 +725,8 @@ class OutputStagingWorker(multiprocessing.Process):
                         directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
                     sandbox = staging['sandbox']
-                    wu_id = staging ['wu_id']
-                    self._log.info('Task output staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
+                    cu_id = staging ['cu_id']
+                    self._log.info('Task output staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
 
                     source = str(directive['source'])
                     target = str(directive['target'])
@@ -753,7 +753,7 @@ class OutputStagingWorker(multiprocessing.Process):
 
                     # If all went fine, update the state of this StagingDirective to Done
                     self._w.find_and_modify(
-                        query={"_id" : ObjectId(wu_id),
+                        query={"_id" : ObjectId(cu_id),
                                'Agent_Output_Status': 'Executing',
                                'Agent_Output_Directives.state': 'Pending',
                                'Agent_Output_Directives.source': source,
@@ -800,9 +800,9 @@ class Agent(threading.Thread):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._p = mongo_db["%s.p"   % session_id]
+        self._w = mongo_db["%s.cu"  % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         # launch method is determined by the execution environment,
         # but can be overridden if the 'launch_method' flag is set 
@@ -946,9 +946,9 @@ class Agent(threading.Thread):
                     break
 
                 # Try to get new tasks from the database. for this, we check the 
-                # wu_queue of the pilot. if there are new entries, we get them,
+                # cu_queue of the pilot. if there are new entries, we get them,
                 # get the actual pilot entries for them and remove them from 
-                # the wu_queue.
+                # the cu_queue.
                 try:
                     p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
 
@@ -969,14 +969,14 @@ class Agent(threading.Thread):
                                 break
 
                         # Check the pilot's workunit queue
-                        #new_wu_ids = p_cursor[0]['wu_queue']
+                        #new_cu_ids = p_cursor[0]['cu_queue']
 
                         #
                         # Check if there are work units waiting for execution
                         #
                         ts = datetime.datetime.utcnow()
 
-                        wu_cursor = self._w.find_and_modify(
+                        cu_cursor = self._w.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : "PendingExecution"},
                         update={"$set" : {"state": "Executing", "started": datetime.datetime.utcnow()},
@@ -984,15 +984,15 @@ class Agent(threading.Thread):
                         #limit=BULK_LIMIT
                         )
 
-                        # There are new work units in the wu_queue on the database.
-                        # Get the corresponding wu entries
-                        if wu_cursor is not None:
-                        #    self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
-                        #    wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
-                            if not isinstance(wu_cursor, list):
-                                wu_cursor = [wu_cursor]
+                        # There are new work units in the cu_queue on the database.
+                        # Get the corresponding cu entries
+                        if cu_cursor is not None:
+                        #    self._log.info("Found new tasks in pilot queue: %s", new_cu_ids)
+                        #    cu_cursor = self._w.find({"_id": {"$in": new_cu_ids}})
+                            if not isinstance(cu_cursor, list):
+                                cu_cursor = [cu_cursor]
 
-                            for wu in wu_cursor:
+                            for cu in cu_cursor:
                                 # Create new task objects and put them into the
                                 # task queue
 
@@ -1000,20 +1000,20 @@ class Agent(threading.Thread):
                                 # standard working directory schema. 
                                 # NOTE: this is not a good idea and just implemented
                                 #       to support some last minute TROY experiments.
-                                #if wu["description"]["working_directory_priv"] is not None:
-                                #    task_dir_name = wu["description"]["working_directory_priv"]
+                                #if cu["description"]["working_directory_priv"] is not None:
+                                #    task_dir_name = cu["description"]["working_directory_priv"]
                                 #else:
-                                task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
+                                task_dir_name = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
 
-                                task = Task(uid         = str(wu["_id"]),
-                                            executable  = wu["description"]["executable"], 
-                                            arguments   = wu["description"]["arguments"],
-                                            environment = wu["description"]["environment"],
+                                task = Task(uid         = str(cu["_id"]),
+                                            executable  = cu["description"]["executable"], 
+                                            arguments   = cu["description"]["arguments"],
+                                            environment = cu["description"]["environment"],
                                             workdir     = task_dir_name, 
                                             stdout      = task_dir_name+'/STDOUT', 
                                             stderr      = task_dir_name+'/STDERR',
-                                            agent_output_staging = True if wu['Agent_Output_Directives'] else False,
-                                            ftw_output_staging   = True if wu['FTW_Output_Directives'] else False
+                                            agent_output_staging = True if cu['Agent_Output_Directives'] else False,
+                                            ftw_output_staging   = True if cu['FTW_Output_Directives'] else False
                                             )
 
                                 self._task_queue.put(task)
@@ -1022,7 +1022,7 @@ class Agent(threading.Thread):
                         #
                         ts = datetime.datetime.utcnow()
 
-                        wu_cursor = self._w.find_and_modify(
+                        cu_cursor = self._w.find_and_modify(
                             query={'pilot' : self._pilot_id,
                                    'Agent_Input_Status': 'Pending'},
                             # TODO: This might/will create double state history for StagingInput
@@ -1032,21 +1032,21 @@ class Agent(threading.Thread):
                             #limit=BULK_LIMIT
                         )
 
-                        # There are new work units in the wu_queue on the database.
-                        # Get the corresponding wu entries
-                        if wu_cursor is not None:
-                            #    self._log.info("Found new tasks in pilot queue: %s", new_wu_ids)
-                            #    wu_cursor = self._w.find({"_id": {"$in": new_wu_ids}})
-                            if not isinstance(wu_cursor, list):
-                                wu_cursor = [wu_cursor]
+                        # There are new work units in the cu_queue on the database.
+                        # Get the corresponding cu entries
+                        if cu_cursor is not None:
+                            #    self._log.info("Found new tasks in pilot queue: %s", new_cu_ids)
+                            #    cu_cursor = self._w.find({"_id": {"$in": new_cu_ids}})
+                            if not isinstance(cu_cursor, list):
+                                cu_cursor = [cu_cursor]
 
-                            for wu in wu_cursor:
+                            for cu in cu_cursor:
 
-                                for directive in wu['Agent_Input_Directives']:
+                                for directive in cu['Agent_Input_Directives']:
                                     input_staging = {
                                         'directive': directive,
-                                        'sandbox': '%s/unit-%s' % (self._workdir, str(wu['_id'])),
-                                        'wu_id': str(wu['_id'])
+                                        'sandbox': '%s/unit-%s' % (self._workdir, str(cu['_id'])),
+                                        'cu_id': str(cu['_id'])
                                     }
 
                                     # Put the input staging directives in the queue
@@ -1254,8 +1254,8 @@ if __name__ == "__main__":
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
         mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.w"  % options.session_id]
-        mongo_wm     = mongo_db["%s.wm" % options.session_id]
+        mongo_w      = mongo_db["%s.cu" % options.session_id]
+        mongo_wm     = mongo_db["%s.um" % options.session_id]
 
     except Exception, ex:
         logger.error("Couldn't establish database connection: %s" % str(ex))

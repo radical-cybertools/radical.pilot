@@ -136,7 +136,7 @@ class Agent(threading.Thread):
         mongo_client = pymongo.MongoClient(mongodb_url)
         self.mongo_db = mongo_client[mongodb_name]
         self.pilot_collection = self.mongo_db["%s.p"  % session_id]
-        self.computeunit_collection = self.mongo_db["%s.w"  % session_id]
+        self.computeunit_collection = self.mongo_db["%s.cu"  % session_id]
 
     # ------------------------------------------------------------------------
     #
@@ -196,7 +196,7 @@ class Agent(threading.Thread):
                         LOGGER.warning("Received unknown command '%s'." % command )
 
 
-                # Check if there are work units waiting for execution
+                # Check if there are compute units waiting for execution
                 ts = datetime.datetime.utcnow()
 
                 computeunits = self.computeunit_collection.find_and_modify(
@@ -207,8 +207,8 @@ class Agent(threading.Thread):
                 #limit=BULK_LIMIT
                 )
 
-                # There are new work units in the wu_queue on the database.
-                # Get the corresponding wu entries
+                # There are new compute units in the cu_queue on the database.
+                # Get the corresponding cu entries
                 if computeunits is not None:
                     if not isinstance(computeunits, list):
                         computeunits = [computeunits]

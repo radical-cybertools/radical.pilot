@@ -1,14 +1,12 @@
 
 import os
 import sys
-import radical.pilot
+import radical.pilot as rp
 import traceback
 
 """ DESCRIPTION: Tutorial 2: Chaining Tasks.
 For every task A_n a task B_n is started consecutively.
 """
-
-# ---------------- BEGIN REQUIRED PILOT SETUP -----------------
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
@@ -47,16 +45,16 @@ def main():
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security contexts.
-        session = radical.pilot.Session(database_url=DBURL)
+        session = rp.Session()
 
         # Add an ssh identity to the session.
-        c = radical.pilot.Context('ssh')
-        #c.user_id = 'osdcXX'
+        c = rp.Context('ssh')
+      # c.user_id = 'osdcXX'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         print "Initializing Pilot Manager ..."
-        pmgr = radical.pilot.PilotManager(session=session)
+        pmgr = rp.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
@@ -64,11 +62,11 @@ def main():
         pmgr.register_callback(pilot_state_cb)
 
         # this describes the parameters and requirements for our pilot job
-        pdesc = radical.pilot.ComputePilotDescription ()
-        pdesc.resource = 'fs2.das4.science.uva.nl'
-        pdesc.runtime  = 5 # minutes
-        pdesc.cores    = 1
-        pdesc.cleanup  = True
+        pdesc = rp.ComputePilotDescription ()
+        pdesc.resource = 'localhost'
+        pdesc.runtime  =  5 # minutes
+        pdesc.cores    =  1
+        pdesc.cleanup  =  True
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
@@ -77,9 +75,9 @@ def main():
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         print "Initializing Unit Manager ..."
-        umgr = radical.pilot.UnitManager(
+        umgr = rp.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+            scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -97,7 +95,7 @@ def main():
         for i in range(NUMBER_JOBS):
 
             # -------- BEGIN USER DEFINED CU A_n DESCRIPTION --------- #
-            cudesc = radical.pilot.ComputeUnitDescription()
+            cudesc = rp.ComputeUnitDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % i}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
@@ -127,7 +125,7 @@ def main():
                 print "'A' Compute Unit '%s' finished. Submitting 'B' CU ..." % idx
 
                 # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
-                cudesc = radical.pilot.ComputeUnitDescription()
+                cudesc = rp.ComputeUnitDescription()
                 cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
                 cudesc.executable  = '/bin/echo'
                 cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
@@ -147,7 +145,7 @@ def main():
 
         print "All Compute Units completed successfully!"
 
-        session.close(delete=False)
+        session.close()
         print "Closed session, exiting now ..."
 
     except Exception as e:

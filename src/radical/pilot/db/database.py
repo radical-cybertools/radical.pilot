@@ -99,8 +99,8 @@ class Session():
             in MongoDB:
 
             radical.pilot.<sid>    | Base collection. Holds some metadata.   | self._s
-            radical.pilot.<sid>.w  | Collection holding all work units.      | self._w
-            radical.pilot.<sid>.wm | Collection holding all unit managers.   | self._um
+            radical.pilot.<sid>.cu | Collection holding all compute units.   | self._w
+            radical.pilot.<sid>.um | Collection holding all unit managers.   | self._um
             radical.pilot.<sid>.p  | Collection holding all pilots.          | self._p
             radical.pilot.<sid>.pm | Collection holding all pilot managers.  | self._pm
 
@@ -132,8 +132,8 @@ class Session():
         )
 
         # Create the collection shortcut:
-        self._w  = self._db["%s.w"  % sid]
-        self._um = self._db["%s.wm" % sid] 
+        self._w  = self._db["%s.cu" % sid]
+        self._um = self._db["%s.um" % sid] 
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
@@ -175,8 +175,8 @@ class Session():
         self._session_id = sid
 
         # Create the collection shortcut:
-        self._w  = self._db["%s.w"  % sid]
-        self._um = self._db["%s.wm" % sid]
+        self._w  = self._db["%s.cu" % sid]
+        self._um = self._db["%s.um" % sid]
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid]
@@ -709,7 +709,7 @@ class Session():
     #--------------------------------------------------------------------------
     #
     def unit_manager_list_compute_units(self, unit_manager_uid):
-        """ Lists all work units associated with a unit manager.
+        """ Lists all compute units associated with a unit manager.
         """
         if self._s is None:
             raise Exception("No active session.")
