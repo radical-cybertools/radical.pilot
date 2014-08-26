@@ -210,7 +210,7 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
-    def close(self, cleanup=True, terminate=True):
+    def close(self, cleanup=True, terminate=True, delete=None):
         """Closes the session.
 
         All subsequent attempts access objects attached to the session will 
@@ -231,6 +231,18 @@ class Session (saga.Session, Object):
         if not self._uid:
             logger.warning("Session object already closed.")
             return
+
+        # we keep 'delete' for backward compatibility.  If it was set, and the
+        # other flags (cleanup, terminate) are as defaulted (True), then delete
+        # will supercede them.  Delete is considered deprecated though, and
+        # we'll thus issue a warning.
+        if  delete != None:
+
+            if  cleanup == True and terminate == True :
+                cleanup   =  delete
+                terminate = delete
+                logger.warning("'delete' flag on session is deprecated. " \
+                               "Please use 'cleanup' and 'terminate' instead!")
 
         if  cleanup :
             # cleanup implies terminate
