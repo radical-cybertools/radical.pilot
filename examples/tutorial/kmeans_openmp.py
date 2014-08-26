@@ -31,8 +31,8 @@ def pilot_state_cb(pilot, state):
 
 #------------------------------------------------------------------------------
 #
-def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
+def unit_state_cb(unit, state):
+    """unit_state_cb() is a callback function. It gets called very
     time a ComputeUnit changes its state.
     """
     if state == radical.pilot.states.FAILED:
@@ -88,7 +88,7 @@ def main():
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
         # change their state.
-        umgr.register_callback(unit_state_change_cb)
+        umgr.register_callback(unit_state_cb)
 
         # Add the created ComputePilot to the UnitManager.
         print "Registering Compute Pilot with Unit Manager ..."

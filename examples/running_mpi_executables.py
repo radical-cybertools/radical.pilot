@@ -22,7 +22,7 @@ def pilot_state_cb (pilot, state) :
 
 #------------------------------------------------------------------------------
 #
-def unit_state_change_cb (unit, state) :
+def unit_state_cb (unit, state) :
     """ this callback is invoked on all unit state changes """
 
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
     # change their state.
-    umgr.register_callback(unit_state_change_cb)
+    umgr.register_callback(unit_state_cb)
 
     # Add the previously created ComputePilot to the UnitManager.
     umgr.add_pilots(pilot)
