@@ -160,7 +160,7 @@ class PilotManagerController(threading.Thread):
                     return data
 
         except KeyError, ke:
-            msg = "Unknown Pilot ID {0}".format(str(ke))
+            msg = "Unknown Pilot ID %s" % ke
             logger.error(msg)
             raise Exception(msg)
 
@@ -291,7 +291,7 @@ class PilotManagerController(threading.Thread):
                         self._db.set_all_running_compute_units(
                             pilot_id=pilot_id, 
                             state="Canceled",
-                            log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
+                            log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():

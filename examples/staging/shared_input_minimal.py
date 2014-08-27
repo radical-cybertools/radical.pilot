@@ -99,12 +99,10 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for unit in umgr.get_units():
-            # Print some information about the unit.
-            #print "\n{0}".format(str(unit))
 
             # Get the stdout and stderr streams of the ComputeUnit.
-            print " STDOUT: {0}".format(unit.stdout)
-            print " STDERR: {0}".format(unit.stderr)
+            print " STDOUT: %s" % unit.stdout
+            print " STDERR: %s" % unit.stderr
 
         session.close(delete=False)
 

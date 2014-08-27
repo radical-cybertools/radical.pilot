@@ -184,7 +184,7 @@ class Session():
         try:
             return cursor[0]
         except:
-            raise Exception("Couldn't find Session UID '{0}'in database.".format(sid))
+            raise Exception("Couldn't find Session UID '%s' in database." % sid)
 
     #--------------------------------------------------------------------------
     #
@@ -196,7 +196,7 @@ class Session():
         self._s.update(
             {"_id": ObjectId(self._session_id)},
             {"$set": 
-                {"resource_configs.{0}".format(name.replace(".", "<dot>")): config}
+                {"resource_configs.%s" % name.replace(".", "<dot>"): config}
             },
             upsert=True
         )
@@ -628,7 +628,7 @@ class Session():
         try:
             return cursor[0]
         except:
-            msg = "No UnitManager with id '{0}' found in database.".format(unit_manager_id)
+            msg = "No UnitManager with id '%s' found in database." % unit_manager_id
             raise DBException(msg=msg)
 
     #--------------------------------------------------------------------------
@@ -644,7 +644,7 @@ class Session():
         try:
             return cursor[0]
         except:
-            msg = "No pilot manager with id '{0}' found in DB.".format(unit_manager_id)
+            msg = "No pilot manager with id '%s' found in DB." % unit_manager_id
             raise DBException(msg=msg)
 
 

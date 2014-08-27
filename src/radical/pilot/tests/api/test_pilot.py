@@ -102,7 +102,7 @@ class TestPilot(unittest.TestCase):
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
         pilot.wait(timeout=5*60)
-        assert pilot.state == radical.pilot.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
+        assert pilot.state == radical.pilot.FAILED, "State is '%s' instead of 'Failed'." % pilot.state
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
