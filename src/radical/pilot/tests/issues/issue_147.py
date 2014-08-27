@@ -77,7 +77,7 @@ class TestIssue147(unittest.TestCase):
         cudesc.arguments  = ['1']
 
         cu = um.submit_units(cudesc)
-        um.wait_units()
+        um.wait_units(timeout=5*60)
 
         session_id = session.uid
 

@@ -79,11 +79,11 @@ class TestIssue213(unittest.TestCase):
 
         assert pilot is not None
 
-        pilot.wait(radical.pilot.ACTIVE, timeout=self.test_timeout*60)
+        pilot.wait(state=radical.pilot.ACTIVE, timeout=self.test_timeout*60)
         assert pilot.state == radical.pilot.ACTIVE
 
         # the pilot should finish after it has reached run_time
-        pilot.wait(radical.pilot.DONE, timeout=self.test_timeout*60)
+        pilot.wait(timeout=self.test_timeout*60)
         assert pilot.state == radical.pilot.DONE
 
         session.close()

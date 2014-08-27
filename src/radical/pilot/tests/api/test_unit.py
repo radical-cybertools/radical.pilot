@@ -82,11 +82,11 @@ class TestUnit(unittest.TestCase):
         assert cu.submission_time is not None
         assert cu.start_time is None # MS: I dont understand this assertion
 
-        cu.wait([radical.pilot.EXECUTING, radical.pilot.FAILED], timeout=5*60)
+        cu.wait(state=[radical.pilot.EXECUTING, radical.pilot.FAILED], timeout=5*60)
         assert cu.state == radical.pilot.EXECUTING
         assert cu.start_time is not None
 
-        cu.wait([radical.pilot.DONE, radical.pilot.FAILED], timeout=5*60)
+        cu.wait(timeout=5*60)
         assert cu.state == radical.pilot.DONE
         assert cu.stop_time is not None
 
@@ -129,18 +129,15 @@ class TestUnit(unittest.TestCase):
         assert cu is not None
         assert cu.submission_time is not None
 
-        # Let it start!
-        time.sleep(10)
-
         # Make sure it is running!
-        cu.wait(radical.pilot.EXECUTING, timeout=5)
+        cu.wait(state=radical.pilot.EXECUTING, timeout=60)
         assert cu.state == radical.pilot.EXECUTING
         assert cu.start_time is not None
 
         # Cancel the CU!
         cu.cancel()
 
-        cu.wait(radical.pilot.CANCELED, timeout=10)
+        cu.wait(timeout=60)
         assert cu.state == radical.pilot.CANCELED
         assert cu.stop_time is not None
 
@@ -183,18 +180,15 @@ class TestUnit(unittest.TestCase):
         assert cu is not None
         assert cu.submission_time is not None
 
-        # Let it start!
-        time.sleep(10)
-
         # Make sure it is running!
-        cu.wait(radical.pilot.EXECUTING, timeout=5)
+        cu.wait(state=radical.pilot.EXECUTING, timeout=60)
         assert cu.state == radical.pilot.EXECUTING
         assert cu.start_time is not None
 
         # Cancel the CU!
         um.cancel_units(cu.uid)
 
-        cu.wait(radical.pilot.CANCELED, timeout=10)
+        cu.wait(timeout=60)
         assert cu.state == radical.pilot.CANCELED
         assert cu.stop_time is not None
 
