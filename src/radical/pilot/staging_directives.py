@@ -45,10 +45,32 @@ def expand_staging_directive(staging_directive, logger):
     for sd in staging_directive:
 
         if isinstance(sd, str):
-            # We detected a string, convert into dict
 
-            new_sd = {'source':   sd,
-                      'target':   os.path.basename(sd),
+            # We detected a string, convert into dict.  The interpretation
+            # differs depending of redirection characters being present in the
+            # string.
+            append = False
+            if '>>' in sd :
+                src, tgt = sd.split ('>>', 2)
+                append   = True
+            elif '>' in sd :
+                src, tgt = sd.split ('>',  2)
+                append   = False
+            if '<<' in sd :
+                tgt, src = sd.split ('<<', 2)
+                append   = True
+            elif '<' in sd :
+                tgt, src = sd.split ('<',  2)
+                append   = False
+            else :
+                src, tgt = sd, os.path.basename(sd)
+                append   = False
+
+            if  append :
+                logger.warn ("append mode on staging not supported (ignored)")
+
+            new_sd = {'source':   src.strip(),
+                      'target':   tgt.strip(),
                       'action':   DEFAULT_ACTION,
                       'flags':    DEFAULT_FLAGS,
                       'priority': DEFAULT_PRIORITY
