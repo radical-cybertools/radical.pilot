@@ -36,7 +36,7 @@ def unit_state_cb (unit, state) :
 
 #------------------------------------------------------------------------------
 #
-def main():
+if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
@@ -44,9 +44,10 @@ def main():
         # well as security contexts.
         session = rp.Session()
 
+# !!!   you may need to specify a login name below, to be used in the session.
         # Add an ssh identity to the session.
         c = rp.Context('ssh')
-        #c.user_id = 'osdcXX'
+      # c.user_id = 'osdcXX'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -58,12 +59,17 @@ def main():
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
+# !!!   you may want to specify a different target resource below
         # this describes the parameters and requirements for our pilot job
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "localhost" # NOTE: This is a "label", not a hostname
+        pdesc.resource = "stampede.tacc.utexas.edu" # NOTE: This is a "label", not a hostname
         pdesc.runtime  = 5 # minutes
         pdesc.cores    = 1
         pdesc.cleanup  = True
+
+# !!!   you may need to specify project and queue here
+#       pdesc.project  = 'TG-MCB140109'
+#       pdesc.queue    = 'default'
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
@@ -72,9 +78,8 @@ def main():
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         print "Initializing Unit Manager ..."
-        umgr = rp.UnitManager(
-            session=session,
-            scheduler=rp.SCHED_DIRECT_SUBMISSION)
+        umgr = rp.UnitManager (session=session,
+                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -86,19 +91,22 @@ def main():
         umgr.add_pilots(pilot)
 
 # !!!   # FIXME: change to a useful data file
-        input = '/data/random_1000000points.csv'
-        output = '$PWD'
-        clusters = 42
+        input     = '/data/random_1000000points.csv'
+        output    = '$PWD'
+        clusters  = 42
         threshold = 0.0010 # default
+        cores     = 1      # Number of cores to use for once instance.
 
         cudesc = rp.ComputeUnitDescription()
-        cudesc.cores       = 1
-        cudesc.executable  = "kmeans_seq"
-        cudesc.arguments   = ['-i', input, # input file
-                              '-z', output, # output directory
-                              '-n', clusters, # number of clusters to find
-                              '-t', threshold, # convergence threshold
-                              '-o' # output timing results
+        cudesc.cores       = cores
+        cudesc.executable  = "kmeans_omp"
+        cudesc.pre_exec    = ["module load intel-cluster-runtime"]
+        cudesc.arguments   = ['-i', input,      # input file
+                              '-z', output,     # output directory
+                              '-n', clusters,   # number of clusters to find
+                              '-t', threshold,  # convergence threshold
+                              '-p', cores,      # number of cores, should be the same as cudesc.cores
+                              '-o'              # output timing results
                               ]
 
         # Submit the previously created ComputeUnit descriptions to the
@@ -111,20 +119,19 @@ def main():
         umgr.wait_units()
         print "All CUs completed successfully!"
 
-        session.close(delete=False)
-        session.close(cleanup=True, terminate=True)
-        print "Closed session, exiting now ..."
 
     except Exception as e:
-            print "AN ERROR OCCURRED: %s" % ((str(e)))
-            return(-1)
+        print "An error occurred: %s" % ((str(e)))
+        sys.exit (-1)
 
+    except KeyboardInterrupt :
+        print "Execution was interrupted"
+        sys.exit (-1)
 
-#------------------------------------------------------------------------------
+    finally :
+        print "Closing session, exiting now ..."
+        session.close()
+
 #
-if __name__ == "__main__":
+# ------------------------------------------------------------------------------
 
-    sys.exit(main())
-
-#
-#------------------------------------------------------------------------------

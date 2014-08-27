@@ -2,7 +2,6 @@
 import os
 import sys
 import radical.pilot as rp
-import traceback
 
 """ DESCRIPTION: Tutorial 2: Chaining Tasks.
 For every task A_n a task B_n is started consecutively.
@@ -37,9 +36,9 @@ def unit_state_cb (unit, state) :
         sys.exit (1)
 
 
-# -----------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-def main():
+if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
@@ -47,6 +46,7 @@ def main():
         # well as security contexts.
         session = rp.Session()
 
+# !!!   you may need to specify a login name below, to be used in the session.
         # Add an ssh identity to the session.
         c = rp.Context('ssh')
       # c.user_id = 'osdcXX'
@@ -61,12 +61,17 @@ def main():
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
+# !!!   you may want to specify a different target resource below
         # this describes the parameters and requirements for our pilot job
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = 'localhost'
-        pdesc.runtime  =  5 # minutes
-        pdesc.cores    =  1
-        pdesc.cleanup  =  True
+        pdesc.resource = "stampede.tacc.utexas.edu" # NOTE: This is a "label", not a hostname
+        pdesc.runtime  = 5 # minutes
+        pdesc.cores    = 1
+        pdesc.cleanup  = True
+
+# !!!   you may need to specify project and queue here
+#       pdesc.project  = 'TG-MCB140109'
+#       pdesc.queue    = 'default'
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
@@ -75,16 +80,15 @@ def main():
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         print "Initializing Unit Manager ..."
-        umgr = rp.UnitManager(
-            session=session,
-            scheduler=rp.SCHED_DIRECT_SUBMISSION)
+        umgr = rp.UnitManager (session=session,
+                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
         # change their state.
         umgr.register_callback(unit_state_cb)
 
-        # Add the previously created ComputePilot to the UnitManager.
+        # Add the created ComputePilot to the UnitManager.
         print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
 
@@ -114,6 +118,7 @@ def main():
         # A B CU reads the content of the output file of an A CU and writes it into its own
         # output file.
         cu_list_B = []
+
         # We create a copy of cu_list_A so that we can remove elements from it,
         # and still reference to the original index.
         cu_list_A_copy = cu_list_A[:]
@@ -145,20 +150,28 @@ def main():
 
         print "All Compute Units completed successfully!"
 
-        session.close()
-        print "Closed session, exiting now ..."
 
     except Exception as e:
-            print "AN ERROR OCCURRED: %s" % ((str(e)))
-            return(-1)
+        print "An error occurred: %s" % ((str(e)))
+        sys.exit (-1)
+
+    except KeyboardInterrupt :
+        print "Execution was interrupted"
+        sys.exit (-1)
 
 
-#------------------------------------------------------------------------------
+    except Exception as e:
+        print "An error occurred: %s" % ((str(e)))
+        sys.exit (-1)
+
+    except KeyboardInterrupt :
+        print "Execution was interrupted"
+        sys.exit (-1)
+
+    finally :
+        print "Closing session, exiting now ..."
+        session.close()
+
 #
-if __name__ == "__main__":
-
-    sys.exit(main())
-
-#
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
