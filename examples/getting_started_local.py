@@ -29,6 +29,7 @@ def unit_state_cb (unit, state) :
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
     if  state == rp.FAILED :
+        print "stderr: %s" % unit.stderr
         sys.exit (1)
 
 
@@ -126,11 +127,11 @@ if __name__ == "__main__":
     cuds = []
     for unit_count in range(0, 16):
         cud = rp.ComputeUnitDescription()
-        cud.executable    = "/bash"
+        cud.executable    = "/bin/sh"
         cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
         cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
         cud.cores         = 1
-        cud.input_staging = ['file1.dat', 'file2.dat']
+        cud.input_data    = ['file1.dat', 'file2.dat']
 
         cuds.append(cud)
 

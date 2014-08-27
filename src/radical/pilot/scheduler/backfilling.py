@@ -161,6 +161,7 @@ class BackfillingScheduler(Scheduler):
         # code as well, thus we silently ignore this issue for now, and accept
         # this as known limitation....
         self.pilots[pid] = dict()
+        self.pilots[pid]['cores']    = pilot.description.cores
         self.pilots[pid]['caps']     = pilot.description.cores
         self.pilots[pid]['state']    = pilot.state
         self.pilots[pid]['resource'] = pilot.resource
@@ -305,7 +306,7 @@ class BackfillingScheduler(Scheduler):
             # print a warning if a unit cannot possibly be scheduled, ever
             can_handle_unit = False
             for pid in self.pilots :
-                if  unit.cores <= pilot.cores :
+                if  unit.description.cores <= self.pilots[pid]['cores'] :
                     can_handle_unit=True
                     break
 
