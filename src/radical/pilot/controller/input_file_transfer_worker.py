@@ -58,7 +58,7 @@ class InputFileTransferWorker(threading.Thread):
             try:
                 connection = self.db_connection_info.get_db_handle()
                 db = connection[self.db_connection_info.dbname]
-                um_col = db["%s.w" % self.db_connection_info.session_id]
+                um_col = db["%s.cu" % self.db_connection_info.session_id]
                 logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
             except Exception, ex:
@@ -97,18 +97,18 @@ class InputFileTransferWorker(threading.Thread):
                             remote_sandbox = compute_unit["sandbox"]
                             input_staging = compute_unit["FTW_Input_Directives"]
 
-                            # We need to create the WU's directory in case it doesn't exist yet.
+                            # We need to create the cU's directory in case it doesn't exist yet.
                             log_msg = "Creating ComputeUnit sandbox directory %s." % remote_sandbox
                             log_messages.append(log_msg)
                             logger.info(log_msg)
 
                             # Creating the sandbox directory.
                             try:
-                                wu_dir = saga.filesystem.Directory(
+                                cu_dir = saga.filesystem.Directory(
                                     remote_sandbox,
                                     flags=saga.filesystem.CREATE_PARENTS,
                                     session=self._session)
-                                wu_dir.close()
+                                cu_dir.close()
                             except Exception, ex:
                                 tb = traceback.format_exc()
                                 logger.info('Error: %s. %s' % (str(ex), tb))
@@ -194,21 +194,21 @@ class InputFileTransferWorker(threading.Thread):
                                             }
                                            )
                     # Iterate over all the returned CUs (if any)
-                    for wu in cursor_w:
+                    for cu in cursor_w:
                         # See if there are any FTW Input Directives still pending
-                        if wu['FTW_Input_Status'] == EXECUTING and \
-                                not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['FTW_Input_Directives']):
-                            # All Input Directives for this FTW are done, mark the WU accordingly
-                            um_col.update({"_id": ObjectId(wu["_id"])},
+                        if cu['FTW_Input_Status'] == EXECUTING and \
+                                not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['FTW_Input_Directives']):
+                            # All Input Directives for this FTW are done, mark the CU accordingly
+                            um_col.update({"_id": ObjectId(cu["_id"])},
                                           {'$set': {'FTW_Input_Status': DONE},
                                            '$push': {'log': 'All FTW Input Staging Directives done - %d.' % self._worker_number}})
 
                         # See if there are any Agent Input Directives still pending or executing,
                         # if not, mark it DONE.
-                        if wu['Agent_Input_Status'] == EXECUTING and \
-                                not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['Agent_Input_Directives']):
-                            # All Input Directives for this Agent are done, mark the WU accordingly
-                            um_col.update({"_id": ObjectId(wu["_id"])},
+                        if cu['Agent_Input_Status'] == EXECUTING and \
+                                not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['Agent_Input_Directives']):
+                            # All Input Directives for this Agent are done, mark the CU accordingly
+                            um_col.update({"_id": ObjectId(cu["_id"])},
                                            {'$set': {'Agent_Input_Status': DONE},
                                             '$push': {'log': 'All Agent Input Staging Directives done - %d.' % self._worker_number}
                                            })
