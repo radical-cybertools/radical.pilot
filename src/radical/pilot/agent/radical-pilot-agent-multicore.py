@@ -103,6 +103,26 @@ STAGING_INPUT               = 'StagingInput'         # as there are distributed 
 PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just go,
 STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
+
+
+#---------------------------------------------------------------------------
+#
+start_time = time.time ()
+def get_rusage () :
+
+    import resource
+
+    self_usage  = resource.getrusage (resource.RUSAGE_SELF)
+    child_usage = resource.getrusage (resource.RUSAGE_CHILDREN)
+
+    rtime = time.time () - start_time
+    utime = self_usage.ru_utime  + child_usage.ru_utime
+    stime = self_usage.ru_stime  + child_usage.ru_stime
+    rss   = self_usage.ru_maxrss + child_usage.ru_maxrss
+
+    return "real %3f sec | user %.3f sec | system %.3f sec | mem %.2f kB" \
+         % (rtime, utime, stime, rss)
+
 #---------------------------------------------------------------------------
 #
 def pilot_FAILED(mongo_p, pilot_uid, logger, message):
@@ -112,12 +132,11 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"log" : message,
-                   "statehistory": {"state": FAILED, "timestamp": ts}},
-         "$set":  {"state": FAILED,
-                   "capability" : 0,
-                   "finished": ts}
-
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
+         "$set"    : {"state"       : FAILED,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #---------------------------------------------------------------------------
@@ -129,11 +148,11 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"log" : message,
-                   "statehistory": {"state": CANCELED, "timestamp": ts}},
-         "$set":  {"state": CANCELED,
-                   "capability" : 0,
-                   "finished": ts}
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
+         "$set"    : {"state"       : CANCELED,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #---------------------------------------------------------------------------
@@ -143,12 +162,13 @@ def pilot_DONE(mongo_p, pilot_uid):
     """
     ts = datetime.datetime.utcnow()
 
+    message ("pilot done")
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"statehistory": {"state": DONE, "timestamp": ts}},
-         "$set": {"state": DONE,
-                   "capability" : 0,
-                  "finished": ts}
-
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
+         "$set"    : {"state"       : DONE,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #-----------------------------------------------------------------------------
