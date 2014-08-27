@@ -69,7 +69,7 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait([radical.pilot.ACTIVE, radical.pilot.FAILED], timeout=5*60)
+        pilot.wait(state=[radical.pilot.ACTIVE, radical.pilot.FAILED], timeout=5*60)
         assert pilot.submission_time is not None
         assert pilot.state == radical.pilot.ACTIVE
         assert pilot.start_time is not None
@@ -78,7 +78,7 @@ class TestPilot(unittest.TestCase):
 
         # the pilot should finish after it has reached run_time
 
-        pilot.wait([radical.pilot.DONE, radical.pilot.FAILED], timeout=5*60)
+        pilot.wait(timeout=5*60)
         assert pilot.state == radical.pilot.DONE
         assert pilot.stop_time is not None
 
@@ -101,7 +101,7 @@ class TestPilot(unittest.TestCase):
         cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
-        pilot.wait(radical.pilot.FAILED, timeout=5*60)
+        pilot.wait(timeout=5*60)
         assert pilot.state == radical.pilot.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
 
         cpd = radical.pilot.ComputePilotDescription()
@@ -112,7 +112,7 @@ class TestPilot(unittest.TestCase):
         cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
-        pilot.wait(radical.pilot.FAILED, timeout=5*60)
+        pilot.wait(timeout=5*60)
         assert pilot.state == radical.pilot.FAILED, ("state should be %s and not %s" % (radical.pilot.FAILED, pilot.state))
 
         session.close()
@@ -139,7 +139,7 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait([radical.pilot.ACTIVE, radical.pilot.FAILED], timeout=5*60)
+        pilot.wait(state=[radical.pilot.ACTIVE, radical.pilot.FAILED], timeout=5*60)
         assert pilot.submission_time is not None
         assert pilot.state == radical.pilot.ACTIVE
         assert pilot.start_time is not None
@@ -147,7 +147,7 @@ class TestPilot(unittest.TestCase):
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait([radical.pilot.CANCELED, radical.pilot.FAILED], timeout=5*60)
+        pilot.wait(timeout=5*60)
         assert pilot.state == radical.pilot.CANCELED
         assert pilot.stop_time is not None
 

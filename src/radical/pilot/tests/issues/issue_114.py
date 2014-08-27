@@ -73,17 +73,17 @@ class TestIssue114(unittest.TestCase):
 
         all_tasks = []
 
-        for i in range(0,4):
+        for i in range(0,2):
             cudesc = radical.pilot.ComputeUnitDescription()
             cudesc.cores      = 1
             cudesc.executable = "/bin/sleep"
             cudesc.arguments  = ['180']
             all_tasks.append(cudesc)
 
-        cu = um.submit_units(all_tasks)
-        states = um.wait_units(timeout=60)
+        cu     = um.submit_units(all_tasks)
+        states = um.wait_units (state=[radical.pilot.SCHEDULING, radical.pilot.EXECUTING], 
+                                timeout=60)
 
-        assert states is not None
         assert radical.pilot.SCHEDULING in states
         assert radical.pilot.EXECUTING  in states
 
@@ -96,7 +96,7 @@ class TestIssue114(unittest.TestCase):
         """
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = radical.pilot.PilotManager(session=session)
+        pm  = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
@@ -118,15 +118,15 @@ class TestIssue114(unittest.TestCase):
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores      = 1
         cudesc.executable = "/bin/sleep"
-        cudesc.arguments  = ['80']
+        cudesc.arguments  = ['60']
 
         cu    = um.submit_units(cudesc)
-        state = um.wait_units(timeout=30)
+        state = um.wait_units(state=[radical.pilot.EXECUTING], timeout=50)
 
         assert state    == [radical.pilot.EXECUTING]
         assert cu.state ==  radical.pilot.EXECUTING
 
-        state = um.wait_units()
+        state = um.wait_units(timeout=80)
 
         assert state    == [radical.pilot.DONE]
         assert cu.state ==  radical.pilot.DONE
@@ -157,12 +157,15 @@ class TestIssue114(unittest.TestCase):
         )
         um.add_pilots(pilot)
 
-        state = pm.wait_pilots(timeout=60)
+        state = pm.wait_pilots(state=[radical.pilot.ACTIVE, 
+                                      radical.pilot.DONE, 
+                                      radical.pilot.FAILED], 
+                                      timeout=5*60)
 
         assert state       == [radical.pilot.ACTIVE]
         assert pilot.state ==  radical.pilot.ACTIVE
 
-        state = pm.wait_pilots()
+        state = pm.wait_pilots(timeout=60)
 
         assert state       == [radical.pilot.DONE]
         assert pilot.state ==  radical.pilot.DONE

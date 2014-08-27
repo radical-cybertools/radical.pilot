@@ -67,7 +67,7 @@ class TestIssue18(unittest.TestCase):
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
-        pilot.wait(radical.pilot.ACTIVE)
+        pilot.wait(state=radical.pilot.ACTIVE, timeout=5*60)
 
         # Now we extract the saga job id from the logs and KILL THE PROCESS
         saga_id = None
@@ -83,7 +83,7 @@ class TestIssue18(unittest.TestCase):
         j = s.get_job(saga_id)
         j.cancel()
 
-        pilot.wait(radical.pilot.FAILED, timeout=60)
+        pilot.wait(timeout=60)
         assert pilot.state == radical.pilot.FAILED
 
         session.close()

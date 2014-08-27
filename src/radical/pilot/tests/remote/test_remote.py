@@ -98,7 +98,7 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.start_time is None
             assert cu.stop_time is None
 
-        ret = um.wait_units(state=[radical.pilot.DONE, radical.pilot.FAILED], timeout=240)
+        ret = um.wait_units(timeout=5*60)
         print "Return states from wait: %s" % ret
 
         # With a sleep here, the test works, there seems to be an inconsistency in the state used by wait and the state reported.
@@ -139,14 +139,14 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(radical.pilot.ACTIVE, timeout=5.0*60)
+        pilot.wait(state=radical.pilot.ACTIVE, timeout=5*60)
         assert pilot.state == radical.pilot.ACTIVE
         assert pilot.start_time is not None
         assert pilot.submission_time is not None
 
 
         # the pilot should finish after it has reached run_time
-        pilot.wait(radical.pilot.DONE, timeout=5.0*60)
+        pilot.wait(timeout=5*60)
         assert pilot.state == radical.pilot.DONE
         assert pilot.stop_time is not None
 
@@ -178,7 +178,7 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(radical.pilot.ACTIVE)
+        pilot.wait(state=radical.pilot.ACTIVE, timeout=5*60)
         assert pilot.state == radical.pilot.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
         assert pilot.submission_time is not None
         assert pilot.start_time is not None
@@ -186,7 +186,7 @@ class TestRemoteSubmission(unittest.TestCase):
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait(radical.pilot.CANCELED, timeout=5.0*60)
+        pilot.wait(timeout=5*60)
         assert pilot.state == radical.pilot.CANCELED
         assert pilot.stop_time is not None
 
