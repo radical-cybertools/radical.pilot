@@ -131,7 +131,7 @@ if __name__ == "__main__":
         cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
         cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
         cud.cores         = 1
-        cud.input_data    = ['file1.dat', 'file2.dat']
+        cud.input_staging = ['file1.dat', 'file2.dat']
 
         cuds.append(cud)
 
