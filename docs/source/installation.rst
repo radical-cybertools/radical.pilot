@@ -65,7 +65,7 @@ First, you need to check out the sources from GitHub.
 
 .. code-block:: bash
 
-    git@github.com:radical-cybertools/radical.pilot.git
+    git clone git@github.com:radical-cybertools/radical.pilot.git
 
 Next, run the installer directly from the source directoy (assuming you have 
 set up a vritualenv):
