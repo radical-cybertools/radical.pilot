@@ -57,7 +57,7 @@ class OutputFileTransferWorker(threading.Thread):
             try:
                 connection = self.db_connection_info.get_db_handle()
                 db = connection[self.db_connection_info.dbname]
-                um_col = db["%s.w" % self.db_connection_info.session_id]
+                um_col = db["%s.cu" % self.db_connection_info.session_id]
                 logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
             except Exception, ex:
@@ -80,13 +80,13 @@ class OutputFileTransferWorker(threading.Thread):
                 )
                 state = STAGING_OUTPUT
 
-                #logger.info("OFTW after finding pending wus")
+                #logger.info("OFTW after finding pending cus")
                 if compute_unit is None:
-                    #logger.info("OFTW no wus, sleep")
+                    #logger.info("OFTW no cus, sleep")
                     # Sleep a bit if no new units are available.
                     time.sleep(0.1)
                 else:
-                    logger.info("OFTW wu found, progressing ...")
+                    logger.info("OFTW cu found, progressing ...")
                     # AM: The code below seems wrong when BULK_LIMIT != 1 -- the
                     # compute_unit will be a list then I assume.
                     try:
@@ -199,20 +199,20 @@ class OutputFileTransferWorker(threading.Thread):
                 }
                 )
                 # Iterate over all the returned CUs (if any)
-                for wu in cursor_w:
+                for cu in cursor_w:
                     # See if there are any FTW Output Directives still pending
-                    if wu['FTW_Output_Status'] == EXECUTING and \
-                            not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['FTW_Output_Directives']):
-                        # All Output Directives for this FTW are done, mark the WU accordingly
-                        um_col.update({"_id": ObjectId(wu["_id"])},
+                    if cu['FTW_Output_Status'] == EXECUTING and \
+                            not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['FTW_Output_Directives']):
+                        # All Output Directives for this FTW are done, mark the CU accordingly
+                        um_col.update({"_id": ObjectId(cu["_id"])},
                                       {'$set': {'FTW_Output_Status': DONE},
                                        '$push': {'log': 'All FTW output staging directives done - %d.' % self._worker_number}})
 
                     # See if there are any Agent Output Directives still pending
-                    if wu['Agent_Output_Status'] == EXECUTING and \
-                            not any(d['state'] == EXECUTING or d['state'] == PENDING for d in wu['Agent_Output_Directives']):
-                        # All Output Directives for this Agent are done, mark the WU accordingly
-                        um_col.update({"_id": ObjectId(wu["_id"])},
+                    if cu['Agent_Output_Status'] == EXECUTING and \
+                            not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['Agent_Output_Directives']):
+                        # All Output Directives for this Agent are done, mark the CU accordingly
+                        um_col.update({"_id": ObjectId(cu["_id"])},
                                       {'$set': {'Agent_Output_Status': DONE},
                                        '$push': {'log': 'All Agent Output Staging Directives done-%d.' % self._worker_number}
                                       })

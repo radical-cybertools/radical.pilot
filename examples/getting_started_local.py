@@ -23,7 +23,7 @@ def pilot_state_cb (pilot, state) :
 
 #------------------------------------------------------------------------------
 #
-def unit_state_change_cb (unit, state) :
+def unit_state_cb (unit, state) :
     """ this callback is invoked on all unit state changes """
 
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
     # change their state.
-    umgr.register_callback(unit_state_change_cb, rp.UNIT_STATE)
+    umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
 
     # Add the previously created ComputePilot to the UnitManager.
     umgr.add_pilots([pilot, pilot2])
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     cuds = []
     for unit_count in range(0, 16):
         cud = rp.ComputeUnitDescription()
-        cud.executable    = "/bin/bash"
+        cud.executable    = "/bash"
         cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
         cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
         cud.cores         = 1
@@ -157,7 +157,6 @@ if __name__ == "__main__":
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
     # Close automatically cancels the pilot(s).
-    pmgr.cancel_pilots ()
     print session.uid
     session.close (cleanup=False)
 

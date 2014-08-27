@@ -298,8 +298,20 @@ class BackfillingScheduler(Scheduler):
                         self.runq.append  (unit)
                         break
 
+
                 # unit was not scheduled...
                 schedule['units'][unit] = None
+
+            # print a warning if a unit cannot possibly be scheduled, ever
+            can_handle_unit = False
+            for pid in self.pilots :
+                if  unit.cores <= pilot.cores :
+                    can_handle_unit=True
+                    break
+
+            if  not can_handle_unit :
+                logger.warning ('cannot handle unit %s cb with current set of pilots' % uid)
+
 
         # tell the UM about the schedule
         self.manager.handle_schedule (schedule)

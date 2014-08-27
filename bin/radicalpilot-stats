@@ -734,8 +734,8 @@ def handle_session (dbclient, mode, dbname, session, pname) :
     cnames.append ("%s"    % session)
     cnames.append ("%s.pm" % session)
     cnames.append ("%s.p"  % session)
-    cnames.append ("%s.wm" % session)
-    cnames.append ("%s.w"  % session)
+    cnames.append ("%s.um" % session)
+    cnames.append ("%s.cu" % session)
 
     for name in cnames :
 

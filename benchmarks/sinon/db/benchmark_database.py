@@ -14,7 +14,7 @@ from pymongo import MongoClient
 
 DBNAME = 'radicalpilot_benchmark'
 
-SAMPLE_WU = {
+SAMPLE_CU = {
     "description"  : {"A": "foo", "B": "bar" },
     "queue_id"     : "none"
 }
@@ -45,7 +45,7 @@ def benchmark__add_workunits():
             # create a list that contains 'i' entries
             insert = list()
             for _ in range(0, i):
-                insert.append(deepcopy(SAMPLE_WU))
+                insert.append(deepcopy(SAMPLE_CU))
             t_1 = time.time()
             ##########################
             s.insert_workunits(p_ids[0], insert)
@@ -55,13 +55,13 @@ def benchmark__add_workunits():
 
             t_2 = time.time()
             ############################
-            wus = s.get_raw_workunits()
+            cus = s.get_raw_workunits()
             ############################
             t_d2 = time.time() - t_2
             get_raw_work_units_timings.append(t_d2)
 
-        print "Average time to add work units in bulks of %i: %f sec." % (i, numpy.mean(insert_workunits_timings))
-        print "Average time to get %s work units in bulk: %f sec." % (len(wus), numpy.mean(get_raw_work_units_timings))
+        print "Average time to add compute units in bulks of %i: %f sec." % (i, numpy.mean(insert_workunits_timings))
+        print "Average time to get %s compute units in bulk: %f sec." % (len(cus), numpy.mean(get_raw_work_units_timings))
 
     print "\n"
     s.delete()
