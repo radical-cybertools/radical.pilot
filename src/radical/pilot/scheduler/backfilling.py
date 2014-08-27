@@ -103,7 +103,7 @@ class BackfillingScheduler(Scheduler):
                 if  pid not in self.pilots :
                     logger.warning ('cannot handle unit %s cb for pilot %s (pilot is gone)' % (uid, pid))
 
-                if  unit in self.runq :
+                elif unit in self.runq :
                     # only interpret this event once, on any of the states above,
                     # whichever occurs first
                     self.pilots[pid]['caps'] += unit.description.cores
