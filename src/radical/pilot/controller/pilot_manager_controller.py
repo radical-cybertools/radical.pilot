@@ -191,19 +191,22 @@ class PilotManagerController(threading.Thread):
 
         for cb in self._shared_data[pilot_id]['callbacks']:
             try:
-                cb(self._shared_data[pilot_id]['facade_object'](),
-                    new_state)
+                if  self._shared_data[pilot_id]['facade_object'] :
+                    cb (self._shared_data[pilot_id]['facade_object'](), new_state)
+                else :
+                    logger.error("Couldn't call callback (no pilot instance)")
             except Exception, ex:
-                logger.error(
-                    "Couldn't call callback function %s" % str(ex))
+                logger.error("Couldn't call callback function %s" % str(ex))
                 raise
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
         for cb in self._manager_callbacks:
             try:
-                cb(self._shared_data[pilot_id]['facade_object'](),
-                     new_state)
+                if  self._shared_data[pilot_id]['facade_object'] :
+                    cb(self._shared_data[pilot_id]['facade_object'](), new_state)
+                else :
+                    logger.error("Couldn't call callback (no pilot instance)")
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
@@ -392,7 +395,7 @@ class PilotManagerController(threading.Thread):
         self._shared_data[pilot_uid]['callbacks'].append(callback_func)
 
         # Add the facade object if missing, e.g., after a re-connect.
-        if self._shared_data[pilot_uid]['facade_object'] is None:
+        if  self._shared_data[pilot_uid]['facade_object'] is None:
             self._shared_data[pilot_uid]['facade_object'] = weakref.ref(pilot)
 
         # Callbacks can only be registered when the ComputeAlready has a
