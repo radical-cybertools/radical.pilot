@@ -1777,9 +1777,9 @@ class Agent(threading.Thread):
         """Starts the thread when Thread.start() is called.
         """
         # first order of business: set the start time and state of the pilot
-        self._log.info("Agent started. Database updated.")
+        self._log.info("Agent %s starting ..." % self._pilot_id)
         ts = datetime.datetime.utcnow()
-        self._p.update(
+        ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : ACTIVE,
                       "nodes"          : self._exec_env.node_list,
@@ -1788,6 +1788,8 @@ class Agent(threading.Thread):
                       "capability"     : 0},
              "$push": {"statehistory": {"state": ACTIVE, "timestamp": ts}}
             })
+        # TODO: Check for return value, update should be true!
+        self._log.info("Database updated! %s" % ret)
 
         self._starttime = time.time()
 
