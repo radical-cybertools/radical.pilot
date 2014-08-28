@@ -90,33 +90,6 @@ if __name__ == "__main__":
     # Launch the pilot.
     pilot_3 = pmgr.submit_pilots(pdesc)
 
-    # Create a workload of 8 ComputeUnits.  Each compute unit
-    # uses /bin/cat to concatenate two input files, file1.dat and
-    # file2.dat. The output is written to STDOUT. cu.environment is
-    # used to demonstrate how to set environment variables withih a
-    # ComputeUnit - it's not strictly necessary for this example. As
-    # a shell script, the ComputeUnits would look something like this:
-    #
-    #    export INPUT1=file1.dat
-    #    export INPUT2=file2.dat
-    #    /bin/cat $INPUT1 $INPUT2
-    #
-    cus = list()
-
-  # for unit_count in range(0, 30):
-  #     cu = rp.ComputeUnitDescription()
-  #     cu.executable  = "/bin/sleep"
-  #     cu.arguments   = ["5"]
-  #     cu.cores       = 1
-  #   # cu.input_data  = ["/tmp/test.in.dat"]
-  #     cus.append(cu)
-
-    for unit_count in range(0, 512):
-        cu = rp.ComputeUnitDescription()
-        cu.kernel      = 'SLEEP'
-        cu.arguments   = ["300"]
-        cus.append(cu)
-
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
     umgr = rp.UnitManager (session=session, scheduler=rp.SCHED_BACKFILLING)
@@ -131,6 +104,15 @@ if __name__ == "__main__":
 
   # # wait until first pilots become active
     pilot_1.wait (state=rp.ACTIVE)
+
+    # Create a workload of 8 ComputeUnits.  
+    cus = list()
+
+    for unit_count in range(0, 512):
+        cu = rp.ComputeUnitDescription()
+        cu.kernel      = 'SLEEP'
+        cu.arguments   = ["300"]
+        cus.append(cu)
 
     # Submit the previously created ComputeUnit descriptions to the
     # PilotManager. This will trigger the selected scheduler to start

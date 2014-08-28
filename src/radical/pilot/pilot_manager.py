@@ -235,7 +235,9 @@ class PilotManager(Object):
         self._assert_obj_is_valid()
 
         # Implicit list conversion.
-        if not isinstance(pilot_descriptions, list):
+        return_list_type = True
+        if  not isinstance(pilot_descriptions, list):
+            return_list_type   = False
             pilot_descriptions = [pilot_descriptions]
 
         # Itereate over the pilot descriptions, try to create a pilot for
@@ -305,10 +307,10 @@ class PilotManager(Object):
             pilot_obj_list.append(pilot)
 
         # Implicit return value conversion
-        if len(pilot_obj_list) == 1:
-            return pilot_obj_list[0]
-        else:
+        if  return_list_type :
             return pilot_obj_list
+        else:
+            return pilot_obj_list[0]
 
     # -------------------------------------------------------------------------
     #
@@ -352,11 +354,18 @@ class PilotManager(Object):
         """
         self._assert_obj_is_valid()
 
+        
+        return_list_type = True
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
+            return_list_type = False
             pilot_ids = [pilot_ids]
 
         pilots = ComputePilot._get(pilot_ids=pilot_ids, pilot_manager_obj=self)
-        return pilots
+
+        if  return_list_type :
+            return pilots
+        else :
+            return pilots[0]
 
     # -------------------------------------------------------------------------
     #
@@ -401,7 +410,9 @@ class PilotManager(Object):
         if not isinstance(state, list):
             state = [state]
 
+        return_list_type = True
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
+            return_list_type = False
             pilot_ids = [pilot_ids]
 
         start_wait = time.time()
@@ -429,7 +440,11 @@ class PilotManager(Object):
             time.sleep(0.1)
 
         # done waiting
-        return p_states
+        if  return_list_type :
+            return p_states
+        else :
+            return p_states[0]
+
 
     # -------------------------------------------------------------------------
     #
@@ -455,6 +470,7 @@ class PilotManager(Object):
 
         # Register the cancelation request with the worker.
         self._worker.register_cancel_pilots_request(pilot_ids=pilot_ids)
+
 
     # -------------------------------------------------------------------------
     #
