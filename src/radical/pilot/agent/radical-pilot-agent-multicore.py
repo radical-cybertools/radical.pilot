@@ -808,8 +808,8 @@ class ExecWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"   % session_id]
-        self._w = mongo_db["%s.cu"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         # Queued tasks by the Agent
@@ -1303,7 +1303,7 @@ class ExecWorker(multiprocessing.Process):
 
                             # Find the task in the database
                             # TODO: shouldnt this be available somewhere already, that would save a roundtrip?!
-                            cu = self._w.find_one({"_id": ObjectId(uid)})
+                            cu = self._cu.find_one({"_id": ObjectId(uid)})
 
                             for directive in cu['Agent_Output_Directives']:
                                 output_staging = {
@@ -1315,7 +1315,7 @@ class ExecWorker(multiprocessing.Process):
                                 # Put the output staging directives in the queue
                                 self._output_staging_queue.put(output_staging)
 
-                                self._w.update(
+                                self._cu.update(
                                     {"_id": ObjectId(uid)},
                                     {"$set": {"Agent_Output_Status": EXECUTING}}
                                 )
@@ -1326,7 +1326,7 @@ class ExecWorker(multiprocessing.Process):
                         # but we need this code to set the state so that the FTW
                         # gets notified that it can start its work.
                         if task.ftw_output_staging:
-                            self._w.update(
+                            self._cu.update(
                                 {"_id": ObjectId(uid)},
                                 {"$set": {"FTW_Output_Status": PENDING}}
                             )
@@ -1417,7 +1417,7 @@ class ExecWorker(multiprocessing.Process):
         if not isinstance(tasks, list):
             tasks = [tasks]
         for task in tasks:
-            self._w.update({"_id": ObjectId(task.uid)}, 
+            self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
                       "started"       : task.started,
                       "finished"      : task.finished,
@@ -1453,8 +1453,8 @@ class InputStagingWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"   % session_id]
-        self._w = mongo_db["%s.cu"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
@@ -1543,13 +1543,13 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.info(log_message)
 
                 # If all went fine, update the state of this StagingDirective to Done
-                self._w.update({'_id': ObjectId(cu_id),
-                                'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state': PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']},
-                               {'$set': {'Agent_Input_Directives.$.state': DONE},
-                                '$push': {'log': log_message}})
+                self._cu.update({'_id': ObjectId(cu_id),
+                                 'Agent_Input_Status': EXECUTING,
+                                 'Agent_Input_Directives.state': PENDING,
+                                 'Agent_Input_Directives.source': directive['source'],
+                                 'Agent_Input_Directives.target': directive['target']},
+                                {'$set' : {'Agent_Input_Directives.$.state': DONE},
+                                 '$push': {'log': log_message}})
 
             except:
                 # If we catch an exception, assume the staging failed
@@ -1557,15 +1557,15 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.error(log_message)
 
                 # If a staging directive fails, fail the CU also.
-                self._w.update({'_id': ObjectId(cu_id),
-                                'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state': PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']},
-                               {'$set': {'Agent_Input_Directives.$.state': FAILED,
-                                         'Agent_Input_Status': FAILED,
-                                         'state': FAILED},
-                                '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
+                self._cu.update({'_id': ObjectId(cu_id),
+                                 'Agent_Input_Status': EXECUTING,
+                                 'Agent_Input_Directives.state': PENDING,
+                                 'Agent_Input_Directives.source': directive['source'],
+                                 'Agent_Input_Directives.target': directive['target']},
+                                {'$set': {'Agent_Input_Directives.$.state': FAILED,
+                                          'Agent_Input_Status': FAILED,
+                                          'state': FAILED},
+                                 '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
 
 
 # ----------------------------------------------------------------------------
@@ -1593,8 +1593,8 @@ class OutputStagingWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"   % session_id]
-        self._w = mongo_db["%s.cu"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
@@ -1653,13 +1653,13 @@ class OutputStagingWorker(multiprocessing.Process):
                         self._log.error('Action %s not supported' % directive['action'])
 
                     # If all went fine, update the state of this StagingDirective to Done
-                    self._w.update({'_id' : ObjectId(cu_id),
-                                    'Agent_Output_Status': EXECUTING,
-                                    'Agent_Output_Directives.state': PENDING,
-                                    'Agent_Output_Directives.source': source,
-                                    'Agent_Output_Directives.target': target},
-                                   {'$set': {'Agent_Output_Directives.$.state': DONE},
-                                    '$push': {'log': logmessage}})
+                    self._cu.update({'_id' : ObjectId(cu_id),
+                                     'Agent_Output_Status': EXECUTING,
+                                     'Agent_Output_Directives.state': PENDING,
+                                     'Agent_Output_Directives.source': source,
+                                     'Agent_Output_Directives.target': target},
+                                    {'$set' : {'Agent_Output_Directives.$.state': DONE},
+                                     '$push': {'log': logmessage}})
 
                 except Queue.Empty:
                     # do nothing and sleep if we don't have any queued staging
@@ -1697,8 +1697,8 @@ class Agent(threading.Thread):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"   % session_id]
-        self._w = mongo_db["%s.cu"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         # the task queue holds the tasks that are pulled from the MongoDB
@@ -1858,7 +1858,7 @@ class Agent(threading.Thread):
                     # Check if there are compute units waiting for execution,
                     # and log that we pulled it.
                     ts = datetime.datetime.utcnow()
-                    cu_cursor = self._w.find_and_modify(
+                    cu_cursor = self._cu.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : PENDING_EXECUTION},
                         update={"$set" : {"state": SCHEDULING},
@@ -1910,7 +1910,7 @@ class Agent(threading.Thread):
                     # Check if there are compute units waiting for input staging
                     #
                     ts = datetime.datetime.utcnow()
-                    cu_cursor = self._w.find_and_modify(
+                    cu_cursor = self._cu.find_and_modify(
                         query={'pilot' : self._pilot_id,
                                'Agent_Input_Status': PENDING},
                         # TODO: This might/will create double state history for StagingInput
@@ -2300,7 +2300,7 @@ if __name__ == "__main__":
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
         mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.cu" % options.session_id]  # AM: never used
+        mongo_cu      = mongo_db["%s.cu" % options.session_id]  # AM: never used
         mongo_wm     = mongo_db["%s.um" % options.session_id]  # AM: never used
 
     except Exception, ex:
