@@ -367,7 +367,8 @@ def plot_session (dbclient, dbname, session) :
         for doc in docs['pilot'] :
             cores = len(doc['nodes']) * int(doc['cores_per_node'])
             if  cores == pilot_size :
-                pilot_docs.append (doc)
+                if  doc not in pilot_docs :
+                    pilot_docs.append (doc)
 
     for pilot in pilot_docs :
 
