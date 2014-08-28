@@ -107,8 +107,8 @@ class ComputeUnitDescription(attributes.Attributes) :
 
     .. data:: cleanup
 
-       [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
-       delete the entire unit sandbox upon termination. This includes all 
+       [Type: `bool`] [optional] If cleanup is set to True, the pilot will
+       delete the entire unit sandbox upon termination. This includes all
        generated output data in that sandbox.  Output staging will be performed
        before cleanup.
 
@@ -178,16 +178,20 @@ class ComputeUnitDescription(attributes.Attributes) :
 
     #------------------------------------------------------------------------------
     #
-    def __deepcopy__ (self, memo):
+    def __str__(self):
         """Returns a string representation of the object.
         """
-   
+        return str(self.as_dict())
+
+    # TODO: investigate why I needed this in the first place ...
+
+    #------------------------------------------------------------------------------
+    #
+    def __deepcopy__ (self, memo):
+
         other = ComputeUnitDescription ()
-   
+
         for key in self.list_attributes () :
             other.set_attribute (key, self.get_attribute (key))
-   
+
         return other
-
-# ---------------------------------------------------------------------------------
-
