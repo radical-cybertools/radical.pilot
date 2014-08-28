@@ -450,7 +450,7 @@ class PilotLauncherWorker(threading.Thread):
                         ##
                         ######################################################################
 
-                        # Update the CU's state to 'DONE' if all transfers were successfull.
+                        # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
                         ts = datetime.datetime.utcnow()
                         pilot_col.update(
                             {"_id": ObjectId(compute_pilot_id)},
