@@ -280,19 +280,9 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._w.find(
-            {"_id": ObjectId(unit_uid)},
-            {"stdout_id": 1}
-        )
+        cursor = self._w.find({"_id": ObjectId(unit_uid)})
 
-        stdout_id = cursor[0]['stdout_id']
-
-        if stdout_id is None:
-            return None
-        else:
-            gfs = gridfs.GridFS(self._db)
-            stdout = gfs.get(stdout_id)
-            return stdout.read()
+        return cursor[0]['stdout']
 
     #--------------------------------------------------------------------------
     #
@@ -302,19 +292,9 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._w.find(
-            {"_id": ObjectId(unit_uid)},
-            {"stderr_id": 1}
-        )
+        cursor = self._w.find({"_id": ObjectId(unit_uid)})
 
-        stderr_id = cursor[0]['stderr_id']
-
-        if stderr_id is None:
-            return None
-        else:
-            gfs = gridfs.GridFS(self._db)
-            stderr = gfs.get(stderr_id)
-            return stderr.read()
+        return cursor[0]['stderr']
 
     #--------------------------------------------------------------------------
     #
@@ -807,8 +787,8 @@ class Session():
                 "exit_code":     None,
                 #"workdir":       "unit-"+unit.uid,
                 "sandbox":       None,
-                "stdout_id":     None,
-                "stderr_id":     None,
+                "stdout":        None,
+                "stderr":        None,
                 "log":           unit_log,
                 "FTW_Input_Status": None,
                 "FTW_Input_Directives": None,

@@ -27,6 +27,8 @@ PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
 KERNEL                 = 'kernel'
 CLEANUP                = 'cleanup'
+STDOUT                 = 'stdout'
+STDERR                 = 'stderr'
 
 # ------------------------------------------------------------------------------
 #
@@ -65,6 +67,14 @@ class ComputeUnitDescription(attributes.Attributes) :
     .. data:: environment 
 
        (`Attribute`) Environment variables to set in the execution environment (`dict`) [`optional`].
+
+    .. data:: stdout
+
+       (`Attribute`) the name of the file to store stdout in.
+
+    .. data:: stderr
+
+       (`Attribute`) the name of the file to store stderr in.
 
     .. data:: input_staging
 
@@ -129,6 +139,8 @@ class ComputeUnitDescription(attributes.Attributes) :
       # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
+        self._attributes_register(STDOUT,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(STDERR,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(INPUT_STAGING,    None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(OUTPUT_STAGING,   None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
 
@@ -155,6 +167,8 @@ class ComputeUnitDescription(attributes.Attributes) :
         self.set_attribute (ENVIRONMENT,    None)
         self.set_attribute (PRE_EXEC,       None)
         self.set_attribute (POST_EXEC,      None)
+        self.set_attribute (STDOUT,         None)
+        self.set_attribute (STDERR,         None)
         self.set_attribute (INPUT_STAGING,  None)
         self.set_attribute (OUTPUT_STAGING, None)
         self.set_attribute (CORES,             1)

@@ -19,7 +19,6 @@ import time
 import errno
 import Queue
 import signal
-import gridfs
 import shutil
 import pymongo
 import optparse
@@ -103,6 +102,8 @@ STAGING_INPUT               = 'StagingInput'         # as there are distributed 
 PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just go,
 STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
+#---------------------------------------------------------------------------
+MAX_IO_LOGLENGTH            = 1024 # max number of unit out/err chars to push to db
 
 
 #---------------------------------------------------------------------------
@@ -744,7 +745,8 @@ class ExecutionEnvironment(object):
 class Task(object):
 
     def __init__(self, uid, executable, arguments, environment, numcores, mpi,
-                 pre_exec, post_exec, workdir, stdout, stderr, agent_output_staging, ftw_output_staging):
+                 pre_exec, post_exec, workdir, stdout_file, stderr_file, 
+                 agent_output_staging, ftw_output_staging):
 
         self._log         = None
         self._description = None
@@ -755,8 +757,8 @@ class Task(object):
         self.executable     = executable
         self.arguments      = arguments
         self.workdir        = workdir
-        self.stdout         = stdout
-        self.stderr         = stderr
+        self.stdout_file    = stdout_file
+        self.stderr_file    = stderr_file
         self.agent_output_staging = agent_output_staging
         self.ftw_output_staging = ftw_output_staging
         self.numcores       = numcores
@@ -773,9 +775,8 @@ class Task(object):
 
         self.state          = None
         self.exit_code      = None
-
-        self.stdout_id      = None
-        self.stderr_id      = None
+        self.stdout         = None
+        self.stderr         = None
 
         self._log           = []
         self._proc          = None
@@ -1339,29 +1340,24 @@ class ExecWorker(multiprocessing.Process):
 
             idle = False
 
-            # Upload the stdout and stderr to GridFS
+            # store stdout and stderr to GridFS
             workdir = task.workdir
             task_id = task.uid
 
-            stdout_id = None
-            stderr_id = None
+            if  os.path.isfile(task.stdout_file):
+                with open(task.stdout_file, 'r') as stdout_f:
+                    txt = stdout_f.read()
+                    if  len(txt) > MAX_IO_LOGLENGTH :
+                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
+                    task.stdout = txt
 
-            stdout = "%s/STDOUT" % workdir
-            if os.path.isfile(stdout):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stdout, 'r') as stdout_f:
-                    stdout_id = fs.put(stdout_f.read(), filename=stdout)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+            if  os.path.isfile(task.stderr_file):
+                with open(task.stderr_file, 'r') as stderr_f:
+                    txt = stderr_f.read()
+                    if  len(txt) > MAX_IO_LOGLENGTH :
+                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
+                    task.stderr = txt
 
-            stderr = "%s/STDERR" % workdir
-            if os.path.isfile(stderr):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stderr, 'r') as stderr_f:
-                    stderr_id = fs.put(stderr_f.read(), filename=stderr)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
-
-            task.stdout_id = stdout_id
-            task.stderr_id = stderr_id
             task.exit_code = ret_code
 
             # Record the time and state
@@ -1427,8 +1423,8 @@ class ExecWorker(multiprocessing.Process):
                       "finished"      : task.finished,
                       "slots"         : task.slots,
                       "exit_code"     : task.exit_code,
-                      "stdout_id"     : task.stdout_id,
-                      "stderr_id"     : task.stderr_id},
+                      "stdout"        : task.stdout,
+                      "stderr"        : task.stderr},
              "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
             })
 
@@ -1882,6 +1878,13 @@ class Agent(threading.Thread):
                             self._log.info("Found new tasks in pilot queue: %s" % w_uid)
 
                             task_dir_name = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
+                            stdout = cu["description"].get ('stdout')
+                            stderr = cu["description"].get ('stderr')
+
+                            if  stdout : stdout_file = task_dir_name+'/'+stdout
+                            else       : stdout_file = task_dir_name+'/STDOUT'
+                            if  stderr : stderr_file = task_dir_name+'/'+stderr
+                            else       : stderr_file = task_dir_name+'/STDERR'
 
                             task = Task(uid         = w_uid,
                                         executable  = cu["description"]["executable"],
@@ -1892,8 +1895,8 @@ class Agent(threading.Thread):
                                         pre_exec    = cu["description"]["pre_exec"],
                                         post_exec   = cu["description"]["post_exec"],
                                         workdir     = task_dir_name,
-                                        stdout      = task_dir_name+'/STDOUT',
-                                        stderr      = task_dir_name+'/STDERR',
+                                        stdout_file = stdout_file,
+                                        stderr_file = stderr_file,
                                         agent_output_staging = True if cu['Agent_Output_Directives'] else False,
                                         ftw_output_staging   = True if cu['FTW_Output_Directives'] else False
                                         )
@@ -2140,11 +2143,8 @@ class _Process(subprocess.Popen):
         # We are done writing to the launch script, its ready for execution now.
         launch_script.close()
 
-        self.stdout_filename = task.stdout
-        self._stdout_file_h  = open(self.stdout_filename, "w")
-
-        self.stderr_filename = task.stderr
-        self._stderr_file_h  = open(self.stderr_filename, "w")
+        self._stdout_file_h = open(task.stdout_file, "w")
+        self._stderr_file_h = open(task.stderr_file, "w")
 
         self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
 
