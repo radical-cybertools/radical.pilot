@@ -50,16 +50,16 @@ def expand_staging_directive(staging_directive, logger):
             # differs depending of redirection characters being present in the
             # string.
             append = False
-            if '>>' in sd :
+            if  '>>'  in sd :
                 src, tgt = sd.split ('>>', 2)
                 append   = True
-            elif '>' in sd :
+            elif '>'  in sd :
                 src, tgt = sd.split ('>',  2)
                 append   = False
-            if '<<' in sd :
+            elif '<<' in sd :
                 tgt, src = sd.split ('<<', 2)
                 append   = True
-            elif '<' in sd :
+            elif '<'  in sd :
                 tgt, src = sd.split ('<',  2)
                 append   = False
             else :
