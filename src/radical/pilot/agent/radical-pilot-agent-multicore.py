@@ -46,9 +46,11 @@ LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
 LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
 LAUNCH_METHOD_POE     = 'POE'
 LAUNCH_METHOD_IBRUN   = 'IBRUN'
+LAUNCH_METHOD_RUNJOB  = 'RUNJOB'
 
 MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
                               LAUNCH_METHOD_MPIRUN,
+                              LAUNCH_METHOD_RUNJOB,
                               LAUNCH_METHOD_POE,
                               LAUNCH_METHOD_APRUN,
                               LAUNCH_METHOD_MPIEXEC]
@@ -202,6 +204,12 @@ class ExecutionEnvironment(object):
             if command is not None:
                 task_launch_command = command
 
+        elif task_launch_method == LAUNCH_METHOD_RUNJOB:
+            # runjob: job launcher for IBM BG/Q systems, e.g. Joule
+            command = self._which('runjob')
+            if command is not None:
+                task_launch_command = command
+
         elif task_launch_method == LAUNCH_METHOD_APRUN:
             # aprun: job launcher for Cray systems
             command = self._which('aprun')
@@ -228,6 +236,12 @@ class ExecutionEnvironment(object):
         elif mpi_launch_method == LAUNCH_METHOD_APRUN:
             # aprun: job launcher for Cray systems
             command = self._which('aprun')
+            if command is not None:
+                mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_RUNJOB:
+            # runjob: job launcher for IBM BG/Q systems, e.g. Joule
+            command = self._which('runjob')
             if command is not None:
                 mpi_launch_command = command
 
@@ -649,10 +663,46 @@ class ExecutionEnvironment(object):
 
         #LOADL_HOSTFILE
         loadl_hostfile = os.environ.get('LOADL_HOSTFILE')
-        if loadl_hostfile is None:
+        loadl_bg_block = os.environ.get('LOADL_BG_BLOCK')
+        if loadl_hostfile is None and loadl_bg_block is None:
             msg = "$LOADL_HOSTFILE not set!"
-            self.log.error(msg)
-            raise Exception(msg)
+            #self.log.error(msg)
+            #raise Exception(msg)
+
+            # TODO: HACK
+            self.node_list = ['nodea', 'nodeb']
+            self.cores_per_node = 16
+            return
+
+        # Torus connectivity
+        # ABCDE
+        # E=2 (always)
+        # LOADL_BG_SHAPE=2x2x4x4x2
+
+        # LOADL_BG_MPS=R00-M0
+        # LOADL_BG_BLOCK=LL14080512042473
+        # LOADL_BG_IOLINKS=R00-M0-N00-J06,R00-M0-N00-J11
+        # LOADL_BG_SIZE=128
+
+
+        # Sub-block jobs:
+        # - New with BG/Q
+        # - Small blocks are dynamically subdivided by the job scheduler into yet smaller rectangular blocks
+        # - Allows multiple jobs from multiple users to run within a single block
+        # - Any job shape, between a single node (1x1x1x1x1) and the entire midplane (4x4x4x4x2), is valid for a sub-block job
+        # - Caveat: all sub-block jobs share the enclosing block's I/O node(s). This can result in I/O contention between jobs
+        # - MPI interference between jobs is prevented
+
+
+        # A=RACK * B=MIDPLANE * C=BOARD * D=NODE * E=CORE (* T=HARDWARE THREAD)
+
+        # BG Shape Allocated: 2x2x4x4x2
+        # BG Block Allocated: LL14080512042473
+        # BG Block Status: Initialized
+        # BG Block Boot Time: Tue 05 Aug 2014 12:04:24 PM BST
+        # BG Midplane List: R00-M0
+        # BG Node Board List: R00-M0-N00,R00-M0-N01,R00-M0-N02,R00-M0-N03
+        # BG IOLinks Per MP: R00-M0-N00-J06,R00-M0-N00-J11
 
         #LOADL_TOTAL_TASKS
         loadl_total_tasks_str = os.environ.get('LOADL_TOTAL_TASKS')
@@ -1995,6 +2045,8 @@ class _Process(subprocess.Popen):
         else:
             raise Exception("No executable specified!") # TODO: This should be catched earlier problaby
 
+        # TODO: apply the split of exec and args to all launch methods
+        task_args_string = ''
         if task.arguments is not None:
             for arg in task.arguments:
 
@@ -2003,9 +2055,9 @@ class _Process(subprocess.Popen):
 
                 arg = arg.replace ('"', '\\"') # Escape all double quotes
                 if  arg[0] == arg[-1] == "'" : # If a string is between outer single quotes,
-                    task_exec_string += ' %s' % arg # ... pass it as is.
+                    task_args_string += '%s ' % arg # ... pass it as is.
                 else :
-                    task_exec_string += ' "%s"' % arg # Otherwise return between double quotes.
+                    task_args_string += '"%s" ' % arg # Otherwise return between double quotes.
 
         # Create string for environment variable setting
         env_string = ''
@@ -2059,12 +2111,29 @@ class _Process(subprocess.Popen):
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
-            
+
             aprun_command = "%s -n %s" % (launch_command, task.numcores)
 
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (aprun_command, task_exec_string))
+            launch_script.write('%s\n' % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_RUNJOB:
+
+            runjob_command = launch_command
+            runjob_command += ' --block $LOADL_BG_BLOCK'
+            runjob_command += ' --corner R00-M0-N00-J00'
+            runjob_command += ' --shape 1x1x1x1x2'
+            runjob_command += ' --exe %s' % task_exec_string
+            if task_args_string:
+                runjob_command += ' --args %s' % task_args_string
+
+            launch_script.write('%s\n' % pre_exec_string)
+            launch_script.write('%s\n' % env_string)
+            launch_script.write('%s\n' % runjob_command)
             launch_script.write('%s\n' % post_exec_string)
 
             cmdline = launch_script.name
