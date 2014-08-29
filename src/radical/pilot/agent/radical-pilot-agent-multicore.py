@@ -945,6 +945,8 @@ class ExecWorker(multiprocessing.Process):
                 # any work to do?
                 if  task :
 
+                    task_slots = None
+
                     try :
 
                         if task.mpi:
@@ -970,11 +972,11 @@ class ExecWorker(multiprocessing.Process):
                         task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
 
                         # If that failed, and our launch method supports multiple nodes, try that
-                        if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
+                        if  task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
                             task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
 
                         # Check if we got results
-                        if task_slots is None:
+                        if  task_slots is None:
                             # No resources free, put back in queue
                             self._task_queue.put(task)
                         else:
@@ -988,7 +990,9 @@ class ExecWorker(multiprocessing.Process):
                         task.state = FAILED
                         
                         # Free the Slots, Flee the Flots, Ree the Frots!
-                        self._change_slot_states(task.slots, FREE)
+                        if  task_slots :
+                            self._change_slot_states(task_slots, FREE)
+
                         self._update_tasks (task)
 
 
