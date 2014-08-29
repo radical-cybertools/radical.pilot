@@ -438,7 +438,7 @@ if [[ $GLOBAL_VIRTENV ]]; then
 
     VIRTENV=$GLOBAL_VIRTENV
 
-    # we never clean up virtualenvs -- remove the 'v' cleanup flag
+    # we never clean up global virtualenvs -- remove the 'v' cleanup flag
     CLEANUP=$(echo $CLEANUP | tr -d 'v')
 
     # this assumes that the VE lives outside of the pilot sandbox, which MUST be
