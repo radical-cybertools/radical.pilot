@@ -75,7 +75,7 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         print "  FINISHED"
-        pmgr.cancel_pilots(pilots.uid)       
+        pmgr.cancel_pilots()       
         pmgr.wait_pilots()
         session.close ()
 
