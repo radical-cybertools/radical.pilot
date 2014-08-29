@@ -206,7 +206,7 @@ class PilotManagerController(threading.Thread):
                 if  self._shared_data[pilot_id]['facade_object'] :
                     cb(self._shared_data[pilot_id]['facade_object'](), new_state)
                 else :
-                    logger.error("Couldn't call callback (no pilot instance)")
+                    logger.error("Couldn't call manager callback (no pilot instance)")
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))

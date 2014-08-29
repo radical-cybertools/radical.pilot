@@ -67,7 +67,7 @@ class BackfillingScheduler(Scheduler):
         for pilot_doc in pilot_docs :
 
             pid = str (pilot_doc['_id'])
-            if  not pid in pilot_ids :
+            if  not pid in self.pilots :
                 raise RuntimeError ("Got invalid pilot doc (%s)" % pid)
 
             self.pilots[pid]['state'] = str(pilot_doc.get ('state'))

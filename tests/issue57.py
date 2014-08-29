@@ -43,8 +43,8 @@ if __name__ == "__main__":
         c.user_id = 'merzky'
         session.add_context(c)
 
-        pm = rp.PilotManager (session=session)
-        um = rp.UnitManager  (session=session, scheduler=rp.SCHED_ROUND_ROBIN) 
+        pmgr = rp.PilotManager (session=session)
+        umgr = rp.UnitManager  (session=session, scheduler=rp.SCHED_ROUND_ROBIN) 
 
         pilot = []
 
@@ -55,9 +55,9 @@ if __name__ == "__main__":
         #pd.cleanup = True
         pilot.append(pd)
 
-        pilots = pm.submit_pilots(pilot)
+        pilots = pmgr.submit_pilots(pilot)
 
-        um.add_pilots(pilots)
+        umgr.add_pilots(pilots)
 
         unit_descrs = []
         print "submitting %d CUs to pilot" % ( i*2 )
@@ -69,13 +69,15 @@ if __name__ == "__main__":
 
 
         print "submitting CUS %s" % unit_descrs
-        um.submit_units(unit_descrs)
+        umgr.submit_units(unit_descrs)
 
         print "* Waiting for all compute units to finish..."
-        um.wait_units()
+        umgr.wait_units()
 
         print "  FINISHED"
-        pm.cancel_pilots(pilots.uid)       
+        pmgr.cancel_pilots(pilots.uid)       
+        pmgr.wait_pilots()
+        session.close ()
 
 #-------------------------------------------------------------------------------
 

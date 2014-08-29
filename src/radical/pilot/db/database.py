@@ -624,7 +624,7 @@ class Session():
         try:
             return cursor[0]
         except:
-            msg = "No pilot manager with id '%s' found in DB." % unit_manager_id
+            msg = "No pilot manager with id '%s' found in DB." % pilot_manager_id
             raise DBException(msg=msg)
 
 

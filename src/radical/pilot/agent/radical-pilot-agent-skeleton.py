@@ -62,24 +62,6 @@ def pilot_FAILED(mongodb_handle, pilot_uid, message):
 
 #---------------------------------------------------------------------------
 #
-def pilot_FAILED(mongodb_handle, pilot_uid, message):
-    """Updates the state of one or more pilots.
-    """
-    pilot_collection = mongo_db["%s.p"  % options.session_id]
-
-    LOGGER.error(message)      
-    ts = datetime.datetime.utcnow()
-
-    pilot_collection.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"log" : message,
-                   "statehistory": {"state": 'Failed', "timestamp": ts}},
-         "$set":  {"state": 'Failed',
-                   "finished": ts}
-
-        })
-
-#---------------------------------------------------------------------------
-#
 def pilot_CANCELED(mongodb_handle, pilot_uid, message):
     """Updates the state of one or more pilots.
     """

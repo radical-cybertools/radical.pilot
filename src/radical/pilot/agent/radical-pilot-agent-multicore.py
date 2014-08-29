@@ -163,7 +163,7 @@ def pilot_DONE(mongo_p, pilot_uid):
     """
     ts = datetime.datetime.utcnow()
 
-    message ("pilot done")
+    message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : [message, get_rusage()]},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},

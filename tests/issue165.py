@@ -103,6 +103,8 @@ if __name__ == "__main__":
         % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
     assert (unit.state == rp.DONE)
 
+    pmgr.cancel_pilots()
+    pmgr.wait_pilots()
     session.close()
 
     # delete the test data files
