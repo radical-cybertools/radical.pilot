@@ -455,7 +455,7 @@ else
     # bootstrap virtualenv at default location
     VIRTENV=$SANDBOX/virtualenv/
 
-    # create/update virtualenv.  This also sources it.
+    # create/update virtualenv.
     installvenv $VIRTENV
 fi
 
