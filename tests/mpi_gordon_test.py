@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["module load python intel mvapich2 mpi4py"]
+        mpi_test_task.pre_exec      = ["pip install mpi4py"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]

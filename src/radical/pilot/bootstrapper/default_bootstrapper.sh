@@ -144,6 +144,9 @@ installvenv()
         echo "Couldn't bootstrap virtualenv! ABORTING"
         exit 1
     fi
+
+    # activate the virtualenv
+    source $VIRTENV/bin/activate
     
     DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
     echo ""
@@ -438,6 +441,9 @@ if [[ $GLOBAL_VIRTENV ]]; then
 
     VIRTENV=$GLOBAL_VIRTENV
 
+    # activate the virtualenv
+    source $VIRTENV/bin/activate
+    
     # we never clean up global virtualenvs -- remove the 'v' cleanup flag
     CLEANUP=$(echo $CLEANUP | tr -d 'v')
 
@@ -451,7 +457,7 @@ else
     # bootstrap virtualenv at default location
     VIRTENV=$SANDBOX/virtualenv/
 
-    # create/update virtualenv.
+    # create/update virtualenv.  This activates it.
     installvenv $VIRTENV
 fi
 
@@ -462,9 +468,6 @@ if [[ ! -d $VIRTENV || ! -f $VIRTENV/bin/activate ]]; then
     # actually don't need a virtualenv, and thus continue here.
 fi
 
-# activate the virtualenv
-source $VIRTENV/bin/activate
-    
 
 # -----------------------------------------------------------------------------
 # launch the radical agent
