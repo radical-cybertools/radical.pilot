@@ -145,9 +145,6 @@ installvenv()
         exit 1
     fi
     
-    # active the virtualenv
-    source $VIRTENV/bin/activate
-    
     DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
     echo ""
     echo "################################################################################"
@@ -457,17 +454,19 @@ if [[ $GLOBAL_VIRTENV ]]; then
 else
     # bootstrap virtualenv at default location
     VIRTENV=$SANDBOX/virtualenv/
+
+    # create/update virtualenv.  This also sources it.
+    installvenv $VIRTENV
 fi
-
-
-# create/update virtualenv.  This also sources it.
-installvenv $VIRTENV
 
 # check if creation succeeded
 if [[ ! -d $VIRTENV || ! -f $VIRTENV/bin/activate ]]; then
     echo "Virtual Environment at $VIRTENV not found, install or upgrade failed.  Continue anyways." 
 fi
 
+# activate the virtualenv
+source $VIRTENV/bin/activate
+    
 
 # -----------------------------------------------------------------------------
 # launch the radical agent
