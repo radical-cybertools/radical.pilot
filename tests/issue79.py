@@ -30,7 +30,7 @@ unit.wait ()
 assert ('/road/to/nowhere/does_not_exist: No such file or directory' in unit.stderr)
 assert (unit.state == rp.FAILED)
 
-pmgr.cancel_pilots(pilot.uid)       
-pmgr.wait_pilots(pilot.uid)       
+pmgr.cancel_pilots()       
+pmgr.wait_pilots()       
 session.close ()
 
