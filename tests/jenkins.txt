@@ -20,7 +20,7 @@ issue88.py
 # ---------------------------------------
 # mpi tests
 # ---------------------------------------
-mpi_archer_test.py
+# mpi_archer_test.py
 mpi_gordon_test.py
 mpi_hotel_test.py
 mpi_india_test.py
