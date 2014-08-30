@@ -37,18 +37,33 @@ been installed properly. In the same virtualenv, run:
 
     radicalpilot-version
 
+Troubleshooting
+===============
+
+** Missing virtualenv **
+
 This should return the version of the RADICAL-Pilot installation, e.g., `0.X.Y`.
 
-.. note::
+If virtualenv **is not** installed on your system, you can try the following.
 
-  Note that some Python installations have a broken multiprocessing module -- if you
-  experience the following error during installation::
+.. code-block:: bash
 
-    Traceback (most recent call last):
-      File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
-        func(*targs, **kargs)
-      File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
-        info('process shutting down')
-    TypeError: 'NoneType' object is not callable
+    wget --no-check-certificate https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz
+    tar xzf virtualenv-1.9.tar.gz
+
+    python virtualenv-1.9/virtualenv.py $HOME/HT-BAC-Tools
+    source $HOME/HT-BAC-Tools/bin/activate
+
+** TypeError: 'NoneType' object is not callable **
+
+Note that some Python installations have a broken multiprocessing module -- if you
+experience the following error during installation::
+
+  Traceback (most recent call last):
+    File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
+      func(*targs, **kargs)
+    File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
+      info('process shutting down')
+  TypeError: 'NoneType' object is not callable
 
   you may need to move to Python 2.7 (see http://bugs.python.org/issue15881).
