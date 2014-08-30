@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "fs2.das4.science.uva.nl"
+    pdesc.resource = "trestles.sdsc.xsede.org"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 8 # X cores
 
@@ -61,10 +61,7 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["module load openmpi/gcc",
-                                       "virtualenv ./mpive",
-                                       "source     ./mpive/bin/activate",
-                                       "pip install mpi4py"]
+        mpi_test_task.pre_exec      = ["module load python intel mvapich2 mpi4py"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]

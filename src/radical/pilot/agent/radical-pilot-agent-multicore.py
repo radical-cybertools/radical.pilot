@@ -19,7 +19,6 @@ import time
 import errno
 import Queue
 import signal
-import gridfs
 import shutil
 import pymongo
 import optparse
@@ -104,6 +103,28 @@ PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just
 STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
 #---------------------------------------------------------------------------
+MAX_IO_LOGLENGTH            = 1024 # max number of unit out/err chars to push to db
+
+
+#---------------------------------------------------------------------------
+#
+start_time = time.time ()
+def get_rusage () :
+
+    import resource
+
+    self_usage  = resource.getrusage (resource.RUSAGE_SELF)
+    child_usage = resource.getrusage (resource.RUSAGE_CHILDREN)
+
+    rtime = time.time () - start_time
+    utime = self_usage.ru_utime  + child_usage.ru_utime
+    stime = self_usage.ru_stime  + child_usage.ru_stime
+    rss   = self_usage.ru_maxrss + child_usage.ru_maxrss
+
+    return "real %3f sec | user %.3f sec | system %.3f sec | mem %.2f kB" \
+         % (rtime, utime, stime, rss)
+
+#---------------------------------------------------------------------------
 #
 def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
@@ -112,12 +133,11 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"log" : message,
-                   "statehistory": {"state": FAILED, "timestamp": ts}},
-         "$set":  {"state": FAILED,
-                   "capability" : 0,
-                   "finished": ts}
-
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
+         "$set"    : {"state"       : FAILED,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #---------------------------------------------------------------------------
@@ -129,11 +149,11 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"log" : message,
-                   "statehistory": {"state": CANCELED, "timestamp": ts}},
-         "$set":  {"state": CANCELED,
-                   "capability" : 0,
-                   "finished": ts}
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
+         "$set"    : {"state"       : CANCELED,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #---------------------------------------------------------------------------
@@ -143,12 +163,13 @@ def pilot_DONE(mongo_p, pilot_uid):
     """
     ts = datetime.datetime.utcnow()
 
+    message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"statehistory": {"state": DONE, "timestamp": ts}},
-         "$set": {"state": DONE,
-                   "capability" : 0,
-                  "finished": ts}
-
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
+         "$set"    : {"state"       : DONE,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #-----------------------------------------------------------------------------
@@ -724,7 +745,8 @@ class ExecutionEnvironment(object):
 class Task(object):
 
     def __init__(self, uid, executable, arguments, environment, numcores, mpi,
-                 pre_exec, post_exec, workdir, stdout, stderr, agent_output_staging, ftw_output_staging):
+                 pre_exec, post_exec, workdir, stdout_file, stderr_file, 
+                 agent_output_staging, ftw_output_staging):
 
         self._log         = None
         self._description = None
@@ -735,8 +757,8 @@ class Task(object):
         self.executable     = executable
         self.arguments      = arguments
         self.workdir        = workdir
-        self.stdout         = stdout
-        self.stderr         = stderr
+        self.stdout_file    = stdout_file
+        self.stderr_file    = stderr_file
         self.agent_output_staging = agent_output_staging
         self.ftw_output_staging = ftw_output_staging
         self.numcores       = numcores
@@ -753,9 +775,8 @@ class Task(object):
 
         self.state          = None
         self.exit_code      = None
-
-        self.stdout_id      = None
-        self.stderr_id      = None
+        self.stdout         = None
+        self.stderr         = None
 
         self._log           = []
         self._proc          = None
@@ -787,9 +808,9 @@ class ExecWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         # Queued tasks by the Agent
         self._task_queue     = task_queue
@@ -924,6 +945,8 @@ class ExecWorker(multiprocessing.Process):
                 # any work to do?
                 if  task :
 
+                    task_slots = None
+
                     try :
 
                         if task.mpi:
@@ -949,11 +972,11 @@ class ExecWorker(multiprocessing.Process):
                         task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
 
                         # If that failed, and our launch method supports multiple nodes, try that
-                        if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
+                        if  task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
                             task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
 
                         # Check if we got results
-                        if task_slots is None:
+                        if  task_slots is None:
                             # No resources free, put back in queue
                             self._task_queue.put(task)
                         else:
@@ -967,7 +990,9 @@ class ExecWorker(multiprocessing.Process):
                         task.state = FAILED
                         
                         # Free the Slots, Flee the Flots, Ree the Frots!
-                        self._change_slot_states(task.slots, FREE)
+                        if  task_slots :
+                            self._change_slot_states(task_slots, FREE)
+
                         self._update_tasks (task)
 
 
@@ -1282,19 +1307,19 @@ class ExecWorker(multiprocessing.Process):
 
                             # Find the task in the database
                             # TODO: shouldnt this be available somewhere already, that would save a roundtrip?!
-                            wu = self._w.find_one({"_id": ObjectId(uid)})
+                            cu = self._cu.find_one({"_id": ObjectId(uid)})
 
-                            for directive in wu['Agent_Output_Directives']:
+                            for directive in cu['Agent_Output_Directives']:
                                 output_staging = {
                                     'directive': directive,
                                     'sandbox': task.workdir,
-                                    'wu_id': uid
+                                    'cu_id': uid
                                 }
 
                                 # Put the output staging directives in the queue
                                 self._output_staging_queue.put(output_staging)
 
-                                self._w.update(
+                                self._cu.update(
                                     {"_id": ObjectId(uid)},
                                     {"$set": {"Agent_Output_Status": EXECUTING}}
                                 )
@@ -1305,7 +1330,7 @@ class ExecWorker(multiprocessing.Process):
                         # but we need this code to set the state so that the FTW
                         # gets notified that it can start its work.
                         if task.ftw_output_staging:
-                            self._w.update(
+                            self._cu.update(
                                 {"_id": ObjectId(uid)},
                                 {"$set": {"FTW_Output_Status": PENDING}}
                             )
@@ -1319,29 +1344,24 @@ class ExecWorker(multiprocessing.Process):
 
             idle = False
 
-            # Upload the stdout and stderr to GridFS
+            # store stdout and stderr to GridFS
             workdir = task.workdir
             task_id = task.uid
 
-            stdout_id = None
-            stderr_id = None
+            if  os.path.isfile(task.stdout_file):
+                with open(task.stdout_file, 'r') as stdout_f:
+                    txt = stdout_f.read()
+                    if  len(txt) > MAX_IO_LOGLENGTH :
+                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
+                    task.stdout = txt
 
-            stdout = "%s/STDOUT" % workdir
-            if os.path.isfile(stdout):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stdout, 'r') as stdout_f:
-                    stdout_id = fs.put(stdout_f.read(), filename=stdout)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+            if  os.path.isfile(task.stderr_file):
+                with open(task.stderr_file, 'r') as stderr_f:
+                    txt = stderr_f.read()
+                    if  len(txt) > MAX_IO_LOGLENGTH :
+                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
+                    task.stderr = txt
 
-            stderr = "%s/STDERR" % workdir
-            if os.path.isfile(stderr):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stderr, 'r') as stderr_f:
-                    stderr_id = fs.put(stderr_f.read(), filename=stderr)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
-
-            task.stdout_id = stdout_id
-            task.stderr_id = stderr_id
             task.exit_code = ret_code
 
             # Record the time and state
@@ -1401,14 +1421,14 @@ class ExecWorker(multiprocessing.Process):
         if not isinstance(tasks, list):
             tasks = [tasks]
         for task in tasks:
-            self._w.update({"_id": ObjectId(task.uid)}, 
+            self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
                       "started"       : task.started,
                       "finished"      : task.finished,
                       "slots"         : task.slots,
                       "exit_code"     : task.exit_code,
-                      "stdout_id"     : task.stdout_id,
-                      "stderr_id"     : task.stderr_id},
+                      "stdout"        : task.stdout,
+                      "stderr"        : task.stderr},
              "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
             })
 
@@ -1437,9 +1457,9 @@ class InputStagingWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
 
@@ -1474,8 +1494,8 @@ class InputStagingWorker(multiprocessing.Process):
 
             sandbox = staging['sandbox']
             staging_area = staging['staging_area']
-            wu_id = staging['wu_id']
-            self._log.info('Task input staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
+            cu_id = staging['cu_id']
+            self._log.info('Task input staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
 
             # Create working directory in case it doesn't exist yet
             try :
@@ -1527,13 +1547,13 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.info(log_message)
 
                 # If all went fine, update the state of this StagingDirective to Done
-                self._w.update({'_id': ObjectId(wu_id),
-                                'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state': PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']},
-                               {'$set': {'Agent_Input_Directives.$.state': DONE},
-                                '$push': {'log': log_message}})
+                self._cu.update({'_id': ObjectId(cu_id),
+                                 'Agent_Input_Status': EXECUTING,
+                                 'Agent_Input_Directives.state': PENDING,
+                                 'Agent_Input_Directives.source': directive['source'],
+                                 'Agent_Input_Directives.target': directive['target']},
+                                {'$set' : {'Agent_Input_Directives.$.state': DONE},
+                                 '$push': {'log': log_message}})
 
             except:
                 # If we catch an exception, assume the staging failed
@@ -1541,15 +1561,15 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.error(log_message)
 
                 # If a staging directive fails, fail the CU also.
-                self._w.update({'_id': ObjectId(wu_id),
-                                'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state': PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']},
-                               {'$set': {'Agent_Input_Directives.$.state': FAILED,
-                                         'Agent_Input_Status': FAILED,
-                                         'state': FAILED},
-                                '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
+                self._cu.update({'_id': ObjectId(cu_id),
+                                 'Agent_Input_Status': EXECUTING,
+                                 'Agent_Input_Directives.state': PENDING,
+                                 'Agent_Input_Directives.source': directive['source'],
+                                 'Agent_Input_Directives.target': directive['target']},
+                                {'$set': {'Agent_Input_Directives.$.state': FAILED,
+                                          'Agent_Input_Status': FAILED,
+                                          'state': FAILED},
+                                 '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
 
 
 # ----------------------------------------------------------------------------
@@ -1577,9 +1597,9 @@ class OutputStagingWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
 
@@ -1610,8 +1630,8 @@ class OutputStagingWorker(multiprocessing.Process):
                         directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
                     sandbox = staging['sandbox']
-                    wu_id = staging ['wu_id']
-                    self._log.info('Task output staging directives %s for wu: %s to %s' % (directive, wu_id, sandbox))
+                    cu_id = staging ['cu_id']
+                    self._log.info('Task output staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
 
                     source = str(directive['source'])
                     target = str(directive['target'])
@@ -1637,13 +1657,13 @@ class OutputStagingWorker(multiprocessing.Process):
                         self._log.error('Action %s not supported' % directive['action'])
 
                     # If all went fine, update the state of this StagingDirective to Done
-                    self._w.update({'_id' : ObjectId(wu_id),
-                                    'Agent_Output_Status': EXECUTING,
-                                    'Agent_Output_Directives.state': PENDING,
-                                    'Agent_Output_Directives.source': source,
-                                    'Agent_Output_Directives.target': target},
-                                   {'$set': {'Agent_Output_Directives.$.state': DONE},
-                                    '$push': {'log': logmessage}})
+                    self._cu.update({'_id' : ObjectId(cu_id),
+                                     'Agent_Output_Status': EXECUTING,
+                                     'Agent_Output_Directives.state': PENDING,
+                                     'Agent_Output_Directives.source': source,
+                                     'Agent_Output_Directives.target': target},
+                                    {'$set' : {'Agent_Output_Directives.$.state': DONE},
+                                     '$push': {'log': logmessage}})
 
                 except Queue.Empty:
                     # do nothing and sleep if we don't have any queued staging
@@ -1681,9 +1701,9 @@ class Agent(threading.Thread):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
@@ -1761,9 +1781,9 @@ class Agent(threading.Thread):
         """Starts the thread when Thread.start() is called.
         """
         # first order of business: set the start time and state of the pilot
-        self._log.info("Agent started. Database updated.")
+        self._log.info("Agent %s starting ..." % self._pilot_id)
         ts = datetime.datetime.utcnow()
-        self._p.update(
+        ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : ACTIVE,
                       "nodes"          : self._exec_env.node_list,
@@ -1772,6 +1792,8 @@ class Agent(threading.Thread):
                       "capability"     : 0},
              "$push": {"statehistory": {"state": ACTIVE, "timestamp": ts}}
             })
+        # TODO: Check for return value, update should be true!
+        self._log.info("Database updated! %s" % ret)
 
         self._starttime = time.time()
 
@@ -1801,9 +1823,9 @@ class Agent(threading.Thread):
                     return
 
                 # Try to get new tasks from the database. for this, we check the 
-                # wu_queue of the pilot. if there are new entries, we get them,
+                # cu_queue of the pilot. if there are new entries, we get them,
                 # get the actual pilot entries for them and remove them from 
-                # the wu_queue.
+                # the cu_queue.
                 try:
 
                     # Check if there's a command waiting
@@ -1837,55 +1859,62 @@ class Agent(threading.Thread):
                         else:
                             raise Exception("Received unknown command: %s with arg: %s." % (command[COMMAND_TYPE], command[COMMAND_ARG]))
 
-                    # Check if there are work units waiting for execution,
+                    # Check if there are compute units waiting for execution,
                     # and log that we pulled it.
                     ts = datetime.datetime.utcnow()
-                    wu_cursor = self._w.find_and_modify(
+                    cu_cursor = self._cu.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : PENDING_EXECUTION},
                         update={"$set" : {"state": SCHEDULING},
                                 "$push": {"statehistory": {"state": SCHEDULING, "timestamp": ts}}}
                     )
 
-                    # There are new work units in the wu_queue on the database.
-                    # Get the corresponding wu entries.
-                    if wu_cursor is not None:
+                    # There are new compute units in the cu_queue on the database.
+                    # Get the corresponding cu entries.
+                    if cu_cursor is not None:
 
                         idle = False
 
-                        if not isinstance(wu_cursor, list):
-                            wu_cursor = [wu_cursor]
+                        if not isinstance(cu_cursor, list):
+                            cu_cursor = [cu_cursor]
 
-                        for wu in wu_cursor:
+                        for cu in cu_cursor:
                             # Create new task objects and put them into the task queue
-                            w_uid = str(wu["_id"])
+                            w_uid = str(cu["_id"])
                             self._log.info("Found new tasks in pilot queue: %s" % w_uid)
 
-                            task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
+                            task_dir_name = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
+                            stdout = cu["description"].get ('stdout')
+                            stderr = cu["description"].get ('stderr')
+
+                            if  stdout : stdout_file = task_dir_name+'/'+stdout
+                            else       : stdout_file = task_dir_name+'/STDOUT'
+                            if  stderr : stderr_file = task_dir_name+'/'+stderr
+                            else       : stderr_file = task_dir_name+'/STDERR'
 
                             task = Task(uid         = w_uid,
-                                        executable  = wu["description"]["executable"],
-                                        arguments   = wu["description"]["arguments"],
-                                        environment = wu["description"]["environment"],
-                                        numcores    = wu["description"]["cores"],
-                                        mpi         = wu["description"]["mpi"],
-                                        pre_exec    = wu["description"]["pre_exec"],
-                                        post_exec   = wu["description"]["post_exec"],
+                                        executable  = cu["description"]["executable"],
+                                        arguments   = cu["description"]["arguments"],
+                                        environment = cu["description"]["environment"],
+                                        numcores    = cu["description"]["cores"],
+                                        mpi         = cu["description"]["mpi"],
+                                        pre_exec    = cu["description"]["pre_exec"],
+                                        post_exec   = cu["description"]["post_exec"],
                                         workdir     = task_dir_name,
-                                        stdout      = task_dir_name+'/STDOUT',
-                                        stderr      = task_dir_name+'/STDERR',
-                                        agent_output_staging = True if wu['Agent_Output_Directives'] else False,
-                                        ftw_output_staging   = True if wu['FTW_Output_Directives'] else False
+                                        stdout_file = stdout_file,
+                                        stderr_file = stderr_file,
+                                        agent_output_staging = True if cu['Agent_Output_Directives'] else False,
+                                        ftw_output_staging   = True if cu['FTW_Output_Directives'] else False
                                         )
 
                             task.state = SCHEDULING
                             self._task_queue.put(task)
 
                     #
-                    # Check if there are work units waiting for input staging
+                    # Check if there are compute units waiting for input staging
                     #
                     ts = datetime.datetime.utcnow()
-                    wu_cursor = self._w.find_and_modify(
+                    cu_cursor = self._cu.find_and_modify(
                         query={'pilot' : self._pilot_id,
                                'Agent_Input_Status': PENDING},
                         # TODO: This might/will create double state history for StagingInput
@@ -1894,21 +1923,21 @@ class Agent(threading.Thread):
                                 '$push': {'statehistory': {'state': STAGING_INPUT, 'timestamp': ts}}}#,
                         #limit=BULK_LIMIT
                     )
-                    if wu_cursor is not None:
+                    if cu_cursor is not None:
 
                         idle = False
 
-                        if not isinstance(wu_cursor, list):
-                            wu_cursor = [wu_cursor]
+                        if not isinstance(cu_cursor, list):
+                            cu_cursor = [cu_cursor]
 
-                        for wu in wu_cursor:
-                            for directive in wu['Agent_Input_Directives']:
+                        for cu in cu_cursor:
+                            for directive in cu['Agent_Input_Directives']:
                                 input_staging = {
                                     'directive': directive,
                                     'sandbox': os.path.join(self._workdir,
-                                                            'unit-%s' % str(wu['_id'])),
+                                                            'unit-%s' % str(cu['_id'])),
                                     'staging_area': os.path.join(self._workdir, 'staging_area'),
-                                    'wu_id': str(wu['_id'])
+                                    'cu_id': str(cu['_id'])
                                 }
 
                                 # Put the input staging directives in the queue
@@ -2120,11 +2149,8 @@ class _Process(subprocess.Popen):
         # We are done writing to the launch script, its ready for execution now.
         launch_script.close()
 
-        self.stdout_filename = task.stdout
-        self._stdout_file_h  = open(self.stdout_filename, "w")
-
-        self.stderr_filename = task.stderr
-        self._stderr_file_h  = open(self.stderr_filename, "w")
+        self._stdout_file_h = open(task.stdout_file, "w")
+        self._stderr_file_h = open(task.stderr_file, "w")
 
         self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
 
@@ -2278,8 +2304,8 @@ if __name__ == "__main__":
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
         mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.w"  % options.session_id]  # AM: never used
-        mongo_wm     = mongo_db["%s.wm" % options.session_id]  # AM: never used
+        mongo_cu      = mongo_db["%s.cu" % options.session_id]  # AM: never used
+        mongo_wm     = mongo_db["%s.um" % options.session_id]  # AM: never used
 
     except Exception, ex:
         logger.error("Couldn't establish database connection: %s" % str(ex))

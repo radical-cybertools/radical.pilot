@@ -144,8 +144,8 @@ installvenv()
         echo "Couldn't bootstrap virtualenv! ABORTING"
         exit 1
     fi
-    
-    # active the virtualenv
+
+    # activate the virtualenv
     source $VIRTENV/bin/activate
     
     DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
@@ -441,31 +441,31 @@ if [[ $GLOBAL_VIRTENV ]]; then
 
     VIRTENV=$GLOBAL_VIRTENV
 
-    # we never clean up virtualenvs -- remove the 'v' cleanup flag
+    # activate the virtualenv
+    source $VIRTENV/bin/activate
+    
+    # we never clean up global virtualenvs -- remove the 'v' cleanup flag
     CLEANUP=$(echo $CLEANUP | tr -d 'v')
 
     # this assumes that the VE lives outside of the pilot sandbox, which MUST be
     # true, as at the point where a global VE can be specified, the pilot UID is
     # still unknown.  That only conflicts if the pilot sandbox is specified
-    # explicitly, and the global VE lives therein.  In that case, we have to
-    # remove the 'everything' cleanup flag, too.
-    if  test "$USER_SANDBOX" = "1"
-    then
-      CLEANUP=$(echo $CLEANUP | tr -d 'e')
-    fi
+    # explicitly, and the global VE lives therein.  This case is, at this point,
+    # ignored.
 
 else
     # bootstrap virtualenv at default location
     VIRTENV=$SANDBOX/virtualenv/
+
+    # create/update virtualenv.  This activates it.
+    installvenv $VIRTENV
 fi
-
-
-# create/update virtualenv.  This also sources it.
-installvenv $VIRTENV
 
 # check if creation succeeded
 if [[ ! -d $VIRTENV || ! -f $VIRTENV/bin/activate ]]; then
     echo "Virtual Environment at $VIRTENV not found, install or upgrade failed.  Continue anyways." 
+    # in the rare case that everything is already installed in system space, we
+    # actually don't need a virtualenv, and thus continue here.
 fi
 
 

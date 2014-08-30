@@ -67,7 +67,7 @@ class BackfillingScheduler(Scheduler):
         for pilot_doc in pilot_docs :
 
             pid = str (pilot_doc['_id'])
-            if  not pid in pilot_ids :
+            if  not pid in self.pilots :
                 raise RuntimeError ("Got invalid pilot doc (%s)" % pid)
 
             self.pilots[pid]['state'] = str(pilot_doc.get ('state'))
@@ -103,7 +103,7 @@ class BackfillingScheduler(Scheduler):
                 if  pid not in self.pilots :
                     logger.warning ('cannot handle unit %s cb for pilot %s (pilot is gone)' % (uid, pid))
 
-                if  unit in self.runq :
+                elif unit in self.runq :
                     # only interpret this event once, on any of the states above,
                     # whichever occurs first
                     self.pilots[pid]['caps'] += unit.description.cores
@@ -161,6 +161,7 @@ class BackfillingScheduler(Scheduler):
         # code as well, thus we silently ignore this issue for now, and accept
         # this as known limitation....
         self.pilots[pid] = dict()
+        self.pilots[pid]['cores']    = pilot.description.cores
         self.pilots[pid]['caps']     = pilot.description.cores
         self.pilots[pid]['state']    = pilot.state
         self.pilots[pid]['resource'] = pilot.resource
@@ -298,8 +299,20 @@ class BackfillingScheduler(Scheduler):
                         self.runq.append  (unit)
                         break
 
+
                 # unit was not scheduled...
                 schedule['units'][unit] = None
+
+            # print a warning if a unit cannot possibly be scheduled, ever
+            can_handle_unit = False
+            for pid in self.pilots :
+                if  unit.description.cores <= self.pilots[pid]['cores'] :
+                    can_handle_unit=True
+                    break
+
+            if  not can_handle_unit :
+                logger.warning ('cannot handle unit %s cb with current set of pilots' % uid)
+
 
         # tell the UM about the schedule
         self.manager.handle_schedule (schedule)

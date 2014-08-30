@@ -20,11 +20,13 @@ issue88.py
 # ---------------------------------------
 # mpi tests
 # ---------------------------------------
-mpi_archer_test.py
+# mpi_archer_test.py
+mpi_gordon_test.py
 mpi_hotel_test.py
 mpi_india_test.py
 mpi_localhost_test.py
 mpi_stampede_test.py
+mpi_trestles_test.py
 # mpi_supermuc_test.py    # supermuc is offline for a while
 
 # ---------------------------------------

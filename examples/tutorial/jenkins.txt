@@ -1,0 +1,9 @@
+
+simple_bot.py
+chained_tasks.py
+coupled_tasks.py
+
+# these two are not part of the tutorial, really
+# kmeans_openmp.py
+# kmeans_seq.py
+

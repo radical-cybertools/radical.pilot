@@ -1,16 +1,16 @@
 
 .. _chapter_machconf:
 
-***************************
-Resource Configration Files
-***************************
+****************************
+Resource Configuration Files
+****************************
 
 Introduction
 ============
 
 In order to keep RADICAL-Pilot applications free from clutter and 
 machine-specific parameters and constants, RADICAL-Pilot uses 
-resource configration files.
+resource configuration files.
 
 Machine configuration files can be passed to a :class:`radical.pilot.PilotManager` 
 instance::

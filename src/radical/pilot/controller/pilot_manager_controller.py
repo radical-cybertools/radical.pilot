@@ -160,7 +160,7 @@ class PilotManagerController(threading.Thread):
                     return data
 
         except KeyError, ke:
-            msg = "Unknown Pilot ID {0}".format(str(ke))
+            msg = "Unknown Pilot ID %s" % ke
             logger.error(msg)
             raise Exception(msg)
 
@@ -191,19 +191,22 @@ class PilotManagerController(threading.Thread):
 
         for cb in self._shared_data[pilot_id]['callbacks']:
             try:
-                cb(self._shared_data[pilot_id]['facade_object'](),
-                    new_state)
+                if  self._shared_data[pilot_id]['facade_object'] :
+                    cb (self._shared_data[pilot_id]['facade_object'](), new_state)
+                else :
+                    logger.error("Couldn't call callback (no pilot instance)")
             except Exception, ex:
-                logger.error(
-                    "Couldn't call callback function %s" % str(ex))
+                logger.error("Couldn't call callback function %s" % str(ex))
                 raise
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
         for cb in self._manager_callbacks:
             try:
-                cb(self._shared_data[pilot_id]['facade_object'](),
-                     new_state)
+                if  self._shared_data[pilot_id]['facade_object'] :
+                    cb(self._shared_data[pilot_id]['facade_object'](), new_state)
+                else :
+                    logger.error("Couldn't call manager callback (no pilot instance)")
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
@@ -291,7 +294,7 @@ class PilotManagerController(threading.Thread):
                         self._db.set_all_running_compute_units(
                             pilot_id=pilot_id, 
                             state="Canceled",
-                            log="Pilot {0} has terminated with state '{1}'. CU canceled.".format(pilot_id, new_state))
+                            log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
@@ -392,7 +395,7 @@ class PilotManagerController(threading.Thread):
         self._shared_data[pilot_uid]['callbacks'].append(callback_func)
 
         # Add the facade object if missing, e.g., after a re-connect.
-        if self._shared_data[pilot_uid]['facade_object'] is None:
+        if  self._shared_data[pilot_uid]['facade_object'] is None:
             self._shared_data[pilot_uid]['facade_object'] = weakref.ref(pilot)
 
         # Callbacks can only be registered when the ComputeAlready has a

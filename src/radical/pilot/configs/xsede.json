@@ -55,7 +55,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "python_interpreter"          : "/usr/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load mvapich2_ib", "module load gnubase"],
+        "pre_bootstrap"               : ["module purge", "module load intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },

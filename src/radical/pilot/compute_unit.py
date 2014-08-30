@@ -141,15 +141,7 @@ class ComputeUnit(object):
             'submission_time':   self.submission_time,
             'working_directory': self.working_directory,
             'start_time':        self.start_time,
-            'stop_time':         self.stop_time,
-            "FTW_Input_Status":  self.FTunit.FTW_Input_Status,
-            "FTW_Input_Directives": unit.FTW_Input_Directives,
-            "Agent_Input_Status": unit.Agent_Input_Status,
-            "Agent_Input_Directives": unit.Agent_Input_Directives,
-            "FTW_Output_Status": unit.FTW_Output_Status,
-            "FTW_Output_Directives": unit.FTW_Output_Directives,
-            "Agent_Output_Status": unit.Agent_Output_Status,
-            "Agent_Output_Directives": unit.Agent_Output_Directives
+            'stop_time':         self.stop_time
         }
         return obj_dict
 

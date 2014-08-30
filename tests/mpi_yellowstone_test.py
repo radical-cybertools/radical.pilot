@@ -102,5 +102,7 @@ if __name__ == "__main__":
         
         assert (unit.state == rp.DONE)
 
+    pmgr.cancel_pilots ()
+    pmgr.wait_pilots ()
     session.close()
 

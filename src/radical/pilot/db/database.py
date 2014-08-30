@@ -99,8 +99,8 @@ class Session():
             in MongoDB:
 
             radical.pilot.<sid>    | Base collection. Holds some metadata.   | self._s
-            radical.pilot.<sid>.w  | Collection holding all work units.      | self._w
-            radical.pilot.<sid>.wm | Collection holding all unit managers.   | self._um
+            radical.pilot.<sid>.cu | Collection holding all compute units.   | self._w
+            radical.pilot.<sid>.um | Collection holding all unit managers.   | self._um
             radical.pilot.<sid>.p  | Collection holding all pilots.          | self._p
             radical.pilot.<sid>.pm | Collection holding all pilot managers.  | self._pm
 
@@ -132,8 +132,8 @@ class Session():
         )
 
         # Create the collection shortcut:
-        self._w  = self._db["%s.w"  % sid]
-        self._um = self._db["%s.wm" % sid] 
+        self._w  = self._db["%s.cu" % sid]
+        self._um = self._db["%s.um" % sid] 
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
@@ -175,8 +175,8 @@ class Session():
         self._session_id = sid
 
         # Create the collection shortcut:
-        self._w  = self._db["%s.w"  % sid]
-        self._um = self._db["%s.wm" % sid]
+        self._w  = self._db["%s.cu" % sid]
+        self._um = self._db["%s.um" % sid]
 
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid]
@@ -184,7 +184,7 @@ class Session():
         try:
             return cursor[0]
         except:
-            raise Exception("Couldn't find Session UID '{0}'in database.".format(sid))
+            raise Exception("Couldn't find Session UID '%s' in database." % sid)
 
     #--------------------------------------------------------------------------
     #
@@ -196,7 +196,7 @@ class Session():
         self._s.update(
             {"_id": ObjectId(self._session_id)},
             {"$set": 
-                {"resource_configs.{0}".format(name.replace(".", "<dot>")): config}
+                {"resource_configs.%s" % name.replace(".", "<dot>"): config}
             },
             upsert=True
         )
@@ -280,19 +280,9 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._w.find(
-            {"_id": ObjectId(unit_uid)},
-            {"stdout_id": 1}
-        )
+        cursor = self._w.find({"_id": ObjectId(unit_uid)})
 
-        stdout_id = cursor[0]['stdout_id']
-
-        if stdout_id is None:
-            return None
-        else:
-            gfs = gridfs.GridFS(self._db)
-            stdout = gfs.get(stdout_id)
-            return stdout.read()
+        return cursor[0]['stdout']
 
     #--------------------------------------------------------------------------
     #
@@ -302,19 +292,9 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._w.find(
-            {"_id": ObjectId(unit_uid)},
-            {"stderr_id": 1}
-        )
+        cursor = self._w.find({"_id": ObjectId(unit_uid)})
 
-        stderr_id = cursor[0]['stderr_id']
-
-        if stderr_id is None:
-            return None
-        else:
-            gfs = gridfs.GridFS(self._db)
-            stderr = gfs.get(stderr_id)
-            return stderr.read()
+        return cursor[0]['stderr']
 
     #--------------------------------------------------------------------------
     #
@@ -628,7 +608,7 @@ class Session():
         try:
             return cursor[0]
         except:
-            msg = "No UnitManager with id '{0}' found in database.".format(unit_manager_id)
+            msg = "No UnitManager with id '%s' found in database." % unit_manager_id
             raise DBException(msg=msg)
 
     #--------------------------------------------------------------------------
@@ -644,7 +624,7 @@ class Session():
         try:
             return cursor[0]
         except:
-            msg = "No pilot manager with id '{0}' found in DB.".format(unit_manager_id)
+            msg = "No pilot manager with id '%s' found in DB." % pilot_manager_id
             raise DBException(msg=msg)
 
 
@@ -709,7 +689,7 @@ class Session():
     #--------------------------------------------------------------------------
     #
     def unit_manager_list_compute_units(self, unit_manager_uid):
-        """ Lists all work units associated with a unit manager.
+        """ Lists all compute units associated with a unit manager.
         """
         if self._s is None:
             raise Exception("No active session.")
@@ -807,8 +787,8 @@ class Session():
                 "exit_code":     None,
                 #"workdir":       "unit-"+unit.uid,
                 "sandbox":       None,
-                "stdout_id":     None,
-                "stderr_id":     None,
+                "stdout":        None,
+                "stderr":        None,
                 "log":           unit_log,
                 "FTW_Input_Status": None,
                 "FTW_Input_Directives": None,

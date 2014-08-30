@@ -34,8 +34,8 @@ if __name__ == "__main__":
     session = rp.Session()
 
     # Add an ssh identity to the session.
-    cred = rp.SSHCredential()
-    session.add_credential(cred)
+    cred = rp.Context('ssh')
+    session.add_context(cred)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)

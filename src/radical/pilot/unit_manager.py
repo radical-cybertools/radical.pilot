@@ -413,7 +413,9 @@ class UnitManager(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
+        return_list_type = True
         if not isinstance(unit_descriptions, list):
+            return_list_type  = False
             unit_descriptions = [unit_descriptions]
 
         # we return a list of compute units
@@ -449,10 +451,10 @@ class UnitManager(object):
 
         self.handle_schedule (schedule)
 
-        if len(units) == 1 :
-            return units[0]
-        else :
+        if  return_list_type :
             return units
+        else :
+            return units[0]
 
 
     # -------------------------------------------------------------------------
@@ -576,11 +578,17 @@ class UnitManager(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
+        return_list_type = True
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
+            return_list_type = False
             unit_ids = [unit_ids]
 
         units = ComputeUnit._get(unit_ids=unit_ids, unit_manager_obj=self)
-        return units
+
+        if  return_list_type :
+            return units
+        else :
+            return units[0]
 
     # -------------------------------------------------------------------------
     #
@@ -626,7 +634,9 @@ class UnitManager(object):
         if  not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
+        return_list_type = True
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
+            return_list_type = False
             unit_ids = [unit_ids]
 
         start  = time.time()
@@ -659,7 +669,10 @@ class UnitManager(object):
 
 
         # done waiting
-        return states
+        if  return_list_type :
+            return states
+        else :
+            return states[0]
 
 
     # -------------------------------------------------------------------------
