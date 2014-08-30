@@ -40,7 +40,7 @@ been installed properly. In the same virtualenv, run:
 Troubleshooting
 ===============
 
-** Missing virtualenv **
+**Missing virtualenv**
 
 This should return the version of the RADICAL-Pilot installation, e.g., `0.X.Y`.
 
@@ -54,7 +54,7 @@ If virtualenv **is not** installed on your system, you can try the following.
     python virtualenv-1.9/virtualenv.py $HOME/HT-BAC-Tools
     source $HOME/HT-BAC-Tools/bin/activate
 
-** TypeError: 'NoneType' object is not callable **
+**TypeError: 'NoneType' object is not callable**
 
 Note that some Python installations have a broken multiprocessing module -- if you
 experience the following error during installation::
