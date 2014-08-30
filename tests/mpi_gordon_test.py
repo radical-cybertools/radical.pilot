@@ -61,8 +61,9 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.executable    = "/bin/sh"
-        mpi_test_task.arguments     = ["-c", "'echo \"mpi rank: $PMI_RANK [$PMI_SIZE]\"'"]
+        # gordon uses mvapich2_ib
+        mpi_test_task.executable    = "/bin/sh"  
+        mpi_test_task.arguments     = ["-c", "'echo mpi rank $PMI_RANK/$PMI_SIZE'"]
         mpi_test_task.mpi           = True
         mpi_test_task.cores         = 4
 
@@ -98,8 +99,10 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
         
         assert (unit.state == rp.DONE)
+        assert ('mpi rank 0/4' in unit.stdout)
+        assert ('mpi rank 1/4' in unit.stdout)
+        assert ('mpi rank 2/4' in unit.stdout)
+        assert ('mpi rank 3/4' in unit.stdout)
 
-    pmgr.cancel_pilots ()
-    pmgr.wait_pilots ()
     session.close()
 

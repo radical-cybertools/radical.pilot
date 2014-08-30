@@ -63,14 +63,10 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["module load python", 
-                                       "source /fs4/e290/e290/marksant/cuve/bin/activate", 
-                                       "module swap PrgEnv-cray PrgEnv-gnu"]
-        mpi_test_task.input_staging = ["helloworld_mpi.py"]
-        mpi_test_task.executable    = "python"
-        mpi_test_task.arguments     = ["helloworld_mpi.py"]
+        mpi_test_task.executable    = "/usr/bin/env"
+      # mpi_test_task.arguments     = ["-c", "'echo mpi rank $OMPI_COMM_WORLD_RANK/$OMPI_COMM_WORLD_SIZE'"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
+        mpi_test_task.cores         = 1
 
         cud_list.append(mpi_test_task)
 
@@ -104,8 +100,10 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
         
         assert (unit.state == rp.DONE)
+        assert ('mpi rank 0/4' in unit.stdout)
+        assert ('mpi rank 1/4' in unit.stdout)
+        assert ('mpi rank 2/4' in unit.stdout)
+        assert ('mpi rank 3/4' in unit.stdout)
 
-    pmgr.cancel_pilots ()
-    pmgr.wait_pilots ()
     session.close()
 
