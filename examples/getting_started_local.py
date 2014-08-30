@@ -149,7 +149,7 @@ if __name__ == "__main__":
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
     # Close automatically cancels the pilot(s).
-    session.close (cleanup=False)
+    session.close ()
 
     # delete the test data files
     os.system ('rm file1.dat')
