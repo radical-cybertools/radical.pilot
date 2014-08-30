@@ -248,14 +248,20 @@ class Session (saga.Session, Object):
             # cleanup implies terminate
             terminate = True
 
-        for pmgr in self._pilot_manager_objects:
-            # If terminate is true, we set the terminate flag in the 
-            # pilot manager's close method, which causes it to send a 
-            # CANCEL request to all pilots.
-            pmgr.close(terminate=terminate)
+        if terminate :
+            # cancel all pilots, make sure they are gone, and close the pilot
+            # managers.
+            for pmgr in self._pilot_manager_objects:
+                pmgr.cancel_pilots ()
 
-        for umngr in self._unit_manager_objects:
-            umngr.close()
+            for pmgr in self._pilot_manager_objects:
+                pmgr.wait_pilots ()
+
+            for pmgr in self._pilot_manager_objects:
+                pmgr.close ()
+
+        for umgr in self._unit_manager_objects:
+            umgr.close()
 
         if  cleanup :
             self._destroy_db_entry()
