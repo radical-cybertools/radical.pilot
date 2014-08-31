@@ -473,13 +473,26 @@ class PilotLauncherWorker(threading.Thread):
 
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
                         ts = datetime.datetime.utcnow()
-                        pilot_col.update(
-                            {"_id": ObjectId(compute_pilot_id)},
+                        ret = pilot_col.update(
+                            {"_id"  : ObjectId(compute_pilot_id),
+                             "state": 'Launching'},
                             {"$set": {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                              "$pushAll": {"log": log_messages}}                    
                         )
+
+                        if  ret['n'] == 0 :
+                            # could not update, probably because the agent is
+                            # running already.  Just update state history and
+                            # jobid then
+                            ret = pilot_col.update(
+                                {"_id"  : ObjectId(compute_pilot_id)},
+                                {"$set" : {"saga_job_id": saga_job_id},
+                                 "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
+                                 "$pushAll": {"log": log_messages}}                    
+                            )
+
 
                     except Exception, ex:
                         # Update the Pilot's state 'FAILED'.

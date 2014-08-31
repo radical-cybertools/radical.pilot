@@ -53,24 +53,41 @@ if __name__ == "__main__":
     pdesc.resource = "archer.ac.uk"
     pdesc.project  = "e290"
     pdesc.queue    = "debug"
-    pdesc.runtime  = 5 # N minutes
-    pdesc.cores    = 8 # X cores
+    pdesc.runtime  = 10 # N minutes
+    pdesc.cores    =  8 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
     cud_list = []
 
+
+    for unit_count in range(0, 4):
+
+        mpi_test_task = rp.ComputeUnitDescription()
+        mpi_test_task.pre_exec = ["module load python",
+                                  "source /fs4/e290/e290/marksant/cuve/bin/activate",
+                                  "module swap PrgEnv-cray PrgEnv-gnu"]
+        mpi_test_task.input_staging = ["helloworld_mpi.py"]
+        mpi_test_task.executable    = "python"
+        mpi_test_task.arguments     = ["helloworld_mpi.py"]
+        mpi_test_task.mpi           = True
+        mpi_test_task.cores         = 4
+
+        cud_list.append(mpi_test_task)
+
+
     for unit_count in range(0, 4):
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.executable    = "/usr/bin/env"
-      # mpi_test_task.arguments     = ["-c", "'echo mpi rank $OMPI_COMM_WORLD_RANK/$OMPI_COMM_WORLD_SIZE'"]
+        mpi_test_task.executable    = "/bin/sh"
+        mpi_test_task.arguments     = ["-c", "'echo mpi rank $ALPS_APP_PE/%s'" % 4]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 1
+        mpi_test_task.cores         = 4
 
         cud_list.append(mpi_test_task)
+
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.

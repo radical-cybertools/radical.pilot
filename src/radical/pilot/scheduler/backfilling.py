@@ -109,6 +109,12 @@ class BackfillingScheduler(Scheduler):
                     self.pilots[pid]['caps'] += unit.description.cores
                     self.runq.remove (unit)
                     self._reschedule (pid=pid)
+              #     logger.debug ('unit %s frees %s cores on (-> %s)' \
+              #                % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
+
+              # else :
+              #     logger.debug ('unit %s freed %s cores on %s (== %s) -- not reused!'
+              #                % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
         except Exception as e :
             logger.error ("error in unit callback for backfiller (%s) - ignored" % e)
@@ -275,17 +281,26 @@ class BackfillingScheduler(Scheduler):
         schedule['units']  = dict()
         schedule['pilots'] = self.pilots
 
+        logger.debug ("schedule (%s units waiting)" % len(self.waitq))
+
         # iterate on copy of waitq, as we manipulate the list during iteration.
         for unit in self.waitq[:] :
 
             uid = unit.uid
             ud  = unit.description
 
+          # logger.debug ("examine unit  %s (%s cores)" % (uid, ud.cores))
+
             for pid in self.pilots :
+
+              # logger.debug ("        pilot %s (%s caps, state %s)" \
+              #            % (pid, self.pilots[pid]['state'], self.pilots[pid]['caps']))
 
                 if  self.pilots[pid]['state'] in [ACTIVE] :
 
                     if  ud.cores <= self.pilots[pid]['caps'] :
+                
+                      # logger.debug ("        unit  %s fits on pilot %s" % (uid, pid))
 
                         # sanity check on unit state
                         if  unit.state not in [NEW] :
@@ -313,6 +328,7 @@ class BackfillingScheduler(Scheduler):
             if  not can_handle_unit :
                 logger.warning ('cannot handle unit %s with current set of pilots' % uid)
 
+      # pprint.pprint (schedule)
 
         # tell the UM about the schedule
         self.manager.handle_schedule (schedule)
