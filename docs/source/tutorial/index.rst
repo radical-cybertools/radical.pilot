@@ -4,7 +4,7 @@
 Tutorial
 ********
 
-This tutorial will walk you through the basic features of RADICAL-Pilot. Serveral examples illustrate common workflow usages in distributed environments.
+This tutorial will walk you through the basic features of RADICAL-Pilot. Several examples illustrate common workflow usages in distributed environments.
 
 **Prerequisites:**
 
