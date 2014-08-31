@@ -81,15 +81,15 @@ class TestIssue114(unittest.TestCase):
             cudesc = radical.pilot.ComputeUnitDescription()
             cudesc.cores      = 1
             cudesc.executable = "/bin/sleep"
-            cudesc.arguments  = ['180']
+            cudesc.arguments  = ['60']
             all_tasks.append(cudesc)
 
         cu     = um.submit_units(all_tasks)
         states = um.wait_units (state=[radical.pilot.SCHEDULING, radical.pilot.EXECUTING], 
-                                timeout=60)
+                                timeout=2*60)
 
-        assert radical.pilot.SCHEDULING in states
-        assert radical.pilot.EXECUTING  in states
+        assert radical.pilot.SCHEDULING in states, "states: %s" % states
+        assert radical.pilot.EXECUTING  in states, "states: %s" % states
 
         session.close()
 
