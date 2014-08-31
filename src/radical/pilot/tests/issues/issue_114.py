@@ -64,6 +64,10 @@ class TestIssue114(unittest.TestCase):
         cpd.cleanup  = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        state = pm.wait_pilots(state=[radical.pilot.ACTIVE, 
+                                      radical.pilot.DONE, 
+                                      radical.pilot.FAILED], 
+                                      timeout=5*60)
 
         um = radical.pilot.UnitManager(
             session=session,
@@ -113,7 +117,10 @@ class TestIssue114(unittest.TestCase):
         )
         um.add_pilots(pilot)
 
-        pm.wait_pilots(state=[radical.pilot.ACTIVE, radical.pilot.DONE, radical.pilot.FAILED])
+        state = pm.wait_pilots(state=[radical.pilot.ACTIVE, 
+                                      radical.pilot.DONE, 
+                                      radical.pilot.FAILED], 
+                                      timeout=5*60)
 
         cudesc = radical.pilot.ComputeUnitDescription()
         cudesc.cores      = 1
@@ -165,7 +172,7 @@ class TestIssue114(unittest.TestCase):
         assert state       == [radical.pilot.ACTIVE]
         assert pilot.state ==  radical.pilot.ACTIVE
 
-        state = pm.wait_pilots(timeout=60)
+        state = pm.wait_pilots(timeout=2*60)
 
         assert state       == [radical.pilot.DONE]
         assert pilot.state ==  radical.pilot.DONE
