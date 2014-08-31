@@ -311,7 +311,7 @@ class BackfillingScheduler(Scheduler):
                     break
 
             if  not can_handle_unit :
-                logger.warning ('cannot handle unit %s cb with current set of pilots' % uid)
+                logger.warning ('cannot handle unit %s with current set of pilots' % uid)
 
 
         # tell the UM about the schedule

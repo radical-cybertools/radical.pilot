@@ -7,15 +7,10 @@ from   mpi4py import MPI
 import time
 
 SLEEP = 10
+name  = MPI.Get_processor_name ()
+comm  = MPI.COMM_WORLD
 
-name = MPI.Get_processor_name ()
-comm = MPI.COMM_WORLD
-
-size = comm.size
-rank = comm.rank
-
-print "Hello, World! I am process %d of %d on %s.\n"  % (rank, size, name)
-print "Sleeping for %d seconds ..." % SLEEP
+print "mpi rank %d/%d"  % (comm.rank, comm.size)
 
 time.sleep(SLEEP)
 

@@ -83,27 +83,18 @@ if __name__ == "__main__":
     # after itself.
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "localhost"
-    pdesc.runtime  = 10 # minutes
-    pdesc.cores    = 4
+    pdesc.runtime  = 5 # minutes
+    pdesc.cores    = 1
     pdesc.cleanup  = True
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
-    pdesc2 = rp.ComputePilotDescription()
-    pdesc2.resource = "localhost"
-    pdesc2.runtime  = 10 # minutes
-    pdesc2.cores    = 4
-    pdesc2.cleanup  = True
-
-    # Launch the pilot.
-    pilot2 = pmgr.submit_pilots(pdesc)
-
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        scheduler=rp.SCHED_BACKFILLING)
+        scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
@@ -111,7 +102,7 @@ if __name__ == "__main__":
     umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
 
     # Add the previously created ComputePilot to the UnitManager.
-    umgr.add_pilots([pilot, pilot2])
+    umgr.add_pilots(pilot)
 
     # Create a workload of ComputeUnits (tasks). Each compute unit
     # uses /bin/cat to concatenate two input files, file1.dat and
@@ -158,8 +149,7 @@ if __name__ == "__main__":
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
     # Close automatically cancels the pilot(s).
-    print session.uid
-    session.close (cleanup=False)
+    session.close ()
 
     # delete the test data files
     os.system ('rm file1.dat')

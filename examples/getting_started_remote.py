@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
-    c.user_id = "merzky"
+    #c.user_id = "oweidner"
     session.add_context(c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        scheduler=rp.SCHED_BACKFILLING)
+        scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
