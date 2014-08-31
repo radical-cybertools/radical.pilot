@@ -20,13 +20,19 @@ issue88.py
 # ---------------------------------------
 # mpi tests
 # ---------------------------------------
-# mpi_archer_test.py
-mpi_gordon_test.py
-mpi_hotel_test.py
-mpi_india_test.py
-mpi_localhost_test.py
-mpi_stampede_test.py
-mpi_trestles_test.py
+mpi_alamo_test.py
+# mpi_archer_test.py      # #314
+# mpi_bigred2_test.py     # no account
+# mpi_blacklight_test.py  # gsissh account
+# mpi_das4_test.py        # no account
+  mpi_gordon_test.py
+# mpi_hotel_test.py       # pbs_server down
+  mpi_india_test.py
+  mpi_localhost_test.py
+# mpi_quarry_test.py      # no account
+  mpi_sierra_test.py
+  mpi_stampede_test.py
+  mpi_trestles_test.py
 # mpi_supermuc_test.py    # supermuc is offline for a while
 
 # ---------------------------------------

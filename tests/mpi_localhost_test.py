@@ -9,7 +9,7 @@ def pilot_state_cb (pilot, state) :
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if  state in [rp.FAILED, rp.DONE] :
         sys.exit (1)
 
 
@@ -21,6 +21,8 @@ def unit_state_change_cb (unit, state) :
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
     if  state == rp.FAILED :
+        print "                         '%s' stderr: %s." % (unit.uid, unit.stderr)
+        print "                         '%s' stdout: %s." % (unit.uid, unit.stdout)
         sys.exit (1)
 
 
@@ -50,7 +52,7 @@ if __name__ == "__main__":
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "localhost"
     pdesc.runtime  = 10 # N minutes
-    pdesc.cores    =  1 # X cores
+    pdesc.cores    =  4 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
@@ -68,9 +70,23 @@ if __name__ == "__main__":
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 1
+        mpi_test_task.cores         = 4
 
         cud_list.append(mpi_test_task)
+
+
+    for unit_count in range(0, 4):
+
+        mpi_test_task = rp.ComputeUnitDescription()
+
+        # india uses openmpi
+        mpi_test_task.executable    = "/bin/sh"
+        mpi_test_task.arguments     = ["-c", "'echo mpi rank $PMI_RANK/$PMI_SIZE'"]
+        mpi_test_task.mpi           = True
+        mpi_test_task.cores         = 4
+
+        cud_list.append(mpi_test_task)
+
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
@@ -102,8 +118,10 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
         
         assert (unit.state == rp.DONE)
+        assert ('mpi rank 0/4' in unit.stdout)
+        assert ('mpi rank 1/4' in unit.stdout)
+        assert ('mpi rank 2/4' in unit.stdout)
+        assert ('mpi rank 3/4' in unit.stdout)
 
-    pmgr.cancel_pilots ()
-    pmgr.wait_pilots ()
     session.close()
 

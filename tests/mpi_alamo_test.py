@@ -9,7 +9,7 @@ def pilot_state_cb (pilot, state) :
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if  state in [rp.FAILED, rp.DONE] :
         sys.exit (1)
 
 
@@ -21,6 +21,8 @@ def unit_state_change_cb (unit, state) :
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
     if  state == rp.FAILED :
+        print "                         '%s' stderr: %s." % (unit.uid, unit.stderr)
+        print "                         '%s' stdout: %s." % (unit.uid, unit.stdout)
         sys.exit (1)
 
 

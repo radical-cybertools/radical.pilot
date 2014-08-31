@@ -9,7 +9,7 @@ def pilot_state_cb (pilot, state) :
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if  state in [rp.FAILED, rp.DONE] :
         sys.exit (1)
 
 
@@ -21,6 +21,8 @@ def unit_state_change_cb (unit, state) :
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
     if  state == rp.FAILED :
+        print "                         '%s' stderr: %s." % (unit.uid, unit.stderr)
+        print "                         '%s' stdout: %s." % (unit.uid, unit.stdout)
         sys.exit (1)
 
 
@@ -57,17 +59,37 @@ if __name__ == "__main__":
 
     cud_list = []
 
+  # no virtualenv on Gordon
+  # for unit_count in range(0, 4):
+  # 
+  #     mpi_test_task = rp.ComputeUnitDescription()
+  # 
+  #     # gordon uses mvapich2_ib        
+  #     mpi_test_task.pre_exec      = ["module load intel mvapich2_ib gnubase",
+  #                                    "virtualenv ./mpive",
+  #                                    "source     ./mpive/bin/activate",
+  #                                    "pip install mpi4py"]
+  #     mpi_test_task.input_staging = ["helloworld_mpi.py"]
+  #     mpi_test_task.executable    = "python"
+  #     mpi_test_task.arguments     = ["helloworld_mpi.py"]
+  #     mpi_test_task.mpi           = True
+  #     mpi_test_task.cores         = 4
+  # 
+  #     cud_list.append(mpi_test_task)
+
+
     for unit_count in range(0, 4):
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        # gordon uses mvapich2_ib
-        mpi_test_task.executable    = "/bin/sh"  
+        # gordon uses mvapich2_ib        
+        mpi_test_task.executable    = "/bin/sh"
         mpi_test_task.arguments     = ["-c", "'echo mpi rank $PMI_RANK/$PMI_SIZE'"]
         mpi_test_task.mpi           = True
         mpi_test_task.cores         = 4
 
         cud_list.append(mpi_test_task)
+
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
