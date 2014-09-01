@@ -88,10 +88,10 @@ class TestIssue169(unittest.TestCase):
 
         cpd2 = radical.pilot.ComputePilotDescription()
         cpd2.resource = "localhost"
-        cpd2.cores = 1
-        cpd2.runtime = 1
-        cpd2.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd2.cleanup = True
+        cpd2.cores    = 1
+        cpd2.runtime  = 1
+        cpd2.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd2.cleanup  = True
 
         pilots = pmgr.submit_pilots([cpd1, cpd2])
 

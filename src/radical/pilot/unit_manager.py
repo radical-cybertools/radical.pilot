@@ -644,7 +644,7 @@ class UnitManager(object):
         all_ok = False
         states = list()
 
-        while all_ok is False :
+        while not all_ok :
 
             all_ok = True
             states = list()
@@ -653,7 +653,7 @@ class UnitManager(object):
 
                 if  unit.state not in state :
                     all_ok = False
-                  # break
+                    break
 
                 states.append (unit.state)
 
@@ -662,7 +662,7 @@ class UnitManager(object):
                 break
 
             # sleep a little if this cycle was idle
-            if  not len (units) :
+            if  not all_ok :
                 time.sleep (0.1)
 
           # print "wait %s === %s" % (state, states)
