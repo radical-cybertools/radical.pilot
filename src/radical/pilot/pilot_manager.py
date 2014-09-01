@@ -415,35 +415,37 @@ class PilotManager(Object):
             return_list_type = False
             pilot_ids = [pilot_ids]
 
-        start_wait = time.time()
-        all_done = False
 
-        while all_done is False:
+        start  = time.time()
+        all_ok = False
+        states = list()
 
-            all_done = True
+        while not all_ok :
 
-            p_states = []
+            all_ok = True
+            states = list()
 
-            for pd in self._worker.get_compute_pilot_data(pilot_ids=pilot_ids):
-                p_states.append(pd['state'])
+            for pilot in self._worker.get_compute_pilot_data(pilot_ids=pilot_ids):
+                if  pilot['state'] not in state :
+                    all_ok = False
 
-            for p_state in p_states:
-                if p_state not in state:
-                    all_done = False
-                    break  # leave 'for' loop
+                states.append (pilot['state'])
 
             # check timeout
-            if (None != timeout) and (timeout <= (time.time() - start_wait)):
+            if  (None != timeout) and (timeout <= (time.time() - start)):
+                if  not all_ok :
+                    logger.debug ("wait timed out: %s" % states)
                 break
 
-            # wait a bit
-            time.sleep(0.1)
+            # sleep a little if this cycle was idle
+            if  not all_ok :
+                time.sleep (0.1)
 
         # done waiting
         if  return_list_type :
-            return p_states
+            return states
         else :
-            return p_states[0]
+            return states[0]
 
 
     # -------------------------------------------------------------------------
