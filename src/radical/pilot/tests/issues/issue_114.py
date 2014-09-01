@@ -69,7 +69,7 @@ class TestIssue114(unittest.TestCase):
                                       rp.FAILED], 
                                       timeout=5*60)
 
-        assert (pilot.state = rp.ACTIVE), "pilot state: %s" % pilot.state
+        assert (pilot.state == rp.ACTIVE), "pilot state: %s" % pilot.state
 
         um = rp.UnitManager(
             session=session,
@@ -124,7 +124,7 @@ class TestIssue114(unittest.TestCase):
                                       rp.FAILED], 
                                       timeout=5*60)
 
-        assert (pilot.state = rp.ACTIVE), "pilot state: %s" % pilot.state
+        assert (pilot.state == rp.ACTIVE), "pilot state: %s" % pilot.state
 
         cudesc = rp.ComputeUnitDescription()
         cudesc.cores      = 1
