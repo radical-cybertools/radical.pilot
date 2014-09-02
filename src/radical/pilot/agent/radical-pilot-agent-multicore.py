@@ -988,6 +988,13 @@ class ExecWorker(multiprocessing.Process):
                     except Exception as e :
                         self._log.error ("Launching task failed: %s." % e)
                         task.state = FAILED
+
+                        # append the startup error to the units stderr.  This is
+                        # not completely correct (as this text is not produced
+                        # by the unit), but it seems the most intuitive way to
+                        # communicate that error to the application/user.
+                        task.stderr += "\nPilot cannot start compute unit:\n%s\n%s" \
+                                     % (str(e), traceback.format_exc())
                         
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if  task_slots :
@@ -1344,7 +1351,7 @@ class ExecWorker(multiprocessing.Process):
 
             idle = False
 
-            # store stdout and stderr to GridFS
+            # store stdout and stderr to the database
             workdir = task.workdir
             task_id = task.uid
 
