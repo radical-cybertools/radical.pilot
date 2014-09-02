@@ -146,18 +146,17 @@ class PilotManagerController(threading.Thread):
         self._initialized.wait()
 
         try:
-            if pilot_ids is None:
-                data = self._db.get_pilots(pilot_manager_id=self._pm_id)
-                return data
+            if  pilot_ids is None:
+                pilot_ids = self._shared_data.keys ()
 
-            else:
-                if not isinstance(pilot_ids, list):
-                    return self._shared_data[pilot_ids]['data']
-                else:
-                    data = list()
-                    for pilot_id in pilot_ids:
-                        data.append(self._shared_data[pilot_id]['data'])
-                    return data
+            if not isinstance(pilot_ids, list):
+                pilot_ids = [pilot_ids]
+
+            data = list()
+            for pilot_id in pilot_ids:
+                data.append(self._shared_data[pilot_id]['data'])
+
+            return data
 
         except KeyError, ke:
             msg = "Unknown Pilot ID %s" % ke
