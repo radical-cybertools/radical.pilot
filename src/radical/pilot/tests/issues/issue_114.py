@@ -171,7 +171,7 @@ class TestIssue114(unittest.TestCase):
         state = pm.wait_pilots(state=[rp.ACTIVE, 
                                       rp.DONE, 
                                       rp.FAILED], 
-                                      timeout=5*60)
+                                      timeout=10*60)
 
         assert state       == [rp.ACTIVE], 'state      : %s' % state    
         assert pilot.state ==  rp.ACTIVE , 'pilot state: %s' % pilot.state 

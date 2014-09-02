@@ -95,7 +95,7 @@ class TestIssue169(unittest.TestCase):
 
         pilots = pmgr.submit_pilots([cpd1, cpd2])
 
-        pmgr.wait_pilots(timeout=5*60)
+        pmgr.wait_pilots(timeout=10*60)
         
         for pilot in pilots:
             assert pilot.state == radical.pilot.DONE, "state: %s" % pilot.state
