@@ -5,6 +5,38 @@
 Frequently Asked Questions
 **************************
 
+Q: I see the error "OperationFailure: too many namespaces/collections"
+----------------------------------------------------------------------
+
+.. code-block:: bash
+
+    Traceback (most recent call last):
+      File "/tmp/test/bin/extasy", line 9, in <module>
+        load_entry_point('radical.ensemblemd.extasy==0.1', 'console_scripts', 'extasy')()
+      File "/tmp/test/lib/python2.7/site-packages/radical.ensemblemd.extasy-0.1-py2.7.egg/radical/ensemblemd/extasy/bin/runme.py", line 82, in main
+        umgr,session=startPilot()
+      File "/tmp/test/lib/python2.7/site-packages/radical.ensemblemd.extasy-0.1-py2.7.egg/radical/ensemblemd/extasy/bin/runme.py", line 45, in startPilot
+        pmgr = radical.pilot.PilotManager(session=session)
+      File "/tmp/test/lib/python2.7/site-packages/radical.pilot-0.18.RC2-py2.7.egg/radical/pilot/pilot_manager.py", line 120, in __init__
+        db_connection_info=session._connection_info)
+      File "/tmp/test/lib/python2.7/site-packages/radical.pilot-0.18.RC2-py2.7.egg/radical/pilot/controller/pilot_manager_controller.py", line 88, in __init__
+        pilot_launcher_workers=pilot_launcher_workers
+      File "/tmp/test/lib/python2.7/site-packages/radical.pilot-0.18.RC2-py2.7.egg/radical/pilot/db/database.py", line 253, in insert_pilot_manager
+        result = self._pm.insert(pilot_manager_json)
+      File "build/bdist.linux-x86_64/egg/pymongo/collection.py", line 412, in insert
+      File "build/bdist.linux-x86_64/egg/pymongo/mongo_client.py", line 1121, in _send_message
+      File "build/bdist.linux-x86_64/egg/pymongo/mongo_client.py", line 1063, in __check_response_to_last_error
+    pymongo.errors.OperationFailure: too many namespaces/collections
+
+
+A: Try Cleaning-up MongoDB.
+---------------------------
+
+This can happen rarely if radical.pilot keeps on failing in an unexpected way 
+and without clean up the database upon termination. Currenlty the only 
+workaround for this is to manually clean-up the database using the MongoDB 
+command-line tools. 
+
 Q: I see the error "Host key verification failed" in AGENT.STDERR.
 ------------------------------------------------------------------
 
