@@ -1,6 +1,7 @@
 {
     "yellowstone.ucar.edu": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "lsf+ssh://yellowstone.ucar.edu",
         "remote_filesystem_endpoint"  : "sftp://yellowstone.ucar.edu/",
         "local_job_manager_endpoint"  : "lsf://localhost",

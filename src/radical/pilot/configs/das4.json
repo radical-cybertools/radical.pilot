@@ -1,6 +1,7 @@
 {
     "fs2.das4.science.uva.nl": {
         "description"                   : "TODO",
+        "notes"                         : "None",
         "remote_job_manager_endpoint"   : "sge+ssh://fs2.das4.science.uva.nl",
         "remote_filesystem_endpoint"    : "sftp://fs2.das4.science.uva.nl/",
         "local_job_manager_endpoint"    : "sge://localhost",

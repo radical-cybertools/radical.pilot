@@ -1,6 +1,7 @@
 {
     "supermuc.lrz.de": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
         "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",
         "local_job_manager_endpoint"  : "loadl://localhost",

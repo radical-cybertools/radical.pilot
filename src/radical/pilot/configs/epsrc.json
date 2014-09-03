@@ -1,6 +1,7 @@
 {
     "archer.ac.uk": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://login.archer.ac.uk",
         "remote_filesystem_endpoint"  : "sftp://login.archer.ac.uk/",
         "local_job_manager_endpoint"  : "pbs://localhost",

@@ -1,6 +1,7 @@
 {
     "alamo.futuregrid.org": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://alamo.futuregrid.org",
         "remote_filesystem_endpoint"  : "sftp://alamo.futuregrid.org/",
         "local_job_manager_endpoint"  : "pbs://localhost",
@@ -17,6 +18,7 @@
 
     "india.futuregrid.org": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://india.futuregrid.org",
         "remote_filesystem_endpoint"  : "sftp://india.futuregrid.org/",
         "local_job_manager_endpoint"  : "pbs://localhost",
@@ -34,6 +36,7 @@
 
     "sierra.futuregrid.org": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://sierra.futuregrid.org",
         "remote_filesystem_endpoint"  : "sftp://sierra.futuregrid.org/",
         "local_job_manager_endpoint"  : "pbs://localhost",
@@ -50,6 +53,7 @@
 
     "hotel.futuregrid.org": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://hotel.futuregrid.org",
         "remote_filesystem_endpoint"  : "sftp://hotel.futuregrid.org/",
         "local_job_manager_endpoint"  : "pbs://localhost",

@@ -1,6 +1,7 @@
 {
     "quarry.uits.indiana.edu": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://quarry.uits.indiana.edu",
         "remote_filesystem_endpoint"  : "sftp://quarry.uits.indiana.edu/",
         "local_job_manager_endpoint"  : "pbs://localhost",
@@ -14,6 +15,7 @@
     },
     "bigred2.uits.indiana.edu": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://bigred2.uits.iu.edu",
         "remote_filesystem_endpoint"  : "sftp://bigred2.uits.iu.edu/",
         "local_job_manager_endpoint"  : "pbs://localhost",

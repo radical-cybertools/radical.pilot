@@ -1,6 +1,7 @@
 {
     "stampede.tacc.utexas.edu": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "slurm+ssh://stampede.tacc.utexas.edu",
         "remote_filesystem_endpoint"  : "sftp://stampede.tacc.utexas.edu/",
         "local_job_manager_endpoint"  : "slurm://localhost",
@@ -17,6 +18,7 @@
 
     "lonestar.tacc.xsede.org": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "sge+ssh://lonestar.tacc.utexas.edu",
         "remote_filesystem_endpoint"  : "sftp://lonestar.tacc.utexas.edu/",
         "local_job_manager_endpoint"  : "sge://localhost",
@@ -34,6 +36,7 @@
 
     "trestles.sdsc.xsede.org": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://trestles.sdsc.xsede.org",
         "remote_filesystem_endpoint"  : "sftp://trestles.sdsc.xsede.org/",
         "local_filesystem_endpoint"   : "pbs://localhost",
@@ -50,6 +53,7 @@
 
     "gordon.sdsc.xsede.org": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://gordon.sdsc.xsede.org",
         "remote_filesystem_endpoint"  : "sftp://gordon.sdsc.xsede.org/",
         "local_filesystem_endpoint"   : "pbs://localhost",
@@ -66,6 +70,7 @@
 
     "blacklight.psc.xsede.org": {
         "description"                 : "TODO",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://blacklight.psc.xsede.org",
         "remote_filesystem_endpoint"  : "sftp://blacklight.psc.xsede.org/",
         "local_filesystem_endpoint"   : "pbs://localhost",

@@ -49,10 +49,31 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
 
             for resource_key, resource_config in json_data.iteritems():
                 print "   * %s" % resource_key
+                try:
+                    default_queue = resource_config["default_queue"]
+                except Exception, ex:
+                    default_queue = None
+                try:
+                    working_dir = resource_config["default_remote_workdir"]
+                except Exception, ex:
+                    working_dir = None
+                try:
+                    python_interpreter = resource_config["python_interpreter"]
+                except Exception, ex:
+                    python_interpreter = None
 
                 resources_rst.write("{0}\n".format(resource_key))
                 resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
                 resources_rst.write("**Description:** {0}\n\n".format(resource_config["description"]))
+                resources_rst.write("**Notes:** {0}\n\n".format(resource_config["notes"]))
+
+                resources_rst.write("======================= =======================\n")
+                resources_rst.write("Controllable Parameters Value\n")
+                resources_rst.write("======================= =======================\n")
+                resources_rst.write("Default Queue           {0}\n".format(default_queue))
+                resources_rst.write("Working Directory       {0}\n".format(working_dir))
+                resources_rst.write("======================= =======================\n\n")
+
 
                 resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
 ##
