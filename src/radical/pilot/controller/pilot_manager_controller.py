@@ -149,14 +149,19 @@ class PilotManagerController(threading.Thread):
             if  pilot_ids is None:
                 pilot_ids = self._shared_data.keys ()
 
+            return_list_type = True
             if not isinstance(pilot_ids, list):
+                return_list_type = False
                 pilot_ids = [pilot_ids]
 
             data = list()
             for pilot_id in pilot_ids:
                 data.append(self._shared_data[pilot_id]['data'])
 
-            return data
+            if  return_list_type :
+                return data
+            else :
+                return data[0]
 
         except KeyError, ke:
             msg = "Unknown Pilot ID %s" % ke
