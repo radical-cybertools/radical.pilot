@@ -11,8 +11,52 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import glob
+import imp
+import sys
+import os
+import json
+import pprint
 
+script_dir = os.path.dirname(os.path.realpath(__file__))
+
+################################################################################
+##
+print "* Generating code example list: examples.rst"
+
+try:
+    os.remove("{0}/resources.rst".format(script_dir))
+except OSError:
+    pass
+
+with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
+
+    examples = os.listdir("{0}/../../src/radical/pilot/configs/".format(script_dir))
+    for example in examples:
+
+        if example.endswith(".json") is False:
+            continue # skip all non-python files
+
+        print " * %s" % example
+
+        with open("../../src/radical/pilot/configs/{0}".format(example)) as cfg_file:
+            try: 
+                json_data = json.load(cfg_file)
+            except Exception, ex:
+                print "    * JSON PARSING ERROR: %s" % str(ex)
+                continue
+
+
+            for resource_key, resource_config in json_data.iteritems():
+                print "   * %s" % resource_key
+
+                resources_rst.write("{0}\n".format(resource_key))
+                resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
+                resources_rst.write("**Description:** {0}\n\n".format(resource_config["description"]))
+
+                resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
+##
+################################################################################
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

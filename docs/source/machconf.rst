@@ -1,9 +1,16 @@
 
 .. _chapter_machconf:
 
-****************************
-Resource Configuration Files
-****************************
+***********************
+Resource Configurations
+***********************
+
+Preconfigured Resources
+=======================
+
+We maintain a growing set of ready to use resource configuration files.
+
+.. include:: ./resources.rst  
 
 Introduction
 ============
@@ -33,22 +40,6 @@ In the example above, `futuregrid.india` and `futuregrid.sierra` are the
     pd.resource = "futuregrid.india"  # Key defined in futuregrid.json
     pd.cores    = 16
     pilot_india = pm.submit_pilots(pd)
-
-
-Available Resource Configuration Files
---------------------------------------
-
-We maintain a set of ready to use resource configuration files `here <https://github.com/radical-cybertools/radical.pilot/tree/master/src/radical/pilot/configs>`_.
-Those configs cover resources on:
-
-* FutureGrid:   `http://www.futuregrid.org/ <http://www.futuregrid.org/>`_
-* XSEDE:        `http://www.xsede.org/      <http://www.xsede.org/>     `_
-* EPSRC:        `http://www.epsrc.ac.uk/    <http://www.epsrc.ac.uk/>   `_
-* Indian Univ.: `http://www.iu.edu/         <http://www.iu.edu/>        `_
-* LRZ:          `http://www.lrz.de/         <http://www.lrz.de/>        `_
-* DAS4          `http://www.cs.vu.nl/das4/  <http://www.cs.vu.nl/das4/> `_
-* NCAR          `http://www.ncar.ucar.edu/  <http://www.ncar.ucar.edu/> `_
-* localhost     
 
 
 Writing a Custom Resource Configuration File

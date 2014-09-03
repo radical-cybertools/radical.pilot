@@ -1,5 +1,6 @@
 {
     "supermuc.lrz.de": {
+        "description"                 : "TODO",
         "remote_job_manager_endpoint" : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
         "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",
         "local_job_manager_endpoint"  : "loadl://localhost",
@@ -8,7 +9,6 @@
         "lrms"                        : "LOADL",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        #"agent_mongodb_endpoint"      : "login03:24243",
         "forward_tunnel_endpoint"     : "login03",
         "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
         "pre_bootstrap"               : ["source /etc/profile",
