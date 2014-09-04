@@ -91,6 +91,10 @@ class TestIssue114(unittest.TestCase):
                                 timeout=2*60)
 
         assert rp.SCHEDULING in states, "states: %s" % states
+
+        states = um.wait_units (state=[rp.EXECUTING, rp.DONE], 
+                                timeout=1*60)
+
         assert rp.EXECUTING  in states, "states: %s" % states
 
         session.close()

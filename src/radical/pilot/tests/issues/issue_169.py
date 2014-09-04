@@ -81,10 +81,10 @@ class TestIssue169(unittest.TestCase):
         
         cpd1 = radical.pilot.ComputePilotDescription()
         cpd1.resource = "localhost"
-        cpd1.cores = 1
-        cpd1.runtime = 1
-        cpd1.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd1.cleanup = True
+        cpd1.cores    = 1
+        cpd1.runtime  = 1
+        cpd1.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd1.cleanup  = True
 
         cpd2 = radical.pilot.ComputePilotDescription()
         cpd2.resource = "localhost"
@@ -98,9 +98,16 @@ class TestIssue169(unittest.TestCase):
         pmgr.wait_pilots(timeout=10*60)
         
         for pilot in pilots:
-            assert pilot.state == radical.pilot.DONE, "state: %s" % pilot.state
-            assert pilot.stop_time  is not None,      "time : %s" % pilot.stop_time
-            assert pilot.start_time is not None,      "time : %s" % pilot.start_time
+            try :
+                assert pilot.state == radical.pilot.DONE, "state: %s" % pilot.state
+                assert pilot.stop_time  is not None,      "time : %s" % pilot.stop_time
+                assert pilot.start_time is not None,      "time : %s" % pilot.start_time
+            except :
+                print 'pilot: %s (%s)' % (pilot.uid, pilot.state)
+                for entry in pilot.state_history :
+                    print '       %s : %s' % (entry.timestamp, entry.state)
+                print '     : %s' % str(pilot.log)
+                raise
 
         session.close()
 

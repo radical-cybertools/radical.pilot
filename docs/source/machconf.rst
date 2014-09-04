@@ -1,54 +1,28 @@
 
 .. _chapter_machconf:
 
-****************************
-Resource Configuration Files
-****************************
+***********************
+Resource Configurations
+***********************
 
-Introduction
-============
+Preconfigured Resources
+=======================
 
-In order to keep RADICAL-Pilot applications free from clutter and 
-machine-specific parameters and constants, RADICAL-Pilot uses 
-resource configuration files.  Those are installed along with RADICAL-Pilot.
+Resource configurations are a set of dictionaries that hide specific details 
+of a remote resource (queuing-, file-system- and environment-details) from the 
+user. A user allocates a preconfigured resource like this:
 
-A resource configuration uses the JSON format and has the following layout::
+.. code-block:: python
 
-    {
-        "futuregrid.india": {
-            ...
-        },
+    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc.resource   = "archer.ac.uk"
+    pdesc.project    = "e1234"
+    pdesc.runtime    = 60
+    pdesc.cores      = 128
 
-        "futuregrid.sierra": {
-            ...
-        }
-    }
+We maintain a growing set of resource configuration files:
 
-In the example above, `futuregrid.india` and `futuregrid.sierra` are the
-**resource keys**. Resource keys are referenced in
-:class:`radical.pilot.ComputePilotDescription` to create a
-:class:`radical.pilot.ComputePilot` for a given machine::
-
-    pd = radical.pilot.ComputePilotDescription()
-    pd.resource = "futuregrid.india"  # Key defined in futuregrid.json
-    pd.cores    = 16
-    pilot_india = pm.submit_pilots(pd)
-
-
-Available Resource Configuration Files
---------------------------------------
-
-We maintain a set of ready to use resource configuration files `here <https://github.com/radical-cybertools/radical.pilot/tree/master/src/radical/pilot/configs>`_.
-Those configs cover resources on:
-
-* FutureGrid:   `http://www.futuregrid.org/ <http://www.futuregrid.org/>`_
-* XSEDE:        `http://www.xsede.org/      <http://www.xsede.org/>     `_
-* EPSRC:        `http://www.epsrc.ac.uk/    <http://www.epsrc.ac.uk/>   `_
-* Indian Univ.: `http://www.iu.edu/         <http://www.iu.edu/>        `_
-* LRZ:          `http://www.lrz.de/         <http://www.lrz.de/>        `_
-* DAS4          `http://www.cs.vu.nl/das4/  <http://www.cs.vu.nl/das4/> `_
-* NCAR          `http://www.ncar.ucar.edu/  <http://www.ncar.ucar.edu/> `_
-* localhost     
+.. include:: ./resources.rst  
 
 
 Writing a Custom Resource Configuration File

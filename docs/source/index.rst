@@ -1,7 +1,7 @@
 
-##################################
+#####################################
 RADICAL-Pilot |version| Documentation
-##################################
+#####################################
 
 RADICAL-Pilot is a `Pilot Job <https://en.wikipedia.org/wiki/Pilot_job>`_ system
 written in Python. It allows a user to run large numbers of computational
@@ -31,11 +31,11 @@ Contents:
    intro.rst
    installation.rst
    faq.rst
+   machconf.rst
    examples/index.rst
    tutorial/index.rst
    apidoc.rst
    schedulers.rst
-   machconf.rst
    testing.rst
    benchmarks.rst
    developer.rst
