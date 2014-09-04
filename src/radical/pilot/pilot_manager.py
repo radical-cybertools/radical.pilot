@@ -422,10 +422,11 @@ class PilotManager(Object):
 
         while not all_ok :
 
+            pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
             all_ok = True
             states = list()
 
-            for pilot in self._worker.get_compute_pilot_data(pilot_ids=pilot_ids):
+            for pilot in pilots :
                 if  pilot['state'] not in state :
                     all_ok = False
 
