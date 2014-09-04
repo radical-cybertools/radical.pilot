@@ -131,7 +131,7 @@ setup_args = {
     'packages'    : find_packages('src'),
     'package_dir' : {'': 'src'},
     'scripts'          : ['bin/radicalpilot-version',
-                          'bin/radicalpilot-clean',
+                          'bin/radicalpilot-close-session',
                           'bin/radicalpilot-cleanup',
                           'bin/radicalpilot-stats',
                           'bin/radicalpilot-stats.plot'
