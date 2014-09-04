@@ -7,28 +7,6 @@ import radical.pilot as rp
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state) :
-    """ this callback is invoked on all pilot state changes """
-
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
-
-    if  state == rp.FAILED :
-        sys.exit (1)
-
-
-#------------------------------------------------------------------------------
-#
-def unit_state_change_cb (unit, state) :
-    """ this callback is invoked on all unit state changes """
-
-    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
-
-    if  state == rp.FAILED :
-        sys.exit (1)
-
-
-#------------------------------------------------------------------------------
-#
 if __name__ == "__main__":
 
     # Create a new session. A session is the 'root' object for all other
@@ -38,11 +16,6 @@ if __name__ == "__main__":
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
-
-    # Register our callback with the PilotManager. This callback will get
-    # called every time any of the pilots managed by the PilotManager
-    # change their state.
-    pmgr.register_callback(pilot_state_cb)
 
     # Define a 2-core local pilot that runs for 10 minutes.
     pdesc = rp.ComputePilotDescription()
@@ -54,21 +27,15 @@ if __name__ == "__main__":
     pilot = pmgr.submit_pilots(pdesc)
 
     cu = rp.ComputeUnitDescription()
-    cu.executable = "/bin/cat"
-    cu.arguments = ["issue286.txt"]
-    cu.input_staging = "issue286.txt"
+    cu.executable    = "cat"
+    cu.arguments     = ["issue286.txt"]
+    cu.input_staging =  "issue286.txt"
     cu.cores = 1
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
-    umgr = rp.UnitManager(
-        session=session,
-        scheduler=rp.SCHED_DIRECT_SUBMISSION)
-
-    # Register our callback with the UnitManager. This callback will get
-    # called every time any of the units managed by the UnitManager
-    # change their state.
-    umgr.register_callback(unit_state_change_cb)
+    umgr = rp.UnitManager(session=session,
+                          scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
     # Add the previsouly created ComputePilot to the UnitManager.
     umgr.add_pilots(pilot)
@@ -81,15 +48,12 @@ if __name__ == "__main__":
     # Wait for all compute units to finish.
     umgr.wait_units()
 
-    print "* Task %s (executed @ %s) state %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-        % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
-
+    print "unit.state : %s" % unit.state
+    print "unit.stdout: %s" % unit.stdout
+    print "unit.stderr: %s" % unit.stderr
 
     # Remove session from database
-    pmgr.cancel_pilots()
-    pmgr.wait_pilots()
     session.close()
-    sys.exit (0)
 
 # ------------------------------------------------------------------------------
 
