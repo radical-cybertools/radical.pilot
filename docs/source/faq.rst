@@ -34,8 +34,11 @@ A: Try Cleaning-up MongoDB.
 
 This can happen rarely if radical.pilot keeps on failing in an unexpected way 
 and without clean up the database upon termination. Currenlty the only 
-workaround for this is to manually clean-up the database using the MongoDB 
-command-line tools. 
+workaround for this is to manually clean-up the database using the ``radicalpilot-clean``
+and ``radicalpilot-cleanup`` tools (both are installed with radical.pilot). 
+The former lists and purges database entries older than a specified age; the 
+atter closes an existing session (and thus also cleanes its database entry). 
+
 
 Q: I see the error "Host key verification failed" in AGENT.STDERR.
 ------------------------------------------------------------------
