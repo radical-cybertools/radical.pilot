@@ -1,6 +1,6 @@
 {
     "supermuc.lrz.de": {
-        "description"                 : "TODO",
+        "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/systemdescription/).",
         "notes"                       : "None",
         "remote_job_manager_endpoint" : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
         "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",

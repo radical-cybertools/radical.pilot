@@ -1,6 +1,6 @@
 {
     "localhost": {
-        "description"                 : "TODO",
+        "description"                 : "Your local machine.",
         "notes"                       : "None",
         "remote_job_manager_endpoint" : "fork://localhost",
         "remote_filesystem_endpoint"  : "file://localhost",

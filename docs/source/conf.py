@@ -56,7 +56,7 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                 try:
                     working_dir = resource_config["default_remote_workdir"]
                 except Exception, ex:
-                    working_dir = None
+                    working_dir = "$HOME/radical.pilot.sandbox"
                 try:
                     python_interpreter = resource_config["python_interpreter"]
                 except Exception, ex:
@@ -64,15 +64,16 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
 
                 resources_rst.write("{0}\n".format(resource_key))
                 resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
-                resources_rst.write("**Description:** {0}\n\n".format(resource_config["description"]))
-                resources_rst.write("**Notes:** {0}\n\n".format(resource_config["notes"]))
-
-                resources_rst.write("======================= =======================\n")
-                resources_rst.write("Controllable Parameters Value\n")
-                resources_rst.write("======================= =======================\n")
-                resources_rst.write("Default Queue           {0}\n".format(default_queue))
-                resources_rst.write("Working Directory       {0}\n".format(working_dir))
-                resources_rst.write("======================= =======================\n\n")
+                resources_rst.write("{0}\n\n".format(resource_config["description"]))
+                if resource_config["notes"] != "None":
+                    resources_rst.write(".. note::  {0}\n\n".format(resource_config["notes"]))
+                resources_rst.write("Default values for ComputePilotDescription attributes:\n\n")
+                resources_rst.write("================== ============================\n")
+                resources_rst.write("Parameter               Value\n")
+                resources_rst.write("================== ============================\n")
+                resources_rst.write("``queue``               {0}\n".format(default_queue))
+                resources_rst.write("``sandbox``             {0}\n".format(working_dir))
+                resources_rst.write("================== ============================\n\n")
 
 
                 resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
