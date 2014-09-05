@@ -108,6 +108,12 @@ MAX_IO_LOGLENGTH            = 1024 # max number of unit out/err chars to push to
 
 #---------------------------------------------------------------------------
 #
+def timestamp () :
+    return datetime.datetime.utcnow()
+
+
+#---------------------------------------------------------------------------
+#
 start_time = time.time ()
 def get_rusage () :
 
@@ -130,12 +136,26 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.error(message)      
-    ts = datetime.datetime.utcnow()
+
+    ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : [message, get_rusage()]},
          "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
          "$set"    : {"state"       : FAILED,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -146,12 +166,26 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.warning(message)
-    ts = datetime.datetime.utcnow()
+
+    ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : [message, get_rusage()]},
          "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
          "$set"    : {"state"       : CANCELED,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -161,13 +195,27 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
-    ts = datetime.datetime.utcnow()
+
+    ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
 
     message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : [message, get_rusage()]},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
          "$set"    : {"state"       : DONE,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -849,7 +897,7 @@ class ExecWorker(multiprocessing.Process):
         # keep a slot allocation history (short status), start with presumably
         # empty state now
         self._slot_history = list()
-        self._slot_history.append (self._slot_status (short=True))
+        self._slot_history.append ([timestamp(), self._slot_status ()])
 
 
         # The available launch methods
@@ -917,11 +965,13 @@ class ExecWorker(multiprocessing.Process):
         """Starts the process when Process.start() is called.
         """
         try:
+
+            # report initial slot status
+            self._log.debug(self._slot_status())
+
             while self._terminate is False:
 
                 idle = True
-
-                self._log.debug("Slot status:\n%s", self._slot_status())
 
                 # See if there are commands for the worker!
                 try:
@@ -995,7 +1045,7 @@ class ExecWorker(multiprocessing.Process):
                         # communicate that error to the application/user.
                         task.stderr += "\nPilot cannot start compute unit:\n%s\n%s" \
                                      % (str(e), traceback.format_exc())
-                        
+
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if  task_slots :
                             self._change_slot_states(task_slots, FREE)
@@ -1008,7 +1058,7 @@ class ExecWorker(multiprocessing.Process):
 
                 # If nothing happened in this cycle, zzzzz for a bit.
                 if idle:
-                    self._log.debug("Sleep now for a jiffy ...")
+                  # self._log.debug("Sleep now for a jiffy ...")
                     time.sleep(0.1)
 
         except Exception, ex:
@@ -1019,34 +1069,20 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _slot_status(self, short=False):
+    def _slot_status(self):
         """Returns a multi-line string corresponding to slot status.
         """
 
-        if short:
-            slot_matrix = ""
-            for slot in self._slots:
-                slot_matrix += "|"
-                for core in slot['cores']:
-                    if core is FREE:
-                        slot_matrix += "-"
-                    else:
-                        slot_matrix += "+"
-            slot_matrix += "|"
-            ts = datetime.datetime.utcnow()
-            return {'timestamp' : ts, 'slotstate' : slot_matrix}
-
-        else :
-            slot_matrix = ""
-            for slot in self._slots:
-                slot_vector  = ""
-                for core in slot['cores']:
-                    if core is FREE:
-                        slot_vector += " - "
-                    else:
-                        slot_vector += " X "
-                slot_matrix += "%s: %s\n" % (slot['node'].ljust(24), slot_vector)
-            return slot_matrix
+        slot_status = ""
+        for slot in self._slots:
+            slot_status += "|"
+            for core in slot['cores']:
+                if core is FREE:
+                    slot_status += "-"
+                else:
+                    slot_status += "+"
+        slot_status += "|"
+        return slot_status
 
 
     # ------------------------------------------------------------------------
@@ -1208,10 +1244,13 @@ class ExecWorker(multiprocessing.Process):
         # ensue.  We thus limit the slot history size to 4MB, to keep suffient
         # space for the actual operational data
         if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
-            self._slot_history.append (self._slot_status (short=True))
+            self._slot_history.append ([timestamp(), self._slot_status ()])
         else :
             # just replace the last entry with the current one.
-            self._slot_history[-1]  =  self._slot_status (short=True)
+            self._slot_history[-1]  =  [timestamp(), self._slot_status ()]
+
+        # report changed slot status
+        self._log.debug(self._slot_status())
 
 
     # ------------------------------------------------------------------------
@@ -1238,7 +1277,7 @@ class ExecWorker(multiprocessing.Process):
             launch_command=launch_command,
             logger=self._log)
 
-        task.started=datetime.datetime.utcnow()
+        task.started=timestamp()
         task.state = EXECUTING
         task._proc = proc
 
@@ -1372,7 +1411,7 @@ class ExecWorker(multiprocessing.Process):
             task.exit_code = ret_code
 
             # Record the time and state
-            task.finished = datetime.datetime.utcnow()
+            task.finished = timestamp()
             task.state = state
 
             # Put it on the list of tasks to update in bulk
@@ -1400,7 +1439,7 @@ class ExecWorker(multiprocessing.Process):
         """Updates the database entries for one or more tasks, including
         task state, log, etc.
         """
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
         # We need to know which unit manager we are working with. We can pull
         # this information here:
 
@@ -1789,7 +1828,7 @@ class Agent(threading.Thread):
         """
         # first order of business: set the start time and state of the pilot
         self._log.info("Agent %s starting ..." % self._pilot_id)
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
         ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : ACTIVE,
@@ -1868,7 +1907,7 @@ class Agent(threading.Thread):
 
                     # Check if there are compute units waiting for execution,
                     # and log that we pulled it.
-                    ts = datetime.datetime.utcnow()
+                    ts = timestamp()
                     cu_cursor = self._cu.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : PENDING_EXECUTION},
@@ -1920,7 +1959,7 @@ class Agent(threading.Thread):
                     #
                     # Check if there are compute units waiting for input staging
                     #
-                    ts = datetime.datetime.utcnow()
+                    ts = timestamp()
                     cu_cursor = self._cu.find_and_modify(
                         query={'pilot' : self._pilot_id,
                                'Agent_Input_Status': PENDING},
@@ -2072,7 +2111,7 @@ class _Process(subprocess.Popen):
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
-            
+
             aprun_command = "%s -n %s" % (launch_command, task.numcores)
 
             launch_script.write('%s\n'    % pre_exec_string)
@@ -2323,13 +2362,13 @@ if __name__ == "__main__":
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit (2)
     signal.signal(signal.SIGINT, sigint_handler)
 
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit (3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
     #--------------------------------------------------------------------------
@@ -2346,13 +2385,13 @@ if __name__ == "__main__":
             msg = "Couldn't set up execution environment."
             logger.error(msg)
             pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-            sys.exit (1)
+            sys.exit (4)
 
     except Exception, ex:
         msg = "Error setting up execution environment: %s" % str(ex)
         logger.error(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit (5)
 
     #--------------------------------------------------------------------------
     # Launch the agent thread
@@ -2379,11 +2418,12 @@ if __name__ == "__main__":
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         if  agent :
             agent.stop()
-        sys.exit (1)
+        sys.exit (6)
 
     except SystemExit:
 
         logger.error("Caught keyboard interrupt. EXITING")
         if  agent :
             agent.stop()
+        sys.exit (7)
 

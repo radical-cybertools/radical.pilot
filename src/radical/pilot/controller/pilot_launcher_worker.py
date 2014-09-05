@@ -53,6 +53,49 @@ class PilotLauncherWorker(threading.Thread):
         self.missing_pilots     = dict()
         self.job_services       = dict()
 
+
+    # ------------------------------------------------------------------------
+    #
+    def _get_pilot_logs (self, pilot_col, pilot_id) :
+
+        out, err, log = ["", "", ""]
+        # attempt to get stdout/stderr/log.  We only expect those if pilot was
+        # attemptint launch at some point
+        launched = False
+        pilot    = pilot_col.find ({"_id": pilot_id})[0]
+
+        for entry in pilot['statehistory'] :
+            if entry['state'] == LAUNCHING :
+                launched = True
+                break
+
+        if  launched :
+            MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
+
+            try :
+                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.STDOUT'))
+                out   = f_out.read()[-MAX_IO_LOGLENGTH:]
+                f_out.close ()
+            except :
+                pass
+
+            try :
+                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.STDERR'))
+                err   = f_err.read()[-MAX_IO_LOGLENGTH:]
+                f_err.close ()
+            except :
+                pass
+
+            try :
+                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.LOG'))
+                log   = f_log.read()[-MAX_IO_LOGLENGTH:]
+                f_log.close ()
+            except :
+                pass
+
+        return out, err, log
+
+
     # --------------------------------------------------------------------------
     #
     def check_pilot_states (self, pilot_col) :
@@ -117,26 +160,37 @@ class PilotLauncherWorker(threading.Thread):
                                    "Assuming it has failed." % pilot_id
 
             if  pilot_failed :
+
+                out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
-                    {"_id": pilot_id},
-                    {"$set": {"state": FAILED},
-                     "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                     "$push": {"log": log_message}}
+                    {"_id"  : pilot_id,
+                     "state": {"$ne"     : FAILED}},
+                    {"$set" : {"state"   : FAILED,
+                               "stdout"  : out,
+                               "stderr"  : err,
+                               "logfile" : log},
+                     "$push": {"statehistory" : {"state": FAILED, "timestamp": ts},
+                               "log"          : log_message}}
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
 
+
             elif pilot_done :
                 # FIXME: this should only be done if the state is not yet
                 # done...
+                out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
                     {"_id"  : pilot_id,
-                     "state": {"$ne"  : DONE}},
-                    {"$set" : {"state": DONE},
-                     "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
-                     "$push": {"log": log_message}}
+                     "state": {"$ne"     : DONE}},
+                    {"$set" : {"state"   : DONE,
+                               "stdout"  : out,
+                               "stderr"  : err,
+                               "logfile" : log},
+                     "$push": {"statehistory": {"state": DONE, "timestamp": ts},
+                               "log"         : log_message}}
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
@@ -219,7 +273,7 @@ class PilotLauncherWorker(threading.Thread):
                         ## LAUNCH THE PILOT AGENT VIA SAGA
                         log_messages = []
 
-                        compute_pilot_id = str(compute_pilot["_id"])
+                        pilot_id = str(compute_pilot["_id"])
                         logger.info("Launching ComputePilot %s" % compute_pilot)
 
                         number_cores = compute_pilot['description']['cores']
@@ -373,7 +427,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd.working_directory = saga.Url(sandbox).path
 
                         bootstrap_args = "-n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
-                            (database_name, session_uid, str(compute_pilot_id),
+                            (database_name, session_uid, str(pilot_id),
                              runtime, logger.level, number_cores, VERSION)
 
                         if  user_sandbox :
@@ -414,7 +468,7 @@ class PilotLauncherWorker(threading.Thread):
                             #   v : virtualenv
                             #   e : everything (== pilot sandbox)
                             # FIXME: get cleanup flags from somewhere
-                            logger.info ('request cleanup for pilot %s' % compute_pilot_id)
+                            logger.info ('request cleanup for pilot %s' % pilot_id)
                             bootstrap_args += " -x %s" % 'luve' # the cleanup flag
 
                         if  'RADICAL_PILOT_BENCHMARK' in os.environ :
@@ -474,9 +528,9 @@ class PilotLauncherWorker(threading.Thread):
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
                         ts = datetime.datetime.utcnow()
                         ret = pilot_col.update(
-                            {"_id"  : ObjectId(compute_pilot_id),
+                            {"_id"  : ObjectId(pilot_id),
                              "state": 'Launching'},
-                            {"$set": {"state": PENDING_ACTIVE,
+                            {"$set" : {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                              "$pushAll": {"log": log_messages}}                    
@@ -487,7 +541,7 @@ class PilotLauncherWorker(threading.Thread):
                             # running already.  Just update state history and
                             # jobid then
                             ret = pilot_col.update(
-                                {"_id"  : ObjectId(compute_pilot_id)},
+                                {"_id"  : ObjectId(pilot_id)},
                                 {"$set" : {"saga_job_id": saga_job_id},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                                  "$pushAll": {"log": log_messages}}                    
@@ -496,18 +550,23 @@ class PilotLauncherWorker(threading.Thread):
 
                     except Exception, ex:
                         # Update the Pilot's state 'FAILED'.
+                        out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                         ts = datetime.datetime.utcnow()
                         log_messages = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
                         pilot_col.update(
-                            {"_id": ObjectId(compute_pilot_id)},
-                            {"$set": {"state": FAILED},
-                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                             "$push": {"log": log_messages}}
+                            {"_id"  : ObjectId(pilot_id),
+                             "state": {"$ne"     : FAILED}},
+                            {"$set" : {"state"   : FAILED,
+                                       "stdout"  : out,
+                                       "stderr"  : err,
+                                       "logfile" : log},
+                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts},
+                                       "log": log_messages}}
                         )
                         logger.error(log_messages)
 
         except SystemExit as e :
-            print "pilot launcher thread caught system exit -- forcing application shutdown"
+            print "pilot launcher thread caught system exit -- forcing application shutdown (%s)" % e
             import thread
             thread.interrupt_main ()
             
