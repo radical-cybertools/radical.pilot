@@ -180,7 +180,7 @@ class Session (saga.Session, Object):
                 logger.info("New Session created%s." % str(self))
 
             except Exception, ex:
-                raise PilotException("Couldn't create new session (database URL %s incorrect?): %s" \
+                raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
                                 % (self._database_url, ex))  
 
         ######################################

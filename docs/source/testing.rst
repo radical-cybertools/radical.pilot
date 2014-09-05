@@ -64,7 +64,7 @@ So if for example you want to run the unit tests on Futuregrid's _India_ cluster
     RADICAL_PILOT_VERBOSE=debug \
     RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID=oweidner # optional \
     RADICAL_PILOT_TEST_REMOTE_RESOURCE=futuregrid.INDIA \
-    RADICAL_PILOT_TEST_REMOTE_WORKDIR=/N/u/oweidner/radicalpilot.sandbox \
+    RADICAL_PILOT_TEST_REMOTE_WORKDIR=/N/u/oweidner/radical.pilot.sandbox \
     RADICAL_PILOT_TEST_REMOTE_CORES=32 \
     RADICAL_PILOT_TEST_REMOTE_NUM_CUS=64 \
     python setup.py test
