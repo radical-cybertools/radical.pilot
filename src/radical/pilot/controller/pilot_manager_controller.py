@@ -282,6 +282,8 @@ class PilotManagerController(threading.Thread):
                             'facade_object': None
                         }
 
+                    self._shared_data[pilot_id]['data'] = pilot
+
                     if new_state != old_state:
                         # On a state change, we fire zee callbacks.
                         logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
@@ -289,8 +291,6 @@ class PilotManagerController(threading.Thread):
                         # The state of the pilot has changed, We call all
                         # pilot-level callbacks to propagate this.
                         self.call_callbacks(pilot_id, new_state)
-
-                    self._shared_data[pilot_id]['data'] = pilot
 
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
                     # set the state of the compute unit accordingly
