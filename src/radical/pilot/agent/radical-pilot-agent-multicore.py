@@ -775,8 +775,8 @@ class Task(object):
 
         self.state          = None
         self.exit_code      = None
-        self.stdout         = None
-        self.stderr         = None
+        self.stdout         = ""
+        self.stderr         = ""
 
         self._log           = []
         self._proc          = None
@@ -986,16 +986,15 @@ class ExecWorker(multiprocessing.Process):
                             idle = False
 
                     except Exception as e :
-                        self._log.error ("Launching task failed: %s." % e)
-                        task.state = FAILED
-
                         # append the startup error to the units stderr.  This is
                         # not completely correct (as this text is not produced
                         # by the unit), but it seems the most intuitive way to
                         # communicate that error to the application/user.
-                        task.stderr += "\nPilot cannot start compute unit:\n%s\n%s" \
-                                     % (str(e), traceback.format_exc())
+                        task.state   = FAILED
+                        task.stderr += "\nPilot cannot start compute unit: '%s'" % e)
                         
+                        self._log.error ("Launching task failed: '%s'." % e)
+
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if  task_slots :
                             self._change_slot_states(task_slots, FREE)
@@ -1360,14 +1359,14 @@ class ExecWorker(multiprocessing.Process):
                     txt = stdout_f.read()
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stdout = txt
+                    task.stdout += txt
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
                     txt = stderr_f.read()
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stderr = txt
+                    task.stderr += txt
 
             task.exit_code = ret_code
 
@@ -1400,6 +1399,10 @@ class ExecWorker(multiprocessing.Process):
         """Updates the database entries for one or more tasks, including
         task state, log, etc.
         """
+
+        if  not isinstance(tasks, list):
+            tasks = [tasks]
+
         ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
         # this information here:
@@ -1425,8 +1428,6 @@ class ExecWorker(multiprocessing.Process):
                 }
                 )
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
         for task in tasks:
             self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
