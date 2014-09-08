@@ -991,7 +991,7 @@ class ExecWorker(multiprocessing.Process):
                         # by the unit), but it seems the most intuitive way to
                         # communicate that error to the application/user.
                         task.state   = FAILED
-                        task.stderr += "\nPilot cannot start compute unit: '%s'" % e)
+                        task.stderr += "\nPilot cannot start compute unit: '%s'" % e
                         
                         self._log.error ("Launching task failed: '%s'." % e)
 
