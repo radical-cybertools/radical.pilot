@@ -94,3 +94,12 @@ Next, add you newly generated key to ~/.ssh/authorized_keys:
 .. code-block:: bash
 
     cat id_rsa.pub >> ~/.ssh/authorized_keys
+
+
+Q: I ssh related errors in the AGENT.STDER and/or in the unit's stderr
+----------------------------------------------------------------------
+
+A: Same as above: set up password-less, intra-node SSH access.
+--------------------------------------------------------------
+
+
