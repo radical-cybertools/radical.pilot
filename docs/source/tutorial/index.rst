@@ -4,7 +4,8 @@
 Tutorial
 ********
 
-This tutorial will walk you through the basic features of RADICAL-Pilot. Several examples illustrate common workflow usages in distributed environments.
+This tutorial will walk you through the basic features of RADICAL-Pilot. Several 
+examples illustrate some common usage patterns in distributed environments.
 
 **Prerequisites:**
 
@@ -15,9 +16,9 @@ This tutorial will walk you through the basic features of RADICAL-Pilot. Several
 
 **You will learn how to:**
 
-* Submit multiple jobs through a 'container job' to either your local machine or a remote resource.
-* Write a program that runs multiple jobs to form a simple ensemble workflow.
-* Write programs that demonstrate more complex, frequently used workflows.
+* Submit multiple jobs through a 'pilot job' to your local workstation as well as a remote machine.
+* Write programs that run multiple jobs concurrently, sequentially, or both, 
+  based on their requirements and dependencies.
 
 **Contents:**
 

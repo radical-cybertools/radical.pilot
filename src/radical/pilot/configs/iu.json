@@ -21,7 +21,7 @@
         "local_job_manager_endpoint"  : "pbs://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "lrms"                        : "TORQUE",
-        "task_launch_method"          : "SSH",
+        "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "pre_bootstrap"               : ["module load python"],
         "valid_roots"                 : ["/N"],
