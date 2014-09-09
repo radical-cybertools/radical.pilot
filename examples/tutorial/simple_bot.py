@@ -78,7 +78,7 @@ if __name__ == "__main__":
         # 
         pdesc = rp.ComputePilotDescription ()
         pdesc.resource = "localhost" # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 5 # minutes
+        pdesc.runtime  = 10 # minutes
         pdesc.cores    = 1
         pdesc.cleanup  = True
         # pdesc.project  = 'TG-MCB140109'
