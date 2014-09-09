@@ -39,16 +39,18 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH     = 'SSH'
-LAUNCH_METHOD_APRUN   = 'APRUN'
-LAUNCH_METHOD_LOCAL   = 'LOCAL'
-LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
-LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
-LAUNCH_METHOD_POE     = 'POE'
-LAUNCH_METHOD_IBRUN   = 'IBRUN'
+LAUNCH_METHOD_SSH        = 'SSH'
+LAUNCH_METHOD_APRUN      = 'APRUN'
+LAUNCH_METHOD_LOCAL      = 'LOCAL'
+LAUNCH_METHOD_MPIRUN     = 'MPIRUN'
+LAUNCH_METHOD_MPIRUN_RSH = 'MPIRUN_RSH'
+LAUNCH_METHOD_MPIEXEC    = 'MPIEXEC'
+LAUNCH_METHOD_POE        = 'POE'
+LAUNCH_METHOD_IBRUN      = 'IBRUN'
 
 MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
                               LAUNCH_METHOD_MPIRUN,
+                              LAUNCH_METHOD_MPIRUN_RSH,
                               LAUNCH_METHOD_POE,
                               LAUNCH_METHOD_APRUN,
                               LAUNCH_METHOD_MPIEXEC]
@@ -212,10 +214,15 @@ class ExecutionEnvironment(object):
 
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
-            command = self._find_executable(['mpirun',           # General case
-                                             'mpirun_rsh',       # Gordon @ SDSC
-                                             'mpirun-openmpi-mp' # Mac OSX MacPorts
-                                            ])
+            command = self._find_executable(['mpirun-openmpi-mp', # Mac OSX MacPorts
+                                             'mpirun'             # General case
+            ])
+            if command is not None:
+                mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # mpirun_rsh (e.g. on Gordon@ SDSC)
+            command = self._which('mpirun_rsh')
             if command is not None:
                 mpi_launch_command = command
 
@@ -2052,6 +2059,22 @@ class _Process(subprocess.Popen):
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # Construct the hosts_string
+            hosts_string = ''
+            for slot in task.slots:
+                host = slot.split(':')[0]
+                hosts_string += ' %s' % host
+
+            mpirun_rsh_command = "%s -np %s%s" % (launch_command, task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_rsh_command, task_exec_string))
             launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
