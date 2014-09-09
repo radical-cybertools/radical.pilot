@@ -67,7 +67,7 @@ if __name__ == "__main__":
     # Define 1-core local pilots that run for 10 minutes and clean up
     # after themself.
     pdescriptions = list()
-    for i in range (0, 1) :
+    for i in range (0, 3) :
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = rp_host
         pdesc.runtime  = rp_runtime
