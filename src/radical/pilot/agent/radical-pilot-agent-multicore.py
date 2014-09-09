@@ -103,7 +103,7 @@ PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just
 STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
 #---------------------------------------------------------------------------
-MAX_IO_LOGLENGTH            = 1024 # max number of unit out/err chars to push to db
+MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push to db
 
 
 #---------------------------------------------------------------------------
@@ -1356,14 +1356,16 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = stdout_f.read()
+                    txt = unicode(stdout_f.read(), "utf-8")
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
                     task.stdout += txt
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = stderr_f.read()
+                    txt = unicode(stderr_f.read(), "utf-8")
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
                     task.stderr += txt
@@ -1429,6 +1431,10 @@ class ExecWorker(multiprocessing.Process):
                 )
 
         for task in tasks:
+
+            #stdout = unicode( task.stdout, "utf-8")
+            #stderr = unicode( task.stdout, "utf-8")
+
             self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
                       "started"       : task.started,
