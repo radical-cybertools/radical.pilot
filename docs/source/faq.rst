@@ -102,4 +102,15 @@ Q: I ssh related errors in the AGENT.STDER and/or in the unit's stderr
 A: Same as above: set up password-less, intra-node SSH access.
 --------------------------------------------------------------
 
+Q: On Gordon I see "Failed to execvp() 'mybinary': No such file or directory (2)"
+---------------------------------------------------------------------------------
 
+The full error in STDERR is something like:
+
+.. code-block:: bash
+
+    [gcn-X-X.sdsc.edu:mpispawn_0][spawn_processes] Failed to execvp() 'mybinary': No such file or directory (2)
+
+
+A: You need to specify the full path of the executable as mpirun_rsh is not able to find it in the path
+-------------------------------------------------------------------------------------------------------

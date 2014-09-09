@@ -20,22 +20,52 @@ import time
 def pilot_state_cb (pilot, state) :
     """ this callback is invoked on all pilot state changes """
 
-    # callbacks happen in a different thread than the main application thread --
+    # Callbacks happen in a different thread than the main application thread --
     # they are truly asynchronous.  That means, however, that a 'sys.exit()'
     # will not end the application, but will end the thread (in this case the
     # pilot_manager_controller thread).  For that reason we wrapped all threads
-    # in their own try/except clauses, and the translate that exception into an
+    # in their own try/except clauses, and then translate the `sys.exit()` into an
     # 'thread.interrupt_main()' call -- this will raise a 'KeyboardInterrupt' in
-    # the main thread which in turn can be caughte that exception into an
-    # 'thread.interrupt_main()' call -- this will raise a 'KeyboardInterrupt'
-    # exception in the main thread, which in turn can then be caught for clean
-    # shutdown (see code later below.)
+    # the main thread which can be interpreted by your application, for example
+    # to initiate a clean shutdown via `session.close()` (see code later below.)
+    # The same `KeyboardShutdown` will also be raised when you interrupt the
+    # application via `^C`.
+    #
+    # Note that other error handling semantics is available, depending on your
+    # application's needs.  The application could for example spawn
+    # a replacement pilot at this point, or reduce the number of compute units
+    # to match the remaining set of pilots.
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
     if  state == rp.FAILED :
         print 'Pilot failed -- ABORT!  ABORT!  ABORT!'
         print pilot.log[-1] # Get the last log message
+        sys.exit (1)
+
+
+#------------------------------------------------------------------------------
+#
+def unit_state_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
+
+    # The principle for unit state callbacks is exactly the same as for the
+    # pilot state callbacks -- only that they are invoked by the unit manager on
+    # changes of compute unit states.  
+    #
+    # The example below does not really create any ComputeUnits, we only include
+    # the callback here for documentation on the principles of error handling.
+    #
+    # Note that other error handling semantics is available, depending on your
+    # application's needs.  The application could for example spawn replacement
+    # compute units, or spawn a pilot on a different resource which might be
+    # better equipped to handle the unit payload.
+
+    print "[Callback]: ComputeUnit '%s' state: %s." % (unit.uid, state)
+
+    if  state == rp.FAILED :
+        print 'Unit failed -- ABORT!  ABORT!  ABORT!'
+        print unit.stderr # Get the unit's stderr
         sys.exit (1)
 
 
@@ -91,7 +121,7 @@ if __name__ == "__main__":
     except (KeyboardInterrupt, SystemExit) as e :
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
-        # SystemExit (which gets raised if the main threads exits for some
+        # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         print "need to exit now: %s" % e
 
@@ -102,7 +132,11 @@ if __name__ == "__main__":
         session.close ()
 
         # the above is equivalent to
-        # session.close (cleanup=True, terminate=True)
+        #
+        #   session.close (cleanup=True, terminate=True)
+        #
+        # it will thus both clean out the session's database record, and kill
+        # all remaining pilots (none in our example).
 
 
 #-------------------------------------------------------------------------------

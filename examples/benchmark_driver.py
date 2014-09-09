@@ -37,9 +37,9 @@ def unit_state_cb (unit, state) :
 if __name__ == "__main__":
 
     rp_user     = str(os.getenv ("RP_USER",     "merzky"))
-    rp_cores    = int(os.getenv ("RP_CORES",    16))
+    rp_cores    = int(os.getenv ("RP_CORES",    8))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
-    rp_units    = int(os.getenv ("RP_UNITS",    64))
+    rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3)) # 3 units/core/pilot
     rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
     rp_host     = str(os.getenv ("RP_HOST",     "india.futuregrid.org"))
     rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
@@ -67,19 +67,16 @@ if __name__ == "__main__":
     # Define 1-core local pilots that run for 10 minutes and clean up
     # after themself.
     pdescriptions = list()
-    for i in range (0, 1) :
+    for i in [1, 2, 3] :
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = rp_host
         pdesc.runtime  = rp_runtime
-        pdesc.cores    = rp_cores
+        pdesc.cores    = i*rp_cores
         pdesc.cleanup  = False
         if rp_queue   : pdesc.queue    = rp_queue
         if rp_project : pdesc.project  = rp_project
 
         pdescriptions.append(pdesc)
-
-        import pprint
-        pprint.pprint (pdesc)
 
 
     # Launch the pilots.
@@ -88,32 +85,6 @@ if __name__ == "__main__":
 
     pmgr.wait_pilots (state=rp.ACTIVE)
 
-
-
-    # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-    # uses /bin/cat to concatenate two input files, file1.dat and
-    # file2.dat. The output is written to STDOUT. cu.environment is
-    # used to demonstrate how to set environment variables withih a
-    # ComputeUnit - it's not strictly necessary for this example. As
-    # a shell script, the ComputeUnits would look something like this:
-    #
-    #    export INPUT1=file1.dat
-    #    export INPUT2=file2.dat
-    #    /bin/cat $INPUT1 $INPUT2
-    #
-    cu_descriptions = []
-
-    for unit_count in range(0, rp_units):
-        cu = rp.ComputeUnitDescription()
-        cu.executable  = "/bin/sleep"
-        cu.arguments   = ["60"]
-        cu.cores       = rp_cu_cores
-        cu.mpi         = True
-
-        import pprint
-        pprint.pprint (cu)
-
-        cu_descriptions.append(cu)
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
@@ -129,9 +100,24 @@ if __name__ == "__main__":
     # Add the previsouly created ComputePilots to the UnitManager.
     umgr.add_pilots(pilots)
 
-    # Submit the previously created ComputeUnit descriptions to the
-    # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
+
+    # Create a workload of n ComputeUnits.
+    cu_descriptions = []
+
+    for unit_count in range(0, rp_units):
+        cu = rp.ComputeUnitDescription()
+        cu.executable  = "/bin/sleep"
+        cu.arguments   = ["60"]
+        cu.cores       = rp_cu_cores
+        cu.mpi         = True
+
+        import pprint
+        pprint.pprint (cu)
+
+        cu_descriptions.append(cu)
+
+    # Submit the ComputeUnit descriptions to the UnitManager. This will trigger
+    # the selected scheduler to start assigning the units to the pilots.
     units = umgr.submit_units(cu_descriptions)
     print "units: %s" % umgr.list_units ()
 

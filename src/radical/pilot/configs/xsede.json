@@ -61,7 +61,7 @@
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
+        "mpi_launch_method"           : "MPIRUN_RSH",
         "python_interpreter"          : "/usr/bin/python",
         "pre_bootstrap"               : ["module purge", "module load intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],

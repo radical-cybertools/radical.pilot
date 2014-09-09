@@ -39,7 +39,7 @@ a RADICAL-Pilot application. Possible values are:
 
 
 RADICAL-Pilot Architecture
-=======================
+==========================
 
 Describe architecture overview here.
 
@@ -57,3 +57,4 @@ UnitManager and UnitManager Worker
 .. image:: images/architecture_unitmanager.png
 
 Download :download:`PDF version <images/architecture_unitmanager.pdf>`.
+
