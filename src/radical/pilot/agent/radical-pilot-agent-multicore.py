@@ -851,13 +851,13 @@ class ExecWorker(multiprocessing.Process):
         self._cores_per_node = cores_per_node
 
         #self._capability = self._slots2caps(self._slots)
-        self._capability = self._slots2free(self._slots)
+        self._capability     = self._slots2free(self._slots)
+        self._capability_old = None
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
-        self._slot_history = list()
-        self._slot_history.append (self._slot_status (short=True))
-
+        self._slot_history     = [self._slot_status (short=True)]
+        self._slot_history_old = None
 
         # The available launch methods
         self._available_launch_methods = launch_methods
@@ -1213,7 +1213,7 @@ class ExecWorker(multiprocessing.Process):
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
         # ensue.  We thus limit the slot history size to 4MB, to keep suffient
         # space for the actual operational data
-        if  len(str(self._slot_history)) > 4 * 1024 * 1024 :
+        if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
             self._slot_history.append (self._slot_status (short=True))
         else :
             # just replace the last entry with the current one.
@@ -1426,14 +1426,20 @@ class ExecWorker(multiprocessing.Process):
         # AM: the capability publication cannot be delayed until shutdown
         # though...
         if  self._benchmark :
-            self._p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._slot_history,
-                          #"slots"       : self._slots,
-                          "capability"  : self._capability
-                         }
-                }
-                )
+            if  self._slot_history_old != self._slot_history or \
+                self._capability_old   != self._capability   :
+
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)},
+                    {"$set": {"slothistory" : self._slot_history,
+                              #"slots"       : self._slots,
+                              "capability"  : self._capability
+                             }
+                    }
+                    )
+
+                self._slot_history_old = self._slot_history[:]
+                self._capability_old   = self._capability
 
         for task in tasks:
             self._cu.update({"_id": ObjectId(task.uid)}, 

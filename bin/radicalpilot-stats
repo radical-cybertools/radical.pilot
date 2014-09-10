@@ -476,6 +476,10 @@ def plot_session (dbclient, dbname, session) :
                 maxslots = max (maxslots, slotnum)
                 slots.append (slotnum)
 
+                for idx in range (0, len(slotstr)) :
+                    if  slotstr[idx] in ['-', '+'] :
+                        slotidxs.append (idx)
+
                 for number,slotidx in enumerate(slotidxs) :
 
                     used = False
@@ -497,6 +501,7 @@ def plot_session (dbclient, dbname, session) :
 
                         else :
                             print "oops?  invalid slotstate '%s'" % slotstate
+
                     dat.write ("\n")
                 delete_me.append (dat.name)
 
