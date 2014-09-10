@@ -126,15 +126,6 @@ if __name__ == "__main__":
         print "Execution was interrupted"
         sys.exit (-1)
 
-
-    except Exception as e:
-        print "An error occurred: %s" % ((str(e)))
-        sys.exit (-1)
-
-    except KeyboardInterrupt :
-        print "Execution was interrupted"
-        sys.exit (-1)
-
     finally :
         print "Closing session, exiting now ..."
         session.close()
