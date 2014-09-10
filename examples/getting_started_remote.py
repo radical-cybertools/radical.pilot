@@ -16,7 +16,7 @@ def pilot_state_cb (pilot, state) :
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if  state == rp.FAILED:
         sys.exit (1)
 
 
@@ -26,9 +26,6 @@ def unit_state_cb (unit, state) :
     """ this callback is invoked on all unit state changes """
 
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
-
-    if  state == rp.FAILED :
-        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
@@ -62,7 +59,7 @@ if __name__ == "__main__":
         # Define a 32-core on stampede that runs for 15 minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "india.futuregrid.org"
+        pdesc.resource  = "bigred2.uits.indiana.edu"
         pdesc.runtime   = 15 # minutes
         pdesc.cores     = 8
         pdesc.cleanup   = True

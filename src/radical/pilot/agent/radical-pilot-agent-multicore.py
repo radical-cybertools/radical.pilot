@@ -105,7 +105,7 @@ PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just
 STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
 #---------------------------------------------------------------------------
-MAX_IO_LOGLENGTH            = 1024 # max number of unit out/err chars to push to db
+MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push to db
 
 
 #---------------------------------------------------------------------------
@@ -214,9 +214,10 @@ class ExecutionEnvironment(object):
 
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
-            command = self._find_executable(['mpirun-openmpi-mp', # Mac OSX MacPorts
-                                             'mpirun'             # General case
-            ])
+            command = self._find_executable(['mpirun',           # General case
+                                             'mpirun_rsh',       # Gordon @ SDSC
+                                             'mpirun-openmpi-mp' # Mac OSX MacPorts
+                                            ])
             if command is not None:
                 mpi_launch_command = command
 
@@ -851,13 +852,13 @@ class ExecWorker(multiprocessing.Process):
         self._cores_per_node = cores_per_node
 
         #self._capability = self._slots2caps(self._slots)
-        self._capability = self._slots2free(self._slots)
+        self._capability     = self._slots2free(self._slots)
+        self._capability_old = None
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
-        self._slot_history = list()
-        self._slot_history.append (self._slot_status (short=True))
-
+        self._slot_history     = [self._slot_status (short=True)]
+        self._slot_history_old = None
 
         # The available launch methods
         self._available_launch_methods = launch_methods
@@ -1363,14 +1364,16 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = stdout_f.read()
+                    txt = unicode(stdout_f.read(), "utf-8")
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
                     task.stdout += txt
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = stderr_f.read()
+                    txt = unicode(stderr_f.read(), "utf-8")
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
                     task.stderr += txt
@@ -1426,14 +1429,20 @@ class ExecWorker(multiprocessing.Process):
         # AM: the capability publication cannot be delayed until shutdown
         # though...
         if  self._benchmark :
-            self._p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._slot_history,
-                          #"slots"       : self._slots,
-                          "capability"  : self._capability
-                         }
-                }
-                )
+            if  self._slot_history_old != self._slot_history or \
+                self._capability_old   != self._capability   :
+
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)},
+                    {"$set": {"slothistory" : self._slot_history,
+                              #"slots"       : self._slots,
+                              "capability"  : self._capability
+                             }
+                    }
+                    )
+
+                self._slot_history_old = self._slot_history[:]
+                self._capability_old   = self._capability
 
         for task in tasks:
             self._cu.update({"_id": ObjectId(task.uid)}, 
