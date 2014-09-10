@@ -39,18 +39,16 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH        = 'SSH'
-LAUNCH_METHOD_APRUN      = 'APRUN'
-LAUNCH_METHOD_LOCAL      = 'LOCAL'
-LAUNCH_METHOD_MPIRUN     = 'MPIRUN'
-LAUNCH_METHOD_MPIRUN_RSH = 'MPIRUN_RSH'
-LAUNCH_METHOD_MPIEXEC    = 'MPIEXEC'
-LAUNCH_METHOD_POE        = 'POE'
-LAUNCH_METHOD_IBRUN      = 'IBRUN'
+LAUNCH_METHOD_SSH     = 'SSH'
+LAUNCH_METHOD_APRUN   = 'APRUN'
+LAUNCH_METHOD_LOCAL   = 'LOCAL'
+LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
+LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
+LAUNCH_METHOD_POE     = 'POE'
+LAUNCH_METHOD_IBRUN   = 'IBRUN'
 
 MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
                               LAUNCH_METHOD_MPIRUN,
-                              LAUNCH_METHOD_MPIRUN_RSH,
                               LAUNCH_METHOD_POE,
                               LAUNCH_METHOD_APRUN,
                               LAUNCH_METHOD_MPIEXEC]
@@ -105,7 +103,7 @@ PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just
 STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
 #---------------------------------------------------------------------------
-MAX_IO_LOGLENGTH            = 1024 # max number of unit out/err chars to push to db
+MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push to db
 
 
 #---------------------------------------------------------------------------
@@ -214,15 +212,10 @@ class ExecutionEnvironment(object):
 
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
-            command = self._find_executable(['mpirun-openmpi-mp', # Mac OSX MacPorts
-                                             'mpirun'             # General case
-            ])
-            if command is not None:
-                mpi_launch_command = command
-
-        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_RSH:
-            # mpirun_rsh (e.g. on Gordon@ SDSC)
-            command = self._which('mpirun_rsh')
+            command = self._find_executable(['mpirun',           # General case
+                                             'mpirun_rsh',       # Gordon @ SDSC
+                                             'mpirun-openmpi-mp' # Mac OSX MacPorts
+                                            ])
             if command is not None:
                 mpi_launch_command = command
 
@@ -1363,14 +1356,16 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = stdout_f.read()
+                    txt = unicode(stdout_f.read(), "utf-8")
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
                     task.stdout += txt
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = stderr_f.read()
+                    txt = unicode(stderr_f.read(), "utf-8")
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
                     task.stderr += txt
@@ -1442,6 +1437,10 @@ class ExecWorker(multiprocessing.Process):
                 self._capability_old   = self._capability
 
         for task in tasks:
+
+            #stdout = unicode( task.stdout, "utf-8")
+            #stderr = unicode( task.stdout, "utf-8")
+
             self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
                       "started"       : task.started,
