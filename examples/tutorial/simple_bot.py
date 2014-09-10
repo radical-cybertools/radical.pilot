@@ -31,9 +31,6 @@ def unit_state_cb (unit, state) :
 
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
-    if  state == rp.FAILED :
-        sys.exit (1)
-
 
 # ------------------------------------------------------------------------------
 #

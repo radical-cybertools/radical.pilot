@@ -9,11 +9,6 @@ RADICAL-Pilot can be useful for your needs. Before delving into the remote job
 and data submission capabilities that RADICAL-Pilot has, its important to
 understand the basics. 
 
-
-========================
-Hands-On Job Submission
-========================
-
 The simplest usage of a pilot-job system is to submit multiple identical tasks
 (a 'Bag of Tasks') collectively, i.e. as one big job! Such usage arises for example to perform
 either a parameter sweep job or a set of ensemble simulation.
@@ -28,15 +23,15 @@ the number of cores needed to run all of your jobs. When this pilot becomes
 active, your tasks (which are named 'Compute Units' or 'CUs') are pulled by
 RADICAL-Pilot from the MongoDB server and executed. 
 
+----------------
+Edit The Example
+----------------
+
 Download the file ``simple_bot.py`` with the following command:
 
 .. code-block:: bash
 
     curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/simple_bot.py
-
-------------------------
-How to Edit The Examples
-------------------------
 
 Open the file ``simple_bot.py`` with your favorite editor. The example should 
 work right out of the box on your local machine. However, if you want to try it
@@ -71,6 +66,9 @@ MongoDB server you want to use, for example:
 .. code-block:: bash
         
         export RADICAL_PILOT_DBURL=mongodb://host:port/
+
+If Radical-Pilot is installed and the MongoDB URL is set, you should be good
+to run your program: 
 
 .. code-block:: bash
 
