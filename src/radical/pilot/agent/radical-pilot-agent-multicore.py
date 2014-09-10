@@ -39,16 +39,18 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH     = 'SSH'
-LAUNCH_METHOD_APRUN   = 'APRUN'
-LAUNCH_METHOD_LOCAL   = 'LOCAL'
-LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
-LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
-LAUNCH_METHOD_POE     = 'POE'
-LAUNCH_METHOD_IBRUN   = 'IBRUN'
+LAUNCH_METHOD_SSH        = 'SSH'
+LAUNCH_METHOD_APRUN      = 'APRUN'
+LAUNCH_METHOD_LOCAL      = 'LOCAL'
+LAUNCH_METHOD_MPIRUN     = 'MPIRUN'
+LAUNCH_METHOD_MPIRUN_RSH = 'MPIRUN_RSH'
+LAUNCH_METHOD_MPIEXEC    = 'MPIEXEC'
+LAUNCH_METHOD_POE        = 'POE'
+LAUNCH_METHOD_IBRUN      = 'IBRUN'
 
 MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
                               LAUNCH_METHOD_MPIRUN,
+                              LAUNCH_METHOD_MPIRUN_RSH,
                               LAUNCH_METHOD_POE,
                               LAUNCH_METHOD_APRUN,
                               LAUNCH_METHOD_MPIEXEC]
@@ -216,6 +218,12 @@ class ExecutionEnvironment(object):
                                              'mpirun_rsh',       # Gordon @ SDSC
                                              'mpirun-openmpi-mp' # Mac OSX MacPorts
                                             ])
+            if command is not None:
+                mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # mpirun_rsh (e.g. on Gordon@ SDSC)
+            command = self._which('mpirun_rsh')
             if command is not None:
                 mpi_launch_command = command
 
@@ -1437,10 +1445,6 @@ class ExecWorker(multiprocessing.Process):
                 self._capability_old   = self._capability
 
         for task in tasks:
-
-            #stdout = unicode( task.stdout, "utf-8")
-            #stderr = unicode( task.stdout, "utf-8")
-
             self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
                       "started"       : task.started,
