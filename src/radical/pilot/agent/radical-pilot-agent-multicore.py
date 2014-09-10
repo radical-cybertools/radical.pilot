@@ -2068,6 +2068,22 @@ class _Process(subprocess.Popen):
 
             cmdline = launch_script.name
 
+        elif launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # Construct the hosts_string
+            hosts_string = ''
+            for slot in task.slots:
+                host = slot.split(':')[0]
+                hosts_string += ' %s' % host
+
+            mpirun_rsh_command = "%s -export -np %s%s" % (launch_command, task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_rsh_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
         elif launch_method == LAUNCH_METHOD_MPIEXEC:
             # Construct the hosts_string
             hosts_string = ''
