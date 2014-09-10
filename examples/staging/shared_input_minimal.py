@@ -48,7 +48,7 @@ if __name__ == "__main__":
         remote_dir.copy(shared_input_file_url, '.') # Change to pilot.stage_in(shared_input_file_url)
 
         # Configure the staging directive for shared input file.
-        sd_shared = {'source': 'staging:///%s' % SHARED_INPUT_FILE, # Note the triple slash
+        sd_shared = {'source': 'staging:///%s' % SHARED_INPUT_FILE, # Note the triple slash, because of SAGA URL peculiarities
                      'target': SHARED_INPUT_FILE,
                      'action': radical.pilot.LINK
         }

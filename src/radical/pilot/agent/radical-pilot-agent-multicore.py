@@ -2076,7 +2076,7 @@ class _Process(subprocess.Popen):
                 host = slot.split(':')[0]
                 hosts_string += ' %s' % host
 
-            mpirun_rsh_command = "%s -np %s%s" % (launch_command, task.numcores, hosts_string)
+            mpirun_rsh_command = "%s -export -np %s%s" % (launch_command, task.numcores, hosts_string)
 
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)

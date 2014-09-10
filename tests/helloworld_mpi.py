@@ -7,10 +7,10 @@ from   mpi4py import MPI
 import time
 
 SLEEP = 10
-name  = MPI.Get_processor_name ()
+name  = MPI.Get_processor_name()
 comm  = MPI.COMM_WORLD
 
-print "mpi rank %d/%d"  % (comm.rank, comm.size)
+print "mpi rank %d/%d/%s"  % (comm.rank, comm.size, name)
 
 time.sleep(SLEEP)
 
