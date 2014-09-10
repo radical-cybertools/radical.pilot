@@ -21,9 +21,9 @@ The code below demonstrates this behavior. As soon as there is a slot available
 to run a job in B (i.e. a job in A has completed), it executes the job in B.
 This keeps the RADICAL-Pilot utilization high. 
 
-==================
-Chained Tasks Code
-==================
+----------------
+Edit The Example
+----------------
 
 Download the file ``chained_tasks.py`` with the following command:
 
@@ -31,49 +31,55 @@ Download the file ``chained_tasks.py`` with the following command:
 
     curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/chained_tasks.py
 
-------------------------
-How to Edit The Examples
-------------------------
+Open the file ``chained_tasks.py`` with your favorite editor. The example should 
+work right out of the box on your local machine. However, if you want to try it
+out with different resources, like remote HPC clusters, look for the sections 
+marked: 
 
-You will need to make the necessary changes to ``chained_tasks.py`` as you
-did in the previous example. 
+.. code-block:: python
 
-The important difference between this file and the previous file is that there
-are two separate "USER DEFINED CU DESCRIPTION" sections - numbered 1 and 2.
-Again, these two sections will not require any modifications for the purposes of
-this tutorial. We will not review every variable again, but instead, review the
-relationship between the 2 CU descriptions.
+        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
 
-Go to line 104, "BEGIN USER DEFINED CU DESCRIPTION." This looks a lot like the
-description we saw in the previous example. It is also contained in a for loop
-from 0 to the NUMBER_JOBS. We are running the same executable, with almost the
-same arguments, except that we append an 'A' as an additional TASK_SET variable.
-If we look at line 129ff, we see that as soon as a CU in the "A" set reaches the
-"Done" state, we start what is defined in "BEGIN USER DEFINED CU B DESCRIPTION"
-as a "B" CU. This shows us an important feature of RADICAL-Pilot.  We can call
-get_state() on a CU to find out if it is complete or not. The second CU
-description is to run the same executable, /bin/echo, and print instead that it
-is a B CU, with its CU number.
+and change the code below accordging to the instructions in the comments.
+
+.. You will need to make the necessary changes to ``chained_tasks.py`` as you
+.. did in the previous example. 
+
+.. The important difference between this file and the previous file is that there
+.. are two separate "USER DEFINED CU DESCRIPTION" sections - numbered 1 and 2.
+.. Again, these two sections will not require any modifications for the purposes of
+.. this tutorial. We will not review every variable again, but instead, review the
+.. relationship between the 2 CU descriptions.
+
+.. Go to line 104, "BEGIN USER DEFINED CU DESCRIPTION." This looks a lot like the
+.. description we saw in the previous example. It is also contained in a for loop
+.. from 0 to the NUMBER_JOBS. We are running the same executable, with almost the
+.. same arguments, except that we append an 'A' as an additional TASK_SET variable.
+.. If we look at line 129ff, we see that as soon as a CU in the "A" set reaches the
+.. "Done" state, we start what is defined in "BEGIN USER DEFINED CU B DESCRIPTION"
+.. as a "B" CU. This shows us an important feature of RADICAL-Pilot.  We can call
+.. get_state() on a CU to find out if it is complete or not. The second CU
+.. description is to run the same executable, /bin/echo, and print instead that it
+.. is a B CU, with its CU number.
 
 
 -------------
 Run the Code
 -------------
 
-Save the file and execute it **(make sure your virtualenv is activated):**
+** This assumes you have installed RADICAL-Pilot either globally or in a 
+Python virtualenv. You also need access to a MongoDB server.**
+
+Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
+MongoDB server you want to use, for example:
+
+.. code-block:: bash
+        
+        export RADICAL_PILOT_DBURL=mongodb://host:port/
 
 .. code-block:: bash
 
     python chained_tasks.py
 
-The output should look something like this:
-
-.. code-block:: none
-
-    Initializing Pilot Manager ...
-    Submitting Compute Pilot to Pilot Manager ...
-    ...
-    All Compute Units completed successfully!
-    Closed session, exiting now ...
 
    

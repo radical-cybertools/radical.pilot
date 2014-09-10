@@ -10,9 +10,9 @@ demonstrates synchronization mechanisms provided by the Pilot-API. This example
 is useful if an executable C has dependencies on some of the output generated
 from jobs A and B.
 
-==================
-Coupled Tasks Code
-==================
+----------------
+Edit The Example
+----------------
 
 Download the file ``coupled_tasks.py`` with the following command:
 
@@ -20,9 +20,16 @@ Download the file ``coupled_tasks.py`` with the following command:
 
     curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/coupled_tasks.py
 
-------------------------
-How to Edit The Examples
-------------------------
+Open the file ``coupled_tasks.py`` with your favorite editor. The example should 
+work right out of the box on your local machine. However, if you want to try it
+out with different resources, like remote HPC clusters, look for the sections 
+marked: 
+
+.. code-block:: python
+
+        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
+
+and change the code below accordging to the instructions in the comments.
 
 You will need to make the necessary changes to ``coupled_tasks.py`` as you did
 in the previous example.  The important difference between this file and the
@@ -56,20 +63,16 @@ the C tasks.
 Run the Code
 -------------
 
-Save the file and execute it **(make sure your virtualenv is activated):**
+** This assumes you have installed RADICAL-Pilot either globally or in a 
+Python virtualenv. You also need access to a MongoDB server.**
+
+Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
+MongoDB server you want to use, for example:
+
+.. code-block:: bash
+        
+        export RADICAL_PILOT_DBURL=mongodb://host:port/
 
 .. code-block:: bash
 
     python coupled_tasks.py
-
-The output should look something like this (based on NUMBER_JOBS=32, PILOT_SIZE=32):
-
-.. code-block:: none
-
-
-    Initializing Pilot Manager ...
-    Submitting Compute Pilot to Pilot Manager ...
-    ...
-    All Compute Units completed successfully!
-    Closed session, exiting now ...
-
