@@ -67,6 +67,9 @@ MongoDB server you want to use, for example:
         
         export RADICAL_PILOT_DBURL=mongodb://host:port/
 
+If Radical-Pilot is installed and the MongoDB URL is set, you should be good
+to run your program: 
+
 .. code-block:: bash
 
     python simple_bot.py
