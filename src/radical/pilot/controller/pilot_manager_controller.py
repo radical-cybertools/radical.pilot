@@ -348,7 +348,11 @@ class PilotManagerController(threading.Thread):
 
             import saga.utils.pty_shell as sup
 
-            url = "%s://%s:%d/" % (fs.schema, fs.host, fs.port)
+            if fs.port is not None:
+                url = "%s://%s:%d/" % (fs.schema, fs.host, fs.port)
+            else
+                url = "%s://%s/" % (fs.schema, fs.host)
+
             logger.debug ("saga.utils.PTYShell ('%s')" % url)
             shell = sup.PTYShell (url, self._session, logger, opts={})
 
