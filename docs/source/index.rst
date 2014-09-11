@@ -41,3 +41,5 @@ Contents:
    testing.rst
    benchmarks.rst
    developer.rst
+   release_notes.rst
+
