@@ -39,18 +39,21 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH        = 'SSH'
-LAUNCH_METHOD_APRUN      = 'APRUN'
-LAUNCH_METHOD_LOCAL      = 'LOCAL'
-LAUNCH_METHOD_MPIRUN     = 'MPIRUN'
-LAUNCH_METHOD_MPIRUN_RSH = 'MPIRUN_RSH'
-LAUNCH_METHOD_MPIEXEC    = 'MPIEXEC'
-LAUNCH_METHOD_POE        = 'POE'
-LAUNCH_METHOD_IBRUN      = 'IBRUN'
+LAUNCH_METHOD_SSH           = 'SSH'
+LAUNCH_METHOD_APRUN         = 'APRUN'
+LAUNCH_METHOD_LOCAL         = 'LOCAL'
+LAUNCH_METHOD_MPIRUN        = 'MPIRUN'
+LAUNCH_METHOD_MPIRUN_RSH    = 'MPIRUN_RSH'
+LAUNCH_METHOD_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
+LAUNCH_METHOD_MPIEXEC       = 'MPIEXEC'
+LAUNCH_METHOD_POE           = 'POE'
+LAUNCH_METHOD_IBRUN         = 'IBRUN'
+LAUNCH_METHOD_DPLACE        = 'DPLACE'
 
 MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
                               LAUNCH_METHOD_MPIRUN,
                               LAUNCH_METHOD_MPIRUN_RSH,
+                              LAUNCH_METHOD_MPIRUN_DPLACE,
                               LAUNCH_METHOD_POE,
                               LAUNCH_METHOD_APRUN,
                               LAUNCH_METHOD_MPIEXEC]
@@ -193,6 +196,7 @@ class ExecutionEnvironment(object):
 
         task_launch_command = None
         mpi_launch_command = None
+        dplace_command = None
 
         # Regular tasks
         if task_launch_method == LAUNCH_METHOD_LOCAL:
@@ -209,6 +213,15 @@ class ExecutionEnvironment(object):
             command = self._which('aprun')
             if command is not None:
                 task_launch_command = command
+
+        elif task_launch_method == LAUNCH_METHOD_DPLACE:
+            # dplace: job launcher for SGI systems (e.g. on Blacklight)
+            dplace_command = self._which('dplace')
+            if dplace_command is not None:
+                task_launch_command = dplace_command
+            else:
+                raise Exception("dplace not found!")
+
         else:
             raise Exception("Task launch method not set or unknown: %s!" % task_launch_method)
 
@@ -232,6 +245,17 @@ class ExecutionEnvironment(object):
             command = self._which('mpiexec')
             if command is not None:
                 mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
+            # mpirun + dplace: mpi job launcher for SGI systems (e.g. on Blacklight)
+            command = self._which('mpirun')
+            if command is not None:
+                mpi_launch_command = command
+
+            if dplace_command is None:
+                dplace_command = self._which('dplace')
+                if dplace_command is None:
+                    raise Exception("dplace not found")
 
         elif mpi_launch_method == LAUNCH_METHOD_APRUN:
             # aprun: job launcher for Cray systems
@@ -261,7 +285,8 @@ class ExecutionEnvironment(object):
             'task_launch_method': task_launch_method,
             'task_launch_command': task_launch_command,
             'mpi_launch_method': mpi_launch_method,
-            'mpi_launch_command': mpi_launch_command
+            'mpi_launch_command': mpi_launch_command,
+            'dplace_command': dplace_command
         }
 
         logger.info("Discovered task launch command: '%s' and MPI launch command: '%s'." % \
@@ -348,6 +373,15 @@ class ExecutionEnvironment(object):
         torque_nodes = [line.strip() for line in open(torque_nodefile)]
         self.log.info("Found Torque PBS_NODEFILE %s: %s" % (torque_nodefile, torque_nodes))
 
+        # Number of cpus involved in allocation
+        val = os.environ.get('PBS_NCPUS')
+        if val:
+            torque_num_cpus = int(val)
+        else:
+            msg = "$PBS_NCPUS not set! (new Torque version?)"
+            torque_num_cpus = None
+            self.log.warning(msg)
+
         # Number of nodes involved in allocation
         val = os.environ.get('PBS_NUM_NODES')
         if val:
@@ -362,7 +396,7 @@ class ExecutionEnvironment(object):
         if val:
             torque_cores_per_node = int(val)
         else:
-            msg = "$PBS_NUM_PPN not set! (old Torque version?)"
+            msg = "$PBS_NUM_PPN or $PBS_PPN not set!"
             torque_cores_per_node = None
             self.log.warning(msg)
 
@@ -382,6 +416,9 @@ class ExecutionEnvironment(object):
         if torque_num_nodes and torque_cores_per_node:
             # Modern style Torque
             self.cores_per_node = torque_cores_per_node
+        elif torque_num_cpus:
+            # Blacklight style (TORQUE-2.3.13)
+            self.cores_per_node = torque_num_cpus
         else:
             # Old style Torque (Should we just use this for all versions?)
             self.cores_per_node = torque_nodes_length / torque_node_list_length
@@ -2137,6 +2174,55 @@ class _Process(subprocess.Popen):
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_DPLACE:
+            # Use dplace on SGI
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            dplace_command = "%s -c %d-%d" % \
+                                    (launch_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (dplace_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
+            # Use mpirun in combination with dplace
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            # TODO: this should be passed on from the detection mechanism
+            dplace_command = 'dplace'
+
+            dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            mpirun_dplace_command = "%s -np %d %s -c %d-%d" % \
+                            (launch_command, task.numcores, dplace_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_dplace_command, task_exec_string))
             launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name

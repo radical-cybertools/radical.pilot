@@ -52,7 +52,7 @@ if __name__ == "__main__":
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "blacklight.psc.xsede.org"
     pdesc.runtime  = 10 # N minutes
-    pdesc.cores    =  4 # X cores
+    pdesc.cores    = 32 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
@@ -63,28 +63,15 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["module load intel mvapich2_ib gnubase",
-                                       "virtualenv ./mpive",
-                                       "source     ./mpive/bin/activate",
-                                       "pip install mpi4py"]
+        mpi_test_task.pre_exec      = ["source /usr/share/modules/init/bash",
+                                       "export MPI_DSM_VERBOSE=",
+                                       "module load python"
+                                      ]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
-
-        cud_list.append(mpi_test_task)
-
-
-    for unit_count in range(0, 4):
-
-        mpi_test_task = rp.ComputeUnitDescription()
-
-        # india uses openmpi
-        mpi_test_task.executable    = "/bin/sh"
-        mpi_test_task.arguments     = ["-c", "'echo mpi rank $PMI_RANK/$PMI_SIZE'"]
-        mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
+        mpi_test_task.cores         = 8
 
         cud_list.append(mpi_test_task)
 
@@ -119,10 +106,14 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
         
         assert (unit.state == rp.DONE)
-        assert ('mpi rank 0/4' in unit.stdout)
-        assert ('mpi rank 1/4' in unit.stdout)
-        assert ('mpi rank 2/4' in unit.stdout)
-        assert ('mpi rank 3/4' in unit.stdout)
+        assert ('mpi rank 0/8' in unit.stdout)
+        assert ('mpi rank 1/8' in unit.stdout)
+        assert ('mpi rank 2/8' in unit.stdout)
+        assert ('mpi rank 3/8' in unit.stdout)
+        assert ('mpi rank 4/8' in unit.stdout)
+        assert ('mpi rank 5/8' in unit.stdout)
+        assert ('mpi rank 6/8' in unit.stdout)
+        assert ('mpi rank 7/8' in unit.stdout)
 
     session.close()
 
