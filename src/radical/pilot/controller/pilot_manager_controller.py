@@ -351,7 +351,8 @@ class PilotManagerController(threading.Thread):
 
                 import saga.utils.pty_shell as sup
 
-                url = "%s://%s/" % (fs.schema, fs.host)
+                url = "%s://%s:%d/" % (fs.schema, fs.host, fs.port)
+                logger.debug ("saga.utils.PTYShell ('%s')" % url)
                 shell = sup.PTYShell (url, self._session, logger, opts={})
 
                 if 'default_remote_workdir' in resource_config and resource_config['default_remote_workdir'] is not None:
