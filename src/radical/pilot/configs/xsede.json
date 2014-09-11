@@ -46,7 +46,7 @@
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "remote_job_manager_endpoint" : "pbs+ssh://trestles.sdsc.xsede.org",
         "remote_filesystem_endpoint"  : "sftp://trestles.sdsc.xsede.org/",
-        "local_job_manager_endpoint"   : "pbs://localhost",
+        "local_job_manager_endpoint"  : "pbs://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
