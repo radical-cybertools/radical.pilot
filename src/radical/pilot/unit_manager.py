@@ -524,7 +524,7 @@ class UnitManager(object):
                     except Exception as ex :
                         raise RuntimeError ("Kernels are not supported in" \
                               "compute unit descriptions -- install " \
-                              "radical.ensemblemd!")
+                              "radical.ensemblemd.mdkernels!")
 
                     pilot_resource = schedule['pilots'][pid]['resource']
 
@@ -634,39 +634,39 @@ class UnitManager(object):
         if  not self._uid:
             raise exceptions.IncorrectState(msg="Invalid object instance.")
 
+        if not isinstance(state, list):
+            state = [state]
+
         return_list_type = True
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
             return_list_type = False
             unit_ids = [unit_ids]
 
-        start  = time.time()
         units  = self.get_units (unit_ids)
+        start  = time.time()
         all_ok = False
         states = list()
 
-        while all_ok is False :
+        while not all_ok :
 
             all_ok = True
             states = list()
 
             for unit in units :
-
                 if  unit.state not in state :
                     all_ok = False
-                  # break
 
                 states.append (unit.state)
 
             # check timeout
             if  (None != timeout) and (timeout <= (time.time() - start)):
+                if  not all_ok :
+                    logger.debug ("wait timed out: %s" % states)
                 break
 
             # sleep a little if this cycle was idle
-            if  not len (units) :
+            if  not all_ok :
                 time.sleep (0.1)
-
-          # print "wait %s === %s" % (state, states)
-
 
         # done waiting
         if  return_list_type :

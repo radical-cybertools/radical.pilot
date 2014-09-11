@@ -94,6 +94,7 @@ if __name__ == "__main__":
 
     # Cancel all pilots.
     pmgr.cancel_pilots()
+    pmgr.wait_pilots()
 
     # Remove session from database
     session.close()

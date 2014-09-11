@@ -65,10 +65,12 @@ class PilotLauncherWorker(threading.Thread):
         for pending_pilot in pending_pilots:
 
             pilot_failed = False
+            pilot_done   = False
             reconnected  = False
             pilot_id     = pending_pilot["_id"]
             log_message  = ""
             saga_job_id  = pending_pilot["saga_job_id"]
+
             logger.info("Performing periodical health check for %s (SAGA job id %s)" % (str(pilot_id), saga_job_id))
             
             if  not pilot_id in self.missing_pilots :
@@ -89,6 +91,11 @@ class PilotLauncherWorker(threading.Thread):
 
                 if  saga_job.state in [saga.job.FAILED, saga.job.CANCELED] :
                     pilot_failed = True
+                    log_message  = "SAGA job state for ComputePilot %s is %s."\
+                                 % (pilot_id, saga_job.state)
+
+                if  saga_job.state in [saga.job.DONE] :
+                    pilot_done = True
                     log_message  = "SAGA job state for ComputePilot %s is %s."\
                                  % (pilot_id, saga_job.state)
 
@@ -115,6 +122,20 @@ class PilotLauncherWorker(threading.Thread):
                     {"_id": pilot_id},
                     {"$set": {"state": FAILED},
                      "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
+                     "$push": {"log": log_message}}
+                )
+                logger.error (log_message)
+                logger.error ('pilot %s declared dead' % pilot_id)
+
+            elif pilot_done :
+                # FIXME: this should only be done if the state is not yet
+                # done...
+                ts = datetime.datetime.utcnow()
+                pilot_col.update(
+                    {"_id"  : pilot_id,
+                     "state": {"$ne"  : DONE}},
+                    {"$set" : {"state": DONE},
+                     "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
                      "$push": {"log": log_message}}
                 )
                 logger.error (log_message)
@@ -294,6 +315,7 @@ class PilotLauncherWorker(threading.Thread):
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
+                        logger.debug ("saga.fs.Directory ('%s')" % saga.Url(sandbox))
                         agent_dir = saga.filesystem.Directory(
                             saga.Url(sandbox),
                             saga.filesystem.CREATE_PARENTS, session=self._session)
@@ -346,6 +368,7 @@ class PilotLauncherWorker(threading.Thread):
                         else:
                             job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
 
+                        logger.debug ("saga.job.Service ('%s')" % job_service_url)
                         js = saga.job.Service(job_service_url, session=self._session)
 
                         jd = saga.job.Description()
@@ -450,15 +473,28 @@ class PilotLauncherWorker(threading.Thread):
                         ##
                         ######################################################################
 
-                        # Update the CU's state to 'DONE' if all transfers were successfull.
+                        # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
                         ts = datetime.datetime.utcnow()
-                        pilot_col.update(
-                            {"_id": ObjectId(compute_pilot_id)},
+                        ret = pilot_col.update(
+                            {"_id"  : ObjectId(compute_pilot_id),
+                             "state": 'Launching'},
                             {"$set": {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                              "$pushAll": {"log": log_messages}}                    
                         )
+
+                        if  ret['n'] == 0 :
+                            # could not update, probably because the agent is
+                            # running already.  Just update state history and
+                            # jobid then
+                            ret = pilot_col.update(
+                                {"_id"  : ObjectId(compute_pilot_id)},
+                                {"$set" : {"saga_job_id": saga_job_id},
+                                 "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
+                                 "$pushAll": {"log": log_messages}}                    
+                            )
+
 
                     except Exception, ex:
                         # Update the Pilot's state 'FAILED'.

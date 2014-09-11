@@ -75,7 +75,7 @@ class TestRemoteSubmission(unittest.TestCase):
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = self.test_resource
         cpd.cores = self.test_cores
-        cpd.runtime = 5
+        cpd.runtime = 15
         cpd.sandbox = self.test_workdir
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
@@ -100,10 +100,6 @@ class TestRemoteSubmission(unittest.TestCase):
 
         ret = um.wait_units(timeout=5*60)
         print "Return states from wait: %s" % ret
-
-        # With a sleep here, the test works, there seems to be an inconsistency in the state used by wait and the state reported.
-        #import time
-        #time.sleep(1)
 
         for cu in cus:
             assert cu.state == radical.pilot.DONE, "state: %s" % cu.state

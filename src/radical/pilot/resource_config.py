@@ -28,6 +28,8 @@ MPI_LAUNCH_METHOD           = 'mpi_launch_method'
 FORWARD_TUNNEL_ENDPOINT     = 'forward_tunnel_endpoint'
 AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 DEFAULT_REMOTE_WORKDIR      = 'default_remote_workdir'
+DESCRIPTION                 = 'description'
+NOTES                       = 'notes'
 
 
 VALID_KEYS = [NAME, LOCAL_JOB_MANAGER_ENDPOINT, LOCAL_FILESYSTEM_ENDPOINT,
@@ -36,7 +38,7 @@ VALID_KEYS = [NAME, LOCAL_JOB_MANAGER_ENDPOINT, LOCAL_FILESYSTEM_ENDPOINT,
               VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_WORKER,
               GLOBAL_VIRTENV, LRMS, TASK_LAUNCH_METHOD,
               MPI_LAUNCH_METHOD, FORWARD_TUNNEL_ENDPOINT, AGENT_MONGODB_ENDPOINT,
-              DEFAULT_REMOTE_WORKDIR]
+              DEFAULT_REMOTE_WORKDIR, NOTES, DESCRIPTION]
 
 # -----------------------------------------------------------------------------
 #
@@ -199,6 +201,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(FORWARD_TUNNEL_ENDPOINT,     None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_MONGODB_ENDPOINT,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_REMOTE_WORKDIR,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(DESCRIPTION,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(NOTES,                       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # Parse the seeding dict if it is provided
         if seeding_dict is not None:

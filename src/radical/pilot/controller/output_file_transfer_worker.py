@@ -143,6 +143,7 @@ class OutputFileTransferWorker(threading.Thread):
                             log_messages.append(log_msg)
                             logger.debug(log_msg)
 
+                            logger.debug ("saga.fs.File ('%s')" % saga.Url(abs_source))
                             output_file = saga.filesystem.File(saga.Url(abs_source),
                                 session=self._session
                             )
@@ -151,6 +152,7 @@ class OutputFileTransferWorker(threading.Thread):
                                 copy_flags = saga.filesystem.CREATE_PARENTS
                             else:
                                 copy_flags = 0
+                            logger.debug ("saga.fs.File.copy ('%s')" % saga.Url(abs_target))
                             output_file.copy(saga.Url(abs_target), flags=copy_flags)
                             output_file.close()
 

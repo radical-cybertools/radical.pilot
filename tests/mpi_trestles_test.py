@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
-  # c.user_id = 'merzky'
+    c.user_id = 'amerzky'
     session.add_context(c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -48,30 +48,28 @@ if __name__ == "__main__":
     # change their state.
     pmgr.register_callback(pilot_state_cb)
 
-    # Define a X-core that runs for N minutes.
+    # Define a X-core pilot that runs for N minutes.
+    # Trestles has 32 cores per node.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "alamo.futuregrid.org"
-    pdesc.runtime  = 5 # N minutes
-    pdesc.cores    = 8 # X cores
+    pdesc.resource = "trestles.sdsc.xsede.org"
+    pdesc.runtime  = 5  # N minutes
+    pdesc.cores    = 64 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
     cud_list = []
-
-    for unit_count in range(0, 4):
+    for unit_count in range(0, 8):
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        # On alamo, environment is not passed with multi-node MPI jobs,
-        # so the environment needs to be setup in the user's .bashrc:
-        #
-        #   module load python intel openmpi
-        #
-        mpi_test_task.executable    = "/bin/sh"
-        mpi_test_task.arguments     = ["-c", "'echo mpi rank $OMPI_COMM_WORLD_RANK/$OMPI_COMM_WORLD_SIZE'"]
+        mpi_test_task.pre_exec      = ["module load intel mvapich2_ib python",
+                                       "source ~marksant/cuve/bin/activate"]
+        mpi_test_task.input_staging = ["helloworld_mpi.py"]
+        mpi_test_task.executable    = "~marksant/cuve/bin/python"
+        mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
+        mpi_test_task.cores         = 8
 
         cud_list.append(mpi_test_task)
 
@@ -105,10 +103,14 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
         
         assert (unit.state == rp.DONE)
-        assert ('mpi rank 0/4' in unit.stdout)
-        assert ('mpi rank 1/4' in unit.stdout)
-        assert ('mpi rank 2/4' in unit.stdout)
-        assert ('mpi rank 3/4' in unit.stdout)
+        assert ('mpi rank 0/8' in unit.stdout)
+        assert ('mpi rank 1/8' in unit.stdout)
+        assert ('mpi rank 2/8' in unit.stdout)
+        assert ('mpi rank 3/8' in unit.stdout)
+        assert ('mpi rank 4/8' in unit.stdout)
+        assert ('mpi rank 5/8' in unit.stdout)
+        assert ('mpi rank 6/8' in unit.stdout)
+        assert ('mpi rank 7/8' in unit.stdout)
 
-    session.close ()
+    session.close()
 

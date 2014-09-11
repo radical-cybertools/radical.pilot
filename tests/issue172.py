@@ -136,5 +136,7 @@ if __name__ == "__main__":
         assert (unit.state == rp.DONE)
         # FIXME: add some more asserts
 
+    pmgr.cancel_pilots()
+    pmgr.wait_pilots()
     session.close(cleanup=False)
 

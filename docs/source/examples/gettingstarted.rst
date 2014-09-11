@@ -5,7 +5,7 @@ Getting Started
 ***************
 
 **This is where you should start if you are new to RADICAL-Pilot. It is highly
-recommendedthat you carefully read and understand all of this before you go
+recommended that you carefully read and understand all of this before you go
 off and start developing your own applications.**
 
 In this chapter we explain the main components of RADICAL-Pilot and the
@@ -13,7 +13,7 @@ foundations of their function and their interplay. For your convenience, you can
 
 After you have worked through this chapter, you will understand how to launch
 a local ComputePilot and use a UnitManager to schedule and run ComputeUnits
-(task) on it. Throughout this chapter you will also find links to more
+(tasks) on it. Throughout this chapter you will also find links to more
 advanced topics like launching ComputePilots on remote HPC clusters and 
 scheduling. 
 
@@ -73,7 +73,7 @@ Session as root. Each Session can have  zero or more
                        |....
 
 
-A Session also encapsulates the connection(s) to a backend `MongoDB
+A Session also encapsulates the connection(s) to a back end `MongoDB
 <http://www.mongodb.org/>`_ server which is the *brain* and *central nervous
 system* of RADICAL-Pilot. More information about how RADICAL-Pilot uses MongoDB can
 be found in the :ref:`chapter_intro` section.
@@ -110,7 +110,7 @@ ComputePilots, but more on remote ComputePilots and how to launch them on HPC
 clusters can be found in :ref:`chapter_example_remote_and_hpc_pilots`.
 
 As shown in the hierarchy above, ComputePilots are grouped in
-:class:`radicalpilot.PilotManager` *containers*, so before you can launch a
+:class:`radical.pilot.PilotManager` *containers*, so before you can launch a
 ComputePilot, you need to add a PilotManager to your Session. Just like a
 Session, a PilotManager has a unique id (`uid`) as well as a traversal method
 (`list_pilots`).
@@ -258,7 +258,7 @@ distributed components, namely the ComputePilot agents. At any time during the
 execution of a workload, ComputePilots and ComputeUnits can begin or finish 
 execution or fail with an error. 
 
-RADICAL-Pilot provides callbacks as a method to react to these event
+RADICAL-Pilot provides callbacks as a method to react to these events
 asynchronously when they occur. ComputePilots, PilotManagers, ComputeUnits
 and UnitManagers all have a ``register_callbacks`` method:
 
@@ -365,7 +365,7 @@ Cleanup and Shutdown
 
 When your application has finished executing all ComputeUnits, it should make an
 attempt to cancel the ComputePilot. If a ComputePilot is not canceled, it will 
-continue running until it reaches is ``runtime`` limit, even if application 
+continue running until it reaches its ``runtime`` limit, even if application 
 has terminated. 
 
 An individual ComputePilot is canceled by calling :func:`radical.pilot.ComputePilot.cancel`.
@@ -387,14 +387,14 @@ delete all traces of the session from the database (control this with the
 
     session.close(cleanup=True, terminate=True)
 
-Whats Next?
------------
+What's Next?
+------------
 
-Now that you understand the basic mechanics of RADICAL-Python, it's time to dive into some of the more advanced topics. We suggest that you check out the following chapters next: 
+Now that you understand the basic mechanics of RADICAL-Pilot, it's time to dive into some of the more advanced topics. We suggest that you check out the following chapters next: 
 
 * :ref:`chapter_example_errorhandling`. Error handling is crucial for any RADICAL-Pilot application! This chapter captures everything from exception handling to state callbacks. 
-* :ref:`chapter_example_remote_and_hpc_pilots`. In this chapter we explain how to launch ComputePilots on remote HPC clusters, something you most definetly want to do.
-* :ref:`chapter_example_disconnect_reconnect`. This chapter is very useful for example if you work with long-running tasks that don't need conintuous supervision. 
+* :ref:`chapter_example_remote_and_hpc_pilots`. In this chapter we explain how to launch ComputePilots on remote HPC clusters, something you most definitely want to do.
+* :ref:`chapter_example_disconnect_reconnect`. This chapter is very useful for example if you work with long-running tasks that don't need continuous supervision. 
 
 The Complete Example
 --------------------

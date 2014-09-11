@@ -39,8 +39,8 @@ if __name__ == "__main__":
     c.user_id = 'amerzky'
     session.add_context(c)
 
-    pm = rp.PilotManager(session=session)
-    pm.register_callback(pilot_state_cb)
+    pmgr = rp.PilotManager(session=session)
+    pmgr.register_callback(pilot_state_cb)
 
     pd = rp.ComputePilotDescription()
     pd.resource = "trestles.sdsc.xsede.org"
@@ -48,11 +48,11 @@ if __name__ == "__main__":
     pd.runtime  = 10
     pd.cleanup  = True
 
-    pilot_object = pm.submit_pilots(pd)
+    pilot_object = pmgr.submit_pilots(pd)
     
-    um = rp.UnitManager(session=session, scheduler=rp.SCHED_ROUND_ROBIN)
+    umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_ROUND_ROBIN)
 
-    um.add_pilots(pilot_object)
+    umgr.add_pilots(pilot_object)
 
     compute_units = []
     for k in range(0, 32):
@@ -61,16 +61,17 @@ if __name__ == "__main__":
         cu.executable = "/bin/date"
         compute_units.append(cu)
 
-    units = um.submit_units(compute_units)
+    units = umgr.submit_units(compute_units)
 
     print "Waiting for all compute units to finish..."
-    um.wait_units()
+    umgr.wait_units()
 
     for unit in units :
         assert (unit.state == rp.DONE)
 
     print "  FINISHED"
-    pm.cancel_pilots()
+    pmgr.cancel_pilots()
+    pmgr.wait_pilots()
 
     session.close ()
 

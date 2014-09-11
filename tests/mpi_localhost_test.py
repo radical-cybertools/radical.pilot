@@ -9,7 +9,7 @@ def pilot_state_cb (pilot, state) :
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if  state in [rp.FAILED, rp.DONE] :
         sys.exit (1)
 
 
@@ -21,6 +21,8 @@ def unit_state_change_cb (unit, state) :
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
     if  state == rp.FAILED :
+        print "                         '%s' stderr: %s." % (unit.uid, unit.stderr)
+        print "                         '%s' stdout: %s." % (unit.uid, unit.stdout)
         sys.exit (1)
 
 
@@ -50,7 +52,7 @@ if __name__ == "__main__":
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "localhost"
     pdesc.runtime  = 10 # N minutes
-    pdesc.cores    =  1 # X cores
+    pdesc.cores    =  4 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
@@ -61,16 +63,28 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["virtualenv ./mpive",
-                                       "source     ./mpive/bin/activate",
-                                       "pip install mpi4py"]
+        mpi_test_task.pre_exec      = ["source     ~/ve/bin/activate"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 1
+        mpi_test_task.cores         = 4
 
         cud_list.append(mpi_test_task)
+
+
+    for unit_count in range(0, 4):
+
+        mpi_test_task = rp.ComputeUnitDescription()
+
+        # india uses openmpi
+        mpi_test_task.executable    = "/bin/sh"
+        mpi_test_task.arguments     = ["-c", "'echo mpi rank $PMI_RANK/$PMI_SIZE'"]
+        mpi_test_task.mpi           = True
+        mpi_test_task.cores         = 4
+
+        cud_list.append(mpi_test_task)
+
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
@@ -98,10 +112,17 @@ if __name__ == "__main__":
         units = [units]
 
     for unit in units:
-        print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+        print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s" \
+            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
+
+        print "    stdout: '%s'" % unit.stdout
+        print "    stderr: '%s'" % unit.stderr
         
         assert (unit.state == rp.DONE)
+        assert ('mpi rank 0/4' in unit.stdout)
+        assert ('mpi rank 1/4' in unit.stdout)
+        assert ('mpi rank 2/4' in unit.stdout)
+        assert ('mpi rank 3/4' in unit.stdout)
 
     session.close()
 

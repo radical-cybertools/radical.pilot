@@ -31,9 +31,6 @@ def unit_state_cb (unit, state) :
 
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
-    if  state == rp.FAILED :
-        sys.exit (1)
-
 
 # ------------------------------------------------------------------------------
 #
@@ -45,10 +42,14 @@ if __name__ == "__main__":
         # well as security contexts.
         session = rp.Session()
 
-# !!!   you may need to specify a login name below, to be used in the session.
-        # Add an ssh identity to the session.
+        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
+        # 
+        # Change the user name below if you are using a remote resource 
+        # and your username on that resource is different from the username 
+        # on your local machine. 
+        #
         c = rp.Context('ssh')
-      # c.user_id = 'osdcXX'
+        # c.user_id = 'osdcXX'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -60,17 +61,24 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-# !!!   you may want to specify a different target resource below
-        # this describes the parameters and requirements for our pilot job
+        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
+        # 
+        # If you want to run this example on your local machine, you don't have 
+        # to change anything here. 
+        # 
+        # Change the resource below if you want to run on a remote resource. 
+        # You also might have to set the 'project' to your allocation ID if 
+        # your remote resource does compute time accounting. 
+        #
+        # A list of preconfigured resources can be found at: 
+        # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
+        # 
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "stampede.tacc.utexas.edu" # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 5 # minutes
+        pdesc.resource = "localhost" # NOTE: This is a "label", not a hostname
+        pdesc.runtime  = 10 # minutes
         pdesc.cores    = 1
         pdesc.cleanup  = True
-
-# !!!   you may need to specify project and queue here
-#       pdesc.project  = 'TG-MCB140109'
-#       pdesc.queue    = 'default'
+        # pdesc.project  = 'TG-MCB140109'
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
@@ -116,15 +124,6 @@ if __name__ == "__main__":
         print "Waiting for CUs to complete ..."
         umgr.wait_units()
         print "All CUs completed successfully!"
-
-
-    except Exception as e:
-        print "An error occurred: %s" % ((str(e)))
-        sys.exit (-1)
-
-    except KeyboardInterrupt :
-        print "Execution was interrupted"
-        sys.exit (-1)
 
 
     except Exception as e:

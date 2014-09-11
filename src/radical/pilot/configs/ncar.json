@@ -1,5 +1,7 @@
 {
     "yellowstone.ucar.edu": {
+        "description"                 : "The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).",
+        "notes"                       : "We only support one concurrent CU per node currently.",
         "remote_job_manager_endpoint" : "lsf+ssh://yellowstone.ucar.edu",
         "remote_filesystem_endpoint"  : "sftp://yellowstone.ucar.edu/",
         "local_job_manager_endpoint"  : "lsf://localhost",

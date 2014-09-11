@@ -1,5 +1,7 @@
 {
     "stampede.tacc.utexas.edu": {
+        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "remote_job_manager_endpoint" : "slurm+ssh://stampede.tacc.utexas.edu",
         "remote_filesystem_endpoint"  : "sftp://stampede.tacc.utexas.edu/",
         "local_job_manager_endpoint"  : "slurm://localhost",
@@ -9,12 +11,21 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
         "python_interpreter"          : "/opt/apps/python/epd/7.3.2/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load TACC", "module load cluster", "module load Linux", "module load mvapich2", "module load python/2.7.3-epd-7.3.2"],
+        "pre_bootstrap"               : ["module purge",
+                                         "module load TACC",
+                                         "module load cluster",
+                                         "module load Linux",
+                                         "module load mvapich2",
+                                         "module load python/2.7.3-epd-7.3.2",
+                                         "module unload xalt"
+                                        ],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
 
     "lonestar.tacc.xsede.org": {
+        "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/user-services/user-guides/lonestar-user-guide).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "remote_job_manager_endpoint" : "sge+ssh://lonestar.tacc.utexas.edu",
         "remote_filesystem_endpoint"  : "sftp://lonestar.tacc.utexas.edu/",
         "local_job_manager_endpoint"  : "sge://localhost",
@@ -31,14 +42,16 @@
     },
 
     "trestles.sdsc.xsede.org": {
+        "description"                 : "The XSEDE 'Trestles' cluster at SDSC (http://www.sdsc.edu/us/resources/trestles/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "remote_job_manager_endpoint" : "pbs+ssh://trestles.sdsc.xsede.org",
         "remote_filesystem_endpoint"  : "sftp://trestles.sdsc.xsede.org/",
-        "local_filesystem_endpoint"   : "pbs://localhost",
+        "local_job_manager_endpoint"  : "pbs://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
+        "mpi_launch_method"           : "MPIRUN_RSH",
         "python_interpreter"          : "/usr/bin/python",
         "pre_bootstrap"               : ["module purge", "module load pgi", "module load mvapich2_ib", "module load gnubase"],
         "valid_roots"                 : ["/home"],
@@ -46,33 +59,37 @@
     },
 
     "gordon.sdsc.xsede.org": {
+        "description"                 : "The XSEDE 'Gordon' cluster at SDSC (http://www.sdsc.edu/us/resources/gordon/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "remote_job_manager_endpoint" : "pbs+ssh://gordon.sdsc.xsede.org",
         "remote_filesystem_endpoint"  : "sftp://gordon.sdsc.xsede.org/",
-        "local_filesystem_endpoint"   : "pbs://localhost",
+        "local_job_manager_endpoint"  : "pbs://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
+        "mpi_launch_method"           : "MPIRUN_RSH",
         "python_interpreter"          : "/usr/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load mvapich2_ib", "module load gnubase"],
+        "pre_bootstrap"               : ["module purge", "module load intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
 
     "blacklight.psc.xsede.org": {
-        "remote_job_manager_endpoint" : "pbs+ssh://blacklight.psc.xsede.org",
+        "description"                 : "The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "remote_job_manager_endpoint" : "pbs+ssh://blacklight.psc.xsede.org/?ppn=16",
         "remote_filesystem_endpoint"  : "sftp://blacklight.psc.xsede.org/",
-        "local_filesystem_endpoint"   : "pbs://localhost",
+        "local_job_manager_endpoint"  : "pbs://localhost/?ppn=16",
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
-        "python_interpreter"          : "/usr/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load mvapich2_ib", "module load gnubase"],
-        "valid_roots"                 : ["/home", "/scratch"],
+        "task_launch_method"          : "DPLACE",
+        "mpi_launch_method"           : "MPIRUN_DPLACE",
+        "pre_bootstrap"               : ["source /usr/share/modules/init/bash",
+                                         "module load python"
+                                        ],
+        "valid_roots"                 : ["/usr/users", "/brashear"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
-

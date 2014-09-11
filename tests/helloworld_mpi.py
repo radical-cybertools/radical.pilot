@@ -3,21 +3,29 @@
 # This is an example MPI4Py program that is used
 # by different examples and tests.
 
-from   mpi4py import MPI
+import sys
 import time
+import traceback
+from   mpi4py import MPI
 
-SLEEP = 10
+try :
+    print "start"
+    SLEEP = 10
+    name  = MPI.Get_processor_name()
+    comm  = MPI.COMM_WORLD
 
-name = MPI.Get_processor_name ()
-comm = MPI.COMM_WORLD
+    print "mpi rank %d/%d/%s"  % (comm.rank, comm.size, name)
 
-size = comm.size
-rank = comm.rank
+    time.sleep(SLEEP)
 
-print "Hello, World! I am process %d of %d on %s.\n"  % (rank, size, name)
-print "Sleeping for %d seconds ..." % SLEEP
+    comm.Barrier()   # wait for everybody to synchronize here
 
-time.sleep(SLEEP)
+except Exception as e :
+    traceback.print_exc ()
+    print "error : %s" % s
+    sys.exit (1)
 
-comm.Barrier()   # wait for everybody to synchronize here
+finally :
+    print "done"
+    sys.exit (0)
 
