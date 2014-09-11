@@ -86,10 +86,8 @@
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "DPLACE",
         "mpi_launch_method"           : "MPIRUN_DPLACE",
-        "global_virtenv"              : "/usr/users/5/santcroo/pilotve",
         "pre_bootstrap"               : ["source /usr/share/modules/init/bash",
                                          "module load python",
-                                         "module list"
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"

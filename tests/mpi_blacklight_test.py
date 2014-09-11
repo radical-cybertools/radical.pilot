@@ -48,7 +48,8 @@ if __name__ == "__main__":
     # change their state.
     pmgr.register_callback(pilot_state_cb)
 
-    # Define a X-core that runs for N minutes.
+    # Define a X-core pilot that runs for N minutes.
+    # Blacklight has 16 cores per node.
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "blacklight.psc.xsede.org"
     pdesc.runtime  = 10 # N minutes
