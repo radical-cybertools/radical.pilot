@@ -155,7 +155,37 @@ class PilotManager(Object):
             for pilot in self.get_pilots () :
                 logger.error("pmgr    %s cancels  pilot  %s" % (str(self._uid), pilot._uid))
             self.cancel_pilots ()
-            self.wait_pilots ()
+
+          # FIXME:
+          #
+          # wait_pilots() will wait until all pilots picked up the sent cancel
+          # signal and died.  However, that can take a loooong time.  For
+          # example, if a pilot is in 'PENDING_ACTIVE' state, this will have to
+          # wait until the pilot is bootstrapped, started, connected to the DB,
+          # and shut down again.  Or, for a pilot which just got a shitload of
+          # units, it will have to wait until the pilot started all those units
+          # and then checks its command queue again.  Or, if the pilot job
+          # already died, wait will block until the state checker kicks in and
+          # declares the pilot as dead, which takes a couple of minutes.
+          #
+          # Solution would be to add a CANCELLING state and to wait for that one,
+          # too, which basically means to wait until the cancel signal has been
+          # sent.  There is not much more to do at this point anyway.  This is at
+          # the moment faked in the manager controler, which sets that state
+          # after sending the cancel command.  This should be converted into
+          # a proper state -- that would, btw, remove the need for a cancel
+          # command in the first place, as the pilot can just pull its own state
+          # instead, and cancel on CANCELLING...
+          #
+          # self.wait_pilots ()
+            wait_for_cancel = True
+            while wait_for_cancel :
+                wait_for_cancel = False
+                for pilot in self.get_pilots () :
+                    logger.error("pmgr    %s wait for pilot  %s" % (str(self._uid), pilot._uid))
+                    if  pilot.state not in [DONE, FAILED, CANCELED, 'Cancelling'] :
+                        wait_for_cancel = True
+                        break
             for pilot in self.get_pilots () :
                 logger.error("pmgr    %s canceled pilot  %s" % (str(self._uid), pilot._uid))
 

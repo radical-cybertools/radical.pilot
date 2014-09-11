@@ -429,8 +429,21 @@ class PilotManagerController(threading.Thread):
         """
 
         if pilot_ids is None:
-            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_manager_id=self._pm_id)
-            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to all pilots.")
-        else:
-            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
-            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
+
+            pilot_ids  = list()
+
+            for pilot in self._db.get_pilots(pilot_manager_id=self._pm_id) :
+                pilot_ids.append (str(pilot["_id"]))
+
+
+        self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
+        logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
+
+        for pilot_id in pilot_ids :
+            if  pilot_id in self._shared_data :
+                old_state = self._shared_data[str(pilot["_id"])]["data"]["state"]
+
+                if not old_state in [DONE, FAILED, CANCELED] :
+                    self._shared_data[str(pilot["_id"])]["data"]["state"] = 'Cancelling'
+
+
