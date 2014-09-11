@@ -43,7 +43,6 @@ class UnitManagerController(threading.Thread):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
-        self.daemon = True
 
         # Stop event can be set to terminate the main loop
         self._stop = threading.Event()
@@ -142,10 +141,12 @@ class UnitManagerController(threading.Thread):
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
+        logger.error("uworker  %s stopping" % (self.name))
         self._stop.set()
         self.join()
-        logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
-                    (self.name, self.ident, self._um_id))
+        logger.error("uworker  %s stopped" % (self.name))
+      # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
+      #             (self.name, self.ident, self._um_id))
 
     # ------------------------------------------------------------------------
     #
@@ -304,20 +305,23 @@ class UnitManagerController(threading.Thread):
                     time.sleep(0.1)
 
 
-            # shut down the autonomous input / output transfer worker(s)
-            for worker in self._input_file_transfer_worker_pool:
-              # worker.terminate()
-                logger.debug("UnitManager.close(): %s terminated." % worker.name)
-              # worker.join()
-
-            for worker in self._output_file_transfer_worker_pool:
-              # worker.terminate()
-                logger.debug("UnitManager.close(): %s terminated." % worker.name)
-              # worker.join()
         except SystemExit as e :
             print "unit manager controller thread caught system exit -- forcing application shutdown"
             import thread
             thread.interrupt_main ()
+
+        finally :
+
+            # shut down the autonomous input / output transfer worker(s)
+            for worker in self._input_file_transfer_worker_pool:
+                logger.error("uworker %s stops   itransfer %s" % (self.name, worker.name))
+                worker.stop ()
+                logger.error("uworker %s stopped itransfer %s" % (self.name, worker.name))
+
+            for worker in self._output_file_transfer_worker_pool:
+                logger.error("uworker %s stops   otransfer %s" % (self.name, worker.name))
+                worker.stop ()
+                logger.error("uworker %s stopped otransfer %s" % (self.name, worker.name))
             
 
     # ------------------------------------------------------------------------

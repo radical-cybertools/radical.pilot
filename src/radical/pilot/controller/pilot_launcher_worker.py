@@ -45,13 +45,28 @@ class PilotLauncherWorker(threading.Thread):
 
         # threading stuff
         threading.Thread.__init__(self)
-        self.daemon = True
 
         self.db_connection_info = db_connection_info
         self.pilot_manager_id   = pilot_manager_id
         self.name               = "PilotLauncherWorker-%s" % str(number)
         self.missing_pilots     = dict()
         self.job_services       = dict()
+
+        # Stop event can be set to terminate the main loop
+        self._stop = threading.Event()
+        self._stop.clear()
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """stop() signals the process to finish up and terminate.
+        """
+        logger.error("launcher %s stopping" % (self.name))
+        self._stop.set()
+        self.join()
+        logger.error("launcher %s stopped" % (self.name))
+      # logger.debug("Launcher thread (ID: %s[%s]) for PilotManager %s stopped." %
+      #             (self.name, self.ident, self.pilot_manager_id))
 
     # --------------------------------------------------------------------------
     #
@@ -182,7 +197,7 @@ class PilotLauncherWorker(threading.Thread):
 
             last_job_check = time.time()
 
-            while True:
+            while not self._stop.is_set():
                 # Periodically, we pull up all ComputePilots that are pending 
                 # execution or were last seen executing and check if the corresponding  
                 # SAGA job is still pending in the queue. If that is not the case, 

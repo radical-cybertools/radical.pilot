@@ -140,24 +140,38 @@ class PilotManager(Object):
               get canceled (default: False).
 
         """
+
+        logger.error("pmgr    %s closing" % (str(self._uid)))
+
         # Spit out a warning in case the object was already closed.
         if not self._uid:
-            logger.warning("PilotManager object already closed.")
+            logger.error("PilotManager object already closed.")
             return
 
         # If terminate is set, we cancel all pilots. 
         if terminate is True:
-            self.cancel_pilots()
+            # cancel all pilots, make sure they are gone, and close the pilot
+            # managers.
+            for pilot in self.get_pilots () :
+                logger.error("pmgr    %s cancels  pilot  %s" % (str(self._uid), pilot._uid))
+            self.cancel_pilots ()
+            self.wait_pilots ()
+            for pilot in self.get_pilots () :
+                logger.error("pmgr    %s canceled pilot  %s" % (str(self._uid), pilot._uid))
+
 
         # Shut down all worker processes if still active. stop() returns
         # only after a successful join(). 
         if self._worker is not None:
             # Stop the worker process
+            logger.error("pmgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
             self._worker.stop()
+            logger.error("pmgr    %s stoped   worker %s" % (str(self._uid), self._worker.name))
+
             # Remove worker from registry
             self._session._process_registry.remove(self._uid)
 
-        logger.info("Closed PilotManager %s." % str(self._uid))
+        logger.error("pmgr    %s closed" % (str(self._uid)))
         self._uid = None
 
     #--------------------------------------------------------------------------
