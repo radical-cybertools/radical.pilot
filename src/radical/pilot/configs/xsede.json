@@ -78,17 +78,9 @@
     "blacklight.psc.xsede.org": {
         "description"                 : "The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-
-      # gsissh version
         "remote_job_manager_endpoint" : "pbs+gsissh://blacklight.psc.xsede.org/?ppn=16",
         "remote_filesystem_endpoint"  : "gsisftp://blacklight.psc.xsede.org/",
         "local_job_manager_endpoint"  : "pbs://localhost/?ppn=16",
-
-      # ssh version
-      # "remote_job_manager_endpoint" : "pbs+ssh://blacklight.psc.xsede.org/?ppn=16",
-      # "remote_filesystem_endpoint"  : "sftp://blacklight.psc.xsede.org/",
-      # "local_job_manager_endpoint"  : "pbs://localhost/?ppn=16",
-
         "local_filesystem_endpoint"   : "file://localhost/",
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
@@ -103,4 +95,3 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
-
