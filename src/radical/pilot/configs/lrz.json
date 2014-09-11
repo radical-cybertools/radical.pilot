@@ -1,7 +1,7 @@
 {
     "supermuc.lrz.de": {
         "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/systemdescription/).",
-        "notes"                       : "None",
+        "notes"                       : "Authentication to SuperMUC is by means of X509, so make sure you can gsissh into the machine.",
         "remote_job_manager_endpoint" : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
         "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",
         "local_job_manager_endpoint"  : "loadl://localhost",
@@ -14,7 +14,6 @@
         "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
         "pre_bootstrap"               : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",
-                                         "echo module purge", "echo module load lrz",
                                          "module load python/2.7.6",
                                          "module unload mpi.ibm", "module load mpi.intel",
                                          "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"

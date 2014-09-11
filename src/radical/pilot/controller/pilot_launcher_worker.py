@@ -315,6 +315,7 @@ class PilotLauncherWorker(threading.Thread):
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
+                        logger.debug ("saga.fs.Directory ('%s')" % saga.Url(sandbox))
                         agent_dir = saga.filesystem.Directory(
                             saga.Url(sandbox),
                             saga.filesystem.CREATE_PARENTS, session=self._session)
@@ -367,6 +368,7 @@ class PilotLauncherWorker(threading.Thread):
                         else:
                             job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
 
+                        logger.debug ("saga.job.Service ('%s')" % job_service_url)
                         js = saga.job.Service(job_service_url, session=self._session)
 
                         jd = saga.job.Description()

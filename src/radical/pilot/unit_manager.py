@@ -524,7 +524,7 @@ class UnitManager(object):
                     except Exception as ex :
                         raise RuntimeError ("Kernels are not supported in" \
                               "compute unit descriptions -- install " \
-                              "radical.ensemblemd!")
+                              "radical.ensemblemd.mdkernels!")
 
                     pilot_resource = schedule['pilots'][pid]['resource']
 
