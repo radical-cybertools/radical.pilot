@@ -67,6 +67,7 @@ class State(object):
 # Common States
 NEW                         = 'New'
 DONE                        = 'Done'
+CANCELING                   = 'Canceling'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
 PENDING                     = 'Pending'

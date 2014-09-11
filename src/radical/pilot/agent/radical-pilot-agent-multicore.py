@@ -86,6 +86,7 @@ TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special 
 NEW                         = 'New'
 PENDING                     = 'Pending'
 DONE                        = 'Done'
+CANCELING                  = 'Canceling'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
 
@@ -1893,19 +1894,22 @@ class Agent(threading.Thread):
                     retdoc = self._p.find_and_modify(
                                 query={"_id":ObjectId(self._pilot_id)},
                                 update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
-                                fields=[COMMAND_FIELD]
+                                fields=[COMMAND_FIELD, 'state']
                     )
 
                     if retdoc:
-                        commands = retdoc['commands']
+                        commands = retdoc[COMMAND_FIELD]
+                        state    = retdoc['state']
                     else:
                         commands = []
+                        state    = CANCELING
 
                     for command in commands:
 
                         idle = False
 
-                        if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+                        if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT or \
+                            state == CANCELING :
                             self._log.info("Received Cancel Pilot command.")
                             pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
                             return # terminate loop

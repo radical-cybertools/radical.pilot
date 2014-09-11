@@ -445,6 +445,6 @@ class PilotManagerController(threading.Thread):
                 old_state = self._shared_data[str(pilot["_id"])]["data"]["state"]
 
                 if not old_state in [DONE, FAILED, CANCELED] :
-                    self._shared_data[str(pilot["_id"])]["data"]["state"] = 'Cancelling'
+                    self._shared_data[str(pilot["_id"])]["data"]["state"] = CANCELING
 
 

@@ -168,14 +168,14 @@ class PilotManager(Object):
           # already died, wait will block until the state checker kicks in and
           # declares the pilot as dead, which takes a couple of minutes.
           #
-          # Solution would be to add a CANCELLING state and to wait for that one,
+          # Solution would be to add a CANCELING state and to wait for that one,
           # too, which basically means to wait until the cancel signal has been
           # sent.  There is not much more to do at this point anyway.  This is at
           # the moment faked in the manager controler, which sets that state
           # after sending the cancel command.  This should be converted into
           # a proper state -- that would, btw, remove the need for a cancel
           # command in the first place, as the pilot can just pull its own state
-          # instead, and cancel on CANCELLING...
+          # instead, and cancel on CANCELING...
           #
           # self.wait_pilots ()
             wait_for_cancel = True
@@ -183,7 +183,7 @@ class PilotManager(Object):
                 wait_for_cancel = False
                 for pilot in self.get_pilots () :
                     logger.error("pmgr    %s wait for pilot  %s" % (str(self._uid), pilot._uid))
-                    if  pilot.state not in [DONE, FAILED, CANCELED, 'Cancelling'] :
+                    if  pilot.state not in [DONE, FAILED, CANCELED, CANCELING] :
                         wait_for_cancel = True
                         break
             for pilot in self.get_pilots () :
