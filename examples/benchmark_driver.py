@@ -39,7 +39,7 @@ if __name__ == "__main__":
     rp_user     = str(os.getenv ("RP_USER",     "merzky"))
     rp_cores    = int(os.getenv ("RP_CORES",    8))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
-    rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3)) # 3 units/core/pilot
+    rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2)) # 3 units/core/pilot
     rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
     rp_host     = str(os.getenv ("RP_HOST",     "india.futuregrid.org"))
     rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
@@ -83,14 +83,11 @@ if __name__ == "__main__":
     pilots = pmgr.submit_pilots (pdescriptions)
     print "pilots: %s" % pilots
 
-    pmgr.wait_pilots (state=rp.ACTIVE)
-
-
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        scheduler=rp.SCHED_ROUND_ROBIN)
+        scheduler=rp.SCHED_BACKFILLING)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
@@ -107,7 +104,7 @@ if __name__ == "__main__":
     for unit_count in range(0, rp_units):
         cu = rp.ComputeUnitDescription()
         cu.executable  = "/bin/sleep"
-        cu.arguments   = ["60"]
+        cu.arguments   = ["30"]
         cu.cores       = rp_cu_cores
         cu.mpi         = True
 
@@ -143,5 +140,5 @@ if __name__ == "__main__":
     os.system ("bin/radicalpilot-stats -m plot -s %s" % sid) 
     os.system ("cp -v %s.png report/rp.benchmark.png" % sid) 
 
-    session.close ()
+    session.close (cleanup=True)
 

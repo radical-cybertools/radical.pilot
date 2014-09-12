@@ -104,6 +104,7 @@ class InputFileTransferWorker(threading.Thread):
 
                             # Creating the sandbox directory.
                             try:
+                                logger.debug ("saga.fs.Directory ('%s')" % remote_sandbox)
                                 cu_dir = saga.filesystem.Directory(
                                     remote_sandbox,
                                     flags=saga.filesystem.CREATE_PARENTS,
@@ -139,6 +140,7 @@ class InputFileTransferWorker(threading.Thread):
                                 logger.debug(log_msg)
 
                                 # Execute the transfer.
+                                logger.debug ("saga.fs.File ('%s')" % input_file_url)
                                 input_file = saga.filesystem.File(
                                     input_file_url,
                                     session=self._session
