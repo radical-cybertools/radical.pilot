@@ -20,20 +20,22 @@ issue88.py
 # ---------------------------------------
 # mpi tests
 # ---------------------------------------
-mpi_alamo_test.py
-# mpi_archer_test.py      # #314
-# mpi_bigred2_test.py     # no account
-# mpi_blacklight_test.py  # gsissh account
+  mpi_archer_test.py
+  mpi_bigred2_test.py
+  mpi_blacklight_test.py
 # mpi_das4_test.py        # no account
   mpi_gordon_test.py
-# mpi_hotel_test.py       # pbs_server down
-  mpi_india_test.py
   mpi_localhost_test.py
 # mpi_quarry_test.py      # no account
-  mpi_sierra_test.py
   mpi_stampede_test.py
   mpi_trestles_test.py
-# mpi_supermuc_test.py    # supermuc is offline for a while
+  mpi_supermuc_test.py
+
+# Futuregrid is considered broken...
+# mpi_alamo_test.py
+# mpi_sierra_test.py
+# mpi_hotel_test.py       # pbs_server down
+# mpi_india_test.py
 
 # ---------------------------------------
 # misc tests
@@ -49,20 +51,4 @@ test_resource_config_update.py
 # ---------------------------------------
 # mpi_yellowstone_test.py
 # yellowstone_test.py
-
-# ---------------------------------------
-# jenkins does not have access to 
-# these machines:
-# ---------------------------------------
-# mpi_bigred2_test.py  # no account for AM
-# mpi_das4_test.py     # no account for AM
-# mpi_quarry.py
-
-# ---------------------------------------
-# these machines don't pass environment
-# to worker nodes, so seting up mpi4py
-# on the fly is difficult... (#285)
-# ---------------------------------------
-# mpi_alamo_test.py
-# mpi_sierra_test.py
 
