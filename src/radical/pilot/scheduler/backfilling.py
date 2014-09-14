@@ -143,6 +143,60 @@ class BackfillingScheduler(Scheduler):
                 self._reschedule (pid=pid)
     
             if  state in [DONE, FAILED, CANCELED] :
+
+
+                # If the pilot state is 'DONE', 'FAILED' or 'CANCELED', we
+                # need to reschedule the units which are reschedulable --
+                # all others are marked 'FAILED' if they are already
+                # 'EXECUTING' and not restartable
+                # self._w.update({"pilot": pilot_id, "state": { "$in": [EXECUTING, PENDING_EXECUTION, SCHEDULING]}},
+                #                {"$set": {"state": state},
+                #                 "$push": {"statehistory": {"state": state, "timestamp": ts},
+                #                           "log": log}
+                #                })
+                timestamp = datetime.datetime.utcnow()
+                uids_re   = self._db.change_compute_units (
+                                filter_dict = {"pilot": pilot_id, 
+                                               "state": {"$in": [STATE_X,
+                                                                 PENDING_INPUT_STAGING, 
+                                                                 STAGING_INPUT, 
+                                                                 PENDING_EXECUTION, 
+                                                                 SCHEDULING]}},
+                                change_dict = {"state" : NEW},
+                                push_dict   = {"statehistory": {"state"     : NEW, 
+                                                                "timestamp" : timestamp}, 
+                                               "log"         : {"reschedule unit"}})
+
+                uids_yes  = self._db.change_compute_units (
+                                filter_dict = {"pilot"  : pilot_id, 
+                                               "restart": True, 
+                                               "state"  : {"$in": [EXECUTING, 
+                                                                   PENDING_OUTPUT_STAGING, 
+                                                                   STAGING_OUTPUT]}},
+                                change_dict = {"state" : NEW},
+                                push_dict   = {"statehistory": {"state" : NEW, 
+                                                                "timestamp" : timestamp}, 
+                                               "log"         : {"reschedule unit"}})
+
+                uids_no   = self._db.change_compute_units (
+                                filter_dict = {"pilot"  : pilot_id, 
+                                               "restart": False, 
+                                               "state"  : {"$in": [EXECUTING, 
+                                                                   PENDING_OUTPUT_STAGING, 
+                                                                   STAGING_OUTPUT]}},
+                                change_dict = {"state" : FAILED},
+                                push_dict   = {"statehistory": {"state" : FAILED, 
+                                                                "timestamp" : timestamp}, 
+                                               "log"         : {"reschedule unit"}})
+
+                for uid in uid_re :
+                    print "rescheduling unit %s" % uid
+                for uid in uid_yes :
+                    print "restarting   unit %s" % uid
+                for uid in uid_no  :
+                    print "aborting     unit %s" % uid
+
+
                 # we can't use this pilot anymore...  
                 del self.pilots[pid]
     

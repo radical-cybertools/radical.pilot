@@ -510,7 +510,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def set_all_running_compute_units(self, pilot_id, state, log):
+    def change_compute_units (self, filter_dict, state, log):
         """Update the state and the log of all compute units belonging to
            a specific pilot.
         """
@@ -519,11 +519,15 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        self._w.update({"pilot": pilot_id, "state": { "$in": [EXECUTING, PENDING_EXECUTION, SCHEDULING]}},
-                       {"$set": {"state": state},
-                        "$push": {"statehistory": {"state": state, "timestamp": ts},
-                                  "log": log}
-                       })
+        ret = self._w.update(filter_dict, 
+                             {"$set" : set_dict, 
+                              "$push": push_dict})
+
+        unit_ids = list()
+        for doc in ret :
+            unit_ids.append (str(doc['_id']))
+
+        return unit_ids
 
     #--------------------------------------------------------------------------
     #

@@ -289,16 +289,10 @@ class PilotManagerController(threading.Thread):
                         logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
 
                         # The state of the pilot has changed, We call all
-                        # pilot-level callbacks to propagate this.
+                        # pilot-level callbacks to propagate this.  This also
+                        # includes communication to the unit scheduler which
+                        # may, or may not, cancel the pilot's units.
                         self.call_callbacks(pilot_id, new_state)
-
-                    # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
-                    # set the state of the compute unit accordingly
-                    if new_state in ['Failed', 'Done', 'Canceled']:
-                        self._db.set_all_running_compute_units(
-                            pilot_id=pilot_id, 
-                            state="Canceled",
-                            log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
@@ -431,3 +425,4 @@ class PilotManagerController(threading.Thread):
         else:
             self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
             logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
+
