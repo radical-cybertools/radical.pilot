@@ -109,7 +109,7 @@ if __name__ == "__main__":
         for tfc in output_tfcs:
             tfc.export_all('file://%s' % os.getcwd)
 
-        session.close(delete=False)
+        session.close(cleanup=False)
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex

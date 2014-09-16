@@ -113,7 +113,7 @@ if __name__ == "__main__":
         for du in output_dus:
             du.export_all('file://%s' % os.getcwd)
 
-        session.close(delete=False)
+        session.close(cleanup=False)
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex

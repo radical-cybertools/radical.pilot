@@ -258,7 +258,7 @@ do for [term_i=1:words(terms)] {
          for [i=1:pilot_num] \
          word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.05) title '' with points lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
          for [i=1:pilot_num] \
-         word(slotnum_list,i)+0+offset(i,0.5)                         title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
+         word(slotnum_list,i)+0+word(slotnum_list,i)*0.05*offset(i,1) title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
 
       # ------------------------------------------------------------------------------------
       # Key plot
