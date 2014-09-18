@@ -130,6 +130,7 @@ if __name__ == "__main__":
             cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2; sleep 10"]
             cud.cores         = 1
             cud.input_staging = ['file1.dat', 'file2.dat']
+            cud.restartable   = True
     
             cuds.append(cud)
     
