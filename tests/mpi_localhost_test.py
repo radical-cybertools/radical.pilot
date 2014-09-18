@@ -77,7 +77,6 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        # india uses openmpi
         mpi_test_task.executable    = "/bin/sh"
         mpi_test_task.arguments     = ["-c", "'echo mpi rank $PMI_RANK/$PMI_SIZE'"]
         mpi_test_task.mpi           = True
