@@ -36,7 +36,6 @@ def unit_state_cb (unit, state) :
 #
 if __name__ == "__main__":
 
-    rp_user     = str(os.getenv ("RP_USER",     "tg803521"))
     rp_cores    = int(os.getenv ("RP_CORES",    8))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
     rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2)) # 3 units/core/pilot
@@ -50,11 +49,6 @@ if __name__ == "__main__":
     # well as security crendetials.
     session = rp.Session()
     print "session: %s" % session.uid
-
-    # make jenkins happy
-    c         = rp.Context ('ssh')
-    c.user_id = rp_user
-    session.add_context (c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)

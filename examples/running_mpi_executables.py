@@ -36,14 +36,8 @@ def unit_state_cb (unit, state) :
 if __name__ == "__main__":
 
     # Create a new session. A session is the 'root' object for all other
-    # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-    # well as security contexts.
+    # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s).
     session = rp.Session()
-
-    # Add an ssh identity to the session.
-    c = rp.Context('ssh')
-    c.user_id = "merzky"
-    session.add_context(c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -56,10 +50,10 @@ if __name__ == "__main__":
     # Define a X-core on stamped that runs for N minutes and
     # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource         = "india.futuregrid.org"
-    pdesc.runtime          = 15 # N minutes
-    pdesc.cores            = 16 # X cores
-    pdesc.cleanup          = True
+    pdesc.resource = "stampede.tacc.utexas.edu"
+    pdesc.runtime  = 15 # N minutes
+    pdesc.cores    = 16 # X cores
+    pdesc.project  = "TG-MCB090174"
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)

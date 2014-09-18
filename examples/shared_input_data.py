@@ -40,14 +40,8 @@ if __name__ == "__main__":
     os.system ('date     > file2.dat')
 
     # Create a new session. A session is the 'root' object for all other
-    # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-    # well as security crendetials.
+    # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s).
     session = rp.Session()
-
-    # Add an ssh identity to the session.
-    c = rp.Context('ssh')
-    c.user_id = "merzky"
-    session.add_context(c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -59,10 +53,10 @@ if __name__ == "__main__":
 
     # Define a pilot that runs for 15 minutes 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "india.futuregrid.org"
-    pdesc.runtime  = 15 # minutes
-    pdesc.cores    = 8
-    pdesc.cleanup  = True
+    pdesc.resource = "stampede.tacc.utexas.edu"
+    pdesc.runtime  = 15 # N minutes
+    pdesc.cores    =  8 # X cores
+    pdesc.project  = "TG-MCB090174"
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
