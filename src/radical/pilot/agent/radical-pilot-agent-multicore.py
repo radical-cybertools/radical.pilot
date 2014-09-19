@@ -2479,7 +2479,6 @@ class _Process(subprocess.Popen):
         else:
             raise Exception("No executable specified!") # TODO: This should be catched earlier problaby
 
-        # TODO: apply the split of exec and args to all launch methods
         task_args_string = ''
         if task.arguments is not None:
             for arg in task.arguments:
@@ -2504,6 +2503,9 @@ class _Process(subprocess.Popen):
         # Based on the launch method we use different, well, launch methods
         # to launch the task. just on the shell, via mpirun, ssh, ibrun or aprun
         if launch_method == LAUNCH_METHOD_LOCAL:
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
+
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s\n'    % task_exec_string)
@@ -2521,6 +2523,9 @@ class _Process(subprocess.Popen):
             mpirun_command = "%s -np %s -host %s" % (launch_command,
                                                      task.numcores, hosts_string)
 
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
+
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
@@ -2534,6 +2539,9 @@ class _Process(subprocess.Popen):
             for slot in task.slots:
                 host = slot.split(':')[0]
                 hosts_string += ' %s' % host
+
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
 
             mpirun_rsh_command = "%s -export -np %s%s" % (launch_command, task.numcores, hosts_string)
 
@@ -2552,6 +2560,9 @@ class _Process(subprocess.Popen):
                 hosts_string += '%s,' % host
 
             mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
 
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
@@ -2606,6 +2617,9 @@ class _Process(subprocess.Popen):
                             (launch_command, task.numcores,
                              ibrun_offset)
 
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
+
             # Build launch script
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
@@ -2628,6 +2642,9 @@ class _Process(subprocess.Popen):
             dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
             dplace_command = "%s -c %d-%d" % \
                                     (launch_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
 
             # Build launch script
             launch_script.write('%s\n'    % pre_exec_string)
@@ -2654,6 +2671,9 @@ class _Process(subprocess.Popen):
             dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
             mpirun_dplace_command = "%s -np %d %s -c %d-%d" % \
                             (launch_command, task.numcores, dplace_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
 
             # Build launch script
             launch_script.write('%s\n'    % pre_exec_string)
@@ -2684,6 +2704,9 @@ class _Process(subprocess.Popen):
             poe_command = 'LSB_MCPU_HOSTS="%s" %s' % (
                 hosts_string, launch_command)
 
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
+
             # Continue to build launch script
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
@@ -2695,6 +2718,9 @@ class _Process(subprocess.Popen):
 
         elif launch_method == LAUNCH_METHOD_SSH:
             host = task.slots[0].split(':')[0] # Get the host of the first entry in the acquired slot
+
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
 
             # Continue to build launch script
             launch_script.write('%s\n'    % pre_exec_string)
