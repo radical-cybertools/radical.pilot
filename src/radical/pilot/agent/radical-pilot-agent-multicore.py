@@ -12,6 +12,8 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import copy
+import math
 import saga
 import stat
 import sys
@@ -32,6 +34,7 @@ import subprocess
 import multiprocessing
 
 from bson.objectid import ObjectId
+from operator import mul
 
 
 # ----------------------------------------------------------------------------
@@ -111,6 +114,356 @@ STAGING_OUTPUT              = 'StagingOutput'        # and be turned into loggin
 
 #---------------------------------------------------------------------------
 MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push to db
+
+
+##########################################################################
+#
+# BG/Q Config
+CORES_PER_NODE      = 16
+NODES_PER_BOARD     = 32 # NODE == Compute Card == Chip module
+BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
+MIDPLANES_PER_RACK  = 2
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Default mapping = "ABCDE(T)"
+#
+# http://www.redbooks.ibm.com/redbooks/SG247948/wwhelp/wwhimpl/js/html/wwhelp.htm
+#
+MAPPING = "ABCDE"
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Board labels (Rack, Midplane, Node)
+#
+BOARD_LABELS = ['R', 'M', 'N']
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Dimensions of a (sub-)block
+#
+DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Supported sub-block sizes (number of nodes).
+# This influences the effectiveness of mixed-size allocations
+# (and might even be a hard requirement from a topology standpoint).
+#
+# TODO: Do we actually need to restrict our sub-block sizes to this set?
+#
+SUPPORTED_SUB_BLOCK_SIZES = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Mapping of starting corners.
+#
+# "board" -> "node"
+#
+# Ordering: ['E', 'D', 'DE', etc.]
+#
+# TODO: Is this independent of the mapping?
+#
+BLOCK_STARTING_CORNERS = {
+    0:  0,
+    4: 29,
+    8:  4,
+    12: 25
+}
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Offsets into block structure
+#
+BLOCK_INDEX  = 0
+BLOCK_COOR   = 1
+BLOCK_NAME   = 2
+BLOCK_STATUS = 3
+#
+##########################################################################
+
+
+##########################################################################
+#
+# BG/Q Topology of Boards within a Midplane
+#
+MIDPLANE_TOPO = {
+    0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
+    1: {'A':  5, 'B':  9, 'C':  0, 'D':  3},
+    2: {'A':  6, 'B': 10, 'C':  3, 'D':  0},
+    3: {'A':  7, 'B': 11, 'C':  2, 'D':  1},
+    4: {'A':  0, 'B': 12, 'C':  5, 'D':  6},
+    5: {'A':  1, 'B': 13, 'C':  4, 'D':  7},
+    6: {'A':  2, 'B': 14, 'C':  7, 'D':  4},
+    7: {'A':  3, 'B': 15, 'C':  6, 'D':  5},
+    8: {'A': 12, 'B':  0, 'C':  9, 'D': 10},
+    9: {'A': 13, 'B':  1, 'C':  8, 'D': 11},
+    10: {'A': 14, 'B':  2, 'C': 11, 'D':  8},
+    11: {'A': 15, 'B':  3, 'C': 10, 'D':  9},
+    12: {'A':  8, 'B':  4, 'C': 13, 'D': 14},
+    13: {'A':  9, 'B':  5, 'C': 12, 'D': 15},
+    14: {'A': 10, 'B':  6, 'C': 15, 'D': 12},
+    15: {'A': 11, 'B':  7, 'C': 14, 'D': 13},
+    }
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Verify the midplane topology
+#
+def check_midplane_topo():
+    for board in range(BOARDS_PER_MIDPLANE):
+        for dimension in 'ABCD':
+            target = MIDPLANE_TOPO[board][dimension]
+            reverse = MIDPLANE_TOPO[target][dimension]
+            assert reverse == board, 'board:%d dimension:%s target:%d reverse:%d' % (board, dimension, target, reverse)
+#
+##########################################################################
+
+
+##########################################################################
+#
+# BG/Q Topology of Nodes within a Board
+#
+BOARD_TOPO = {
+    0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
+    1: {'A': 28, 'B':  2, 'C':  0, 'D': 13, 'E':  6},
+    2: {'A': 31, 'B':  1, 'C':  3, 'D': 14, 'E':  5},
+    3: {'A': 30, 'B':  0, 'C':  2, 'D': 15, 'E':  4},
+    4: {'A': 25, 'B':  7, 'C':  5, 'D':  8, 'E':  3},
+    5: {'A': 24, 'B':  6, 'C':  4, 'D':  9, 'E':  2},
+    6: {'A': 27, 'B':  5, 'C':  7, 'D': 10, 'E':  1},
+    7: {'A': 26, 'B':  4, 'C':  6, 'D': 11, 'E':  0},
+    8: {'A': 21, 'B': 11, 'C':  9, 'D':  4, 'E': 15},
+    9: {'A': 20, 'B': 10, 'C':  8, 'D':  5, 'E': 14},
+    10: {'A': 23, 'B':  9, 'C': 11, 'D':  6, 'E': 13},
+    11: {'A': 22, 'B':  8, 'C': 10, 'D':  7, 'E': 12},
+    12: {'A': 17, 'B': 15, 'C': 13, 'D':  0, 'E': 11},
+    13: {'A': 16, 'B': 14, 'C': 12, 'D':  1, 'E': 10},
+    14: {'A': 19, 'B': 13, 'C': 15, 'D':  2, 'E':  9},
+    15: {'A': 18, 'B': 12, 'C': 14, 'D':  3, 'E':  8},
+    16: {'A': 13, 'B': 19, 'C': 17, 'D': 28, 'E': 23},
+    17: {'A': 12, 'B': 18, 'C': 16, 'D': 29, 'E': 22},
+    18: {'A': 15, 'B': 17, 'C': 19, 'D': 30, 'E': 21},
+    19: {'A': 14, 'B': 16, 'C': 18, 'D': 31, 'E': 20},
+    20: {'A':  9, 'B': 23, 'C': 21, 'D': 24, 'E': 19},
+    21: {'A':  8, 'B': 22, 'C': 20, 'D': 25, 'E': 18},
+    22: {'A': 11, 'B': 21, 'C': 23, 'D': 26, 'E': 17},
+    23: {'A': 10, 'B': 20, 'C': 22, 'D': 27, 'E': 16},
+    24: {'A':  5, 'B': 27, 'C': 25, 'D': 20, 'E': 31},
+    25: {'A':  4, 'B': 26, 'C': 24, 'D': 21, 'E': 30},
+    26: {'A':  7, 'B': 25, 'C': 27, 'D': 22, 'E': 29},
+    27: {'A':  6, 'B': 24, 'C': 26, 'D': 23, 'E': 28},
+    28: {'A':  1, 'B': 31, 'C': 29, 'D': 16, 'E': 27},
+    29: {'A':  0, 'B': 30, 'C': 28, 'D': 17, 'E': 26},
+    30: {'A':  3, 'B': 29, 'C': 31, 'D': 18, 'E': 25},
+    31: {'A':  2, 'B': 28, 'C': 30, 'D': 19, 'E': 24},
+    }
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Verify the board topology
+#
+def check_board_topo():
+    for board in range(NODES_PER_BOARD):
+        for dimension in DIMENSION_LABELS:
+            target = BOARD_TOPO[board][dimension]
+            reverse = BOARD_TOPO[target][dimension]
+            assert reverse == board, 'board:%d dimension:%s target:%d reverse:%d' % (board, dimension, target, reverse)
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Convert the board string as given by llq into a board structure
+#
+# E.g. 'R00-M1-N08,R00-M1-N09,R00-M1-N10,R00-M0-N11' =>
+# [{'R': 0, 'M': 1, 'N': 8}, {'R': 0, 'M': 1, 'N': 9},
+#  {'R': 0, 'M': 1, 'N': 10}, {'R': 0, 'M': 0, 'N': 11}]
+#
+def str2boards(boards_str):
+
+    boards = boards_str.split(',')
+
+    board_dict_list = []
+
+    for board in boards:
+        elements = board.split('-')
+
+        board_dict = {}
+        for l, e in zip(BOARD_LABELS, elements):
+            board_dict[l] = int(e.split(l)[1])
+
+        board_dict_list.append(board_dict)
+
+    return board_dict_list
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Convert the string as given by llq into a block shape structure:
+#
+# E.g. '1x2x3x4x5' => {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+#
+def str2shape(shape_str):
+
+    # Get the lengths of the shape
+    shape_lengths = shape_str.split('x', 4)
+
+    shape_dict = {}
+    for dim, length in zip(DIMENSION_LABELS, shape_lengths):
+        shape_dict[dim] = int(length)
+
+    return shape_dict
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Walk the block and return the node name for the given location
+#
+def nodename_by_loc(rack, midplane, board, node, location):
+
+    for dim in DIMENSION_LABELS:
+        max_length = location[dim]
+
+        cur_length = 0
+        # Loop while we are not at the final depth
+        while cur_length < max_length:
+
+            if cur_length % 2 == 0:
+                # If the current length is even,
+                # we remain within the board,
+                # and select the next node.
+                node = BOARD_TOPO[node][dim]
+            else:
+                # Otherwise we jump to another midplane.
+                board = MIDPLANE_TOPO[board][dim]
+
+            # Increase the length for the next iteration
+            cur_length += 1
+
+    return 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Return list of nodes that make up the block
+#
+# Format: [(index, location, nodename, status), (i, c, n, s), ...]
+#
+def get_block(rack, midplane, board, shape):
+
+    nodes = []
+    start_node = BLOCK_STARTING_CORNERS[board]
+
+    print 'Shape: %s' % shape
+
+    index = 0
+
+    for a in range(shape['A']):
+        for b in range(shape['B']):
+            for c in range(shape['C']):
+                for d in range(shape['D']):
+                    for e in range(shape['E']):
+                        location = {'A': a, 'B': b, 'C': c, 'D': d, 'E':e}
+                        nodename = nodename_by_loc(rack, midplane, board, start_node, location)
+                        nodes.append([index, location, nodename, FREE])
+                        index += 1
+    return nodes
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Use block shape and board list to construct block structure
+#
+def shapeandboards2block(block_shape_str, boards_str):
+
+    board_dict_list = str2boards(boards_str)
+    print 'Board dict list:'
+    for b in board_dict_list:
+        print b
+
+    # TODO: this assumes a single midplane block
+    rack     = board_dict_list[0]['R']
+    midplane = board_dict_list[0]['M']
+
+    board_list = [entry['N'] for entry in board_dict_list]
+    start_board = min(board_list)
+
+    block_shape = str2shape(block_shape_str)
+
+    return get_block(rack, midplane, start_board, block_shape)
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Construction of sub-block shapes based on overall block allocation.
+#
+def create_sub_block_shape_table(shape_str):
+
+    # Convert the shape string into dict structure
+    block_shape = str2shape(shape_str)
+
+    # Dict to store the results
+    table = {}
+
+    # Create a sub-block dict with shape 1x1x1x1x1
+    sub_block_shape = {l: 1 for l in DIMENSION_LABELS}
+
+    # Look over all the dimensions starting at the most right
+    for dim in MAPPING[::-1]:
+        while True:
+
+            # Calculate the number of nodes for the current shape
+            num_nodes = reduce(mul, filter(lambda length: length != 0, sub_block_shape.values()))
+
+            if num_nodes in SUPPORTED_SUB_BLOCK_SIZES:
+                table[num_nodes] = copy.copy(sub_block_shape)
+
+            # Done with iterating this dimension
+            if sub_block_shape[dim] >= block_shape[dim]:
+                break
+
+            # Increase the length in this dimension for the next iteration.
+            sub_block_shape[dim] += 1
+
+    return table
+#
+##########################################################################
 
 
 #---------------------------------------------------------------------------
