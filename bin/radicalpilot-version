@@ -8,5 +8,6 @@
 # This script returns the version.
 #
 
-python -c "import radical.pilot; print radical.pilot.version"
+# python -c "import radical.pilot; print radical.pilot.version"
+python -c "import radical.pilot; print radical.pilot.version_detail"
 

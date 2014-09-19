@@ -12,13 +12,14 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import saga
 import stat
 import sys
 import time
 import errno
 import Queue
 import signal
-import gridfs
+import shutil
 import pymongo
 import optparse
 import logging
@@ -38,16 +39,21 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH     = 'SSH'
-LAUNCH_METHOD_APRUN   = 'APRUN'
-LAUNCH_METHOD_LOCAL   = 'LOCAL'
-LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
-LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
-LAUNCH_METHOD_POE     = 'POE'
-LAUNCH_METHOD_IBRUN   = 'IBRUN'
+LAUNCH_METHOD_SSH           = 'SSH'
+LAUNCH_METHOD_APRUN         = 'APRUN'
+LAUNCH_METHOD_LOCAL         = 'LOCAL'
+LAUNCH_METHOD_MPIRUN        = 'MPIRUN'
+LAUNCH_METHOD_MPIRUN_RSH    = 'MPIRUN_RSH'
+LAUNCH_METHOD_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
+LAUNCH_METHOD_MPIEXEC       = 'MPIEXEC'
+LAUNCH_METHOD_POE           = 'POE'
+LAUNCH_METHOD_IBRUN         = 'IBRUN'
+LAUNCH_METHOD_DPLACE        = 'DPLACE'
 
 MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
                               LAUNCH_METHOD_MPIRUN,
+                              LAUNCH_METHOD_MPIRUN_RSH,
+                              LAUNCH_METHOD_MPIRUN_DPLACE,
                               LAUNCH_METHOD_POE,
                               LAUNCH_METHOD_APRUN,
                               LAUNCH_METHOD_MPIEXEC]
@@ -60,6 +66,68 @@ LRMS_LSF    = 'LSF'
 LRMS_LOADL  = 'LOADL'
 LRMS_FORK   = 'FORK'
 
+COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
+COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
+COMMAND_KEEP_ALIVE          = "Keep_Alive"
+COMMAND_FIELD               = "commands"
+COMMAND_TYPE                = "type"
+COMMAND_ARG                 = "arg"
+
+#
+# Staging Action operators
+#
+COPY     = 'Copy'     # local cp
+LINK     = 'Link'     # local ln -s
+MOVE     = 'Move'     # local mv
+TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+
+# -----------------------------------------------------------------------------
+# Common States
+NEW                         = 'New'
+PENDING                     = 'Pending'
+DONE                        = 'Done'
+CANCELED                    = 'Canceled'
+FAILED                      = 'Failed'
+
+# -----------------------------------------------------------------------------
+# ComputePilot States
+PENDING_LAUNCH              = 'PendingLaunch'
+LAUNCHING                   = 'Launching'
+PENDING_ACTIVE              = 'PendingActive'
+ACTIVE                      = 'Active'
+
+# -----------------------------------------------------------------------------
+# ComputeUnit States
+PENDING_EXECUTION           = 'PendingExecution'
+SCHEDULING                  = 'Scheduling'
+EXECUTING                   = 'Executing'
+
+PENDING_INPUT_STAGING       = 'PendingInputStaging'  # These last 4 are not really states,
+STAGING_INPUT               = 'StagingInput'         # as there are distributed entities enacting on them.
+PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just go,
+STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
+
+#---------------------------------------------------------------------------
+MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push to db
+
+
+#---------------------------------------------------------------------------
+#
+start_time = time.time ()
+def get_rusage () :
+
+    import resource
+
+    self_usage  = resource.getrusage (resource.RUSAGE_SELF)
+    child_usage = resource.getrusage (resource.RUSAGE_CHILDREN)
+
+    rtime = time.time () - start_time
+    utime = self_usage.ru_utime  + child_usage.ru_utime
+    stime = self_usage.ru_stime  + child_usage.ru_stime
+    rss   = self_usage.ru_maxrss + child_usage.ru_maxrss
+
+    return "real %3f sec | user %.3f sec | system %.3f sec | mem %.2f kB" \
+         % (rtime, utime, stime, rss)
 
 #---------------------------------------------------------------------------
 #
@@ -70,11 +138,11 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"log" : message,
-                   "statehistory": {"state": 'Failed', "timestamp": ts}},
-         "$set":  {"state": 'Failed',
-                   "finished": ts}
-
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
+         "$set"    : {"state"       : FAILED,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #---------------------------------------------------------------------------
@@ -86,10 +154,11 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     ts = datetime.datetime.utcnow()
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"log" : message,
-                   "statehistory": {"state": 'Canceled', "timestamp": ts}},
-         "$set":  {"state": 'Canceled',
-                   "finished": ts}
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
+         "$set"    : {"state"       : CANCELED,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #---------------------------------------------------------------------------
@@ -99,11 +168,13 @@ def pilot_DONE(mongo_p, pilot_uid):
     """
     ts = datetime.datetime.utcnow()
 
+    message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push": {"statehistory": {"state": 'Done', "timestamp": ts}},
-         "$set": {"state": 'Done',
-                  "finished": ts}
-
+        {"$pushAll": {"log"         : [message, get_rusage()]},
+         "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
+         "$set"    : {"state"       : DONE,
+                      "capability"  : 0,
+                      "finished"    : ts}
         })
 
 #-----------------------------------------------------------------------------
@@ -125,6 +196,7 @@ class ExecutionEnvironment(object):
 
         task_launch_command = None
         mpi_launch_command = None
+        dplace_command = None
 
         # Regular tasks
         if task_launch_method == LAUNCH_METHOD_LOCAL:
@@ -141,14 +213,30 @@ class ExecutionEnvironment(object):
             command = self._which('aprun')
             if command is not None:
                 task_launch_command = command
+
+        elif task_launch_method == LAUNCH_METHOD_DPLACE:
+            # dplace: job launcher for SGI systems (e.g. on Blacklight)
+            dplace_command = self._which('dplace')
+            if dplace_command is not None:
+                task_launch_command = dplace_command
+            else:
+                raise Exception("dplace not found!")
+
         else:
             raise Exception("Task launch method not set or unknown: %s!" % task_launch_method)
 
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
             command = self._find_executable(['mpirun',           # General case
+                                             'mpirun_rsh',       # Gordon @ SDSC
                                              'mpirun-openmpi-mp' # Mac OSX MacPorts
                                             ])
+            if command is not None:
+                mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # mpirun_rsh (e.g. on Gordon@ SDSC)
+            command = self._which('mpirun_rsh')
             if command is not None:
                 mpi_launch_command = command
 
@@ -157,6 +245,17 @@ class ExecutionEnvironment(object):
             command = self._which('mpiexec')
             if command is not None:
                 mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
+            # mpirun + dplace: mpi job launcher for SGI systems (e.g. on Blacklight)
+            command = self._which('mpirun')
+            if command is not None:
+                mpi_launch_command = command
+
+            if dplace_command is None:
+                dplace_command = self._which('dplace')
+                if dplace_command is None:
+                    raise Exception("dplace not found")
 
         elif mpi_launch_method == LAUNCH_METHOD_APRUN:
             # aprun: job launcher for Cray systems
@@ -186,7 +285,8 @@ class ExecutionEnvironment(object):
             'task_launch_method': task_launch_method,
             'task_launch_command': task_launch_command,
             'mpi_launch_method': mpi_launch_method,
-            'mpi_launch_command': mpi_launch_command
+            'mpi_launch_command': mpi_launch_command,
+            'dplace_command': dplace_command
         }
 
         logger.info("Discovered task launch command: '%s' and MPI launch command: '%s'." % \
@@ -273,6 +373,15 @@ class ExecutionEnvironment(object):
         torque_nodes = [line.strip() for line in open(torque_nodefile)]
         self.log.info("Found Torque PBS_NODEFILE %s: %s" % (torque_nodefile, torque_nodes))
 
+        # Number of cpus involved in allocation
+        val = os.environ.get('PBS_NCPUS')
+        if val:
+            torque_num_cpus = int(val)
+        else:
+            msg = "$PBS_NCPUS not set! (new Torque version?)"
+            torque_num_cpus = None
+            self.log.warning(msg)
+
         # Number of nodes involved in allocation
         val = os.environ.get('PBS_NUM_NODES')
         if val:
@@ -287,7 +396,7 @@ class ExecutionEnvironment(object):
         if val:
             torque_cores_per_node = int(val)
         else:
-            msg = "$PBS_NUM_PPN not set! (old Torque version?)"
+            msg = "$PBS_NUM_PPN or $PBS_PPN not set!"
             torque_cores_per_node = None
             self.log.warning(msg)
 
@@ -307,6 +416,9 @@ class ExecutionEnvironment(object):
         if torque_num_nodes and torque_cores_per_node:
             # Modern style Torque
             self.cores_per_node = torque_cores_per_node
+        elif torque_num_cpus:
+            # Blacklight style (TORQUE-2.3.13)
+            self.cores_per_node = torque_num_cpus
         else:
             # Old style Torque (Should we just use this for all versions?)
             self.cores_per_node = torque_nodes_length / torque_node_list_length
@@ -677,9 +789,9 @@ class ExecutionEnvironment(object):
 #
 class Task(object):
 
-    #
     def __init__(self, uid, executable, arguments, environment, numcores, mpi,
-                 pre_exec, post_exec, workdir, stdout, stderr, output_data):
+                 pre_exec, post_exec, workdir, stdout_file, stderr_file, 
+                 agent_output_staging, ftw_output_staging):
 
         self._log         = None
         self._description = None
@@ -690,9 +802,10 @@ class Task(object):
         self.executable     = executable
         self.arguments      = arguments
         self.workdir        = workdir
-        self.stdout         = stdout
-        self.stderr         = stderr
-        self.output_data    = output_data
+        self.stdout_file    = stdout_file
+        self.stderr_file    = stderr_file
+        self.agent_output_staging = agent_output_staging
+        self.ftw_output_staging = ftw_output_staging
         self.numcores       = numcores
         self.mpi            = mpi
         self.pre_exec       = pre_exec
@@ -707,11 +820,11 @@ class Task(object):
 
         self.state          = None
         self.exit_code      = None
+        self.stdout         = ""
+        self.stderr         = ""
 
-        self.stdout_id      = None
-        self.stderr_id      = None
-
-        self._log            = []
+        self._log           = []
+        self._proc          = None
 
 
 # ----------------------------------------------------------------------------
@@ -723,8 +836,8 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, task_queue, node_list, cores_per_node,
-                 launch_methods, mongodb_url, mongodb_name, mongodb_auth,
+    def __init__(self, logger, task_queue, command_queue, output_staging_queue,
+                 node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name, mongodb_auth,
                  pilot_id, session_id, benchmark):
 
         """Le Constructeur creates a new ExecWorker instance.
@@ -745,15 +858,22 @@ class ExecWorker(multiprocessing.Process):
             user, pwd = mongodb_auth.split (':', 1)
             self._mongo_db.authenticate (user, pwd)
 
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.w"  % session_id]
         self._wm = mongo_db["%s.wm" % session_id]
 
         # Queued tasks by the Agent
         self._task_queue     = task_queue
 
+        # Queued transfers
+        self._output_staging_queue = output_staging_queue
+
+        # Queued commands by the Agent
+        self._command_queue = command_queue
+
         # Launched tasks by this ExecWorker
         self._running_tasks = []
+        self._cuids_to_cancel = []
 
         # Slots represents the internal process management structure.
         # The structure is as follows:
@@ -773,16 +893,65 @@ class ExecWorker(multiprocessing.Process):
             })
         self._cores_per_node = cores_per_node
 
+        #self._capability = self._slots2caps(self._slots)
+        self._capability     = self._slots2free(self._slots)
+        self._capability_old = None
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
-        self._slot_history = list()
-        self._slot_history.append (self._slot_status (short=True))
-
+        self._slot_history     = [self._slot_status (short=True)]
+        self._slot_history_old = None
 
         # The available launch methods
         self._available_launch_methods = launch_methods
 
+        self._p.update(
+            {"_id": ObjectId(self._pilot_id)},
+            {"$set": {"slothistory" : self._slot_history,
+                      "capability"  : 0,
+                      "slots"       : self._slots}}
+            )
+
+    # ------------------------------------------------------------------------
+    #
+    def _slots2free(self, slots):
+        """Convert slots structure into a free core count
+        """
+
+        free_cores = 0
+        for node in slots:
+            free_cores += node['cores'].count(FREE)
+
+        return free_cores
+
+
+    # ------------------------------------------------------------------------
+    #
+    def _slots2caps(self, slots):
+        """Convert slots structure into a capability structure.
+        """
+
+        all_caps_tuples = {}
+        for node in slots:
+            free_cores = node['cores'].count(FREE)
+            # (Free_cores, Continuous, Single_Node) = Count
+            cap_tuple = (free_cores, False, True)
+
+            if cap_tuple in all_caps_tuples:
+                all_caps_tuples[cap_tuple] += 1
+            else:
+                all_caps_tuples[cap_tuple] = 1
+
+
+        # Convert to please the gods of json and mongodb
+        all_caps_dict = []
+        for caps_tuple in all_caps_tuples:
+            free_cores, cont, single = cap_tuple
+            count = all_caps_tuples[cap_tuple]
+            cap_dict = {'free_cores': free_cores, 'continuous': cont, 'single_node': single, 'count': count}
+            all_caps_dict.append(cap_dict)
+
+        return all_caps_dict
 
     # ------------------------------------------------------------------------
     #
@@ -804,70 +973,97 @@ class ExecWorker(multiprocessing.Process):
 
                 self._log.debug("Slot status:\n%s", self._slot_status())
 
-                # Loop over tasks instead of slots!
+                # See if there are commands for the worker!
+                try:
+                    command = self._command_queue.get_nowait()
+                    if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                        self._cuids_to_cancel.append(command[COMMAND_ARG])
+                    else:
+                        raise Exception("Command %s not applicable in this context." % command[COMMAND_TYPE])
+                except Queue.Empty:
+                    # do nothing if we don't have any queued commands
+                    pass
+
+                task = None
                 try:
                     task = self._task_queue.get_nowait()
-                    idle = False
-
-                    if task.mpi:
-                        launch_method = self._available_launch_methods['mpi_launch_method']
-                        launch_command = self._available_launch_methods['mpi_launch_command']
-                        if not launch_command:
-                            raise Exception("Can't launch MPI tasks without MPI launcher.")
-                    else:
-                        launch_method = self._available_launch_methods['task_launch_method']
-                        launch_command = self._available_launch_methods['task_launch_command']
-
-                    self._log.debug("Launching task with %s (%s)." % (
-                        launch_method, launch_command))
-
-                    # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
-                    # TODO: Dont have scattered scheduler yet, so test disabled.
-                    if True: # launch_method in [LAUNCH_METHOD_IBRUN]:
-                        req_cont = True
-                    else:
-                        req_cont = False
-
-                    # First try to find all cores on a single node
-                    task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
-
-                    # If that failed, and our launch method supports multiple nodes, try that
-                    if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
-                        task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
-
-                    # Check if we got results
-                    if task_slots is None:
-                        # No resources free, put back in queue
-                        self._task_queue.put(task)
-                        idle = True
-                    else:
-                        # We got an allocation go off and launch the process
-                        task.slots = task_slots
-                        self._launch_task(task, launch_method, launch_command)
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
                     pass
 
+                # any work to do?
+                if  task :
+
+                    task_slots = None
+
+                    try :
+
+                        if task.mpi:
+                            launch_method = self._available_launch_methods['mpi_launch_method']
+                            launch_command = self._available_launch_methods['mpi_launch_command']
+                            if not launch_command:
+                                raise Exception("Can't launch MPI tasks without MPI launcher.")
+                        else:
+                            launch_method = self._available_launch_methods['task_launch_method']
+                            launch_command = self._available_launch_methods['task_launch_command']
+
+                        self._log.debug("Launching task with %s (%s)." % (
+                            launch_method, launch_command))
+
+                        # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
+                        # TODO: Dont have scattered scheduler yet, so test disabled.
+                        if True: # launch_method in [LAUNCH_METHOD_IBRUN]:
+                            req_cont = True
+                        else:
+                            req_cont = False
+
+                        # First try to find all cores on a single node
+                        task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
+
+                        # If that failed, and our launch method supports multiple nodes, try that
+                        if  task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
+                            task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
+
+                        # Check if we got results
+                        if  task_slots is None:
+                            # No resources free, put back in queue
+                            self._task_queue.put(task)
+                        else:
+                            # We got an allocation go off and launch the process
+                            task.slots = task_slots
+                            self._launch_task(task, launch_method, launch_command)
+                            idle = False
+
+                    except Exception as e :
+                        # append the startup error to the units stderr.  This is
+                        # not completely correct (as this text is not produced
+                        # by the unit), but it seems the most intuitive way to
+                        # communicate that error to the application/user.
+                        task.state   = FAILED
+                        task.stderr += "\nPilot cannot start compute unit: '%s'" % e
+                        
+                        self._log.error ("Launching task failed: '%s'." % e)
+
+                        # Free the Slots, Flee the Flots, Ree the Frots!
+                        if  task_slots :
+                            self._change_slot_states(task_slots, FREE)
+
+                        self._update_tasks (task)
+
+
+                # Record if there was activity in launching or monitoring tasks.
                 idle &= self._check_running()
 
-                # Check if something happened in this cycle, if not, zzzzz for a bit
+                # If nothing happened in this cycle, zzzzz for a bit.
                 if idle:
-                    time.sleep(1)
-
-            # AM: we are done -- push slot history 
-            # FIXME: this is never called, self._terminate is a farce :(
-            if  self._benchmark :
-                self._p.update(
-                    {"_id": ObjectId(self._pilot_id)},
-                    {"$set": {"slothistory" : self._slot_history, 
-                              "slots"       : self._slots}}
-                    )
-
+                    self._log.debug("Sleep now for a jiffy ...")
+                    time.sleep(0.1)
 
         except Exception, ex:
             msg = ("Error in ExecWorker loop: %s", traceback.format_exc())
             pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+            return
 
 
     # ------------------------------------------------------------------------
@@ -1092,17 +1288,27 @@ class ExecWorker(multiprocessing.Process):
             logger=self._log)
 
         task.started=datetime.datetime.utcnow()
-        task.state='Executing'
+        task.state = EXECUTING
+        task._proc = proc
 
         # Add to the list of monitored tasks
-        self._running_tasks.append(proc)
+        self._running_tasks.append(task) # add task here?
 
         # Update to mongodb
+        #
+        # AM: FIXME: this mongodb update is effectively a (or rather multiple)
+        # synchronous remote operation(s) in the exec worker main loop.  Even if
+        # spanning multiple exec workers, we would still share the mongodb
+        # channel, which would still need serialization.  This is rather
+        # inefficient.  We should consider to use a async communication scheme.
+        # For example, we could collect all messages for a second (but not
+        # longer) and send those updates in a bulk.
         self._update_tasks(task)
 
 
     # ------------------------------------------------------------------------
-    #
+    # Iterate over all running tasks, check their status, and decide on the next step.
+    # Also check for a requested cancellation for the task.
     def _check_running(self):
 
         idle = True
@@ -1110,73 +1316,133 @@ class ExecWorker(multiprocessing.Process):
         # we update tasks in 'bulk' after each iteration.
         # all tasks that require DB updates are in update_tasks
         update_tasks = []
+
+        # We record all completed tasks
         finished_tasks = []
 
-        for proc in self._running_tasks:
+        for task in self._running_tasks:
 
-            rc = proc.poll()
-            if rc is None:
-                # subprocess is still running
-                continue
+            # Get the subprocess object to poll on
+            proc = task._proc
+            ret_code = proc.poll()
+            if ret_code is None:
+                # Process is still running
 
-            finished_tasks.append(proc)
-
-            # Make sure all stuff reached the spindles
-            proc.close_and_flush_filehandles()
-
-            # Convenience shortcut
-            task = proc.task
-
-            uid = task.uid
-            self._log.info("Task %s terminated with return code %s." % (uid, rc))
-
-            if rc != 0:
-                state = 'Failed'
-            else:
-                if task.output_data is not None:
-                    state = 'PendingOutputTransfer'
+                if task.uid in self._cuids_to_cancel:
+                    # We got a request to cancel this task.
+                    proc.kill()
+                    state = CANCELED
+                    finished_tasks.append(task)
                 else:
-                    state = 'Done'
+                    # No need to continue [sic] further for this iteration
+                    continue
+            else:
+                # The task ended (eventually FAILED or DONE).
+                finished_tasks.append(task)
 
-            # upload stdout and stderr to GridFS
+                # Make sure all stuff reached the spindles
+                proc.close_and_flush_filehandles()
+
+                # Convenience shortcut
+                uid = task.uid
+                self._log.info("Task %s terminated with return code %s." % (uid, ret_code))
+
+                if ret_code != 0:
+                    # The task failed, no need to deal with its output data.
+                    state = FAILED
+                else:
+                    # The task finished cleanly, see if we need to deal with output data.
+
+                    if task.agent_output_staging or task.ftw_output_staging:
+
+                        state = STAGING_OUTPUT # TODO: this should ideally be PendingOutputStaging,
+                                               # but that introduces a race condition currently
+
+                        # Check if there are Directives that need to be performed by the Agent.
+                        if task.agent_output_staging:
+
+                            # Find the task in the database
+                            # TODO: shouldnt this be available somewhere already, that would save a roundtrip?!
+                            cu = self._cu.find_one({"_id": ObjectId(uid)})
+
+                            for directive in cu['Agent_Output_Directives']:
+                                output_staging = {
+                                    'directive': directive,
+                                    'sandbox': task.workdir,
+                                    'cu_id': uid
+                                }
+
+                                # Put the output staging directives in the queue
+                                self._output_staging_queue.put(output_staging)
+
+                                self._cu.update(
+                                    {"_id": ObjectId(uid)},
+                                    {"$set": {"Agent_Output_Status": EXECUTING}}
+                                )
+
+                        # Check if there are Directives that need to be performed
+                        # by the FTW.
+                        # Obviously these are not executed here (by the Agent),
+                        # but we need this code to set the state so that the FTW
+                        # gets notified that it can start its work.
+                        if task.ftw_output_staging:
+                            self._cu.update(
+                                {"_id": ObjectId(uid)},
+                                {"$set": {"FTW_Output_Status": PENDING}}
+                            )
+                    else:
+                        # If there is no output data to deal with, the task becomes DONE
+                        state = DONE
+
+            #
+            # At this stage the task is ended: DONE, FAILED or CANCELED.
+            #
+
+            idle = False
+
+            # store stdout and stderr to the database
             workdir = task.workdir
             task_id = task.uid
 
-            stdout_id = None
-            stderr_id = None
+            if  os.path.isfile(task.stdout_file):
+                with open(task.stdout_file, 'r') as stdout_f:
+                    txt = unicode(stdout_f.read(), "utf-8")
 
-            stdout = "%s/STDOUT" % workdir
-            if os.path.isfile(stdout):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stdout, 'r') as stdout_f:
-                    stdout_id = fs.put(stdout_f.read(), filename=stdout)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stdout, str(stdout_id)))
+                    if  len(txt) > MAX_IO_LOGLENGTH :
+                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
+                    task.stdout += txt
 
-            stderr = "%s/STDERR" % workdir
-            if os.path.isfile(stderr):
-                fs = gridfs.GridFS(self._mongo_db)
-                with open(stderr, 'r') as stderr_f:
-                    stderr_id = fs.put(stderr_f.read(), filename=stderr)
-                    self._log.info("Uploaded %s to MongoDB as %s." % (stderr, str(stderr_id)))
+            if  os.path.isfile(task.stderr_file):
+                with open(task.stderr_file, 'r') as stderr_f:
+                    txt = unicode(stderr_f.read(), "utf-8")
 
-            task.finished=datetime.datetime.utcnow()
-            task.exit_code=rc
-            task.state=state
-            task.stdout_id=stdout_id
-            task.stderr_id=stderr_id
+                    if  len(txt) > MAX_IO_LOGLENGTH :
+                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
+                    task.stderr += txt
 
+            task.exit_code = ret_code
+
+            # Record the time and state
+            task.finished = datetime.datetime.utcnow()
+            task.state = state
+
+            # Put it on the list of tasks to update in bulk
             update_tasks.append(task)
 
+            # Free the Slots, Flee the Flots, Ree the Frots!
             self._change_slot_states(task.slots, FREE)
 
-        # update all the tasks that are marked for update.
+        #
+        # At this stage we are outside the for loop of running tasks.
+        #
+
+        # Update all the tasks that were marked for update.
         self._update_tasks(update_tasks)
 
+        # Remove all tasks that don't require monitoring anymore.
         for e in finished_tasks:
             self._running_tasks.remove(e)
 
-        # AM: why is idle always True?  Whats the point here?  Not to run too
-        # fast? :P
         return idle
 
     # ------------------------------------------------------------------------
@@ -1185,35 +1451,294 @@ class ExecWorker(multiprocessing.Process):
         """Updates the database entries for one or more tasks, including
         task state, log, etc.
         """
+
+        if  not isinstance(tasks, list):
+            tasks = [tasks]
+
         ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
         # this information here:
+
+        # Update capabilities
+        #self._capability = self._slots2caps(self._slots)
+        self._capability = self._slots2free(self._slots)
 
         # AM: FIXME: this at the moment pushes slot history whenever a task
         # state is updated...  This needs only to be done on ExecWorker
         # shutdown.  Well, alas, there is currently no way for it to find out
         # when it is shut down... Some quick and  superficial measurements 
         # though show no negative impact on agent performance.
+        # AM: the capability publication cannot be delayed until shutdown
+        # though...
         if  self._benchmark :
-            self._p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._slot_history, 
-                          "slots"       : self._slots}}
-                )
+            if  self._slot_history_old != self._slot_history or \
+                self._capability_old   != self._capability   :
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)},
+                    {"$set": {"slothistory" : self._slot_history,
+                              #"slots"       : self._slots,
+                              "capability"  : self._capability
+                             }
+                    }
+                    )
+
+                self._slot_history_old = self._slot_history[:]
+                self._capability_old   = self._capability
+
         for task in tasks:
-            self._w.update({"_id": ObjectId(task.uid)}, 
+            self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
                       "started"       : task.started,
                       "finished"      : task.finished,
                       "slots"         : task.slots,
                       "exit_code"     : task.exit_code,
-                      "stdout_id"     : task.stdout_id,
-                      "stderr_id"     : task.stderr_id},
+                      "stdout"        : task.stdout,
+                      "stderr"        : task.stderr},
              "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
             })
+
+# ----------------------------------------------------------------------------
+#
+class InputStagingWorker(multiprocessing.Process):
+    """An InputStagingWorker performs the agent side staging directives
+       and writes the results back to MongoDB.
+    """
+
+    # ------------------------------------------------------------------------
+    #
+    def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
+                 pilot_id, session_id):
+
+        """ Creates a new InputStagingWorker instance.
+        """
+        multiprocessing.Process.__init__(self)
+        self.daemon      = True
+        self._terminate  = False
+
+        self._log = logger
+
+        self._unitmanager_id = None
+        self._pilot_id = pilot_id
+
+        mongo_client = pymongo.MongoClient(mongodb_url)
+        self._mongo_db = mongo_client[mongodb_name]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
+
+        self._staging_queue = staging_queue
+
+
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """Terminates the process' main loop.
+        """
+        self._terminate = True
+
+    # ------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info('InputStagingWorker started ...')
+
+        while self._terminate is False:
+            try:
+                staging = self._staging_queue.get_nowait()
+            except Queue.Empty:
+                # do nothing and sleep if we don't have any queued staging
+                time.sleep(0.1)
+                continue
+
+            # Perform input staging
+            directive = staging['directive']
+            if isinstance(directive, tuple):
+                self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
+                directive = directive[0] # TODO: Why is it a fscking tuple?!?!
+
+            sandbox = staging['sandbox']
+            staging_area = staging['staging_area']
+            cu_id = staging['cu_id']
+            self._log.info('Task input staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
+
+            # Create working directory in case it doesn't exist yet
+            try :
+                os.makedirs(sandbox)
+            except OSError as e:
+                # ignore failure on existing directory
+                if e.errno == errno.EEXIST and os.path.isdir(sandbox):
+                    pass
+                else:
+                    raise
+
+            # Convert the source_url into a SAGA Url object
+            source_url = saga.Url(directive['source'])
+
+            if source_url.scheme == 'staging':
+                self._log.info('Operating from staging')
+                # Remove the leading slash to get a relative path from the staging area
+                rel2staging = source_url.path.split('/',1)[1]
+                source = os.path.join(staging_area, rel2staging)
+            else:
+                self._log.info('Operating from absolute path')
+                source = source_url.path
+
+            # Get the target from the directive and convert it to the location in the sandbox
+            target = directive['target']
+            abs_target = os.path.join(sandbox, target)
+
+            log_message = ''
+            try:
+                # Act upon the directive now.
+
+                if directive['action'] == LINK:
+                    log_message = 'Linking %s to %s' % (source, abs_target)
+                    os.symlink(source, abs_target)
+                elif directive['action'] == COPY:
+                    log_message = 'Copying %s to %s' % (source, abs_target)
+                    shutil.copyfile(source, abs_target)
+                elif directive['action'] == MOVE:
+                    log_message = 'Moving %s to %s' % (source, abs_target)
+                    shutil.move(source, abs_target)
+                elif directive['action'] == TRANSFER:
+                    # TODO: SAGA REMOTE TRANSFER
+                    log_message = 'Transferring %s to %s' % (source, abs_target)
+                else:
+                    raise Exception('Action %s not supported' % directive['action'])
+
+                # If we reached this far, assume the staging succeeded
+                log_message += ' succeeded.'
+                self._log.info(log_message)
+
+                # If all went fine, update the state of this StagingDirective to Done
+                self._cu.update({'_id': ObjectId(cu_id),
+                                 'Agent_Input_Status': EXECUTING,
+                                 'Agent_Input_Directives.state': PENDING,
+                                 'Agent_Input_Directives.source': directive['source'],
+                                 'Agent_Input_Directives.target': directive['target']},
+                                {'$set' : {'Agent_Input_Directives.$.state': DONE},
+                                 '$push': {'log': log_message}})
+
+            except:
+                # If we catch an exception, assume the staging failed
+                log_message += ' failed.'
+                self._log.error(log_message)
+
+                # If a staging directive fails, fail the CU also.
+                self._cu.update({'_id': ObjectId(cu_id),
+                                 'Agent_Input_Status': EXECUTING,
+                                 'Agent_Input_Directives.state': PENDING,
+                                 'Agent_Input_Directives.source': directive['source'],
+                                 'Agent_Input_Directives.target': directive['target']},
+                                {'$set': {'Agent_Input_Directives.$.state': FAILED,
+                                          'Agent_Input_Status': FAILED,
+                                          'state': FAILED},
+                                 '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
+
+
+# ----------------------------------------------------------------------------
+#
+class OutputStagingWorker(multiprocessing.Process):
+    """An OutputStagingWorker performs the agent side staging directives
+       and writes the results back to MongoDB.
+    """
+
+    # ------------------------------------------------------------------------
+    #
+    def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
+                 pilot_id, session_id):
+
+        """ Creates a new OutputStagingWorker instance.
+        """
+        multiprocessing.Process.__init__(self)
+        self.daemon      = True
+        self._terminate  = False
+
+        self._log = logger
+
+        self._unitmanager_id = None
+        self._pilot_id = pilot_id
+
+        mongo_client = pymongo.MongoClient(mongodb_url)
+        self._mongo_db = mongo_client[mongodb_name]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
+
+        self._staging_queue = staging_queue
+
+
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """Terminates the process' main loop.
+        """
+        self._terminate = True
+
+    # ------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info('OutputStagingWorker started ...')
+
+        try:
+            while self._terminate is False:
+                try:
+                    staging = self._staging_queue.get_nowait()
+
+                    # Perform output staging
+                    directive = staging['directive']
+                    if isinstance(directive, tuple):
+                        self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
+                        directive = directive[0] # TODO: Why is it a fscking tuple?!?!
+
+                    sandbox = staging['sandbox']
+                    cu_id = staging ['cu_id']
+                    self._log.info('Task output staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
+
+                    source = str(directive['source'])
+                    target = str(directive['target'])
+                    abs_source = os.path.join(sandbox, source)
+                    if directive['action'] == LINK:
+                        self._log.info('Going to link %s to %s' % (abs_source, target))
+                        os.symlink(abs_source, target)
+                        logmessage = 'Linked %s to %s' % (abs_source, target)
+                    elif directive['action'] == COPY:
+                        self._log.info('Going to copy %s to %s' % (abs_source, target))
+                        shutil.copyfile(abs_source, target)
+                        logmessage = 'Copied %s to %s' % (abs_source, target)
+                    elif directive['action'] == MOVE:
+                        self._log.info('Going to move %s to %s' % (abs_source, target))
+                        shutil.move(abs_source, target)
+                        logmessage = 'Moved %s to %s' % (abs_source, target)
+                    elif directive['action'] == TRANSFER:
+                        self._log.info('Going to transfer %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                        # TODO: SAGA REMOTE TRANSFER
+                        logmessage = 'Transferred %s to %s' % (abs_source, target)
+                    else:
+                        # TODO: raise
+                        self._log.error('Action %s not supported' % directive['action'])
+
+                    # If all went fine, update the state of this StagingDirective to Done
+                    self._cu.update({'_id' : ObjectId(cu_id),
+                                     'Agent_Output_Status': EXECUTING,
+                                     'Agent_Output_Directives.state': PENDING,
+                                     'Agent_Output_Directives.source': source,
+                                     'Agent_Output_Directives.target': target},
+                                    {'$set' : {'Agent_Output_Directives.$.state': DONE},
+                                     '$push': {'log': logmessage}})
+
+                except Queue.Empty:
+                    # do nothing and sleep if we don't have any queued staging
+                    time.sleep(0.1)
+
+
+        except Exception, ex:
+            self._log.error("Error in OutputStagingWorker loop: %s", traceback.format_exc())
+            raise
 
 
 # ----------------------------------------------------------------------------
@@ -1222,8 +1747,7 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, workdir, runtime,
-                 mongodb_url, mongodb_name, mongodb_auth, 
+    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, mongodb_auth, 
                  pilot_id, session_id, benchmark):
         """Le Constructeur creates a new Agent instance.
         """
@@ -1233,16 +1757,13 @@ class Agent(threading.Thread):
         self._terminate  = threading.Event()
 
         self._log        = logger
-
-        self._workdir    = workdir
         self._pilot_id   = pilot_id
-
         self._exec_env   = exec_env
-
         self._runtime    = runtime
         self._starttime  = None
-
         self._benchmark  = benchmark
+
+        self._workdir    = os.getcwd()
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
@@ -1251,18 +1772,27 @@ class Agent(threading.Thread):
             user, pwd = mongodb_auth.split (':', 1)
             mongo_db.authenticate (user, pwd)
 
-        self._p = mongo_db["%s.p"  % session_id]
-        self._w = mongo_db["%s.w"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.w"  % session_id]
         self._wm = mongo_db["%s.wm" % session_id]
 
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
+        # The staging queues holds the staging directives to be performed
+        self._input_staging_queue = multiprocessing.Queue()
+        self._output_staging_queue = multiprocessing.Queue()
+
+        # Channel for the Agent to communicate commands with the ExecWorker
+        self._command_queue = multiprocessing.Queue()
+
         # we assign each node partition to a task execution worker
         self._exec_worker = ExecWorker(
             logger          = self._log,
             task_queue      = self._task_queue,
+            output_staging_queue   = self._output_staging_queue,
+            command_queue   = self._command_queue,
             node_list       = self._exec_env.node_list,
             cores_per_node  = self._exec_env.cores_per_node,
             launch_methods  = self._exec_env.discovered_launch_methods,
@@ -1274,7 +1804,33 @@ class Agent(threading.Thread):
             benchmark       = benchmark
         )
         self._exec_worker.start()
-        self._log.info("Started up %s serving nodes %s", self._exec_worker, self._exec_env.node_list)
+        self._log.info("Started up %s serving nodes %s" % (self._exec_worker, self._exec_env.node_list))
+
+        # Start input staging worker
+        input_staging_worker = InputStagingWorker(
+            logger          = self._log,
+            staging_queue   = self._input_staging_queue,
+            mongodb_url     = mongodb_url,
+            mongodb_name    = mongodb_name,
+            pilot_id        = pilot_id,
+            session_id      = session_id
+        )
+        input_staging_worker.start()
+        self._log.info("Started up %s." % input_staging_worker)
+        self._input_staging_worker = input_staging_worker
+
+        # Start output staging worker
+        output_staging_worker = OutputStagingWorker(
+            logger          = self._log,
+            staging_queue   = self._output_staging_queue,
+            mongodb_url     = mongodb_url,
+            mongodb_name    = mongodb_name,
+            pilot_id        = pilot_id,
+            session_id      = session_id
+        )
+        output_staging_worker.start()
+        self._log.info("Started up %s." % output_staging_worker)
+        self._output_staging_worker = output_staging_worker
 
     # ------------------------------------------------------------------------
     #
@@ -1283,6 +1839,10 @@ class Agent(threading.Thread):
         """
         # First, we need to shut down all the workers
         self._exec_worker.terminate()
+
+        # Shut down the staging workers
+        self._input_staging_worker.terminate()
+        self._output_staging_worker.terminate()
 
         # Next, we set our own termination signal
         self._terminate.set()
@@ -1293,16 +1853,19 @@ class Agent(threading.Thread):
         """Starts the thread when Thread.start() is called.
         """
         # first order of business: set the start time and state of the pilot
-        self._log.info("Agent started. Database updated.")
+        self._log.info("Agent %s starting ..." % self._pilot_id)
         ts = datetime.datetime.utcnow()
-        self._p.update(
+        ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
-            {"$set": {"state"          : "Active",
+            {"$set": {"state"          : ACTIVE,
                       "nodes"          : self._exec_env.node_list,
                       "cores_per_node" : self._exec_env.cores_per_node,
-                      "started"        : ts},
-             "$push": {"statehistory": {"state": 'Active', "timestamp": ts}}
+                      "started"        : ts,
+                      "capability"     : 0},
+             "$push": {"statehistory": {"state": ACTIVE, "timestamp": ts}}
             })
+        # TODO: Check for return value, update should be true!
+        self._log.info("Database updated! %s" % ret)
 
         self._starttime = time.time()
 
@@ -1310,99 +1873,159 @@ class Agent(threading.Thread):
 
             try:
 
+                idle = True
+
                 # Check the workers periodically. If they have died, we 
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
-                exit = False
                 if self._exec_worker.is_alive() is False:
                     pilot_FAILED(self._p, self._pilot_id, self._log, "Execution worker %s died." % str(self._exec_worker))
-                    exit = True
-                if exit:
-                    break
+                    return
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
                     pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set).")
-                    break
+                    return
 
                 # Make sure that we haven't exceeded the agent runtime. if 
                 # we have, terminate. 
                 if time.time() >= self._starttime + (int(self._runtime) * 60):
                     self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
                     pilot_DONE(self._p, self._pilot_id)
-                    break
+                    return
 
                 # Try to get new tasks from the database. for this, we check the 
-                # wu_queue of the pilot. if there are new entries, we get them,
+                # cu_queue of the pilot. if there are new entries, we get them,
                 # get the actual pilot entries for them and remove them from 
-                # the wu_queue.
+                # the cu_queue.
                 try:
-                    p_cursor = self._p.find({"_id": ObjectId(self._pilot_id)})
 
-                    #if p_cursor.count() != 1:
-                    #    self._log.info("Pilot entry %s has disappeared from the database." % self._pilot_id)
-                    #    pilot_FAILED(self._p, self._pilot_id)
-                    #    break
-                    if False:
-                        pass
+                    # Check if there's a command waiting
+                    retdoc = self._p.find_and_modify(
+                                query={"_id":ObjectId(self._pilot_id)},
+                                update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
+                                fields=[COMMAND_FIELD]
+                    )
 
+                    if retdoc:
+                        commands = retdoc['commands']
                     else:
-                        # Check if there's a command waiting
-                        command = p_cursor[0]['command']
-                        if command is not None:
-                            self._log.info("Received new command: %s" % command)
-                            if command.lower() == "cancel":
-                                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                                break
+                        commands = []
 
-                        # Check if there are work units waiting for execution,
-                        # and log that we pulled it.
-                        ts = datetime.datetime.utcnow()
-                        wu_cursor = self._w.find_and_modify(
-                            query={"pilot" : self._pilot_id,
-                                   "state" : "PendingExecution"},
-                            update={"$set" : {"state": "Scheduling"},
-                                    "$push": {"statehistory": {"state": "Scheduling", "timestamp": ts}}}
-                        )
+                    for command in commands:
 
-                        # There are new work units in the wu_queue on the database.
-                        # Get the corresponding wu entries.
-                        if wu_cursor is not None:
-                            if not isinstance(wu_cursor, list):
-                                wu_cursor = [wu_cursor]
+                        idle = False
 
-                            for wu in wu_cursor:
-                                # Create new task objects and put them into the task queue
-                                w_uid = str(wu["_id"])
-                                self._log.info("Found new tasks in pilot queue: %s" % w_uid)
+                        if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+                            self._log.info("Received Cancel Pilot command.")
+                            pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                            return # terminate loop
 
-                                task_dir_name = "%s/unit-%s" % (self._workdir, str(wu["_id"]))
+                        elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                            self._log.info("Received Cancel Compute Unit command for: %s" % command[COMMAND_ARG])
+                            # Put it on the command queue of the ExecWorker
+                            self._command_queue.put(command)
 
-                                task = Task(uid         = w_uid,
-                                            executable  = wu["description"]["executable"], 
-                                            arguments   = wu["description"]["arguments"],
-                                            environment = wu["description"]["environment"],
-                                            numcores    = wu["description"]["cores"],
-                                            mpi         = wu["description"]["mpi"],
-                                            pre_exec    = wu["description"]["pre_exec"],
-                                            post_exec   = wu["description"]["post_exec"],
-                                            workdir     = task_dir_name,
-                                            stdout      = task_dir_name+'/STDOUT', 
-                                            stderr      = task_dir_name+'/STDERR',
-                                            output_data = wu["description"]["output_data"])
+                        elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
+                            self._log.info("Received KeepAlive command.")
+                        else:
+                            raise Exception("Received unknown command: %s with arg: %s." % (command[COMMAND_TYPE], command[COMMAND_ARG]))
 
-                                task.state = 'Scheduling'
-                                self._task_queue.put(task)
+                    # Check if there are compute units waiting for execution,
+                    # and log that we pulled it.
+                    ts = datetime.datetime.utcnow()
+                    cu_cursor = self._cu.find_and_modify(
+                        query={"pilot" : self._pilot_id,
+                               "state" : PENDING_EXECUTION},
+                        update={"$set" : {"state": SCHEDULING},
+                                "$push": {"statehistory": {"state": SCHEDULING, "timestamp": ts}}}
+                    )
+
+                    # There are new compute units in the cu_queue on the database.
+                    # Get the corresponding cu entries.
+                    if cu_cursor is not None:
+
+                        idle = False
+
+                        if not isinstance(cu_cursor, list):
+                            cu_cursor = [cu_cursor]
+
+                        for cu in cu_cursor:
+                            # Create new task objects and put them into the task queue
+                            w_uid = str(cu["_id"])
+                            self._log.info("Found new tasks in pilot queue: %s" % w_uid)
+
+                            task_dir_name = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
+                            stdout = cu["description"].get ('stdout')
+                            stderr = cu["description"].get ('stderr')
+
+                            if  stdout : stdout_file = task_dir_name+'/'+stdout
+                            else       : stdout_file = task_dir_name+'/STDOUT'
+                            if  stderr : stderr_file = task_dir_name+'/'+stderr
+                            else       : stderr_file = task_dir_name+'/STDERR'
+
+                            task = Task(uid         = w_uid,
+                                        executable  = cu["description"]["executable"],
+                                        arguments   = cu["description"]["arguments"],
+                                        environment = cu["description"]["environment"],
+                                        numcores    = cu["description"]["cores"],
+                                        mpi         = cu["description"]["mpi"],
+                                        pre_exec    = cu["description"]["pre_exec"],
+                                        post_exec   = cu["description"]["post_exec"],
+                                        workdir     = task_dir_name,
+                                        stdout_file = stdout_file,
+                                        stderr_file = stderr_file,
+                                        agent_output_staging = True if cu['Agent_Output_Directives'] else False,
+                                        ftw_output_staging   = True if cu['FTW_Output_Directives'] else False
+                                        )
+
+                            task.state = SCHEDULING
+                            self._task_queue.put(task)
+
+                    #
+                    # Check if there are compute units waiting for input staging
+                    #
+                    ts = datetime.datetime.utcnow()
+                    cu_cursor = self._cu.find_and_modify(
+                        query={'pilot' : self._pilot_id,
+                               'Agent_Input_Status': PENDING},
+                        # TODO: This might/will create double state history for StagingInput
+                        update={'$set' : {'Agent_Input_Status': EXECUTING,
+                                          'state': STAGING_INPUT},
+                                '$push': {'statehistory': {'state': STAGING_INPUT, 'timestamp': ts}}}#,
+                        #limit=BULK_LIMIT
+                    )
+                    if cu_cursor is not None:
+
+                        idle = False
+
+                        if not isinstance(cu_cursor, list):
+                            cu_cursor = [cu_cursor]
+
+                        for cu in cu_cursor:
+                            for directive in cu['Agent_Input_Directives']:
+                                input_staging = {
+                                    'directive': directive,
+                                    'sandbox': os.path.join(self._workdir,
+                                                            'unit-%s' % str(cu['_id'])),
+                                    'staging_area': os.path.join(self._workdir, 'staging_area'),
+                                    'cu_id': str(cu['_id'])
+                                }
+
+                                # Put the input staging directives in the queue
+                                self._input_staging_queue.put(input_staging)
 
                 except Exception, ex:
                     raise
 
-                time.sleep(1)
+                if  idle :
+                    time.sleep(1)
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.
                 pilot_FAILED(self._p, self._pilot_id, self._log, 
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
+                return
 
         # MAIN LOOP TERMINATED
         return
@@ -1449,8 +2072,13 @@ class _Process(subprocess.Popen):
             task_exec_string = task.executable # TODO: Do we allow $ENV/bin/program constructs here?
         else:
             raise Exception("No executable specified!") # TODO: This should be catched earlier problaby
+
         if task.arguments is not None:
             for arg in task.arguments:
+
+                if  not arg :
+                    continue # ignore empty args
+
                 arg = arg.replace ('"', '\\"') # Escape all double quotes
                 if  arg[0] == arg[-1] == "'" : # If a string is between outer single quotes,
                     task_exec_string += ' %s' % arg # ... pass it as is.
@@ -1488,6 +2116,22 @@ class _Process(subprocess.Popen):
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (mpirun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # Construct the hosts_string
+            hosts_string = ''
+            for slot in task.slots:
+                host = slot.split(':')[0]
+                hosts_string += ' %s' % host
+
+            mpirun_rsh_command = "%s -export -np %s%s" % (launch_command, task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_rsh_command, task_exec_string))
             launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
@@ -1545,6 +2189,55 @@ class _Process(subprocess.Popen):
 
             cmdline = launch_script.name
 
+        elif launch_method == LAUNCH_METHOD_DPLACE:
+            # Use dplace on SGI
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            dplace_command = "%s -c %d-%d" % \
+                                    (launch_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (dplace_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
+            # Use mpirun in combination with dplace
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            # TODO: this should be passed on from the detection mechanism
+            dplace_command = 'dplace'
+
+            dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            mpirun_dplace_command = "%s -np %d %s -c %d-%d" % \
+                            (launch_command, task.numcores, dplace_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_dplace_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
         elif launch_method == LAUNCH_METHOD_POE:
 
             # Count slots per host in provided slots description.
@@ -1593,11 +2286,8 @@ class _Process(subprocess.Popen):
         # We are done writing to the launch script, its ready for execution now.
         launch_script.close()
 
-        self.stdout_filename = task.stdout
-        self._stdout_file_h  = open(self.stdout_filename, "w")
-
-        self.stderr_filename = task.stderr
-        self._stderr_file_h  = open(self.stderr_filename, "w")
+        self._stdout_file_h = open(task.stdout_file, "w")
+        self._stderr_file_h = open(task.stderr_file, "w")
 
         self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
 
@@ -1707,12 +2397,6 @@ def parse_commandline():
                       dest='package_version',
                       help='The RADICAL-Pilot package version.')
 
-    parser.add_option('-w', '--workdir',
-                      metavar='DIRECTORY',
-                      dest='workdir',
-                      help='Specifies the base (working) directory for the agent. [default: %default]',
-                      default='.')
-
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
@@ -1754,6 +2438,8 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     logger.info("RADICAL-Pilot multi-core agent for package/API version %s" % options.package_version)
 
+    logger.info("Using SAGA version %s" % saga.version)
+
     #--------------------------------------------------------------------------
     # Establish database connection
     try:
@@ -1766,8 +2452,8 @@ if __name__ == "__main__":
             mongo_db.authenticate (user, pwd)
 
         mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.w"  % options.session_id]  # AM: never used
-        mongo_wm     = mongo_db["%s.wm" % options.session_id]  # AM: never used
+        mongo_cu      = mongo_db["%s.cu" % options.session_id]  # AM: never used
+        mongo_wm     = mongo_db["%s.um" % options.session_id]  # AM: never used
 
     except Exception, ex:
         logger.error("Couldn't establish database connection: %s" % str(ex))
@@ -1777,14 +2463,14 @@ if __name__ == "__main__":
     # Some signal handling magic
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
-        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit(0)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        sys.exit (1)
     signal.signal(signal.SIGINT, sigint_handler)
 
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
-        pilot_CANCELED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit(0)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        sys.exit (1)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
     #--------------------------------------------------------------------------
@@ -1801,26 +2487,20 @@ if __name__ == "__main__":
             msg = "Couldn't set up execution environment."
             logger.error(msg)
             pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-            sys.exit(1)
+            sys.exit (1)
 
     except Exception, ex:
         msg = "Error setting up execution environment: %s" % str(ex)
         logger.error(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit(1)
+        sys.exit (1)
 
     #--------------------------------------------------------------------------
     # Launch the agent thread
-    if True :
-  # try:
-        if options.workdir is '.':
-            workdir = os.getcwd()
-        else:
-            workdir = options.workdir
-
+    agent = None
+    try:
         agent = Agent(logger=logger,
                       exec_env=exec_env,
-                      workdir=workdir,
                       runtime=options.runtime,
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
@@ -1835,15 +2515,17 @@ if __name__ == "__main__":
         agent.start()
         agent.join()
 
-  # except Exception, ex:
-  #     msg = "Error running agent: %s" % str(ex)
-  #     logger.error(msg)
-  #     pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-  #     agent.stop()
-  #     sys.exit(1)
-  #
-  # except SystemExit:
-  #
-  #     logger.error("Caught keyboard interrupt. EXITING")
-  #     agent.stop()
+    except Exception, ex:
+        msg = "Error running agent: %s" % str(ex)
+        logger.error(msg)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        if  agent :
+            agent.stop()
+        sys.exit (1)
+
+    except SystemExit:
+
+        logger.error("Caught keyboard interrupt. EXITING")
+        if  agent :
+            agent.stop()
 

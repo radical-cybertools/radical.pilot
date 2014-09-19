@@ -5,7 +5,7 @@ Getting Started
 ***************
 
 **This is where you should start if you are new to RADICAL-Pilot. It is highly
-recommendedthat you carefully read and understand all of this before you go
+recommended that you carefully read and understand all of this before you go
 off and start developing your own applications.**
 
 In this chapter we explain the main components of RADICAL-Pilot and the
@@ -13,7 +13,7 @@ foundations of their function and their interplay. For your convenience, you can
 
 After you have worked through this chapter, you will understand how to launch
 a local ComputePilot and use a UnitManager to schedule and run ComputeUnits
-(task) on it. Throughout this chapter you will also find links to more
+(tasks) on it. Throughout this chapter you will also find links to more
 advanced topics like launching ComputePilots on remote HPC clusters and 
 scheduling. 
 
@@ -31,7 +31,7 @@ In order to use RADICAL-Pilot in your Python application, you need to import the
 
     import radical.pilot
 
-You can check / print the version of your SAGA-Pilot installation via the
+You can check / print the version of your RADICAL-Pilot installation via the
 ``version`` property.
 
 .. code-block:: python
@@ -73,7 +73,7 @@ Session as root. Each Session can have  zero or more
                        |....
 
 
-A Session also encapsulates the connection(s) to a backend `MongoDB
+A Session also encapsulates the connection(s) to a back end `MongoDB
 <http://www.mongodb.org/>`_ server which is the *brain* and *central nervous
 system* of RADICAL-Pilot. More information about how RADICAL-Pilot uses MongoDB can
 be found in the :ref:`chapter_intro` section.
@@ -91,10 +91,10 @@ Session as required. This  is covered in :ref:`chapter_example_disconnect_reconn
 
 .. code-block:: python
 
-    print "UID           : {0} ".format( session.uid )
-    print "Contexts      : {0} ".format( session.list_contexts() )
-    print "UnitManagers  : {0} ".format( session.list_unit_managers() )
-    print "PilotManagers : {0} ".format( session.list_pilot_managers() )
+    print "UID           : %s" % session.uid
+    print "Contexts      : %s" % session.list_contexts()
+    print "UnitManagers  : %s" % session.list_unit_managers()
+    print "PilotManagers : %s" % session.list_pilot_managers()
 
 .. warning:: Always call  :func:`radical.pilot.Session.close` before your application 
    terminates. This will ensure that RADICAL-Pilot shuts down properly.
@@ -110,7 +110,7 @@ ComputePilots, but more on remote ComputePilots and how to launch them on HPC
 clusters can be found in :ref:`chapter_example_remote_and_hpc_pilots`.
 
 As shown in the hierarchy above, ComputePilots are grouped in
-:class:`radicalpilot.PilotManager` *containers*, so before you can launch a
+:class:`radical.pilot.PilotManager` *containers*, so before you can launch a
 ComputePilot, you need to add a PilotManager to your Session. Just like a
 Session, a PilotManager has a unique id (`uid`) as well as a traversal method
 (`list_pilots`).
@@ -118,8 +118,8 @@ Session, a PilotManager has a unique id (`uid`) as well as a traversal method
 .. code-block:: python
 
     pmgr = radical.pilot.PilotManager(session=session)
-    print "PM UID        : {0} ".format( pmgr.uid )
-    print "Pilots        : {0} ".format( pmgr.list_pilots() )
+    print "PM UID        : %s" % pmgr.uid
+    print "Pilots        : %s" % pmgr.list_pilots()
 
 
 In order to create a new ComputePilot, you first need to describe its
@@ -148,7 +148,7 @@ ComputePilot also has a unique identifier (``uid``)
 .. code-block:: python
 
     pilot = pmgr.submit_pilots(pdesc)
-    print "Pilot UID     : {0} ".format( pilot.uid )
+    print "Pilot UID     : %s" % pilot.uid
 
 .. warning:: Note that ``submit_pilots()`` is a non-blocking call and that 
    the submitted ComputePilot agent **will not terminate** when your Python
@@ -258,7 +258,7 @@ distributed components, namely the ComputePilot agents. At any time during the
 execution of a workload, ComputePilots and ComputeUnits can begin or finish 
 execution or fail with an error. 
 
-RADICAL-Pilot provides callbacks as a method to react to these event
+RADICAL-Pilot provides callbacks as a method to react to these events
 asynchronously when they occur. ComputePilots, PilotManagers, ComputeUnits
 and UnitManagers all have a ``register_callbacks`` method:
 
@@ -273,7 +273,7 @@ like this:
 .. code-block:: python
 
       def pilot_state_cb(pilot, state):
-          print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(pilot.uid, state)
+          print "[Callback]: ComputePilot '%s' state changed to '%s'."% (pilot.uid, state)
 
       pmgr = radical.pilot.PilotManager(session=session)
       pmgr.register_callback(pilot_state_cb)
@@ -354,15 +354,18 @@ Results and Inspection
 .. code-block:: python
 
     for unit in umgr.get_units():
-        print "UID: {0}, STATE: {1}, START_TIME: {2}, STOP_TIME: {3}".format(
-            unit.uid, unit.state, unit.start_time, unit.stop_time)
+        print "unit id  : %s" % unit.uid
+        print "  state  : %s" % unit.state
+        print "  history:" 
+        for entry in unit.state_history :
+            print "           %s : %s" (entry.timestamp, entry.state)
 
 Cleanup and Shutdown
 --------------------
 
 When your application has finished executing all ComputeUnits, it should make an
 attempt to cancel the ComputePilot. If a ComputePilot is not canceled, it will 
-continue running until it reaches is ``runtime`` limit, even if application 
+continue running until it reaches its ``runtime`` limit, even if application 
 has terminated. 
 
 An individual ComputePilot is canceled by calling :func:`radical.pilot.ComputePilot.cancel`.
@@ -376,20 +379,22 @@ Alternatively, all ComputePilots of a PilotManager can be canceled by calling
 Before your application terminates, you should always call :func:`radical.pilot.Session.close`
 to ensure that your RADICAL-Pilot session terminates properly. If you haven't 
 canceled the pilots before explicitly, ``close()`` will take care of that
-implicitly. 
+implicitly (control it via the `terminate` parameter).  ``close()`` will also
+delete all traces of the session from the database (control this with the
+`cleanup` parameter). 
 
 .. code-block:: python 
 
-    session.close()
+    session.close(cleanup=True, terminate=True)
 
-Whats Next?
------------
+What's Next?
+------------
 
-Now that you understand the basic mechanics of RADICAL-Python, it's time to dive into some of the more advanced topics. We suggest that you check out the following chapters next: 
+Now that you understand the basic mechanics of RADICAL-Pilot, it's time to dive into some of the more advanced topics. We suggest that you check out the following chapters next: 
 
 * :ref:`chapter_example_errorhandling`. Error handling is crucial for any RADICAL-Pilot application! This chapter captures everything from exception handling to state callbacks. 
-* :ref:`chapter_example_remote_and_hpc_pilots`. In this chapter we explain how to launch ComputePilots on remote HPC clusters, something you most definetly want to do.
-* :ref:`chapter_example_disconnect_reconnect`. This chapter is very useful for example if you work with long-running tasks that don't need conintuous supervision. 
+* :ref:`chapter_example_remote_and_hpc_pilots`. In this chapter we explain how to launch ComputePilots on remote HPC clusters, something you most definitely want to do.
+* :ref:`chapter_example_disconnect_reconnect`. This chapter is very useful for example if you work with long-running tasks that don't need continuous supervision. 
 
 The Complete Example
 --------------------

@@ -5,6 +5,26 @@
 Developer Documentation 
 ***********************
 
+Installation from Source
+========================
+
+If you are planning to contribute to the RADICAL-Pilot codebase, or if you want 
+to use the latest and greatest development features, you can download
+and install RADICAL-Pilot directly from the sources.
+
+First, you need to check out the sources from GitHub.
+
+.. code-block:: bash
+
+    git clone git@github.com:radical-cybertools/radical.pilot.git
+
+Next, run the installer directly from the source directoy (assuming you have 
+set up a vritualenv):
+
+.. code-block:: bash
+ 
+    python setup.py install
+
 
 Debugging 
 =========
@@ -19,7 +39,7 @@ a RADICAL-Pilot application. Possible values are:
 
 
 RADICAL-Pilot Architecture
-=======================
+==========================
 
 Describe architecture overview here.
 
@@ -37,3 +57,4 @@ UnitManager and UnitManager Worker
 .. image:: images/architecture_unitmanager.png
 
 Download :download:`PDF version <images/architecture_unitmanager.pdf>`.
+

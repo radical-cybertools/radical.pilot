@@ -1,79 +1,85 @@
 
 import os
 import sys
-import radical.pilot
-import traceback
+import radical.pilot as rp
 
 """ DESCRIPTION: Tutorial 2: Chaining Tasks.
 For every task A_n a task B_n is started consecutively.
 """
 
-# ---------------- BEGIN REQUIRED PILOT SETUP -----------------
-
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-#------------------------------------------------------------------------------
+# READ: The RADICAL-Pilot documentation: 
+#   http://radicalpilot.readthedocs.org/en/latest
 #
-def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
-
-    if state == radical.pilot.states.FAILED:
-        print "Compute Pilot '%s' failed, exiting ..." % pilot.uid
-        sys.exit(1)
-
-    elif state == radical.pilot.states.ACTIVE:
-        print "Compute Pilot '%s' became active!" % (pilot.uid)
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# you want to see what happens behind the scences!
 
 
 #------------------------------------------------------------------------------
 #
-def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
 
-    if state == radical.pilot.states.FAILED:
-        print "Compute Unit '%s' failed ..." % unit.uid
-        sys.exit(1)
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if  state == rp.FAILED :
+        sys.exit (1)
 
 
-# -----------------------------------------------------------
+#------------------------------------------------------------------------------
 #
-def main():
+def unit_state_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
+
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
 
     try:
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security contexts.
-        session = radical.pilot.Session(database_url=DBURL)
+        session = rp.Session()
 
-        # Add an ssh identity to the session.
-        c = radical.pilot.Context('ssh')
-        #c.user_id = 'osdcXX'
+        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
+        # 
+        # Change the user name below if you are using a remote resource 
+        # and your username on that resource is different from the username 
+        # on your local machine. 
+        #
+        c = rp.Context('ssh')
+        # c.user_id = 'osdcXX'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         print "Initializing Pilot Manager ..."
-        pmgr = radical.pilot.PilotManager(session=session)
+        pmgr = rp.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
         # called every time any of the pilots managed by the PilotManager
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # this describes the parameters and requirements for our pilot job
-        pdesc = radical.pilot.ComputePilotDescription ()
-        pdesc.resource = 'fs2.das4.science.uva.nl'
-        pdesc.runtime  = 5 # minutes
+        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
+        # 
+        # If you want to run this example on your local machine, you don't have 
+        # to change anything here. 
+        # 
+        # Change the resource below if you want to run on a remote resource. 
+        # You also might have to set the 'project' to your allocation ID if 
+        # your remote resource does compute time accounting. 
+        #
+        # A list of preconfigured resources can be found at: 
+        # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
+        # 
+        pdesc = rp.ComputePilotDescription ()
+        pdesc.resource = "localhost" # NOTE: This is a "label", not a hostname
+        pdesc.runtime  = 10 # minutes
         pdesc.cores    = 1
         pdesc.cleanup  = True
+        # pdesc.project  = 'TG-MCB140109'
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
@@ -82,16 +88,15 @@ def main():
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         print "Initializing Unit Manager ..."
-        umgr = radical.pilot.UnitManager(
-            session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+        umgr = rp.UnitManager (session=session,
+                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
         # change their state.
-        umgr.register_callback(unit_state_change_cb)
+        umgr.register_callback(unit_state_cb)
 
-        # Add the previously created ComputePilot to the UnitManager.
+        # Add the created ComputePilot to the UnitManager.
         print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
 
@@ -102,7 +107,7 @@ def main():
         for i in range(NUMBER_JOBS):
 
             # -------- BEGIN USER DEFINED CU A_n DESCRIPTION --------- #
-            cudesc = radical.pilot.ComputeUnitDescription()
+            cudesc = rp.ComputeUnitDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % i}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
@@ -121,6 +126,7 @@ def main():
         # A B CU reads the content of the output file of an A CU and writes it into its own
         # output file.
         cu_list_B = []
+
         # We create a copy of cu_list_A so that we can remove elements from it,
         # and still reference to the original index.
         cu_list_A_copy = cu_list_A[:]
@@ -132,7 +138,7 @@ def main():
                 print "'A' Compute Unit '%s' finished. Submitting 'B' CU ..." % idx
 
                 # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
-                cudesc = radical.pilot.ComputeUnitDescription()
+                cudesc = rp.ComputeUnitDescription()
                 cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
                 cudesc.executable  = '/bin/echo'
                 cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
@@ -152,20 +158,28 @@ def main():
 
         print "All Compute Units completed successfully!"
 
-        session.close(delete=False)
-        print "Closed session, exiting now ..."
 
     except Exception as e:
-            print "AN ERROR OCCURRED: %s" % ((str(e)))
-            return(-1)
+        print "An error occurred: %s" % ((str(e)))
+        sys.exit (-1)
+
+    except KeyboardInterrupt :
+        print "Execution was interrupted"
+        sys.exit (-1)
 
 
-#------------------------------------------------------------------------------
+    except Exception as e:
+        print "An error occurred: %s" % ((str(e)))
+        sys.exit (-1)
+
+    except KeyboardInterrupt :
+        print "Execution was interrupted"
+        sys.exit (-1)
+
+    finally :
+        print "Closing session, exiting now ..."
+        session.close()
+
 #
-if __name__ == "__main__":
-
-    sys.exit(main())
-
-#
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

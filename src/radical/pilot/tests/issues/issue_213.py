@@ -15,10 +15,13 @@ from pymongo import MongoClient
 # http://docs.mongodb.org/manual/installation/
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radicalpilot_unittests'
+DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME")
+if DBNAME is None:
+    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
+    sys.exit(1)
 
 
 #-----------------------------------------------------------------------------
@@ -52,43 +55,6 @@ class TestIssue213(unittest.TestCase):
         # St00pid speling.
         return self.assertFalse(expr)
 
-    # #-------------------------------------------------------------------------
-    # #
-    # def test__issue_213(self):
-    #     """ https://github.com/radical-cybertools/radical.pilot/issues/213
-    #     """
-    #     session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
-    #
-    #     pmgr = radical.pilot.PilotManager(session=session)
-    #
-    #     cpd1 = radical.pilot.ComputePilotDescription()
-    #     cpd1.resource = "localhost"
-    #     cpd1.cores = 1
-    #     cpd1.runtime = 1
-    #     cpd1.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-    #     cpd1.cleanup = True
-    #
-    #     pilot = pmgr.submit_pilots(cpd1)
-    #
-    #     umgr = radical.pilot.UnitManager(session, scheduler=radical.pilot.SCHED_DIRECT_SUBMISSIO)
-    #
-    #     umgr.add_pilots(pilot)
-    #
-    #     cud = radical.pilot.ComputeUnitDescription()
-    #     cud.executable = "/bin/date"
-    #
-    #     for i in range(1000):
-    #         session._dbs.signal_pilots(pmgr.uid, pilot.uid, 'KEEPALIVE%d' % i)
-    #         umgr.submit_units(cud)
-    #
-    #     pilot.wait()
-    #
-    #     assert pilot.state == radical.pilot.states.DONE
-    #     assert pilot.stop_time is not None
-    #     assert pilot.start_time is not None
-    #
-    #     session.close(delete=False)
-
     #-------------------------------------------------------------------------
     #
     def test__issue_213(self):
@@ -113,12 +79,12 @@ class TestIssue213(unittest.TestCase):
 
         assert pilot is not None
 
-        pilot.wait(radical.pilot.states.ACTIVE, timeout=self.test_timeout*60)
-        assert pilot.state == radical.pilot.states.ACTIVE
+        pilot.wait(state=radical.pilot.ACTIVE, timeout=self.test_timeout*60)
+        assert pilot.state == radical.pilot.ACTIVE
 
         # the pilot should finish after it has reached run_time
-        pilot.wait(radical.pilot.states.DONE, timeout=self.test_timeout*60)
-        assert pilot.state == radical.pilot.states.DONE
+        pilot.wait(timeout=self.test_timeout*60)
+        assert pilot.state == radical.pilot.DONE
 
         session.close()
 

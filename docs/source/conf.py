@@ -11,8 +11,74 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import glob
+import imp
+import sys
+import os
+import json
+import pprint
 
+script_dir = os.path.dirname(os.path.realpath(__file__))
+
+################################################################################
+##
+print "* Generating code example list: examples.rst"
+
+try:
+    os.remove("{0}/resources.rst".format(script_dir))
+except OSError:
+    pass
+
+with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
+
+    examples = os.listdir("{0}/../../src/radical/pilot/configs/".format(script_dir))
+    for example in examples:
+
+        if example.endswith(".json") is False:
+            continue # skip all non-python files
+
+        print " * %s" % example
+
+        with open("../../src/radical/pilot/configs/{0}".format(example)) as cfg_file:
+            try: 
+                json_data = json.load(cfg_file)
+            except Exception, ex:
+                print "    * JSON PARSING ERROR: %s" % str(ex)
+                continue
+
+
+            for resource_key, resource_config in json_data.iteritems():
+                print "   * %s" % resource_key
+                try:
+                    default_queue = resource_config["default_queue"]
+                except Exception, ex:
+                    default_queue = None
+                try:
+                    working_dir = resource_config["default_remote_workdir"]
+                except Exception, ex:
+                    working_dir = "$HOME/radical.pilot.sandbox"
+                try:
+                    python_interpreter = resource_config["python_interpreter"]
+                except Exception, ex:
+                    python_interpreter = None
+
+                resources_rst.write("{0}\n".format(resource_key))
+                resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
+                resources_rst.write("{0}\n\n".format(resource_config["description"]))
+                if resource_config["notes"] != "None":
+                    resources_rst.write(".. note::  {0}\n\n".format(resource_config["notes"]))
+                resources_rst.write("Default values for ComputePilotDescription attributes:\n\n")
+                resources_rst.write("================== ============================\n")
+                resources_rst.write("Parameter               Value\n")
+                resources_rst.write("================== ============================\n")
+                resources_rst.write("``queue``               {0}\n".format(default_queue))
+                resources_rst.write("``sandbox``             {0}\n".format(working_dir))
+                resources_rst.write("================== ============================\n\n")
+
+
+                resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
+##
+################################################################################
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -26,7 +92,16 @@ sys.path.insert(0, os.path.abspath('../../src/'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.intersphinx', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.pngmath', 'sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.viewcode']
+extensions = ['sphinx.ext.autodoc', 
+              'sphinx.ext.doctest',
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.todo',
+              'sphinx.ext.coverage',
+              'sphinx.ext.pngmath',
+              'sphinx.ext.mathjax',
+              'sphinx.ext.ifconfig',
+              'sphinx.ext.viewcode',
+              'sphinx.ext.extlinks']
 
 [extensions]
 todo_include_todos=True
@@ -97,6 +172,9 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+
+extlinks = {'issue': ('https://github.com/radical-cybertools/radical.pilot/issues/%s',
+                      'issue ')}
 
 # -- Options for HTML output ---------------------------------------------------
 
@@ -180,7 +258,7 @@ html_show_copyright = True
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'SAGAPilotdoc'
+htmlhelp_basename = 'radical.pilot.doc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -199,7 +277,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'SAGA-Pilot.tex', u'SAGA-Pilot Documentation',
+  ('index', 'RADICAL-Pilot.tex', u'RADICAL-Pilot Documentation',
    u'The RADICAL Group at Rutgers University', 'manual'),
 ]
 
@@ -243,8 +321,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'SAGA-Pilot', u'SAGA-Pilot Documentation',
-   u'The RADICAL Group at Rutgers University', 'SAGA-Pilot', 'One line description of project.',
+  ('index', 'RADICAL-Pilot', u'RADICAL-Pilot Documentation',
+   u'The RADICAL Group at Rutgers University', 'RADICAL-Pilot', 'One line description of project.',
    'Miscellaneous'),
 ]
 

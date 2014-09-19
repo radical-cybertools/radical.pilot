@@ -1,3 +1,21 @@
+0.19 Release                                       September 12. 2014
+---------------------------------------------------------------------
+
+* The Milestone 8 release (MS.8)
+* Closed Tickets:
+
+  - https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aclosed+milestone%3AMS-8+
+
+
+0.18 Release                                            July 22. 2014
+---------------------------------------------------------------------
+
+* The Milestone 7 release (MS.7)
+* Closed Tickets:
+
+  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=13&state=closed
+
+
 0.17 Release                                            June 18. 2014
 ---------------------------------------------------------------------
 

@@ -1,5 +1,7 @@
 {
     "yellowstone.ucar.edu": {
+        "description"                 : "The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).",
+        "notes"                       : "We only support one concurrent CU per node currently.",
         "remote_job_manager_endpoint" : "lsf+ssh://yellowstone.ucar.edu",
         "remote_filesystem_endpoint"  : "sftp://yellowstone.ucar.edu/",
         "local_job_manager_endpoint"  : "lsf://localhost",
@@ -9,7 +11,8 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "POE",
         "forward_tunnel_endpoint"     : "yslogin6",
-        "pre_bootstrap"               : ["module purge", "module load ncarenv", "module load ncarbinlibs", "module load python", "export LD_PRELOAD=/glade/u/home/marksant/tsocks-1.8/libtsocks.so"],
+        "global_virtenv"              : "/glade/u/home/marksant/pilotve",
+        "pre_bootstrap"               : ["module purge", "module load ncarenv", "module load ncarbinlibs", "module load python"],
         "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }

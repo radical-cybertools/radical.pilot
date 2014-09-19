@@ -7,8 +7,7 @@ import pymongo
 def get_session_ids (db) :
 
     cnames = db.collection_names ()
-
-    sids = list()
+    sids   = list()
     for cname in cnames :
         if  not '.' in cname :
             sids.append (cname)
@@ -34,6 +33,25 @@ def get_session_docs (db, session) :
     ret['pilot'  ] = list(db["%s.p"  % session].find ())
     ret['umgr'   ] = list(db["%s.wm" % session].find ())
     ret['unit'   ] = list(db["%s.w"  % session].find ())
+
+    if  len(ret['session']) == 0 :
+        raise ValueError ('no such session %s' % session)
+
+  # if  len(ret['session']) > 1 :
+  #     print 'more than one session document -- pick first one'
+
+    # there can only be one session, not a list of one
+    ret['session'] = ret['session'][0]
+
+    # we want to add a list of handled units to each pilot doc
+    for pilot in ret['pilot'] :
+
+        pilot['unit_ids'] = list()
+
+        for unit in ret['unit'] :
+
+            if  unit['pilot'] == str(pilot['_id']) :
+                pilot['unit_ids'].append (str(unit['_id']))
 
     return ret
 
@@ -90,7 +108,8 @@ def get_session_events (db, session) :
 
     ret = list()
 
-    for doc in docs['session'] :
+    if  'session' in docs :
+        doc = docs['session']
         odoc  = dict()
         otype = 'session'
         oid   = str(doc['_id'])
@@ -113,7 +132,7 @@ def get_session_events (db, session) :
         for event in doc['statehistory'] :
             ret.append (['state',     otype, oid, oid, event['timestamp'], event['state'], odoc])
 
-        if  'callbackhistory' in event :
+        if  'callbackhistory' in doc :
             for event in doc['callbackhistory'] :
                 ret.append (['callback',  otype, oid, oid, event['timestamp'], event['state'], odoc])
 
@@ -124,21 +143,23 @@ def get_session_events (db, session) :
         oid   = str(doc['_id'])
         pid   = str(doc['pilot'])
 
+        # TODO: change states to look for
         for event in [# 'submitted', 'started',    'finished',  # redundant to states..
                       'input_transfer_started',  'input_transfer_finished', 
                       'output_transfer_started', 'output_transfer_finished'
                       ] :
             if  event in doc :
-                ret.append (['state', otype, oid, pid, doc[event], event, odoc])
+                ret.append (['state', otype, oid, pid, doc[event], event, doc])
             else :                                
-                ret.append (['state', otype, oid, pid, None,       event, odoc])
+                ret.append (['state', otype, oid, pid, None,       event, doc])
 
         for event in doc['statehistory'] :
-            ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], odoc])
+            ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], doc])
 
+        # TODO: this probably needs to be "doc"
         if  'callbackhistory' in event :
             for event in doc['callbackhistory'] :
-                ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], odoc])
+                ret.append (['callback',  otype, oid, pid, event['timestamp'], event['state'], doc])
 
     # we don't want None times, actually
     for r in list(ret) :

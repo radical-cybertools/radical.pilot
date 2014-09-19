@@ -1,79 +1,29 @@
 
 .. _chapter_machconf:
 
-***************************
-Resource Configration Files
-***************************
+***********************
+Resource Configurations
+***********************
 
-Introduction
-============
+Preconfigured Resources
+=======================
 
-In order to keep RADICAL-Pilot applications free from clutter and 
-machine-specific parameters and constants, RADICAL-Pilot uses 
-resource configration files.
+Resource configurations are a set of dictionaries that hide specific details 
+of a remote resource (queuing-, file-system- and environment-details) from the 
+user. A user allocates a preconfigured resource like this:
 
-Machine configuration files can be passed to a :class:`radical.pilot.PilotManager` 
-instance::
+.. code-block:: python
 
-    FGCONF = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
-    
-    s = radical.pilot.Session(database_url=DBURL)
-    pm = radical.pilot.PilotManager(session=s, resource_configurations=FGCONF)
+    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc.resource   = "archer.ac.uk"
+    pdesc.project    = "e1234"
+    pdesc.runtime    = 60
+    pdesc.cores      = 128
 
-Multiple configuration files can be passed as a list::
+We maintain a growing set of resource configuration files:
 
-    FGCONF = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
-    XSCONF = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json'
+.. include:: ./resources.rst  
 
-    s = radical.pilot.Session(database_url=DBURL)
-    pm = radical.pilot.PilotManager(session=s, resource_configurations=[FGCONF, XSCONF])
-
-Resource configuration file URLs can either be `https(s)://` URLs to point to 
-a remote location, or `file://localhost` URLs to point to a local file. ::
-
-    REMOTE_CONF = 'https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json'
-    LOCAL_CONF  = 'file://localhost/home/project/cfgs/mycustomconfig.json'
-
-A resource configuration uses the JSON format and has the following layout::
-
-    {
-        "futuregrid.INDIA": {
-            ...
-        },
-
-        "futuregrid.SIERRA": {
-            ...
-        }
-    }
-
-In the example above, `futuregrid.INDIA` and `futuregrid.SIERRA` are the
-**resource keys**. Resource keys are referenced in
-:class:`radical.pilot.ComputePilotDescription` to create a
-:class:`radical.pilot.ComputePilot` for a given machine::
-
-    pd = radical.pilot.ComputePilotDescription()
-    pd.resource = "futuregrid.INDIA"  # Key defined in futuregrid.json
-    pd.cores = 16
-
-    pilot_india = pm.submit_pilots(pd)
-
-
-Available Resource Configuration Files
-======================================
-
-We maintain a set of ready to use resource configuration files:
-
-FutureGrid
-----------
-
-* Homepage: `http://www.futuregrid.org <http://www.futuregrid.org>`_
-* Resource file URL: `https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json <https://raw.github.com/radical-cybertools/radical.pilot/master/configs/futuregrid.json>`_
-
-XSEDE
------
-
-* Homepage: `http://www.xsede.org <http://www.xsede.org>`_
-* Resource file URL: `https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json <https://raw.github.com/radical-cybertools/radical.pilot/master/configs/xsede.json>`_
 
 Writing a Custom Resource Configuration File
 ============================================
@@ -87,13 +37,18 @@ A configuration file has to be valid JSON. The structure is as follows:
 
     {
         "RESOURCE_KEY_NAME": {
-            "URL"                : "slurm+ssh://stampede.tacc.utexas.edu",
-            "filesystem"         : "sftp://stampede.tacc.utexas.edu/",
-            "default_queue"      : "normal",
-            "python_interpreter" : "/opt/apps/python/epd/7.3.2/bin/python",
-            "pre_bootstrap"      : ["module purge", "module load TACC", "module load cluster", "module load python/2.7.3-epd-7.3.2"],
-            "task_launch_mode"   : "SSH",
-            "valid_roots"        : ["/home1", "/scratch", "/work"]
+            "remote_job_manager_endpoint" : "slurm+ssh://stampede.tacc.utexas.edu",
+            "remote_filesystem_endpoint"  : "sftp://stampede.tacc.utexas.edu/",
+            "local_job_manager_endpoint"  : "slurm://localhost",
+            "local_filesystem_endpoint"   : "file://localhost/",
+            "default_queue"               : "normal",
+            "lrms"                        : "SLURM",
+            "task_launch_method"          : "SSH",
+            "mpi_launch_method"           : "IBRUN",
+            "python_interpreter"          : "/opt/apps/python/epd/7.3.2/bin/python",
+            "pre_bootstrap"               : ["module purge", "module load TACC", "module load cluster", "module load Linux", "module load mvapich2", "module load python/2.7.3-epd-7.3.2"],
+            "valid_roots"                 : ["/home1", "/scratch", "/work"],
+            "pilot_agent"                 : "radical-pilot-agent-multicore.py"
         },
         "ANOTHER_KEY_NAME": ...
     }
@@ -102,13 +57,18 @@ A configuration file has to be valid JSON. The structure is as follows:
 `ComputePilotDescription.resource` to reference this entry. They have to be 
 unique. 
 
-All fields are mandatory:
+All fields are mandatory, unless indicated otherwise below.
 
-* `URL`: The URL of the cluster queueing manager. This can be one of `pbs+ssh://`, `sge+ssh://`, `slurm+ssh://`.
-* `filesystem`: An SFTP URL that points to the remote cluster's root filesystem. 
-* `default_queue`: The default cluster queue to use if not defined in :class:`radical.pilot.ComputePilotDescription` 
-* `python_interpreter`: The path to a valid Python interpreter (**>= 2.6**) on the remote cluster.
-* `pre_bootstrap`: A list of commands to execute before RADICAL-Pilot agent startup.
-* `task_launch_mode`: The RADICAL-Pilot agent task launch method. This can be either "SSH" (only single-core tasks are supported) or "MPI" (mpi-style tasks are supported).
-* `valid_roots`: A list of valid directory prefixes for shared filesystem mounts. A user can define the agent working directory via the `PilotDescription.sandbox` parameter. This is checked against the list of `valid_roots` to ensure the user doesn't provide an invalid path.
+* `remote_job_manager_endpoint` : access url for pilot submission (interpreted by SAGA)
+* `remote_filesystem_endpoint`  : access url for file staging (interpreted by SAGA)
+* `local_job_manager_endpoint`  : as above when running on the target host
+* `local_filesystem_endpoint`   : as above when running on the target host
+* `default_queue`               : queue to use for pilot submission (optional)
+* `lrms`                        : type of job management system (`LOADL`, `LSF`, `PBSPRO`, `SGE`, `SLURM`, `TORQUE`, `FORK`)
+* `task_launch_method`          : type of compute node access (required for non-MPI units: `SSH`,`APRUN` or `LOCAL`)
+* `mpi_launch_method`           : type of MPI support (required for MPI units: `MPIRUN`, `MPIEXEC`, `APRUN`, `IBRUN` or `POE`)
+* `python_interpreter`          : path to python (optional)
+* `pre_bootstrap`               : list of commands to execute for initialization (optional)
+* `valid_roots`                 : list of shared filesystem roots (optional).  Pilot sandboxes must lie under these roots.
+* `pilot_agent`                 : type of pilot agent to use
 

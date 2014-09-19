@@ -69,3 +69,36 @@ Exceptions
 .. autoclass:: radical.pilot.DatabaseError
    :members: DatabaseError
 
+State Models
+============
+
+ComputeUnit State Model
+-----------------------
+
+.. image:: images/cu_state_model.png
+
+ComputePilot State Model
+------------------------
+
+.. image:: images/pilot_state_model.png
+
+#. A new compute pilot is launched via :func:`radical.pilot.PilotManager.submit_pilots`
+
+#. The pilot is submitted to the remote resource and enters ``LAUNCHING`` state.
+
+#. The pilot has been succesfully launched on the remote machine and is now waiting to become ``ACTIVE``.
+
+#. The pilot has been launched by the queueing system and is now in ``ACTIVE STATE``.
+
+#. The pilot has finished execution regularly and enters ``DONE`` state.
+
+#. An error has occured during preparation for pilot launching and the pilot enters ``FAILED`` state.
+
+
+#. An error has occured during pilot launching and the pilot enters ``FAILED`` state.
+
+#. An error has occured on the backend and the pilot couldn't become active and the pilot enters ``FAILED`` state.
+
+#. An error has occured during pilot runtime and the pilot enters ``FAILED`` state.
+
+#. The active pilot has been canceled via the :func:`radical.pilot.ComputePilot.cancel` call and enters ``CANCELED`` state.

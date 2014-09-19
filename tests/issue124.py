@@ -1,60 +1,82 @@
+
 import sys
-import radical.pilot
-import time
-import os
-import datetime
-import urllib2
-import json
+import radical.pilot as rp
 
-PWD    = os.path.dirname(os.path.abspath(__file__))
-DBURL  = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/'
-FGCONF = 'file://localhost/%s/config/xsede.json' % PWD
+# ##############################################################################
+# #124: CUs are failing on Trestles
+# ##############################################################################
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
 
-def pilot_state_cb(pilot, state):
-    print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(pilot.uid, state)
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-def run():
-    try:
-        compute_units = []
-        for k in range(0, 32):
-            cu = radical.pilot.ComputeUnitDescription()
-            cu.cores = 1
-            cu.executable = "/bin/date"
-            compute_units.append(cu)
+    if  state == rp.FAILED :
+        sys.exit (1)
 
-        session = radical.pilot.Session(database_url=DBURL)
 
-        pm = radical.pilot.PilotManager(session=session, resource_configurations=FGCONF)
-        pm.register_callback(pilot_state_cb)
+#------------------------------------------------------------------------------
+#
+def unit_state_change_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
 
-        um = radical.pilot.UnitManager(session=session, scheduler=radical.pilot.SCHED_ROUND_ROBIN)
+    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
-        pd = radical.pilot.ComputePilotDescription()
-        pd.resource = "xsede.TRESTLES"
-        pd.sandbox = "/home/antontre/re-experiments"
-        pd.cores = 32
-        pd.runtime = 10
-        pd.cleanup = True
+    if  state == rp.FAILED :
+        sys.exit (1)
 
-        pilot_object = pm.submit_pilots(pd)
-        um.add_pilots(pilot_object)
-        submitted_units = um.submit_units(compute_units)
 
-        print "Waiting for all compute units to finish..."
-        um.wait_units()
-
-        print "  FINISHED"
-        pm.cancel_pilots()
-
-    except radical.pilot.PilotException, ex:
-        print "Error: %s" % ex
-
-#-------------------------------------------------------------------------------
-
+#------------------------------------------------------------------------------
+#
 if __name__ == "__main__":
 
-    run()
+    session = rp.Session()
 
-                                                                                                                                         
+    # Add an ssh identity to the session.
+    c = rp.Context('ssh')
+    c.user_id = 'amerzky'
+    session.add_context(c)
+
+    pmgr = rp.PilotManager(session=session)
+    pmgr.register_callback(pilot_state_cb)
+
+    pd = rp.ComputePilotDescription()
+    pd.resource = "trestles.sdsc.xsede.org"
+    pd.cores    = 1
+    pd.runtime  = 10
+    pd.cleanup  = True
+
+    pilot_object = pmgr.submit_pilots(pd)
+    
+    umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_ROUND_ROBIN)
+
+    umgr.add_pilots(pilot_object)
+
+    compute_units = []
+    for k in range(0, 32):
+        cu = rp.ComputeUnitDescription()
+        cu.cores = 1
+        cu.executable = "/bin/date"
+        compute_units.append(cu)
+
+    units = umgr.submit_units(compute_units)
+
+    print "Waiting for all compute units to finish..."
+    umgr.wait_units()
+
+    for unit in units :
+        assert (unit.state == rp.DONE)
+
+    print "  FINISHED"
+    pmgr.cancel_pilots()
+    pmgr.wait_pilots()
+
+    session.close ()
+
+    sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+

@@ -26,18 +26,19 @@ class Context (saga.Context):
         super (Context, self).__init__ (ctype, )
 
         # set given defaults
-        if thedict :
+        if  thedict :
             for key in thedict :
-                self.set_attribute (key, thetict[key])
+                self.set_attribute (key, thedict[key])
 
 
     #---------------------------------------------------------------------------
     #
     @classmethod
     def from_dict(cls, thedict):
-        """Creates a new object instance from a string.
-
-                c._from_dict(x.as_dict) == x
         """
+        Creates a new object instance from a string.
+        c._from_dict(x.as_dict) == x
+        """
+
         return cls(thedict)
 

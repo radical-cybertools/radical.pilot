@@ -1,5 +1,7 @@
 {
     "alamo.futuregrid.org": {
+        "description"                 : "The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://alamo.futuregrid.org",
         "remote_filesystem_endpoint"  : "sftp://alamo.futuregrid.org/",
         "local_job_manager_endpoint"  : "pbs://localhost",
@@ -15,6 +17,8 @@
     },
 
     "india.futuregrid.org": {
+        "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://india.futuregrid.org",
         "remote_filesystem_endpoint"  : "sftp://india.futuregrid.org/",
         "local_job_manager_endpoint"  : "pbs://localhost",
@@ -24,13 +28,15 @@
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "batch",
         "python_interpreter"          : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
+        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi/1.4.3-gnu"],
         "valid_roots"                 : ["/N"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
 
     },
 
     "sierra.futuregrid.org": {
+        "description"                 : "The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "None",
         "remote_job_manager_endpoint" : "pbs+ssh://sierra.futuregrid.org",
         "remote_filesystem_endpoint"  : "sftp://sierra.futuregrid.org/",
         "local_job_manager_endpoint"  : "pbs://localhost",
@@ -46,6 +52,8 @@
     },
 
     "hotel.futuregrid.org": {
+        "description"                 : "The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.",
         "remote_job_manager_endpoint" : "pbs+ssh://hotel.futuregrid.org",
         "remote_filesystem_endpoint"  : "sftp://hotel.futuregrid.org/",
         "local_job_manager_endpoint"  : "pbs://localhost",

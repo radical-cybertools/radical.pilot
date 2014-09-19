@@ -46,7 +46,7 @@ class State(object):
         if type(other) == str:
             return not self.__eq__(other)
         else:
-            return not self.__eq(other.state)
+            return not self.__eq__(other.state)
 
     # ----------------------------------------
     #
@@ -64,10 +64,12 @@ class State(object):
         return self.state
 
 # -----------------------------------------------------------------------------
-# Common  States
+# Common States
+NEW                         = 'New'
 DONE                        = 'Done'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
+PENDING                     = 'Pending'
 
 # -----------------------------------------------------------------------------
 # ComputePilot States
@@ -78,14 +80,12 @@ ACTIVE                      = 'Active'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
-NEW                         = 'New'
-PENDING_INPUT_TRANSFER      = 'PendingInputTransfer'
-TRANSFERRING_INPUT          = 'TransferringInput'
-
+STATE_X                     = 'StateX'
+PENDING_INPUT_STAGING       = 'PendingInputStaging'
+STAGING_INPUT               = 'StagingInput'
 PENDING_EXECUTION           = 'PendingExecution'
 SCHEDULING                  = 'Scheduling'
 EXECUTING                   = 'Executing'
-
-PENDING_OUTPUT_TRANSFER     = 'PendingOutputTransfer'
-TRANSFERRING_OUTPUT         = 'TransferringOutput'
+PENDING_OUTPUT_STAGING      = 'PendingOutputStaging'
+STAGING_OUTPUT              = 'StagingOutput'
 

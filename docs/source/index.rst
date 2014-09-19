@@ -1,7 +1,7 @@
 
-##################################
+#####################################
 RADICAL-Pilot |version| Documentation
-##################################
+#####################################
 
 RADICAL-Pilot is a `Pilot Job <https://en.wikipedia.org/wiki/Pilot_job>`_ system
 written in Python. It allows a user to run large numbers of computational
@@ -16,9 +16,11 @@ drastically shorten overall exeuction time as the  individual ``ComputeUnits``
 don't have to wait in the system's scheduler queue  but can execute directly
 on the ``ComputePilots``.
 
-``ComputeUnits`` are often single-core / multi-threaded executables, but RADICAL-
-Pilot also supports execution of parallel executables, for example based on
-MPI or OpenMP.
+**Mailing Lists**
+
+* For users: https://groups.google.com/d/forum/radical-pilot-users
+* For developers: https://groups.google.com/d/forum/radical-pilot-devel
+
 
 #########
 Contents:
@@ -31,11 +33,13 @@ Contents:
    intro.rst
    installation.rst
    faq.rst
+   machconf.rst
    examples/index.rst
    tutorial/index.rst
    apidoc.rst
    schedulers.rst
-   machconf.rst
    testing.rst
    benchmarks.rst
    developer.rst
+   release_notes.rst
+

@@ -64,3 +64,10 @@ class DBConnectionInfo(object):
         client = MongoClient(self._dburl)
         return client
 
+    # ------------------------------------------------------------------------
+    #
+    def __str__ (self):
+
+        return "Connection Info: session %s : %s / %s" \
+             % (self._session_id, self._dburl, self._dbname)
+

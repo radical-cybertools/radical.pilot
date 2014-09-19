@@ -19,12 +19,12 @@ For example, to execute 1024 CUs with two 1 MB input files on a 128-core
 pilot on FutureGrid's 'sierra' cluster, run this:
 
 ```
-python --mongodb-url=$SAGAPILOT_DBURL --resource=sierra.futuregrid.org \
+python --mongodb-url=$RADICAL_PILOT_DBURL --resource=sierra.futuregrid.org \
        --pilot-size=128 --pilot-runtime-30 --number-of-cus=1024 \
        --input-files-per-cu=2 --input-file-size=1024
 ```
 
->> You can set SAGAPILOT_VERBOSE=info to get more information during execution. 
+>> You can set RADICAL_PILOT_VERBOSE=info to get more information during execution. 
 
 For longer running benchmarks, you can provide the `--detach` flag. This 
 causes the tool to exit as soon as all CUs are submitted. If `--detached` is 
@@ -34,7 +34,7 @@ execution.
 
 The tool doesn't create any output. However, all relevant data are stored 
 in MongoDB and can be accessed using the session ID returned by the tool. 
-You can use the `sagapilot-timeline` tool to extract all relevant information,
+You can use the `radicalpilot-stats` tool to extract all relevant information,
 but you can also write your own, custom evaluation script.
 
 ```

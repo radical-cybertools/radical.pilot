@@ -16,6 +16,7 @@ CORES=
 DBNAME=
 DBURL=
 DEBUG=
+VIRTENV=
 GLOBAL_VIRTENV=
 LRMS=
 MPI_LAUNCH_METHOD=
@@ -26,7 +27,23 @@ RUNTIME=
 SESSIONID=
 TASK_LAUNCH_METHOD=
 VERSION=
-WORKDIR=`pwd`
+SANDBOX=`pwd`
+
+# -----------------------------------------------------------------------------
+# contains(string, substring)
+#
+# Returns 0 if the specified string contains the specified substring,
+# otherwise returns 1.
+contains() {
+    string="$1"
+    substring="$2"
+    if test "${string#*$substring}" != "$string"
+    then
+        return 0    # $substring is in $string
+    else
+        return 1    # $substring is not in $string
+    fi
+}
 
 # -----------------------------------------------------------------------------
 # print out script usage help
@@ -41,7 +58,7 @@ This script launches a RADICAL-Pilot agent.
 OPTIONS:
    -a      The name of project / allocation to charge.
 
-   -b      Enable benchmarks.
+   -b      enable agent benchmarking
 
    -c      Number of requested cores.
 
@@ -51,7 +68,7 @@ OPTIONS:
 
    -f      Tunnel endpoint for connection forwarding.
 
-   -g      Global shared virtualenv, do not install anything.
+   -g      Global shared virtualenv (create if missing)
 
    -h      Show this message.
 
@@ -74,12 +91,14 @@ OPTIONS:
 
    -t      Runtime in minutes.
 
+   -u      sandbox is user defined
+
    -v      Version - the RADICAL-Pilot package version.
 
-   -w      The working (base) directory of the pilot.
+   -w      The working directory (sandbox) of the pilot.
            (default is '.')
 
-   -x      Cleanup - delete virtualenv after execution.
+   -x      Cleanup - delete pilot sandbox, virtualenv etc. after completion
 
 EOF
 }
@@ -89,135 +108,170 @@ EOF
 #
 installvenv()
 {
-R_SYS_DIR=$WORKDIR/virtualenv/
-# remove any old versionsion
-if [[ -d $R_SYS_DIR ]]; then
-    echo "`date +"%m-%d-%Y %T"` - [run-radical-agent.sh] (INFO) - Removing previous virtualenv: $R_SYS_DIR"
-    rm -r $R_SYS_DIR
-fi
+    # first argument is the virtenv target
+    VIRTENV=$1
 
-# create a fresh virtualenv. we use and older 1.9.x version of 
-# virtualenv as this seems to work more reliable than newer versions.
-CURL_CMD="curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
-echo ""
-echo "################################################################################"
-echo "## Downloading and installing virtualenv"
-echo "## CMDLINE: $CURL_CMD"
-eval $CURL_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-   echo "Couldn't download virtuelenv via curl! ABORTING"
-   exit 1
-fi
-
-tar xvfz virtualenv-1.9.tar.gz
-OUT=$?
-if [[ $OUT != 0 ]]; then
-   echo "Couldn't unpack virtualenv! ABORTING"
-   exit 1
-fi
-
-BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $R_SYS_DIR"
-echo ""
-echo "################################################################################"
-echo "## Creating virtualenv"
-echo "## CMDLINE: $BOOTSTRAP_CMD"
-eval $BOOTSTRAP_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-   echo "Couldn't bootstrap virtualenv! ABORTING"
-   exit 1
-fi
-
-# active the virtualenv
-source $R_SYS_DIR/bin/activate
-
-DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
-echo ""
-echo "################################################################################"
-echo "## Downgrading pip to 1.2.1"
-echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
-eval $DOWNGRADE_PIP_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-   echo "Couldn't downgrade pip! ABORTING"
-   exit 1
-fi
-
-#UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
-#echo ""
-#echo "################################################################################"
-#echo "## Updating virtualenv"
-#echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
-#$UPDATE_SETUPTOOLS_CMD
-#OUT=$?
-#if [ $OUT -ne 0 ]; then
-#   echo "Couldn't update virtualenv! ABORTING"
-#   exit 1
-#fi
-
-PIP_CMD="pip install python-hostlist"
-EASY_INSTALL_CMD="easy_install python-hostlist"
-echo ""
-echo "################################################################################"
-echo "## Installing python-hostlist"
-echo "## CMDLINE: $PIP_CMD"
-eval $PIP_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-    echo "pip install failed, trying easy_install ..."
-    $EASY_INSTALL_CMD
+    # create a fresh virtualenv. we use an older 1.9.x version of 
+    # virtualenv as this seems to work more reliable than newer versions.
+    # If we can't download, we try to move on with the system virtualenv.
+    CURL_CMD="curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
+    echo ""
+    echo "################################################################################"
+    echo "## Downloading and installing virtualenv"
+    echo "## CMDLINE: $CURL_CMD"
+    $CURL_CMD
     OUT=$?
     if [[ $OUT != 0 ]]; then
-        echo "Easy install failed too, couldn't install python-hostlist! ABORTING"
-        exit 1
+        echo "WARNING: Couldn't download virtualenv via curl! Using system version."
+        BOOTSTRAP_CMD="virtualenv $VIRTENV"
+    else :
+        tar xvfz virtualenv-1.9.tar.gz
+        OUT=$?
+        if [[ $OUT != 0 ]]; then
+           echo "Couldn't unpack virtualenv! ABORTING"
+           exit 1
+        fi
+        
+        BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $VIRTENV"
     fi
-fi
 
-PIP_CMD="pip install pymongo"
-EASY_INSTALL_CMD="easy_install pymongo"
-echo ""
-echo "################################################################################"
-echo "## Installing pymongo"
-echo "## CMDLINE: $PIP_CMD"
-eval $PIP_CMD
-OUT=$?
-if [[ $OUT != 0 ]]; then
-    echo "pip install failed, trying easy_install ..."
-    $EASY_INSTALL_CMD
+    echo ""
+    echo "################################################################################"
+    echo "## Creating virtualenv"
+    echo "## CMDLINE: $BOOTSTRAP_CMD"
+    $BOOTSTRAP_CMD
     OUT=$?
     if [[ $OUT != 0 ]]; then
-        echo "Easy install failed too, couldn't install pymongo! ABORTING"
+        echo "Couldn't bootstrap virtualenv! ABORTING"
         exit 1
     fi
-fi
+
+    # activate the virtualenv
+    source $VIRTENV/bin/activate
+    
+    DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
+    echo ""
+    echo "################################################################################"
+    echo "## Downgrading pip to 1.2.1"
+    echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
+    $DOWNGRADE_PIP_CMD
+    OUT=$?
+    if [[ $OUT != 0 ]]; then
+        echo "Couldn't downgrade pip! Using default version (if it exists)"
+    fi
+    
+    #UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
+    #echo ""
+    #echo "################################################################################"
+    #echo "## Updating virtualenv"
+    #echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
+    #$UPDATE_SETUPTOOLS_CMD
+    #OUT=$?
+    #if [ $OUT -ne 0 ]; then
+    #    echo "Couldn't update virtualenv! ABORTING"
+    #    exit 1
+    #fi
+    
+    # On india/fg 'pip install saga-python' does not work as pip fails to
+    # install apache-libcloud (missing bz2 compression).  We thus install that
+    # dependency via easy_install.
+    EI_CMD="easy_install --upgrade apache-libcloud"
+    echo ""
+    echo "################################################################################"
+    echo "## install/upgrade Apache-LibCloud"
+    echo "## CMDLINE: $EI_CMD"
+    $EI_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+        echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
+    fi
+    
+    # Now pip install should work...
+    PIP_CMD="pip install --upgrade saga-python"
+    EA_CMD="easy_install --upgrade saga-python"
+    echo ""
+    echo "################################################################################"
+    echo "## install/upgrade SAGA-Python"
+    echo "## CMDLINE: $PIP_CMD"
+    $PIP_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+        echo "pip install failed, trying easy_install ..."
+        $EI_CMD
+        OUT=$?
+        if [ $OUT -ne 0 ];then
+            echo "Couldn't install/upgrade SAGA-Python! Lets see how far we get ..."
+        fi
+    fi
+    
+    PIP_CMD="pip install --upgrade python-hostlist"
+    EI_CMD="easy_install --upgrade python-hostlist"
+    echo ""
+    echo "################################################################################"
+    echo "## install/upgrade python-hostlist"
+    echo "## CMDLINE: $PIP_CMD"
+    $PIP_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+        echo "pip install failed, trying easy_install ..."
+        $EI_CMD
+        OUT=$?
+        if [ $OUT -ne 0 ];then
+            echo "Easy install failed too, couldn't install python-hostlist!  Lets see how far we get..."
+        fi
+    fi
+    
+    # pymongo should be pulled by saga, via utils.  But whatever...
+    PIP_CMD="pip install --upgrade pymongo"
+    EI_CMD="easy_install --upgrade pymongo"
+    echo ""
+    echo "################################################################################"
+    echo "## install/upgrade pymongo"
+    echo "## CMDLINE: $PIP_CMD"
+    $PIP_CMD
+    OUT=$?
+    if [ $OUT -ne 0 ];then
+        echo "pip install failed, trying easy_install ..."
+        $EI_CMD
+        OUT=$?
+        if [ $OUT -ne 0 ];then
+            echo "Easy install failed too, couldn't install pymongo! Oh well..."
+        fi
+    fi
 }
 
 # -----------------------------------------------------------------------------
-# launch the radical agent 
+# Find available port on the remote host where we can bind to
 #
-launchagent()
+find_available_port()
 {
-AGENT_CMD="python radical-pilot-agent.py\
-    -a $AUTH\
-    -b $BENCHMARK\
-    -c $CORES\
-    -d $DEBUG\
-    -j $TASK_LAUNCH_METHOD\
-    -k $MPI_LAUNCH_METHOD\
-    -l $LRMS\
-    -m mongodb://$DBURL\
-    -n $DBNAME\
-    -p $PILOTID\
-    -s $SESSIONID\
-    -t $RUNTIME\
-    -v $VERSION"
+    RANGE="23000..23100"
+    echo ""
+    echo "################################################################################"
+    echo "## Searching for available TCP port for tunnel in range $RANGE."
+    host=$1
+    for port in $(eval echo {$RANGE}); do
 
-echo ""
-echo "################################################################################"
-echo "## Launching radical-pilot-agent for $CORES cores."
-echo "## CMDLINE: $AGENT_CMD"
-eval $AGENT_CMD
+        # Try to make connection
+        (bash -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
+        # Wait for 1 second
+        read -t1
+        # Kill child
+        kill $! 2>/dev/null
+        # If the kill command succeeds, assume that we have found our match!
+        if [ "$?" == "0" ]; then
+            break
+        fi
+
+        # Reset port, so that the last port doesn't get chosen in error
+        port=
+    done
+
+    # Wait for children
+    wait 2>/dev/null
+
+    # Assume the most recent port is available
+    AVAILABLE_PORT=$port
 }
 
 # -----------------------------------------------------------------------------
@@ -235,8 +289,9 @@ echo "## Environment of bootstrapper process:"
 printenv
 
 # parse command line arguments
+USER_SANDBOX=0
 BENCHMARK=0
-while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
+while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
     case $OPTION in
         a)
             # Passed to agent
@@ -314,15 +369,18 @@ while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:xyz" OPTION; do
             # Passed to agent
             RUNTIME=$OPTARG
             ;;
+        u)
+            USER_SANDBOX=1
+            ;;
         v)
             # Passed to agent
             VERSION=$OPTARG
             ;;
         w)
-            WORKDIR=$OPTARG
+            SANDBOX=$OPTARG
             ;;
         x)
-            CLEANUP=true
+            CLEANUP=$OPTARG
             ;;
         *)
             echo "Unknown option: $OPTION=$OPTARG"
@@ -354,13 +412,23 @@ fi
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
 if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
-    # TODO: Dynamic and/or random to prevent conflicts
-    PROXY_PORT=12345
-    DBPORT=12346
+
+    echo ""
+    echo "################################################################################"
+    echo "## Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
+
+    find_available_port $FORWARD_TUNNEL_ENDPOINT
+    if [ $AVAILABLE_PORT ]; then
+        echo "## Found available port: $AVAILABLE_PORT"
+    else
+        echo "## No available port found!"
+        exit 1
+    fi
+    DBPORT=$AVAILABLE_PORT
     BIND_ADDRESS=127.0.0.1
 
     # Set up tunnel
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -D $BIND_ADDRESS:$PROXY_PORT -L $BIND_ADDRESS:$DBPORT:${DBURL%/} $FORWARD_TUNNEL_ENDPOINT &
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$DBURL $FORWARD_TUNNEL_ENDPOINT &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
@@ -374,28 +442,79 @@ if [[ -z $PYTHON ]]; then
     PYTHON=`which python`
 fi
 
-# Reuse existing VE if it exists
+# Reuse existing VE if specified
 if [[ $GLOBAL_VIRTENV ]]; then
-    if [[ ! -d $GLOBAL_VIRTENV || ! -f $GLOBAL_VIRTENV/bin/activate ]]; then
-        echo "Global Virtual Environment not found!"
-        exit 1
-    fi
-    source $GLOBAL_VIRTENV/bin/activate
+
+    VIRTENV=$GLOBAL_VIRTENV
+
+    # activate the virtualenv
+    source $VIRTENV/bin/activate
+    
+    # we never clean up global virtualenvs -- remove the 'v' cleanup flag
+    CLEANUP=$(echo $CLEANUP | tr -d 'v')
+
+    # this assumes that the VE lives outside of the pilot sandbox, which MUST be
+    # true, as at the point where a global VE can be specified, the pilot UID is
+    # still unknown.  That only conflicts if the pilot sandbox is specified
+    # explicitly, and the global VE lives therein.  This case is, at this point,
+    # ignored.
+
 else
-    # bootstrap virtualenv
-    installvenv
+    # bootstrap virtualenv at default location
+    VIRTENV=$SANDBOX/virtualenv/
+
+    # create/update virtualenv.  This activates it.
+    installvenv $VIRTENV
 fi
 
-# launch the agent
-launchagent
-
-# cleanup
-rm -rf $WORKDIR/virtualenv*
-
-if [[ $CLEANUP ]]; then
-    # if cleanup is set, we delete all CU sandboxes !!
-    rm -rf $WORKDIR/unit-*
+# check if creation succeeded
+if [[ ! -d $VIRTENV || ! -f $VIRTENV/bin/activate ]]; then
+    echo "Virtual Environment at $VIRTENV not found, install or upgrade failed.  Continue anyways." 
+    # in the rare case that everything is already installed in system space, we
+    # actually don't need a virtualenv, and thus continue here.
 fi
+
+
+# -----------------------------------------------------------------------------
+# launch the radical agent
+#
+AGENT_CMD="python radical-pilot-agent.py\
+    -a $AUTH\
+    -b $BENCHMARK\
+    -c $CORES\
+    -d $DEBUG\
+    -j $TASK_LAUNCH_METHOD\
+    -k $MPI_LAUNCH_METHOD\
+    -l $LRMS\
+    -m $DBURL\
+    -n $DBNAME\
+    -p $PILOTID\
+    -s $SESSIONID\
+    -t $RUNTIME\
+    -v $VERSION"
+
+echo ""
+echo "################################################################################"
+echo "## Launching radical-pilot-agent for $CORES cores."
+echo "## CMDLINE: $AGENT_CMD"
+$AGENT_CMD
+AGENT_EXITCODE=$?
+
+# cleanup flags:
+#   l : pilot log files
+#   u : unit work dirs
+#   v : virtualenv
+#   e : everything
+echo "CLEANUP: $CLEANUP"
+contains $CLEANUP 'l' && echo "rm -r $SANDBOX/AGENT.*"
+contains $CLEANUP 'u' && echo "rm -r $SANDBOX/unit-*"
+contains $CLEANUP 'v' && echo "rm -r $VIRTENV/"
+contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
+# contains $CLEANUP 'l' && rm -r $SANDBOX/AGENT.*
+# contains $CLEANUP 'u' && rm -r $SANDBOX/unit-*
+# contains $CLEANUP 'v' && rm -r $VIRTENV/
+# contains $CLEANUP 'e' && rm -r $SANDBOX/
 
 # ... and exit
-exit 0
+exit $AGENT_EXITCODE
+

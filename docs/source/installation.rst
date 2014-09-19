@@ -37,66 +37,33 @@ been installed properly. In the same virtualenv, run:
 
     radicalpilot-version
 
+Troubleshooting
+===============
+
+**Missing virtualenv**
+
 This should return the version of the RADICAL-Pilot installation, e.g., `0.X.Y`.
 
-.. note::
+If virtualenv **is not** installed on your system, you can try the following.
 
-  Note that some Python installations have a broken multiprocessing module -- if you
-  experience the following error during installation::
+.. code-block:: bash
 
-    Traceback (most recent call last):
-      File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
-        func(*targs, **kargs)
-      File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
-        info('process shutting down')
-    TypeError: 'NoneType' object is not callable
+    wget --no-check-certificate https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz
+    tar xzf virtualenv-1.9.tar.gz
+
+    python virtualenv-1.9/virtualenv.py $HOME/myenv
+    source $HOME/myenv/bin/activate
+
+**TypeError: 'NoneType' object is not callable**
+
+Note that some Python installations have a broken multiprocessing module -- if you
+experience the following error during installation::
+
+  Traceback (most recent call last):
+    File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
+      func(*targs, **kargs)
+    File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
+      info('process shutting down')
+  TypeError: 'NoneType' object is not callable
 
   you may need to move to Python 2.7 (see http://bugs.python.org/issue15881).
-
-
-Installation from Source
-========================
-
-If you are planning to contribute to the RADICAL-Pilot codebase, or if you want 
-to use the latest and greatest development features, you can download
-and install RADICAL-Pilot directly from the sources.
-
-First, you need to check out the sources from GitHub.
-
-.. code-block:: bash
-
-    git@github.com:radical-cybertools/radical.pilot.git
-
-Next, run the installer directly from the source directoy (assuming you have 
-set up a vritualenv):
-
-.. code-block:: bash
- 
-    python setup.py install
-
-Optionally, you can try to run the unit tests:
-
-.. code-block:: bash
-
-    python setup.py test
-
-.. note:: More on testing can be found in chapter :ref:`chapter_testing`.
-
-Installing MongoDB
-==================
-
-
-With SSL Support
-----------------
-
-The standard MongoDB distribution doesn't come with SSL-support enabled, so 
-you have to build it from sources. On Ubuntu Linux, the following steps 
-should do the trick:
-
-.. code-block:: bash
-
-    apt-get -y install scons libssl-dev libboost-filesystem-dev libboost-program-options-dev libboost-system-dev libboost-thread-dev
-    git clone -b r2.6.3 https://github.com/mongodb/mongo.git
-    cd mongo
-    scons --64 --ssl all
-    scons --64 --ssl --prefix=/usr install

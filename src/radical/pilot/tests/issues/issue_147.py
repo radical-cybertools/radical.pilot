@@ -15,10 +15,13 @@ from pymongo import MongoClient
 # http://docs.mongodb.org/manual/installation/
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radicalpilot_unittests'
+DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME")
+if DBNAME is None:
+    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
+    sys.exit(1)
 
 
 #-----------------------------------------------------------------------------
@@ -55,10 +58,10 @@ class TestIssue147(unittest.TestCase):
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
-        cpd.cores = 1
-        cpd.runtime = 1
-        cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd.cleanup = True
+        cpd.cores    = 1
+        cpd.runtime  = 1
+        cpd.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd.cleanup  = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
@@ -69,16 +72,16 @@ class TestIssue147(unittest.TestCase):
         um.add_pilots(pilot)
 
         cudesc = radical.pilot.ComputeUnitDescription()
-        cudesc.cores = 1
+        cudesc.cores      = 1
         cudesc.executable = "/bin/sleep"
-        cudesc.arguments = ['1']
+        cudesc.arguments  = ['1']
 
         cu = um.submit_units(cudesc)
-        um.wait_units()
+        um.wait_units(timeout=5*60)
 
         session_id = session.uid
 
-        session.close(delete=False)
+        session.close(cleanup=False)
 
         # NOW LET'S TRY TO RECONNECT
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME, session_uid=session_id)
@@ -95,9 +98,3 @@ class TestIssue147(unittest.TestCase):
 
         session.close()
 
-    #-------------------------------------------------------------------------
-    #
-    def test__issue_163_part_2(self):
-        """ https://github.com/radical-cybertools/radical.pilot/issues/163
-        """
-        pass

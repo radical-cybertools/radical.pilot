@@ -15,10 +15,13 @@ from pymongo import MongoClient
 # http://docs.mongodb.org/manual/installation/
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radicalpilot_unittests'
+DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME")
+if DBNAME is None:
+    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
+    sys.exit(1)
 
 
 #-----------------------------------------------------------------------------
@@ -62,8 +65,8 @@ class TestIssue169(unittest.TestCase):
 
         for i in range(0, 8):
             pilot = pm.submit_pilots(pilot_descriptions=cpd)
-            pilot.wait(radical.pilot.states.FAILED, timeout=2.0*60)
-            assert pilot.state == radical.pilot.states.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
+            pilot.wait(state=radical.pilot.FAILED, timeout=5*60)
+            assert pilot.state == radical.pilot.FAILED, "State is %s instead of 'Failed'." % pilot.state
 
         session.close()
 
@@ -78,26 +81,33 @@ class TestIssue169(unittest.TestCase):
         
         cpd1 = radical.pilot.ComputePilotDescription()
         cpd1.resource = "localhost"
-        cpd1.cores = 1
-        cpd1.runtime = 1
-        cpd1.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd1.cleanup = True
+        cpd1.cores    = 1
+        cpd1.runtime  = 1
+        cpd1.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd1.cleanup  = True
 
         cpd2 = radical.pilot.ComputePilotDescription()
         cpd2.resource = "localhost"
-        cpd2.cores = 1
-        cpd2.runtime = 1
-        cpd2.sandbox = "/tmp/radical.pilot.sandbox.unittests"
-        cpd2.cleanup = True
+        cpd2.cores    = 1
+        cpd2.runtime  = 1
+        cpd2.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
+        cpd2.cleanup  = True
 
         pilots = pmgr.submit_pilots([cpd1, cpd2])
 
-        pmgr.wait_pilots()
+        pmgr.wait_pilots(timeout=10*60)
         
         for pilot in pilots:
-            assert pilot.state == radical.pilot.states.DONE
-            assert pilot.stop_time is not None
-            assert pilot.start_time is not None
+            try :
+                assert pilot.state == radical.pilot.DONE, "state: %s" % pilot.state
+                assert pilot.stop_time  is not None,      "time : %s" % pilot.stop_time
+                assert pilot.start_time is not None,      "time : %s" % pilot.start_time
+            except :
+                print 'pilot: %s (%s)' % (pilot.uid, pilot.state)
+                for entry in pilot.state_history :
+                    print '       %s : %s' % (entry.timestamp, entry.state)
+                print '     : %s' % str(pilot.log)
+                raise
 
         session.close()
 

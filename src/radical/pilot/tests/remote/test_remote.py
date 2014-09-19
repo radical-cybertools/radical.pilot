@@ -21,7 +21,11 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radicalpilot_unittests'
+DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME")
+if DBNAME is None:
+    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
+    sys.exit(1)
+
 
 #-----------------------------------------------------------------------------
 #
@@ -71,7 +75,7 @@ class TestRemoteSubmission(unittest.TestCase):
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = self.test_resource
         cpd.cores = self.test_cores
-        cpd.runtime = 5
+        cpd.runtime = 15
         cpd.sandbox = self.test_workdir
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
@@ -94,10 +98,11 @@ class TestRemoteSubmission(unittest.TestCase):
             assert cu.start_time is None
             assert cu.stop_time is None
 
-        um.wait_units(state=[radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=self.test_timeout)
+        ret = um.wait_units(timeout=5*60)
+        print "Return states from wait: %s" % ret
 
         for cu in cus:
-            assert cu.state == radical.pilot.states.DONE, "state: %s" % cu.state
+            assert cu.state == radical.pilot.DONE, "state: %s" % cu.state
             assert cu.stop_time is not None
 
         pm.cancel_pilots()
@@ -130,15 +135,15 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(radical.pilot.states.ACTIVE, timeout=5.0*60)
-        assert pilot.state == radical.pilot.states.ACTIVE
+        pilot.wait(state=radical.pilot.ACTIVE, timeout=5*60)
+        assert pilot.state == radical.pilot.ACTIVE
         assert pilot.start_time is not None
         assert pilot.submission_time is not None
 
 
         # the pilot should finish after it has reached run_time
-        pilot.wait(radical.pilot.states.DONE, timeout=5.0*60)
-        assert pilot.state == radical.pilot.states.DONE
+        pilot.wait(timeout=5*60)
+        assert pilot.state == radical.pilot.DONE
         assert pilot.stop_time is not None
 
         session.close()
@@ -169,16 +174,16 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(radical.pilot.states.ACTIVE)
-        assert pilot.state == radical.pilot.states.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
+        pilot.wait(state=radical.pilot.ACTIVE, timeout=5*60)
+        assert pilot.state == radical.pilot.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
         assert pilot.submission_time is not None
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait(radical.pilot.states.CANCELED, timeout=5.0*60)
-        assert pilot.state == radical.pilot.states.CANCELED
+        pilot.wait(timeout=5*60)
+        assert pilot.state == radical.pilot.CANCELED
         assert pilot.stop_time is not None
 
         session.close()

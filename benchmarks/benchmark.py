@@ -18,7 +18,7 @@ if DBURL is None:
     print "ERROR: SAGAPILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
 
-wu = {
+cu = {
         "_UnitManagerID": "manager.objectID()",
         "_PilotID:": "pilot.objectID()",
 
@@ -71,7 +71,7 @@ print " Average time to create a collection: %f sec." % numpy.mean(create_coll_t
 ################################################################################
 # Benchmark how fast we can create new documents.
 #
-# Documents can be work units submitted to a pilot manager for example.
+# Documents can be compute units submitted to a pilot manager for example.
 #
 db = client.perftest
 collection = db.test.workunits
@@ -83,7 +83,7 @@ for i in [1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384]:
         # create a list that contains 'i' entries
         insert = list()
         for x in range(0, i):
-            insert.append(deepcopy(wu))
+            insert.append(deepcopy(cu))
 
 
         t1 = time.time()

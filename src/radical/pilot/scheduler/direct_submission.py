@@ -25,42 +25,56 @@ class DirectSubmissionScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, manager, session):
         """Le constructeur.
         """
-        Scheduler.__init__(self)
+
+        self.manager = manager
+        self.session = session
+        self.pilots  = dict()
+
         logger.info("Loaded scheduler: %s." % self.name)
 
     # -------------------------------------------------------------------------
     #
-    def __del__(self):
-        """Le destructeur.
-        """
-        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
-            logger.debug("__del__(): %s." % self.name)
+    def pilot_added (self, pilot) :
+
+        pid = pilot.uid
+
+        self.pilots[pid] = dict()
+        self.pilots[pid]['resource'] = pilot.resource
+        self.pilots[pid]['sandbox']  = pilot.sandbox
+
 
     # -------------------------------------------------------------------------
     #
-    def _name(self):
-        return "DirectSubmissionScheduler"
+    def pilot_removed (self, pid) :
+
+        if  not pid in self.pilots :
+            raise RuntimeError ('cannot remove unknown pilot (%s)' % pid)
+
+        del self.pilots[pid]
+
 
     # -------------------------------------------------------------------------
     #
-    def schedule(self, manager, unit_descriptions):
-        if manager is None:
-            raise RuntimeError ('Unit scheduler is not initialized')
+    def schedule(self, units):
 
-        pilots = manager.list_pilots()
+        pilot_ids = self.pilots.keys ()
 
-        if not len (pilots):
+        if not len (pilot_ids):
             raise RuntimeError ('Unit scheduler cannot operate on empty pilot set')
 
-        if len (pilots) > 1:
+        if len (pilot_ids) > 1:
             raise RuntimeError ('Direct Submission only works for a single pilot!')
         
-        ret            = dict()
-        ret[pilots[0]] = list ()
-        for ud in unit_descriptions:
-            ret[pilots[0]].append (ud)
+        schedule           = dict()
+        schedule['units']  = dict()
+        schedule['pilots'] = self.pilots
 
-        return ret
+        for unit in units:
+
+            schedule['units'][unit] = pilot_ids[0]
+
+        return schedule
+

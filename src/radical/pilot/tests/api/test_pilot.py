@@ -15,10 +15,13 @@ from pymongo import MongoClient
 # http://docs.mongodb.org/manual/installation/
 DBURL = os.getenv("RADICAL_PILOT_DBURL")
 if DBURL is None:
-    print "ERROR: radical.pilot_DBURL (MongoDB server URL) is not defined."
+    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = 'radicalpilot_unittests'
+DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME")
+if DBNAME is None:
+    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
+    sys.exit(1)
 
 
 #-----------------------------------------------------------------------------
@@ -66,17 +69,17 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait([radical.pilot.states.ACTIVE, radical.pilot.states.FAILED], timeout=5*60)
+        pilot.wait(state=[radical.pilot.ACTIVE, radical.pilot.FAILED], timeout=5*60)
         assert pilot.submission_time is not None
-        assert pilot.state == radical.pilot.states.ACTIVE
+        assert pilot.state == radical.pilot.ACTIVE
         assert pilot.start_time is not None
         assert pilot.log is not None
         assert pilot.sandbox == "file://localhost%s/pilot-%s/" % (cpd.sandbox, pilot.uid)
 
         # the pilot should finish after it has reached run_time
 
-        pilot.wait([radical.pilot.states.DONE, radical.pilot.states.FAILED], timeout=5*60)
-        assert pilot.state == radical.pilot.states.DONE
+        pilot.wait(timeout=5*60)
+        assert pilot.state == radical.pilot.DONE
         assert pilot.stop_time is not None
 
         session.close()
@@ -98,8 +101,8 @@ class TestPilot(unittest.TestCase):
         cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
-        pilot.wait(radical.pilot.states.FAILED, timeout=5*60)
-        assert pilot.state == radical.pilot.states.FAILED, "State is {0} instead of 'Failed'.".format(pilot.state)
+        pilot.wait(timeout=5*60)
+        assert pilot.state == radical.pilot.FAILED, "State is '%s' instead of 'Failed'." % pilot.state
 
         cpd = radical.pilot.ComputePilotDescription()
         cpd.resource = "localhost"
@@ -109,8 +112,8 @@ class TestPilot(unittest.TestCase):
         cpd.cleanup = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
-        pilot.wait(radical.pilot.states.FAILED, timeout=5*60)
-        assert pilot.state == radical.pilot.states.FAILED, ("state should be %s and not %s" % (radical.pilot.states.FAILED, pilot.state))
+        pilot.wait(timeout=5*60)
+        assert pilot.state == radical.pilot.FAILED, ("state should be %s and not %s" % (radical.pilot.FAILED, pilot.state))
 
         session.close()
 
@@ -136,16 +139,16 @@ class TestPilot(unittest.TestCase):
         assert pilot.start_time is None
         assert pilot.stop_time is None
 
-        pilot.wait([radical.pilot.states.ACTIVE, radical.pilot.states.FAILED], timeout=5*60)
+        pilot.wait(state=[radical.pilot.ACTIVE, radical.pilot.FAILED], timeout=5*60)
         assert pilot.submission_time is not None
-        assert pilot.state == radical.pilot.states.ACTIVE
+        assert pilot.state == radical.pilot.ACTIVE
         assert pilot.start_time is not None
 
         # the pilot should finish after it has reached run_time
         pilot.cancel()
 
-        pilot.wait([radical.pilot.states.CANCELED, radical.pilot.states.FAILED], timeout=5*60)
-        assert pilot.state == radical.pilot.states.CANCELED
+        pilot.wait(timeout=5*60)
+        assert pilot.state == radical.pilot.CANCELED
         assert pilot.stop_time is not None
 
         session.close()

@@ -1,4 +1,27 @@
 
+# '#FF9944'
+# '#AA6666'
+# '#FF9944'
+# '#AA6666'
+# '#FF9944'
+# '#AA6666'
+# '#AA6666'
+#
+# '#99FF44'
+# '#66AA66'
+# '#99FF44'
+# '#66AA66'
+# '#99FF44'
+# '#66AA66'
+# '#66AA66'
+#
+# '#9944FF'
+# '#6666AA'
+# '#9944FF'
+# '#6666AA'
+# '#9944FF'
+# '#6666AA'
+# '#6666AA'
 
 # print 'plot title   : ' . plottitle
 # print 'session id   : ' . session
@@ -8,43 +31,68 @@
 # print 'pilotnum     : ' . pilotnum
 # print 'nodesize     : ' . nodesize
 
+print 'pilot_num       : ' . pilot_num
+print 'pilot_id_list   : ' . pilot_id_list
+print 'pilot_name_list : ' . pilot_name_list
 
-if (pilotnum >= 1) {
-    pilot_states_1_dat    = '/tmp/rp.' . session . '.pilot.states.'    . pilot_1_id . '.dat'
-    pilot_callbacks_1_dat = '/tmp/rp.' . session . '.pilot.callbacks.' . pilot_1_id . '.dat'
-    pilot_slots_1_dat     = '/tmp/rp.' . session . '.pilot.slots.'     . pilot_1_id . '.dat'
-    pilot_queue_1_dat     = '/tmp/rp.' . session . '.pilot.queue.'     . pilot_1_id . '.dat'
-    unit_states_1_dat     = '/tmp/rp.' . session . '.unit.states.'     . pilot_1_id . '.dat'
-    unit_callbacks_1_dat  = '/tmp/rp.' . session . '.unit.callbacks.'  . pilot_1_id . '.dat'
-  # print 'pilot 1     : ' . pilot_1_name
+pilot_states_dat_list    = ''
+pilot_callbacks_dat_list = ''
+pilot_slots_dat_list     = ''
+pilot_queue_dat_list     = ''
+unit_states_dat_list     = ''
+unit_callbacks_dat_list  = ''
+offset_list              = ''
+
+color_list_1 = "#FF8855 #88FF55 #8855FF #FF55FF #55FFFF"
+color_list_2 = "#AA8855 #88AA55 #8855AA #AA55AA #55AAAA"
+
+do for [i=1:pilot_num] {
+    pilot_id = word(pilot_id_list, i)
+
+    print ''
+    print 'pilot name      : '  . word(pilot_name_list, i)
+    print 'pilot id        : '  . pilot_id
+
+    pilot_states_dat         = '/tmp/rp.' . session . '.pilot.states.'    . pilot_id . '.dat'
+    pilot_callbacks_dat      = '/tmp/rp.' . session . '.pilot.callbacks.' . pilot_id . '.dat'
+    pilot_slots_dat          = '/tmp/rp.' . session . '.pilot.slots.'     . pilot_id . '.dat'
+    pilot_queue_dat          = '/tmp/rp.' . session . '.pilot.queue.'     . pilot_id . '.dat'
+    unit_states_dat          = '/tmp/rp.' . session . '.unit.states.'     . pilot_id . '.dat'
+    unit_callbacks_dat       = '/tmp/rp.' . session . '.unit.callbacks.'  . pilot_id . '.dat'
+
+    pilot_states_dat_list    = pilot_states_dat_list    . pilot_states_dat    . ' '
+    pilot_callbacks_dat_list = pilot_callbacks_dat_list . pilot_callbacks_dat . ' '
+    pilot_slots_dat_list     = pilot_slots_dat_list     . pilot_slots_dat     . ' '
+    pilot_queue_dat_list     = pilot_queue_dat_list     . pilot_queue_dat     . ' '
+    unit_states_dat_list     = unit_states_dat_list     . unit_states_dat     . ' '
+    unit_callbacks_dat_list  = unit_callbacks_dat_list  . unit_callbacks_dat  . ' '
+
 }
-if (pilotnum >= 2) {
-    pilot_states_2_dat    = '/tmp/rp.' . session . '.pilot.states.'    . pilot_2_id . '.dat'
-    pilot_callbacks_2_dat = '/tmp/rp.' . session . '.pilot.callbacks.' . pilot_2_id . '.dat'
-    pilot_slots_2_dat     = '/tmp/rp.' . session . '.pilot.slots.'     . pilot_2_id . '.dat'
-    pilot_queue_2_dat     = '/tmp/rp.' . session . '.pilot.queue.'     . pilot_2_id . '.dat'
-    unit_states_2_dat     = '/tmp/rp.' . session . '.unit.states.'     . pilot_2_id . '.dat'
-    unit_callbacks_2_dat  = '/tmp/rp.' . session . '.unit.callbacks.'  . pilot_2_id . '.dat'
-  # print 'pilot 2     : ' . pilot_2_name
+
+offset(i,n) = (i * n)  -  (pilot_num / 2 * n)
+hex(i)      = "0123456789ABCDEF"[i:i]
+hexx(i)     = hex(i).hex(i)
+color_1(i)  = word(color_list_1,i)
+color_2(i)  = word(color_list_2,i)
+get_title(i)= sprintf("%s: %-15s (%s cores)", word(pilot_id_list,i), word(pilot_name_list,i), word(slotnum_list,i))
+
+print 'palette '
+do for [i=1:pilot_num] {
+    print  '        ' . color_1(i) . '  ' . color_2(i)
 }
 
-if (pilotnum >= 3) {
-    pilot_states_3_dat    = '/tmp/rp.' . session . '.pilot.states.'    . pilot_3_id . '.dat'
-    pilot_callbacks_3_dat = '/tmp/rp.' . session . '.pilot.callbacks.' . pilot_3_id . '.dat'
-    pilot_slots_3_dat     = '/tmp/rp.' . session . '.pilot.slots.'     . pilot_3_id . '.dat'
-    pilot_queue_3_dat     = '/tmp/rp.' . session . '.pilot.queue.'     . pilot_3_id . '.dat'
-    unit_states_3_dat     = '/tmp/rp.' . session . '.unit.states.'     . pilot_3_id . '.dat'
-    unit_callbacks_3_dat  = '/tmp/rp.' . session . '.unit.callbacks.'  . pilot_3_id . '.dat'
-  # print 'pilot 3     : ' . pilot_3_name
+print 'offsets'
+do for [i=1:pilot_num] {
+    print  '        ' . sprintf ("%f", offset (i, 0.2))
+    print word(slotnum_list,i)+offset(i,0.5)
 }
 
-if (pilotnum >= 4) {
-    print "only support up to three pilots"
-    exit
+print 'pilot_queue_dats'
+do for [i=1:pilot_num] {
+    print word(pilot_queue_dat_list,i)
 }
 
-
-terms = 'png pdf'
+terms = 'pdf png'
 do for [term_i=1:words(terms)] {
     t = word(terms, term_i)
     term_t = t.'cairo'
@@ -138,7 +186,7 @@ do for [term_i=1:words(terms)] {
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set xtics  timetics
-    set mxtics mtimetics
+  # set mxtics mtimetics
     set yrange [0:8]
     set ytics  ("PENDING LAUNCH" 1, \
                 "LAUNCHING     " 2, \
@@ -152,176 +200,94 @@ do for [term_i=1:words(terms)] {
     set format x ""
     set grid
 
-    if (pilotnum==1) {
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101
-    }                                               
-    if (pilotnum==2) {                              
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             pilot_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             pilot_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201
-    }                                               
-    if (pilotnum==3) {                              
-        plot pilot_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             pilot_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             pilot_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             pilot_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201 , \
-             pilot_states_3_dat    using 1:($2-0.1) title '' with steps  ls 300 , \
-             pilot_callbacks_3_dat using 1:($2+0.1) title '' with points ls 301
-    }
+  # set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
+  # set style line 101 lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.4 lw term_mult*1
+    plot for [i=1:pilot_num] \
+         word(pilot_states_dat_list,i)    using 1:($2+offset(i,0.05))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*2, \
+         for [i=1:pilot_num] \
+         word(pilot_callbacks_dat_list,i) using 1:($2+offset(i,0.05)+0.05) title '' with points lt 1 lc rgb color_2(i) lw term_mult*1
  
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set yrange [0:12]
     set ytics  ("NEW            "  1, \
-                "PEND.   INPUT  "  2, \
-                "TRANSF. INPUT  "  3, \
-                "PEND. EXECUTION"  4, \
-                "SCHEDULING     "  5, \
-                "EXECUTING      "  6, \
-                "PEND.   OUTPUT "  7, \
-                "TRANSF. OUTPUT "  8, \
-                "DONE           "  9, \
-                "CANCELED       " 10, \
-                "FAILED         " 11)
+                "STATE_X        "  2, \
+                "PEND.   INPUT  "  3, \
+                "TRANSF. INPUT  "  4, \
+                "PEND. EXECUTION"  5, \
+                "SCHEDULING     "  6, \
+                "EXECUTING      "  7, \
+                "PEND.   OUTPUT "  8, \
+                "TRANSF. OUTPUT "  9, \
+                "DONE           " 10, \
+                "CANCELED       " 11, \
+                "FAILED         " 12)
 
     set xlabel ''
     set ylabel "UNITS\n[states]" offset second -0.06,0
     set format x ""
     set grid
 
-    if (pilotnum==1) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101
-    }
-    if (pilotnum==2) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201
-    }
-    if (pilotnum==3) {
-        plot unit_states_1_dat    using 1:($2-0.1) title '' with steps  ls 100 , \
-             unit_callbacks_1_dat using 1:($2+0.1) title '' with points ls 101 , \
-             unit_states_2_dat    using 1:($2-0.1) title '' with steps  ls 200 , \
-             unit_callbacks_2_dat using 1:($2+0.1) title '' with points ls 201 , \
-             unit_states_3_dat    using 1:($2-0.1) title '' with steps  ls 300 , \
-             unit_callbacks_3_dat using 1:($2+0.1) title '' with points ls 301
-    }
+  # set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
+  # set style line 101 lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.4 lw term_mult*1
+    plot for [i=1:pilot_num] \
+         word(unit_states_dat_list,i)    using 1:($2+offset(i,0.05))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*2, \
+         for [i=1:pilot_num] \
+         word(unit_callbacks_dat_list,i) using 1:($2+offset(i,0.05)+0.05) title '' with points lt 1 lc rgb color_2(i) lw term_mult*1
 
     # ------------------------------------------------------------------------------------
-    set xrange [0:maxtime]
-    set yrange [1:maxslots+nodesize/2]
-    set mytics nodesize
-    set ytics  autofreq
-    set y2tics autofreq
+    set xrange  [0:maxtime]
+    set yrange  [0:slotsscale]
+    set mytics  nodesize
+    set ytics   autofreq
+    set mytics  0
+    set y2tics  autofreq
+    set y2range [0:queuescale]
+    set my2tics 0
 
     set xlabel ''
     set ylabel "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
     set grid 
   unset format
 
-    if (pilotnum==1) {
-      plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
-           pilot_queue_1_dat using 1:($2+0.1) title '' with steps ls 106 axes x1y2 , \
-           slotnum_1                          title '' with lines ls 105 
-    }
-    if (pilotnum==2) {
-      plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
-           pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 106 axes x1y2 , \
-           slotnum_1                          title '' with lines ls 105 , \
-           pilot_slots_2_dat using 1:($2+0.3) title '' with lines ls 204 , \
-           pilot_queue_2_dat using 1:($2+0.3) title '' with steps ls 206 axes x1y2 , \
-           slotnum_2                          title '' with lines ls 205  
-    }
-    if (pilotnum==3) {
-      plot pilot_slots_1_dat using 1:($2+0.0) title '' with lines ls 104 , \
-           pilot_queue_1_dat using 1:($2+0.0) title '' with steps ls 106 axes x1y2 , \
-           slotnum_1                          title '' with lines ls 105 , \
-           pilot_slots_2_dat using 1:($2+0.2) title '' with lines ls 204 , \
-           pilot_queue_2_dat using 1:($2+0.2) title '' with steps ls 206 axes x1y2 , \
-           slotnum_2                          title '' with lines ls 205 , \
-           pilot_slots_3_dat using 1:($2+0.4) title '' with lines ls 304 , \
-           pilot_queue_3_dat using 1:($2+0.4) title '' with steps ls 306 axes x1y2 , \
-           slotnum_3                          title '' with lines ls 305 
-    }
+  # set style line 104 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*3
+  # set style line 106 lt 1 lc rgb '#AA6666' pt 7 ps term_mult*0.6 lw term_mult*2
+  # set style line 105 lt 2 lc rgb '#AA6666' pt 7 ps term_mult*0.6 lw term_mult*3
+    plot for [i=1:pilot_num] \
+         word(pilot_slots_dat_list,i) using 1:($2+offset(i,0.1))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*3, \
+         for [i=1:pilot_num] \
+         word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.05) title '' with points lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
+         for [i=1:pilot_num] \
+         word(slotnum_list,i)+0+offset(i,0.5)                         title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
 
-    # ------------------------------------------------------------------------------------
-    # Key plot
-    set   tmargin 7
-    set   lmargin 24
-    set   border  lw 0
-    unset tics
-    unset xlabel
-    set   ylabel ""# "Legend and\nStatistics" offset second -17,0
-    set   yrange [0:1]
-    if (pilotnum==1) {
-      set  key center left reverse
-      plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 101 t 'pilot/unit states notified to application'        , \
-           NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 105 t 'total number of slots'                            , \
-           NaN ls 106 t 'unit queue length'                                , \
-           NaN lw   0 t ' '
-    }
-    if (pilotnum==2) {
+      # ------------------------------------------------------------------------------------
+      # Key plot
+      set   tmargin 7
+      set   lmargin 24
+      set   border  lw 0
+      unset tics
+      unset xlabel
+      set   ylabel ""# "Legend and\nStatistics" offset second -17,0
+      set   yrange [0:1]
+
+
       set   key top left reverse maxrows 7
-      plot NaN lw   0 with steps  t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 with steps  t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 101 with points t 'pilot/unit states notified to application   '     , \
-           NaN ls 104 with steps  t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 105 with steps  t 'total number of slots'                            , \
-           NaN ls 106 with steps  t 'unit queue length'                                , \
-           NaN lw   0 with steps  t ' '                                                , \
-           NaN lw   0 with steps  t 'PILOT 2 ('.pilot_2_name.'):'                      , \
-           NaN ls 200 with steps  t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 201 with steps  t 'pilot/unit states notified to application'        , \
-           NaN ls 204 with steps  t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 205 with steps  t 'total number of slots'                            , \
-           NaN ls 206 with steps  t 'unit queue length'                                , \
-           NaN lw   0 with steps  t ' '
-    }
-    if (pilotnum==3) {
-      set   key top left reverse maxrows 14
-      plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-           NaN ls 100 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 101 t 'pilot/unit states notified to application   '     , \
-           NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 105 t 'total number of slots'                            , \
-           NaN ls 106 t 'unit queue length'                                , \
-           NaN lw   0 t ' '                                                , \
-           NaN lw   0 t 'PILOT 2 ('.pilot_2_name.'):'                      , \
-           NaN ls 200 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 201 t 'pilot/unit states notified to application'        , \
-           NaN ls 204 t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 205 t 'total number of slots'                            , \
-           NaN ls 206 t 'unit queue length'                                , \
-           NaN lw   0 t ' '                                                , \
-           NaN lw   0 t 'PILOT 3 ('.pilot_3_name.'):'                      , \
-           NaN ls 300 t 'pilot/unit states recorded by RP agent'           , \
-           NaN ls 301 t 'pilot/unit states notified to application'        , \
-           NaN ls 304 t 'busy slot (i.e. used CPU core)'                   , \
-           NaN ls 305 t 'total number of slots'                            , \
-           NaN ls 306 t 'unit queue length'                                , \
-           NaN lw   0 t ' '                                                , \
-           NaN lw   0 t ' '                                                , \
-           NaN lw   0 t ' '                                                , \
-           NaN lw   0 t ' '                                                , \
-           NaN lw   0 t ' '                                                , \
-           NaN lw   0 t ' '                                                , \
-           NaN lw   0 t ' '
-    }
-    # ------------------------------------------------------------------------------------
+
+    # set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
+      plot for [i=1:pilot_num] \
+           NaN with lines title get_title(i) lt 1 lc rgb color_1(i) lw term_mult*2
+
+#     plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
+#            NaN ls 100 t 'pilot/unit states changes'                        , \
+#            NaN ls 101 t 'pilot/unit states notifications'                  , \
+#            NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
+#            NaN ls 105 t 'total number of slots'                            , \
+#            NaN ls 106 t 'unit queue length'                                , \
+#            NaN lw   0 t ' '
+#     }
 
     unset multiplot
-    # ------------------------------------------------------------------------------------
-
 }
-
-
-
 
 # ------------------------------------------------------------------------------
 # vim: ft=gnuplot

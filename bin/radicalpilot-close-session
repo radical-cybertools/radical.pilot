@@ -1,0 +1,248 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import bson
+import pprint
+import datetime
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+_DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+
+if  'RADICAL_PILOT_DBURL' in os.environ :
+    _DEFAULT_DBURL = os.environ['RADICAL_PILOT_DBURL']
+
+_DEFAULT_DBURL = ru.Url (_DEFAULT_DBURL)
+if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path :
+    _DEFAULT_DBURL.path = 'radicalpilot'
+
+_DEFAULT_DBURL = str(_DEFAULT_DBURL)
+
+# ------------------------------------------------------------------------------
+#
+def usage (msg=None, noexit=False) :
+
+    if  msg :
+        print "\n      Error: %s" % msg
+
+    print """
+      usage      : %s [-d <dburl>] [-m <mode>] [-a <age>] [-s <sid>]
+      example    : %s -a 3d -m purge
+                   purge all sessions older than 3 days in the default database
+
+      modes :
+
+        help     : show this message
+        list     : list   matching sessions
+        purge    : remove matching sessions
+        export   : export matching sessions, then purge them.
+                   Exported sessions are stored in .bson files in PWD.
+
+      options :
+        -a <age> : apply mode to all sessions older than <age>
+                   age is formed as <int>+<suffix>.  Valid suffixes are:
+                   m : minutes
+                   h : hours
+                   d : days   (default)
+                   w : weeks
+                   M : months ( 30 days)
+                   y : years  (365 days)
+        -s <sid> : apply mode to session with given ID
+        -d <url> : use given database URL instead of default (%s).
+
+      The default command is 'list'.  
+      
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+
+    if  msg :
+        sys.exit (1)
+
+    if  not noexit :
+        sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+#
+def list_sessions (dbclient, dbname, age, session) :
+
+    sids = list()
+    now  = datetime.datetime.now ()
+
+    if  session :
+        sids.append (session)
+    else :
+        sids = rpu.get_session_ids (dbclient, dbname)
+
+    if not sids :
+        print 'no matching session in database at %s' % url
+        return
+
+    sessions = dict()
+    created  = list()
+    for sid in sids :
+        docs = rpu.get_session_docs (dbclient, dbname, sid)
+        c    = docs['session']['created']
+        if (now-c) > age :
+            sessions[sid] = docs
+            created.append (c)
+            print 'check  session %s + (%17s)' % (sid, now-c)
+        else :
+            print 'check  session %s - (%17s)' % (sid, now-c)
+          # print 'optimignore remaining sessions'
+            break
+
+
+    for c in sorted (created) :
+        for sid in sessions :
+            if  sessions[sid]['session']['created'] == c :
+                print 'match  session %s   (%17s)' % (sid, now-c)
+
+    return sessions
+
+
+# ------------------------------------------------------------------------------
+#
+def purge_sessions (dbclient, dbname, age, session) :
+
+    sessions = list_sessions (dbclient, dbname, age, session)
+    database = dbclient[dbname]
+
+    for sid in sessions () :
+        print 'purge  session %s' % sid
+        database.drop_collection (name)
+
+
+
+# ------------------------------------------------------------------------------
+#
+def export_sessions (dbclient, dbname, age, session) :
+
+    sessions = list_sessions (dbclient, dbname, age, session)
+    database = dbclient[dbname]
+
+    for sid in sessions :
+
+        docs = sessions[sid]
+
+        print "export session %s.*.bson" % sid
+        with open ('%s.bson' % sid, 'w') as f : 
+            f.write (bson.BSON.encode ({'sessions': [docs['session']]}))
+
+        with open ('%s.p.bson' % sid, 'w') as f : 
+            f.write (bson.BSON.encode ({'pilots' : docs['pilot']}))
+
+        with open ('%s.pm.bson' % sid, 'w') as f : 
+            f.write (bson.BSON.encode ({'pilot_managers' : docs['pmgr']}))
+
+        with open ('%s.cu.bson' % sid, 'w') as f : 
+            f.write (bson.BSON.encode ({'units' : docs['unit']}))
+
+        with open ('%s.um.bson' % sid, 'w') as f : 
+            f.write (bson.BSON.encode ({'unit_managers' : docs['umgr']}))
+
+        print 'purge  session %s' % sid
+        database.drop_collection ("%s"    % sid)
+        database.drop_collection ("%s.p"  % sid)
+        database.drop_collection ("%s.pm" % sid)
+        database.drop_collection ("%s.cu" % sid)
+        database.drop_collection ("%s.um" % sid)
+
+# ------------------------------------------------------------------------------
+# 
+def parse_commandline():
+
+    return options
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__' :
+
+    import optparse
+    parser = optparse.OptionParser (add_help_option=False)
+
+    parser.add_option('-s', '--session', dest='session')
+    parser.add_option('-d', '--dburl',   dest='url')
+    parser.add_option('-m', '--mode',    dest='mode')
+    parser.add_option('-a', '--age',     dest='age')
+    parser.add_option('-h', '--help',    dest='help', action="store_true")
+
+    options, args = parser.parse_args ()
+
+    if  args :
+        usage ("Too many arguments (%s)" % args)
+
+    if  options.help :
+        usage ()
+
+    if  options.mode in ['help'] : 
+        usage ()
+
+    if  not options.mode :
+        usage ("No mode specified")
+
+    if  not options.url : 
+        options.url = _DEFAULT_DBURL 
+
+
+    mode    = options.mode 
+    url     = options.url
+    session = options.session
+    age     = options.age
+
+    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
+    dbclient = pymongo.MongoClient (host=host, port=port)
+
+    print "modes   : %s" % mode
+    print "db url  : %s" % url
+
+    if  session :
+        print "session : %s" % session
+
+    if  age :
+        suffix=age[-1]
+        if  suffix in '01234567890' :
+            suffix = 'd'
+            num    = int(age)
+        
+        if  suffix in 'mhdwMy' :
+            num    = int(age[:-1])
+        else :
+            print suffix
+            usage ("invalid age specification (%s)" % options.age)
+
+        if  suffix is 'm' : age = datetime.timedelta (minutes =       num)
+        if  suffix is 'h' : age = datetime.timedelta (hours   =       num)
+        if  suffix is 'd' : age = datetime.timedelta (days    =       num)
+        if  suffix is 'w' : age = datetime.timedelta (days    =   7 * num)
+        if  suffix is 'M' : age = datetime.timedelta (days    =  30 * num)
+        if  suffix is 'y' : age = datetime.timedelta (days    = 365 * num)
+
+
+    else :
+        age = datetime.timedelta.min
+
+    print "age     : %s" % age
+
+
+    for m in mode.split (',') :
+
+        if  m not in ['list', 'purge', 'export', 'help'] : 
+            usage ("Unsupported mode '%s'" % m)
+
+        if   m == 'list'  : list_sessions   (dbclient, dbname, age, session)
+        elif m == 'purge' : purge_sessions  (dbclient, dbname, age, session) 
+        elif m == 'export': export_sessions (dbclient, dbname, age, session) 
+        elif m == 'help'  : usage (noexit=True)
+        else              : usage ("unknown mode '%s'" % mode)
+
+    # ------------------------------------------------------------------------------------
+    dbclient.disconnect ()
+
+# ------------------------------------------------------------------------------
+

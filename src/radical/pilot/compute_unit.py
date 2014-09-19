@@ -12,12 +12,18 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import os
+import copy
 import time
 
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.states import *
 from radical.pilot.exceptions import *
+
+from bson import ObjectId
+from radical.pilot.db.database import COMMAND_CANCEL_COMPUTE_UNIT
+
+from radical.pilot.staging_directives import expand_staging_directive
 
 # -----------------------------------------------------------------------------
 #
@@ -66,30 +72,48 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(unit_manager_obj, unit_uid, unit_description):
+    def _create(unit_manager_obj, unit_description, local_state):
         """ PRIVATE: Create a new compute unit.
         """
         # create and return pilot object
         computeunit = ComputeUnit()
-        computeunit._uid = unit_uid
 
-        computeunit._description = unit_description
-        computeunit._manager = unit_manager_obj
+        # Make a copy of the UD to work on without side-effects.
+        ud_copy = copy.deepcopy(unit_description)
 
-        computeunit._worker = unit_manager_obj._worker
+        # sanity check on description
+        if  (not 'executable' in unit_description or \
+             not unit_description['executable']   )  and \
+            (not 'kernel'     in unit_description or \
+             not unit_description['kernel']       )  :
+            raise PilotException ("ComputeUnitDescription needs an executable or application kernel")
+
+        # If staging directives exist, try to expand them
+        if  ud_copy.input_staging:
+            ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging, logger)
+
+        if  ud_copy.output_staging:
+            ud_copy.output_staging = expand_staging_directive(ud_copy.output_staging, logger)
+
+        computeunit._description = ud_copy
+        computeunit._manager     = unit_manager_obj
+        computeunit._worker      = unit_manager_obj._worker
+        computeunit._uid         = str(ObjectId())
+        computeunit._local_state = local_state
+
         return computeunit
 
     # -------------------------------------------------------------------------
     #
     @staticmethod
     def _get(unit_manager_obj, unit_ids):
-        """ PRIVATE: Get one or more pilot via their UIDs.
+        """ PRIVATE: Get one or more Compute Units via their UIDs.
         """
         units_json = unit_manager_obj._session._dbs.get_compute_units(
             unit_manager_id=unit_manager_obj.uid,
             unit_ids=unit_ids
         )
-        # create and return pilot objects
+        # create and return unit objects
         computeunits = []
 
         for u in units_json:
@@ -135,16 +159,16 @@ class ComputeUnit(object):
     #
     @property
     def uid(self):
-        """Returns the Pilot's unique identifier.
+        """Returns the unit's unique identifier.
 
-        The uid identifies the ComputePilot within a :class:`PilotManager` and
-        can be used to retrieve an existing Pilot.
+        The uid identifies the ComputeUnit within a :class:`UnitManager` and
+        can be used to retrieve an existing ComputeUnit.
 
         **Returns:**
             * A unique identifier (string).
         """
         # uid is static and doesn't change over the lifetime
-        # of a pilot, hence it can be stored in a member var.
+        # of a unit, hence it can be stored in a member var.
         return self._uid
 
     # -------------------------------------------------------------------------
@@ -195,10 +219,10 @@ class ComputeUnit(object):
     #
     @property
     def description(self):
-        """Returns the pilot description the ComputeUnit was started with.
+        """Returns the ComputeUnitDescription the ComputeUnit was started with.
         """
         # description is static and doesn't change over the lifetime
-        # of a pilot, hence it is stored as a member var.
+        # of a unit, hence it is stored as a member var.
         return self._description
 
     # -------------------------------------------------------------------------
@@ -210,14 +234,18 @@ class ComputeUnit(object):
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['state']
+        # try to get state from worker.  If that fails, return local state.
+        try :
+            cu_json = self._worker.get_compute_unit_data(self.uid)
+            return cu_json['state']
+        except Exception as e :
+            return self._local_state
 
     # -------------------------------------------------------------------------
     #
     @property
     def state_history(self):
-        """Returns the complete state history of the pilot.
+        """Returns the complete state history of the ComputeUnit.
         """
         if not self._uid:
             raise exceptions.IncorrectState(msg="Invalid instance.")
@@ -267,7 +295,7 @@ class ComputeUnit(object):
             raise exceptions.IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['exec_locs']
+        return cu_json
 
     # -------------------------------------------------------------------------
     #
@@ -276,7 +304,7 @@ class ComputeUnit(object):
         """Returns the exeuction location(s) of the ComputeUnit.
            This is just an alias for execution_details.
         """
-        return self.execution_details
+        return self.execution_details['exec_locs']
 
     # -------------------------------------------------------------------------
     #
@@ -366,7 +394,7 @@ class ComputeUnit(object):
         # the self.state property pulls the state from the back end.
         new_state = self.state
         while new_state not in state:
-            time.sleep(1)
+            time.sleep(0.1)
 
             new_state = self.state
             logger.debug(
@@ -375,13 +403,13 @@ class ComputeUnit(object):
             if(None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
 
-        # done waiting
-        return
+        # done waiting -- return the state
+        return new_state
 
     # -------------------------------------------------------------------------
     #
     def cancel(self):
-        """Terminates the ComputeUnit.
+        """Cancel the ComputeUnit.
 
         **Raises:**
 
@@ -392,13 +420,40 @@ class ComputeUnit(object):
             raise exceptions.radical.pilotException(
                 "Invalid Compute Unit instance.")
 
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        pilot_uid = cu_json['pilot']
+
         if self.state in [DONE, FAILED, CANCELED]:
             # nothing to do
-            return
+            logger.debug("Compute unit %s has state %s, can't cancel any longer." % (self._uid, self.state))
 
-        if self.state in [UNKNOWN]:
+        elif self.state in [NEW, PENDING_INPUT_STAGING]:
+            logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
+
+        elif self.state == STAGING_INPUT:
+            logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
+
+        elif self.state in [PENDING_EXECUTION, SCHEDULING]:
+            logger.debug("Compute unit %s has state %s, will abort start-up." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
+
+        elif self.state == EXECUTING:
+            logger.debug("Compute unit %s has state %s, will terminate the task." % (self._uid, self.state))
+            self._manager._session._dbs.send_command_to_pilot(cmd=COMMAND_CANCEL_COMPUTE_UNIT, arg=self.uid, pilot_ids=pilot_uid)
+
+        elif self.state == PENDING_OUTPUT_STAGING:
+            logger.debug("Compute unit %s has state %s, will abort the transfer." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
+
+        elif self.state == STAGING_OUTPUT:
+            logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
+            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
+
+        else:
             raise exceptions.radical.pilotException(
-                "Compute Unit state is UNKNOWN, cannot cancel")
+                "Unknown Compute Unit state: %s, cannot cancel" % self.state)
 
-        # done waiting
+        # done canceling
         return
