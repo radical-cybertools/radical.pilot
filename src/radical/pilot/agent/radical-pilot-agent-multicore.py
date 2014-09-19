@@ -706,72 +706,86 @@ class ExecutionEnvironment(object):
 
         self.log.info("Configured to run on system with %s." % LRMS_LOADL)
 
-        #LOADL_HOSTFILE
+        # Determine method for determining hosts,
+        # either through hostfile or BG/Q environment.
         loadl_hostfile = os.environ.get('LOADL_HOSTFILE')
         loadl_bg_block = os.environ.get('LOADL_BG_BLOCK')
         if loadl_hostfile is None and loadl_bg_block is None:
-            msg = "$LOADL_HOSTFILE not set!"
-            #self.log.error(msg)
-            #raise Exception(msg)
-
-            # TODO: HACK
-            self.node_list = ['nodea', 'nodeb']
-            self.cores_per_node = 16
-            return
-
-        # Torus connectivity
-        # ABCDE
-        # E=2 (always)
-        # LOADL_BG_SHAPE=2x2x4x4x2
-
-        # LOADL_BG_MPS=R00-M0
-        # LOADL_BG_BLOCK=LL14080512042473
-        # LOADL_BG_IOLINKS=R00-M0-N00-J06,R00-M0-N00-J11
-        # LOADL_BG_SIZE=128
-
-
-        # Sub-block jobs:
-        # - New with BG/Q
-        # - Small blocks are dynamically subdivided by the job scheduler into yet smaller rectangular blocks
-        # - Allows multiple jobs from multiple users to run within a single block
-        # - Any job shape, between a single node (1x1x1x1x1) and the entire midplane (4x4x4x4x2), is valid for a sub-block job
-        # - Caveat: all sub-block jobs share the enclosing block's I/O node(s). This can result in I/O contention between jobs
-        # - MPI interference between jobs is prevented
-
-
-        # A=RACK * B=MIDPLANE * C=BOARD * D=NODE * E=CORE (* T=HARDWARE THREAD)
-
-        # BG Shape Allocated: 2x2x4x4x2
-        # BG Block Allocated: LL14080512042473
-        # BG Block Status: Initialized
-        # BG Block Boot Time: Tue 05 Aug 2014 12:04:24 PM BST
-        # BG Midplane List: R00-M0
-        # BG Node Board List: R00-M0-N00,R00-M0-N01,R00-M0-N02,R00-M0-N03
-        # BG IOLinks Per MP: R00-M0-N00-J06,R00-M0-N00-J11
-
-        #LOADL_TOTAL_TASKS
-        loadl_total_tasks_str = os.environ.get('LOADL_TOTAL_TASKS')
-        if loadl_total_tasks_str is None:
-            msg = "$LOADL_TOTAL_TASKS not set!"
+            msg = "Neither $LOADL_HOSTFILE or $LOADL_BG_BLOCK set!"
             self.log.error(msg)
             raise Exception(msg)
-        else:
-            loadl_total_tasks = int(loadl_total_tasks_str)
 
-        loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
-        self.log.info("Found LOADL_HOSTFILE %s. Expanded to: %s" % (loadl_hostfile, loadl_nodes))
-        loadl_node_list = list(set(loadl_nodes))
+        # Determine the size of the pilot allocation
+        if loadl_hostfile is not None:
+            loadl_total_tasks_str = os.environ.get('LOADL_TOTAL_TASKS')
+            if loadl_total_tasks_str is None:
+                msg = "$LOADL_TOTAL_TASKS not set!"
+                self.log.error(msg)
+                raise Exception(msg)
+            else:
+                loadl_total_tasks = int(loadl_total_tasks_str)
+        elif loadl_bg_block is not None:
+            loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
+            if loadl_bg_size_str is None:
+                msg = "$LOADL_BG_SIZE not set!"
+                self.log.error(msg)
+                raise Exception(msg)
+            else:
+                loadl_bg_size = int(loadl_bg_size_str)
 
-        # Assume: cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
-        loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
+        # Construct the host list
+        if loadl_hostfile is not None:
+            loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
+            self.log.info("Found LOADL_HOSTFILE %s. Expanded to: %s" % (loadl_hostfile, loadl_nodes))
+            loadl_node_list = list(set(loadl_nodes))
 
-        # Verify that $LLOAD_TOTAL_TASKS == len($LOADL_HOSTFILE)
-        if loadl_total_tasks != len(loadl_nodes):
-            self.log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)" % \
-                           (loadl_total_tasks, len(loadl_nodes)))
+            # Verify that $LLOAD_TOTAL_TASKS == len($LOADL_HOSTFILE)
+            if loadl_total_tasks != len(loadl_nodes):
+                self.log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)" % \
+                               (loadl_total_tasks, len(loadl_nodes)))
+        elif loadl_bg_block is not None:
+            loadl_job_name = os.environ.get('LOADL_JOB_NAME')
+            if loadl_job_name is None:
+                msg = "$LOADL_JOB_NAME not set!"
+                self.log.error(msg)
+                raise Exception(msg)
+
+            # Get the board list and block shape from 'llq -l' output
+            output = subprocess.check_output(["llq", "-l", loadl_job_name])
+            loadl_bg_board_list_str = None
+            loadl_bg_block_shape_str = None
+            for line in output.splitlines():
+                # Detect BG board list
+                if "BG Node Board List: " in line:
+                    loadl_bg_board_list_str = line.split(':')[1].strip()
+                elif "BG Shape Allocated: " in line:
+                    loadl_bg_block_shape_str = line.split(':')[1].strip()
+            if not loadl_bg_board_list_str:
+                msg = "No board list found in llq output!"
+                self.log.error(msg)
+                raise Exception(msg)
+            if not loadl_bg_block_shape_str:
+                msg = "No board shape found in llq output!"
+                self.log.error(msg)
+                raise Exception(msg)
+
+            # Build nodes data structure
+            #loadl_node_list = shapeandboards2block(loadl_bg_block_shape_str, loadl_bg_board_list_str)
+
+            # TODO: HACK
+            loadl_node_list = loadl_bg_size * ['node42']
+
+        # Determine the number of cpus per node
+        if loadl_hostfile is not None:
+            # Assume: cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
+            loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
+
+        elif loadl_bg_block is not None:
+            loadl_cpus_per_node = 16
 
         self.node_list = loadl_node_list
         self.cores_per_node = loadl_cpus_per_node
+
 
     #-------------------------------------------------------------------------
     #
