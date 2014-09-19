@@ -44,11 +44,6 @@ if __name__ == "__main__":
     # well as security crendetials.
     session = rp.Session()
 
-    # Add an ssh identity to the session.
-    c = rp.Context('ssh')
-    c.user_id = "merzky"
-    session.add_context(c)
-
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
 
@@ -60,11 +55,10 @@ if __name__ == "__main__":
     # Define a 2-core local pilot that runs for 10 minutes and cleans up
     # after itself.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "india.futuregrid.org"
+    pdesc.resource  = "stampede.tacc.utexas.edu"
     pdesc.runtime   = 15 # minutes
     pdesc.cores     = 8
-    # pdesc.project = "TG-MCB090174"
-    pdesc.cleanup   = True
+    pdesc.project   = "TG-MCB090174"
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
