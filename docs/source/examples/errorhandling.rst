@@ -5,13 +5,9 @@ Error Handling Strategies
 *************************
 
 
-Simple Error Handling
-=====================
+Error Handling in RADICAL-Pilot
+===============================
 
 .. literalinclude:: ../../../examples/error_handling.py
 
 
-Error Handling with Callbacks
-=============================
-
-.. literalinclude:: ../../../examples/error_handling_callback.py

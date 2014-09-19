@@ -39,16 +39,21 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH     = 'SSH'
-LAUNCH_METHOD_APRUN   = 'APRUN'
-LAUNCH_METHOD_LOCAL   = 'LOCAL'
-LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
-LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
-LAUNCH_METHOD_POE     = 'POE'
-LAUNCH_METHOD_IBRUN   = 'IBRUN'
+LAUNCH_METHOD_SSH           = 'SSH'
+LAUNCH_METHOD_APRUN         = 'APRUN'
+LAUNCH_METHOD_LOCAL         = 'LOCAL'
+LAUNCH_METHOD_MPIRUN        = 'MPIRUN'
+LAUNCH_METHOD_MPIRUN_RSH    = 'MPIRUN_RSH'
+LAUNCH_METHOD_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
+LAUNCH_METHOD_MPIEXEC       = 'MPIEXEC'
+LAUNCH_METHOD_POE           = 'POE'
+LAUNCH_METHOD_IBRUN         = 'IBRUN'
+LAUNCH_METHOD_DPLACE        = 'DPLACE'
 
 MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
                               LAUNCH_METHOD_MPIRUN,
+                              LAUNCH_METHOD_MPIRUN_RSH,
+                              LAUNCH_METHOD_MPIRUN_DPLACE,
                               LAUNCH_METHOD_POE,
                               LAUNCH_METHOD_APRUN,
                               LAUNCH_METHOD_MPIEXEC]
@@ -103,7 +108,7 @@ PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just
 STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
 #---------------------------------------------------------------------------
-MAX_IO_LOGLENGTH            = 1024 # max number of unit out/err chars to push to db
+MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push to db
 
 
 #---------------------------------------------------------------------------
@@ -239,6 +244,7 @@ class ExecutionEnvironment(object):
 
         task_launch_command = None
         mpi_launch_command = None
+        dplace_command = None
 
         # Regular tasks
         if task_launch_method == LAUNCH_METHOD_LOCAL:
@@ -255,6 +261,15 @@ class ExecutionEnvironment(object):
             command = self._which('aprun')
             if command is not None:
                 task_launch_command = command
+
+        elif task_launch_method == LAUNCH_METHOD_DPLACE:
+            # dplace: job launcher for SGI systems (e.g. on Blacklight)
+            dplace_command = self._which('dplace')
+            if dplace_command is not None:
+                task_launch_command = dplace_command
+            else:
+                raise Exception("dplace not found!")
+
         else:
             raise Exception("Task launch method not set or unknown: %s!" % task_launch_method)
 
@@ -267,11 +282,28 @@ class ExecutionEnvironment(object):
             if command is not None:
                 mpi_launch_command = command
 
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # mpirun_rsh (e.g. on Gordon@ SDSC)
+            command = self._which('mpirun_rsh')
+            if command is not None:
+                mpi_launch_command = command
+
         elif mpi_launch_method == LAUNCH_METHOD_MPIEXEC:
             # mpiexec (e.g. on SuperMUC)
             command = self._which('mpiexec')
             if command is not None:
                 mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
+            # mpirun + dplace: mpi job launcher for SGI systems (e.g. on Blacklight)
+            command = self._which('mpirun')
+            if command is not None:
+                mpi_launch_command = command
+
+            if dplace_command is None:
+                dplace_command = self._which('dplace')
+                if dplace_command is None:
+                    raise Exception("dplace not found")
 
         elif mpi_launch_method == LAUNCH_METHOD_APRUN:
             # aprun: job launcher for Cray systems
@@ -301,7 +333,8 @@ class ExecutionEnvironment(object):
             'task_launch_method': task_launch_method,
             'task_launch_command': task_launch_command,
             'mpi_launch_method': mpi_launch_method,
-            'mpi_launch_command': mpi_launch_command
+            'mpi_launch_command': mpi_launch_command,
+            'dplace_command': dplace_command
         }
 
         logger.info("Discovered task launch command: '%s' and MPI launch command: '%s'." % \
@@ -388,6 +421,15 @@ class ExecutionEnvironment(object):
         torque_nodes = [line.strip() for line in open(torque_nodefile)]
         self.log.info("Found Torque PBS_NODEFILE %s: %s" % (torque_nodefile, torque_nodes))
 
+        # Number of cpus involved in allocation
+        val = os.environ.get('PBS_NCPUS')
+        if val:
+            torque_num_cpus = int(val)
+        else:
+            msg = "$PBS_NCPUS not set! (new Torque version?)"
+            torque_num_cpus = None
+            self.log.warning(msg)
+
         # Number of nodes involved in allocation
         val = os.environ.get('PBS_NUM_NODES')
         if val:
@@ -402,7 +444,7 @@ class ExecutionEnvironment(object):
         if val:
             torque_cores_per_node = int(val)
         else:
-            msg = "$PBS_NUM_PPN not set! (old Torque version?)"
+            msg = "$PBS_NUM_PPN or $PBS_PPN not set!"
             torque_cores_per_node = None
             self.log.warning(msg)
 
@@ -422,6 +464,9 @@ class ExecutionEnvironment(object):
         if torque_num_nodes and torque_cores_per_node:
             # Modern style Torque
             self.cores_per_node = torque_cores_per_node
+        elif torque_num_cpus:
+            # Blacklight style (TORQUE-2.3.13)
+            self.cores_per_node = torque_num_cpus
         else:
             # Old style Torque (Should we just use this for all versions?)
             self.cores_per_node = torque_nodes_length / torque_node_list_length
@@ -823,8 +868,8 @@ class Task(object):
 
         self.state          = None
         self.exit_code      = None
-        self.stdout         = None
-        self.stderr         = None
+        self.stdout         = ""
+        self.stderr         = ""
 
         self._log           = []
         self._proc          = None
@@ -892,13 +937,13 @@ class ExecWorker(multiprocessing.Process):
         self._cores_per_node = cores_per_node
 
         #self._capability = self._slots2caps(self._slots)
-        self._capability = self._slots2free(self._slots)
+        self._capability     = self._slots2free(self._slots)
+        self._capability_old = None
 
-        # keep a slot allocation history (short status), start with presumably
+        # keep a slot allocation history, start with presumably
         # empty state now
-        self._slot_history = list()
-        self._slot_history.append ([timestamp(), self._slot_status ()])
-
+        self._slot_history     = [self._slot_status ()]
+        self._slot_history_old = None
 
         # The available launch methods
         self._available_launch_methods = launch_methods
@@ -1036,15 +1081,16 @@ class ExecWorker(multiprocessing.Process):
                             idle = False
 
                     except Exception as e :
-                        self._log.error ("Launching task failed: %s." % e)
-                        task.state = FAILED
-
                         # append the startup error to the units stderr.  This is
                         # not completely correct (as this text is not produced
                         # by the unit), but it seems the most intuitive way to
                         # communicate that error to the application/user.
                         task.stderr += "\nPilot cannot start compute unit:\n%s\n%s" \
                                      % (str(e), traceback.format_exc())
+                        task.state   = FAILED
+                        task.stderr += "\nPilot cannot start compute unit: '%s'" % e
+                        
+                        self._log.error ("Launching task failed: '%s'." % e)
 
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if  task_slots :
@@ -1396,17 +1442,19 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = stdout_f.read()
+                    txt = unicode(stdout_f.read(), "utf-8")
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stdout = txt
+                    task.stdout += txt
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = stderr_f.read()
+                    txt = unicode(stderr_f.read(), "utf-8")
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stderr = txt
+                    task.stderr += txt
 
             task.exit_code = ret_code
 
@@ -1440,6 +1488,10 @@ class ExecWorker(multiprocessing.Process):
         task state, log, etc.
         """
         ts = timestamp()
+
+        if  not isinstance(tasks, list):
+            tasks = [tasks]
+
         # We need to know which unit manager we are working with. We can pull
         # this information here:
 
@@ -1455,17 +1507,21 @@ class ExecWorker(multiprocessing.Process):
         # AM: the capability publication cannot be delayed until shutdown
         # though...
         if  self._benchmark :
-            self._p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._slot_history,
-                          #"slots"       : self._slots,
-                          "capability"  : self._capability
-                         }
-                }
-                )
+            if  self._slot_history_old != self._slot_history or \
+                self._capability_old   != self._capability   :
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)},
+                    {"$set": {"slothistory" : self._slot_history,
+                              #"slots"       : self._slots,
+                              "capability"  : self._capability
+                             }
+                    }
+                    )
+
+                self._slot_history_old = self._slot_history[:]
+                self._capability_old   = self._capability
+
         for task in tasks:
             self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
@@ -2094,6 +2150,22 @@ class _Process(subprocess.Popen):
 
             cmdline = launch_script.name
 
+        elif launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # Construct the hosts_string
+            hosts_string = ''
+            for slot in task.slots:
+                host = slot.split(':')[0]
+                hosts_string += ' %s' % host
+
+            mpirun_rsh_command = "%s -export -np %s%s" % (launch_command, task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_rsh_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
         elif launch_method == LAUNCH_METHOD_MPIEXEC:
             # Construct the hosts_string
             hosts_string = ''
@@ -2143,6 +2215,55 @@ class _Process(subprocess.Popen):
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_DPLACE:
+            # Use dplace on SGI
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            dplace_command = "%s -c %d-%d" % \
+                                    (launch_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (dplace_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
+            # Use mpirun in combination with dplace
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            # TODO: this should be passed on from the detection mechanism
+            dplace_command = 'dplace'
+
+            dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            mpirun_dplace_command = "%s -np %d %s -c %d-%d" % \
+                            (launch_command, task.numcores, dplace_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_dplace_command, task_exec_string))
             launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name

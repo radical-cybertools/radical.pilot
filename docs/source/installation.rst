@@ -51,8 +51,8 @@ If virtualenv **is not** installed on your system, you can try the following.
     wget --no-check-certificate https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz
     tar xzf virtualenv-1.9.tar.gz
 
-    python virtualenv-1.9/virtualenv.py $HOME/HT-BAC-Tools
-    source $HOME/HT-BAC-Tools/bin/activate
+    python virtualenv-1.9/virtualenv.py $HOME/myenv
+    source $HOME/myenv/bin/activate
 
 **TypeError: 'NoneType' object is not callable**
 

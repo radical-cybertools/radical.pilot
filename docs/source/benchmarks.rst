@@ -18,6 +18,7 @@ needs to specify the session ID to be examined -- you can print the session ID
 when running your application, via
 
 .. code-block:: python
+
     print "session id: %s" % session.uid
 
 With that session ID, you can use the tool `radicalpilot-stats` to print some
@@ -25,6 +26,7 @@ statistics, and to plot some performance graphs:
 
   
 .. code-block:: bash
+
     $ radicalpilot-stats -m plot -s 53b5bbd174df926f4a4d3318
 
 This command will, in the `plot` mode shown above, produce

@@ -63,9 +63,7 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["virtualenv ./mpive",
-                                       "source     ./mpive/bin/activate",
-                                       "pip install mpi4py"]
+        mpi_test_task.pre_exec      = ["source     ~/ve/bin/activate"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
@@ -79,7 +77,6 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        # india uses openmpi
         mpi_test_task.executable    = "/bin/sh"
         mpi_test_task.arguments     = ["-c", "'echo mpi rank $PMI_RANK/$PMI_SIZE'"]
         mpi_test_task.mpi           = True
@@ -114,8 +111,11 @@ if __name__ == "__main__":
         units = [units]
 
     for unit in units:
-        print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+        print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s" \
+            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
+
+        print "    stdout: '%s'" % unit.stdout
+        print "    stderr: '%s'" % unit.stderr
         
         assert (unit.state == rp.DONE)
         assert ('mpi rank 0/4' in unit.stdout)

@@ -49,10 +49,11 @@ if __name__ == "__main__":
     pmgr.register_callback(pilot_state_cb)
 
     # Define a X-core that runs for N minutes.
+    # SuperMUC has 16 cores per node.
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "supermuc.lrz.de"
     pdesc.runtime  = 5 # N minutes
-    pdesc.cores    = 8 # X cores
+    pdesc.cores    = 32 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
@@ -63,15 +64,11 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["module load python", 
-                                       "virtualenv ./mpive",
-                                       "source     ./mpive/bin/activate",
-                                       "module swap PrgEnv-cray PrgEnv-gnu"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
+        mpi_test_task.cores         = 8
 
         cud_list.append(mpi_test_task)
 
@@ -105,10 +102,14 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
         
         assert (unit.state == rp.DONE)
-        assert ('mpi rank 0/4' in unit.stdout)
-        assert ('mpi rank 1/4' in unit.stdout)
-        assert ('mpi rank 2/4' in unit.stdout)
-        assert ('mpi rank 3/4' in unit.stdout)
+        assert ('mpi rank 0/8' in unit.stdout)
+        assert ('mpi rank 1/8' in unit.stdout)
+        assert ('mpi rank 2/8' in unit.stdout)
+        assert ('mpi rank 3/8' in unit.stdout)
+        assert ('mpi rank 4/8' in unit.stdout)
+        assert ('mpi rank 5/8' in unit.stdout)
+        assert ('mpi rank 6/8' in unit.stdout)
+        assert ('mpi rank 7/8' in unit.stdout)
 
     session.close()
 

@@ -342,31 +342,33 @@ class PilotManagerController(threading.Thread):
         else:
             # No sandbox defined. try to determine
 
-            if filesystem_endpoint.startswith("file"):
-                workdir_expanded = os.path.expanduser("~")
+            # get the home directory on the remote machine.
+            # Note that this will only work for (gsi)ssh or shell based access
+            # mechanisms (FIXME)
+
+            import saga.utils.pty_shell as sup
+
+            if fs.port is not None:
+                url = "%s://%s:%d/" % (fs.schema, fs.host, fs.port)
             else:
-                # get the home directory on the remote machine.
-                # Note that this will only work for (gsi)ssh or shell based access
-                # mechanisms (FIXME)
-
-                import saga.utils.pty_shell as sup
-
                 url = "%s://%s/" % (fs.schema, fs.host)
-                shell = sup.PTYShell (url, self._session, logger, opts={})
 
-                if 'default_remote_workdir' in resource_config and resource_config['default_remote_workdir'] is not None:
-                    workdir_raw = resource_config['default_remote_workdir']
-                else:
-                    workdir_raw = "$PWD"
+            logger.debug ("saga.utils.PTYShell ('%s')" % url)
+            shell = sup.PTYShell (url, self._session, logger, opts={})
 
-                ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
-                if  ret == 0 and 'WORKDIR:' in out :
-                    workdir_expanded = out.split(":")[1].strip()
-                    logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
-                else :
-                    error_msg = "Couldn't determine remote working directory."
-                    logger.error(error_msg)
-                    raise Exception(error_msg)
+            if 'default_remote_workdir' in resource_config and resource_config['default_remote_workdir'] is not None:
+                workdir_raw = resource_config['default_remote_workdir']
+            else:
+                workdir_raw = "$PWD"
+
+            ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
+            if  ret == 0 and 'WORKDIR:' in out :
+                workdir_expanded = out.split(":")[1].strip()
+                logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
+            else :
+                error_msg = "Couldn't determine remote working directory."
+                logger.error(error_msg)
+                raise Exception(error_msg)
 
             # At this point we have determined 'pwd'
             fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
