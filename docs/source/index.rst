@@ -16,9 +16,11 @@ drastically shorten overall exeuction time as the  individual ``ComputeUnits``
 don't have to wait in the system's scheduler queue  but can execute directly
 on the ``ComputePilots``.
 
-``ComputeUnits`` are often single-core / multi-threaded executables, but RADICAL-
-Pilot also supports execution of parallel executables, for example based on
-MPI or OpenMP.
+**Mailing Lists**
+
+* For users: https://groups.google.com/d/forum/radical-pilot-users
+* For developers: https://groups.google.com/d/forum/radical-pilot-devel
+
 
 #########
 Contents:
@@ -39,3 +41,5 @@ Contents:
    testing.rst
    benchmarks.rst
    developer.rst
+   release_notes.rst
+

@@ -511,6 +511,8 @@ def plot_session (dbclient, dbname, session) :
     for i in range(1,10) :
         if  maxtime  > 1*(10**i) :
             timetics = 1*(10**(i-1))
+        if  maxtime  > 2*(10**i) :
+            timetics = 2*(10**(i-1))
         if  maxtime  > 5*(10**i) :
             timetics = 5*(10**(i-1))
 
@@ -547,22 +549,28 @@ def plot_session (dbclient, dbname, session) :
     cmd +=        " -e  maxqueue=%d "       % maxqueue
     cmd +=        " -e  slotsscale=%d "     % slotsscale
     cmd +=        " -e  queuescale=%d "     % queuescale
+    cmd +=        " -e  'slotnum_list=\""
     for idx,pid in enumerate(pids) :
-        cmd +=    " -e  slotnum_%d=%d "     % (idx+1, slots[idx])
+        cmd +=    "%d "     % (slots[idx])
+    cmd +=        "\"'"
     cmd +=        " -e  nodesize=%d "       % nodesize
     cmd +=        " -e 'session=\"%s\"' "   % session
     cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n============="
     if plotname :
         cmd +=    "\\n[%s]" % plotname
     cmd +=        "\\nPilot and Unit Event Traces\"'  "
-    cmd +=        " -e  pilotnum=%d "       % len(pids)
+    cmd +=        " -e  pilot_num=%d "       % len(pids)
+    cmd +=        " -e  'pilot_name_list=\""
     for idx,pid in enumerate(pids) :
-        cmd +=    " -e 'pilot_%d_name=\"%s[%d]\"' " % (idx+1, hosts[idx], slots[idx])
+        cmd +=    "%s[%d] " % (hosts[idx], slots[idx])
+    cmd +=        "\"'"
+    cmd +=        " -e  'pilot_id_list=\""
     for idx,pid in enumerate(pids) :
-        cmd +=    " -e 'pilot_%d_id=\"%s\"' "       % (idx+1, pids[idx])
+        cmd +=    "%s "       % (pids[idx])
+    cmd +=        "\"'"
     cmd +=        "     %s "                        % plotfile
 
-  # print cmd
+    print cmd
     print "\nplotting..."
     os.system (cmd) 
 

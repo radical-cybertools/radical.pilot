@@ -44,13 +44,7 @@ if __name__ == "__main__":
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
     # well as security crendetials.
-    session = rp.Session()
-
-    # Add an ssh identity to the session.
-    c = rp.Context('ssh')
-    c.user_id = "merzky"
-    session.add_context(c)
-
+    session    = rp.Session()
     session_id = session.uid
     print "========================="
     print session_id
@@ -72,22 +66,18 @@ if __name__ == "__main__":
 
     pilot_1 = pmgr.submit_pilots(pdesc)
 
+    # create a second pilot with a new description
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "india.futuregrid.org"
+    pdesc.resource  = "stampede.tacc.utexas.edu"
     pdesc.runtime   = 40 # minutes
     pdesc.cores     = 32
-    pdesc.cleanup   = True
+    pdesc.project   = "TG-MCB090174"
 
-    # Launch the pilot.
     pilot_2 = pmgr.submit_pilots(pdesc)
 
-    pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "india.futuregrid.org"
-    pdesc.runtime   = 40 # minutes
+    # reuse the pilot description for the third pilot
     pdesc.cores     = 128
-    pdesc.cleanup   = True
 
-    # Launch the pilot.
     pilot_3 = pmgr.submit_pilots(pdesc)
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
