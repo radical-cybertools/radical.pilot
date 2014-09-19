@@ -2575,19 +2575,69 @@ class _Process(subprocess.Popen):
 
             aprun_command = "%s -n %s" % (launch_command, task.numcores)
 
+            if task_args_string:
+                task_exec_string += ' %s' % task_args_string
+
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (aprun_command, task_exec_string))
-            launch_script.write('%s\n' % post_exec_string)
+            launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_RUNJOB:
 
+            # loadl_job_name = os.environ.get('LOADL_JOB_NAME')
+            # if loadl_job_name is None:
+            #     msg = "$LOADL_JOB_NAME not set!"
+            #     self._log.error(msg)
+            #     raise Exception(msg)
+            #
+            # # Get the board list and block shape from 'llq -l' output
+            # output = subprocess.check_output(["llq", "-l", loadl_job_name])
+            # loadl_bg_board_list_str = None
+            # loadl_bg_block_shape_str = None
+            # for line in output.splitlines():
+            #     # Detect BG board list
+            #     if "BG Node Board List: " in line:
+            #         loadl_bg_board_list_str = line.split(':')[1].strip()
+            #     elif "BG Shape Allocated: " in line:
+            #         loadl_bg_block_shape_str = line.split(':')[1].strip()
+            # if not loadl_bg_board_list_str:
+            #     msg = "No board list found in llq output!"
+            #     self._log.error(msg)
+            #     raise Exception(msg)
+            # if not loadl_bg_block_shape_str:
+            #     msg = "No board shape found in llq output!"
+            #     self._log.error(msg)
+            #     raise Exception(msg)
+
+            # Build nodes data structure
+            # loadl_node_list = shapeandboards2block(loadl_bg_block_shape_str, loadl_bg_board_list_str)
+
+            #first_slot = task.slots[0]
+            # Get the host and the core part
+            #[first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            #slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            #all_slots_slot_index = all_slots.index(slot_entry)
+
+            #runjob_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            # runjob_offset = 0
+
+            # Construct sub-block table
+            # TODO: this needs to be done once at a better place
+            shape_table = create_sub_block_shape_table('2x2x4x4x2')
+
             runjob_command = launch_command
             runjob_command += ' --block $LOADL_BG_BLOCK'
-            runjob_command += ' --corner R00-M0-N00-J00'
+            runjob_command += ' --corner R00-M1-N12-J25'
+            #corner = loadl_node_list[runjob_offset][BLOCK_COOR]
+            #runjob_command += ' --corner %s' % corner
             runjob_command += ' --shape 1x1x1x1x2'
+            #shape = shape_table[task.numcores/16]
+            #runjob_command += ' --shape %s' % shape
             runjob_command += ' --exe %s' % task_exec_string
             if task_args_string:
                 runjob_command += ' --args %s' % task_args_string
