@@ -27,6 +27,10 @@ def unit_state_cb (unit, state) :
 
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
+    if state in [rp.FAILED] :
+        print "stdout: %s" % unit.stdout
+        print "stderr: %s" % unit.stderr
+
 
 #------------------------------------------------------------------------------
 #
@@ -59,7 +63,7 @@ if __name__ == "__main__":
         # Define a 32-core on stampede that runs for 15 minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "bigred2.uits.indiana.edu"
+        pdesc.resource  = "tutorial.radical.org"
         pdesc.runtime   = 15 # minutes
         pdesc.cores     = 8
         pdesc.cleanup   = True
@@ -116,7 +120,7 @@ if __name__ == "__main__":
     umgr.wait_units()
 
     for unit in units:
-        print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
+        print "* Unit %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
                unit.stdout)
 
