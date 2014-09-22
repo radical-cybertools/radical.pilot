@@ -1,9 +1,9 @@
 {
     "tutorial.radical.org": {
-        "description"                 : "Our private tutoriam VM on EC2",
+        "description"                 : "Our private tutorial VM on EC2",
         "notes"                       : "None",
-        "remote_job_manager_endpoint" : "pbs+ssh://54.160.238.103/",
-        "remote_filesystem_endpoint"  : "sftp://54.160.238.103/",
+        "remote_job_manager_endpoint" : "pbs+ssh://23.23.136.91/",
+        "remote_filesystem_endpoint"  : "sftp://23.23.136.91/",
         "local_job_manager_endpoint"  : "pbs://localhost",
         "local_filesystem_endpoint"   : "file://localhost/",
         "lrms"                        : "TORQUE",
