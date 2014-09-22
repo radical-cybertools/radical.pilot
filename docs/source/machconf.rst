@@ -52,7 +52,23 @@ to the end of the resource key:
 Configuring SSH Access
 ======================
 
-blah
+If you can manually SSH into the target resource, RADICAL-Pilot can do the same.
+While RADICAl-Pilot supports username / password authentication, it is 
+highly-advisable to set-up password-less ssh keys for the resource you want to
+use. If you are not familiar with this, check out 
+`THIS LINK <http://www.debian-administration.org/articles/152>`_. 
+
+All SSH-specific informations, like remote usernames and passwords are set in
+a  ``Context`` object. For example, if you want to tell RADICAL-Pilot your 
+user-id on the remote resource, use the following construct:
+
+.. code-block:: python
+
+    session = radical.pilot.Session(database_url=DBURL)
+
+    c = radical.pilot.Context('ssh')
+    c.user_id = "tg802352"
+    session.add_context(c)
 
 .. note::
     **Tip:** You can create an empty file called `.hushlogin` in your home 
