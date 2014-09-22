@@ -41,7 +41,7 @@ older than a specified number of hours or days, to purge orphaned session
 entries in a bulk.
 
 
-Q: I see the error "Host key verification failed" in AGENT.STDERR.
+Q: I see the error "Permission denied (publickey,keyboard-interactive)." in AGENT.STDERR.
 ------------------------------------------------------------------
 
 The AGENT.STDERR file shows the following error and the pilot never starts
@@ -49,7 +49,7 @@ running:
 
 .. code-block:: bash
 
-    Host key verification failed.g
+    Permission denied (publickey,keyboard-interactive).
     kill: 19932: No such process
 
 A: Set up password-less, intra-node SSH access.
@@ -95,12 +95,6 @@ Next, add you newly generated key to ~/.ssh/authorized_keys:
 
     cat id_rsa.pub >> ~/.ssh/authorized_keys
 
-
-Q: I ssh related errors in the AGENT.STDER and/or in the unit's stderr
-----------------------------------------------------------------------
-
-A: Same as above: set up password-less, intra-node SSH access.
---------------------------------------------------------------
 
 Q: On Gordon I see "Failed to execvp() 'mybinary': No such file or directory (2)"
 ---------------------------------------------------------------------------------
