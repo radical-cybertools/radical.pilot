@@ -1,53 +1,3 @@
-bigred2.uits.indiana.edu
-------------------------
-
-Indiana University's high-performance parallel computing cluster )https://kb.iu.edu/d/bcqt).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME/radical.pilot.sandbox
-================== ============================
-
-:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
-
-quarry.uits.indiana.edu
------------------------
-
-The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME/radical.pilot.sandbox
-================== ============================
-
-:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
-
-supermuc.lrz.de
----------------
-
-The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/systemdescription/).
-
-.. note::  Authentication to SuperMUC is by means of X509, so make sure you can gsissh into the machine.
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               test
-``sandbox``             $HOME/radical.pilot.sandbox
-================== ============================
-
-:download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
-
 fs2.das4.science.uva.nl
 -----------------------
 
@@ -82,6 +32,104 @@ Parameter               Value
 
 :download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
 
+sierra.futuregrid.org
+---------------------
+
+The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               batch
+``sandbox``             $HOME/radical.pilot.sandbox
+================== ============================
+
+:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+
+hotel.futuregrid.org
+--------------------
+
+The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).
+
+.. note::  Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               batch
+``sandbox``             $HOME/radical.pilot.sandbox
+================== ============================
+
+:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+
+india.futuregrid.org
+--------------------
+
+The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               batch
+``sandbox``             $HOME/radical.pilot.sandbox
+================== ============================
+
+:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+
+alamo.futuregrid.org
+--------------------
+
+The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               short
+``sandbox``             $HOME/radical.pilot.sandbox
+================== ============================
+
+:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+
+bigred2.uits.indiana.edu
+------------------------
+
+Indiana University's high-performance parallel computing cluster )https://kb.iu.edu/d/bcqt).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               None
+``sandbox``             $HOME/radical.pilot.sandbox
+================== ============================
+
+:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
+
+quarry.uits.indiana.edu
+-----------------------
+
+The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               None
+``sandbox``             $HOME/radical.pilot.sandbox
+================== ============================
+
+:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
+
 localhost
 ---------
 
@@ -97,6 +145,24 @@ Parameter               Value
 ================== ============================
 
 :download:`Raw Configuration file: localhost.json <../../src/radical/pilot/configs/localhost.json>`
+
+supermuc.lrz.de
+---------------
+
+The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/systemdescription/).
+
+.. note::  Authentication to SuperMUC is by means of X509, so make sure you can gsissh into the machine.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               test
+``sandbox``             $HOME/radical.pilot.sandbox
+================== ============================
+
+:download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
 
 yellowstone.ucar.edu
 --------------------
@@ -205,70 +271,4 @@ Parameter               Value
 ================== ============================
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
-
-sierra.futuregrid.org
----------------------
-
-The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME/radical.pilot.sandbox
-================== ============================
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-hotel.futuregrid.org
---------------------
-
-The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).
-
-.. note::  Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME/radical.pilot.sandbox
-================== ============================
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-india.futuregrid.org
---------------------
-
-The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME/radical.pilot.sandbox
-================== ============================
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-alamo.futuregrid.org
---------------------
-
-The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               short
-``sandbox``             $HOME/radical.pilot.sandbox
-================== ============================
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
