@@ -18,7 +18,7 @@ Download the file ``coupled_tasks.py`` with the following command:
 
 .. code-block:: bash
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/coupled_tasks.py
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/coupled_tasks.py
 
 Open the file ``coupled_tasks.py`` with your favorite editor. The example should 
 work right out of the box on your local machine. However, if you want to try it
