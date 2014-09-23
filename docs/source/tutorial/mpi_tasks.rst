@@ -9,9 +9,9 @@ So far we have run a sequential tasks in a number of configurations.
 This example introduces two new concepts: running multi-core MPI tasks
 and specifying input data for the task, in this case a simple python MPI script.
 
-----------------
-Edit The Example
-----------------
+------------
+Preparation
+------------
 
 Download the file ``mpi_tasks.py`` with the following command:
 
@@ -30,11 +30,6 @@ different resources, like remote HPC clusters, look for the sections marked:
 
 and change the code below according to the instructions in the comments.
 
-
-------------------------------
-Download the Application Code
-------------------------------
-
 This example makes use of an application that we first download to our own
 environment and then have staged as input to the MPI tasks.
 
@@ -45,9 +40,9 @@ Download the file ``helloworld_mpi.py`` with the following command:
     curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/helloworld_mpi.py
 
 
--------------
-Run the Code
--------------
+----------
+Execution
+----------
 
 ** This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**
