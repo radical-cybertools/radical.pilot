@@ -100,19 +100,36 @@ def usage (msg=None, noexit=False) :
         print "\n      Error: %s" % msg
 
     print """
-      usage   : %s -m <mode> [-d dburl] [-s session]
-      example : %s -m stat    -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
+      usage     : %s -m <mode> [-d dburl] [-s session]
+      example   : %s -m stat    -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
 
-      modes :
 
-        help  : show this message
-        list  : show  a  list   of sessions in the database
-        tree  : show  a  tree   of session objects
-        dump  : show  a  tree   of session objects, with full details
-        sort  : show  a  list   of session objects, sorted by type
-        hist  : show timeline   of session history
-        stat  : show statistics of session history (not implemented)
-        plot  : save gnuplot representing session history
+      modes     :
+
+        help    : show this message
+        list    : show  a  list   of sessions in the database
+        tree    : show  a  tree   of session objects
+        dump    : show  a  tree   of session objects, with full details
+        sort    : show  a  list   of session objects, sorted by type
+        hist    : show timeline   of session history
+        stat    : show statistics of session history (not implemented)
+        plot    : save gnuplot representing session history
+
+
+      arguments :
+        
+        -d      : database URL
+        -s      : session id
+        -f      : filter for listings
+
+
+      filters   :
+
+        The following filters are supported at the moment:
+
+        'pilots = n' : only list sessions with exactly    'n' pilots
+        'pilots > n' : only list sessions with more  than 'n' pilots
+        'pilots < n' : only list sessions with fewer than 'n' pilots
 
       The default command is 'list'.  If no session ID is specified, operations
       which apply to a single session will choose the last session in the given
@@ -144,7 +161,7 @@ def tree_session (dbclient, dbname, session) :
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (dbclient, dbname, session) :
+def list_sessions (dbclient, dbname, session, filters) :
 
     if  session :
         print "invalid session parameter on 'list'"
@@ -152,9 +169,35 @@ def list_sessions (dbclient, dbname, session) :
 
     sids = rpu.get_session_ids (dbclient, dbname)
 
+    if  filters :
 
-    if not sids :
-        print 'no session recorded in database at %s' % url
+        if  filters.startswith ('pilots') :
+
+            filters = filters.replace (' ', '')
+            op      =     filters[6 ]
+            n       = int(filters[7:])
+            f_sids  = list()
+
+            for sid in sids :
+
+                docs     = rpu.get_session_docs (dbclient, dbname, sid)
+                n_pilots = 0
+
+                for doc in docs['pilot'] :
+                    n_pilots   += 1
+
+
+                if  op == '>' and n_pilots >  n : f_sids.append (sid)
+                if  op == '=' and n_pilots == n : f_sids.append (sid)
+                if  op == '<' and n_pilots <  n : f_sids.append (sid)
+
+                print "%s: %3s (%s)" % (sid, n_pilots, len(f_sids))
+
+            sids = f_sids
+
+
+    if  not sids :
+        print 'no matching sessions recorded in database at %s' % url
 
     else :
         print "Session IDs:"
@@ -881,6 +924,7 @@ if __name__ == '__main__' :
     parser.add_option('-s', '--session', dest='session')
     parser.add_option('-d', '--dburl',   dest='url')
     parser.add_option('-m', '--mode',    dest='mode')
+    parser.add_option('-f', '--filter',  dest='filters')
     parser.add_option('-h', '--help',    dest='help', action="store_true")
 
     options, args = parser.parse_args ()
@@ -904,6 +948,7 @@ if __name__ == '__main__' :
     mode    = options.mode 
     url     = options.url
     session = options.session
+    filters = options.filters
 
     host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
     dbclient = pymongo.MongoClient (host=host, port=port)
@@ -922,7 +967,7 @@ if __name__ == '__main__' :
         if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'list' : list_sessions (dbclient, dbname, session)
+        if   m == 'list' : list_sessions (dbclient, dbname, session, filters)
         elif m == 'tree' : tree_session  (dbclient, dbname, session) 
         elif m == 'dump' : dump_session  (dbclient, dbname, session) 
         elif m == 'sort' : sort_session  (dbclient, dbname, session) 
