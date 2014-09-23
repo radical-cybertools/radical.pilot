@@ -63,20 +63,18 @@ if __name__ == "__main__":
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
         # 
-        # If you want to run this example on your local machine, you don't have 
-        # to change anything here. 
-        # 
-        # Change the resource below if you want to run on a remote resource. 
+        # Change the resource below if you want to run on a another resource than
+        # the pre-configured tutorial cluster.
         # You also might have to set the 'project' to your allocation ID if 
-        # your remote resource does compute time accounting. 
+        # your remote resource requires so.
         #
-        # A list of preconfigured resources can be found at: 
+        # A list of pre-configured resources can be found at:
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
         # 
         pdesc = rp.ComputePilotDescription ()
         pdesc.resource = "tutorial.radical.org"  # NOTE: This is a "label", not a hostname
         pdesc.runtime  = 10 # minutes
-        pdesc.cores    = 1
+        pdesc.cores    = 16
         pdesc.cleanup  = True
 
         # submit the pilot.
@@ -140,4 +138,3 @@ if __name__ == "__main__":
 
 #
 # ------------------------------------------------------------------------------
-
