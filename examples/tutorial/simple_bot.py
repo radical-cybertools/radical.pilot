@@ -48,7 +48,7 @@ if __name__ == "__main__":
         # and your username on that resource is different from the username 
         # on your local machine. 
         #
-        c = rp.Context('ssh')
+        c = rp.Context('userpass')
         #c.user_id = "tutorial_X"
         #c.user_pass = "PutYourPasswordHere"
         session.add_context(c)
