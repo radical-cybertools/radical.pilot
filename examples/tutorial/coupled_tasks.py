@@ -50,7 +50,8 @@ if __name__ == "__main__":
         # on your local machine. 
         #
         c = rp.Context('ssh')
-        # c.user_id = 'osdcXX'
+        #c.user_id = "tutorial_X"
+        #c.user_pass = "PutYourPasswordHere"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -75,11 +76,10 @@ if __name__ == "__main__":
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
         # 
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "localhost"
+        pdesc.resource = "tutorial.radical.org"  # NOTE: This is a "label", not a hostname
         pdesc.runtime  = 10 # minutes
         pdesc.cores    = 1
         pdesc.cleanup  = True
-        # pdesc.project  = 'TG-MCB140109'
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
