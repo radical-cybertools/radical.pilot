@@ -123,6 +123,9 @@ if __name__ == "__main__":
         umgr.wait_units()
         print "All CUs completed successfully!"
 
+        for unit in cu_set:
+            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
+                  % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
     except Exception as e:
         print "An error occurred: %s" % ((str(e)))
