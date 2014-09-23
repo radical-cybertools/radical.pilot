@@ -47,7 +47,8 @@ if __name__ == "__main__":
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
-    #c.user_id = "oweidner"
+    #c.user_id = "alice"
+    #c.user_pass = "ILoveBob!"
     session.add_context(c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
