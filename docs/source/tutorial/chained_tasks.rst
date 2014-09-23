@@ -21,9 +21,9 @@ The code below demonstrates this behavior. As soon as there is a slot available
 to run a job in B (i.e. a job in A has completed), it executes the job in B.
 This keeps the RADICAL-Pilot utilization high. 
 
-----------------
-Edit The Example
-----------------
+------------
+Preparation
+------------
 
 Download the file ``chained_tasks.py`` with the following command:
 
@@ -63,9 +63,9 @@ and change the code below accordging to the instructions in the comments.
 .. is a B CU, with its CU number.
 
 
--------------
-Run the Code
--------------
+----------
+Execution
+----------
 
 ** This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**

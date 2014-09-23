@@ -10,9 +10,9 @@ demonstrates synchronization mechanisms provided by the Pilot-API. This example
 is useful if an executable C has dependencies on some of the output generated
 from jobs A and B.
 
-----------------
-Edit The Example
-----------------
+------------
+Preparation
+------------
 
 Download the file ``coupled_tasks.py`` with the following command:
 
@@ -59,9 +59,9 @@ RADICAL-Pilot to wait for all of the submitted tasks to finish, before continuin
 the code. After all the A and B (submitted tasks) have finished, it then submits
 the C tasks. 
 
--------------
-Run the Code
--------------
+----------
+Execution
+----------
 
 ** This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**

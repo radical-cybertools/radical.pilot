@@ -23,9 +23,9 @@ the number of cores needed to run all of your jobs. When this pilot becomes
 active, your tasks (which are named 'Compute Units' or 'CUs') are pulled by
 RADICAL-Pilot from the MongoDB server and executed. 
 
-----------------
-Edit The Example
-----------------
+------------
+Preparation
+------------
 
 Download the file ``simple_bot.py`` with the following command:
 
@@ -53,9 +53,9 @@ and change the code below accordging to the instructions in the comments.
 .. a python for loop, therefore, ``i`` corresponds to what iteration we are on.
 .. This is not a parallel code, echo uses just one core, so we specify ``cores=1``.
 
--------------
-Run the Code
--------------
+----------
+Execution
+---------
 
 ** This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**
