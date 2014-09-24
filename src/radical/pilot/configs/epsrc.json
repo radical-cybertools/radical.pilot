@@ -11,9 +11,9 @@
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "forward_tunnel_endpoint"     : "10.60.0.52",
-        "global_virtenv"              : "/fs4/e290/shared/shared_pilot_ve_20140703",
+        "global_virtenv"              : "/work/e290/shared/shared_pilot_ve_20140703",
         "pre_bootstrap"               : ["module load python"],
-        "default_remote_workdir"      : "/fs4/`id -gn`/`id -gn`/$USER",
+        "default_remote_workdir"      : "/work/`id -gn`/`id -gn`/$USER",
         "valid_roots"                 : ["/work"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "bootstrapper"                : "default_bootstrapper.sh"
