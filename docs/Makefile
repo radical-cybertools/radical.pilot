@@ -1,11 +1,11 @@
 # Makefile for Sphinx documentation
 #
 
-TAG=$(shell git branch | grep '*' | cut -f 2 -d \ | sed -e 's/readthedocs.tutorial/tutorial/g' | sed -e 's/readthedocs/release/g')
+# TAG=$(shell git branch | grep '*' | cut -f 2 -d \ | sed -e 's/readthedocs.tutorial/tutorial/g' | sed -e 's/readthedocs/release/g')
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = sphinx-build -t $(TAG)
+SPHINXBUILD   = sphinx-build # -t $(TAG)
 PAPER         =
 BUILDDIR      = build
 
