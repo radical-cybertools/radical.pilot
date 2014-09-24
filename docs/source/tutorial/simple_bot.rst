@@ -29,9 +29,18 @@ Preparation
 
 Download the file ``simple_bot.py`` with the following command:
 
-.. code-block:: bash
+.. only:: tutorial
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/simple_bot.py
+    .. code-block:: bash
+
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/tutorial/simple_bot.py
+
+.. only:: release
+
+    .. code-block:: bash
+
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/simple_bot.py
+
 
 Open the file ``simple_bot.py`` with your favorite editor. The example should 
 work right out of the box on your local machine. However, if you want to try it
@@ -63,9 +72,18 @@ Python virtualenv. You also need access to a MongoDB server.**
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
 MongoDB server you want to use, for example:
 
-.. code-block:: bash
-        
-        export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+
+.. only:: tutorial
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+
+.. only:: release
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://<mongodb_server>:27017/
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program: 

@@ -15,9 +15,18 @@ Preparation
 
 Download the file ``mpi_tasks.py`` with the following command:
 
-.. code-block:: bash
+.. only:: tutorial
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/mpi_tasks.py
+    .. code-block:: bash
+    
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/tutorial/mpi_tasks.py
+
+
+.. only:: release
+
+    .. code-block:: bash
+    
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/mpi_tasks.py
 
 Open the file ``mpi_tasks.py`` with your favorite editor. The example might
 work right out of the box on your local machine, this depends whether you
@@ -35,9 +44,18 @@ environment and then have staged as input to the MPI tasks.
 
 Download the file ``helloworld_mpi.py`` with the following command:
 
-.. code-block:: bash
+.. only:: tutorial
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/helloworld_mpi.py
+    .. code-block:: bash
+    
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/helloworld_mpi.py
+
+
+.. only:: release
+
+    .. code-block:: bash
+    
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/helloworld_mpi.py
 
 
 ----------
@@ -50,9 +68,17 @@ Python virtualenv. You also need access to a MongoDB server.**
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
 MongoDB server you want to use, for example:
 
-.. code-block:: bash
-        
-        export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+.. only:: tutorial
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+
+.. only:: release
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://<mongodb_server>:27017/
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program: 
