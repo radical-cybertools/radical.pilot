@@ -17,8 +17,18 @@ import sys
 import os
 import json
 import pprint
+import subprocess as sp
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
+
+################################################################################
+
+cmd = "git branch | grep '*' | cut -f 2 -d \ " \
+    + " | sed -e 's/readthedocs.tutorial/tutorial/g' " \
+    + " | sed -e 's/readthedocs/release/g')"
+mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read()
+mytag.strip()
+tags.add (mytag)
 
 ################################################################################
 ##
