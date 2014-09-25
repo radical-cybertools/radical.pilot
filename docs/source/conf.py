@@ -26,7 +26,16 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 cmd = "git branch | grep '*' | cut -f 2 -d \ " \
     + " | sed -e 's/readthedocs.tutorial/tutorial/g' " \
     + " | sed -e 's/readthedocs/release/g'"
-mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read()
+mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read().strip()
+
+if 'detached' in mytag :
+    print 'detached!'
+    cmd = "git branch | grep '*' | cut -f 2 -d '/' | cut -f 1 -d ')'" \
+        + " | sed -e 's/readthedocs.tutorial/tutorial/g' " \
+        + " | sed -e 's/readthedocs/release/g'"
+    mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read().strip()
+
+
 tags.add (mytag.strip())
 
 os.system ('pwd')
