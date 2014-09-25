@@ -1,7 +1,11 @@
+
 import os
 import sys
 import time
 import radical.pilot as rp
+
+os.environ['RADICAL_PILOT_BENCHMARK'] = '1'
+
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
@@ -36,7 +40,7 @@ def unit_state_cb (unit, state) :
 #
 if __name__ == "__main__":
 
-    rp_cores    = int(os.getenv ("RP_CORES",    8))
+    rp_cores    = int(os.getenv ("RP_CORES",    16))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
     rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2)) # 3 units/core/pilot
     rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
@@ -98,7 +102,7 @@ if __name__ == "__main__":
     for unit_count in range(0, rp_units):
         cu = rp.ComputeUnitDescription()
         cu.executable  = "/bin/sleep"
-        cu.arguments   = ["30"]
+        cu.arguments   = ["60"]
         cu.cores       = rp_cu_cores
         cu.mpi         = True
 
