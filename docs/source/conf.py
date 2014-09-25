@@ -29,24 +29,17 @@ cmd = "git branch | grep '*' | cut -f 2 -d \ " \
 mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read().strip()
 
 if 'detached' in mytag :
-    print 'detached!'
     cmd = "git branch | grep '*' | cut -f 2 -d '/' | cut -f 1 -d ')'" \
         + " | sed -e 's/readthedocs.tutorial/tutorial/g' " \
         + " | sed -e 's/readthedocs/release/g'"
     mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read().strip()
 
-
-tags.add (mytag.strip())
-
-os.system ('pwd')
-os.system ('ls -la')
-os.system ('git branch')
-for key in os.environ:
-    print '%-20s : %s' % (key, os.environ[key])
+tags.add (mytag)
 
 ################################################################################
 ##
-print "* Generating code example list: examples.rst (%s)" % mytag.strip()
+print "* using tag: %s" % mytag
+print "* Generating code example list: examples.rst"
 
 try:
     os.remove("{0}/resources.rst".format(script_dir))
