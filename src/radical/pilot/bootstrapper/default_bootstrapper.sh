@@ -113,7 +113,7 @@ installvenv()
     # create a fresh virtualenv. we use an older 1.9.x version of 
     # virtualenv as this seems to work more reliable than newer versions.
     # If we can't download, we try to move on with the system virtualenv.
-    CURL_CMD="curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
+    CURL_CMD="curl -k -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
     echo ""
     echo "################################################################################"
     echo "## Downloading and installing virtualenv"
