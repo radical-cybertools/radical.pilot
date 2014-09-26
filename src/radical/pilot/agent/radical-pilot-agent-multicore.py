@@ -859,8 +859,8 @@ class ExecWorker(multiprocessing.Process):
             self._mongo_db.authenticate (user, pwd)
 
         self._p  = mongo_db["%s.p"  % session_id]
-        self._cu = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         # Queued tasks by the Agent
         self._task_queue     = task_queue
@@ -1773,8 +1773,8 @@ class Agent(threading.Thread):
             mongo_db.authenticate (user, pwd)
 
         self._p  = mongo_db["%s.p"  % session_id]
-        self._cu = mongo_db["%s.w"  % session_id]
-        self._wm = mongo_db["%s.wm" % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
+        self._wm = mongo_db["%s.um" % session_id]
 
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
