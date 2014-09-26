@@ -417,7 +417,7 @@ def plot_session (db, session) :
 
         pid = str(pilot['_id'])
         pids.append (pid)
-        hosts.append (ru.Url (pilot['sandbox']).host)
+        hosts.append (ru.Url (pilot['sandbox']).host.split('.')[0])
 
         with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
             for event in pilot['statehistory'] :
