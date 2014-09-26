@@ -172,8 +172,8 @@ class Session (saga.Session, Object):
                         self._resource_configs[rc.name] = rc.as_dict() 
 
                 self._dbs, self._created, self._connection_info = \
-                        dbSession.new(sid=self._uid, 
-                                      db_url=database_url, 
+                        dbSession.new(sid=self._uid,
+                                      db_url=self._database_url,
                                       db_name=database_name,
                                       resource_configs=self._resource_configs)
 
@@ -193,7 +193,7 @@ class Session (saga.Session, Object):
                 # otherwise, we reconnect to an existing session
                 self._dbs, session_info, self._connection_info = \
                         dbSession.reconnect(sid=self._uid, 
-                                            db_url=database_url, 
+                                            db_url=self._database_url,
                                             db_name=database_name)
 
                 self._created          = session_info["created"]
