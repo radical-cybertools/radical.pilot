@@ -1768,9 +1768,10 @@ class Agent(threading.Thread):
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
 
-        if  len (mongodb_auth) >= 3 :
-            user, pwd = mongodb_auth.split (':', 1)
-            mongo_db.authenticate (user, pwd)
+        # do auth on username *and* password (ignore empty split results)
+        auth_elems = filter (None, mongodb_auth.split (':', 1))
+        if  len (auth_elems) == 2 :
+            mongo_db.authenticate (auth_elems[0], auth_elems[1])
 
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
