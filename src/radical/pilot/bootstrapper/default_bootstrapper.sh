@@ -240,7 +240,7 @@ find_available_port()
     for port in $(eval echo {$RANGE}); do
 
         # Try to make connection
-        (sh -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
+        (bash -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
         # Wait for 1 second
         read -t1
         # Kill child
