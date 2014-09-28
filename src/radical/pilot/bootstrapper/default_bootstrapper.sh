@@ -1,4 +1,4 @@
-#!/bin/sh -l
+#!/bin/bash -l
 
 # -----------------------------------------------------------------------------
 # Copyright 2013-2014, radical@rutgers.edu
@@ -240,7 +240,7 @@ find_available_port()
     for port in $(eval echo {$RANGE}); do
 
         # Try to make connection
-        (sh -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
+        (bash -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
         # Wait for 1 second
         read -t1
         # Kill child
@@ -497,4 +497,3 @@ contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
 
 # ... and exit
 exit $AGENT_EXITCODE
-

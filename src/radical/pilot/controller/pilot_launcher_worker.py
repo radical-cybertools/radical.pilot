@@ -425,7 +425,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd.executable = "/bin/bash"
                         jd.arguments = ["-l", bootstrapper, bootstrap_args]
 
-                        logger.debug("Bootstrap command line: /bin/bash %s" % jd.arguments)
+                        logger.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
 
                         # fork:// and ssh:// don't support 'queue' and 'project'
                         if (job_service_url.schema != "fork") and (job_service_url.schema != "ssh"):
