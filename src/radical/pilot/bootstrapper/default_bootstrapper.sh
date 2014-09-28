@@ -1,4 +1,4 @@
-#!/bin/sh -l
+#!/bin/bash -l
 
 # -----------------------------------------------------------------------------
 # Copyright 2013-2014, radical@rutgers.edu
@@ -497,4 +497,3 @@ contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
 
 # ... and exit
 exit $AGENT_EXITCODE
-
