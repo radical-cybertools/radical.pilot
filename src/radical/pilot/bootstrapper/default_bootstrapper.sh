@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/bin/sh -l
 
 # -----------------------------------------------------------------------------
 # Copyright 2013-2014, radical@rutgers.edu
@@ -119,16 +119,14 @@ installvenv()
     echo "## Downloading and installing virtualenv"
     echo "## CMDLINE: $CURL_CMD"
     $CURL_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "WARNING: Couldn't download virtualenv via curl! Using system version."
         BOOTSTRAP_CMD="virtualenv $VIRTENV"
     else :
         tar xvfz virtualenv-1.9.tar.gz
-        OUT=$?
-        if [[ $OUT != 0 ]]; then
-           echo "Couldn't unpack virtualenv! ABORTING"
-           exit 1
+        if test $? -ne 0 ; then
+            echo "Couldn't unpack virtualenv! ABORTING"
+            exit 1
         fi
         
         BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $VIRTENV"
@@ -139,8 +137,7 @@ installvenv()
     echo "## Creating virtualenv"
     echo "## CMDLINE: $BOOTSTRAP_CMD"
     $BOOTSTRAP_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "Couldn't bootstrap virtualenv! ABORTING"
         exit 1
     fi
@@ -154,8 +151,7 @@ installvenv()
     echo "## Downgrading pip to 1.2.1"
     echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
     $DOWNGRADE_PIP_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "Couldn't downgrade pip! Using default version (if it exists)"
     fi
     
@@ -165,8 +161,7 @@ installvenv()
     #echo "## Updating virtualenv"
     #echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
     #$UPDATE_SETUPTOOLS_CMD
-    #OUT=$?
-    #if [ $OUT -ne 0 ]; then
+    #if test $? -ne 0 ; then
     #    echo "Couldn't update virtualenv! ABORTING"
     #    exit 1
     #fi
@@ -180,8 +175,7 @@ installvenv()
     echo "## install/upgrade Apache-LibCloud"
     echo "## CMDLINE: $EI_CMD"
     $EI_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
     fi
     
@@ -193,12 +187,10 @@ installvenv()
     echo "## install/upgrade SAGA-Python"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Couldn't install/upgrade SAGA-Python! Lets see how far we get ..."
         fi
     fi
@@ -210,12 +202,10 @@ installvenv()
     echo "## install/upgrade python-hostlist"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Easy install failed too, couldn't install python-hostlist!  Lets see how far we get..."
         fi
     fi
@@ -228,12 +218,10 @@ installvenv()
     echo "## install/upgrade pymongo"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Easy install failed too, couldn't install pymongo! Oh well..."
         fi
     fi
@@ -252,7 +240,7 @@ find_available_port()
     for port in $(eval echo {$RANGE}); do
 
         # Try to make connection
-        (bash -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
+        (sh -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
         # Wait for 1 second
         read -t1
         # Kill child
@@ -313,8 +301,7 @@ while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
             echo "## Running pre-bootstrapping command"
             echo "## CMDLINE: $PREBOOTSTRAP"
             $PREBOOTSTRAP
-            OUT=$?
-            if [[ $OUT -ne 0 ]]; then
+            if test $? -ne 0 ; then
                 echo "Error running pre-boostrapping command! ABORTING"
                 exit 1
             fi
