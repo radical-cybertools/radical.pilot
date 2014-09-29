@@ -15,4 +15,4 @@ Examples & Best Practice
    multiple_commands.rst
    multicore.rst
    async.rst
-   condor_grids.rst
+.. condor_grids.rst
