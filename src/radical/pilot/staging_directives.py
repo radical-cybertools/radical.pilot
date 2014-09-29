@@ -5,8 +5,8 @@ import os
 #   staging_directive = {
 #       'source':   None, # radical.pilot.Url() or string
 #       'target':   None, # radical.pilot.Url() or string
-#       'action':   None, # COPY, LINK, MOVE, TRANSFER
-#       'flags':    None, # CREATE_PARENTS
+#       'action':   None, # See 'Action operators' below
+#       'flags':    None, # See 'Flags' below
 #       'priority': 0     # Control ordering of actions
 #   }
 
