@@ -33,7 +33,7 @@ Contents:
    intro.rst
    installation.rst
    machconf.rst
-   datahandling.rst
+   datastaging.rst
    examples/index.rst
    tutorial/index.rst
    schedulers.rst
