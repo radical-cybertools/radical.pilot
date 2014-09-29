@@ -81,9 +81,10 @@ def expand_staging_directive(staging_directive, logger):
         elif isinstance(sd, dict):
             # We detected a dict, will have to distinguish between single and multiple entries
 
-            if not 'action' in sd:
-                raise Exception("Staging directive dict has no action member!")
-            action = sd['action']
+            if 'action' in sd:
+                action = sd['action']
+            else:
+                action = DEFAULT_ACTION
 
             if 'flags' in sd:
                 flags = sd['flags']
