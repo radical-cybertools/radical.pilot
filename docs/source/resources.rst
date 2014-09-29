@@ -27,7 +27,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               standard
-``sandbox``             /fs4/`id -gn`/`id -gn`/$USER
+``sandbox``             /work/`id -gn`/`id -gn`/$USER
 ================== ============================
 
 :download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
@@ -181,6 +181,40 @@ Parameter               Value
 ================== ============================
 
 :download:`Raw Configuration file: ncar.json <../../src/radical/pilot/configs/ncar.json>`
+
+tutorial.radical.org
+--------------------
+
+Our private tutorial VM on EC2
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               batch
+``sandbox``             $HOME/radical.pilot.sandbox
+================== ============================
+
+:download:`Raw Configuration file: radical.json <../../src/radical/pilot/configs/radical.json>`
+
+davinci.rice.edu
+----------------
+
+The DAVinCI Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+DAVinCI).
+
+.. note::  DAVinCI compute nodes have 12 or 16 processor cores per node.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               parallel
+``sandbox``             $SHARED_SCRATCH
+================== ============================
+
+:download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
 
 blacklight.psc.xsede.org
 ------------------------
