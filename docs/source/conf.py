@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# SAGA documentation build configuration file, created by
+# RADICAL-Pilot documentation build configuration file, created by
 # sphinx-quickstart on Mon Dec  3 21:55:42 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -22,7 +22,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 
 ################################################################################
 ##
-print "* Generating code example list: examples.rst"
+print "* Generating resource configuration docs: resources.rst"
 
 try:
     os.remove("{0}/resources.rst".format(script_dir))
