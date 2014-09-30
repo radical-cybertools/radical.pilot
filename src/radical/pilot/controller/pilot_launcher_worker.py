@@ -262,21 +262,27 @@ class PilotLauncherWorker(threading.Thread):
                         # Database connection parameters
                         session_uid = self.db_connection_info.session_id
 
-                        database_url = ru.Url(self.db_connection_info.url)
+                        database_url = self.db_connection_info.dburl
+
+                        surl = saga.Url (database_url)
 
                         # Set default port if not specified
                         # (explicit is better than implicit!)
-                        if not database_url.port:
-                            database_url.port = 27017
+                        if not surl.port:
+                            surl.port = 27017
 
                         # Set default host to localhost if not specified
-                        if not database_url.host:
-                            database_url.host = 'localhost'
+                        if not surl.host:
+                            surl.host = 'localhost'
 
                         database_name = self.db_connection_info.dbname
                         # Set default database name if not specified
                         if not database_name:
                             database_name = 'radicalpilot'
+
+                        database_auth     = self.db_connection_info.dbauth
+                        database_hostport = "%s:%d" % (surl.host, surl.port)
+
 
                         ########################################################
                         # Get directory where pilot_launcher_worker.py lives
@@ -385,7 +391,10 @@ class PilotLauncherWorker(threading.Thread):
                             agent_db_url = ru.Url(resource_cfg['agent_mongodb_endpoint'])
                             bootstrap_args += " -m %s:%d " % (agent_db_url.host, agent_db_url.port)
                         else:
-                            bootstrap_args += " -m %s:%d " % (database_url.host, database_url.port)
+                            bootstrap_args += " -m %s " % database_hostport
+ 
+                        bootstrap_args += " -a %s " % database_auth
+
 
                         if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                             bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
@@ -425,7 +434,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd.executable = "/bin/bash"
                         jd.arguments = ["-l", bootstrapper, bootstrap_args]
 
-                        logger.debug("Bootstrap command line: /bin/bash %s" % jd.arguments)
+                        logger.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
 
                         # fork:// and ssh:// don't support 'queue' and 'project'
                         if (job_service_url.schema != "fork") and (job_service_url.schema != "ssh"):
