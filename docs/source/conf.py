@@ -56,7 +56,7 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                 try:
                     working_dir = resource_config["default_remote_workdir"]
                 except Exception, ex:
-                    working_dir = "$HOME/radical.pilot.sandbox"
+                    working_dir = "$HOME"
                 try:
                     python_interpreter = resource_config["python_interpreter"]
                 except Exception, ex:
