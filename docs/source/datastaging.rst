@@ -145,16 +145,21 @@ Examples
 ========
 
 
-Simple Input and Output Transfer
---------------------------------
+String-Based Input and Output Transfer
+--------------------------------------
 
-.. literalinclude:: ../../examples/input_output_data_staging_remote.py
+.. literalinclude:: ../../examples/input_output_data_staging_local.py
+
+Dictionary-Based Input and Output Transfer
+------------------------------------------
+
+.. literalinclude:: ../../examples/io_staging_dict.py
 
 
 Shared Input Files
 ------------------
 
-.. literalinclude:: ../../examples/shared_input_data.py
+.. literalinclude:: ../../examples/io_staging_shared.py
 
 
 Dependent Output Files
