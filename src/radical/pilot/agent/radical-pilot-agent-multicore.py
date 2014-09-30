@@ -837,7 +837,7 @@ class ExecWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, task_queue, command_queue, output_staging_queue,
-                 node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name,
+                 node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name, mongodb_auth,
                  pilot_id, session_id, benchmark):
 
         """Le Constructeur creates a new ExecWorker instance.
@@ -853,6 +853,11 @@ class ExecWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
+
+        if  len (mongodb_auth) >= 3 :
+            user, pwd = mongodb_auth.split (':', 1)
+            self._mongo_db.authenticate (user, pwd)
+
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
@@ -1742,7 +1747,7 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, 
+    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, mongodb_auth, 
                  pilot_id, session_id, benchmark):
         """Le Constructeur creates a new Agent instance.
         """
@@ -1762,6 +1767,12 @@ class Agent(threading.Thread):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
+
+        # do auth on username *and* password (ignore empty split results)
+        auth_elems = filter (None, mongodb_auth.split (':', 1))
+        if  len (auth_elems) == 2 :
+            mongo_db.authenticate (auth_elems[0], auth_elems[1])
+
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
@@ -1788,6 +1799,7 @@ class Agent(threading.Thread):
             launch_methods  = self._exec_env.discovered_launch_methods,
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
+            mongodb_auth    = mongodb_auth,
             pilot_id        = pilot_id,
             session_id      = session_id,
             benchmark       = benchmark
@@ -2318,6 +2330,11 @@ def parse_commandline():
 
     parser = optparse.OptionParser()
 
+    parser.add_option('-a', '--mongodb-auth',
+                      metavar='AUTH',
+                      dest='mongodb_auth',
+                      help='username:pass foir database access.')
+
     parser.add_option('-b', '--benchmark',
                       metavar='BENCHMARK',
                       type='int',
@@ -2427,8 +2444,14 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Establish database connection
     try:
+        host, port = options.mongodb_url.split(':', 1)
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
+
+        if  len (options.mongodb_auth) >= 3 :
+            user, pwd = options.mongodb_auth.split (':', 1)
+            mongo_db.authenticate (user, pwd)
+
         mongo_p      = mongo_db["%s.p"  % options.session_id]
         mongo_cu      = mongo_db["%s.cu" % options.session_id]  # AM: never used
         mongo_wm     = mongo_db["%s.um" % options.session_id]  # AM: never used
@@ -2482,6 +2505,7 @@ if __name__ == "__main__":
                       runtime=options.runtime,
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
+                      mongodb_auth=options.mongodb_auth,
                       pilot_id=options.pilot_id,
                       session_id=options.session_id, 
                       benchmark=options.benchmark)
