@@ -5,8 +5,8 @@ import os
 #   staging_directive = {
 #       'source':   None, # radical.pilot.Url() or string
 #       'target':   None, # radical.pilot.Url() or string
-#       'action':   None, # COPY, LINK, MOVE, TRANSFER
-#       'flags':    None, # CREATE_PARENTS
+#       'action':   None, # See 'Action operators' below
+#       'flags':    None, # See 'Flags' below
 #       'priority': 0     # Control ordering of actions
 #   }
 
@@ -81,9 +81,10 @@ def expand_staging_directive(staging_directive, logger):
         elif isinstance(sd, dict):
             # We detected a dict, will have to distinguish between single and multiple entries
 
-            if not 'action' in sd:
-                raise Exception("Staging directive dict has no action member!")
-            action = sd['action']
+            if 'action' in sd:
+                action = sd['action']
+            else:
+                action = DEFAULT_ACTION
 
             if 'flags' in sd:
                 flags = sd['flags']

@@ -32,14 +32,15 @@ Contents:
 
    intro.rst
    installation.rst
-   faq.rst
    machconf.rst
+   datastaging.rst
    examples/index.rst
    tutorial/index.rst
-   apidoc.rst
    schedulers.rst
    testing.rst
    benchmarks.rst
+   faq.rst
    developer.rst
+   apidoc.rst
    release_notes.rst
 

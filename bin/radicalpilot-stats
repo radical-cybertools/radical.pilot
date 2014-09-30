@@ -100,19 +100,36 @@ def usage (msg=None, noexit=False) :
         print "\n      Error: %s" % msg
 
     print """
-      usage   : %s -m <mode> [-d dburl] [-s session]
-      example : %s -m stat    -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
+      usage     : %s -m <mode> [-d dburl] [-s session]
+      example   : %s -m stat    -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
 
-      modes :
 
-        help  : show this message
-        list  : show  a  list   of sessions in the database
-        tree  : show  a  tree   of session objects
-        dump  : show  a  tree   of session objects, with full details
-        sort  : show  a  list   of session objects, sorted by type
-        hist  : show timeline   of session history
-        stat  : show statistics of session history (not implemented)
-        plot  : save gnuplot representing session history
+      modes     :
+
+        help    : show this message
+        list    : show  a  list   of sessions in the database
+        tree    : show  a  tree   of session objects
+        dump    : show  a  tree   of session objects, with full details
+        sort    : show  a  list   of session objects, sorted by type
+        hist    : show timeline   of session history
+        stat    : show statistics of session history (not implemented)
+        plot    : save gnuplot representing session history
+
+
+      arguments :
+        
+        -d      : database URL
+        -s      : session id
+        -f      : filter for listings
+
+
+      filters   :
+
+        The following filters are supported at the moment:
+
+        'pilots = n' : only list sessions with exactly    'n' pilots
+        'pilots > n' : only list sessions with more  than 'n' pilots
+        'pilots < n' : only list sessions with fewer than 'n' pilots
 
       The default command is 'list'.  If no session ID is specified, operations
       which apply to a single session will choose the last session in the given
@@ -129,32 +146,58 @@ def usage (msg=None, noexit=False) :
 
 # ------------------------------------------------------------------------------
 #
-def dump_session (dbclient, dbname, session) :
+def dump_session (db, dbname, session) :
 
     print "session : %s" % session
-    handle_session (dbclient, 'dump', dbname, session, None)
+    handle_session (db, 'dump', dbname, session, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def tree_session (dbclient, dbname, session) :
+def tree_session (db, dbname, session) :
 
-    handle_session (dbclient, 'tree', dbname, session, None)
+    handle_session (db, 'tree', dbname, session, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (dbclient, dbname, session) :
+def list_sessions (db, session, filters) :
 
     if  session :
         print "invalid session parameter on 'list'"
         sys.exit (-1)
 
-    sids = rpu.get_session_ids (dbclient, dbname)
+    sids = rpu.get_session_ids (db)
+
+    if  filters :
+
+        if  filters.startswith ('pilots') :
+
+            filters = filters.replace (' ', '')
+            op      =     filters[6 ]
+            n       = int(filters[7:])
+            f_sids  = list()
+
+            for sid in sids :
+
+                docs     = rpu.get_session_docs (db, sid)
+                n_pilots = 0
+
+                for doc in docs['pilot'] :
+                    n_pilots   += 1
 
 
-    if not sids :
-        print 'no session recorded in database at %s' % url
+                if  op == '>' and n_pilots >  n : f_sids.append (sid)
+                if  op == '=' and n_pilots == n : f_sids.append (sid)
+                if  op == '<' and n_pilots <  n : f_sids.append (sid)
+
+                print "%s: %3s (%s)" % (sid, n_pilots, len(f_sids))
+
+            sids = f_sids
+
+
+    if  not sids :
+        print 'no matching sessions recorded in database at %s' % url
 
     else :
         print "Session IDs:"
@@ -163,9 +206,9 @@ def list_sessions (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
-def sort_session (dbclient, dbname, session) :
+def sort_session (db, session) :
 
-    docs = rpu.get_session_docs (dbclient, dbname, session)
+    docs = rpu.get_session_docs (db, session)
 
     print "pilot managers :" 
     for doc in docs['pmgr'] :
@@ -185,10 +228,10 @@ def sort_session (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
-def hist_session (dbclient, dbname, session) :
+def hist_session (db, session) :
 
-    events    = rpu.get_session_events   (dbclient, dbname, session)
-    slothists = rpu.get_session_slothist (dbclient, dbname, session)
+    events    = rpu.get_session_events   (db, session)
+    slothists = rpu.get_session_slothist (db, session)
 
     if  not events :
         print "no events found for session %s" % session
@@ -297,11 +340,11 @@ def get_stats (docs, events, slothist) :
 
     
 # ------------------------------------------------------------------------------
-def stat_session (dbclient, dbname, session) :
+def stat_session (db, session) :
 
-    docs      = rpu.get_session_docs     (dbclient, dbname, session)
-    events    = rpu.get_session_events   (dbclient, dbname, session)
-    slothists = rpu.get_session_slothist (dbclient, dbname, session)
+    docs      = rpu.get_session_docs     (db, session)
+    events    = rpu.get_session_events   (db, session)
+    slothists = rpu.get_session_slothist (db, session)
 
     stats     = get_stats (docs, events, slothists)
 
@@ -327,14 +370,14 @@ def stat_session (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
-def plot_session (dbclient, dbname, session) :
+def plot_session (db, session) :
     """
     plot results :P
     """
 
-    docs      = rpu.get_session_docs     (dbclient, dbname, session)
-    events    = rpu.get_session_events   (dbclient, dbname, session)
-    slothists = rpu.get_session_slothist (dbclient, dbname, session)
+    docs      = rpu.get_session_docs     (db, session)
+    events    = rpu.get_session_events   (db, session)
+    slothists = rpu.get_session_slothist (db, session)
 
     if  not events :
         print "no events found for session %s" % session
@@ -374,7 +417,7 @@ def plot_session (dbclient, dbname, session) :
 
         pid = str(pilot['_id'])
         pids.append (pid)
-        hosts.append (ru.Url (pilot['sandbox']).host)
+        hosts.append (ru.Url (pilot['sandbox']).host.split('.')[0])
 
         with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
             for event in pilot['statehistory'] :
@@ -736,12 +779,11 @@ def plot_session (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
-def handle_session (dbclient, mode, dbname, session, pname) :
+def handle_session (db, mode, dbname, session, pname) :
     """
     For the given db, traverse collections
     """
 
-    database = dbclient[dbname]
     print " +-- db   %s" % dbname
 
     cnames = list()
@@ -758,18 +800,18 @@ def handle_session (dbclient, mode, dbname, session, pname) :
 
         elif  mode == 'remove' and not pname :
             try :
-                database.drop_collection (name)
+                db.drop_collection (name)
                 print "  removed collection %s" % name
             except :
                 pass # ignore errors
 
         else :
-            handle_coll (database, mode, name, pname)
+            handle_coll (db, mode, name, pname)
 
 
 
 # ------------------------------------------------------------------------------
-def handle_coll (database, mode, cname, pname) :
+def handle_coll (db, mode, cname, pname) :
     """
     For a given collection, traverse all documents
     """
@@ -777,7 +819,7 @@ def handle_coll (database, mode, cname, pname) :
     if 'indexes' in cname :
         return
 
-    collection = database[cname]
+    collection = db[cname]
     print " | +-- coll %s" % cname
 
     docs = collection.find ()
@@ -881,6 +923,7 @@ if __name__ == '__main__' :
     parser.add_option('-s', '--session', dest='session')
     parser.add_option('-d', '--dburl',   dest='url')
     parser.add_option('-m', '--mode',    dest='mode')
+    parser.add_option('-f', '--filter',  dest='filters')
     parser.add_option('-h', '--help',    dest='help', action="store_true")
 
     options, args = parser.parse_args ()
@@ -897,22 +940,36 @@ if __name__ == '__main__' :
     if  not options.mode :
         usage ("No mode specified")
 
-    if  not options.url : 
-        options.url = _DEFAULT_DBURL 
+    if  options.url : 
+        default_dburl = options.url
+    else :
+        if  'RADICAL_PILOT_DBURL' in os.environ : 
+            default_dburl = os.environ['RADICAL_PILOT_DBURL']
+        else :
+            default_dburl = _DEFAULT_DBURL 
+
+    if  not options.url :
+        options.url = default_dburl
 
 
     mode    = options.mode 
     url     = options.url
     session = options.session
+    filters = options.filters
 
-    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
-    dbclient = pymongo.MongoClient (host=host, port=port)
+    url = ru.Url (options.url)
+    if  not url.path or '/' == url.path :
+        url.path = 'radicalpilot'
+
+    print  url
+
+    mongo, db, dbname, cname, pname = ru.mongodb_connect (str(url), default_dburl)
 
     print "modes   : %s" % mode
     print "db url  : %s" % url
 
     if  not session and mode != 'list' :
-        session = rpu.get_last_session  (dbclient, dbname)
+        session = rpu.get_last_session  (db)
         print "session : %s (last session in database)" % session
     else :
         print "session : %s" % session
@@ -922,18 +979,18 @@ if __name__ == '__main__' :
         if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'list' : list_sessions (dbclient, dbname, session)
-        elif m == 'tree' : tree_session  (dbclient, dbname, session) 
-        elif m == 'dump' : dump_session  (dbclient, dbname, session) 
-        elif m == 'sort' : sort_session  (dbclient, dbname, session) 
-        elif m == 'hist' : hist_session  (dbclient, dbname, session) 
-        elif m == 'stat' : stat_session  (dbclient, dbname, session) 
-        elif m == 'plot' : plot_session  (dbclient, dbname, session) 
+        if   m == 'list' : list_sessions (db, session, filters)
+        elif m == 'tree' : tree_session  (db, session) 
+        elif m == 'dump' : dump_session  (db, session) 
+        elif m == 'sort' : sort_session  (db, session) 
+        elif m == 'hist' : hist_session  (db, session) 
+        elif m == 'stat' : stat_session  (db, session) 
+        elif m == 'plot' : plot_session  (db, session) 
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 
     # ------------------------------------------------------------------------------------
-    dbclient.disconnect ()
+    mongo.disconnect ()
 
 # ------------------------------------------------------------------------------
 
