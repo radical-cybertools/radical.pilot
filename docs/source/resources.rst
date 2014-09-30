@@ -9,7 +9,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               all.q
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: das4.json <../../src/radical/pilot/configs/das4.json>`
@@ -43,7 +43,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               batch
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
@@ -61,7 +61,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               batch
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
@@ -77,7 +77,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               batch
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
@@ -93,7 +93,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               short
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
@@ -109,7 +109,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               None
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
@@ -125,7 +125,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               None
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
@@ -141,7 +141,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               None
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: localhost.json <../../src/radical/pilot/configs/localhost.json>`
@@ -159,7 +159,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               test
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
@@ -177,7 +177,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               premium
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: ncar.json <../../src/radical/pilot/configs/ncar.json>`
@@ -193,7 +193,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               batch
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: radical.json <../../src/radical/pilot/configs/radical.json>`
@@ -229,7 +229,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               batch
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
@@ -247,7 +247,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               normal
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
@@ -265,7 +265,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               normal
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
@@ -283,7 +283,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               normal
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
@@ -301,7 +301,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               normal
-``sandbox``             $HOME/radical.pilot.sandbox
+``sandbox``             $HOME
 ================== ============================
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
