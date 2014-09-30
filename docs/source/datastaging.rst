@@ -148,20 +148,19 @@ Examples
 String-Based Input and Output Transfer
 --------------------------------------
 
-.. literalinclude:: ../../examples/input_output_data_staging_local.py
+.. literalinclude:: ../../examples/io_staging_simple.py
 
 Dictionary-Based Input and Output Transfer
 ------------------------------------------
 
 .. literalinclude:: ../../examples/io_staging_dict.py
 
-
 Shared Input Files
 ------------------
 
 .. literalinclude:: ../../examples/io_staging_shared.py
 
+Pipeline
+--------
 
-Dependent Output Files
-----------------------
-
+.. literalinclude:: ../../examples/io_staging_pipeline.py
