@@ -1,10 +1,5 @@
 import os
-import sys
 import radical.pilot
-import saga
-
-#RESOURCE = 'sierra.futuregrid.org'
-RESOURCE = 'localhost'
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
 
@@ -24,7 +19,7 @@ if __name__ == "__main__":
         # Define a C-core on $RESOURCE that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = RESOURCE
+        pdesc.resource = "localhost"
         pdesc.runtime = 5 # M minutes
         pdesc.cores = 8 # C cores
 
@@ -32,17 +27,17 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
 
         # Define the url of the local file in the local directory
-        shared_input_file_url = saga.Url('file://%s/%s' %
-                                         (os.getcwd(), SHARED_INPUT_FILE))
-        # Define and open staging directory on the remote machine
-        remote_dir_url = saga.Url(os.path.join(pilot.sandbox, 'staging_area'))
-        remote_dir = saga.filesystem.Directory(remote_dir_url,
-                                               flags=saga.filesystem.CREATE_PARENTS)
-        # Copy the local file to the remote staging area
-        remote_dir.copy(shared_input_file_url, '.')
+        shared_input_file_url = 'file://%s/%s' % (os.getcwd(), SHARED_INPUT_FILE)
 
-        # TODO: Change to above block to pilot.stage_in(shared_input_file_url)
-        #       once that is available.
+        # Configure the staging directive for to insert the shared file into
+        # the pilot staging directory.
+        sd_pilot = {'source': shared_input_file_url,
+                    # Note the triple slash, because of SAGA URL peculiarities
+                    'target': 'staging:///%s' % SHARED_INPUT_FILE,
+                    'action': radical.pilot.TRANSFER
+        }
+        # Synchronously stage the data to the pilot
+        pilot.stage_in(sd_pilot)
 
         # Configure the staging directive for shared input file.
         sd_shared = {'source': 'staging:///%s' % SHARED_INPUT_FILE,
