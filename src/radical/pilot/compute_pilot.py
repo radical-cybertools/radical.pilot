@@ -409,11 +409,6 @@ class ComputePilot (object):
         elif self.state in [DONE, FAILED, CANCELED]:
             raise Exception("Pilot already finished, no need to stage anymore!")
 
-        # Define and open the staging directory for the pilot
-        remote_dir_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA))
-        remote_dir = saga.filesystem.Directory(remote_dir_url,
-                                               flags=saga.filesystem.CREATE_PARENTS)
-
         # Iterate over all directives
         for directive in expand_staging_directive(directives, logger):
 
@@ -421,6 +416,25 @@ class ComputePilot (object):
             action = directive['action']
 
             # TODO: verify target?
+            # Convert the target_url into a SAGA Url object
+            target_url = saga.Url(directive['target'])
+
+            # Handle special 'staging' scheme
+            if target_url.scheme == 'staging':
+                logger.info('Operating from staging')
+
+                # Remove the leading slash to get a relative path from the staging area
+                target = target_url.path.split('/',1)[1]
+
+                remote_dir_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA))
+            else:
+                remote_dir_url = target_url
+                remote_dir_url.path = os.path.dirname(directive['target'])
+                target = os.path.basename(directive['target'])
+
+            # Define and open the staging directory for the pilot
+            remote_dir = saga.filesystem.Directory(remote_dir_url,
+                                               flags=saga.filesystem.CREATE_PARENTS)
 
             if action == LINK:
                 # TODO: Does this make sense?
@@ -440,6 +454,6 @@ class ComputePilot (object):
             elif action == TRANSFER:
                 log_message = 'Transferring %s to %s' % (source, remote_dir_url)
                 # Transfer the local file to the remote staging area
-                remote_dir.copy(source, '.')
+                remote_dir.copy(source, target)
             else:
                 raise Exception('Action %s not supported' % action)
