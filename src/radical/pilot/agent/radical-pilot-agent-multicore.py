@@ -81,6 +81,8 @@ LINK     = 'Link'     # local ln -s
 MOVE     = 'Move'     # local mv
 TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
 
+STAGING_AREA = 'staging_area'
+
 # -----------------------------------------------------------------------------
 # Common States
 NEW                         = 'New'
@@ -1371,7 +1373,7 @@ class ExecWorker(multiprocessing.Process):
                                     'directive': directive,
                                     'sandbox': task.workdir,
                                     # TODO: the staging/area pilot directory should  not be derived like this:
-                                    'staging_area': os.path.join(os.path.dirname(task.workdir), 'staging_area'),
+                                    'staging_area': os.path.join( os.path.dirname(task.workdir), STAGING_AREA),
                                     'cu_id': uid
                                 }
 
