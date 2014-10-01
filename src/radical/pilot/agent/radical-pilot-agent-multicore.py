@@ -1714,6 +1714,17 @@ class OutputStagingWorker(multiprocessing.Process):
                     # Handle special 'staging' scheme
                     if target_url.scheme == 'staging':
                         self._log.info('Operating from staging')
+
+                        # Create staging directory in case it doesn't exist yet
+                        try :
+                            os.makedirs(staging_area)
+                        except OSError as e:
+                            # ignore failure on existing directory
+                            if e.errno == errno.EEXIST and os.path.isdir(staging_area):
+                                pass
+                            else:
+                                raise
+
                         # Remove the leading slash to get a relative path from the staging area
                         rel2staging = target_url.path.split('/',1)[1]
                         target = os.path.join(staging_area, rel2staging)
