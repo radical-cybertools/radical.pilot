@@ -165,6 +165,10 @@ def expand_staging_directive(staging_directive, logger):
                 # Add the content of the local list to global list
                 new_staging_directive.extend(new_sds)
 
+            else:
+                raise Exception("Source %s is neither a list or a string!" %
+                                source, source)
+
         else:
             raise Exception("Unknown type of staging directive: %s" % sd)
 
