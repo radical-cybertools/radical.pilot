@@ -190,7 +190,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(SPMD_VARIATION,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_INTERPRETER,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PRE_BOOTSTRAP,               None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(VALID_ROOTS,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(VALID_ROOTS,                 None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(BOOTSTRAPPER,                None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT_WORKER,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
