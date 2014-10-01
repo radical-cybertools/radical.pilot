@@ -1,11 +1,4 @@
-import os
-import sys
 import radical.pilot
-import saga
-
-#INDIA_STAGING = '/N/u/marksant/staging_area'
-#RESOURCE = 'india.futuregrid.org'
-RESOURCE = 'localhost'
 
 INPUT_FILE = 'input_file.txt'
 INTERMEDIATE_FILE = 'intermediate_file.txt'
@@ -27,17 +20,12 @@ if __name__ == "__main__":
         # Define a C-core on stamped that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = RESOURCE
+        pdesc.resource = "localhost"
         pdesc.runtime = 15 # M minutes
         pdesc.cores = 2 # C cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
-
-        # Define and create staging directory for the intermediate data on the remote machine
-        remote_dir_url = saga.Url(os.path.join(pilot.sandbox, 'staging_area'))
-        remote_dir = saga.filesystem.Directory(remote_dir_url,
-                                               flags=saga.filesystem.CREATE_PARENTS)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
