@@ -148,20 +148,31 @@ Examples
 String-Based Input and Output Transfer
 --------------------------------------
 
-.. literalinclude:: ../../examples/input_output_data_staging_local.py
+This example demonstrates the simplest form of the data staging capabilities.
+
+.. literalinclude:: ../../examples/io_staging_simple.py
 
 Dictionary-Based Input and Output Transfer
 ------------------------------------------
 
-.. literalinclude:: ../../examples/io_staging_dict.py
+This example demonstrates the use of the staging directives structure to
+have more control over the staging behavior.
 
+.. literalinclude:: ../../examples/io_staging_dict.py
 
 Shared Input Files
 ------------------
 
+This example demonstrates the out-of-band transferring of a shared input
+file and making that available to all compute units.
+
 .. literalinclude:: ../../examples/io_staging_shared.py
 
+Pipeline
+--------
 
-Dependent Output Files
-----------------------
+This example demonstrates the use of a remote staging environment,
+where the first step of the pipeline copies the output into and that is
+picked up by the second step in the pipeline.
 
+.. literalinclude:: ../../examples/io_staging_pipeline.py

@@ -95,7 +95,7 @@ if __name__ == "__main__":
             print " STDOUT: %s" % unit.stdout
             print " STDERR: %s" % unit.stderr
 
-        session.close(delete=False)
+        session.close()
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex

@@ -19,7 +19,8 @@
                                          "module load python/2.7.3-epd-7.3.2",
                                          "module unload xalt"
                                         ],
-        "valid_roots"                 : ["/home1", "/scratch", "/work"],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
 
