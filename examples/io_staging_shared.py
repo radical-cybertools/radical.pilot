@@ -2,6 +2,7 @@ import os
 import radical.pilot
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
+MY_STAGING_AREA = '/tmp/my_staging_area'
 
 #------------------------------------------------------------------------------
 #
@@ -32,16 +33,14 @@ if __name__ == "__main__":
         # Configure the staging directive for to insert the shared file into
         # the pilot staging directory.
         sd_pilot = {'source': shared_input_file_url,
-                    # Note the triple slash, because of SAGA URL peculiarities
-                    'target': 'staging:///%s' % SHARED_INPUT_FILE,
+                    'target': os.path.join(MY_STAGING_AREA, SHARED_INPUT_FILE),
                     'action': radical.pilot.TRANSFER
         }
         # Synchronously stage the data to the pilot
         pilot.stage_in(sd_pilot)
 
         # Configure the staging directive for shared input file.
-        sd_shared = {'source': 'staging:///%s' % SHARED_INPUT_FILE,
-                     # Note the triple slash, because of SAGA URL peculiarities
+        sd_shared = {'source': os.path.join(MY_STAGING_AREA, SHARED_INPUT_FILE),
                      'target': SHARED_INPUT_FILE,
                      'action': radical.pilot.LINK
         }
@@ -67,9 +66,9 @@ if __name__ == "__main__":
             # Concatenate the shared input and the task specific input.
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/bash'
-            cud.arguments = ['-l', '-c', 'cat shared_input_file.txt '
-                             'input_file-%d.txt > output_file-%d.txt' %
-                             (unit_count, unit_count)]
+            cud.arguments = ['-l', '-c',
+                             'cat %s input_file-%d.txt > output_file-%d.txt' %
+                             (SHARED_INPUT_FILE, unit_count, unit_count)]
             cud.cores = 1
             cud.input_staging = [sd_shared, sd_input]
             cud.output_staging = sd_output

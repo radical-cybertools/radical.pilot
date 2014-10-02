@@ -42,6 +42,7 @@ if __name__ == "__main__":
         # Configure the staging directive for intermediate data
         sd_inter_out = {
             'source': INTERMEDIATE_FILE,
+            # Note the triple slash, because of URL peculiarities
             'target': 'staging:///%s' % INTERMEDIATE_FILE,
             'action': radical.pilot.COPY
         }
@@ -61,6 +62,7 @@ if __name__ == "__main__":
 
         # Configure the staging directive for input intermediate data
         sd_inter_in = {
+            # Note the triple slash, because of URL peculiarities
             'source': 'staging:///%s' % INTERMEDIATE_FILE,
             'target': INTERMEDIATE_FILE,
             'action': radical.pilot.LINK
