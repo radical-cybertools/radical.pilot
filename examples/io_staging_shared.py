@@ -9,9 +9,6 @@ MY_STAGING_AREA = '/tmp/my_staging_area'
 if __name__ == "__main__":
 
     try:
-        # keep track of temporary files to clean up
-        delete_me = list()
-
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
@@ -24,8 +21,8 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "localhost"
-        pdesc.runtime  = 10 # M minutes
-        pdesc.cores    =  8 # C cores
+        pdesc.runtime  = 5 # M minutes
+        pdesc.cores    = 8 # C cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -35,8 +32,6 @@ if __name__ == "__main__":
 
         # Configure the staging directive for to insert the shared file into
         # the pilot staging directory.
-        delete_me.append ('shared_input_file.txt')
-        os.system ('hostname > shared_input_file.txt')
         sd_pilot = {'source': shared_input_file_url,
                     'target': os.path.join(MY_STAGING_AREA, SHARED_INPUT_FILE),
                     'action': radical.pilot.TRANSFER
@@ -62,23 +57,18 @@ if __name__ == "__main__":
         for unit_count in range(4):
 
             # Configure the staging directive for per unit input file.
-            delete_me.append ('input_file-%d.txt' % unit_count)
-            os.system ('date > input_file-%d.txt' % unit_count)
             sd_input = 'input_file-%d.txt' % unit_count
 
             # Configure the staging directive for per unit output file.
             sd_output = 'output_file-%d.txt' % unit_count
-            delete_me.append ('output_file-%d.txt' % unit_count)
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/bash'
             cud.arguments = ['-l', '-c',
-                             'cat %s input_file-%d.txt > output_file-%d.txt ; ' \
-                             'wc  -l input_file-%d.txt   output_file-%d.txt' %
-                             (SHARED_INPUT_FILE, unit_count, unit_count, 
-                                                 unit_count, unit_count)]
+                             'cat %s input_file-%d.txt > output_file-%d.txt' %
+                             (SHARED_INPUT_FILE, unit_count, unit_count)]
             cud.cores = 1
             cud.input_staging = [sd_shared, sd_input]
             cud.output_staging = sd_output
@@ -96,14 +86,10 @@ if __name__ == "__main__":
         for unit in umgr.get_units():
 
             # Get the stdout and stderr streams of the ComputeUnit.
-            print "unit %s (%s)" % (unit.uid, unit.state)
-            print " STDOUT:\n%s" %  unit.stdout
-            print " STDERR:\n%s" %  unit.stderr
+            print " STDOUT: %s" % unit.stdout
+            print " STDERR: %s" % unit.stderr
 
         session.close()
-
-        for fname in delete_me :
-            os.system ('rm -vf %s' % fname)
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex
