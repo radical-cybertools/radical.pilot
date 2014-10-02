@@ -129,10 +129,11 @@ class Session():
             uses lazy-create, they only appear in the database after the
             first insert. That's ok.
         """
+
         # make sure session doesn't exist already
-        if sid in self._db.collection_names():
-            raise DBEntryExistsException(
-                "Session with id '%s' already exists." % sid)
+        if  sid :
+            if  self._db[sid].count() != 0 :
+                raise DBEntryExistsException ("Session '%s' already exists." % sid)
 
         # remember session id
         self._session_id = sid

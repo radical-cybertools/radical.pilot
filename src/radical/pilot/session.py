@@ -162,12 +162,6 @@ class Session (saga.Session, Object):
             for rc in rcs:
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
-        self._dbs, self._created, self._connection_info = \
-                dbSession.new(sid=self._uid,
-                              db_url=self._database_url,
-                              db_name=database_name)
-
-
         ##########################
         ## CREATE A NEW SESSION ##
         ##########################
@@ -175,6 +169,11 @@ class Session (saga.Session, Object):
             try:
                 self._uid = str(ObjectId())
                 self._last_reconnect = None
+
+                self._dbs, self._created, self._connection_info = \
+                        dbSession.new(sid=self._uid,
+                                      db_url=self._database_url,
+                                      db_name=database_name)
 
                 logger.info("New Session created%s." % str(self))
 
