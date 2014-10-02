@@ -21,8 +21,8 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource = "localhost"
-        pdesc.runtime = 5 # M minutes
-        pdesc.cores = 8 # C cores
+        pdesc.runtime  = 5 # M minutes
+        pdesc.cores    = 8 # C cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
