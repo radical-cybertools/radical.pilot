@@ -1,19 +1,23 @@
+
 {
     "stampede.tacc.utexas.edu": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh", "local"],
         "warn_on_local"               : "True",
-        "ssh"                         : {
-            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu",
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
             "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
         },
-        "gsissh"                      : {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu",
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu/",
             "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu/"
         },
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://localhost",
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "normal",
@@ -39,17 +43,20 @@
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh", "local"],
         "warn_on_local"               : "True",
-        "ssh"                         : {
-            "job_manager_endpoint"    : "sge+ssh://lonestar.tacc.utexas.edu", 
-            "filesystem_endpoint"     : "sftp://lonestar.tacc.utexas.edu/",   
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "sge+ssh://lonestar.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://lonestar.tacc.utexas.edu/"
         },
-        "gsissh"                      : {
-            "job_manager_endpoint"    : "sge+gsissh://lonestar.tacc.utexas.edu", 
-            "filesystem_endpoint"     : "gsisftp://lonestar.tacc.utexas.edu/",   
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "sge+gsissh://lonestar.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "gsisftp://lonestar.tacc.utexas.edu/"
         },
-        "local"                       : {
-            "job_manager_endpoint"    : "sge://localhost",  
-            "filesystem_endpoint"     : "file://localhost/",
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "sge://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "normal",
         "lrms"                        : "SGE",
@@ -57,10 +64,10 @@
         "mpi_launch_method"           : "IBRUN",
         "spmd_variation"              : "24way",
         "python_interpreter"          : "/opt/apps/python/epd/7.2.2/bin/python",
-        "pre_bootstrap"               : ["module purge", 
-                                         "module load TACC", 
-                                         "module load cluster", 
-                                         "module load mvapich2", 
+        "pre_bootstrap"               : ["module purge",
+                                         "module load TACC",
+                                         "module load cluster",
+                                         "module load mvapich2",
                                          "module load python/2.7.2-epd"],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
@@ -69,10 +76,23 @@
     "trestles.sdsc.xsede.org": {
         "description"                 : "The XSEDE 'Trestles' cluster at SDSC (http://www.sdsc.edu/us/resources/trestles/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "remote_job_manager_endpoint" : "pbs+ssh://trestles.sdsc.xsede.org",
-        "remote_filesystem_endpoint"  : "sftp://trestles.sdsc.xsede.org/",
-        "local_job_manager_endpoint"  : "pbs://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "gsissh", "local"],
+        "warn_on_local"               : "True",
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://trestles.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://trestles.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "pbs+gsissh://trestles.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://trestles.sdsc.xsede.org/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "pbs://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
@@ -86,10 +106,23 @@
     "gordon.sdsc.xsede.org": {
         "description"                 : "The XSEDE 'Gordon' cluster at SDSC (http://www.sdsc.edu/us/resources/gordon/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "remote_job_manager_endpoint" : "pbs+ssh://gordon.sdsc.xsede.org",
-        "remote_filesystem_endpoint"  : "sftp://gordon.sdsc.xsede.org/",
-        "local_job_manager_endpoint"  : "pbs://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "gsissh", "local"],
+        "warn_on_local"               : "True",
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://gordon.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://gordon.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "pbs+gsissh://gordon.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://gordon.sdsc.xsede.org/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "pbs://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
@@ -103,10 +136,23 @@
     "blacklight.psc.xsede.org": {
         "description"                 : "The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "remote_job_manager_endpoint" : "pbs+ssh://blacklight.psc.xsede.org/?ppn=16",
-        "remote_filesystem_endpoint"  : "sftp://blacklight.psc.xsede.org/",
-        "local_job_manager_endpoint"  : "pbs://localhost/?ppn=16",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "gsissh", "local"],
+        "warn_on_local"               : "True",
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://blacklight.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://blacklight.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "pbs+gsissh://blacklight.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://blacklight.sdsc.xsede.org/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "pbs://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "DPLACE",
@@ -118,3 +164,4 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
+

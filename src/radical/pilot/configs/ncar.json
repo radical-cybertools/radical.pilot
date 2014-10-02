@@ -1,11 +1,20 @@
+
 {
     "yellowstone.ucar.edu": {
         "description"                 : "The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).",
         "notes"                       : "We only support one concurrent CU per node currently.",
-        "remote_job_manager_endpoint" : "lsf+ssh://yellowstone.ucar.edu",
-        "remote_filesystem_endpoint"  : "sftp://yellowstone.ucar.edu/",
-        "local_job_manager_endpoint"  : "lsf://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "local"],
+        "warn_on_local"               : "True",
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "lsf+ssh://yellowstone.ucar.edu/",
+            "filesystem_endpoint"     : "sftp://yellowstone.ucar.edu/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "lsf://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
         "default_queue"               : "premium",
         "lrms"                        : "LSF",
         "task_launch_method"          : "SSH",
@@ -17,3 +26,4 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
+
