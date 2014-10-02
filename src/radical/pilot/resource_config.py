@@ -1,6 +1,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 import radical.utils
 
 import saga.attributes  as attributes
@@ -8,7 +9,6 @@ from radical.pilot.exceptions import *
 
 # -----------------------------------------------------------------------------
 # Attribute description keys
-NAME                        = 'name'
 JOB_MANAGER_ENDPOINT        = 'job_manager_endpoint'
 FILESYSTEM_ENDPOINT         = 'filesystem_endpoint'
 DEFAULT_QUEUE               = 'default_queue'
@@ -31,7 +31,7 @@ NOTES                       = 'notes'
 SCHEMAS                     = 'schemas'
 
 
-VALID_KEYS = [NAME, JOB_MANAGER_ENDPOINT, FILESYSTEM_ENDPOINT, SCHEMAS,
+VALID_KEYS = [JOB_MANAGER_ENDPOINT, FILESYSTEM_ENDPOINT, SCHEMAS,
               DEFAULT_QUEUE, SPMD_VARIATION, PYTHON_INTERPRETER, PRE_BOOTSTRAP, 
               VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_WORKER,
               GLOBAL_VIRTENV, LRMS, TASK_LAUNCH_METHOD,
@@ -49,15 +49,14 @@ class ResourceConfig(attributes.Attributes):
     **Example**::
 
           rc = radical.pilot.ResourceConfig()
-          rc.name                 = "archer_local"
-          rc.job_manager_endpoint = "fork://localhost"
-          rc.filesystem_endpoint  = "sftp://localhost"
-          rc.default_queue        = None
-          rc.spmd_variation       = None
-          rc.python_interpreter   = "/work/y07/y07/cse/python/2.7.6/bin/python"
+          rc.name                 = "ec2.my_cluster"
+          rc.job_manager_endpoint = "ssh://23.23.23.23/"
+          rc.filesystem_endpoint  = "sftp://23.23.23.23"
+          rc.default_queue        = "batch"
+          rc.python_interpreter   = "/opt/python/2.7.6/bin/python"
           rc.pre_bootstrap        = "module load mpi"
           rc.valid_roots          = ["/home", "/work"]
-          rc.bootstrapper         = "cray_bootstrapper.sh"
+          rc.bootstrapper         = "default_bootstrapper.sh"
 
           pmgr = radical.pilot.PilotManager(session=session)
           pmgr.add_resource_config(rc)
@@ -139,9 +138,13 @@ class ResourceConfig(attributes.Attributes):
       rcfgs = dict()
 
       try:
-          rcf_dict = radical.utils.read_json(filename)
+          rcf_dict = radical.utils.read_json_str (filename)
+          rcf_name = str(os.path.basename (filename))
 
-          for name, cfg in rcf_dict.iteritems():
+          if  rcf_name.endswith ('.json') :
+              rcf_name = rcf_name[0:-5]
+
+          for res_name, cfg in rcf_dict.iteritems():
 
               # create config from resource section
               cls = ResourceConfig (cfg)
@@ -151,7 +154,7 @@ class ResourceConfig(attributes.Attributes):
                   if  not key in cls :
                       cls[key] = None
             
-              rcfgs[name] = cls
+              rcfgs["%s.%s" % (rcf_name, res_name)] = cls
 
       except ValueError, err:
           raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (filename, str(err)))
@@ -172,7 +175,6 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_extensible  (True)
         self._attributes_camelcasing (True)
 
-        self._attributes_register(NAME,                    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(JOB_MANAGER_ENDPOINT,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(FILESYSTEM_ENDPOINT,     None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)

@@ -1,6 +1,6 @@
 
 {
-    "tutorial.radical.org": {
+    "tutorial": {
         "description"                 : "Our private tutorial VM on EC2",
         "notes"                       : "None",
         "schemas"                     : ["ssh", "local"],

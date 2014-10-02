@@ -1,6 +1,6 @@
 
 {
-    "alamo.futuregrid.org": {
+    "alamo": {
         "description"                 : "The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
         "schemas"                     : ["ssh", "local"],
@@ -25,7 +25,7 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
 
-    "india.futuregrid.org": {
+    "india": {
         "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
         "schemas"                     : ["ssh", "local"],
@@ -51,7 +51,7 @@
 
     },
 
-    "sierra.futuregrid.org": {
+    "sierra": {
         "description"                 : "The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
         "schemas"                     : ["ssh", "local"],
@@ -76,7 +76,7 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
 
-    "hotel.futuregrid.org": {
+    "hotel": {
         "description"                 : "The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.",
         "schemas"                     : ["ssh", "local"],

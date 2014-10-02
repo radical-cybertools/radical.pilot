@@ -262,8 +262,6 @@ class PilotManager(Object):
             rcs          = self._session.get_resource_configs()
             resource_key = pilot_description.resource
 
-            import pprint
-            pprint.pprint (rcs)
             if resource_key not in rcs:
                 error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
                 raise BadParameter(error_msg)
