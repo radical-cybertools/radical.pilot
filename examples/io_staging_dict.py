@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Define a single-core local pilot that runs for 5 minutes and cleans up
     # after itself.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "localhost"
+    pdesc.resource = "local.localhost"
     pdesc.cores    = 8
     pdesc.runtime  = 5 # Minutes
     #pdesc.cleanup  = True

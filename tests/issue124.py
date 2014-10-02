@@ -43,7 +43,7 @@ if __name__ == "__main__":
     pmgr.register_callback(pilot_state_cb)
 
     pd = rp.ComputePilotDescription()
-    pd.resource = "trestles.sdsc.xsede.org"
+    pd.resource = "xsede.trestles"
     pd.cores    = 1
     pd.runtime  = 10
     pd.cleanup  = True

@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # Define a 32-core on stamped that runs for 15 mintutes and 
     # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "stampede.tacc.utexas.edu"
+    pdesc.resource  = "xsede.stampede"
     pdesc.runtime   = 10 # minutes
     pdesc.cores     = 4
     pdesc.cleanup   = True

@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Define a X-core that runs for N minutes on Gordon.
     # Gordon has 16 cores per node.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "gordon.sdsc.xsede.org"
+    pdesc.resource = "xsede.gordon"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 32 # X cores
 

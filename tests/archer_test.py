@@ -51,7 +51,7 @@ if __name__ == "__main__":
     pmgr.register_callback(pilot_state_cb)
 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "archer.ac.uk"
+    pdesc.resource = "epsrc.archer"
     pdesc.project  = "e290"  # archer 'project group'
     pdesc.runtime  = 10
     pdesc.cores    = 56      # there are 24 cores per node on Archer, so this allocates 3 nodes

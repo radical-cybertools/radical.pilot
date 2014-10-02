@@ -20,7 +20,7 @@ if __name__ == "__main__":
         # Define a C-core on $RESOURCE that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "localhost"
+        pdesc.resource = "local.localhost"
         pdesc.runtime  = 5 # M minutes
         pdesc.cores    = 8 # C cores
 

@@ -75,7 +75,7 @@ if __name__ == "__main__":
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
         # 
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "localhost"  # NOTE: This is a "label", not a hostname
+        pdesc.resource = "local.localhost"  # NOTE: This is a "label", not a hostname
         pdesc.runtime  = 10 # minutes
         pdesc.cores    = 1
         pdesc.cleanup  = True

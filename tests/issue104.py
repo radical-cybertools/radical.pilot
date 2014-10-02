@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     # Define a 2-core local pilot that runs for 10 minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "stampede.tacc.utexas.edu"
+    pdesc.resource = "xsede.stampede"
     pdesc.runtime = 30
     pdesc.cores = 4096
 

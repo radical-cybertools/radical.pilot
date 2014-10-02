@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Define a X-core pilot that runs for N minutes.
     # Trestles has 32 cores per node.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "trestles.sdsc.xsede.org"
+    pdesc.resource = "xsede.trestles"
     pdesc.runtime  = 5  # N minutes
     pdesc.cores    = 64 # X cores
 
