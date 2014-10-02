@@ -322,7 +322,7 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_start_pilot_request(self, pilot, resource_config, use_local_endpoints):
+    def register_start_pilot_request(self, pilot, resource_config):
         """Register a new pilot start request with the worker.
         """
 
@@ -330,10 +330,7 @@ class PilotManagerController(threading.Thread):
         pilot_uid = bson.ObjectId()
 
         # switch endpoint type
-        if use_local_endpoints is True:
-            filesystem_endpoint = resource_config['local_filesystem_endpoint']
-        else:
-            filesystem_endpoint = resource_config['remote_filesystem_endpoint']
+        filesystem_endpoint = resource_config['filesystem_endpoint']
 
         fs = saga.Url(filesystem_endpoint)
 

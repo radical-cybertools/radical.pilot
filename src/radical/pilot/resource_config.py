@@ -9,10 +9,8 @@ from radical.pilot.exceptions import *
 # -----------------------------------------------------------------------------
 # Attribute description keys
 NAME                        = 'name'
-REMOTE_JOB_MANAGER_ENDPOINT = 'remote_job_manager_endpoint'
-REMOTE_FILESYSTEM_ENDPOINT  = 'remote_filesystem_endpoint'
-LOCAL_JOB_MANAGER_ENDPOINT  = 'local_job_manager_endpoint'
-LOCAL_FILESYSTEM_ENDPOINT   = 'local_filesystem_endpoint'
+JOB_MANAGER_ENDPOINT        = 'job_manager_endpoint'
+FILESYSTEM_ENDPOINT         = 'filesystem_endpoint'
 DEFAULT_QUEUE               = 'default_queue'
 SPMD_VARIATION              = 'spmd_variation'
 PYTHON_INTERPRETER          = 'python_interpreter'
@@ -30,10 +28,10 @@ AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 DEFAULT_REMOTE_WORKDIR      = 'default_remote_workdir'
 DESCRIPTION                 = 'description'
 NOTES                       = 'notes'
+SCHEMAS                     = 'schemas'
 
 
-VALID_KEYS = [NAME, LOCAL_JOB_MANAGER_ENDPOINT, LOCAL_FILESYSTEM_ENDPOINT,
-              REMOTE_JOB_MANAGER_ENDPOINT, REMOTE_FILESYSTEM_ENDPOINT,
+VALID_KEYS = [NAME, JOB_MANAGER_ENDPOINT, FILESYSTEM_ENDPOINT, SCHEMAS,
               DEFAULT_QUEUE, SPMD_VARIATION, PYTHON_INTERPRETER, PRE_BOOTSTRAP, 
               VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_WORKER,
               GLOBAL_VIRTENV, LRMS, TASK_LAUNCH_METHOD,
@@ -138,29 +136,22 @@ class ResourceConfig(attributes.Attributes):
       """Reads a resource configuration JSON file from the URL provided and 
          returns a list of one or more ResourceConfig objects.
       """
-      rcfgs = []
+      rcfgs = dict()
 
       try:
           rcf_dict = radical.utils.read_json(filename)
 
           for name, cfg in rcf_dict.iteritems():
-              cls = ResourceConfig()
-              cls.name = name
 
-              for key in cfg:
-                  if key not in VALID_KEYS:
-                      msg = "Unknown key '%s' in file '%s'." % (key, str(filename))
-                      raise BadParameter(msg=msg)
+              # create config from resource section
+              cls = ResourceConfig (cfg)
 
+              # make sure all keys are initialized
               for key in VALID_KEYS:
-                  if key == NAME:
-                      continue
-                  if key in cfg:
-                      cls[key] = cfg[key]
-                  else:
+                  if  not key in cls :
                       cls[key] = None
-
-                  rcfgs.append(cls)
+            
+              rcfgs[name] = cls
 
       except ValueError, err:
           raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (filename, str(err)))
@@ -175,44 +166,32 @@ class ResourceConfig(attributes.Attributes):
         """
 
         # initialize attributes
-        attributes.Attributes.__init__(self)
+        attributes.Attributes.__init__(self, seeding_dict)
 
         # set attribute interface properties
-        self._attributes_extensible  (False)
+        self._attributes_extensible  (True)
         self._attributes_camelcasing (True)
 
-        self._attributes_register(NAME,                        None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(REMOTE_JOB_MANAGER_ENDPOINT, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(REMOTE_FILESYSTEM_ENDPOINT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(LOCAL_JOB_MANAGER_ENDPOINT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(LOCAL_FILESYSTEM_ENDPOINT,   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(DEFAULT_QUEUE,               None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(SPMD_VARIATION,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PYTHON_INTERPRETER,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PRE_BOOTSTRAP,               None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(VALID_ROOTS,                 None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(BOOTSTRAPPER,                None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PILOT_AGENT,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PILOT_AGENT_WORKER,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GLOBAL_VIRTENV,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(LRMS,                        None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(TASK_LAUNCH_METHOD,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(MPI_LAUNCH_METHOD,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(FORWARD_TUNNEL_ENDPOINT,     None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(AGENT_MONGODB_ENDPOINT,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(DEFAULT_REMOTE_WORKDIR,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(DESCRIPTION,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(NOTES,                       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-
-        # Parse the seeding dict if it is provided
-        if seeding_dict is not None:
-            try:
-                for key in seeding_dict:
-                    self.set_attribute(key, seeding_dict[key])
-
-            except ValueError, err:
-                raise BadParameter("Couldn't parse seeding dict: %s." % str(err))
-
+        self._attributes_register(NAME,                    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(JOB_MANAGER_ENDPOINT,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(FILESYSTEM_ENDPOINT,     None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(DEFAULT_QUEUE,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SPMD_VARIATION,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PYTHON_INTERPRETER,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP,           None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(VALID_ROOTS,             None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(BOOTSTRAPPER,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PILOT_AGENT,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PILOT_AGENT_WORKER,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GLOBAL_VIRTENV,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LRMS,                    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(TASK_LAUNCH_METHOD,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(MPI_LAUNCH_METHOD,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(FORWARD_TUNNEL_ENDPOINT, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(AGENT_MONGODB_ENDPOINT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(DEFAULT_REMOTE_WORKDIR,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(DESCRIPTION,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(NOTES,                   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
 
     # -------------------------------------------------------------------------

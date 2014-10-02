@@ -2,10 +2,20 @@
     "stampede.tacc.utexas.edu": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "remote_job_manager_endpoint" : "slurm+ssh://stampede.tacc.utexas.edu",
-        "remote_filesystem_endpoint"  : "sftp://stampede.tacc.utexas.edu/",
-        "local_job_manager_endpoint"  : "slurm://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "gsissh", "local"],
+        "warn_on_local"               : "True",
+        "ssh"                         : {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu",
+            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
+        },
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu",
+            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu/"
+        },
+        "local"                       : {
+            "job_manager_endpoint"    : "slurm://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
         "task_launch_method"          : "SSH",
@@ -25,19 +35,33 @@
     },
 
     "lonestar.tacc.xsede.org": {
-        "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/user-services/user-guides/lonestar-user-guide).",
+        "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "remote_job_manager_endpoint" : "sge+ssh://lonestar.tacc.utexas.edu",
-        "remote_filesystem_endpoint"  : "sftp://lonestar.tacc.utexas.edu/",
-        "local_job_manager_endpoint"  : "sge://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "gsissh", "local"],
+        "warn_on_local"               : "True",
+        "ssh"                         : {
+            "job_manager_endpoint"    : "sge+ssh://lonestar.tacc.utexas.edu", 
+            "filesystem_endpoint"     : "sftp://lonestar.tacc.utexas.edu/",   
+        },
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "sge+gsissh://lonestar.tacc.utexas.edu", 
+            "filesystem_endpoint"     : "gsisftp://lonestar.tacc.utexas.edu/",   
+        },
+        "local"                       : {
+            "job_manager_endpoint"    : "sge://localhost",  
+            "filesystem_endpoint"     : "file://localhost/",
+        },
         "default_queue"               : "normal",
         "lrms"                        : "SGE",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
         "spmd_variation"              : "24way",
         "python_interpreter"          : "/opt/apps/python/epd/7.2.2/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load TACC", "module load cluster", "module load mvapich2", "module load python/2.7.2-epd"],
+        "pre_bootstrap"               : ["module purge", 
+                                         "module load TACC", 
+                                         "module load cluster", 
+                                         "module load mvapich2", 
+                                         "module load python/2.7.2-epd"],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },

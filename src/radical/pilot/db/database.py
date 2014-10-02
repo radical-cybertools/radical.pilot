@@ -209,39 +209,6 @@ class Session():
         except:
             raise Exception("Couldn't find Session UID '%s' in database." % sid)
 
-  # #--------------------------------------------------------------------------
-  # #
-  # def session_add_resource_configs(self, name, config):
-  #     # why is this called 'add' if it is actually a 'set'?
-  #     if self._s is None:
-  #         raise DBException("No active session.")
-  #
-  #     self._s.update(
-  #         {"_id": ObjectId(self._session_id)},
-  #         {"$set": 
-  #             {"resource_configs.%s" % name.replace(".", "<dot>"): config}
-  #         },
-  #         upsert=True
-  #     )
-  #
-  # #--------------------------------------------------------------------------
-  # #
-  # def session_list_resource_configs(self):
-  #     # AM: why is this called 'list', if it is actually a 'get'?
-  #     if self._s is None:
-  #         raise DBException("No active session.")
-  #
-  #     result = self._s.find(
-  #             {"_id": ObjectId(self._session_id)},
-  #             {"resource_configs": 1}
-  #         )
-  #     rcs_unsafe = result[0]['resource_configs']
-  #     rc_safe = {}
-  #     for key, val in rcs_unsafe.iteritems():
-  #         rc_safe[key.replace("<dot>", ".")] = val
-  #
-  #     return rc_safe
-
     #--------------------------------------------------------------------------
     #
     @property

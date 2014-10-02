@@ -39,7 +39,7 @@ if __name__ == "__main__":
     session.add_context(c)
 
     # Get all configs,
-    res = session.list_resource_configs()
+    res = session.get_resource_configs()
     # ... and the entry specific for stampede
     s = res['stampede.tacc.utexas.edu']
     print 'Default queue of stampede is: "%s".' % s['default_queue']
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     session.add_resource_config(rc)
 
     # Get all configs,
-    res = session.list_resource_configs()
+    res = session.get_resource_configs()
     # ... and the entry specific for stampede
     s = res['stampede.tacc.utexas.edu']
     #s = res['testing']

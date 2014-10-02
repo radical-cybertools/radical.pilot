@@ -160,7 +160,7 @@ class Session (saga.Session, Object):
             rcs = ResourceConfig.from_file(config_file)
             logger.info("Loaded resource configurations from %s" % config_file)
             for rc in rcs:
-                self._resource_configs[rc.name] = rc.as_dict() 
+                self._resource_configs[rc] = rcs[rc].as_dict() 
 
         self._dbs, self._created, self._connection_info = \
                 dbSession.new(sid=self._uid,
@@ -473,11 +473,11 @@ class Session (saga.Session, Object):
            For example::
 
                   rc = radical.pilot.ResourceConfig
-                  rc.name = "mycluster"
-                  rc.remote_job_manager_endpoint = "ssh+pbs://mycluster
-                  rc.remote_filesystem_endpoint = "sftp://mycluster
-                  rc.default_queue = "private"
-                  rc.bootstrapper = "default_bootstrapper.sh"
+                  rc.name                 = "mycluster"
+                  rc.job_manager_endpoint = "ssh+pbs://mycluster
+                  rc.filesystem_endpoint  = "sftp://mycluster
+                  rc.default_queue        = "private"
+                  rc.bootstrapper         = "default_bootstrapper.sh"
 
                   pm = radical.pilot.PilotManager(session=s)
                   pm.add_resource_config(rc)
@@ -494,10 +494,9 @@ class Session (saga.Session, Object):
 
     # -------------------------------------------------------------------------
     #
-    def list_resource_configs(self):
+    def get_resource_configs (self):
         """Returns a dictionary of all known resource configurations.
         """
 
         return self._resource_configs
-      # return self._dbs.session_list_resource_configs()
 
