@@ -2362,7 +2362,7 @@ def parse_commandline():
     parser.add_option('-a', '--mongodb-auth',
                       metavar='AUTH',
                       dest='mongodb_auth',
-                      help='username:pass for database access.')
+                      help='username:password for MongoDB access.')
 
     parser.add_option('-b', '--benchmark',
                       metavar='BENCHMARK',

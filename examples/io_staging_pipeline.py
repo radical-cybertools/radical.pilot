@@ -1,3 +1,4 @@
+import os
 import radical.pilot
 
 INPUT_FILE = 'input_file.txt'
@@ -9,6 +10,11 @@ OUTPUT_FILE = 'output_file.txt'
 if __name__ == "__main__":
 
     try:
+        # Create input file
+        radical_cockpit_occupants = ['Carol', 'Eve', 'Alice', 'Bob']
+        for occ in radical_cockpit_occupants:
+            os.system('/bin/echo "%s" >> %s' % (occ, INPUT_FILE))
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
@@ -36,9 +42,6 @@ if __name__ == "__main__":
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
-        # Configure the staging directive for input file from local directory to working directory
-        sd_input = INPUT_FILE
-
         # Configure the staging directive for intermediate data
         sd_inter_out = {
             'source': INTERMEDIATE_FILE,
@@ -51,7 +54,7 @@ if __name__ == "__main__":
         cud1 = radical.pilot.ComputeUnitDescription()
         cud1.executable = 'sort'
         cud1.arguments = ['-o', INTERMEDIATE_FILE, INPUT_FILE]
-        cud1.input_staging = sd_input
+        cud1.input_staging = INPUT_FILE
         cud1.output_staging = sd_inter_out
 
         # Submit the first task for execution.
@@ -68,16 +71,13 @@ if __name__ == "__main__":
             'action': radical.pilot.LINK
         }
 
-        # Configure the staging directive for output data
-        sd_output = OUTPUT_FILE
-
         # Task 2: Take the first line of the sort intermediate file and write to output
         cud2 = radical.pilot.ComputeUnitDescription()
         cud2.executable = '/bin/bash'
-        cud2.arguments = ['-l', '-c', 'head -n1 %s > %s' %
+        cud2.arguments = ['-c', 'head -n1 %s > %s' %
                           (INTERMEDIATE_FILE, OUTPUT_FILE)]
         cud2.input_staging = sd_inter_in
-        cud2.output_staging = sd_output
+        cud2.output_staging = OUTPUT_FILE
 
         # Submit the second CU for execution.
         umgr.submit_units(cud2)

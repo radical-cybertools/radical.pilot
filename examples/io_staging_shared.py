@@ -9,6 +9,16 @@ MY_STAGING_AREA = '/tmp/my_staging_area'
 if __name__ == "__main__":
 
     try:
+
+        # Create shared input file
+        os.system('/bin/echo -n "Hello world, " > %s' % SHARED_INPUT_FILE)
+        radical_cockpit_occupants = ['Alice', 'Bob', 'Carol', 'Eve']
+
+        # Create per unit input files
+        for idx, occ in enumerate(radical_cockpit_occupants):
+            input_file = 'input_file-%d.txt' % (idx+1)
+            os.system('/bin/echo "%s" > %s' % (occ, input_file))
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
@@ -54,24 +64,23 @@ if __name__ == "__main__":
 
         compute_unit_descs = []
 
-        for unit_count in range(4):
+        for unit_idx in range(len(radical_cockpit_occupants)):
 
-            # Configure the staging directive for per unit input file.
-            sd_input = 'input_file-%d.txt' % unit_count
+            # Configure the per unit input file.
+            input_file = 'input_file-%d.txt' % (unit_idx+1)
 
-            # Configure the staging directive for per unit output file.
-            sd_output = 'output_file-%d.txt' % unit_count
+            # Configure the for per unit output file.
+            output_file = 'output_file-%d.txt' % (unit_idx+1)
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/bash'
-            cud.arguments = ['-l', '-c',
-                             'cat %s input_file-%d.txt > output_file-%d.txt' %
-                             (SHARED_INPUT_FILE, unit_count, unit_count)]
+            cud.arguments = ['-c', 'cat %s %s > %s' %
+                             (SHARED_INPUT_FILE, input_file, output_file)]
             cud.cores = 1
-            cud.input_staging = [sd_shared, sd_input]
-            cud.output_staging = sd_output
+            cud.input_staging = [sd_shared, input_file]
+            cud.output_staging = output_file
 
             compute_unit_descs.append(cud)
 
