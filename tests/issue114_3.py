@@ -7,7 +7,7 @@ session = rp.Session()
 pm = rp.PilotManager(session=session)
 
 cpd = rp.ComputePilotDescription()
-cpd.resource = "localhost"
+cpd.resource = "local.localhost"
 cpd.cores    = 1
 cpd.runtime  = 1
 cpd.sandbox  = "/tmp/radical.pilot.sandbox.unittests"

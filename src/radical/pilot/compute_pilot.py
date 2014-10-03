@@ -13,12 +13,15 @@ __license__ = "MIT"
 
 import os
 import time
+import saga
 
 from radical.pilot.states import *
 from radical.pilot.exceptions import *
 
 from radical.pilot.utils.logger import logger
 
+from radical.pilot.staging_directives import TRANSFER, COPY, LINK, MOVE, \
+    STAGING_AREA, expand_staging_directive
 
 # -----------------------------------------------------------------------------
 #
@@ -434,3 +437,63 @@ class ComputePilot (object):
         # now we can send a 'cancel' command to the pilot.
         self._manager.cancel_pilots(self.uid)
 
+    # -------------------------------------------------------------------------
+    #
+    def stage_in(self, directives):
+        """Stages the content of the staging directive into the pilot's
+        staging area"""
+
+        # Wait until we can assume the pilot directory to be created
+        if self.state == NEW:
+            self.wait(state=[PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE, ACTIVE])
+        elif self.state in [DONE, FAILED, CANCELED]:
+            raise Exception("Pilot already finished, no need to stage anymore!")
+
+        # Iterate over all directives
+        for directive in expand_staging_directive(directives, logger):
+
+            source = directive['source']
+            action = directive['action']
+
+            # TODO: verify target?
+            # Convert the target_url into a SAGA Url object
+            target_url = saga.Url(directive['target'])
+
+            # Handle special 'staging' scheme
+            if target_url.scheme == 'staging':
+                logger.info('Operating from staging')
+
+                # Remove the leading slash to get a relative path from the staging area
+                target = target_url.path.split('/',1)[1]
+
+                remote_dir_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA))
+            else:
+                remote_dir_url = target_url
+                remote_dir_url.path = os.path.dirname(directive['target'])
+                target = os.path.basename(directive['target'])
+
+            # Define and open the staging directory for the pilot
+            remote_dir = saga.filesystem.Directory(remote_dir_url,
+                                               flags=saga.filesystem.CREATE_PARENTS)
+
+            if action == LINK:
+                # TODO: Does this make sense?
+                #log_message = 'Linking %s to %s' % (source, abs_target)
+                #os.symlink(source, abs_target)
+                pass
+            elif action == COPY:
+                # TODO: Does this make sense?
+                #log_message = 'Copying %s to %s' % (source, abs_target)
+                #shutil.copyfile(source, abs_target)
+                pass
+            elif action == MOVE:
+                # TODO: Does this make sense?
+                #log_message = 'Moving %s to %s' % (source, abs_target)
+                #shutil.move(source, abs_target)
+                pass
+            elif action == TRANSFER:
+                log_message = 'Transferring %s to %s' % (source, remote_dir_url)
+                # Transfer the local file to the remote staging area
+                remote_dir.copy(source, target)
+            else:
+                raise Exception('Action %s not supported' % action)

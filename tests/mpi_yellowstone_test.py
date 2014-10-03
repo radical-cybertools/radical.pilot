@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Define a X-core that runs for N minutes.
     # Yellowstone has 16 cores per node.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "yellowstone.ucar.edu"
+    pdesc.resource = "ucar.yellowstone"
     pdesc.project  = "URTG0003"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 32 # X cores

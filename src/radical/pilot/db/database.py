@@ -15,11 +15,13 @@ import os
 import saga
 import datetime
 import gridfs
-import pprint
+import radical.utils as ru
+
 from pymongo import *
 from bson.objectid import ObjectId
 
 from radical.pilot.states import *
+from radical.pilot.utils  import DBConnectionInfo
 
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
 COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
@@ -61,12 +63,23 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, db_url, db_name="radical.pilot"):
+    def __init__(self, db_url, db_name="radicalpilot"):
         """ Le constructeur. Should not be called directrly, but rather
             via the static methods new() or reconnect().
         """
-        self._client = MongoClient(db_url)
-        self._db     = self._client[db_name]
+
+        url = ru.Url (db_url)
+
+        if  db_name :
+            url.path = db_name
+
+        mongo, db, dbname, pname, cname = ru.mongodb_connect (url)
+
+        self._client = mongo
+        self._db     = db
+        self._dburl  = str(url)
+        self._dbname = dbname
+        self._dbauth = "%s:%s" % (url.username, url.password)
 
         self._session_id = None
 
@@ -81,18 +94,26 @@ class Session():
     #--------------------------------------------------------------------------
     #
     @staticmethod
-    def new(sid, db_url, db_name="radical.pilot", resource_configs={}):
+    def new(sid, db_url, db_name="radicalpilot"):
         """ Creates a new session (factory method).
         """
         creation_time = datetime.datetime.utcnow()
 
         dbs = Session(db_url, db_name)
-        dbs._create(sid, creation_time, resource_configs)
-        return (dbs, creation_time)
+        dbs._create(sid, creation_time)
+
+        connection_info = DBConnectionInfo(
+            session_id=sid,
+            dbname=dbs._dbname,
+            dbauth=dbs._dbauth,
+            dburl=dbs._dburl
+        )
+
+        return (dbs, creation_time, connection_info)
 
     #--------------------------------------------------------------------------
     #
-    def _create(self, sid, creation_time, resource_configs):
+    def _create(self, sid, creation_time):
         """ Creates a new session (private).
 
             A session is a distinct collection with three sub-collections
@@ -108,15 +129,11 @@ class Session():
             uses lazy-create, they only appear in the database after the
             first insert. That's ok.
         """
-        # make sure session doesn't exist already
-        if sid in self._db.collection_names():
-            raise DBEntryExistsException(
-                "Session with id '%s' already exists." % sid)
 
-        # dot replacement
-        rc_safe = {}
-        for key, val in resource_configs.iteritems():
-            rc_safe[key.replace(".", "<dot>")] = val
+        # make sure session doesn't exist already
+        if  sid :
+            if  self._db[sid].count() != 0 :
+                raise DBEntryExistsException ("Session '%s' already exists." % sid)
 
         # remember session id
         self._session_id = sid
@@ -126,8 +143,7 @@ class Session():
             {
                 "_id"  : ObjectId(sid),
                 "created"          : creation_time,
-                "last_reconnect"   : None,
-                "resource_configs" : rc_safe
+                "last_reconnect"   : None
             }
         )
 
@@ -148,7 +164,15 @@ class Session():
         """
         dbs = Session(db_url, db_name)
         session_info = dbs._reconnect(sid)
-        return (dbs, session_info)
+
+        connection_info = DBConnectionInfo(
+            session_id=sid,
+            dbname=dbs._dbname,
+            dbauth=dbs._dbauth,
+            dburl=dbs._dburl
+        )
+
+        return (dbs, session_info, connection_info)
 
     #--------------------------------------------------------------------------
     #
@@ -185,39 +209,6 @@ class Session():
             return cursor[0]
         except:
             raise Exception("Couldn't find Session UID '%s' in database." % sid)
-
-    #--------------------------------------------------------------------------
-    #
-    def session_add_resource_configs(self, name, config):
-        # why is this called 'add' if it is actually a 'set'?
-        if self._s is None:
-            raise DBException("No active session.")
-
-        self._s.update(
-            {"_id": ObjectId(self._session_id)},
-            {"$set": 
-                {"resource_configs.%s" % name.replace(".", "<dot>"): config}
-            },
-            upsert=True
-        )
-
-    #--------------------------------------------------------------------------
-    #
-    def session_list_resource_configs(self):
-        # AM: why is this called 'list', if it is actually a 'get'?
-        if self._s is None:
-            raise DBException("No active session.")
-
-        result = self._s.find(
-                {"_id": ObjectId(self._session_id)},
-                {"resource_configs": 1}
-            )
-        rcs_unsafe = result[0]['resource_configs']
-        rc_safe = {}
-        for key, val in rcs_unsafe.iteritems():
-            rc_safe[key.replace("<dot>", ".")] = val
-
-        return rc_safe
 
     #--------------------------------------------------------------------------
     #

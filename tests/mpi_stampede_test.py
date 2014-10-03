@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "stampede.tacc.utexas.edu"
+    pdesc.resource = "xsede.stampede"
     pdesc.project  = 'TG-MCB090174'
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 8 # X cores
