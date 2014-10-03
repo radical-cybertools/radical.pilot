@@ -58,7 +58,7 @@ class TestIssue163(unittest.TestCase):
         pmgr = radical.pilot.PilotManager(session=session)
 
         # Get all configs,
-        res = session.list_resource_configs()
+        res = session.get_resource_configs()
         # ... and the entry specific for localhost
         s = res['localhost']
 
@@ -71,7 +71,7 @@ class TestIssue163(unittest.TestCase):
         session.add_resource_config(rc)
 
         # Get all configs
-        res = session.list_resource_configs()
+        res = session.get_resource_configs()
         s = res['testing123-localhost']
         assert s['default_queue'] == 'development'
 

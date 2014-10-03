@@ -17,6 +17,7 @@ import saga.attributes  as attributes
 # -----------------------------------------------------------------------------
 # Attribute description keys
 RESOURCE          = 'resource'
+ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
 CORES             = 'cores'
 MEMORY            = 'memory'
@@ -120,14 +121,16 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register    (RESOURCE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (RUNTIME,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (SANDBOX,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CORES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (MEMORY,   None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (QUEUE,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (PROJECT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CLEANUP,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RESOURCE,         None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (ACCESS_SCHEMA,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (PILOT_AGENT_PRIV, None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
 
         # Allows to select a different pilot agent - for DEVELOPMENT purposes only !!
@@ -135,6 +138,7 @@ class ComputePilotDescription(attributes.Attributes):
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
+        self.set_attribute (ACCESS_SCHEMA,    None)
         self.set_attribute (RUNTIME,          None)
         self.set_attribute (SANDBOX,          None)
         self.set_attribute (CORES,            None)

@@ -326,7 +326,7 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_start_pilot_request(self, pilot, resource_config, use_local_endpoints):
+    def register_start_pilot_request(self, pilot, resource_config):
         """Register a new pilot start request with the worker.
         """
 
@@ -334,48 +334,43 @@ class PilotManagerController(threading.Thread):
         pilot_uid = bson.ObjectId()
 
         # switch endpoint type
-        if use_local_endpoints is True:
-            filesystem_endpoint = resource_config['local_filesystem_endpoint']
-        else:
-            filesystem_endpoint = resource_config['remote_filesystem_endpoint']
+        filesystem_endpoint = resource_config['filesystem_endpoint']
 
-        sandbox = pilot.description.sandbox
         fs = saga.Url(filesystem_endpoint)
-        if sandbox is not None:
-            fs.path = sandbox
+
+        # get the home directory on the remote machine.
+        # Note that this will only work for (gsi)ssh or shell based access
+        # mechanisms (FIXME)
+
+        import saga.utils.pty_shell as sup
+
+        if fs.port is not None:
+            url = "%s://%s:%d/" % (fs.schema, fs.host, fs.port)
         else:
-            # No sandbox defined. try to determine
+            url = "%s://%s/" % (fs.schema, fs.host)
 
-            # get the home directory on the remote machine.
-            # Note that this will only work for (gsi)ssh or shell based access
-            # mechanisms (FIXME)
+        logger.debug ("saga.utils.PTYShell ('%s')" % url)
+        shell = sup.PTYShell (url, self._session, logger, opts={})
 
-            import saga.utils.pty_shell as sup
+        if pilot.description.sandbox is not None:
+            workdir_raw = pilot.description.sandbox
+        elif 'default_remote_workdir' in resource_config and \
+            resource_config['default_remote_workdir'] is not None:
+            workdir_raw = resource_config['default_remote_workdir']
+        else:
+            workdir_raw = "$PWD"
 
-            if fs.port is not None:
-                url = "%s://%s:%d/" % (fs.schema, fs.host, fs.port)
-            else:
-                url = "%s://%s/" % (fs.schema, fs.host)
+        ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
+        if  ret == 0 and 'WORKDIR:' in out :
+            workdir_expanded = out.split(":")[1].strip()
+            logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
+        else :
+            error_msg = "Couldn't determine remote working directory."
+            logger.error(error_msg)
+            raise Exception(error_msg)
 
-            logger.debug ("saga.utils.PTYShell ('%s')" % url)
-            shell = sup.PTYShell (url, self._session, logger, opts={})
-
-            if 'default_remote_workdir' in resource_config and resource_config['default_remote_workdir'] is not None:
-                workdir_raw = resource_config['default_remote_workdir']
-            else:
-                workdir_raw = "$PWD"
-
-            ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
-            if  ret == 0 and 'WORKDIR:' in out :
-                workdir_expanded = out.split(":")[1].strip()
-                logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
-            else :
-                error_msg = "Couldn't determine remote working directory."
-                logger.error(error_msg)
-                raise Exception(error_msg)
-
-            # At this point we have determined 'pwd'
-            fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
+        # At this point we have determined 'pwd'
+        fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
 
         # This is the base URL / 'sandbox' for the pilot!
         agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))

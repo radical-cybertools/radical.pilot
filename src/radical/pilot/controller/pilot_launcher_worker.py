@@ -184,11 +184,11 @@ class PilotLauncherWorker(threading.Thread):
                 # AM: this list is only read once, at startup, so this worker
                 # will not pick up any changes.  I am not sure how to trigger
                 # re-initialization, as doing it once per iteration seems a rather
-                # bad idea (list_resource_configs() goes via mongodb).  OTOH, there
+                # bad idea (get_resource_configs() goes via mongodb).  OTOH, there
                 # is no direct communication between worker and manager, AFACIS.
                 #
                 # Update the known resource configurations
-                resource_configurations = self._session.list_resource_configs()
+                resource_configurations = self._session.get_resource_configs()
 
             except Exception, ex:
                 tb = traceback.format_exc()
@@ -242,8 +242,9 @@ class PilotLauncherWorker(threading.Thread):
                         queue        = compute_pilot['description']['queue']
                         project      = compute_pilot['description']['project']
                         cleanup      = compute_pilot['description']['cleanup']
-                        #pilot_agent  = compute_pilot['description']['pilot_agent_priv']
-                        #agent_worker = compute_pilot['description']['agent_worker']
+                        resource_key = compute_pilot['description']['resource']
+                        schema       = compute_pilot['description']['access_schema']
+
                         sandbox      = compute_pilot['sandbox']
 
                         # check if the user specified a sandbox:
@@ -255,28 +256,32 @@ class PilotLauncherWorker(threading.Thread):
                             user_sandbox = False
 
 
-                        use_local_endpoints = False
-                        resource_key = compute_pilot['description']['resource']
-                        s = compute_pilot['description']['resource'].split(":")
-                        if len(s) == 2:
-                            if s[1].lower() == "local":
-                                use_local_endpoints = True
-                                resource_key = s[0]
-                            else:
-                                error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], compute_pilot['description']['resource'])
-                                raise Exception(error_msg)
-
                         resource_cfg = resource_configurations[resource_key]
+                        agent_worker = resource_cfg.get ('pilot_agent_worker', None)
 
-                        if 'pilot_agent_worker' in resource_cfg and resource_cfg['pilot_agent_worker'] is not None:
-                            agent_worker = resource_cfg['pilot_agent_worker']
-                        else:
-                            agent_worker = None
+                        # we expand and exchange keys in the resource config,
+                        # depending on the selected schema so better use a deep
+                        # copy..
+                        import copy
+                        resource_cfg = copy.deepcopy (resource_cfg)
+
+                        if  not schema :
+                            if 'schemas' in resource_cfg :
+                                schema = resource_cfg['schemas'][0]
+
+                        if  not schema in resource_cfg :
+                            logger.warning ("schema %s unknown for resource %s -- continue with defaults" \
+                                         % (schema, resource_key))
+
+                        else :
+                            for key in resource_cfg[schema] :
+                                # merge schema specific resource keys into the
+                                # resource config
+                                resource_cfg[key] = resource_cfg[schema][key]
 
                         ########################################################
                         # Database connection parameters
-                        session_uid = self.db_connection_info.session_id
-
+                        session_uid  = self.db_connection_info.session_id
                         database_url = self.db_connection_info.dburl
 
                         surl = saga.Url (database_url)
@@ -384,11 +389,7 @@ class PilotLauncherWorker(threading.Thread):
                         #########################################################
                         # now that the script is in place and we know where it is,
                         # we can launch the agent
-                        if use_local_endpoints is True:
-                            job_service_url = saga.Url(resource_cfg['local_job_manager_endpoint'])
-                        else:
-                            job_service_url = saga.Url(resource_cfg['remote_job_manager_endpoint'])
-
+                        job_service_url = saga.Url(resource_cfg['job_manager_endpoint'])
                         logger.debug ("saga.job.Service ('%s')" % job_service_url)
                         js = saga.job.Service(job_service_url, session=self._session)
 

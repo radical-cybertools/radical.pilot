@@ -153,6 +153,14 @@ class Session (saga.Session, Object):
         else :
             logger.info("using database name %s" % self._database_name)
 
+        # Loading all "default" resource configurations
+        default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
+        config_files = glob.glob(default_configs)
+        for config_file in config_files:
+            rcs = ResourceConfig.from_file(config_file)
+            logger.info("Loaded resource configurations from %s" % config_file)
+            for rc in rcs:
+                self._resource_configs[rc] = rcs[rc].as_dict() 
 
         ##########################
         ## CREATE A NEW SESSION ##
@@ -162,20 +170,10 @@ class Session (saga.Session, Object):
                 self._uid = str(ObjectId())
                 self._last_reconnect = None
 
-                # Loading all "default" resource configurations
-                default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
-                config_files = glob.glob(default_configs)
-                for config_file in config_files:
-                    rcs = ResourceConfig.from_file(config_file)
-                    logger.info("Loaded resource configurations from %s" % config_file)
-                    for rc in rcs:
-                        self._resource_configs[rc.name] = rc.as_dict() 
-
                 self._dbs, self._created, self._connection_info = \
                         dbSession.new(sid=self._uid,
                                       db_url=self._database_url,
-                                      db_name=database_name,
-                                      resource_configs=self._resource_configs)
+                                      db_name=database_name)
 
                 logger.info("New Session created%s." % str(self))
 
@@ -198,7 +196,7 @@ class Session (saga.Session, Object):
 
                 self._created          = session_info["created"]
                 self._last_reconnect   = session_info["last_reconnect"]
-                self._resource_configs = session_info["resource_configs"]
+              # self._resource_configs = session_info["resource_configs"]
 
                 logger.info("Reconnected to existing Session %s." % str(self))
 
@@ -471,11 +469,11 @@ class Session (saga.Session, Object):
            For example::
 
                   rc = radical.pilot.ResourceConfig
-                  rc.name = "mycluster"
-                  rc.remote_job_manager_endpoint = "ssh+pbs://mycluster
-                  rc.remote_filesystem_endpoint = "sftp://mycluster
-                  rc.default_queue = "private"
-                  rc.bootstrapper = "default_bootstrapper.sh"
+                  rc.name                 = "mycluster"
+                  rc.job_manager_endpoint = "ssh+pbs://mycluster
+                  rc.filesystem_endpoint  = "sftp://mycluster
+                  rc.default_queue        = "private"
+                  rc.bootstrapper         = "default_bootstrapper.sh"
 
                   pm = radical.pilot.PilotManager(session=s)
                   pm.add_resource_config(rc)
@@ -487,12 +485,14 @@ class Session (saga.Session, Object):
 
                   pilot = pm.submit_pilots(pd)
         """
-        self._dbs.session_add_resource_configs(resource_config.name, resource_config.as_dict())
+        self._resource_configs [resource_config.name] = resource_config.as_dict()
+      # self._dbs.session_add_resource_configs()
 
     # -------------------------------------------------------------------------
     #
-    def list_resource_configs(self):
+    def get_resource_configs (self):
         """Returns a dictionary of all known resource configurations.
         """
-        return self._dbs.session_list_resource_configs()
+
+        return self._resource_configs
 

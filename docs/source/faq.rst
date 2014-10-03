@@ -42,7 +42,7 @@ entries in a bulk.
 
 
 Q: I see the error "Permission denied (publickey,keyboard-interactive)." in AGENT.STDERR.
-------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
 
 The AGENT.STDERR file shows the following error and the pilot never starts
 running:

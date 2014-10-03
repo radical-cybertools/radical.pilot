@@ -1,0 +1,24 @@
+
+{
+    "localhost": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         : 
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       : 
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py",
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "FORK",
+        "task_launch_method"          : "LOCAL",
+        "mpi_launch_method"           : "MPIRUN"
+    }
+}
+

@@ -59,7 +59,7 @@ if __name__ == "__main__":
     pmgr.register_callback(pilot_state_cb)
 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "localhost"
+    pdesc.resource  = "local.localhost"
     pdesc.runtime   = 12 # minutes
     pdesc.cores     = 4
     pdesc.cleanup   = True
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     # create a second pilot with a new description
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "stampede.tacc.utexas.edu"
+    pdesc.resource  = "xsede.stampede"
     pdesc.runtime   = 40 # minutes
     pdesc.cores     = 32
     pdesc.project   = "TG-MCB090174"

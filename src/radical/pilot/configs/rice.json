@@ -1,11 +1,20 @@
+
 {
-    "davinci.rice.edu": {
+    "davinci": {
         "description"                 : "The DAVinCI Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+DAVinCI).",
         "notes"                       : "DAVinCI compute nodes have 12 or 16 processor cores per node.",
-        "remote_job_manager_endpoint" : "pbs+ssh://davinci.rice.edu",
-        "remote_filesystem_endpoint"  : "sftp://davinci.rice.edu/",
-        "local_job_manager_endpoint"  : "pbs://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "local"],
+        "warn_on_local"               : "True",
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://davinci.rice.edu/",
+            "filesystem_endpoint"     : "sftp://davinci.rice.edu/"
+        },
+        "local"                       : 
+        {
+            "job_manager_endpoint"    : "pbs://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
         "lrms"                        : "TORQUE",
         "default_queue"               : "parallel",
         "task_launch_method"          : "SSH",
@@ -16,3 +25,4 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
+
