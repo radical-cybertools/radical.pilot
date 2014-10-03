@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "tutorial.radical.org"
+    pdesc.resource = "radical.tutorial"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 4 # X cores
 

@@ -247,7 +247,7 @@ Default values for ComputePilotDescription attributes:
 Parameter               Value
 ================== ============================
 ``queue``               normal
-``sandbox``             $HOME
+``sandbox``             $WORK
 ================== ============================
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`

@@ -258,26 +258,45 @@ class PilotManager(Object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
                 raise BadParameter(error_msg)
 
-            # if resource is preceeded by :local, we use the local job manager
-            # and file system endpoints instead of the remote ones.
-            use_local_endpoints = False
-            resource_key = pilot_description.resource
-            s = pilot_description.resource.split(":")
-            if len(s) == 2:
-                if s[1].lower() == "local":
-                    use_local_endpoints = True
-                    resource_key = s[0]
-                else:
-                    error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], pilot_description.resource)
-                    raise BadParameter(error_msg)
-
             # Make sure resource key is known.
-            rcs = self._session.list_resource_configs()
+            rcs          = self._session.get_resource_configs()
+            resource_key = pilot_description.resource
+
             if resource_key not in rcs:
                 error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
                 raise BadParameter(error_msg)
             else:
                 resource_cfg = rcs[resource_key]
+
+            # we expand and exchange keys in the resource config, depending on
+            # the selected schema so better use a deep copy...
+            import copy
+            resource_cfg  = copy.deepcopy (resource_cfg)
+            schema        = pilot_description['access_schema']
+
+            if  not schema :
+                if 'schemas' in resource_cfg :
+                    schema = resource_cfg['schemas'][0]
+
+            if  not schema in resource_cfg :
+                import pprint
+                pprint.pprint (resource_cfg)
+                logger.warning ("schema %s unknown for resource %s -- continue with defaults" \
+                             % (schema, resource_key))
+
+            else :
+                for key in resource_cfg[schema] :
+                    # merge schema specific resource keys into the
+                    # resource config
+                    resource_cfg[key] = resource_cfg[schema][key]
+
+            warn_on_local = resource_cfg.get (bool('warn_on_local'), False)
+
+            if  schema == 'local' and warn_on_local :
+                logger.error ("===========================================================")
+                logger.error ("you are using a cluster headnode -- is this what you want??")
+                logger.error ("===========================================================")
+                time.sleep (3)
 
             # If 'default_sandbox' is defined, set it.
             if pilot_description.sandbox is not None:
@@ -299,7 +318,6 @@ class PilotManager(Object):
 
             pilot_uid = self._worker.register_start_pilot_request(
                 pilot=pilot,
-                use_local_endpoints=use_local_endpoints,
                 resource_config=resource_cfg)
 
             pilot._uid = pilot_uid

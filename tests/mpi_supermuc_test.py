@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Define a X-core that runs for N minutes.
     # SuperMUC has 16 cores per node.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "supermuc.lrz.de"
+    pdesc.resource = "lrz.supermuc"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 32 # X cores
 

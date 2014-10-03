@@ -1,18 +1,24 @@
 import os
-import sys
 import radical.pilot
-import saga
-
-#RESOURCE = 'sierra.futuregrid.org'
-RESOURCE = 'localhost'
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
+MY_STAGING_AREA = '/tmp/my_staging_area'
 
 #------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
     try:
+
+        # Create shared input file
+        os.system('/bin/echo -n "Hello world, " > %s' % SHARED_INPUT_FILE)
+        radical_cockpit_occupants = ['Alice', 'Bob', 'Carol', 'Eve']
+
+        # Create per unit input files
+        for idx, occ in enumerate(radical_cockpit_occupants):
+            input_file = 'input_file-%d.txt' % (idx+1)
+            os.system('/bin/echo "%s" > %s' % (occ, input_file))
+
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
@@ -24,29 +30,27 @@ if __name__ == "__main__":
         # Define a C-core on $RESOURCE that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = RESOURCE
-        pdesc.runtime = 5 # M minutes
-        pdesc.cores = 8 # C cores
+        pdesc.resource = "local.localhost"
+        pdesc.runtime  = 5 # M minutes
+        pdesc.cores    = 8 # C cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
         # Define the url of the local file in the local directory
-        shared_input_file_url = saga.Url('file://%s/%s' %
-                                         (os.getcwd(), SHARED_INPUT_FILE))
-        # Define and open staging directory on the remote machine
-        remote_dir_url = saga.Url(os.path.join(pilot.sandbox, 'staging_area'))
-        remote_dir = saga.filesystem.Directory(remote_dir_url,
-                                               flags=saga.filesystem.CREATE_PARENTS)
-        # Copy the local file to the remote staging area
-        remote_dir.copy(shared_input_file_url, '.')
+        shared_input_file_url = 'file://%s/%s' % (os.getcwd(), SHARED_INPUT_FILE)
 
-        # TODO: Change to above block to pilot.stage_in(shared_input_file_url)
-        #       once that is available.
+        # Configure the staging directive for to insert the shared file into
+        # the pilot staging directory.
+        sd_pilot = {'source': shared_input_file_url,
+                    'target': os.path.join(MY_STAGING_AREA, SHARED_INPUT_FILE),
+                    'action': radical.pilot.TRANSFER
+        }
+        # Synchronously stage the data to the pilot
+        pilot.stage_in(sd_pilot)
 
         # Configure the staging directive for shared input file.
-        sd_shared = {'source': 'staging:///%s' % SHARED_INPUT_FILE,
-                     # Note the triple slash, because of SAGA URL peculiarities
+        sd_shared = {'source': os.path.join(MY_STAGING_AREA, SHARED_INPUT_FILE),
                      'target': SHARED_INPUT_FILE,
                      'action': radical.pilot.LINK
         }
@@ -60,24 +64,23 @@ if __name__ == "__main__":
 
         compute_unit_descs = []
 
-        for unit_count in range(4):
+        for unit_idx in range(len(radical_cockpit_occupants)):
 
-            # Configure the staging directive for per unit input file.
-            sd_input = 'input_file-%d.txt' % unit_count
+            # Configure the per unit input file.
+            input_file = 'input_file-%d.txt' % (unit_idx+1)
 
-            # Configure the staging directive for per unit output file.
-            sd_output = 'output_file-%d.txt' % unit_count
+            # Configure the for per unit output file.
+            output_file = 'output_file-%d.txt' % (unit_idx+1)
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/bash'
-            cud.arguments = ['-l', '-c', 'cat shared_input_file.txt '
-                             'input_file-%d.txt > output_file-%d.txt' %
-                             (unit_count, unit_count)]
+            cud.arguments = ['-c', 'cat %s %s > %s' %
+                             (SHARED_INPUT_FILE, input_file, output_file)]
             cud.cores = 1
-            cud.input_staging = [sd_shared, sd_input]
-            cud.output_staging = sd_output
+            cud.input_staging = [sd_shared, input_file]
+            cud.output_staging = output_file
 
             compute_unit_descs.append(cud)
 
@@ -95,7 +98,7 @@ if __name__ == "__main__":
             print " STDOUT: %s" % unit.stdout
             print " STDERR: %s" % unit.stderr
 
-        session.close(cleanup=False)
+        session.close()
 
     except radical.pilot.PilotException, ex:
         print "Error: %s" % ex

@@ -37,12 +37,11 @@ def unit_state_cb (unit, state) :
 if __name__ == "__main__":
 
     try :
-        rp_user     = str(os.getenv ("RP_USER",     "tg803521"))
-        rp_cores    = int(os.getenv ("RP_CORES",    8))
+        rp_cores    = int(os.getenv ("RP_CORES",    16))
         rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
         rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2)) # 3 units/core/pilot
-        rp_runtime  = int(os.getenv ("RP_RUNTIME",  10))
-        rp_host     = str(os.getenv ("RP_HOST",     "stampede.tacc.utexas.edu"))
+        rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
+        rp_host     = str(os.getenv ("RP_HOST",     "xsede.stampede"))
         rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
         rp_project  = str(os.getenv ("RP_PROJECT",  "TG-MCB090174"))
 

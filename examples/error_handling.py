@@ -105,7 +105,7 @@ if __name__ == "__main__":
         # fail as not enough cores will be available.  That means the pilot will
         # go quickly into failed state, and trigger the callback from above.
         pd = rp.ComputePilotDescription()
-        pd.resource  = "localhost"
+        pd.resource  = "local.localhost"
         pd.cores     = 1000000
         pd.runtime   = 60
 
