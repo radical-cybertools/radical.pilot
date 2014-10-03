@@ -121,10 +121,10 @@ MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push
 ##########################################################################
 #
 # BG/Q Config
-CORES_PER_NODE      = 16
-NODES_PER_BOARD     = 32 # NODE == Compute Card == Chip module
-BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
-MIDPLANES_PER_RACK  = 2
+BGQ_CORES_PER_NODE      = 16
+BGQ_NODES_PER_BOARD     = 32 # NODE == Compute Card == Chip module
+BGQ_BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
+BGQ_MIDPLANES_PER_RACK  = 2
 #
 ##########################################################################
 
@@ -135,7 +135,7 @@ MIDPLANES_PER_RACK  = 2
 #
 # http://www.redbooks.ibm.com/redbooks/SG247948/wwhelp/wwhimpl/js/html/wwhelp.htm
 #
-MAPPING = "ABCDE"
+BGQ_MAPPING = "ABCDE"
 #
 ##########################################################################
 
@@ -144,7 +144,7 @@ MAPPING = "ABCDE"
 #
 # Board labels (Rack, Midplane, Node)
 #
-BOARD_LABELS = ['R', 'M', 'N']
+BGQ_BOARD_LABELS = ['R', 'M', 'N']
 #
 ##########################################################################
 
@@ -153,7 +153,7 @@ BOARD_LABELS = ['R', 'M', 'N']
 #
 # Dimensions of a (sub-)block
 #
-DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
+BGQ_DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
 #
 ##########################################################################
 
@@ -166,7 +166,7 @@ DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
 #
 # TODO: Do we actually need to restrict our sub-block sizes to this set?
 #
-SUPPORTED_SUB_BLOCK_SIZES = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+BGQ_SUPPORTED_SUB_BLOCK_SIZES = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
 #
 ##########################################################################
 
@@ -181,7 +181,7 @@ SUPPORTED_SUB_BLOCK_SIZES = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
 #
 # TODO: Is this independent of the mapping?
 #
-BLOCK_STARTING_CORNERS = {
+BGQ_BLOCK_STARTING_CORNERS = {
     0:  0,
     4: 29,
     8:  4,
@@ -195,10 +195,10 @@ BLOCK_STARTING_CORNERS = {
 #
 # Offsets into block structure
 #
-BLOCK_INDEX  = 0
-BLOCK_COOR   = 1
-BLOCK_NAME   = 2
-BLOCK_STATUS = 3
+BGQ_BLOCK_INDEX  = 0
+BGQ_BLOCK_COOR   = 1
+BGQ_BLOCK_NAME   = 2
+BGQ_BLOCK_STATUS = 3
 #
 ##########################################################################
 
@@ -207,7 +207,7 @@ BLOCK_STATUS = 3
 #
 # BG/Q Topology of Boards within a Midplane
 #
-MIDPLANE_TOPO = {
+BGQ_MIDPLANE_TOPO = {
     0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
     1: {'A':  5, 'B':  9, 'C':  0, 'D':  3},
     2: {'A':  6, 'B': 10, 'C':  3, 'D':  0},
@@ -233,11 +233,11 @@ MIDPLANE_TOPO = {
 #
 # Verify the midplane topology
 #
-def check_midplane_topo():
-    for board in range(BOARDS_PER_MIDPLANE):
+def bgq_check_midplane_topo():
+    for board in range(BGQ_BOARDS_PER_MIDPLANE):
         for dimension in 'ABCD':
-            target = MIDPLANE_TOPO[board][dimension]
-            reverse = MIDPLANE_TOPO[target][dimension]
+            target = BGQ_MIDPLANE_TOPO[board][dimension]
+            reverse = BGQ_MIDPLANE_TOPO[target][dimension]
             assert reverse == board, 'board:%d dimension:%s target:%d reverse:%d' % (board, dimension, target, reverse)
 #
 ##########################################################################
@@ -247,7 +247,7 @@ def check_midplane_topo():
 #
 # BG/Q Topology of Nodes within a Board
 #
-BOARD_TOPO = {
+BGQ_BOARD_TOPO = {
     0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
     1: {'A': 28, 'B':  2, 'C':  0, 'D': 13, 'E':  6},
     2: {'A': 31, 'B':  1, 'C':  3, 'D': 14, 'E':  5},
@@ -289,11 +289,11 @@ BOARD_TOPO = {
 #
 # Verify the board topology
 #
-def check_board_topo():
-    for board in range(NODES_PER_BOARD):
-        for dimension in DIMENSION_LABELS:
-            target = BOARD_TOPO[board][dimension]
-            reverse = BOARD_TOPO[target][dimension]
+def bgq_check_board_topo():
+    for board in range(BGQ_NODES_PER_BOARD):
+        for dimension in BGQ_DIMENSION_LABELS:
+            target = BGQ_BOARD_TOPO[board][dimension]
+            reverse = BGQ_BOARD_TOPO[target][dimension]
             assert reverse == board, 'board:%d dimension:%s target:%d reverse:%d' % (board, dimension, target, reverse)
 #
 ##########################################################################
@@ -307,7 +307,7 @@ def check_board_topo():
 # [{'R': 0, 'M': 1, 'N': 8}, {'R': 0, 'M': 1, 'N': 9},
 #  {'R': 0, 'M': 1, 'N': 10}, {'R': 0, 'M': 0, 'N': 11}]
 #
-def str2boards(boards_str):
+def bgq_str2boards(boards_str):
 
     boards = boards_str.split(',')
 
@@ -317,7 +317,7 @@ def str2boards(boards_str):
         elements = board.split('-')
 
         board_dict = {}
-        for l, e in zip(BOARD_LABELS, elements):
+        for l, e in zip(BGQ_BOARD_LABELS, elements):
             board_dict[l] = int(e.split(l)[1])
 
         board_dict_list.append(board_dict)
@@ -333,13 +333,13 @@ def str2boards(boards_str):
 #
 # E.g. '1x2x3x4x5' => {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
 #
-def str2shape(shape_str):
+def bgq_str2shape(shape_str):
 
     # Get the lengths of the shape
     shape_lengths = shape_str.split('x', 4)
 
     shape_dict = {}
-    for dim, length in zip(DIMENSION_LABELS, shape_lengths):
+    for dim, length in zip(BGQ_DIMENSION_LABELS, shape_lengths):
         shape_dict[dim] = int(length)
 
     return shape_dict
@@ -349,11 +349,45 @@ def str2shape(shape_str):
 
 ##########################################################################
 #
+# Convert location dict into a tuple string
+# E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '(1,4,1,2,4)'
+#
+def bgq_loc2str(loc):
+    return str(tuple(loc[dim] for dim in BGQ_DIMENSION_LABELS))
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Convert a shape dict into string format
+#
+# E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '1x4x1x2x4'
+#
+def bgq_shape2str(shape):
+
+    shape_str = ''
+    for l in BGQ_DIMENSION_LABELS:
+
+        # Get the corresponding count
+        shape_str += str(shape[l])
+
+        # Add an 'x' behind all but the last label
+        if l in BGQ_DIMENSION_LABELS[:-1]:
+            shape_str += 'x'
+
+    return shape_str
+#
+##########################################################################
+
+
+##########################################################################
+#
 # Walk the block and return the node name for the given location
 #
-def nodename_by_loc(rack, midplane, board, node, location):
+def bgq_nodename_by_loc(rack, midplane, board, node, location):
 
-    for dim in DIMENSION_LABELS:
+    for dim in BGQ_DIMENSION_LABELS:
         max_length = location[dim]
 
         cur_length = 0
@@ -364,10 +398,10 @@ def nodename_by_loc(rack, midplane, board, node, location):
                 # If the current length is even,
                 # we remain within the board,
                 # and select the next node.
-                node = BOARD_TOPO[node][dim]
+                node = BGQ_BOARD_TOPO[node][dim]
             else:
                 # Otherwise we jump to another midplane.
-                board = MIDPLANE_TOPO[board][dim]
+                board = BGQ_MIDPLANE_TOPO[board][dim]
 
             # Increase the length for the next iteration
             cur_length += 1
@@ -383,10 +417,10 @@ def nodename_by_loc(rack, midplane, board, node, location):
 #
 # Format: [(index, location, nodename, status), (i, c, n, s), ...]
 #
-def get_block(rack, midplane, board, shape):
+def bgq_get_block(rack, midplane, board, shape):
 
     nodes = []
-    start_node = BLOCK_STARTING_CORNERS[board]
+    start_node = BGQ_BLOCK_STARTING_CORNERS[board]
 
     print 'Shape: %s' % shape
 
@@ -398,7 +432,7 @@ def get_block(rack, midplane, board, shape):
                 for d in range(shape['D']):
                     for e in range(shape['E']):
                         location = {'A': a, 'B': b, 'C': c, 'D': d, 'E':e}
-                        nodename = nodename_by_loc(rack, midplane, board, start_node, location)
+                        nodename = bgq_nodename_by_loc(rack, midplane, board, start_node, location)
                         nodes.append([index, location, nodename, FREE])
                         index += 1
     return nodes
@@ -410,9 +444,9 @@ def get_block(rack, midplane, board, shape):
 #
 # Use block shape and board list to construct block structure
 #
-def shapeandboards2block(block_shape_str, boards_str):
+def bgq_shapeandboards2block(block_shape_str, boards_str):
 
-    board_dict_list = str2boards(boards_str)
+    board_dict_list = bgq_str2boards(boards_str)
     print 'Board dict list:'
     for b in board_dict_list:
         print b
@@ -424,9 +458,9 @@ def shapeandboards2block(block_shape_str, boards_str):
     board_list = [entry['N'] for entry in board_dict_list]
     start_board = min(board_list)
 
-    block_shape = str2shape(block_shape_str)
+    block_shape = bgq_str2shape(block_shape_str)
 
-    return get_block(rack, midplane, start_board, block_shape)
+    return bgq_get_block(rack, midplane, start_board, block_shape)
 #
 ##########################################################################
 
@@ -435,25 +469,25 @@ def shapeandboards2block(block_shape_str, boards_str):
 #
 # Construction of sub-block shapes based on overall block allocation.
 #
-def create_sub_block_shape_table(shape_str):
+def bgq_create_sub_block_shape_table(shape_str):
 
     # Convert the shape string into dict structure
-    block_shape = str2shape(shape_str)
+    block_shape = bgq_str2shape(shape_str)
 
     # Dict to store the results
     table = {}
 
     # Create a sub-block dict with shape 1x1x1x1x1
-    sub_block_shape = {l: 1 for l in DIMENSION_LABELS}
+    sub_block_shape = {l: 1 for l in BGQ_DIMENSION_LABELS}
 
     # Look over all the dimensions starting at the most right
-    for dim in MAPPING[::-1]:
+    for dim in BGQ_MAPPING[::-1]:
         while True:
 
             # Calculate the number of nodes for the current shape
             num_nodes = reduce(mul, filter(lambda length: length != 0, sub_block_shape.values()))
 
-            if num_nodes in SUPPORTED_SUB_BLOCK_SIZES:
+            if num_nodes in BGQ_SUPPORTED_SUB_BLOCK_SIZES:
                 table[num_nodes] = copy.copy(sub_block_shape)
 
             # Done with iterating this dimension
@@ -464,6 +498,25 @@ def create_sub_block_shape_table(shape_str):
             sub_block_shape[dim] += 1
 
     return table
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Return the offset into the node list from a corner
+#
+# TODO: Can this be determined instead of searched?
+#
+def bgq_corner2offset(block, corner):
+    offset = 0
+
+    for e in block:
+        if corner == e[BGQ_BLOCK_COOR]:
+            return offset
+        offset += 1
+
+    return offset
 #
 ##########################################################################
 
@@ -1073,6 +1126,8 @@ class ExecutionEnvironment(object):
 
         # Determine the size of the pilot allocation
         if loadl_hostfile is not None:
+            # MPICH?
+
             loadl_total_tasks_str = os.environ.get('LOADL_TOTAL_TASKS')
             if loadl_total_tasks_str is None:
                 msg = "$LOADL_TOTAL_TASKS not set!"
@@ -1080,17 +1135,8 @@ class ExecutionEnvironment(object):
                 raise Exception(msg)
             else:
                 loadl_total_tasks = int(loadl_total_tasks_str)
-        elif loadl_bg_block is not None:
-            loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
-            if loadl_bg_size_str is None:
-                msg = "$LOADL_BG_SIZE not set!"
-                self.log.error(msg)
-                raise Exception(msg)
-            else:
-                loadl_bg_size = int(loadl_bg_size_str)
 
-        # Construct the host list
-        if loadl_hostfile is not None:
+            # Construct the host list
             loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
             self.log.info("Found LOADL_HOSTFILE %s. Expanded to: %s" % (loadl_hostfile, loadl_nodes))
             loadl_node_list = list(set(loadl_nodes))
@@ -1099,7 +1145,22 @@ class ExecutionEnvironment(object):
             if loadl_total_tasks != len(loadl_nodes):
                 self.log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)" % \
                                (loadl_total_tasks, len(loadl_nodes)))
+
+            # Determine the number of cpus per node
+            # Assume: cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
+            loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
+
         elif loadl_bg_block is not None:
+            # Blue Gene?
+
+            loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
+            if loadl_bg_size_str is None:
+                msg = "$LOADL_BG_SIZE not set!"
+                self.log.error(msg)
+                raise Exception(msg)
+            else:
+                loadl_bg_size = int(loadl_bg_size_str)
+
             loadl_job_name = os.environ.get('LOADL_JOB_NAME')
             if loadl_job_name is None:
                 msg = "$LOADL_JOB_NAME not set!"
@@ -1126,18 +1187,11 @@ class ExecutionEnvironment(object):
                 raise Exception(msg)
 
             # Build nodes data structure
-            #loadl_node_list = shapeandboards2block(loadl_bg_block_shape_str, loadl_bg_board_list_str)
+            loadl_block = bgq_shapeandboards2block(loadl_bg_block_shape_str, loadl_bg_board_list_str)
+            loadl_node_list = [entry[BGQ_BLOCK_NAME] for entry in loadl_block]
 
-            # TODO: HACK
-            loadl_node_list = loadl_bg_size * ['node42']
-
-        # Determine the number of cpus per node
-        if loadl_hostfile is not None:
-            # Assume: cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
-            loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
-
-        elif loadl_bg_block is not None:
-            loadl_cpus_per_node = 16
+            # Determine the number of cpus per node
+            loadl_cpus_per_node = BGQ_CORES_PER_NODE
 
         self.node_list = loadl_node_list
         self.cores_per_node = loadl_cpus_per_node
@@ -2628,57 +2682,71 @@ class _Process(subprocess.Popen):
 
         elif launch_method == LAUNCH_METHOD_RUNJOB:
 
-            # loadl_job_name = os.environ.get('LOADL_JOB_NAME')
-            # if loadl_job_name is None:
-            #     msg = "$LOADL_JOB_NAME not set!"
-            #     self._log.error(msg)
-            #     raise Exception(msg)
-            #
-            # # Get the board list and block shape from 'llq -l' output
-            # output = subprocess.check_output(["llq", "-l", loadl_job_name])
-            # loadl_bg_board_list_str = None
-            # loadl_bg_block_shape_str = None
-            # for line in output.splitlines():
-            #     # Detect BG board list
-            #     if "BG Node Board List: " in line:
-            #         loadl_bg_board_list_str = line.split(':')[1].strip()
-            #     elif "BG Shape Allocated: " in line:
-            #         loadl_bg_block_shape_str = line.split(':')[1].strip()
-            # if not loadl_bg_board_list_str:
-            #     msg = "No board list found in llq output!"
-            #     self._log.error(msg)
-            #     raise Exception(msg)
-            # if not loadl_bg_block_shape_str:
-            #     msg = "No board shape found in llq output!"
-            #     self._log.error(msg)
-            #     raise Exception(msg)
+            if task.numcores % 16:
+                msg = "Num cores (%d) is not a multiple of 16!" % task.numcores
+                self._log.error(msg)
+                raise Exception(msg)
+
+            loadl_job_name = os.environ.get('LOADL_JOB_NAME')
+            if loadl_job_name is None:
+                msg = "$LOADL_JOB_NAME not set!"
+                self._log.error(msg)
+                raise Exception(msg)
+
+            # Get the board list and block shape from 'llq -l' output
+            output = subprocess.check_output(["llq", "-l", loadl_job_name])
+            loadl_bg_board_list_str = None
+            loadl_bg_block_shape_str = None
+            for line in output.splitlines():
+                # Detect BG board list
+                if "BG Node Board List: " in line:
+                    loadl_bg_board_list_str = line.split(':')[1].strip()
+                elif "BG Shape Allocated: " in line:
+                    loadl_bg_block_shape_str = line.split(':')[1].strip()
+            if not loadl_bg_board_list_str:
+                msg = "No board list found in llq output!"
+                self._log.error(msg)
+                raise Exception(msg)
+            if not loadl_bg_block_shape_str:
+                msg = "No board shape found in llq output!"
+                self._log.error(msg)
+                raise Exception(msg)
 
             # Build nodes data structure
-            # loadl_node_list = shapeandboards2block(loadl_bg_block_shape_str, loadl_bg_board_list_str)
+            loadl_node_list = bgq_shapeandboards2block(loadl_bg_block_shape_str, loadl_bg_board_list_str)
 
-            #first_slot = task.slots[0]
+            first_slot = task.slots[0]
             # Get the host and the core part
-            #[first_slot_host, first_slot_core] = first_slot.split(':')
-            # Find the entry in the the all_slots list based on the host
-            #slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host,
+            # use a generator to not have to go through all of the list.
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
             # Transform it into an index in to the all_slots list
-            #all_slots_slot_index = all_slots.index(slot_entry)
-
-            #runjob_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
-            # runjob_offset = 0
+            all_slots_slot_index = all_slots.index(slot_entry)
 
             # Construct sub-block table
             # TODO: this needs to be done once at a better place
-            shape_table = create_sub_block_shape_table('2x2x4x4x2')
+            shape_table = bgq_create_sub_block_shape_table(loadl_bg_block_shape_str)
 
+            # Runjob it is!
             runjob_command = launch_command
+
+            # Run this subjob in the block communicated by LoadLeveler
+            # TODO: Don't use env var, but the value we extracted earlier!
             runjob_command += ' --block $LOADL_BG_BLOCK'
-            runjob_command += ' --corner R00-M1-N12-J25'
-            #corner = loadl_node_list[runjob_offset][BLOCK_COOR]
-            #runjob_command += ' --corner %s' % corner
-            runjob_command += ' --shape 1x1x1x1x2'
-            #shape = shape_table[task.numcores/16]
-            #runjob_command += ' --shape %s' % shape
+
+            # Determine the offset of the starting node in the node list
+            # and use that as the corner for the subjob.
+            #runjob_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            runjob_offset = all_slots_slot_index
+            corner_node = loadl_node_list[runjob_offset][BGQ_BLOCK_NAME]
+            runjob_command += ' --corner %s' % corner_node
+
+            # Determine the shape based on the number of nodes we require
+            shape = shape_table[task.numcores/BGQ_CORES_PER_NODE]
+            runjob_command += ' --shape %s' % bgq_shape2str(shape)
+
+            # And finally add the executable and the arguments
             runjob_command += ' --exe %s' % task_exec_string
             if task_args_string:
                 runjob_command += ' --args %s' % task_args_string
@@ -3070,4 +3138,3 @@ if __name__ == "__main__":
         logger.error("Caught keyboard interrupt. EXITING")
         if  agent :
             agent.stop()
-
