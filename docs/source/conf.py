@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# SAGA documentation build configuration file, created by
+# RADICAL-Pilot documentation build configuration file, created by
 # sphinx-quickstart on Mon Dec  3 21:55:42 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -22,7 +22,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 
 ################################################################################
 ##
-print "* Generating code example list: examples.rst"
+print "* Generating resource configuration docs: resources.rst"
 
 try:
     os.remove("{0}/resources.rst".format(script_dir))
@@ -56,7 +56,7 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                 try:
                     working_dir = resource_config["default_remote_workdir"]
                 except Exception, ex:
-                    working_dir = "$HOME/radical.pilot.sandbox"
+                    working_dir = "$HOME"
                 try:
                     python_interpreter = resource_config["python_interpreter"]
                 except Exception, ex:
@@ -92,7 +92,16 @@ sys.path.insert(0, os.path.abspath('../../src/'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.intersphinx', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.pngmath', 'sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.viewcode']
+extensions = ['sphinx.ext.autodoc', 
+              'sphinx.ext.doctest',
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.todo',
+              'sphinx.ext.coverage',
+              'sphinx.ext.pngmath',
+              'sphinx.ext.mathjax',
+              'sphinx.ext.ifconfig',
+              'sphinx.ext.viewcode',
+              'sphinx.ext.extlinks']
 
 [extensions]
 todo_include_todos=True
@@ -163,6 +172,9 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+
+extlinks = {'issue': ('https://github.com/radical-cybertools/radical.pilot/issues/%s',
+                      'issue ')}
 
 # -- Options for HTML output ---------------------------------------------------
 

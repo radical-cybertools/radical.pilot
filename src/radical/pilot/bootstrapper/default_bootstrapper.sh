@@ -10,6 +10,7 @@
 # -----------------------------------------------------------------------------
 # global variables
 #
+AUTH=
 CLEANUP=
 CORES=
 DBNAME=
@@ -113,22 +114,20 @@ installvenv()
     # create a fresh virtualenv. we use an older 1.9.x version of 
     # virtualenv as this seems to work more reliable than newer versions.
     # If we can't download, we try to move on with the system virtualenv.
-    CURL_CMD="curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
+    CURL_CMD="curl -k -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
     echo ""
     echo "################################################################################"
     echo "## Downloading and installing virtualenv"
     echo "## CMDLINE: $CURL_CMD"
     $CURL_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "WARNING: Couldn't download virtualenv via curl! Using system version."
         BOOTSTRAP_CMD="virtualenv $VIRTENV"
     else :
         tar xvfz virtualenv-1.9.tar.gz
-        OUT=$?
-        if [[ $OUT != 0 ]]; then
-           echo "Couldn't unpack virtualenv! ABORTING"
-           exit 1
+        if test $? -ne 0 ; then
+            echo "Couldn't unpack virtualenv! ABORTING"
+            exit 1
         fi
         
         BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $VIRTENV"
@@ -139,8 +138,7 @@ installvenv()
     echo "## Creating virtualenv"
     echo "## CMDLINE: $BOOTSTRAP_CMD"
     $BOOTSTRAP_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "Couldn't bootstrap virtualenv! ABORTING"
         exit 1
     fi
@@ -154,8 +152,7 @@ installvenv()
     echo "## Downgrading pip to 1.2.1"
     echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
     $DOWNGRADE_PIP_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "Couldn't downgrade pip! Using default version (if it exists)"
     fi
     
@@ -165,8 +162,7 @@ installvenv()
     #echo "## Updating virtualenv"
     #echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
     #$UPDATE_SETUPTOOLS_CMD
-    #OUT=$?
-    #if [ $OUT -ne 0 ]; then
+    #if test $? -ne 0 ; then
     #    echo "Couldn't update virtualenv! ABORTING"
     #    exit 1
     #fi
@@ -180,8 +176,7 @@ installvenv()
     echo "## install/upgrade Apache-LibCloud"
     echo "## CMDLINE: $EI_CMD"
     $EI_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
     fi
     
@@ -193,12 +188,10 @@ installvenv()
     echo "## install/upgrade SAGA-Python"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Couldn't install/upgrade SAGA-Python! Lets see how far we get ..."
         fi
     fi
@@ -210,12 +203,10 @@ installvenv()
     echo "## install/upgrade python-hostlist"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Easy install failed too, couldn't install python-hostlist!  Lets see how far we get..."
         fi
     fi
@@ -228,12 +219,10 @@ installvenv()
     echo "## install/upgrade pymongo"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Easy install failed too, couldn't install pymongo! Oh well..."
         fi
     fi
@@ -290,8 +279,12 @@ printenv
 # parse command line arguments
 USER_SANDBOX=0
 BENCHMARK=0
-while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
+while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
     case $OPTION in
+        a)
+            # Passed to agent
+            AUTH=$OPTARG
+            ;;
         b)
             # Passed to agent
             BENCHMARK=1
@@ -313,8 +306,7 @@ while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
             echo "## Running pre-bootstrapping command"
             echo "## CMDLINE: $PREBOOTSTRAP"
             $PREBOOTSTRAP
-            OUT=$?
-            if [[ $OUT -ne 0 ]]; then
+            if test $? -ne 0 ; then
                 echo "Error running pre-boostrapping command! ABORTING"
                 exit 1
             fi
@@ -387,7 +379,8 @@ done
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if [[ -z $CORES ]] ||\
+if [[ -z $AUTH ]] ||\
+   [[ -z $CORES ]] ||\
    [[ -z $DEBUG ]] ||\
    [[ -z $DBNAME ]] ||\
    [[ -z $DBURL ]] ||\
@@ -473,6 +466,7 @@ fi
 # launch the radical agent
 #
 AGENT_CMD="python radical-pilot-agent.py\
+    -a $AUTH\
     -b $BENCHMARK\
     -c $CORES\
     -d $DEBUG\
@@ -510,4 +504,3 @@ contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
 
 # ... and exit
 exit $AGENT_EXITCODE
-

@@ -22,6 +22,9 @@ examples illustrate some common usage patterns in distributed environments.
 
 **Contents:**
 
+.. image:: ../images/stooges.png
+
+
 .. toctree::
    :maxdepth: 1
 

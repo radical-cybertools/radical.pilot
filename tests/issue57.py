@@ -49,7 +49,7 @@ if __name__ == "__main__":
         pilot = []
 
         pd = rp.ComputePilotDescription()
-        pd.resource = "hotel.futuregrid.org"
+        pd.resource = "futuregrid.hotel"
         pd.cores = i
         pd.runtime = 10
         #pd.cleanup = True

@@ -1,16 +1,89 @@
 
 .. _chapter_machconf:
 
-***********************
-Resource Configurations
-***********************
+************************************
+Using Local and Remote HPC Resources
+************************************
 
-Preconfigured Resources
-=======================
+Introduction
+============
+
+The real advantage of using RADICAL-Pilot becomes visible when it is used 
+on large HPC clusters. RADICAL-Pilot allows you to launch a ComputePilot 
+allocating a large number of cores and then use it to run many ComputeUnits
+with small core-counts. This is not only a very nice abstraction to separate
+resource allocation / management from resource usage, but also circumvents 
+very effectively HPC cluster queue policies and waiting times which can 
+significantly reduce the total time to completion (TTC) of your application. 
+
+If you want to use a remote HPC resource, in this example a cluster named
+"archer", you define it in the ComputePilotDescription like this:
+
+.. code-block:: python
+
+    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc.resource   = "archer.ac.uk"
+    pdesc.project    = "e1234"
+    pdesc.runtime    = 60
+    pdesc.cores      = 128
+
+Using a ``resource`` key other than "localhost" implicitly tells RADICAL-Pilot
+that it is dealing with a remote resource. RADICAL-Pilot is using the SSH 
+(and SFTP) protocols to communicate with remote resources. The next section,
+:ref:`ssh_config` provides some details about SSH set-up. 
+:ref:`preconfigured_resources` list the resource keys that are already defined 
+and ready to use in RADICAL-Pilot.
+
+In some cases you may want to use an HPC resource locally instead of remotely.
+For example, you might want to run your application from one of the cluster
+head-nodes. In this case you can tell RADICAL-Pilot not to use SSH but to
+access the queuing system and file systems locally by simply adding **:local**
+to the end of the resource key:
+
+.. note::
+    .. code-block:: python
+
+        pdesc = radical.pilot.ComputePilotDescription()
+        pdesc.resource   = "archer.ac.uk:local"
+
+
+.. _ssh_config:
+
+Configuring SSH Access
+======================
+
+If you can manually SSH into the target resource, RADICAL-Pilot can do the same.
+While RADICAl-Pilot supports username / password authentication, it is 
+highly-advisable to set-up password-less ssh keys for the resource you want to
+use. If you are not familiar with this, check out 
+`THIS LINK <http://www.debian-administration.org/articles/152>`_. 
+
+All SSH-specific informations, like remote usernames and passwords are set in
+a  ``Context`` object. For example, if you want to tell RADICAL-Pilot your 
+user-id on the remote resource, use the following construct:
+
+.. code-block:: python
+
+    session = radical.pilot.Session(database_url=DBURL)
+
+    c = radical.pilot.Context('ssh')
+    c.user_id = "tg802352"
+    session.add_context(c)
+
+.. note::
+    **Tip:** You can create an empty file called `.hushlogin` in your home 
+    directory to turn of the system messages you see on your screen at every
+    login. This can help if you encounter random connection problems with 
+    RADICAL-Pilot. 
+
+.. _preconfigured_resources:
+
+Pre-Configured Resources
+========================
 
 Resource configurations are a set of dictionaries that hide specific details 
 of a remote resource (queuing-, file-system- and environment-details) from the 
-user. A user allocates a preconfigured resource like this:
+user. A user allocates a pre-configured resource like this:
 
 .. code-block:: python
 
@@ -69,6 +142,6 @@ All fields are mandatory, unless indicated otherwise below.
 * `mpi_launch_method`           : type of MPI support (required for MPI units: `MPIRUN`, `MPIEXEC`, `APRUN`, `IBRUN` or `POE`)
 * `python_interpreter`          : path to python (optional)
 * `pre_bootstrap`               : list of commands to execute for initialization (optional)
-* `valid_roots`                 : list of shared filesystem roots (optional).  Pilot sandboxes must lie under these roots.
+* `valid_roots`                 : list of shared file system roots (optional).  Pilot sandboxes must lie under these roots.
 * `pilot_agent`                 : type of pilot agent to use
 

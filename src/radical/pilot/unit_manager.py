@@ -516,15 +516,16 @@ class UnitManager(object):
 
                 if  'kernel' in ud and ud['kernel'] :
 
-                    if  not 'pilots' in schedule :
-                        raise RuntimeError ("Kernels are not supported for this unit scheduler")
-
                     try :
                         from radical.ensemblemd.mdkernels import MDTaskDescription
                     except Exception as ex :
-                        raise RuntimeError ("Kernels are not supported in" \
+                        logger.error ("Kernels are not supported in" \
                               "compute unit descriptions -- install " \
                               "radical.ensemblemd.mdkernels!")
+                        unit.state = FAILED
+                        self._session._dbs.set_compute_unit_state (unit._uid, FAILED, 
+                                ["kernel expansion failed"])
+                        continue
 
                     pilot_resource = schedule['pilots'][pid]['resource']
 

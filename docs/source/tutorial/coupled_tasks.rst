@@ -18,7 +18,7 @@ Download the file ``coupled_tasks.py`` with the following command:
 
 .. code-block:: bash
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/tutorial/coupled_tasks.py
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/coupled_tasks.py
 
 Open the file ``coupled_tasks.py`` with your favorite editor. The example should 
 work right out of the box on your local machine. However, if you want to try it
@@ -71,9 +71,9 @@ MongoDB server you want to use, for example:
 
 .. code-block:: bash
         
-        export RADICAL_PILOT_DBURL=mongodb://host:port/
+        export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
 
-If Radical-Pilot is installed and the MongoDB URL is set, you should be good
+If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program: 
 
 .. code-block:: bash

@@ -1,7 +1,11 @@
+
 import os
 import sys
 import time
 import radical.pilot as rp
+
+os.environ['RADICAL_PILOT_BENCHMARK'] = '1'
+
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
@@ -36,25 +40,19 @@ def unit_state_cb (unit, state) :
 #
 if __name__ == "__main__":
 
-    rp_user     = str(os.getenv ("RP_USER",     "merzky"))
-    rp_cores    = int(os.getenv ("RP_CORES",    8))
+    rp_cores    = int(os.getenv ("RP_CORES",    16))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
     rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2)) # 3 units/core/pilot
     rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
-    rp_host     = str(os.getenv ("RP_HOST",     "india.futuregrid.org"))
+    rp_host     = str(os.getenv ("RP_HOST",     "xsede.stampede"))
     rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
-    rp_project  = str(os.getenv ("RP_PROJECT",  ""))
+    rp_project  = str(os.getenv ("RP_PROJECT",  "TG-MCB090174"))
 
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
     # well as security crendetials.
     session = rp.Session()
     print "session: %s" % session.uid
-
-    # make jenkins happy
-    c         = rp.Context ('ssh')
-    c.user_id = rp_user
-    session.add_context (c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -104,7 +102,7 @@ if __name__ == "__main__":
     for unit_count in range(0, rp_units):
         cu = rp.ComputeUnitDescription()
         cu.executable  = "/bin/sleep"
-        cu.arguments   = ["30"]
+        cu.arguments   = ["60"]
         cu.cores       = rp_cu_cores
         cu.mpi         = True
 

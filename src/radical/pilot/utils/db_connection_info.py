@@ -17,19 +17,12 @@ class DBConnectionInfo(object):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, url, dbname, session_id):
+    def __init__(self, dburl, dbname, dbauth, session_id):
 
-        self._url = url
+        self._dburl  = dburl
+        self._dbauth = dbauth
         self._dbname = dbname
         self._session_id = session_id
-
-    # ------------------------------------------------------------------------
-    #
-    @property 
-    def url(self):
-        """Returns the database url.
-        """
-        return self._url
 
     # ------------------------------------------------------------------------
     #
@@ -38,6 +31,22 @@ class DBConnectionInfo(object):
         """Returns the database name.
         """
         return self._dbname
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def dbauth(self):
+        """Returns the database auth ('username:password').
+        """
+        return self._dbauth
+
+    # ------------------------------------------------------------------------
+    #
+    @property
+    def dburl(self):
+        """Returns the database auth ('username:password').
+        """
+        return self._dburl
 
     # ------------------------------------------------------------------------
     #
@@ -52,7 +61,7 @@ class DBConnectionInfo(object):
     def get_db_handle(self):
         """get_db_handle() returns a MongoDB handle.
         """
-        client = MongoClient(self._url)
+        client = MongoClient(self._dburl)
         return client
 
     # ------------------------------------------------------------------------
@@ -60,5 +69,5 @@ class DBConnectionInfo(object):
     def __str__ (self):
 
         return "Connection Info: session %s : %s / %s" \
-             % (self._session_id, self._url, self._dbname)
+             % (self._session_id, self._dburl, self._dbname)
 
