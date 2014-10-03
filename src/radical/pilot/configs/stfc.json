@@ -7,7 +7,6 @@
         "ssh"                         :
         {
             "job_manager_endpoint"    : "loadl+ssh://login.joule.hartree.stfc.ac.uk/?job_type=bluegene",
-            #"job_manager_endpoint"    : "loadl+ssh://login.joule.hartree.stfc.ac.uk/?job_type=MPICH",
             "filesystem_endpoint"     : "sftp://login.joule.hartree.stfc.ac.uk/"
         },
         "local"                       :
@@ -20,15 +19,13 @@
         "task_launch_method"          : "RUNJOB",
         "mpi_launch_method"           : "RUNJOB",
         "global_virtenv"              : "/gpfs/home/HCP056/sxz03/mas16-sxz03/shared_pilot_ve_20140801",
-        #"python_interpreter"          : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"               : ["source /etc/profile.d/modules.sh",
                                          "export MODULEPATH=/gpfs/packages/Modules/modulefiles/production:/gpfs/packages/Modules/modulefiles/packages:/gpfs/packages/Modules/modulefiles/other",
                                          "module list",
                                          "module avail",
-                                         "module load python/2.7.5",
-                                         "llq -l $LOADL_JOB_NAME"],
+                                         "module load python/2.7.5"
+                                        ],
         "agent_mongodb_endpoint"      : "mongodb://172.31.63.241:12346",
-        #"default_remote_workdir"      : "/fs4/e290/e290/$USER",
         "valid_roots"                 : ["/gpfs/home"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "bootstrapper"                : "default_bootstrapper.sh"
