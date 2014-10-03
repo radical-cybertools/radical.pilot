@@ -68,9 +68,9 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         # Define a X-core on stamped that runs for N minutes and
-        # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
+        # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource         = "joule.hartree.stfc.ac.uk"
+        pdesc.resource         = "stfc.joule"
         pdesc.runtime          = 5 # N minutes
         pdesc.cores            = 1024 # X cores
         pdesc.queue            = "prod"
