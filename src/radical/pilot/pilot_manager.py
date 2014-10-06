@@ -268,6 +268,14 @@ class PilotManager(Object):
             else:
                 resource_cfg = rcs[resource_key]
 
+            # Check resource-specific mandatory attributes
+            if "mandatory_args" in resource_cfg:
+                for ma in resource_cfg["mandatory_args"]:
+                    if getattr(pilot_description, ma) is None:
+                        error_msg = "ComputePilotDescription does not define attribute '{0}' which is required for '{1}'.".format(ma, resource_key)
+                        raise BadParameter(error_msg)
+
+
             # we expand and exchange keys in the resource config, depending on
             # the selected schema so better use a deep copy...
             import copy
