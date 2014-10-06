@@ -522,7 +522,7 @@ class UnitManager(object):
                         logger.error ("Kernels are not supported in" \
                               "compute unit descriptions -- install " \
                               "radical.ensemblemd.mdkernels!")
-                        unit.state = FAILED
+                        # FIXME: unit needs a '_set_state() method or something!
                         self._session._dbs.set_compute_unit_state (unit._uid, FAILED, 
                                 ["kernel expansion failed"])
                         continue

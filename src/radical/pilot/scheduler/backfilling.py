@@ -98,7 +98,7 @@ class BackfillingScheduler(Scheduler):
                 pid = unit.execution_details.get ('pilot', None)
 
                 if  not pid :
-                    raise RuntimeError ('cannot handle final unit %s w/o pilot information' % uid)
+                    logger.warning ('cannot handle final unit %s w/o pilot information' % uid)
 
                 if  pid not in self.pilots :
                     logger.warning ('cannot handle unit %s cb for pilot %s (pilot is gone)' % (uid, pid))
@@ -149,6 +149,8 @@ class BackfillingScheduler(Scheduler):
                 # FIXME: how can I *un*register a pilot callback?
     
         except Exception as e :
+          # import traceback
+          # traceback.print_exc ()
             logger.error ("error in pilot callback for backfiller (%s) - ignored" % e)
 
 
