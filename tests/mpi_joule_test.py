@@ -69,24 +69,25 @@ if __name__ == "__main__":
 
         # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
+        #
         pdesc = radical.pilot.ComputePilotDescription()
         pdesc.resource         = "stfc.joule"
         pdesc.runtime          = 5 # N minutes
-        pdesc.cores            = 1024 # X cores
-        pdesc.queue            = "prod"
-        #pdesc.cleanup          = False
+        pdesc.cores            = 2048 # X cores
+        #pdesc.cores            = 32 # X cores
+        #pdesc.cores            = 4096 # X cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
         cud_list = []
 
-        for unit_count in range(0, 1):
+        for unit_count in range(0, 4):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.pre_exec    = ["module load python/2.7.5", "printenv"]
             mpi_test_task.executable  = "/gpfs/home/HCP056/sxz03/mas16-sxz03/cuve/bin/python"
             mpi_test_task.arguments   = ["/gpfs/home/HCP056/sxz03/mas16-sxz03/helloworld_mpi.py"]
-            mpi_test_task.cores       = 2
+            mpi_test_task.cores       = 32
 
             mpi_test_task.mpi         = True
             cud_list.append(mpi_test_task)
@@ -119,7 +120,7 @@ if __name__ == "__main__":
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, "n.a.")
 
-        session.close(delete=False)
+        session.close(cleanup=False)
         sys.exit(0)
 
     except radical.pilot.PilotException, ex:
