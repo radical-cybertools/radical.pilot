@@ -521,6 +521,147 @@ def bgq_corner2offset(block, corner):
 ##########################################################################
 
 
+##########################################################################
+#
+# Follow coordinates to get the last node
+#
+def bgq_get_last_node(origin, shape):
+    return {dim: origin[dim] + shape[dim] -1 for dim in BGQ_DIMENSION_LABELS}
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Return the number of nodes in a block
+#
+def bgq_block2num_nodes(block):
+    return len(block)
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Allocate a sub-block within a block
+# Currently only works with offset that are exactly the sub-block size
+#
+def bgq_alloc_sub_block(block, num_nodes):
+
+    offset = 0
+    # Iterate through all nodes with offset a multiple of the sub-block size
+    while True:
+
+        # Verify the assumption (needs to be an assert?)
+        if offset % num_nodes != 0:
+            print 'ERROR: Sub-block needs to start at correct offset!'
+            exit()
+            # TODO: If we want to workaround this, the coordinates need to overflow
+
+        not_free = False
+        # Check if all nodes from offset till offset+size are FREE
+        for peek in range(num_nodes):
+            if block[offset+peek][BGQ_BLOCK_STATUS] == BUSY:
+                # Once we find the first BUSY node we can discard this attempt
+                not_free = True
+                break
+
+        if not_free == True:
+            # No success at this offset
+            print "INFO: No free nodes found at this offset: %d"  % offset
+
+            # If we weren't the last attempt, then increase the offset and iterate again.
+            if offset + num_nodes < bgq_block2num_nodes(block):
+                offset += num_nodes
+                continue
+            else:
+                return
+
+        else:
+            # At this stage we have found a free spot!
+
+            print "INFO: Free nodes found at this offset: %d" % offset
+
+            # Then mark the nodes busy
+            for peek in range(num_nodes):
+                block[offset+peek][BGQ_BLOCK_STATUS] = BUSY
+
+            return offset
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Return the number of nodes for the given block shape
+#
+def bgq_shape2num_nodes(shape):
+
+    nodes = 1
+    for dim in BGQ_DIMENSION_LABELS:
+        nodes *= shape[dim]
+
+    return nodes
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Alloc a number of cores
+#
+def bgq_alloc_cores(block, sub_block_shape_table, num_cores):
+
+    print "INFO: Trying to allocate %d core(s)." % num_cores
+
+    if num_cores % BGQ_CORES_PER_NODE:
+        num_cores = int(math.ceil(num_cores / float(BGQ_CORES_PER_NODE))) * BGQ_CORES_PER_NODE
+        print 'ERROR: core not a multiple of %d, increasing request to %d!' % \
+              (BGQ_CORES_PER_NODE, num_cores)
+
+    num_nodes = num_cores / BGQ_CORES_PER_NODE
+
+    offset = bgq_alloc_sub_block(block, num_nodes)
+
+    if offset is None:
+        print 'WARNING: No reservation made'
+        return
+
+    corner = block[offset][BGQ_BLOCK_COOR]
+    sub_block_shape = sub_block_shape_table[num_nodes]
+
+    print 'Allocating sub-block of %d node(s) with dimensions %s at offset %d with corner %s.' % \
+          (num_nodes, bgq_shape2str(sub_block_shape), offset, bgq_loc2str(corner))
+    end = bgq_get_last_node(corner, sub_block_shape)
+    print 'End location: %s' % bgq_loc2str(end)
+
+    return corner, sub_block_shape
+#
+##########################################################################
+
+
+##########################################################################
+#
+# Free up an allocation
+#
+def bgq_free_cores(block, corner, shape):
+
+    # Number of nodes to free
+    num_nodes = bgq_shape2num_nodes(shape)
+
+    # Location of where to start freeing
+    offset = bgq_corner2offset(block, corner)
+
+    print "INFO: Freeing %d nodes starting at %d." % (num_nodes, offset)
+
+    for peek in range(num_nodes):
+        assert block[offset+peek][BGQ_BLOCK_STATUS] == BUSY,\
+            'Block %d not Free!' % block[offset+peek]
+        block[offset+peek][BGQ_BLOCK_STATUS] = FREE
+#
+##########################################################################
+
+
 #---------------------------------------------------------------------------
 #
 start_time = time.time ()
