@@ -164,7 +164,7 @@ class ComputePilot (object):
             * A URL string.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
+            raise IncorrectState(msg="Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['sandbox']
@@ -176,7 +176,7 @@ class ComputePilot (object):
         """Returns the current state of the pilot.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
+            raise IncorrectState(msg="Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['state']
@@ -188,7 +188,7 @@ class ComputePilot (object):
         """Returns the complete state history of the pilot.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
+            raise IncorrectState(msg="Invalid instance.")
 
         states = []
 
@@ -208,7 +208,7 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['log']
@@ -221,7 +221,7 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         resource_details = {
@@ -245,9 +245,9 @@ class ComputePilot (object):
         """ Returns the unit manager object UIDs for this pilot.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
-        raise exceptions.radical.pilotException("Not Implemented")
+        raise NotImplemented("Not Implemented")
 
     # -------------------------------------------------------------------------
     #
@@ -257,9 +257,9 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
-        raise exceptions.radical.pilotException("Not Implemented")
+        raise NotImplemented("Not Implemented")
 
     # -------------------------------------------------------------------------
     #
@@ -269,7 +269,7 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['submitted']
@@ -281,7 +281,7 @@ class ComputePilot (object):
         """ Returns the time the pilot was started on the backend.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['started']
@@ -293,7 +293,7 @@ class ComputePilot (object):
         """ Returns the time the pilot was stopped.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['finished']
@@ -305,7 +305,7 @@ class ComputePilot (object):
         """ Returns the resource.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['description']['resource']
@@ -357,7 +357,7 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         if not isinstance(state, list):
             state = [state]
@@ -388,7 +388,7 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
+            raise IncorrectState(msg="Invalid instance.")
 
         if self.state in [DONE, FAILED, CANCELED]:
             # nothing to do as we are already in a terminal state
