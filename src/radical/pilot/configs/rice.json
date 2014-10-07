@@ -21,7 +21,7 @@
         "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap"               : ["module load openmpi"],
         "valid_roots"                 : ["/dascratch"],
-        "default_remote_workdir"      : "$SHARED_SCRATCH",
+        "default_remote_workdir"      : "$SHARED_SCRATCH/$USER",
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
