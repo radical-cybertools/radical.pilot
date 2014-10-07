@@ -8,8 +8,8 @@
         "warn_on_local"               : "True",
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
+            "job_manager_endpoint"    : "slurm+ssh://login1.stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://login1.stampede.tacc.utexas.edu/"
         },
         "gsissh"                      :
         {
