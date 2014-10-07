@@ -245,7 +245,7 @@ do for [term_i=1:words(terms)] {
     set y2range [0:queuescale]
     set my2tics 0
 
-    set xlabel ''
+    set xlabel 'time (in seconds)'
     set ylabel "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
     set grid 
   unset format
