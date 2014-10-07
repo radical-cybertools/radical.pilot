@@ -34,7 +34,8 @@ SANDBOX=`pwd`
 #
 # Returns 0 if the specified string contains the specified substring,
 # otherwise returns 1.
-contains() {
+contains() 
+{
     string="$1"
     substring="$2"
     if test "${string#*$substring}" != "$string"

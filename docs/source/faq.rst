@@ -41,10 +41,10 @@ older than a specified number of hours or days, to purge orphaned session
 entries in a bulk.
 
 
-Q: I see the error "Permission denied (publickey,keyboard-interactive)." in AGENT.STDERR.
------------------------------------------------------------------------------------------
+Q: I see the error "Permission denied (publickey,keyboard-interactive)." in AGENT.STDERR or STDERR.
+---------------------------------------------------------------------------------------------------
 
-The AGENT.STDERR file shows the following error and the pilot never starts
+The AGENT.STDERR file or the STDERR file in the unit directory shows the following error and the pilot or unit never starts
 running:
 
 .. code-block:: bash
@@ -57,7 +57,8 @@ A: Set up password-less, intra-node SSH access.
 
 Even though this should already be set up by default on many HPC clusters, it
 is not always the case. The following instructions will help you to set up
-password-less SSH acces:
+password-less SSH access. These commands need to be run on the head node/login
+node of the resource:
 
 .. code-block:: bash
 
