@@ -376,7 +376,11 @@ class PilotLauncherWorker(threading.Thread):
                         # we can launch the agent
                         job_service_url = saga.Url(resource_cfg['job_manager_endpoint'])
                         logger.debug ("saga.job.Service ('%s')" % job_service_url)
-                        js = saga.job.Service(job_service_url, session=self._session)
+                        if  job_service_url in self.job_services :
+                            js = self.job_services[job_service_url]
+                        else :
+                            js = saga.job.Service(job_service_url, session=self._session)
+                            self.job_services[job_service_url] = js
 
                         jd = saga.job.Description()
                         jd.working_directory = saga.Url(sandbox).path
@@ -478,7 +482,6 @@ class PilotLauncherWorker(threading.Thread):
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
-                        js.close()                    
                         ##
                         ##
                         ######################################################################
