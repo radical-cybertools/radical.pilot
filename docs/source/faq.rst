@@ -109,3 +109,8 @@ The full error in STDERR is something like:
 
 A: You need to specify the full path of the executable as mpirun_rsh is not able to find it in the path
 -------------------------------------------------------------------------------------------------------
+
+Q: How many concurrent RADICAL-Pilot scripts can I execute?
+-----------------------------------------------------------
+
+A: From a RADICAL-Pilot perspective there is no limit, but as SSH is used to access many systems, there is a resource specific limit of the number of SSH connections one can make.
