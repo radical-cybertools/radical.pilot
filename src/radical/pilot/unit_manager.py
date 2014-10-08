@@ -442,9 +442,7 @@ class UnitManager(object):
 
         schedule = None
         try:
-            print "\n=> > > ======================================\n"
             schedule = self._scheduler.schedule (units=units)
-            print "\n < < < ======================================\n"
        
         except Exception as e:
             import traceback
