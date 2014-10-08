@@ -1093,8 +1093,66 @@ class TORQUELRMS(LRMS):
         self.node_list = torque_node_list
 
 
+
     #-------------------------------------------------------------------------
     #
+class PBSProLRMS(LRMS):
+
+    def __init__(self, name, requested_cores, logger):
+        LRMS.__init__(self, name, requested_cores, logger)
+
+    def configure(self):
+        # TODO: $NCPUS?!?! = 1 on archer
+
+        pbspro_nodefile = os.environ.get('PBS_NODEFILE')
+
+        if pbspro_nodefile is None:
+            msg = "$PBS_NODEFILE not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        self.log.info("Found PBSPro $PBS_NODEFILE %s." % pbspro_nodefile)
+
+        # Dont need to parse the content of nodefile for PBSPRO,
+        # only the length is interesting, as there are only duplicate entries in it.
+        pbspro_nodes_length = len([line.strip() for line in open(pbspro_nodefile)])
+
+        # Number of Processors per Node
+        val = os.environ.get('NUM_PPN')
+        if val:
+            pbspro_num_ppn = int(val)
+        else:
+            msg = "$NUM_PPN not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Number of Nodes allocated
+        val = os.environ.get('NODE_COUNT')
+        if val:
+            pbspro_node_count = int(val)
+        else:
+            msg = "$NODE_COUNT not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        # Number of Parallel Environments
+        val = os.environ.get('NUM_PES')
+        if val:
+            pbspro_num_pes = int(val)
+        else:
+            msg = "$NUM_PES not set!"
+            self.log.error(msg)
+            raise Exception(msg)
+
+        pbspro_vnodes = self._parse_pbspro_vnodes()
+
+        # Verify that $NUM_PES == $NODE_COUNT * $NUM_PPN == len($PBS_NODEFILE)
+        if not (pbspro_node_count * pbspro_num_ppn == pbspro_num_pes == pbspro_nodes_length):
+            self.log.warning("NUM_PES != NODE_COUNT * NUM_PPN != len($PBS_NODEFILE)")
+
+        self.cores_per_node = pbspro_num_ppn
+        self.node_list = pbspro_vnodes
+
     def _parse_pbspro_vnodes(self):
 
         # PBS Job ID
@@ -1171,65 +1229,6 @@ class TORQUELRMS(LRMS):
         # Return the list of node names
         return node_list
 
-
-    #-------------------------------------------------------------------------
-    #
-class PBSProLRMS(LRMS):
-
-    def __init__(self, name, requested_cores, logger):
-        LRMS.__init__(self, name, requested_cores, logger)
-
-    def configure(self):
-        # TODO: $NCPUS?!?! = 1 on archer
-
-        pbspro_nodefile = os.environ.get('PBS_NODEFILE')
-
-        if pbspro_nodefile is None:
-            msg = "$PBS_NODEFILE not set!"
-            self.log.error(msg)
-            raise Exception(msg)
-
-        self.log.info("Found PBSPro $PBS_NODEFILE %s." % pbspro_nodefile)
-
-        # Dont need to parse the content of nodefile for PBSPRO,
-        # only the length is interesting, as there are only duplicate entries in it.
-        pbspro_nodes_length = len([line.strip() for line in open(pbspro_nodefile)])
-
-        # Number of Processors per Node
-        val = os.environ.get('NUM_PPN')
-        if val:
-            pbspro_num_ppn = int(val)
-        else:
-            msg = "$NUM_PPN not set!"
-            self.log.error(msg)
-            raise Exception(msg)
-
-        # Number of Nodes allocated
-        val = os.environ.get('NODE_COUNT')
-        if val:
-            pbspro_node_count = int(val)
-        else:
-            msg = "$NODE_COUNT not set!"
-            self.log.error(msg)
-            raise Exception(msg)
-
-        # Number of Parallel Environments
-        val = os.environ.get('NUM_PES')
-        if val:
-            pbspro_num_pes = int(val)
-        else:
-            msg = "$NUM_PES not set!"
-            self.log.error(msg)
-            raise Exception(msg)
-
-        pbspro_vnodes = self._parse_pbspro_vnodes()
-
-        # Verify that $NUM_PES == $NODE_COUNT * $NUM_PPN == len($PBS_NODEFILE)
-        if not (pbspro_node_count * pbspro_num_ppn == pbspro_num_pes == pbspro_nodes_length):
-            self.log.warning("NUM_PES != NODE_COUNT * NUM_PPN != len($PBS_NODEFILE)")
-
-        self.cores_per_node = pbspro_num_ppn
-        self.node_list = pbspro_vnodes
 
     #-------------------------------------------------------------------------
     #
