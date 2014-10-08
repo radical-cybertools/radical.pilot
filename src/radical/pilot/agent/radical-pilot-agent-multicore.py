@@ -1469,12 +1469,12 @@ class ForkLRMS(LRMS):
 
     def configure(self):
 
-        self.logger.info("Using fork on localhost.")
+        self.log.info("Using fork on localhost.")
 
         detected_cpus = multiprocessing.cpu_count()
         selected_cpus = min(detected_cpus, self.requested_cores)
 
-        self.logger.info("Detected %d cores on localhost, using %d." % (detected_cpus, selected_cpus))
+        self.log.info("Detected %d cores on localhost, using %d." % (detected_cpus, selected_cpus))
 
         self.node_list = ["localhost"]
         self.cores_per_node = selected_cpus
