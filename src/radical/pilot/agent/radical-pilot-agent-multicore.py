@@ -54,22 +54,24 @@ LAUNCH_METHOD_IBRUN         = 'IBRUN'
 LAUNCH_METHOD_DPLACE        = 'DPLACE'
 LAUNCH_METHOD_RUNJOB        = 'RUNJOB'
 
-MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
-                              LAUNCH_METHOD_MPIRUN,
-                              LAUNCH_METHOD_RUNJOB,
-                              LAUNCH_METHOD_MPIRUN_RSH,
-                              LAUNCH_METHOD_MPIRUN_DPLACE,
-                              LAUNCH_METHOD_POE,
-                              LAUNCH_METHOD_APRUN,
-                              LAUNCH_METHOD_MPIEXEC]
+MULTI_NODE_LAUNCH_METHODS = [
+    LAUNCH_METHOD_IBRUN,
+    LAUNCH_METHOD_MPIRUN,
+    LAUNCH_METHOD_RUNJOB,
+    LAUNCH_METHOD_MPIRUN_RSH,
+    LAUNCH_METHOD_MPIRUN_DPLACE,
+    LAUNCH_METHOD_POE,
+    LAUNCH_METHOD_APRUN,
+    LAUNCH_METHOD_MPIEXEC
+]
 
-LRMS_TORQUE = 'TORQUE'
-LRMS_PBSPRO = 'PBSPRO'
-LRMS_SLURM  = 'SLURM'
-LRMS_SGE    = 'SGE'
-LRMS_LSF    = 'LSF'
-LRMS_LOADL  = 'LOADL'
-LRMS_FORK   = 'FORK'
+LRMS_NAME_TORQUE = 'TORQUE'
+LRMS_NAME_PBSPRO = 'PBSPRO'
+LRMS_NAME_SLURM = 'SLURM'
+LRMS_NAME_SGE = 'SGE'
+LRMS_NAME_LSF = 'LSF'
+LRMS_NAME_LOADLEVELER = 'LOADL'
+LRMS_NAME_FORK = 'FORK'
 
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
 COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
@@ -728,6 +730,101 @@ def pilot_DONE(mongo_p, pilot_uid):
                       "finished"    : ts}
         })
 
+# ==============================================================================
+#
+# Launch Methods
+#
+# ==============================================================================
+#
+# class LaunchMethod(object):
+#
+#     # --------------------------------------------------------------------------
+#     #
+#     def __init__(self, launch_method, logger):
+#
+#         self.name = launch_method
+#         self.logger = logger
+#         impl_class = {LAUNCH_METHOD_LOCAL: LaunchMethodLocal,
+#                       LAUNCH_METHOD_SSH: LaunchMethodSSH,
+#                       LAUNCH_METHOD_MPIRUN: LaunchMethodMPIRUN,
+#                       LAUNCH_METHOD_MPIEXEC: LaunchMethodMPIEXEC,
+#                       LAUNCH_METHOD_APRUN: LaunchMethodAPRUN,
+#                       LAUNCH_METHOD_IBRUN: LaunchMethodIBRUN,
+#                       LAUNCH_METHOD_POE: LaunchMethodPOE,
+#                      }.get(launch_method, None)
+#
+#         if not impl_class :
+#             log_raise(self.logger, RuntimeError,
+#                       "Unknown LaunchMethod '%s'", launch_method)
+#
+#         self.impl = impl_class(logger)
+#
+#
+#     # --------------------------------------------------------------------------
+#     #
+#     def command(self, lrms, slots, cores) :
+#
+#         return self.impl.command(slots, lrms, cores)
+
+
+# ==============================================================================
+#
+# Base class for LRMS implementations.
+#
+# ==============================================================================
+#
+class LRMS(object):
+
+    def __init__(self, name, requested_cores, logger):
+
+        print "Configuring LRMS %s." % name
+        self.name = name
+        self.log = logger
+        self.requested_cores = requested_cores
+
+        self.slot_list = []
+        self.node_list = []
+        self.cores_per_node = None
+
+        self.configure()
+
+    # This class-method creates the appropriate sub-class for the LRMS.
+    @classmethod
+    def factory(cls, name, requested_cores, logger):
+
+        # TODO: Core counts dont have to be the same number for all hosts.
+
+        # TODO: We might not have reserved the whole node.
+
+        # TODO: Given that the Agent can determine the real core count, in principle we
+        #       could just ignore the config and use as many as we have to our availability
+        #       (taken into account that we might not have the full node reserved of course)
+        #       Answer: at least on Yellowstone this doesnt work for MPI,
+        #               as you can't spawn more tasks then the number of slots.
+
+        # Make sure that we are the base-class!
+        if cls != LRMS:
+            raise Exception("LRMS Factory only available to base class!")
+
+        implementations = {
+            LRMS_NAME_TORQUE: TORQUELRMS,
+            LRMS_NAME_PBSPRO: PBSProLRMS,
+            LRMS_NAME_SLURM: SLURMLRMS,
+            LRMS_NAME_SGE: SGELRMS,
+            LRMS_NAME_LSF: LSFLRMS,
+            LRMS_NAME_LOADLEVELER: LoadLevelerLRMS,
+            LRMS_NAME_FORK: ForkLRMS
+        }
+        try:
+            return implementations[name](name, requested_cores, logger)
+        except KeyError:
+            raise Exception("LRMS type '%s' unknown!" % name)
+
+    def configure(self):
+        raise NotImplementedError("Configure not implemented for LRMS type: %s." % self.name)
+
+
+
 #-----------------------------------------------------------------------------
 #
 class ExecutionEnvironment(object):
@@ -735,7 +832,7 @@ class ExecutionEnvironment(object):
     """
     #-------------------------------------------------------------------------
     #
-    def __init__(self, logger, lrms, requested_cores, task_launch_method, mpi_launch_method):
+    def __init__(self, logger, lrms_name, requested_cores, task_launch_method, mpi_launch_method):
         self.log = logger
 
         self.requested_cores = requested_cores
@@ -743,7 +840,7 @@ class ExecutionEnvironment(object):
         self.cores_per_node = None # Work with one value for now
 
         # Configure nodes and number of cores available
-        self._configure(lrms)
+        self.lrms = LRMS.factory(lrms_name, requested_cores, logger)
 
         task_launch_command = None
         mpi_launch_command = None
@@ -856,10 +953,10 @@ class ExecutionEnvironment(object):
         logger.info("Discovered task launch command: '%s' and MPI launch command: '%s'." % \
                     (task_launch_command, mpi_launch_command))
 
-        logger.info("Discovered execution environment: %s" % self.node_list)
+        logger.info("Discovered execution environment: %s" % self.lrms.node_list)
 
         # For now assume that all nodes have equal amount of cores
-        cores_avail = len(self.node_list) * self.cores_per_node
+        cores_avail = len(self.lrms.node_list) * self.lrms.cores_per_node
         if cores_avail < int(requested_cores):
             raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
 
@@ -924,8 +1021,15 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
-    def _configure_torque(self):
-        self.log.info("Configured to run on system with %s." % LRMS_TORQUE)
+
+class TORQUELRMS(LRMS):
+
+    def __init__(self, name, requested_cores, logger):
+        LRMS.__init__(self, name, requested_cores, logger)
+
+    def configure(self):
+
+        self.log.info("Configured to run on system with %s." % self.name)
 
         torque_nodefile = os.environ.get('PBS_NODEFILE')
         if torque_nodefile is None:
@@ -1070,8 +1174,12 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
-    def _configure_pbspro(self):
-        self.log.info("Configured to run on system with %s." % LRMS_PBSPRO)
+class PBSProLRMS(LRMS):
+
+    def __init__(self, name, requested_cores, logger):
+        LRMS.__init__(self, name, requested_cores, logger)
+
+    def configure(self):
         # TODO: $NCPUS?!?! = 1 on archer
 
         pbspro_nodefile = os.environ.get('PBS_NODEFILE')
@@ -1125,9 +1233,12 @@ class ExecutionEnvironment(object):
 
     #-------------------------------------------------------------------------
     #
-    def _configure_slurm(self):
+class SLURMLRMS(LRMS):
 
-        self.log.info("Configured to run on system with %s." % LRMS_SLURM)
+    def __init__(self, name, requested_cores, logger):
+        LRMS.__init__(self, name, requested_cores, logger)
+
+    def configure(self):
 
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
         if slurm_nodelist is None:
@@ -1179,9 +1290,14 @@ class ExecutionEnvironment(object):
         self.cores_per_node = slurm_cpus_on_node
         self.node_list = slurm_nodes
 
-    #-------------------------------------------------------------------------
-    #
-    def _configure_sge(self):
+#-------------------------------------------------------------------------
+#
+class SGELRMS(LRMS):
+
+    def __init__(self, name, requested_cores, logger):
+        LRMS.__init__(self, name, requested_cores, logger)
+
+    def configure(self):
 
         sge_hostfile = os.environ.get('PE_HOSTFILE')
         if sge_hostfile is None:
@@ -1208,11 +1324,14 @@ class ExecutionEnvironment(object):
         self.cores_per_node = sge_cores_per_node
 
 
-    #-------------------------------------------------------------------------
-    #
-    def _configure_lsf(self):
+#-------------------------------------------------------------------------
+#
+class LSFLRMS(LRMS):
 
-        self.log.info("Configured to run on system with %s." % LRMS_LSF)
+    def __init__(self, name, requested_cores, logger):
+        LRMS.__init__(self, name, requested_cores, logger)
+
+    def configure(self):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
         if lsf_hostfile is None:
@@ -1250,11 +1369,14 @@ class ExecutionEnvironment(object):
         self.node_list = lsf_node_list
         self.cores_per_node = lsf_cores_per_node
 
-    #-------------------------------------------------------------------------
-    #
-    def _configure_loadl(self):
+#-------------------------------------------------------------------------
+#
+class LoadLevelerLRMS(LRMS):
 
-        self.log.info("Configured to run on system with %s." % LRMS_LOADL)
+    def __init__(self, name, requested_cores, logger):
+        LRMS.__init__(self, name, requested_cores, logger)
+
+    def configure(self):
 
         # Determine method for determining hosts,
         # either through hostfile or BG/Q environment.
@@ -1338,67 +1460,26 @@ class ExecutionEnvironment(object):
         self.cores_per_node = loadl_cpus_per_node
 
 
-    #-------------------------------------------------------------------------
-    #
-    def _configure_fork(self):
+#-------------------------------------------------------------------------
+#
+class ForkLRMS(LRMS):
 
-        self.log.info("Using fork on localhost.")
+    def __init__(self, name, requested_cores, logger):
+        LRMS.__init__(self, name, requested_cores, logger)
+
+    def configure(self):
+
+        self.logger.info("Using fork on localhost.")
 
         detected_cpus = multiprocessing.cpu_count()
         selected_cpus = min(detected_cpus, self.requested_cores)
 
-        self.log.info("Detected %d cores on localhost, using %d." % (detected_cpus, selected_cpus))
+        self.logger.info("Detected %d cores on localhost, using %d." % (detected_cpus, selected_cpus))
 
         self.node_list = ["localhost"]
         self.cores_per_node = selected_cpus
 
 
-    #-------------------------------------------------------------------------
-    #
-    def _configure(self, lrms):
-        # TODO: These dont have to be the same number for all hosts.
-
-        # TODO: We might not have reserved the whole node.
-
-        # TODO: Given that the Agent can determine the real core count, in principle we
-        #       could just ignore the config and use as many as we have to our availability
-        #       (taken into account that we might not have the full node reserved of course)
-        #       Answer: at least on Yellowstone this doesnt work for MPI,
-        #               as you can't spawn more tasks then the number of slots.
-
-
-        if lrms == LRMS_FORK:
-            # Fork on localhost
-            self._configure_fork()
-
-        elif lrms == LRMS_TORQUE:
-            # TORQUE/PBS (e.g. India)
-            self._configure_torque()
-
-        elif lrms == LRMS_PBSPRO:
-            # PBSPro (e.g. Archer)
-            self._configure_pbspro()
-
-        elif lrms == LRMS_SLURM:
-            # SLURM (e.g. Stampede)
-            self._configure_slurm()
-
-        elif lrms == LRMS_SGE:
-            # SGE (e.g. DAS4)
-            self._configure_sge()
-
-        elif lrms == LRMS_LSF:
-            # LSF (e.g. Yellowstone)
-            self._configure_lsf()
-
-        elif lrms == LRMS_LOADL:
-            # LoadLeveler (e.g. SuperMUC)
-            self._configure_loadl()
-
-        else:
-            msg = "Unknown lrms type %s." % lrms
-            self.log.error(msg)
-            raise Exception(msg)
 
 # ----------------------------------------------------------------------------
 #
@@ -2435,8 +2516,8 @@ class Agent(threading.Thread):
             task_queue      = self._task_queue,
             output_staging_queue   = self._output_staging_queue,
             command_queue   = self._command_queue,
-            node_list       = self._exec_env.node_list,
-            cores_per_node  = self._exec_env.cores_per_node,
+            node_list       = self._exec_env.lrms.node_list,
+            cores_per_node  = self._exec_env.lrms.cores_per_node,
             launch_methods  = self._exec_env.discovered_launch_methods,
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
@@ -3229,7 +3310,7 @@ if __name__ == "__main__":
     try:
         exec_env = ExecutionEnvironment(
             logger=logger,
-            lrms=options.lrms,
+            lrms_name=options.lrms,
             requested_cores=options.cores,
             task_launch_method=options.task_launch_method,
             mpi_launch_method=options.mpi_launch_method
@@ -3266,8 +3347,9 @@ if __name__ == "__main__":
         agent.start()
         agent.join()
 
-    except Exception, ex:
+    except Exception as ex:
         msg = "Error running agent: %s" % str(ex)
+        print traceback.format_exc()
         logger.error(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         if  agent :
