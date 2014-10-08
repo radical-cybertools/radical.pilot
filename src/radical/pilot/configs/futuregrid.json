@@ -3,17 +3,12 @@
     "alamo": {
         "description"                 : "The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
-        "schemas"                     : ["ssh", "local"],
+        "schemas"                     : ["ssh"],
         "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://alamo.futuregrid.org/",
             "filesystem_endpoint"     : "sftp://alamo.futuregrid.org/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "pbs://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "short",
         "lrms"                        : "TORQUE",
@@ -28,17 +23,12 @@
     "india": {
         "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
-        "schemas"                     : ["ssh", "local"],
+        "schemas"                     : ["ssh"],
         "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "pbs://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
         },
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
@@ -54,17 +44,12 @@
     "sierra": {
         "description"                 : "The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
-        "schemas"                     : ["ssh", "local"],
+        "schemas"                     : ["ssh"],
         "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://sierra.futuregrid.org/",
             "filesystem_endpoint"     : "sftp://sierra.futuregrid.org/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "pbs://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
@@ -79,17 +64,12 @@
     "hotel": {
         "description"                 : "The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.",
-        "schemas"                     : ["ssh", "local"],
+        "schemas"                     : ["ssh"],
         "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://hotel.futuregrid.org/",
             "filesystem_endpoint"     : "sftp://hotel.futuregrid.org/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "pbs://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",

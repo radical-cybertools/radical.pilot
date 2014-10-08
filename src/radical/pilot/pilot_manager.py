@@ -261,17 +261,10 @@ class PilotManager(Object):
             rcs, rcs_aliases = self._session.get_resource_configs()
             resource_key     = pilot_description.resource
 
-            import pprint
-            pprint.pprint (rcs_aliases)
-            print 'resource_key: %s' % resource_key
-
-
             if  resource_key in rcs_aliases :
                 logger.warning ("using alias '%s' for deprecated resource key '%s'" \
                              % (rcs_aliases[resource_key], resource_key))
                 resource_key = rcs_aliases[resource_key]
-
-            print 'resource_key: %s' % resource_key
 
             if  resource_key not in rcs:
                 error_msg = "ComputePilotDescription.resource key '%s' is not known." \
