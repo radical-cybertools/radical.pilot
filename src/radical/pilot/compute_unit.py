@@ -451,7 +451,7 @@ class ComputeUnit(object):
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
         else:
-            raise BadParameter("Unknown Compute Unit state: %s, cannot cancel" % self.state)
+            raise IncorrectState("Unknown Compute Unit state: %s, cannot cancel" % self.state)
 
         # done canceling
         return
