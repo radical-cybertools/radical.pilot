@@ -257,21 +257,7 @@ class PilotManager(Object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
                 raise BadParameter(error_msg)
 
-            # Make sure resource key is known.
-            rcs, rcs_aliases = self._session.get_resource_configs()
-            resource_key     = pilot_description.resource
-
-            if  resource_key in rcs_aliases :
-                logger.warning ("using alias '%s' for deprecated resource key '%s'" \
-                             % (rcs_aliases[resource_key], resource_key))
-                resource_key = rcs_aliases[resource_key]
-
-            if  resource_key not in rcs:
-                error_msg = "ComputePilotDescription.resource key '%s' is not known." \
-                          % resource_key
-                raise BadParameter(error_msg)
-
-            resource_cfg = rcs[resource_key]
+            resource_cfg = self._session.get_resource_config(resource_key)
 
             # Check resource-specific mandatory attributes
             if "mandatory_args" in resource_cfg:

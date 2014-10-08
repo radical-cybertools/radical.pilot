@@ -38,10 +38,8 @@ if __name__ == "__main__":
   # c.user_id = 'merzky'
     session.add_context(c)
 
-    # Get all configs,
-    res = session.get_resource_configs()
-    # ... and the entry specific for stampede
-    s = res['stampede.tacc.utexas.edu']
+    # Get the config entry specific for stampede
+    s = session.get_resource_config('stampede.tacc.utexas.edu')
     print 'Default queue of stampede is: "%s".' % s['default_queue']
 
     # Build a new one based on Stampede's
@@ -54,10 +52,8 @@ if __name__ == "__main__":
     # Now add the entry back to the PM
     session.add_resource_config(rc)
 
-    # Get all configs,
-    res = session.get_resource_configs()
-    # ... and the entry specific for stampede
-    s = res['stampede.tacc.utexas.edu']
+    # Get the config entry specific for stampede
+    s = session.get_resource_config('stampede.tacc.utexas.edu')
     #s = res['testing']
     print 'Default queue of stampede after change is: "%s".' % s['default_queue']
     assert (s['default_queue'] == 'development')

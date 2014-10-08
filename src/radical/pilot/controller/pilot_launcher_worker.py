@@ -166,15 +166,6 @@ class PilotLauncherWorker(threading.Thread):
                 pilot_col = db["%s.p" % self.db_connection_info.session_id]
                 logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
-                # AM: this list is only read once, at startup, so this worker
-                # will not pick up any changes.  I am not sure how to trigger
-                # re-initialization, as doing it once per iteration seems a rather
-                # bad idea (get_resource_configs() goes via mongodb).  OTOH, there
-                # is no direct communication between worker and manager, AFACIS.
-                #
-                # Update the known resource configurations
-                resource_configurations = self._session.get_resource_configs()
-
             except Exception, ex:
                 tb = traceback.format_exc()
                 logger.error("Connection error: %s. %s" % (str(ex), tb))
@@ -241,7 +232,7 @@ class PilotLauncherWorker(threading.Thread):
                             user_sandbox = False
 
 
-                        resource_cfg = resource_configurations[resource_key]
+                        resource_cfg = self._session.get_resource_config(resource_key)
                         agent_worker = resource_cfg.get ('pilot_agent_worker', None)
 
                         # we expand and exchange keys in the resource config,

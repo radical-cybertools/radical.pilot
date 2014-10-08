@@ -498,9 +498,18 @@ class Session (saga.Session, Object):
 
     # -------------------------------------------------------------------------
     #
-    def get_resource_configs (self):
-        """Returns a dictionary of all known resource configurations.
+    def get_resource_config (self, resource_key):
+        """Returns a dictionary of the requested resource config
         """
 
-        return self._resource_configs, self._resource_aliases
+        if  resource_key in self._resource_aliases :
+            logger.warning ("using alias '%s' for deprecated resource key '%s'" \
+                         % (self._resource_aliases[resource_key], resource_key))
+            resource_key = self._resource_aliases[resource_key]
+
+        if  resource_key not in self._resource_configs:
+            error_msg = "Resource key '%s' is not known." % resource_key
+            raise BadParameter(error_msg)
+
+        return self._resource_configs[resource_key]
 
