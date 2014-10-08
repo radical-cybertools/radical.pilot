@@ -257,6 +257,7 @@ class PilotManager(Object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
                 raise BadParameter(error_msg)
 
+            resource_key = pilot_description.resource
             resource_cfg = self._session.get_resource_config(resource_key)
 
             # Check resource-specific mandatory attributes
