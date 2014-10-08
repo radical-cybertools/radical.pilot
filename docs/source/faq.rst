@@ -57,14 +57,17 @@ A: Set up password-less, intra-node SSH access.
 
 Even though this should already be set up by default on many HPC clusters, it
 is not always the case. The following instructions will help you to set up
-password-less SSH acces:
+SSH between the cluster nodes correctly.
+
+Log-in to the **head-node** or **login-node** of the cluster and run the 
+following commands:  
 
 .. code-block:: bash
 
     cd ~/.ssh/
     ssh-keygen -t rsa
 
-For passphrase just hit return. The result should look something like this:
+**Do not enter a passphrase**. The result should look something like this:
 
 .. code-block:: bash
 
@@ -76,24 +79,19 @@ For passphrase just hit return. The result should look something like this:
     Your public key has been saved in /home/e290/e290/oweidner/.ssh/id_rsa.pub.
     The key fingerprint is:
     73:b9:cf:45:3d:b6:a7:22:72:90:28:0a:2f:8a:86:fd oweidner@eslogin001
-    The key's randomart image is:
-    +--[ RSA 2048]----+
-    |                 |
-    |                 |
-    |                 |
-    |           .   . |
-    |       .S.o   .o.|
-    |.   . . oo . .. o|
-    |.+ . .   ..   ...|
-    |+.+     . oo.. ..|
-    |=. .E    o .o..  |
-    +-----------------+
 
 Next, add you newly generated key to ~/.ssh/authorized_keys:
 
 .. code-block:: bash
 
     cat id_rsa.pub >> ~/.ssh/authorized_keys
+    cat id_rsa.pub >> ~/.ssh/authorized_keys2
+
+This should be all. Next time you run radical.pilot, you shouldn't see that 
+error message anymore. 
+
+(For more general information on SSH keys, check out this 
+link: http://www.linuxproblem.org/art_9.html)
 
 
 Q: On Gordon I see "Failed to execvp() 'mybinary': No such file or directory (2)"
