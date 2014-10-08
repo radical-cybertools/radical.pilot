@@ -1,18 +1,14 @@
 
 {
     "aliases": {
-        "localhost"                : "local.localhost",
+        "archer.ac.uk"             : "epsrc.archer",
+        "blacklight.psc.xsede.org" : "xsede.blacklight",
+        "gordon.sdsc.xsede.org"    : "xsede.gordon",
+        "lonestar.tacc.xsede.org"  : "xsede.lonestar",
         "stampede.tacc.utexas.edu" : "xsede.stampede",
-        "lonestar.tacc.xsede.org"  : "xsede.lonestar",
-        "trestles.sdsc.xsede.org"  : "xsede.trestles",
-        "gordon.sdsc.xsede.org"    : "xsede.gordon",
-        "blacklight.psc.xsede.org" : "xsede.blacklight",
         "stampede.xsede.org"       : "xsede.stampede",
-        "lonestar.tacc.xsede.org"  : "xsede.lonestar",
         "trestles.sdsc.xsede.org"  : "xsede.trestles",
-        "gordon.sdsc.xsede.org"    : "xsede.gordon",
-        "blacklight.psc.xsede.org" : "xsede.blacklight",
-        "archer.ac.uk"             : "epsrc.archer"
+        "localhost"                : "local.localhost"
     }
 }
 
