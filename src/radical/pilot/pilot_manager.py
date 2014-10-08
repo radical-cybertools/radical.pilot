@@ -267,8 +267,8 @@ class PilotManager(Object):
 
 
             if  resource_key in rcs_aliases :
-                logger.info ("using resource alias '%s' for key '%s'" \
-                          % (rcs_aliases[resource_key], resource_key))
+                logger.warning ("using alias '%s' for deprecated resource key '%s'" \
+                             % (rcs_aliases[resource_key], resource_key))
                 resource_key = rcs_aliases[resource_key]
 
             print 'resource_key: %s' % resource_key
