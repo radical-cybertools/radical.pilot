@@ -1,0 +1,8 @@
+
+{
+    "aliases": {
+        "stampede.tacc.utexas.edu" : "xsede.stampede",
+        "stampede.xsede.org"       : "xsede.stampede"
+    }
+}
+

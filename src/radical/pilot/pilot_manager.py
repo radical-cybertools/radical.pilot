@@ -177,7 +177,6 @@ class PilotManager(Object):
 
         obj = cls(session=session, _reconnect=True)
         obj._uid = pilot_manager_id
-        obj._resource_cfgs = None  # TODO: reconnect
 
         # Retrieve or start a worker process fo this PilotManager instance.
         worker = session._process_registry.retrieve(pilot_manager_id)
@@ -259,14 +258,27 @@ class PilotManager(Object):
                 raise BadParameter(error_msg)
 
             # Make sure resource key is known.
-            rcs          = self._session.get_resource_configs()
-            resource_key = pilot_description.resource
+            rcs, rcs_aliases = self._session.get_resource_configs()
+            resource_key     = pilot_description.resource
 
-            if resource_key not in rcs:
-                error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
+            import pprint
+            pprint.pprint (rcs_aliases)
+            print 'resource_key: %s' % resource_key
+
+
+            if  resource_key in rcs_aliases :
+                logger.info ("using resource alias '%s' for key '%s'" \
+                          % (rcs_aliases[resource_key], resource_key))
+                resource_key = rcs_aliases[resource_key]
+
+            print 'resource_key: %s' % resource_key
+
+            if  resource_key not in rcs:
+                error_msg = "ComputePilotDescription.resource key '%s' is not known." \
+                          % resource_key
                 raise BadParameter(error_msg)
-            else:
-                resource_cfg = rcs[resource_key]
+
+            resource_cfg = rcs[resource_key]
 
             # Check resource-specific mandatory attributes
             if "mandatory_args" in resource_cfg:
