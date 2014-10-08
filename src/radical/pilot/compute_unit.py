@@ -417,8 +417,7 @@ class ComputeUnit(object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise radical.pilotException(
-                "Invalid Compute Unit instance.")
+            raise BadParameter("Invalid Compute Unit instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         pilot_uid = cu_json['pilot']
@@ -452,8 +451,7 @@ class ComputeUnit(object):
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
         else:
-            raise radical.pilotException(
-                "Unknown Compute Unit state: %s, cannot cancel" % self.state)
+            raise BadParameter("Unknown Compute Unit state: %s, cannot cancel" % self.state)
 
         # done canceling
         return
