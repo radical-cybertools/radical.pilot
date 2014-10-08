@@ -879,9 +879,6 @@ class ExecutionEnvironment(object):
         else:
             raise Exception("Task launch method not set or unknown: %s!" % task_launch_method)
 
-        if not task_launch_command:
-            self.log.warning("No task launch command found for %s." % task_launch_method)
-
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
             command = self._find_executable(['mpirun',           # General case
