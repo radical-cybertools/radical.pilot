@@ -115,7 +115,7 @@ class InputFileTransferWorker(threading.Thread):
                                 remote_sandbox_key = str(remote_sandbox_keyurl)
 
                                 if  remote_sandbox_key not in self._saga_dirs :
-                                    self._saga_dirs = \
+                                    self._saga_dirs[remote_sandbox_key] = \
                                             saga.filesystem.Directory (remote_sandbox_key,
                                                                        session=self._session)
 
