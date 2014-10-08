@@ -879,6 +879,9 @@ class ExecutionEnvironment(object):
         else:
             raise Exception("Task launch method not set or unknown: %s!" % task_launch_method)
 
+        if not task_launch_command:
+            self.log.warning("No task launch command found for %s." % task_launch_method)
+
         # MPI tasks
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
             command = self._find_executable(['mpirun',           # General case
@@ -958,7 +961,8 @@ class ExecutionEnvironment(object):
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.lrms.node_list) * self.lrms.cores_per_node
         if cores_avail < int(requested_cores):
-            raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
+            raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." \
+                            % (str(cores_avail), str(requested_cores)))
 
 
     def _find_ssh(self):
@@ -1019,9 +1023,8 @@ class ExecutionEnvironment(object):
                     return exe_file
         return None
 
-    #-------------------------------------------------------------------------
-    #
-
+#-------------------------------------------------------------------------------
+#
 class TORQUELRMS(LRMS):
 
     def __init__(self, name, requested_cores, logger):
@@ -1172,8 +1175,8 @@ class TORQUELRMS(LRMS):
         return node_list
 
 
-    #-------------------------------------------------------------------------
-    #
+# ------------------------------------------------------------------------------
+#
 class PBSProLRMS(LRMS):
 
     def __init__(self, name, requested_cores, logger):
@@ -1231,8 +1234,8 @@ class PBSProLRMS(LRMS):
         self.cores_per_node = pbspro_num_ppn
         self.node_list = pbspro_vnodes
 
-    #-------------------------------------------------------------------------
-    #
+# ------------------------------------------------------------------------------
+#
 class SLURMLRMS(LRMS):
 
     def __init__(self, name, requested_cores, logger):
