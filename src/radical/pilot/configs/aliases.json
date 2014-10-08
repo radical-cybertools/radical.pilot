@@ -1,8 +1,18 @@
 
 {
     "aliases": {
+        "localhost"                : "local.localhost",
         "stampede.tacc.utexas.edu" : "xsede.stampede",
-        "stampede.xsede.org"       : "xsede.stampede"
+        "lonestar.tacc.xsede.org"  : "xsede.lonestar",
+        "trestles.sdsc.xsede.org"  : "xsede.trestles",
+        "gordon.sdsc.xsede.org"    : "xsede.gordon",
+        "blacklight.psc.xsede.org" : "xsede.blacklight",
+        "stampede.xsede.org"       : "xsede.stampede",
+        "lonestar.tacc.xsede.org"  : "xsede.lonestar",
+        "trestles.sdsc.xsede.org"  : "xsede.trestles",
+        "gordon.sdsc.xsede.org"    : "xsede.gordon",
+        "blacklight.psc.xsede.org" : "xsede.blacklight",
+        "archer.ac.uk"             : "epsrc.archer"
     }
 }
 
