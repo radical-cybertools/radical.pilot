@@ -730,41 +730,287 @@ def pilot_DONE(mongo_p, pilot_uid):
                       "finished"    : ts}
         })
 
+
+#-----------------------------------------------------------------------------
+#
+class ExecutionEnvironment(object):
+    """DOC
+    """
+    #-------------------------------------------------------------------------
+    #
+    def __init__(self, logger, lrms_name, requested_cores, task_launch_method, mpi_launch_method):
+        self.log = logger
+
+        self.requested_cores = requested_cores
+        self.node_list = None # TODO: Need to think about a structure that works for all machines
+        self.cores_per_node = None # Work with one value for now
+
+        # Configure nodes and number of cores available
+        self.lrms = LRMS.factory(lrms_name, requested_cores, logger)
+
+        self.task_launcher = LaunchMethod.factory(task_launch_method, logger)
+        self.mpi_launcher = LaunchMethod.factory(mpi_launch_method, logger)
+
+        self.discovered_launch_methods = {
+            'task_launch_method': task_launch_method,
+            'task_launch_command': self.task_launcher.launch_command,
+            'mpi_launch_method': mpi_launch_method,
+            'mpi_launch_command': self.mpi_launcher.launch_command
+        }
+
+        logger.info("Discovered task launch command: '%s' and MPI launch command: '%s'." % \
+                    (self.task_launcher.launch_command, self.mpi_launcher.launch_command))
+
+        logger.info("Discovered execution environment: %s" % self.lrms.node_list)
+
+        # For now assume that all nodes have equal amount of cores
+        cores_avail = len(self.lrms.node_list) * self.lrms.cores_per_node
+        if cores_avail < int(requested_cores):
+            raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." \
+                            % (str(cores_avail), str(requested_cores)))
+
+
 # ==============================================================================
 #
 # Launch Methods
 #
 # ==============================================================================
+class LaunchMethod(object):
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger):
+
+        self.name = name
+        self.log = logger
+
+        self.launch_command = None
+        self.configure()
+        if self.launch_command is None:
+            raise Exception("Launch command not found for method %s" % name)
+
+    # This class-method creates the appropriate sub-class for the Launch Method.
+    @classmethod
+    def factory(cls, name, logger):
+
+        # Make sure that we are the base-class!
+        if cls != LaunchMethod:
+            raise Exception("LaunchMethod Factory only available to base class!")
+
+        implementations = {
+            LAUNCH_METHOD_APRUN: LaunchMethodAPRUN,
+            LAUNCH_METHOD_DPLACE: LaunchMethodDPLACE,
+            LAUNCH_METHOD_IBRUN: LaunchMethodIBRUN,
+            LAUNCH_METHOD_LOCAL: LaunchMethodLocal,
+            LAUNCH_METHOD_MPIEXEC: LaunchMethodMPIEXEC,
+            LAUNCH_METHOD_MPIRUN: LaunchMethodMPIRUN,
+            LAUNCH_METHOD_MPIRUN_DPLACE: LaunchMethodMPIRUNDPLACE,
+            LAUNCH_METHOD_MPIRUN_RSH: LaunchMethodMPIRUNRSH,
+            LAUNCH_METHOD_POE: LaunchMethodPOE,
+            LAUNCH_METHOD_RUNJOB: LaunchMethodRUNJOB,
+            LAUNCH_METHOD_SSH: LaunchMethodSSH
+        }
+        try:
+            return implementations[name](name, logger)
+        except KeyError:
+            raise Exception("LauncMethod '%s' unknown!" % name)
+
+    # --------------------------------------------------------------------------
+    #
+    def configure(self):
+        raise NotImplementedError("Configure not implemented for LaunchMethod: %s." % self.name)
+
+    #-----------------------------------------------------------------------------
+    #
+    def _find_executable(self, names):
+        """Takes a (list of) name(s) and looks for an executable in the path.
+        """
+
+        if not isinstance(names, list):
+            names = [names]
+
+        for name in names:
+            ret = self._which(name)
+            if ret is not None:
+                return ret
+
+        return None
+
+    #-----------------------------------------------------------------------------
+    #
+    def _which(self, program):
+        """Finds the location of an executable.
+        Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+        """
+        #-------------------------------------------------------------------------
+        #
+        def is_exe(fpath):
+            return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+        fpath, fname = os.path.split(program)
+        if fpath:
+            if is_exe(program):
+                return program
+        else:
+            for path in os.environ["PATH"].split(os.pathsep):
+                exe_file = os.path.join(path, program)
+                if is_exe(exe_file):
+                    return exe_file
+        return None
+
+
+#-------------------------------------------------------------------------
 #
-# class LaunchMethod(object):
+class LaunchMethodLocal(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # Regular tasks
+        self.launch_command = ''
+
+
+#-------------------------------------------------------------------------
 #
-#     # --------------------------------------------------------------------------
-#     #
-#     def __init__(self, launch_method, logger):
+class LaunchMethodMPIRUN(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        self.launch_command = self._find_executable([
+            'mpirun',           # General case
+            'mpirun_rsh',       # Gordon @ SDSC
+            'mpirun-mpich-mp',  # Mac OSX MacPorts
+            'mpirun-openmpi-mp' # Mac OSX MacPorts
+        ]
+    )
+
+
+#-------------------------------------------------------------------------
 #
-#         self.name = launch_method
-#         self.logger = logger
-#         impl_class = {LAUNCH_METHOD_LOCAL: LaunchMethodLocal,
-#                       LAUNCH_METHOD_SSH: LaunchMethodSSH,
-#                       LAUNCH_METHOD_MPIRUN: LaunchMethodMPIRUN,
-#                       LAUNCH_METHOD_MPIEXEC: LaunchMethodMPIEXEC,
-#                       LAUNCH_METHOD_APRUN: LaunchMethodAPRUN,
-#                       LAUNCH_METHOD_IBRUN: LaunchMethodIBRUN,
-#                       LAUNCH_METHOD_POE: LaunchMethodPOE,
-#                      }.get(launch_method, None)
+class LaunchMethodSSH(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # Find ssh command
+        command = self._which('ssh')
+
+        if command is not None:
+
+            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into the path.
+            # We try to detect that and then use different arguments.
+            if os.path.islink(command):
+
+                target = os.path.realpath(command)
+
+                if os.path.basename(target) == 'rsh':
+                    self.log.info('Detected that "ssh" is a link to "rsh".')
+                    return target
+
+            command = '%s -o StrictHostKeyChecking=no' % command
+
+        self.launch_command = command
+
+
+#-------------------------------------------------------------------------
 #
-#         if not impl_class :
-#             log_raise(self.logger, RuntimeError,
-#                       "Unknown LaunchMethod '%s'", launch_method)
+class LaunchMethodMPIEXEC(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # mpiexec (e.g. on SuperMUC)
+        self.launch_command = self._which('mpiexec')
+
+
+#-------------------------------------------------------------------------
 #
-#         self.impl = impl_class(logger)
+class LaunchMethodAPRUN(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # aprun: job launcher for Cray systems
+        self.launch_command= self._which('aprun')
+
+
+#-------------------------------------------------------------------------
 #
+class LaunchMethodRUNJOB(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # runjob: job launcher for IBM BG/Q systems, e.g. Joule
+        self.launch_command= self._which('runjob')
+
+
+#-------------------------------------------------------------------------
 #
-#     # --------------------------------------------------------------------------
-#     #
-#     def command(self, lrms, slots, cores) :
+class LaunchMethodDPLACE(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # dplace: job launcher for SGI systems (e.g. on Blacklight)
+        self.launch_command = self._which('dplace')
+
+
+#-------------------------------------------------------------------------
 #
-#         return self.impl.command(slots, lrms, cores)
+class LaunchMethodMPIRUNRSH(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # mpirun_rsh (e.g. on Gordon@ SDSC)
+        self.launch_command = self._which('mpirun_rsh')
+
+
+#-------------------------------------------------------------------------
+#
+class LaunchMethodMPIRUNDPLACE(LaunchMethod):
+    # TODO: This needs both mpirun and dplace
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # dplace: job launcher for SGI systems (e.g. on Blacklight)
+        self.launch_command = self._which('dplace')
+
+
+#-------------------------------------------------------------------------
+#
+class LaunchMethodIBRUN(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # ibrun: wrapper for mpirun at TACC
+        self.launch_command = self._which('ibrun')
+
+
+#-------------------------------------------------------------------------
+#
+class LaunchMethodPOE(LaunchMethod):
+
+    def __init__(self, name, logger):
+        LaunchMethod.__init__(self, name, logger)
+
+    def configure(self):
+        # poe: LSF specific wrapper for MPI (e.g. yellowstone)
+        self.launch_command = self._which('poe')
 
 
 # ==============================================================================
@@ -823,202 +1069,6 @@ class LRMS(object):
     def configure(self):
         raise NotImplementedError("Configure not implemented for LRMS type: %s." % self.name)
 
-
-
-#-----------------------------------------------------------------------------
-#
-class ExecutionEnvironment(object):
-    """DOC
-    """
-    #-------------------------------------------------------------------------
-    #
-    def __init__(self, logger, lrms_name, requested_cores, task_launch_method, mpi_launch_method):
-        self.log = logger
-
-        self.requested_cores = requested_cores
-        self.node_list = None # TODO: Need to think about a structure that works for all machines
-        self.cores_per_node = None # Work with one value for now
-
-        # Configure nodes and number of cores available
-        self.lrms = LRMS.factory(lrms_name, requested_cores, logger)
-
-        task_launch_command = None
-        mpi_launch_command = None
-        dplace_command = None
-
-        # Regular tasks
-        if task_launch_method == LAUNCH_METHOD_LOCAL:
-            task_launch_command = None
-
-        elif task_launch_method == LAUNCH_METHOD_SSH:
-            # Find ssh command
-            command = self._find_ssh()
-            if command is not None:
-                task_launch_command = command
-
-        elif task_launch_method == LAUNCH_METHOD_RUNJOB:
-            # runjob: job launcher for IBM BG/Q systems, e.g. Joule
-            command = self._which('runjob')
-            if command is not None:
-                task_launch_command = command
-
-        elif task_launch_method == LAUNCH_METHOD_APRUN:
-            # aprun: job launcher for Cray systems
-            command = self._which('aprun')
-            if command is not None:
-                task_launch_command = command
-
-        elif task_launch_method == LAUNCH_METHOD_DPLACE:
-            # dplace: job launcher for SGI systems (e.g. on Blacklight)
-            dplace_command = self._which('dplace')
-            if dplace_command is not None:
-                task_launch_command = dplace_command
-            else:
-                raise Exception("dplace not found!")
-
-        else:
-            raise Exception("Task launch method not set or unknown: %s!" % task_launch_method)
-
-        # MPI tasks
-        if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
-            command = self._find_executable(['mpirun',           # General case
-                                             'mpirun_rsh',       # Gordon @ SDSC
-                                             'mpirun-mpich-mp',  # Mac OSX MacPorts
-                                             'mpirun-openmpi-mp' # Mac OSX MacPorts
-                                            ])
-            if command is not None:
-                mpi_launch_command = command
-
-        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_RSH:
-            # mpirun_rsh (e.g. on Gordon@ SDSC)
-            command = self._which('mpirun_rsh')
-            if command is not None:
-                mpi_launch_command = command
-
-        elif mpi_launch_method == LAUNCH_METHOD_MPIEXEC:
-            # mpiexec (e.g. on SuperMUC)
-            command = self._which('mpiexec')
-            if command is not None:
-                mpi_launch_command = command
-
-        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
-            # mpirun + dplace: mpi job launcher for SGI systems (e.g. on Blacklight)
-            command = self._which('mpirun')
-            if command is not None:
-                mpi_launch_command = command
-
-            if dplace_command is None:
-                dplace_command = self._which('dplace')
-                if dplace_command is None:
-                    raise Exception("dplace not found")
-
-        elif mpi_launch_method == LAUNCH_METHOD_APRUN:
-            # aprun: job launcher for Cray systems
-            command = self._which('aprun')
-            if command is not None:
-                mpi_launch_command = command
-
-        elif mpi_launch_method == LAUNCH_METHOD_RUNJOB:
-            # runjob: job launcher for IBM BG/Q systems, e.g. Joule
-            command = self._which('runjob')
-            if command is not None:
-                mpi_launch_command = command
-
-        elif mpi_launch_method == LAUNCH_METHOD_IBRUN:
-            # ibrun: wrapper for mpirun at TACC
-            command = self._which('ibrun')
-            if command is not None:
-                mpi_launch_command = command
-
-        elif mpi_launch_method == LAUNCH_METHOD_POE:
-            # poe: LSF specific wrapper for MPI (e.g. yellowstone)
-            command = self._which('poe')
-            if command is not None:
-                mpi_launch_command = command
-
-        else:
-            raise Exception("MPI launch method not set or unknown: %s!" % mpi_launch_method)
-
-        if not mpi_launch_command:
-            self.log.warning("No MPI launch command found for launch method: %s." % mpi_launch_method)
-
-        self.discovered_launch_methods = {
-            'task_launch_method': task_launch_method,
-            'task_launch_command': task_launch_command,
-            'mpi_launch_method': mpi_launch_method,
-            'mpi_launch_command': mpi_launch_command,
-            'dplace_command': dplace_command
-        }
-
-        logger.info("Discovered task launch command: '%s' and MPI launch command: '%s'." % \
-                    (task_launch_command, mpi_launch_command))
-
-        logger.info("Discovered execution environment: %s" % self.lrms.node_list)
-
-        # For now assume that all nodes have equal amount of cores
-        cores_avail = len(self.lrms.node_list) * self.lrms.cores_per_node
-        if cores_avail < int(requested_cores):
-            raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." \
-                            % (str(cores_avail), str(requested_cores)))
-
-
-    def _find_ssh(self):
-
-        command = self._which('ssh')
-
-        if command is not None:
-
-            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into the path.
-            # We try to detect that and then use different arguments.
-            if os.path.islink(command):
-
-                target = os.path.realpath(command)
-
-                if os.path.basename(target) == 'rsh':
-                    self.log.info('Detected that "ssh" is a link to "rsh".')
-                    return target
-
-            return '%s -o StrictHostKeyChecking=no' % command
-
-
-    #-----------------------------------------------------------------------------
-    #
-    def _find_executable(self, names):
-        """Takes a (list of) name(s) and looks for an executable in the path.
-        """
-
-        if not isinstance(names, list):
-            names = [names]
-
-        for name in names:
-            ret = self._which(name)
-            if ret is not None:
-                return ret
-
-        return None
-
-
-    #-----------------------------------------------------------------------------
-    #
-    def _which(self, program):
-        """Finds the location of an executable.
-        Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-        """
-        #-------------------------------------------------------------------------
-        #
-        def is_exe(fpath):
-            return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-        fpath, fname = os.path.split(program)
-        if fpath:
-            if is_exe(program):
-                return program
-        else:
-            for path in os.environ["PATH"].split(os.pathsep):
-                exe_file = os.path.join(path, program)
-                if is_exe(exe_file):
-                    return exe_file
-        return None
 
 #-------------------------------------------------------------------------------
 #
@@ -1093,9 +1143,8 @@ class TORQUELRMS(LRMS):
         self.node_list = torque_node_list
 
 
-
-    #-------------------------------------------------------------------------
-    #
+#-------------------------------------------------------------------------
+#
 class PBSProLRMS(LRMS):
 
     def __init__(self, name, requested_cores, logger):
@@ -1230,8 +1279,8 @@ class PBSProLRMS(LRMS):
         return node_list
 
 
-    #-------------------------------------------------------------------------
-    #
+#-------------------------------------------------------------------------
+#
 class SLURMLRMS(LRMS):
 
     def __init__(self, name, requested_cores, logger):
@@ -1367,6 +1416,7 @@ class LSFLRMS(LRMS):
 
         self.node_list = lsf_node_list
         self.cores_per_node = lsf_cores_per_node
+
 
 #-------------------------------------------------------------------------
 #
