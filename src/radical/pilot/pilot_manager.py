@@ -177,7 +177,6 @@ class PilotManager(Object):
 
         obj = cls(session=session, _reconnect=True)
         obj._uid = pilot_manager_id
-        obj._resource_cfgs = None  # TODO: reconnect
 
         # Retrieve or start a worker process fo this PilotManager instance.
         worker = session._process_registry.retrieve(pilot_manager_id)
@@ -258,15 +257,16 @@ class PilotManager(Object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
                 raise BadParameter(error_msg)
 
-            # Make sure resource key is known.
-            rcs          = self._session.get_resource_configs()
             resource_key = pilot_description.resource
+            resource_cfg = self._session.get_resource_config(resource_key)
 
-            if resource_key not in rcs:
-                error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
-                raise BadParameter(error_msg)
-            else:
-                resource_cfg = rcs[resource_key]
+            # Check resource-specific mandatory attributes
+            if "mandatory_args" in resource_cfg:
+                for ma in resource_cfg["mandatory_args"]:
+                    if getattr(pilot_description, ma) is None:
+                        error_msg = "ComputePilotDescription does not define attribute '{0}' which is required for '{1}'.".format(ma, resource_key)
+                        raise BadParameter(error_msg)
+
 
             # we expand and exchange keys in the resource config, depending on
             # the selected schema so better use a deep copy...

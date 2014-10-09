@@ -154,13 +154,20 @@ class Session (saga.Session, Object):
             logger.info("using database name %s" % self._database_name)
 
         # Loading all "default" resource configurations
-        default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
-        config_files = glob.glob(default_configs)
+        module_path  = os.path.dirname(os.path.abspath(__file__))
+        default_cfgs = "%s/configs/*.json" % module_path
+        config_files = glob.glob(default_cfgs)
+
         for config_file in config_files:
             rcs = ResourceConfig.from_file(config_file)
-            logger.info("Loaded resource configurations from %s" % config_file)
-            for rc in rcs:
-                self._resource_configs[rc] = rcs[rc].as_dict() 
+
+            if  rcs :
+                logger.info("Loaded resource configurations from %s" % config_file)
+                for rc in rcs:
+                    self._resource_configs[rc] = rcs[rc].as_dict() 
+
+        default_aliases = "%s/configs/aliases.json" % module_path
+        self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
         ##########################
         ## CREATE A NEW SESSION ##
@@ -196,7 +203,6 @@ class Session (saga.Session, Object):
 
                 self._created          = session_info["created"]
                 self._last_reconnect   = session_info["last_reconnect"]
-              # self._resource_configs = session_info["resource_configs"]
 
                 logger.info("Reconnected to existing Session %s." % str(self))
 
@@ -489,13 +495,21 @@ class Session (saga.Session, Object):
                   pilot = pm.submit_pilots(pd)
         """
         self._resource_configs [resource_config.name] = resource_config.as_dict()
-      # self._dbs.session_add_resource_configs()
 
     # -------------------------------------------------------------------------
     #
-    def get_resource_configs (self):
-        """Returns a dictionary of all known resource configurations.
+    def get_resource_config (self, resource_key):
+        """Returns a dictionary of the requested resource config
         """
 
-        return self._resource_configs
+        if  resource_key in self._resource_aliases :
+            logger.warning ("using alias '%s' for deprecated resource key '%s'" \
+                         % (self._resource_aliases[resource_key], resource_key))
+            resource_key = self._resource_aliases[resource_key]
+
+        if  resource_key not in self._resource_configs:
+            error_msg = "Resource key '%s' is not known." % resource_key
+            raise BadParameter(error_msg)
+
+        return self._resource_configs[resource_key]
 

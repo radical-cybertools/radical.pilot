@@ -24,6 +24,22 @@ set up a vritualenv):
 .. code-block:: bash
  
     python setup.py install
+    
+    
+License
+=======
+
+RADICAL-Pilot uses the MIT License (https://github.com/radical-cybertools/radical.pilot/blob/devel/LICENSE.md).
+
+
+Style Guide
+===========
+
+To maintain consistency and uniformity we request people to try to follow our coding style guide lines.
+
+We generally follow PEP 8 (http://legacy.python.org/dev/peps/pep-0008/), with currently one explicit exception:
+
+  - When alignment of assignments improves readability.
 
 
 Debugging 

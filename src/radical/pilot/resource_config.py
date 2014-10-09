@@ -144,6 +144,9 @@ class ResourceConfig(attributes.Attributes):
           if  rcf_name.endswith ('.json') :
               rcf_name = rcf_name[0:-5]
 
+          if  'aliases' in rcf_dict :
+              return None
+
           for res_name, cfg in rcf_dict.iteritems():
 
               # create config from resource section

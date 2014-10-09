@@ -3,7 +3,8 @@
     "archer": {
         "description"                 : "The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "local"],
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
         "warn_on_local"               : "True",
         "ssh"                         :
         {
@@ -14,11 +15,6 @@
         {
             "job_manager_endpoint"    : "pbs+gsissh://login.archer.ac.uk/",
             "filesystem_endpoint"     : "gsisftp://login.archer.ac.uk/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "pbs://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "standard",
         "lrms"                        : "PBSPRO",

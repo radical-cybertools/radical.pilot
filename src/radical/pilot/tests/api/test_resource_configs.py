@@ -54,15 +54,12 @@ class TestResourceConfigs(unittest.TestCase):
         """
         session = radical.pilot.Session(database_url=DBURL)
 
-        pm = radical.pilot.PilotManager(session=session)
-        len1 = len(session.get_resource_configs())
 
         rc = radical.pilot.ResourceConfig()
         rc.name = "test"
 
         session.add_resource_config(rc)
-        assert len1+1 == len(session.get_resource_configs())
-        assert "test" in session.get_resource_configs()
+        session.get_resource_config('test')
 
         session.close()
 

@@ -2925,7 +2925,7 @@ class _Process(subprocess.Popen):
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
-            mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+            mpiexec_command = "%s -n %s -host %s" % (launch_command, task.numcores, hosts_string)
 
             if task_args_string:
                 task_exec_string += ' %s' % task_args_string

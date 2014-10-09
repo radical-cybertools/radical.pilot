@@ -43,6 +43,10 @@ class InputFileTransferWorker(threading.Thread):
         self._worker_number = number
         self.name = "InputFileTransferWorker-%s" % str(self._worker_number)
 
+        # we cache saga directories for performance, to speed up sandbox
+        # creation.
+        self._saga_dirs = dict()
+
     # ------------------------------------------------------------------------
     #
     def run(self):
@@ -105,11 +109,19 @@ class InputFileTransferWorker(threading.Thread):
                             # Creating the sandbox directory.
                             try:
                                 logger.debug ("saga.fs.Directory ('%s')" % remote_sandbox)
-                                cu_dir = saga.filesystem.Directory(
-                                    remote_sandbox,
-                                    flags=saga.filesystem.CREATE_PARENTS,
-                                    session=self._session)
-                                cu_dir.close()
+
+                                remote_sandbox_keyurl = saga.Url (remote_sandbox)
+                                remote_sandbox_keyurl.path = '/'
+                                remote_sandbox_key = str(remote_sandbox_keyurl)
+
+                                if  remote_sandbox_key not in self._saga_dirs :
+                                    self._saga_dirs[remote_sandbox_key] = \
+                                            saga.filesystem.Directory (remote_sandbox_key,
+                                                                       session=self._session)
+
+                                saga_dir = self._saga_dirs[remote_sandbox_key]
+                                saga_dir.make_dir (remote_sandbox, 
+                                                   flags=saga.filesystem.CREATE_PARENTS)
                             except Exception, ex:
                                 tb = traceback.format_exc()
                                 logger.info('Error: %s. %s' % (str(ex), tb))
