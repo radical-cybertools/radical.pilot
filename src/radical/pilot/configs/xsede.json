@@ -124,13 +124,13 @@
         "warn_on_local"               : "True",
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://blacklight.sdsc.xsede.org/",
-            "filesystem_endpoint"     : "sftp://blacklight.sdsc.xsede.org/"
+            "job_manager_endpoint"    : "pbs+ssh://blacklight.psc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://blacklight.psc.xsede.org/"
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "pbs+gsissh://blacklight.sdsc.xsede.org/",
-            "filesystem_endpoint"     : "gsisftp://blacklight.sdsc.xsede.org/"
+            "job_manager_endpoint"    : "pbs+gsissh://blacklight.psc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://blacklight.psc.xsede.org/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
