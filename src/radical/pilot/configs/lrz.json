@@ -1,19 +1,17 @@
-
 {
     "supermuc": {
         "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).",
         "notes"                       : "Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.",
         "schemas"                     : ["gsissh", "ssh"],
-        "warn_on_local"               : "True",
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "loadl+gsissh://supermuc.lrz.de/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
-            "filesystem_endpoint"     : "gsisftp://supermuc.lrz.de/"
-        },
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
             "filesystem_endpoint"     : "gsisftp://supermuc.lrz.de:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "loadl+ssh://supermuc.lrz.de/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
+            "filesystem_endpoint"     : "sftp://supermuc.lrz.de/"
         },
         "default_queue"               : "test",
         "lrms"                        : "LOADL",
@@ -31,4 +29,3 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
-

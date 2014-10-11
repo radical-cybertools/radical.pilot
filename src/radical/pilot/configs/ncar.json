@@ -4,7 +4,6 @@
         "description"                 : "The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).",
         "notes"                       : "We only support one concurrent CU per node currently.",
         "schemas"                     : ["ssh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "lsf+ssh://yellowstone.ucar.edu/",

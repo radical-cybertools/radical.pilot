@@ -290,14 +290,6 @@ class PilotManager(Object):
                     # resource config
                     resource_cfg[key] = resource_cfg[schema][key]
 
-            warn_on_local = resource_cfg.get (bool('warn_on_local'), False)
-
-            if  schema == 'local' and warn_on_local :
-                logger.error ("===========================================================")
-                logger.error ("you are using a cluster headnode -- is this what you want??")
-                logger.error ("===========================================================")
-                time.sleep (3)
-
             # If 'default_sandbox' is defined, set it.
             if pilot_description.sandbox is not None:
                 if "valid_roots" in resource_cfg and resource_cfg["valid_roots"] is not None:
