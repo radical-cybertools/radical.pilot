@@ -108,23 +108,44 @@ A configuration file has to be valid JSON. The structure is as follows:
 
 .. code-block:: python
 
+    # filename: lrz.json
     {
-        "RESOURCE_KEY_NAME": {
-            "remote_job_manager_endpoint" : "slurm+ssh://stampede.tacc.utexas.edu",
-            "remote_filesystem_endpoint"  : "sftp://stampede.tacc.utexas.edu/",
-            "local_job_manager_endpoint"  : "slurm://localhost",
-            "local_filesystem_endpoint"   : "file://localhost/",
-            "default_queue"               : "normal",
-            "lrms"                        : "SLURM",
+        "supermuc": 
+        {
+            "description"                 : "The SuperMUC petascale HPC cluster at LRZ.",
+            "notes"                       : "Access only from registered IP addresses.",
+            "schemas"                     : ["gsissh", "ssh"],
+            "ssh"                         :
+            {
+                "job_manager_endpoint"    : "loadl+ssh://supermuc.lrz.de/",
+                "filesystem_endpoint"     : "sftp://supermuc.lrz.de/"
+            },
+            "gsissh"                      :
+            {
+                "job_manager_endpoint"    : "loadl+gsissh://supermuc.lrz.de:2222/",
+                "filesystem_endpoint"     : "gsisftp://supermuc.lrz.de:2222/"
+            },
+            "default_queue"               : "test",
+            "lrms"                        : "LOADL",
             "task_launch_method"          : "SSH",
-            "mpi_launch_method"           : "IBRUN",
-            "python_interpreter"          : "/opt/apps/python/epd/7.3.2/bin/python",
-            "pre_bootstrap"               : ["module purge", "module load TACC", "module load cluster", "module load Linux", "module load mvapich2", "module load python/2.7.3-epd-7.3.2"],
-            "valid_roots"                 : ["/home1", "/scratch", "/work"],
+            "mpi_launch_method"           : "MPIEXEC",
+            "forward_tunnel_endpoint"     : "login03",
+            "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
+            "pre_bootstrap"               : ["source /etc/profile",
+                                             "source /etc/profile.d/modules.sh",
+                                             "module load python/2.7.6",
+                                             "module unload mpi.ibm", "module load mpi.intel",
+                                             "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
+                                            ],
+            "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
             "pilot_agent"                 : "radical-pilot-agent-multicore.py"
         },
-        "ANOTHER_KEY_NAME": ...
+        "ANOTHER_KEY_NAME": 
+        {
+            ...
+        }
     }
+
 
 `RESOURCE_KEY_NAME` is the string which is used as value for 
 `ComputePilotDescription.resource` to reference this entry. They have to be 
