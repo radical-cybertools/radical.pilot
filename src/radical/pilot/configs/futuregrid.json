@@ -4,7 +4,6 @@
         "description"                 : "The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://alamo.futuregrid.org/",
@@ -24,7 +23,6 @@
         "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
@@ -45,7 +43,6 @@
         "description"                 : "The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://sierra.futuregrid.org/",
@@ -65,7 +62,6 @@
         "description"                 : "The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.",
         "schemas"                     : ["ssh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://hotel.futuregrid.org/",

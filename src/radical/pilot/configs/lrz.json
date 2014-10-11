@@ -3,7 +3,6 @@
         "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).",
         "notes"                       : "Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.",
         "schemas"                     : ["gsissh", "ssh"],
-        "warn_on_local"               : "True",
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",

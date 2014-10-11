@@ -4,7 +4,6 @@
         "description"                 : "The DAVinCI Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+DAVinCI).",
         "notes"                       : "DAVinCI compute nodes have 12 or 16 processor cores per node.",
         "schemas"                     : ["ssh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://davinci.rice.edu/",
