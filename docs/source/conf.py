@@ -37,6 +37,9 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
         if example.endswith(".json") is False:
             continue # skip all non-python files
 
+        if example.startswith("aliases") is True:
+            continue # skip alias files
+
         print " * %s" % example
 
         with open("../../src/radical/pilot/configs/{0}".format(example)) as cfg_file:
