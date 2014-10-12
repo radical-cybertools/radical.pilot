@@ -61,7 +61,7 @@ def usage (msg=None, noexit=False) :
 #
 def find_sid_by_pid (dbclient, dbname, pid) :
 
-    sids = rpu.get_session_ids (dbclient, dbname)
+    sids = rpu.get_session_ids (dbclient[dbname])
 
     print "%d sessions" % len(sids)
 
@@ -73,7 +73,7 @@ def find_sid_by_pid (dbclient, dbname, pid) :
         if  sid > pid :
             continue
 
-        docs = rpu.get_session_docs (dbclient, dbname, sid)
+        docs = rpu.get_session_docs (dbclient[dbname], sid)
 
         for doc in docs['pilot'] :
             if  str(doc['_id']) == pid :
@@ -213,7 +213,7 @@ if __name__ == '__main__' :
             usage ("Unsupported mode '%s'" % m)
 
         if   m == 'sid'       : find_sid_by_pid (dbclient, dbname, pid)
-        if   m == 'resources' : list_resources  (verbose)
+        elif m == 'resources' : list_resources  (verbose)
         elif m == 'help'      : usage (noexit=True)
         else                  : usage ("unknown mode '%s'" % mode)
 
