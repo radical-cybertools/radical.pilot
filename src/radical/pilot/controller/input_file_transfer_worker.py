@@ -248,13 +248,12 @@ class InputFileTransferWorker(threading.Thread):
 
             except Exception as e :
 
-                print        "transfer worker error: %s\n %s" % (str(e), traceback.format_exc())
                 logger.error("transfer worker error: %s\n %s" % (str(e), traceback.format_exc()))
                 self._session.close (delete=False)
                 raise e
 
         except SystemExit as e :
-            print "input file transfer thread caught system exit -- forcing application shutdown"
+            logger.error("input file transfer thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             

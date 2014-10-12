@@ -315,7 +315,7 @@ class PilotManagerController(threading.Thread):
                 logger.debug("PilotManager.close(): %s terminated." % worker.name)
 
         except SystemExit as e :
-            print "pilot manager controller thread caught system exit -- forcing application shutdown"
+            logger.Exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             

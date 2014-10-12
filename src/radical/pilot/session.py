@@ -516,7 +516,7 @@ class Session (saga.Session, Object):
         """
         if  isinstance (resource_config, basestring) :
 
-            rcs = ResourceConfig.from_file(config_file)
+            rcs = ResourceConfig.from_file(resource_config)
 
             if  rcs :
                 for rc in rcs:
@@ -539,7 +539,7 @@ class Session (saga.Session, Object):
 
         if  resource_key not in self._resource_configs:
             error_msg = "Resource key '%s' is not known." % resource_key
-            raise BadParameter(error_msg)
+            raise PilotException(error_msg)
 
         return self._resource_configs[resource_key]
 

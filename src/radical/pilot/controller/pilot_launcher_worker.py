@@ -513,7 +513,7 @@ class PilotLauncherWorker(threading.Thread):
                         logger.error(log_messages)
 
         except SystemExit as e :
-            print "pilot launcher thread caught system exit -- forcing application shutdown"
+            logger.exception("pilot launcher thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             
