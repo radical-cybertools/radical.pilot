@@ -64,7 +64,7 @@ class ResourceConfig(attributes.Attributes):
           // [...]
 
           pd = radical.pilot.ComputePilotDescription()
-          pd.resource = "archer_local"
+          pd.resource = "epsrc.archer"
 
           // [...]
 

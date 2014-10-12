@@ -78,7 +78,7 @@ class PilotManager(Object):
                   pm = radical.pilot.PilotManager(session=s)
 
                   pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
+                  pd.resource = "futuregrid.india"  # defined in futuregrid.json
                   pd.cores    = 16
                   pd.runtime  = 5 # minutes
 

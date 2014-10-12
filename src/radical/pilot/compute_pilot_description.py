@@ -46,7 +46,7 @@ class ComputePilotDescription(attributes.Attributes):
           pm = radical.pilot.PilotManager(session=s)
 
           pd = radical.pilot.ComputePilotDescription()
-          pd.resource = "localhost"  # defined in futuregrid.json
+          pd.resource = "local.localhost"  # defined in futuregrid.json
           pd.cores    = 16
           pd.runtime  = 5 # minutes
 

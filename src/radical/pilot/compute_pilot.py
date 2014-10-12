@@ -37,7 +37,7 @@ class ComputePilot (object):
                       pm = radical.pilot.PilotManager(session=s)
 
                       pd = radical.pilot.ComputePilotDescription()
-                      pd.resource = "localhost"
+                      pd.resource = "local.localhost"
                       pd.cores    = 2
                       pd.runtime  = 5 # minutes
 
