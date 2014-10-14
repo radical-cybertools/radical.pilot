@@ -118,6 +118,10 @@ class Session (saga.Session, Object):
         saga.Session.__init__ (self)
         Object.__init__ (self)
 
+        # before doing anything else, set up the debug helper for the lifetime
+        # of the session.
+        self._debug_helper = ru.DebugHelper ()
+
         # Dictionaries holding all manager objects created during the session.
         self._pilot_manager_objects = list()
         self._unit_manager_objects = list()
