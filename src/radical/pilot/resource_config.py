@@ -130,8 +130,8 @@ class ResourceConfig(attributes.Attributes):
 
     # -------------------------------------------------------------------------
     #
-    @classmethod 
-    def from_file(cls, filename, entry_name=None):
+    @staticmethod 
+    def from_file(filename, entry_name=None):
       """Reads a resource configuration JSON file from the URL provided and 
          returns a list of one or more ResourceConfig objects.
       """
@@ -141,20 +141,20 @@ class ResourceConfig(attributes.Attributes):
           rcf_dict = radical.utils.read_json_str (filename)
           rcf_name = str(os.path.basename (filename))
 
-          if  rcf_name.endswith ('.json') :
+          if  rcf_name.endswith ('.json'):
               rcf_name = rcf_name[0:-5]
 
-          if  'aliases' in rcf_dict :
+          if  'aliases' in rcf_dict:
               return None
 
           for res_name, cfg in rcf_dict.iteritems():
 
               # create config from resource section
-              cls = ResourceConfig (cfg)
+              cls = ResourceConfig(cfg)
 
               # make sure all keys are initialized
               for key in VALID_KEYS:
-                  if  not key in cls :
+                  if not key in cls :
                       cls[key] = None
             
               rcfgs["%s.%s" % (rcf_name, res_name)] = cls
