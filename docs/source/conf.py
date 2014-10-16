@@ -68,9 +68,9 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                     python_interpreter = None
 
                 try:
-                    access_schemas = resource_config["access_schemas"]
+                    access_schemas = resource_config["schemas"]
                 except Exception, ex:
-                    access_schemas = None
+                    access_schemas = ['n/a']
 
                 resources_rst.write("{0}\n".format(resource_key))
                 resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
@@ -85,7 +85,7 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                 resources_rst.write("``sandbox``             {0}\n".format(working_dir))
                 resources_rst.write("``access_schema``       {0}\n".format(access_schemas[0]))
                 resources_rst.write("================== ============================\n\n")
-                resources_rst.write("Available schemas: ``{0}``\n\n".format(access_schemas))
+                resources_rst.write("Available schemas: ``{0}``\n\n".format(', '.join(access_schemas)))
 
                 resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
 ##

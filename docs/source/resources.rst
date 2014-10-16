@@ -10,7 +10,10 @@ Parameter               Value
 ================== ============================
 ``queue``               None
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
 
@@ -26,7 +29,10 @@ Parameter               Value
 ================== ============================
 ``queue``               None
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
 
@@ -44,7 +50,10 @@ Parameter               Value
 ================== ============================
 ``queue``               test
 ``sandbox``             $HOME
+``access_schema``       gsissh
 ================== ============================
+
+Available schemas: ``gsissh, ssh``
 
 :download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
 
@@ -60,7 +69,10 @@ Parameter               Value
 ================== ============================
 ``queue``               all.q
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh``
 
 :download:`Raw Configuration file: das4.json <../../src/radical/pilot/configs/das4.json>`
 
@@ -78,7 +90,10 @@ Parameter               Value
 ================== ============================
 ``queue``               standard
 ``sandbox``             /work/`id -gn`/`id -gn`/$USER
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
 
@@ -94,7 +109,10 @@ Parameter               Value
 ================== ============================
 ``queue``               batch
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, local``
 
 :download:`Raw Configuration file: radical.json <../../src/radical/pilot/configs/radical.json>`
 
@@ -112,7 +130,10 @@ Parameter               Value
 ================== ============================
 ``queue``               parallel
 ``sandbox``             $SHARED_SCRATCH/$USER
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh``
 
 :download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
 
@@ -130,7 +151,10 @@ Parameter               Value
 ================== ============================
 ``queue``               premium
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh``
 
 :download:`Raw Configuration file: ncar.json <../../src/radical/pilot/configs/ncar.json>`
 
@@ -148,7 +172,10 @@ Parameter               Value
 ================== ============================
 ``queue``               None
 ``sandbox``             $HOME
+``access_schema``       local
 ================== ============================
+
+Available schemas: ``local, ssh``
 
 :download:`Raw Configuration file: local.json <../../src/radical/pilot/configs/local.json>`
 
@@ -166,7 +193,10 @@ Parameter               Value
 ================== ============================
 ``queue``               normal
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
@@ -184,7 +214,10 @@ Parameter               Value
 ================== ============================
 ``queue``               normal
 ``sandbox``             $WORK
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
@@ -202,7 +235,10 @@ Parameter               Value
 ================== ============================
 ``queue``               normal
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
@@ -220,7 +256,10 @@ Parameter               Value
 ================== ============================
 ``queue``               normal
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
@@ -238,7 +277,10 @@ Parameter               Value
 ================== ============================
 ``queue``               batch
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
@@ -254,7 +296,10 @@ Parameter               Value
 ================== ============================
 ``queue``               batch
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
@@ -270,7 +315,10 @@ Parameter               Value
 ================== ============================
 ``queue``               short
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
@@ -288,7 +336,10 @@ Parameter               Value
 ================== ============================
 ``queue``               batch
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
@@ -304,7 +355,10 @@ Parameter               Value
 ================== ============================
 ``queue``               batch
 ``sandbox``             $HOME
+``access_schema``       ssh
 ================== ============================
+
+Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
