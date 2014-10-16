@@ -54,12 +54,19 @@ class ComputePilotDescription(attributes.Attributes):
 
     .. data:: resource
 
-       [Type: `string` or `list of strings`] [**`mandatory`**] The key of a
+       [Type: `string`] [**`mandatory`**] The key of a
        :ref:`chapter_machconf` entry.
        If the key exists, the machine-specifc configuration is loaded from the
        configuration once the ComputePilotDescription is passed to
        :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't exist,
        a :class:`radical.pilot.pilotException` is thrown.
+
+    .. data:: access_scheme
+
+       [Type: `string`] [**`optional`**] The key of an access mechanism to use.
+       The valid access mechanism are defined in the resource configurations,
+       see :ref:`chapter_machconf`.  The first one defined there is used by
+       default, if no other is specified.
 
     .. data:: runtime
 
