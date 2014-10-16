@@ -61,7 +61,7 @@ class ComputePilotDescription(attributes.Attributes):
        :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't exist,
        a :class:`radical.pilot.pilotException` is thrown.
 
-    .. data:: access_scheme
+    .. data:: access_schema
 
        [Type: `string`] [**`optional`**] The key of an access mechanism to use.
        The valid access mechanism are defined in the resource configurations,

@@ -56,14 +56,21 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                     default_queue = resource_config["default_queue"]
                 except Exception, ex:
                     default_queue = None
+
                 try:
                     working_dir = resource_config["default_remote_workdir"]
                 except Exception, ex:
                     working_dir = "$HOME"
+
                 try:
                     python_interpreter = resource_config["python_interpreter"]
                 except Exception, ex:
                     python_interpreter = None
+
+                try:
+                    access_schemas = resource_config["access_schemas"]
+                except Exception, ex:
+                    access_schemas = None
 
                 resources_rst.write("{0}\n".format(resource_key))
                 resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
@@ -76,8 +83,9 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                 resources_rst.write("================== ============================\n")
                 resources_rst.write("``queue``               {0}\n".format(default_queue))
                 resources_rst.write("``sandbox``             {0}\n".format(working_dir))
+                resources_rst.write("``access_schema``       {0}\n".format(access_schemas[0]))
                 resources_rst.write("================== ============================\n\n")
-
+                resources_rst.write("Available schemas: ``{0}``\n\n".format(access_schemas))
 
                 resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
 ##
