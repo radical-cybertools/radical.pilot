@@ -979,13 +979,13 @@ if __name__ == '__main__' :
         if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'list' : list_sessions (db, dbname, session, filters)
+        if   m == 'list' : list_sessions (db, session, filters)
         elif m == 'tree' : tree_session  (db, dbname, session) 
         elif m == 'dump' : dump_session  (db, dbname, session) 
-        elif m == 'sort' : sort_session  (db, dbname, session) 
-        elif m == 'hist' : hist_session  (db, dbname, session) 
-        elif m == 'stat' : stat_session  (db, dbname, session) 
-        elif m == 'plot' : plot_session  (db, dbname, session) 
+        elif m == 'sort' : sort_session  (db, session)
+        elif m == 'hist' : hist_session  (db, session)
+        elif m == 'stat' : stat_session  (db, session)
+        elif m == 'plot' : plot_session  (db, session)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 
