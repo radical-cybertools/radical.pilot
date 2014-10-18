@@ -112,7 +112,7 @@ def usage (msg=None, noexit=False) :
         dump    : show  a  tree   of session objects, with full details
         sort    : show  a  list   of session objects, sorted by type
         hist    : show timeline   of session history
-        stat    : show statistics of session history (not implemented)
+        stat    : show statistics of session history
         plot    : save gnuplot representing session history
 
 
