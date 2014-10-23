@@ -60,7 +60,7 @@ if __name__ == "__main__":
     pmgr.register_callback(pilot_state_cb)
     pdescs = list()
 
-    for i in range (0, 16) :
+    for i in range (1) :
         # Define a 32-core on stampede that runs for 15 minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
