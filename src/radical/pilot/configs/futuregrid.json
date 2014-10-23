@@ -31,6 +31,7 @@
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "batch",

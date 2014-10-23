@@ -16,6 +16,7 @@
         },
         "default_queue"               : "prod",
         "lrms"                        : "LOADL",
+        "agent_scheduler"             : "TORUS",
         "task_launch_method"          : "RUNJOB",
         "mpi_launch_method"           : "RUNJOB",
         "global_virtenv"              : "/gpfs/home/HCP056/sxz03/mas16-sxz03/shared_pilot_ve_20140801",
