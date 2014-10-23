@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 import radical.pilot as rp
 
 # READ: The RADICAL-Pilot documentation: 
@@ -18,7 +19,15 @@ def pilot_state_cb (pilot, state) :
 
     if  state == rp.FAILED:
         sys.exit (1)
+        
+    if state == rp.ACTIVE:
+        print "Pilot state changed to ACTIVE at %s" % datetime.datetime.now()
 
+    if state == rp.CANCELED:
+        print "Pilot state changed to CANCELED at %s" % datetime.datetime.now()
+
+    if state == rp.DONE:
+        print "Pilot state changed to DONE at %s" % datetime.datetime.now()
 
 #------------------------------------------------------------------------------
 #
