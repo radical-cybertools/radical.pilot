@@ -3263,6 +3263,11 @@ def parse_commandline():
                       dest='pilot_id',
                       help='Specifies the Pilot ID.')
 
+    parser.add_option('-q', '--agent-scheduler',
+                      metavar='SCHEDULER',
+                      dest='agent_scheduler',
+                      help='Specifies the scheduler of the agent.')
+
     parser.add_option('-s', '--session-id',
                       metavar='SID',
                       dest='session_id',
@@ -3289,6 +3294,8 @@ def parse_commandline():
         parser.error("You must define a session id (-s/--session-id). Try --help for help.")
     if options.pilot_id is None:
         parser.error("You must define a pilot id (-p/--pilot-id). Try --help for help.")
+    if options.agent_scheduler is None:
+        parser.error("You must define a scheduler for the agent (-q/--agent-scheduler). Try --help for help.")
     if options.cores is None:
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
     if options.runtime is None:

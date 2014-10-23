@@ -411,6 +411,10 @@ class PilotLauncherWorker(threading.Thread):
                             bootstrap_args += " -k %s " % resource_cfg['mpi_launch_method']
                         else:
                             raise Exception("MPI launch method not set.")
+                        if 'agent_scheduler' in resource_cfg and resource_cfg['agent_scheduler'] is not None:
+                            bootstrap_args += " -q %s " % resource_cfg['agent_scheduler']
+                        else:
+                            raise Exception("Agent scheduler not set.")
                         if 'forward_tunnel_endpoint' in resource_cfg and resource_cfg['forward_tunnel_endpoint'] is not None:
                             bootstrap_args += " -f %s " % resource_cfg['forward_tunnel_endpoint']
 
