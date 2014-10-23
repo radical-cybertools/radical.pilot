@@ -37,8 +37,8 @@ def unit_state_cb (unit, state) :
 if __name__ == "__main__":
 
     # prepare some input files for the compute units
-    os.system ('hostname > file1.dat')
-    os.system ('date     > file2.dat')
+    os.system ('base64 /dev/urandom | head -c 100000 > file1.dat') # ~ 100k input file
+    os.system ('base64 /dev/urandom | head -c 10000  > file2.dat') # ~ 10k input file
 
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
@@ -60,12 +60,12 @@ if __name__ == "__main__":
     pmgr.register_callback(pilot_state_cb)
     pdescs = list()
 
-    for i in range (1) :
+    for i in range (0, 16) :
         # Define a 32-core on stampede that runs for 15 minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource  = "xsede.trestles"
-        pdesc.runtime   = 15 # minutes
+        pdesc.runtime   = 30 # minutes
         pdesc.cores     = 8
         pdesc.cleanup   = True
       # pdesc.queue     = "normal"
