@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
-    #c.user_id = "alice"
+    c.user_id = "amerzky"
     #c.user_pass = "ILoveBob!"
     session.add_context(c)
 
@@ -65,8 +65,8 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource  = "xsede.trestles"
-        pdesc.runtime   = 30 # minutes
-        pdesc.cores     = 8
+        pdesc.runtime   = 60 # minutes
+        pdesc.cores     = 16
         pdesc.cleanup   = True
       # pdesc.queue     = "normal"
       # pdesc.project   = "TG-MCB140109"
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     #
     cuds = list()
 
-    for unit_count in range(0, 32):
+    for unit_count in range(0, 1024):
         cud = rp.ComputeUnitDescription()
         cud.executable    = "/bin/bash"
         cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
