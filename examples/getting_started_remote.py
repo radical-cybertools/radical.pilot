@@ -37,8 +37,8 @@ def unit_state_cb (unit, state) :
 if __name__ == "__main__":
 
     # prepare some input files for the compute units
-    os.system ('base64 /dev/urandom | head -c 100000 > file1.dat') # ~ 100k input file
-    os.system ('base64 /dev/urandom | head -c 10000  > file2.dat') # ~ 10k input file
+    os.system ('head -c 100000 /dev/urandom > file1.dat') # ~ 100k input file
+    os.system ('head -c 10000  /dev/urandom > file2.dat') # ~ 10k input file
 
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
