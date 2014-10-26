@@ -192,9 +192,6 @@ class BackfillingScheduler(Scheduler):
         if  not pid in self.pilots :
             raise RuntimeError ('cannot remove unknown pilot (%s)' % pid)
 
-        # NOTE: we don't care if that pilot had any CUs active -- its up to the
-        # UM what happens to those.
-
         del self.pilots[pid]
         # FIXME: how can I *un*register a pilot callback?
 
