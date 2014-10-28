@@ -1442,7 +1442,10 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = unicode(stdout_f.read(), "utf-8")
+                    try :
+                        txt = unicode(stdout_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "RADICAL-Pilot: could not retrieve stdout (binary)"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
@@ -1450,7 +1453,10 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = unicode(stderr_f.read(), "utf-8")
+                    try :
+                        txt = unicode(stderr_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "RADICAL-Pilot: could not retrieve stderr (binary)"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
