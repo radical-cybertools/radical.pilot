@@ -110,13 +110,20 @@ def list_resources (verbose) :
         print name
         cfg = session._resource_configs[name]
 
-        print "    %-25s : %s" % ('description'            , cfg['description'   ])
+        print "    %-25s : %s" % ('description', cfg['description'   ])
 
         if verbose :
-            print "    %-25s : %s" % ('notes'                  , cfg['notes'         ])
+            print "    %-25s : %s" % ('notes', cfg['notes'         ])
 
-        print "    %-25s : %s" % ('lrms'                   , cfg['lrms'                   ])
-        print "    %-25s : %s" % ('default queue'          , cfg['default_queue' ])
+        if  'schemas' in cfg  and cfg['schemas'] :
+            default_schema  = cfg['schemas'][0]
+            job_manager_url = cfg[default_schema]['job_manager_endpoint']
+        else :
+            job_manager_url = cfg['job_manager_endpoint']
+
+        print "    %-25s : %s" % ('hostname'      , ru.Url (job_manager_url).host)
+        print "    %-25s : %s" % ('lrms'          , cfg['lrms'])
+        print "    %-25s : %s" % ('default queue' , cfg['default_queue' ])
 
         if  verbose :
             print "    %-25s : %s" % ('spmd variation'         , cfg['spmd_variation'])
@@ -134,7 +141,7 @@ def list_resources (verbose) :
             print "    %-25s : %s" % ('forward_tunnel_endpoint', cfg['forward_tunnel_endpoint'])
 
         if  'schemas' in cfg  and cfg['schemas'] :
-            print "    %-25s : %s" % ('schemas'  , cfg['schemas'  ])
+            print "    %-25s : %s" % ('schemas'  , cfg['schemas'])
 
             if  verbose :
                 print
