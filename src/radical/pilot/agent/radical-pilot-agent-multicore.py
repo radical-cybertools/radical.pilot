@@ -1445,7 +1445,7 @@ class ExecWorker(multiprocessing.Process):
                     try :
                         txt = unicode(stdout_f.read(), "utf-8")
                     except UnicodeDecodeError :
-                        txt = "RADICAL-Pilot: could not retrieve stdout (binary)"
+                        txt = "unit stdout contains binary data -- use file staging directives"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
@@ -1456,7 +1456,7 @@ class ExecWorker(multiprocessing.Process):
                     try :
                         txt = unicode(stderr_f.read(), "utf-8")
                     except UnicodeDecodeError :
-                        txt = "RADICAL-Pilot: could not retrieve stderr (binary)"
+                        txt = "unit stderr contains binary data -- use file staging directives"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
