@@ -158,11 +158,11 @@ class InputFileTransferWorker(threading.Thread):
                                     input_file_url,
                                     session=self._session
                                 )
-                                try:
-                                    input_file.copy(target)
-                                except Exception, ex:
-                                    tb = traceback.format_exc()
-                                    logger.info('Error: %s. %s' % (str(ex), tb))
+                                #try:
+                                input_file.copy(target)
+                                #except Exception, ex:
+                                #    tb = traceback.format_exc()
+                                #    logger.info('Error: %s. %s' % (str(ex), tb))
 
                                 input_file.close()
 
