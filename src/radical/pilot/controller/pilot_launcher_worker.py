@@ -313,25 +313,27 @@ class PilotLauncherWorker(threading.Thread):
                         # Create SAGA Job description and submit the pilot job #
                         ########################################################
 
-                        log_msg = "Creating agent sandbox '%s'." % str(sandbox)
-                        log_messages.append(log_msg)
-                        logger.debug(log_msg)
-
-                        logger.debug ("saga.fs.Directory ('%s')" % saga.Url(sandbox))
-                        agent_dir = saga.filesystem.Directory(
-                            saga.Url(sandbox),
-                            saga.filesystem.CREATE_PARENTS, session=self._session)
-                        agent_dir.close()
+                        # log_msg = "Creating agent sandbox '%s'." % str(sandbox)
+                        # log_messages.append(log_msg)
+                        # logger.debug(log_msg)
+                        #
+                        # logger.debug ("saga.fs.Directory ('%s')" % saga.Url(sandbox))
+                        # agent_dir = saga.filesystem.Directory(
+                        #     saga.Url(sandbox),
+                        #     saga.filesystem.CREATE_PARENTS, session=self._session)
+                        # agent_dir.close()
 
                         ########################################################
-                        # Copy the bootstrap shell script
+                        # Copy the bootstrap shell script.  This also creates
+                        # the sandbox
                         bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
-                        log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
+                        bs_script_tgt = saga.Url("%s/%s"               % (sandbox, bootstrapper))
+                        log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, bs_script_tgt)
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
-                        bs_script = saga.filesystem.File(bs_script_url)
-                        bs_script.copy(saga.Url(sandbox))
+                        bs_script = saga.filesystem.File(bs_script_url, session=self._session)
+                        bs_script.copy(bs_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
                         bs_script.close()
 
                         ########################################################
