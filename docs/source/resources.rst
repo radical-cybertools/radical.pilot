@@ -1,3 +1,10 @@
+
+
+.. _chapter_resources:
+
+List of Pre-Configured Resources
+================================
+
 sierra
 ------
 
@@ -15,7 +22,7 @@ Parameter               Value
 
 Available schemas: ``ssh``
 
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+:download:`Raw Configuration file: futuregrid.json<../../src/radical/pilot/configs/futuregrid.json>`
 
 alamo
 -----
@@ -34,7 +41,7 @@ Parameter               Value
 
 Available schemas: ``ssh``
 
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+:download:`Raw Configuration file: futuregrid.json<../../src/radical/pilot/configs/futuregrid.json>`
 
 hotel
 -----
@@ -55,7 +62,7 @@ Parameter               Value
 
 Available schemas: ``ssh``
 
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+:download:`Raw Configuration file: futuregrid.json<../../src/radical/pilot/configs/futuregrid.json>`
 
 india
 -----
@@ -74,7 +81,7 @@ Parameter               Value
 
 Available schemas: ``ssh``
 
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+:download:`Raw Configuration file: futuregrid.json<../../src/radical/pilot/configs/futuregrid.json>`
 
 tutorial
 --------
@@ -93,7 +100,7 @@ Parameter               Value
 
 Available schemas: ``ssh, local``
 
-:download:`Raw Configuration file: radical.json <../../src/radical/pilot/configs/radical.json>`
+:download:`Raw Configuration file: radical.json<../../src/radical/pilot/configs/radical.json>`
 
 davinci
 -------
@@ -114,7 +121,7 @@ Parameter               Value
 
 Available schemas: ``ssh``
 
-:download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
+:download:`Raw Configuration file: rice.json<../../src/radical/pilot/configs/rice.json>`
 
 localhost
 ---------
@@ -135,7 +142,7 @@ Parameter               Value
 
 Available schemas: ``local, ssh``
 
-:download:`Raw Configuration file: local.json <../../src/radical/pilot/configs/local.json>`
+:download:`Raw Configuration file: local.json<../../src/radical/pilot/configs/local.json>`
 
 yellowstone
 -----------
@@ -156,7 +163,7 @@ Parameter               Value
 
 Available schemas: ``ssh``
 
-:download:`Raw Configuration file: ncar.json <../../src/radical/pilot/configs/ncar.json>`
+:download:`Raw Configuration file: ncar.json<../../src/radical/pilot/configs/ncar.json>`
 
 fs2
 ---
@@ -175,7 +182,7 @@ Parameter               Value
 
 Available schemas: ``ssh``
 
-:download:`Raw Configuration file: das4.json <../../src/radical/pilot/configs/das4.json>`
+:download:`Raw Configuration file: das4.json<../../src/radical/pilot/configs/das4.json>`
 
 bigred2
 -------
@@ -194,7 +201,7 @@ Parameter               Value
 
 Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
+:download:`Raw Configuration file: iu.json<../../src/radical/pilot/configs/iu.json>`
 
 quarry
 ------
@@ -213,7 +220,7 @@ Parameter               Value
 
 Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
+:download:`Raw Configuration file: iu.json<../../src/radical/pilot/configs/iu.json>`
 
 archer
 ------
@@ -234,7 +241,7 @@ Parameter               Value
 
 Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
+:download:`Raw Configuration file: epsrc.json<../../src/radical/pilot/configs/epsrc.json>`
 
 supermuc
 --------
@@ -255,7 +262,7 @@ Parameter               Value
 
 Available schemas: ``gsissh, ssh``
 
-:download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
+:download:`Raw Configuration file: lrz.json<../../src/radical/pilot/configs/lrz.json>`
 
 lonestar
 --------
@@ -276,7 +283,7 @@ Parameter               Value
 
 Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
+:download:`Raw Configuration file: xsede.json<../../src/radical/pilot/configs/xsede.json>`
 
 stampede
 --------
@@ -297,7 +304,7 @@ Parameter               Value
 
 Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
+:download:`Raw Configuration file: xsede.json<../../src/radical/pilot/configs/xsede.json>`
 
 gordon
 ------
@@ -318,7 +325,7 @@ Parameter               Value
 
 Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
+:download:`Raw Configuration file: xsede.json<../../src/radical/pilot/configs/xsede.json>`
 
 trestles
 --------
@@ -339,7 +346,7 @@ Parameter               Value
 
 Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
+:download:`Raw Configuration file: xsede.json<../../src/radical/pilot/configs/xsede.json>`
 
 blacklight
 ----------
@@ -360,5 +367,5 @@ Parameter               Value
 
 Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
+:download:`Raw Configuration file: xsede.json<../../src/radical/pilot/configs/xsede.json>`
 

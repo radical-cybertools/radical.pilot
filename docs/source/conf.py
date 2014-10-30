@@ -40,7 +40,6 @@ tags.add (mytag)
 ##
 print "* Generating resource configuration docs: resources.rst"
 print "* using tag: %s" % mytag
-print "* Generating code example list: examples.rst"
 
 try:
     os.remove("{0}/resources.rst".format(script_dir))
@@ -49,18 +48,27 @@ except OSError:
 
 with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
 
-    examples = os.listdir("{0}/../../src/radical/pilot/configs/".format(script_dir))
-    for example in examples:
+    resources_rst.write("""
 
-        if example.endswith(".json") is False:
+.. _chapter_resources:
+
+List of Pre-Configured Resources
+================================
+
+""")
+
+    configs = os.listdir("{0}/../../src/radical/pilot/configs/".format(script_dir))
+    for config in configs:
+
+        if config.endswith(".json") is False:
             continue # skip all non-python files
 
-        if example.startswith("aliases") is True:
+        if config.startswith("aliases") is True:
             continue # skip alias files
 
-        print " * %s" % example
+        print " * %s" % config
 
-        with open("../../src/radical/pilot/configs/{0}".format(example)) as cfg_file:
+        with open("../../src/radical/pilot/configs/{0}".format(config)) as cfg_file:
             try: 
                 json_data = json.load(cfg_file)
             except Exception, ex:
@@ -105,7 +113,7 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                 resources_rst.write("================== ============================\n\n")
                 resources_rst.write("Available schemas: ``{0}``\n\n".format(', '.join(access_schemas)))
 
-                resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
+                resources_rst.write(":download:`Raw Configuration file: {0}<../../src/radical/pilot/configs/{0}>`\n\n".format(config))
 ##
 ################################################################################
 

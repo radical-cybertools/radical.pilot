@@ -23,14 +23,14 @@ like this:
 .. code-block:: python
 
     pdesc = radical.pilot.ComputePilotDescription()
-    pdesc.resource   = "epsrc.archer"
-    pdesc.project    = "e1234"
-    pdesc.runtime    = 60
-    pdesc.cores      = 128
+    pdesc.resource = "epsrc.archer"
+    pdesc.project  = "e1234"
+    pdesc.runtime  = 60
+    pdesc.cores    = 128
 
 Using a ``resource`` key other than "local.localhost" implicitly tells RADICAL-Pilot
-that it is dealing with a remote resource. RADICAL-Pilot is using the SSH 
-(and SFTP) protocols to communicate with remote resources. The next section,
+that it is dealing with a remote resource. RADICAL-Pilot is using the SSH/GSISSH
+(and SFTP/GSISFTP) protocols to communicate with remote resources. The next section,
 :ref:`ssh_config` provides some details about SSH set-up. 
 :ref:`preconfigured_resources` list the resource keys that are already defined 
 and ready to use in RADICAL-Pilot.
@@ -81,10 +81,13 @@ user. A user allocates a pre-configured resource like this:
     pdesc.project    = "e1234"
     pdesc.runtime    = 60
     pdesc.cores      = 128
+    pdesc.queue      = "large"
 
-We maintain a growing set of resource configuration files:
-
-.. include:: ./resources.rst  
+We maintain a growing set of resource configuration files.  Several of the
+settings included there can be adapted in the `PilotDescription` (for example,
+the snipped above replaces the default queue `standard` with the queue `large`).
+For a list of supported configurations, see :ref:`chapter_resources` - those
+resource files live under `radical/pilot/configs/`.
 
 
 Writing a Custom Resource Configuration File
@@ -168,5 +171,37 @@ All fields are mandatory, unless indicated otherwise below.
 * `forward_tunnel_endpoint`     : name of host which can be used to create ssh tunnels from the compute nodes to the outside world (optional)
 
 Several configuration files are part of the RADICAL-Pilot installation, and live
-under `radical/pilot/configs/`.
+under `radical/pilot/configs/`.  
+
+
+Customizing Resource Configurations Programatically
+===================================================
+
+The set of resource configurations available to the RADICAL-Pilot session is
+accessible programatically.  The example below changes the `default_queue` for
+the `epsrc.archer` resource.
+
+.. code-block:: python
+
+    import radical.pilot as rp
+    
+    # create a new session, and get the respective resource config instance
+    session = rp.Session()
+    cfg = session.get_resource_config('epsrc.archer')
+    print "Default queue of archer is: %s" % cfg['default_queue']
+
+    # create a new config based on the old one, and set a different queue
+    new_cfg = rp.ResourceConfig(cfg)
+    new_cfg.default_queue = 'quick'
+
+    # now add the entry back.  As we did not change the config name, this will
+    # replace the original configuration.  A completely new configuration would
+    # need a unique name.
+    session.add_resource_config(new_cfg)
+
+    # verify that the changes are in place: retrieve the config again and print
+    # the queue
+    check_cfg = session.get_resource_config('epsrc.archer')
+    print "Default queue of archer after change is: %s." % s['default_queue']
+
 
