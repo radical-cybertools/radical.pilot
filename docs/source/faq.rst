@@ -85,7 +85,6 @@ Next, add you newly generated key to ~/.ssh/authorized_keys:
 .. code-block:: bash
 
     cat id_rsa.pub >> ~/.ssh/authorized_keys
-    cat id_rsa.pub >> ~/.ssh/authorized_keys2
 
 This should be all. Next time you run radical.pilot, you shouldn't see that 
 error message anymore. 
