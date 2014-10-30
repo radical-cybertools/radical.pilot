@@ -378,7 +378,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd = saga.job.Description()
                         jd.working_directory = saga.Url(sandbox).path
 
-                        bootstrap_args = "-n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
+                        bootstrap_args = "-n %s -s %s -p %s -t %s -c %s -v %s" %\
                             (database_name, session_uid, str(compute_pilot_id),
                              runtime, logger.level, number_cores, VERSION)
 
@@ -392,7 +392,6 @@ class PilotLauncherWorker(threading.Thread):
                             bootstrap_args += " -m %s " % database_hostport
  
                         bootstrap_args += " -a %s " % database_auth
-
 
                         if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                             bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
@@ -426,8 +425,26 @@ class PilotLauncherWorker(threading.Thread):
                             logger.info ('request cleanup for pilot %s' % compute_pilot_id)
                             bootstrap_args += " -x %s" % 'luve' # the cleanup flag
 
+                        if 'RADICAL_PILOT_AGENT_VERBOSE' in os.environ :
+                            debug_level = {
+                                    'CRITICAL' : 1
+                                    'ERROR'    : 2,
+                                    'WARNING'  : 3,
+                                    'WARN'     : 3,
+                                    'INFO'     : 4,
+                                    'DEBUG'    : 5}.get (os.environ['RADICAL_PILOT_AGENT_VERBOSE'], 
+                                                     int(os.environ['RADICAL_PILOT_AGENT_VERBOSE']))
+                            bootstrap_args += " -d %s" % debug_level
+                            bootstrap_args += " -b"  # also keep slot statuses around
+                        else :
+                            # fall back to local log level, if such one is set
+                            if  logger.level :
+                                bootstrap_args += " -d %s" % logger.level
+                                bootstrap_args += " -b"  # also keep slot statuses around
+
                         if  'RADICAL_PILOT_BENCHMARK' in os.environ :
-                            bootstrap_args += " -b"
+                            if  not " -b" in bootstrap_args :
+                                bootstrap_args += " -b"
 
                         jd.executable = "/bin/bash"
                         jd.arguments = ["-l", bootstrapper, bootstrap_args]
