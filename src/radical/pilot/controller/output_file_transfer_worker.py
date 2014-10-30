@@ -239,7 +239,7 @@ class OutputFileTransferWorker(threading.Thread):
                 )
 
         except SystemExit as e :
-            print "output file transfer thread caught system exit -- forcing application shutdown"
+            logger.exception("output file transfer thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             

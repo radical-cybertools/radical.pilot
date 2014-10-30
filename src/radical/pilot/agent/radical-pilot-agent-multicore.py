@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import copy
 import saga
 import stat
 import sys
@@ -241,6 +242,9 @@ class ExecutionEnvironment(object):
         self.node_list = None # TODO: Need to think about a structure that works for all machines
         self.cores_per_node = None # Work with one value for now
 
+        # Derive the environment for the cu's from our own environment
+        self.cu_environment = self._populate_cu_environment()
+
         # Configure nodes and number of cores available
         self._configure(lrms)
 
@@ -350,6 +354,30 @@ class ExecutionEnvironment(object):
         if cores_avail < int(requested_cores):
             raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
 
+    def _populate_cu_environment(self):
+        """Derive the environment for the cu's from our own environment."""
+
+        # Get the environment of the agent
+        new_env = copy.deepcopy(os.environ)
+
+        #
+        # Mimic what virtualenv's "deactivate" would do
+        #
+        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        if old_path:
+            new_env['PATH'] = old_path
+
+        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        if old_home:
+            new_env['PYTHON_HOME'] = old_home
+
+        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        if old_ps:
+            new_env['PS1'] = old_ps
+
+        new_env.pop('VIRTUAL_ENV', None)
+
+        return new_env
 
     def _find_ssh(self):
 
@@ -889,13 +917,15 @@ class ExecWorker(multiprocessing.Process):
     #
     def __init__(self, logger, task_queue, command_queue, output_staging_queue,
                  node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name, mongodb_auth,
-                 pilot_id, session_id, benchmark):
+                 pilot_id, session_id, benchmark, cu_environment):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
         self.daemon      = True
         self._terminate  = False
+
+        self.cu_environment = cu_environment
 
         self._log = logger
 
@@ -1329,7 +1359,8 @@ class ExecWorker(multiprocessing.Process):
             cores_per_node=self._cores_per_node,
             launch_method=launch_method,
             launch_command=launch_command,
-            logger=self._log)
+            logger=self._log,
+            cu_environment=self.cu_environment)
 
         task.started=timestamp()
         task.state = EXECUTING
@@ -1452,7 +1483,10 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = unicode(stdout_f.read(), "utf-8")
+                    try :
+                        txt = unicode(stdout_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "unit stdout contains binary data -- use file staging directives"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
@@ -1460,7 +1494,10 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = unicode(stderr_f.read(), "utf-8")
+                    try :
+                        txt = unicode(stderr_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "unit stderr contains binary data -- use file staging directives"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
@@ -1872,7 +1909,8 @@ class Agent(threading.Thread):
             mongodb_auth    = mongodb_auth,
             pilot_id        = pilot_id,
             session_id      = session_id,
-            benchmark       = benchmark
+            benchmark       = benchmark,
+            cu_environment  = self._exec_env.cu_environment
         )
         self._exec_worker.start()
         self._log.info("Started up %s serving nodes %s" % (self._exec_worker, self._exec_env.node_list))
@@ -2108,7 +2146,7 @@ class _Process(subprocess.Popen):
     #-------------------------------------------------------------------------
     #
     def __init__(self, task, all_slots, cores_per_node, launch_method,
-                 launch_command, logger):
+                 launch_command, logger, cu_environment):
 
         self._task = task
         self._log  = logger
@@ -2214,7 +2252,7 @@ class _Process(subprocess.Popen):
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
-            mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+            mpiexec_command = "%s -n %s -host %s" % (launch_command, task.numcores, hosts_string)
 
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
@@ -2372,7 +2410,7 @@ class _Process(subprocess.Popen):
                                        close_fds=True,
                                        shell=True,
                                        cwd=task.workdir, # TODO: This doesn't always make sense if it runs remotely
-                                       env=None,
+                                       env=cu_environment,
                                        universal_newlines=False,
                                        startupinfo=None,
                                        creationflags=0)

@@ -220,15 +220,6 @@ class PilotLauncherWorker(threading.Thread):
                 pilot_col = db["%s.p" % self.db_connection_info.session_id]
                 logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
-                # AM: this list is only read once, at startup, so this worker
-                # will not pick up any changes.  I am not sure how to trigger
-                # re-initialization, as doing it once per iteration seems a rather
-                # bad idea (get_resource_configs() goes via mongodb).  OTOH, there
-                # is no direct communication between worker and manager, AFACIS.
-                #
-                # Update the known resource configurations
-                resource_configurations = self._session.get_resource_configs()
-
             except Exception, ex:
                 tb = traceback.format_exc()
                 logger.error("Connection error: %s. %s" % (str(ex), tb))
@@ -295,7 +286,7 @@ class PilotLauncherWorker(threading.Thread):
                             user_sandbox = False
 
 
-                        resource_cfg = resource_configurations[resource_key]
+                        resource_cfg = self._session.get_resource_config(resource_key)
                         agent_worker = resource_cfg.get ('pilot_agent_worker', None)
 
                         # we expand and exchange keys in the resource config,
@@ -376,25 +367,27 @@ class PilotLauncherWorker(threading.Thread):
                         # Create SAGA Job description and submit the pilot job #
                         ########################################################
 
-                        log_msg = "Creating agent sandbox '%s'." % str(sandbox)
-                        log_messages.append(log_msg)
-                        logger.debug(log_msg)
-
-                        logger.debug ("saga.fs.Directory ('%s')" % saga.Url(sandbox))
-                        agent_dir = saga.filesystem.Directory(
-                            saga.Url(sandbox),
-                            saga.filesystem.CREATE_PARENTS, session=self._session)
-                        agent_dir.close()
+                        # log_msg = "Creating agent sandbox '%s'." % str(sandbox)
+                        # log_messages.append(log_msg)
+                        # logger.debug(log_msg)
+                        #
+                        # logger.debug ("saga.fs.Directory ('%s')" % saga.Url(sandbox))
+                        # agent_dir = saga.filesystem.Directory(
+                        #     saga.Url(sandbox),
+                        #     saga.filesystem.CREATE_PARENTS, session=self._session)
+                        # agent_dir.close()
 
                         ########################################################
-                        # Copy the bootstrap shell script
+                        # Copy the bootstrap shell script.  This also creates
+                        # the sandbox
                         bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
-                        log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, sandbox)
+                        bs_script_tgt = saga.Url("%s/%s"               % (sandbox, bootstrapper))
+                        log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, bs_script_tgt)
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
-                        bs_script = saga.filesystem.File(bs_script_url)
-                        bs_script.copy(saga.Url(sandbox))
+                        bs_script = saga.filesystem.File(bs_script_url, session=self._session)
+                        bs_script.copy(bs_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
                         bs_script.close()
 
                         ########################################################
@@ -430,7 +423,11 @@ class PilotLauncherWorker(threading.Thread):
                         # we can launch the agent
                         job_service_url = saga.Url(resource_cfg['job_manager_endpoint'])
                         logger.debug ("saga.job.Service ('%s')" % job_service_url)
-                        js = saga.job.Service(job_service_url, session=self._session)
+                        if  job_service_url in self.job_services :
+                            js = self.job_services[job_service_url]
+                        else :
+                            js = saga.job.Service(job_service_url, session=self._session)
+                            self.job_services[job_service_url] = js
 
                         jd = saga.job.Description()
                         jd.working_directory = saga.Url(sandbox).path
@@ -532,7 +529,6 @@ class PilotLauncherWorker(threading.Thread):
                         log_messages.append(log_msg)
                         logger.debug(log_msg)
 
-                        js.close()                    
                         ##
                         ##
                         ######################################################################
@@ -578,7 +574,7 @@ class PilotLauncherWorker(threading.Thread):
                         logger.error(log_messages)
 
         except SystemExit as e :
-            print "pilot launcher thread caught system exit -- forcing application shutdown (%s)" % e
+            logger.exception("pilot launcher thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             

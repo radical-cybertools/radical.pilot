@@ -76,26 +76,26 @@ color_1(i)  = word(color_list_1,i)
 color_2(i)  = word(color_list_2,i)
 get_title(i)= sprintf("%s: %-15s (%s cores)", word(pilot_id_list,i), word(pilot_name_list,i), word(slotnum_list,i))
 
-print 'palette '
-do for [i=1:pilot_num] {
-    print  '        ' . color_1(i) . '  ' . color_2(i)
-}
-
-print 'offsets'
-do for [i=1:pilot_num] {
-    print  '        ' . sprintf ("%f", offset (i, 0.2))
-    print word(slotnum_list,i)+offset(i,0.5)
-}
-
-print 'pilot_queue_dats'
-do for [i=1:pilot_num] {
-    print word(pilot_queue_dat_list,i)
-}
+# print 'palette '
+# do for [i=1:pilot_num] {
+#     print  '        ' . color_1(i) . '  ' . color_2(i)
+# }
+# 
+# print 'offsets'
+# do for [i=1:pilot_num] {
+#     print  '        ' . sprintf ("%f", offset (i, 0.2))
+#     print word(slotnum_list,i)+offset(i,0.5)
+# }
+# 
+# print 'pilot_queue_dats'
+# do for [i=1:pilot_num] {
+#     print word(pilot_queue_dat_list,i)
+# }
 
 terms = 'pdf png'
 do for [term_i=1:words(terms)] {
-    t = word(terms, term_i)
-    term_t = t.'cairo'
+    term = word(terms, term_i)
+    term_t = term.'cairo'
 
     # --------------------------------------------------------------------------------------------------
     #
@@ -103,7 +103,7 @@ do for [term_i=1:words(terms)] {
     #
     set key Left left
 
-    if (t eq 'pdf') {
+    if (term eq 'pdf') {
         term_mult  = 6.0
         term_x     = 70
         term_y     = 70
@@ -157,20 +157,20 @@ do for [term_i=1:words(terms)] {
     set style line 305 lt 2 lc rgb '#6666AA' pt 7 ps term_mult*0.6 lw term_mult*3
     set style line 306 lt 1 lc rgb '#6666AA' pt 7 ps term_mult*0.6 lw term_mult*2
 
-  # set mxtics 10
-  # set mytics 10
-    set tics   scale 1.5
+  # set mxtics     10
+  # set mytics     10
+    set tics       scale 1.5
 
     set term       term_t enhanced color dashed \
         size       term_x,term_y \
         font       term_font     \
         fontscale  term_mult     \
         dashlength term_dl       \
-        linewidth term_lw
+        linewidth  term_lw
       
     # --------------------------------------------------------------------------------------------------
-    set output './'.session.'.'.t 
-    print      './'.session.'.'.t
+    set output './'.session.'.'.term 
+    print      './'.session.'.'.term
 
     set title  ''
 
@@ -239,14 +239,15 @@ do for [term_i=1:words(terms)] {
     set xrange  [0:maxtime]
     set yrange  [0:slotsscale]
     set mytics  nodesize
-    set ytics   autofreq
+    set ytics   autofreq nomirror
     set mytics  0
     set y2tics  autofreq
     set y2range [0:queuescale]
     set my2tics 0
 
-    set xlabel ''
-    set ylabel "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
+    set xlabel  'time (in seconds)'
+    set ylabel  "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
+    set y2label "UNIT WAIT QUEUE SIZE"            offset second -00,0
     set grid 
   unset format
 
@@ -256,7 +257,7 @@ do for [term_i=1:words(terms)] {
     plot for [i=1:pilot_num] \
          word(pilot_slots_dat_list,i) using 1:($2+offset(i,0.1))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*3, \
          for [i=1:pilot_num] \
-         word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.05) title '' with points lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
+         word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.05) title '' with lines  lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
          for [i=1:pilot_num] \
          word(slotnum_list,i)+0+offset(i,0.5)                         title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
 
@@ -278,12 +279,12 @@ do for [term_i=1:words(terms)] {
            NaN with lines title get_title(i) lt 1 lc rgb color_1(i) lw term_mult*2
 
 #     plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-#            NaN ls 100 t 'pilot/unit states changes'                        , \
-#            NaN ls 101 t 'pilot/unit states notifications'                  , \
-#            NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
-#            NaN ls 105 t 'total number of slots'                            , \
-#            NaN ls 106 t 'unit queue length'                                , \
-#            NaN lw   0 t ' '
+#          NaN ls 100 t 'pilot/unit states changes'                        , \
+#          NaN ls 101 t 'pilot/unit states notifications'                  , \
+#          NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
+#          NaN ls 105 t 'total number of slots'                            , \
+#          NaN ls 106 t 'unit queue length'                                , \
+#          NaN lw   0 t ' '
 #     }
 
     unset multiplot

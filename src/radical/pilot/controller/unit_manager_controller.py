@@ -315,7 +315,7 @@ class UnitManagerController(threading.Thread):
                 logger.debug("UnitManager.close(): %s terminated." % worker.name)
               # worker.join()
         except SystemExit as e :
-            print "unit manager controller thread caught system exit -- forcing application shutdown"
+            logger.exception ("unit manager controller thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             

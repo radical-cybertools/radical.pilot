@@ -4,7 +4,6 @@
         "description"                 : "Our private tutorial VM on EC2",
         "notes"                       : "None",
         "schemas"                     : ["ssh", "local"],
-        "warn_on_local"               : "False",
         "ssh"                         : 
         {
             "job_manager_endpoint"    : "pbs+ssh://23.23.136.91/",
