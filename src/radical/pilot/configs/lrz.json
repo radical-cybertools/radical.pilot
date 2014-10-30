@@ -1,11 +1,18 @@
 {
-    "supermuc.lrz.de": {
-        "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/systemdescription/).",
-        "notes"                       : "Authentication to SuperMUC is by means of X509, so make sure you can gsissh into the machine.",
-        "remote_job_manager_endpoint" : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
-        "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",
-        "local_job_manager_endpoint"  : "loadl://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+    "supermuc": {
+        "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).",
+        "notes"                       : "Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.",
+        "schemas"                     : ["gsissh", "ssh"],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
+            "filesystem_endpoint"     : "gsisftp://supermuc.lrz.de:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "loadl+ssh://supermuc.lrz.de/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
+            "filesystem_endpoint"     : "sftp://supermuc.lrz.de/"
+        },
         "default_queue"               : "test",
         "lrms"                        : "LOADL",
         "task_launch_method"          : "SSH",

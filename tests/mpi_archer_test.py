@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "archer.ac.uk"
+    pdesc.resource = "epsrc.archer"
     pdesc.project  = "e290"
     pdesc.queue    = "debug"
     pdesc.runtime  = 10 # N minutes

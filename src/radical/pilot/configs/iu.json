@@ -1,11 +1,19 @@
+
 {
-    "quarry.uits.indiana.edu": {
+    "quarry": {
         "description"                 : "The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).",
         "notes"                       : "None",
-        "remote_job_manager_endpoint" : "pbs+ssh://quarry.uits.indiana.edu",
-        "remote_filesystem_endpoint"  : "sftp://quarry.uits.indiana.edu/",
-        "local_job_manager_endpoint"  : "pbs://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "gsissh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://quarry.uits.indiana.edu/",
+            "filesystem_endpoint"     : "sftp://quarry.uits.indiana.edu/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://quarry.uits.indiana.edu/",
+            "filesystem_endpoint"     : "sftp://quarry.uits.indiana.edu/"
+        },
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
@@ -13,13 +21,21 @@
         "valid_roots"                 : ["/N"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
-    "bigred2.uits.indiana.edu": {
-        "description"                 : "Indiana University's high-performance parallel computing cluster )https://kb.iu.edu/d/bcqt).",
+
+    "bigred2": {
+        "description"                 : "Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
-        "remote_job_manager_endpoint" : "pbs+ssh://bigred2.uits.iu.edu",
-        "remote_filesystem_endpoint"  : "sftp://bigred2.uits.iu.edu/",
-        "local_job_manager_endpoint"  : "pbs://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+        "schemas"                     : ["ssh", "gsissh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.indiana.edu/",
+            "filesystem_endpoint"     : "sftp://bigred2.uits.indiana.edu/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.indiana.edu/",
+            "filesystem_endpoint"     : "sftp://bigred2.uits.indiana.edu/"
+        },
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
@@ -28,3 +44,4 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
+

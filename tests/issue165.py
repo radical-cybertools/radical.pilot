@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # Define a X-core on stamped that runs for N minutes and
     # uses $HOME/radical.pilot.sandbox as sandbox directoy. 
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "localhost"
+    pdesc.resource = "local.localhost"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 1 # X cores
     pdesc.cleanup  = True

@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import copy
 import saga
 import stat
 import sys
@@ -80,6 +81,8 @@ COPY     = 'Copy'     # local cp
 LINK     = 'Link'     # local ln -s
 MOVE     = 'Move'     # local mv
 TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+
+STAGING_AREA = 'staging_area'
 
 # -----------------------------------------------------------------------------
 # Common States
@@ -191,6 +194,9 @@ class ExecutionEnvironment(object):
         self.node_list = None # TODO: Need to think about a structure that works for all machines
         self.cores_per_node = None # Work with one value for now
 
+        # Derive the environment for the cu's from our own environment
+        self.cu_environment = self._populate_cu_environment()
+
         # Configure nodes and number of cores available
         self._configure(lrms)
 
@@ -229,6 +235,7 @@ class ExecutionEnvironment(object):
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
             command = self._find_executable(['mpirun',           # General case
                                              'mpirun_rsh',       # Gordon @ SDSC
+                                             'mpirun-mpich-mp',  # Mac OSX MacPorts
                                              'mpirun-openmpi-mp' # Mac OSX MacPorts
                                             ])
             if command is not None:
@@ -299,6 +306,30 @@ class ExecutionEnvironment(object):
         if cores_avail < int(requested_cores):
             raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
 
+    def _populate_cu_environment(self):
+        """Derive the environment for the cu's from our own environment."""
+
+        # Get the environment of the agent
+        new_env = copy.deepcopy(os.environ)
+
+        #
+        # Mimic what virtualenv's "deactivate" would do
+        #
+        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        if old_path:
+            new_env['PATH'] = old_path
+
+        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        if old_home:
+            new_env['PYTHON_HOME'] = old_home
+
+        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        if old_ps:
+            new_env['PS1'] = old_ps
+
+        new_env.pop('VIRTUAL_ENV', None)
+
+        return new_env
 
     def _find_ssh(self):
 
@@ -405,7 +436,7 @@ class ExecutionEnvironment(object):
         if torque_num_nodes and torque_cores_per_node and \
             torque_nodes_length != torque_num_nodes * torque_cores_per_node:
             msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
-                  (torque_nodes_length, torque_nodes, torque_cores_per_node)
+                  (torque_nodes_length, torque_num_nodes,  torque_cores_per_node)
             raise Exception(msg)
 
         # only unique node names
@@ -837,14 +868,16 @@ class ExecWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, task_queue, command_queue, output_staging_queue,
-                 node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name,
-                 pilot_id, session_id, benchmark):
+                 node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name, mongodb_auth,
+                 pilot_id, session_id, benchmark, cu_environment):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
         self.daemon      = True
         self._terminate  = False
+
+        self.cu_environment = cu_environment
 
         self._log = logger
 
@@ -853,6 +886,11 @@ class ExecWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
+
+        if  len (mongodb_auth) >= 3 :
+            user, pwd = mongodb_auth.split (':', 1)
+            self._mongo_db.authenticate (user, pwd)
+
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
@@ -1280,7 +1318,8 @@ class ExecWorker(multiprocessing.Process):
             cores_per_node=self._cores_per_node,
             launch_method=launch_method,
             launch_command=launch_command,
-            logger=self._log)
+            logger=self._log,
+            cu_environment=self.cu_environment)
 
         task.started=datetime.datetime.utcnow()
         task.state = EXECUTING
@@ -1364,6 +1403,8 @@ class ExecWorker(multiprocessing.Process):
                                 output_staging = {
                                     'directive': directive,
                                     'sandbox': task.workdir,
+                                    # TODO: the staging/area pilot directory should  not be derived like this:
+                                    'staging_area': os.path.join(os.path.dirname(task.workdir), STAGING_AREA),
                                     'cu_id': uid
                                 }
 
@@ -1401,7 +1442,10 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = unicode(stdout_f.read(), "utf-8")
+                    try :
+                        txt = unicode(stdout_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "unit stdout contains binary data -- use file staging directives"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
@@ -1409,7 +1453,10 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = unicode(stderr_f.read(), "utf-8")
+                    try :
+                        txt = unicode(stderr_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "unit stderr contains binary data -- use file staging directives"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
@@ -1691,12 +1738,36 @@ class OutputStagingWorker(multiprocessing.Process):
                         directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
                     sandbox = staging['sandbox']
-                    cu_id = staging ['cu_id']
+                    staging_area = staging['staging_area']
+                    cu_id = staging['cu_id']
                     self._log.info('Task output staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
 
                     source = str(directive['source'])
-                    target = str(directive['target'])
                     abs_source = os.path.join(sandbox, source)
+
+                    # Convert the target_url into a SAGA Url object
+                    target_url = saga.Url(directive['target'])
+
+                    # Handle special 'staging' scheme
+                    if target_url.scheme == 'staging':
+                        self._log.info('Operating from staging')
+                        # Remove the leading slash to get a relative path from the staging area
+                        rel2staging = target_url.path.split('/',1)[1]
+                        target = os.path.join(staging_area, rel2staging)
+                    else:
+                        self._log.info('Operating from absolute path')
+                        target = target_url.path
+
+                    # Create output directory in case it doesn't exist yet
+                    try :
+                        os.makedirs(os.path.dirname(target))
+                    except OSError as e:
+                        # ignore failure on existing directory
+                        if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
+                            pass
+                        else:
+                            raise
+
                     if directive['action'] == LINK:
                         self._log.info('Going to link %s to %s' % (abs_source, target))
                         os.symlink(abs_source, target)
@@ -1721,8 +1792,8 @@ class OutputStagingWorker(multiprocessing.Process):
                     self._cu.update({'_id' : ObjectId(cu_id),
                                      'Agent_Output_Status': EXECUTING,
                                      'Agent_Output_Directives.state': PENDING,
-                                     'Agent_Output_Directives.source': source,
-                                     'Agent_Output_Directives.target': target},
+                                     'Agent_Output_Directives.source': directive['source'],
+                                     'Agent_Output_Directives.target': directive['target']},
                                     {'$set' : {'Agent_Output_Directives.$.state': DONE},
                                      '$push': {'log': logmessage}})
 
@@ -1742,7 +1813,7 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, 
+    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, mongodb_auth, 
                  pilot_id, session_id, benchmark):
         """Le Constructeur creates a new Agent instance.
         """
@@ -1762,6 +1833,12 @@ class Agent(threading.Thread):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
+
+        # do auth on username *and* password (ignore empty split results)
+        auth_elems = filter (None, mongodb_auth.split (':', 1))
+        if  len (auth_elems) == 2 :
+            mongo_db.authenticate (auth_elems[0], auth_elems[1])
+
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
@@ -1788,9 +1865,11 @@ class Agent(threading.Thread):
             launch_methods  = self._exec_env.discovered_launch_methods,
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
+            mongodb_auth    = mongodb_auth,
             pilot_id        = pilot_id,
             session_id      = session_id,
-            benchmark       = benchmark
+            benchmark       = benchmark,
+            cu_environment  = self._exec_env.cu_environment
         )
         self._exec_worker.start()
         self._log.info("Started up %s serving nodes %s" % (self._exec_worker, self._exec_env.node_list))
@@ -2026,7 +2105,7 @@ class _Process(subprocess.Popen):
     #-------------------------------------------------------------------------
     #
     def __init__(self, task, all_slots, cores_per_node, launch_method,
-                 launch_command, logger):
+                 launch_command, logger, cu_environment):
 
         self._task = task
         self._log  = logger
@@ -2132,7 +2211,7 @@ class _Process(subprocess.Popen):
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
-            mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+            mpiexec_command = "%s -n %s -host %s" % (launch_command, task.numcores, hosts_string)
 
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
@@ -2290,7 +2369,7 @@ class _Process(subprocess.Popen):
                                        close_fds=True,
                                        shell=True,
                                        cwd=task.workdir, # TODO: This doesn't always make sense if it runs remotely
-                                       env=None,
+                                       env=cu_environment,
                                        universal_newlines=False,
                                        startupinfo=None,
                                        creationflags=0)
@@ -2317,6 +2396,11 @@ class _Process(subprocess.Popen):
 def parse_commandline():
 
     parser = optparse.OptionParser()
+
+    parser.add_option('-a', '--mongodb-auth',
+                      metavar='AUTH',
+                      dest='mongodb_auth',
+                      help='username:password for MongoDB access.')
 
     parser.add_option('-b', '--benchmark',
                       metavar='BENCHMARK',
@@ -2427,8 +2511,14 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Establish database connection
     try:
+        host, port = options.mongodb_url.split(':', 1)
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
+
+        if  len (options.mongodb_auth) >= 3 :
+            user, pwd = options.mongodb_auth.split (':', 1)
+            mongo_db.authenticate (user, pwd)
+
         mongo_p      = mongo_db["%s.p"  % options.session_id]
         mongo_cu      = mongo_db["%s.cu" % options.session_id]  # AM: never used
         mongo_wm     = mongo_db["%s.um" % options.session_id]  # AM: never used
@@ -2482,6 +2572,7 @@ if __name__ == "__main__":
                       runtime=options.runtime,
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
+                      mongodb_auth=options.mongodb_auth,
                       pilot_id=options.pilot_id,
                       session_id=options.session_id, 
                       benchmark=options.benchmark)

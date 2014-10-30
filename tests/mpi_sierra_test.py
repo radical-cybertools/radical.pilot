@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "sierra.futuregrid.org"
+    pdesc.resource = "futuregrid.sierra"
     pdesc.runtime  = 20 # N minutes - sierra is slow
     pdesc.cores    =  8 # X cores
 

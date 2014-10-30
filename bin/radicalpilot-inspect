@@ -31,19 +31,20 @@ def usage (msg=None, noexit=False) :
         print "\n      Error: %s" % msg
 
     print """
-      usage      : %s [-d <dburl>] [-m <mode>] [-p <pid>]
-      example    : %s -m sid -p 53e124edd1969c73e56f0eb2
-                   find ID of the session which created that pilot
+      usage       : %s [-d <dburl>] [-m <mode>] [-p <pid>]
+      example     : %s -m sid -p 53e124edd1969c73e56f0eb2
+                    find ID of the session which created that pilot
 
       modes :
 
-        help     : show this message
-        sid      : find session ID
+        help      : show this message
+        sid       : find session ID
+        resources : list resource information
 
       options :
-        -p <pid> : apply mode to pilot   with given ID
-        -s <sid> : apply mode to session with given ID
-        -d <url> : use given database URL instead of default (%s).
+        -p <pid>  : apply mode to pilot   with given ID
+        -s <sid>  : apply mode to session with given ID
+        -d <url>  : use given database URL instead of default (%s).
 
       The default mode is 'help'.  
       
@@ -60,7 +61,7 @@ def usage (msg=None, noexit=False) :
 #
 def find_sid_by_pid (dbclient, dbname, pid) :
 
-    sids = rpu.get_session_ids (dbclient, dbname)
+    sids = rpu.get_session_ids (dbclient[dbname])
 
     print "%d sessions" % len(sids)
 
@@ -72,7 +73,7 @@ def find_sid_by_pid (dbclient, dbname, pid) :
         if  sid > pid :
             continue
 
-        docs = rpu.get_session_docs (dbclient, dbname, sid)
+        docs = rpu.get_session_docs (dbclient[dbname], sid)
 
         for doc in docs['pilot'] :
             if  str(doc['_id']) == pid :
@@ -80,6 +81,84 @@ def find_sid_by_pid (dbclient, dbname, pid) :
                 return
 
     print "pilot %s not found in any session"
+
+
+# ------------------------------------------------------------------------------
+#
+def list_resources (verbose) :
+
+# VALID_KEYS = [
+#               PYTHON_INTERPRETER,
+#               PRE_BOOTSTRAP,
+#               VALID_ROOTS,
+#               BOOTSTRAPPER,
+#               PILOT_AGENT,
+#               PILOT_AGENT_WORKER,
+#               GLOBAL_VIRTENV,
+#               LRMS,
+#               TASK_LAUNCH_METHOD,
+#               MPI_LAUNCH_METHOD,
+#               FORWARD_TUNNEL_ENDPOINT,
+#               AGENT_MONGODB_ENDPOINT,
+#               DEFAULT_REMOTE_WORKDIR,
+#               ]
+
+    session = rp.Session ()
+
+    for name in session._resource_configs :
+        print " -----------------------------------------------------------------------------"
+        print name
+        cfg = session._resource_configs[name]
+
+        print "    %-25s : %s" % ('description', cfg['description'   ])
+
+        if verbose :
+            print "    %-25s : %s" % ('notes', cfg['notes'         ])
+
+        if  'schemas' in cfg  and cfg['schemas'] :
+            default_schema  = cfg['schemas'][0]
+            job_manager_url = cfg[default_schema]['job_manager_endpoint']
+        else :
+            job_manager_url = cfg['job_manager_endpoint']
+
+        print "    %-25s : %s" % ('hostname'      , ru.Url (job_manager_url).host)
+        print "    %-25s : %s" % ('lrms'          , cfg['lrms'])
+        print "    %-25s : %s" % ('default queue' , cfg['default_queue' ])
+
+        if  verbose :
+            print "    %-25s : %s" % ('spmd variation'         , cfg['spmd_variation'])
+            print "    %-25s : %s" % ('python_interpreter'     , cfg['python_interpreter'     ])
+            print "    %-25s : %s" % ('default_remote_workdir' , cfg['default_remote_workdir' ])
+            print "    %-25s : %s" % ('valid_roots'            , cfg['valid_roots'            ])
+            print "    %-25s : %s" % ('pre_bootstrap'          , cfg['pre_bootstrap'          ])
+            print "    %-25s : %s" % ('bootstrapper'           , cfg['bootstrapper'           ])
+            print "    %-25s : %s" % ('pilot_agent'            , cfg['pilot_agent'            ])
+            print "    %-25s : %s" % ('pilot_agent_worker'     , cfg['pilot_agent_worker'     ])
+            print "    %-25s : %s" % ('global_virtenv'         , cfg['global_virtenv'         ])
+            print "    %-25s : %s" % ('task_launch_method'     , cfg['task_launch_method'     ])
+            print "    %-25s : %s" % ('mpi_launch_method'      , cfg['mpi_launch_method'      ])
+            print "    %-25s : %s" % ('agent_mongodb_endpoint' , cfg['agent_mongodb_endpoint' ])
+            print "    %-25s : %s" % ('forward_tunnel_endpoint', cfg['forward_tunnel_endpoint'])
+
+        if  'schemas' in cfg  and cfg['schemas'] :
+            print "    %-25s : %s" % ('schemas'  , cfg['schemas'])
+
+            if  verbose :
+                print
+                for schema in cfg['schemas'] :
+                    print "    %s:" % schema
+                    for key in sorted (cfg[schema].keys (), reverse=True) :
+                        print "        %-21s : %s" % (key , cfg[schema][key])
+
+        else :
+            if  verbose :
+                print "    %-25s : %s" % ('job_manager_endpoint', cfg['job_manager_endpoint'])
+                print "    %-25s : %s" % ('filesystem_endpoint' , cfg['filesystem_endpoint'])
+
+        if  verbose :
+            print " -----------------------------------------------------------------------------"
+
+        print
 
 
 # ------------------------------------------------------------------------------
@@ -99,7 +178,8 @@ if __name__ == '__main__' :
     parser.add_option('-d', '--dburl',   dest='url')
     parser.add_option('-m', '--mode',    dest='mode')
     parser.add_option('-p', '--pid',     dest='pid')
-    parser.add_option('-h', '--help',    dest='help', action="store_true")
+    parser.add_option('-v', '--verbose', dest='verbose', action='store_true')
+    parser.add_option('-h', '--help',    dest='help',    action="store_true")
 
     options, args = parser.parse_args ()
 
@@ -122,6 +202,7 @@ if __name__ == '__main__' :
     mode    = options.mode 
     url     = options.url
     pid     = options.pid
+    verbose = bool(options.verbose)
 
     host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
     dbclient = pymongo.MongoClient (host=host, port=port)
@@ -135,12 +216,13 @@ if __name__ == '__main__' :
 
     for m in mode.split (',') :
 
-        if  m not in ['sid', 'help'] : 
+        if  m not in ['sid', 'resources', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'sid'   : find_sid_by_pid (dbclient, dbname, pid)
-        elif m == 'help'  : usage (noexit=True)
-        else              : usage ("unknown mode '%s'" % mode)
+        if   m == 'sid'       : find_sid_by_pid (dbclient, dbname, pid)
+        elif m == 'resources' : list_resources  (verbose)
+        elif m == 'help'      : usage (noexit=True)
+        else                  : usage ("unknown mode '%s'" % mode)
 
     # ------------------------------------------------------------------------------------
     dbclient.disconnect ()

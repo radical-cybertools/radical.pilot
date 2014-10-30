@@ -13,7 +13,7 @@ umgr    = rp.UnitManager  (session      = session,
 pmgr    = rp.PilotManager (session      = session)
 
 pilot_descr = rp.ComputePilotDescription ()
-pilot_descr.resource = 'localhost'
+pilot_descr.resource = 'local.localhost'
 pilot_descr.cores    = 1
 pilot_descr.runtime  = 10
 

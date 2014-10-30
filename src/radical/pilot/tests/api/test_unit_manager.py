@@ -93,7 +93,7 @@ class TestUnitManager(unittest.TestCase):
         pm = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd.resource = "local.localhost"
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests" 
@@ -117,7 +117,7 @@ class TestUnitManager(unittest.TestCase):
         pilot_list = []
         for x in range(0, 2):
             cpd = radical.pilot.ComputePilotDescription()
-            cpd.resource = "localhost"
+            cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
             cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests" 

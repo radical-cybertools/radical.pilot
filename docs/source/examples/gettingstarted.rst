@@ -136,7 +136,7 @@ You can define and submit a 2-core local pilot that runs for 5 minutes like this
 .. code-block:: python
 
     pdesc = radical.pilot.ComputePilotDescription()
-    pdesc.resource  = "localhost"
+    pdesc.resource  = "local.localhost"
     pdesc.runtime   = 5 # minutes
     pdesc.cores     = 2
 

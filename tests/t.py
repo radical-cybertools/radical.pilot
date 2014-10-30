@@ -7,7 +7,7 @@ if __name__ == "__main__":
     session = rp.Session()
     pmgr = rp.PilotManager(session=session)
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "localhost"
+    pdesc.resource = "local.localhost"
     pdesc.runtime  = 10
     pdesc.cores    = 1
     pilot = pmgr.submit_pilots(pdesc)

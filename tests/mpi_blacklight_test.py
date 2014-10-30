@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Define a X-core pilot that runs for N minutes.
     # Blacklight has 16 cores per node.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "blacklight.psc.xsede.org"
+    pdesc.resource = "xsede.blacklight"
     pdesc.runtime  = 10 # N minutes
     pdesc.cores    = 32 # X cores
 

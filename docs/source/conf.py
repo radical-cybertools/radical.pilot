@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# SAGA documentation build configuration file, created by
+# RADICAL-Pilot documentation build configuration file, created by
 # sphinx-quickstart on Mon Dec  3 21:55:42 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -38,6 +38,7 @@ tags.add (mytag)
 
 ################################################################################
 ##
+print "* Generating resource configuration docs: resources.rst"
 print "* using tag: %s" % mytag
 print "* Generating code example list: examples.rst"
 
@@ -53,6 +54,9 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
 
         if example.endswith(".json") is False:
             continue # skip all non-python files
+
+        if example.startswith("aliases") is True:
+            continue # skip alias files
 
         print " * %s" % example
 
@@ -70,14 +74,21 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                     default_queue = resource_config["default_queue"]
                 except Exception, ex:
                     default_queue = None
+
                 try:
                     working_dir = resource_config["default_remote_workdir"]
                 except Exception, ex:
-                    working_dir = "$HOME/radical.pilot.sandbox"
+                    working_dir = "$HOME"
+
                 try:
                     python_interpreter = resource_config["python_interpreter"]
                 except Exception, ex:
                     python_interpreter = None
+
+                try:
+                    access_schemas = resource_config["schemas"]
+                except Exception, ex:
+                    access_schemas = ['n/a']
 
                 resources_rst.write("{0}\n".format(resource_key))
                 resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
@@ -90,8 +101,9 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
                 resources_rst.write("================== ============================\n")
                 resources_rst.write("``queue``               {0}\n".format(default_queue))
                 resources_rst.write("``sandbox``             {0}\n".format(working_dir))
+                resources_rst.write("``access_schema``       {0}\n".format(access_schemas[0]))
                 resources_rst.write("================== ============================\n\n")
-
+                resources_rst.write("Available schemas: ``{0}``\n\n".format(', '.join(access_schemas)))
 
                 resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
 ##

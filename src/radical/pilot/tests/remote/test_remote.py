@@ -37,7 +37,7 @@ class TestRemoteSubmission(unittest.TestCase):
         client = MongoClient(DBURL)
         client.drop_database(DBNAME)
 
-        self.test_resource = os.getenv('RADICAL_PILOT_TEST_REMOTE_RESOURCE',     "localhost")
+        self.test_resource = os.getenv('RADICAL_PILOT_TEST_REMOTE_RESOURCE',     "local.localhost")
         self.test_ssh_uid  = os.getenv('RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID',  None)
         self.test_ssh_key  = os.getenv('RADICAL_PILOT_TEST_REMOTE_SSH_USER_KEY', None)
         self.test_workdir  = os.getenv('RADICAL_PILOT_TEST_REMOTE_WORKDIR',      "/tmp/radical.pilot.sandbox.unittests")

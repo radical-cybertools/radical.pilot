@@ -20,7 +20,6 @@ from radical.pilot.object          import Object
 from radical.pilot.unit_manager    import UnitManager
 from radical.pilot.pilot_manager   import PilotManager
 from radical.pilot.utils.logger    import logger
-from radical.pilot.utils           import DBConnectionInfo
 from radical.pilot.resource_config import ResourceConfig
 from radical.pilot.exceptions      import PilotException
 
@@ -102,7 +101,7 @@ class Session (saga.Session, Object):
               not set, an error will be raises.
 
             * **database_name** (`string`): An alternative database name 
-              (default: 'radical.pilot').
+              (default: 'radicalpilot').
 
             * **session_uid** (`string`): If session_uid is set, we try 
               re-connect to an existing session instead of creating a new one.
@@ -118,6 +117,10 @@ class Session (saga.Session, Object):
         # init the base class inits
         saga.Session.__init__ (self)
         Object.__init__ (self)
+
+        # before doing anything else, set up the debug helper for the lifetime
+        # of the session.
+        self._debug_helper = ru.DebugHelper ()
 
         # Dictionaries holding all manager objects created during the session.
         self._pilot_manager_objects = list()
@@ -154,6 +157,40 @@ class Session (saga.Session, Object):
         else :
             logger.info("using database name %s" % self._database_name)
 
+        # Loading all "default" resource configurations
+        module_path   = os.path.dirname(os.path.abspath(__file__))
+        default_cfgs  = "%s/configs/*.json" % module_path
+        config_files  = glob.glob(default_cfgs)
+
+        for config_file in config_files:
+            rcs = ResourceConfig.from_file(config_file)
+
+            if  rcs :
+                for rc in rcs:
+                    logger.info("Loaded resource configurations for %s" % rc)
+                    self._resource_configs[rc] = rcs[rc].as_dict() 
+
+        user_cfgs     = "%s/.radical/pilot/configs/*.json" % os.environ.get ('HOME')
+        config_files  = glob.glob(user_cfgs)
+
+        for config_file in config_files:
+            rcs = ResourceConfig.from_file(config_file)
+
+            if  rcs :
+                for rc in rcs:
+                    logger.info("Loaded resource configurations for %s" % rc)
+
+                    if  rc in self._resource_configs :
+                        # config exists -- merge user config into it
+                        ru.dict_merge (self._resource_configs[rc],
+                                       rcs[rc].as_dict(),
+                                       policy='overwrite')
+                    else :
+                        # new config -- add as is
+                        self._resource_configs[rc] = rcs[rc].as_dict() 
+
+        default_aliases = "%s/configs/aliases.json" % module_path
+        self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
         ##########################
         ## CREATE A NEW SESSION ##
@@ -163,19 +200,10 @@ class Session (saga.Session, Object):
                 self._uid = str(ObjectId())
                 self._last_reconnect = None
 
-                # Loading all "default" resource configurations
-                default_configs = "%s/configs/*.json" % os.path.dirname(os.path.abspath(__file__))
-                config_files = glob.glob(default_configs)
-                for config_file in config_files:
-                    rcs = ResourceConfig.from_file(config_file)
-                    logger.info("Loaded resource configurations from %s" % config_file)
-                    for rc in rcs:
-                        self._resource_configs[rc.name] = rc.as_dict() 
-
-                self._dbs, self._created = dbSession.new(sid=self._uid, 
-                                                         db_url=self._database_url, 
-                                                         db_name=self._database_name,
-                                                         resource_configs=self._resource_configs)
+                self._dbs, self._created, self._connection_info = \
+                        dbSession.new(sid=self._uid,
+                                      db_url=self._database_url,
+                                      db_name=database_name)
 
                 logger.info("New Session created%s." % str(self))
 
@@ -188,26 +216,21 @@ class Session (saga.Session, Object):
         ######################################
         else:
             try:
-                # otherwise, we reconnect to an existing session
-                self._dbs, session_info = dbSession.reconnect(sid=session_uid, 
-                                                              db_url=self._database_url, 
-                                                              db_name=self._database_name)
+                self._uid = session_uid
 
-                self._uid              = session_uid
+                # otherwise, we reconnect to an existing session
+                self._dbs, session_info, self._connection_info = \
+                        dbSession.reconnect(sid=self._uid, 
+                                            db_url=self._database_url,
+                                            db_name=database_name)
+
                 self._created          = session_info["created"]
                 self._last_reconnect   = session_info["last_reconnect"]
-                self._resource_configs = session_info["resource_configs"]
 
                 logger.info("Reconnected to existing Session %s." % str(self))
 
             except Exception, ex:
                 raise PilotException("Couldn't re-connect to session: %s" % ex)  
-
-        self._connection_info = DBConnectionInfo(
-            session_id=self._uid,
-            dbname=self._database_name,
-            url=self._database_url
-        )
 
     #---------------------------------------------------------------------------
     #
@@ -279,8 +302,9 @@ class Session (saga.Session, Object):
             "uid": self._uid,
             "created": self._created,
             "last_reconnect": self._last_reconnect,
-            "database_name": self._database_name,
-            "database_url": self._database_url
+            "database_name": self._connection_info.dbname,
+            "database_auth": self._connection_info.dbauth,
+            "database_url" : self._connection_info.dburl
         }
         return object_dict
 
@@ -472,16 +496,17 @@ class Session (saga.Session, Object):
     #
     def add_resource_config(self, resource_config):
         """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
-           dictionary of known resources.
+           dictionary of known resources, or accept a string which points to
+           a configuration file.
 
            For example::
 
                   rc = radical.pilot.ResourceConfig
-                  rc.name = "mycluster"
-                  rc.remote_job_manager_endpoint = "ssh+pbs://mycluster
-                  rc.remote_filesystem_endpoint = "sftp://mycluster
-                  rc.default_queue = "private"
-                  rc.bootstrapper = "default_bootstrapper.sh"
+                  rc.name                 = "mycluster"
+                  rc.job_manager_endpoint = "ssh+pbs://mycluster
+                  rc.filesystem_endpoint  = "sftp://mycluster
+                  rc.default_queue        = "private"
+                  rc.bootstrapper         = "default_bootstrapper.sh"
 
                   pm = radical.pilot.PilotManager(session=s)
                   pm.add_resource_config(rc)
@@ -493,12 +518,32 @@ class Session (saga.Session, Object):
 
                   pilot = pm.submit_pilots(pd)
         """
-        self._dbs.session_add_resource_configs(resource_config.name, resource_config.as_dict())
+        if  isinstance (resource_config, basestring) :
+
+            rcs = ResourceConfig.from_file(resource_config)
+
+            if  rcs :
+                for rc in rcs:
+                    logger.info("Loaded resource configurations for %s" % rc)
+                    self._resource_configs[rc] = rcs[rc].as_dict() 
+
+        else :
+            self._resource_configs [resource_config.name] = resource_config.as_dict()
 
     # -------------------------------------------------------------------------
     #
-    def list_resource_configs(self):
-        """Returns a dictionary of all known resource configurations.
+    def get_resource_config (self, resource_key):
+        """Returns a dictionary of the requested resource config
         """
-        return self._dbs.session_list_resource_configs()
+
+        if  resource_key in self._resource_aliases :
+            logger.warning ("using alias '%s' for deprecated resource key '%s'" \
+                         % (self._resource_aliases[resource_key], resource_key))
+            resource_key = self._resource_aliases[resource_key]
+
+        if  resource_key not in self._resource_configs:
+            error_msg = "Resource key '%s' is not known." % resource_key
+            raise PilotException(error_msg)
+
+        return self._resource_configs[resource_key]
 

@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "fs2.das4.science.uva.nl"
+    pdesc.resource = "das4.fs2"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 8 # X cores
 

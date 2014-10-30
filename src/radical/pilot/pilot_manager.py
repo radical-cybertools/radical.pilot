@@ -78,7 +78,7 @@ class PilotManager(Object):
                   pm = radical.pilot.PilotManager(session=s)
 
                   pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
+                  pd.resource = "futuregrid.india"  # defined in futuregrid.json
                   pd.cores    = 16
                   pd.runtime  = 5 # minutes
 
@@ -177,7 +177,6 @@ class PilotManager(Object):
 
         obj = cls(session=session, _reconnect=True)
         obj._uid = pilot_manager_id
-        obj._resource_cfgs = None  # TODO: reconnect
 
         # Retrieve or start a worker process fo this PilotManager instance.
         worker = session._process_registry.retrieve(pilot_manager_id)
@@ -258,26 +257,38 @@ class PilotManager(Object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
                 raise BadParameter(error_msg)
 
-            # if resource is preceeded by :local, we use the local job manager
-            # and file system endpoints instead of the remote ones.
-            use_local_endpoints = False
             resource_key = pilot_description.resource
-            s = pilot_description.resource.split(":")
-            if len(s) == 2:
-                if s[1].lower() == "local":
-                    use_local_endpoints = True
-                    resource_key = s[0]
-                else:
-                    error_msg = "Unknown resource qualifier '%s' in %s." % (s[1], pilot_description.resource)
-                    raise BadParameter(error_msg)
+            resource_cfg = self._session.get_resource_config(resource_key)
 
-            # Make sure resource key is known.
-            rcs = self._session.list_resource_configs()
-            if resource_key not in rcs:
-                error_msg = "ComputePilotDescription.resource key '%s' is not known by this PilotManager." % resource_key
-                raise BadParameter(error_msg)
-            else:
-                resource_cfg = rcs[resource_key]
+            # Check resource-specific mandatory attributes
+            if "mandatory_args" in resource_cfg:
+                for ma in resource_cfg["mandatory_args"]:
+                    if getattr(pilot_description, ma) is None:
+                        error_msg = "ComputePilotDescription does not define attribute '{0}' which is required for '{1}'.".format(ma, resource_key)
+                        raise BadParameter(error_msg)
+
+
+            # we expand and exchange keys in the resource config, depending on
+            # the selected schema so better use a deep copy...
+            import copy
+            resource_cfg  = copy.deepcopy (resource_cfg)
+            schema        = pilot_description['access_schema']
+
+            if  not schema :
+                if 'schemas' in resource_cfg :
+                    schema = resource_cfg['schemas'][0]
+
+            if  not schema in resource_cfg :
+                import pprint
+                pprint.pprint (resource_cfg)
+                logger.warning ("schema %s unknown for resource %s -- continue with defaults" \
+                             % (schema, resource_key))
+
+            else :
+                for key in resource_cfg[schema] :
+                    # merge schema specific resource keys into the
+                    # resource config
+                    resource_cfg[key] = resource_cfg[schema][key]
 
             # If 'default_sandbox' is defined, set it.
             if pilot_description.sandbox is not None:
@@ -299,7 +310,6 @@ class PilotManager(Object):
 
             pilot_uid = self._worker.register_start_pilot_request(
                 pilot=pilot,
-                use_local_endpoints=use_local_endpoints,
                 resource_config=resource_cfg)
 
             pilot._uid = pilot_uid

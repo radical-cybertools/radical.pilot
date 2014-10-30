@@ -41,10 +41,10 @@ older than a specified number of hours or days, to purge orphaned session
 entries in a bulk.
 
 
-Q: I see the error "Permission denied (publickey,keyboard-interactive)." in AGENT.STDERR.
-------------------------------------------------------------------
+Q: I see the error "Permission denied (publickey,keyboard-interactive)." in AGENT.STDERR or STDERR.
+---------------------------------------------------------------------------------------------------
 
-The AGENT.STDERR file shows the following error and the pilot never starts
+The AGENT.STDERR file or the STDERR file in the unit directory shows the following error and the pilot or unit never starts
 running:
 
 .. code-block:: bash
@@ -57,7 +57,7 @@ A: Set up password-less, intra-node SSH access.
 
 Even though this should already be set up by default on many HPC clusters, it
 is not always the case. The following instructions will help you to set up
-SSH between the cluster nodes correctly.
+password-less SSH between the cluster nodes correctly.
 
 Log-in to the **head-node** or **login-node** of the cluster and run the 
 following commands:  
@@ -105,3 +105,8 @@ The full error in STDERR is something like:
 
 A: You need to specify the full path of the executable as mpirun_rsh is not able to find it in the path
 -------------------------------------------------------------------------------------------------------
+
+Q: How many concurrent RADICAL-Pilot scripts can I execute?
+-----------------------------------------------------------
+
+A: From a RADICAL-Pilot perspective there is no limit, but as SSH is used to access many systems, there is a resource specific limit of the number of SSH connections one can make.
