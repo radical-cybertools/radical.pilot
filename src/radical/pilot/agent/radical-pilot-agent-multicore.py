@@ -3,7 +3,16 @@
 """
 .. module:: radical.pilot.agent
    :platform: Unix
-   :synopsis: A multi-core agent for RADICAL-Pilot.
+   :synopsis: The agent for RADICAL-Pilot.
+
+   The agent gets CUs by means of the MongoDB.
+   The execution of CUs by the Agent is (primarily) configured by the
+   triplet (LRMS, LAUNCH_METHOD(s), SCHEDULER):
+   - The LRMS detects and structures the information about the resources
+     available to agent.
+   - The LaunchMethods configure how to execute regular and MPI tasks.
+   - The Scheduler maps the execution requests of the LaunchMethods to a
+     subset of the resources available to the Agent.
 
 .. moduleauthor:: Mark Santcroos <mark.santcroos@rutgers.edu>
 """
