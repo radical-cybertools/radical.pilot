@@ -380,7 +380,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         bootstrap_args = "-n %s -s %s -p %s -t %s -c %s -v %s" %\
                             (database_name, session_uid, str(compute_pilot_id),
-                             runtime, logger.level, number_cores, VERSION)
+                             runtime, number_cores, VERSION)
 
                         if  user_sandbox :
                             bootstrap_args += " -u"
@@ -427,7 +427,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         if 'RADICAL_PILOT_AGENT_VERBOSE' in os.environ :
                             debug_level = {
-                                    'CRITICAL' : 1
+                                    'CRITICAL' : 1,
                                     'ERROR'    : 2,
                                     'WARNING'  : 3,
                                     'WARN'     : 3,
