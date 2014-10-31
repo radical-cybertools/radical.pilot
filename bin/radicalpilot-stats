@@ -121,6 +121,7 @@ def usage (msg=None, noexit=False) :
         
         -d      : database URL
         -s      : session id
+        -c      : session cache file (also needs -s)
         -f      : filter for listings
 
 
@@ -147,22 +148,22 @@ def usage (msg=None, noexit=False) :
 
 # ------------------------------------------------------------------------------
 #
-def dump_session (db, dbname, session) :
+def dump_session (db, dbname, session, cache) :
 
     print "session : %s" % session
-    handle_session (db, 'dump', dbname, session, None)
+    handle_session (db, 'dump', dbname, session, cache, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def tree_session (db, dbname, session) :
+def tree_session (db, dbname, session, cache) :
 
-    handle_session (db, 'tree', dbname, session, None)
+    handle_session (db, 'tree', dbname, session, cache, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (db, session, filters) :
+def list_sessions (db, session, cache, filters) :
 
     if  session :
         print "invalid session parameter on 'list'"
@@ -207,9 +208,9 @@ def list_sessions (db, session, filters) :
 
 
 # ------------------------------------------------------------------------------
-def sort_session (db, session) :
+def sort_session (db, session, cache) :
 
-    docs = rpu.get_session_docs (db, session)
+    docs = rpu.get_session_docs (db, session, cache)
 
     print "pilot managers :" 
     for doc in docs['pmgr'] :
@@ -229,10 +230,10 @@ def sort_session (db, session) :
 
 
 # ------------------------------------------------------------------------------
-def hist_session (db, session) :
+def hist_session (db, session, cache) :
 
-    events    = rpu.get_session_events   (db, session)
-    slothists = rpu.get_session_slothist (db, session)
+    events    = rpu.get_session_events   (db, session, cache)
+    slothists = rpu.get_session_slothist (db, session, cache)
 
     if  not events :
         print "no events found for session %s" % session
@@ -342,11 +343,11 @@ def get_stats (docs, events, slothist) :
 
     
 # ------------------------------------------------------------------------------
-def stat_session (db, session) :
+def stat_session (db, session, cache) :
 
-    docs      = rpu.get_session_docs     (db, session)
-    events    = rpu.get_session_events   (db, session)
-    slothists = rpu.get_session_slothist (db, session)
+    docs      = rpu.get_session_docs     (db, session, cache)
+    events    = rpu.get_session_events   (db, session, cache)
+    slothists = rpu.get_session_slothist (db, session, cache)
 
     stats     = get_stats (docs, events, slothists)
 
@@ -372,14 +373,14 @@ def stat_session (db, session) :
 
 
 # ------------------------------------------------------------------------------
-def plot_session (db, session) :
+def plot_session (db, session, cache) :
     """
     plot results :P
     """
 
-    docs      = rpu.get_session_docs     (db, session)
-    events    = rpu.get_session_events   (db, session)
-    slothists = rpu.get_session_slothist (db, session)
+    docs      = rpu.get_session_docs     (db, session, cache)
+    events    = rpu.get_session_events   (db, session, cache)
+    slothists = rpu.get_session_slothist (db, session, cache)
 
     if  not events :
         print "no events found for session %s" % session
@@ -778,10 +779,12 @@ def plot_session (db, session) :
 
 
 # ------------------------------------------------------------------------------
-def handle_session (db, mode, dbname, session, pname) :
+def handle_session (db, mode, dbname, session, cache, pname) :
     """
     For the given db, traverse collections
     """
+
+    # FIXME: cache is not used
 
     print " +-- db   %s" % dbname
 
@@ -892,6 +895,7 @@ if __name__ == '__main__' :
     parser.add_option('-s', '--session', dest='session')
     parser.add_option('-d', '--dburl',   dest='url')
     parser.add_option('-m', '--mode',    dest='mode')
+    parser.add_option('-c', '--cache',   dest='cache')
     parser.add_option('-f', '--filter',  dest='filters')
     parser.add_option('-h', '--help',    dest='help', action="store_true")
 
@@ -924,6 +928,7 @@ if __name__ == '__main__' :
     mode    = options.mode 
     url     = options.url
     session = options.session
+    cache   = options.cache
     filters = options.filters
 
     url = ru.Url (options.url)
@@ -943,18 +948,21 @@ if __name__ == '__main__' :
     else :
         print "session : %s" % session
 
+    if  not session and cache :
+        print "ignore cache '%s' -- no session ID specified" % cache
+
     for m in mode.split (',') :
 
         if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'list' : list_sessions (db, session, filters)
-        elif m == 'tree' : tree_session  (db, dbname, session) 
-        elif m == 'dump' : dump_session  (db, dbname, session) 
-        elif m == 'sort' : sort_session  (db, session)
-        elif m == 'hist' : hist_session  (db, session)
-        elif m == 'stat' : stat_session  (db, session)
-        elif m == 'plot' : plot_session  (db, session)
+        if   m == 'list' : list_sessions (db, session, cache, filters)
+        elif m == 'tree' : tree_session  (db, dbname, session, cache) 
+        elif m == 'dump' : dump_session  (db, dbname, session, cache)
+        elif m == 'sort' : sort_session  (db, session, cache)
+        elif m == 'hist' : hist_session  (db, session, cache)
+        elif m == 'stat' : stat_session  (db, session, cache)
+        elif m == 'plot' : plot_session  (db, session, cache)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 
