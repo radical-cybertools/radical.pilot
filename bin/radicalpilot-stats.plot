@@ -92,7 +92,6 @@ get_title(i)= sprintf("%s: %-15s (%s cores)", word(pilot_id_list,i), word(pilot_
 #     print word(pilot_queue_dat_list,i)
 # }
 
-terms = 'pdf png'
 do for [term_i=1:words(terms)] {
     term = word(terms, term_i)
     term_t = term.'cairo'

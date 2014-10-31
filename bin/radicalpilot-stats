@@ -123,6 +123,7 @@ def usage (msg=None, noexit=False) :
         -s      : session id
         -c      : session cache file (also needs -s)
         -f      : filter for listings
+        -t      : terminal type for plotting (pdf and/or png, default is both)
 
 
       filters   :
@@ -373,7 +374,7 @@ def stat_session (db, session, cache) :
 
 
 # ------------------------------------------------------------------------------
-def plot_session (db, session, cache) :
+def plot_session (db, session, cache, term) :
     """
     plot results :P
     """
@@ -400,6 +401,13 @@ def plot_session (db, session, cache) :
     delete_me  = list()
     maxqueue   = 0
 
+    # some data cleanup
+    for doc in docs['pilot'] :
+        if  not doc['nodes'] :
+            doc['nodes'] = list()
+        if  not doc['cores_per_node'] :
+            doc['cores_per_node'] = 1
+
     # the plots look nicer if the largest pilots are plotted first, and smaller
     # ones are overlayed.  Thus we sort the pilot docs by by size (reversed).
     # Pilot's of same sizes are ordered as-is.
@@ -407,6 +415,7 @@ def plot_session (db, session, cache) :
     for doc in docs['pilot'] :
         cores = len(doc['nodes']) * int(doc['cores_per_node'])
         pilot_sizes.append (cores)
+
 
     pilot_docs = list()
     for pilot_size in sorted (pilot_sizes, reverse=True) :
@@ -584,6 +593,8 @@ def plot_session (db, session, cache) :
         slotsscale = maxslots+(nodesize/2)
         queuescale = maxqueue+(nodesize/2)
 
+    terms = " ".join (term.split (','))
+
                                          
     cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
     cmd +=        " -e  timetics=%d "       % timetics
@@ -598,6 +609,7 @@ def plot_session (db, session, cache) :
     cmd +=        "\"'"
     cmd +=        " -e  nodesize=%d "       % nodesize
     cmd +=        " -e 'session=\"%s\"' "   % session
+    cmd +=        " -e  'terms=\"%s\"' "    % terms
     cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n============="
     if plotname :
         cmd +=    "\\n[%s]" % plotname
@@ -892,12 +904,13 @@ if __name__ == '__main__' :
     import optparse
     parser = optparse.OptionParser (add_help_option=False)
 
-    parser.add_option('-s', '--session', dest='session')
-    parser.add_option('-d', '--dburl',   dest='url')
-    parser.add_option('-m', '--mode',    dest='mode')
-    parser.add_option('-c', '--cache',   dest='cache')
-    parser.add_option('-f', '--filter',  dest='filters')
-    parser.add_option('-h', '--help',    dest='help', action="store_true")
+    parser.add_option('-s', '--session',   dest='session')
+    parser.add_option('-d', '--dburl',     dest='url')
+    parser.add_option('-m', '--mode',      dest='mode')
+    parser.add_option('-c', '--cache',     dest='cache')
+    parser.add_option('-f', '--filter',    dest='filters')
+    parser.add_option('-t', '--terminal',  dest='term')
+    parser.add_option('-h', '--help',      dest='help', action="store_true")
 
     options, args = parser.parse_args ()
 
@@ -930,6 +943,10 @@ if __name__ == '__main__' :
     session = options.session
     cache   = options.cache
     filters = options.filters
+    term    = options.term
+
+    if  not term :
+        term = "pdf,png"
 
     url = ru.Url (options.url)
     if  not url.path or '/' == url.path :
@@ -962,7 +979,7 @@ if __name__ == '__main__' :
         elif m == 'sort' : sort_session  (db, session, cache)
         elif m == 'hist' : hist_session  (db, session, cache)
         elif m == 'stat' : stat_session  (db, session, cache)
-        elif m == 'plot' : plot_session  (db, session, cache)
+        elif m == 'plot' : plot_session  (db, session, cache, term)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 
