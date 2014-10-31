@@ -518,26 +518,26 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def set_compute_unit_state(self, units, state, log):
+    def set_compute_unit_state(self, unit_ids, state, log):
         """Update the state and the log of one or more ComputeUnit(s).
         """
         ts = datetime.datetime.utcnow()
 
-        if  not units :
+        if  not unit_ids :
             return
 
         if  self._s is None:
             raise Exception("No active session.")
 
         # Make sure we work on a list.
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(unit_ids, list):
+            unit_ids = [unit_ids]
 
         bulk = self._w.initialize_ordered_bulk_op ()
 
-        for unit in units :
+        for uid in unit_ids :
 
-            bulk.find   ({"_id"     : ObjectId(unit.uid)}) \
+            bulk.find   ({"_id"     : ObjectId(uid)}) \
                 .update ({"$set"    : {"state": state},
                           "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
                           "$pushAll": {"log"  : log}})
