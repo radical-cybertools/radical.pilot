@@ -80,6 +80,7 @@ ACTIVE                      = 'Active'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
+UNSCHEDULED                 = 'Unscheduled'
 STATE_X                     = 'StateX'
 PENDING_INPUT_STAGING       = 'PendingInputStaging'
 STAGING_INPUT               = 'StagingInput'

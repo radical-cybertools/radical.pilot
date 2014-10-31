@@ -555,6 +555,11 @@ class UnitManager(object):
             self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
                                                 self.wait_queue_size)
 
+        if  len(unscheduled) :
+            self._worker.unschedule_compute_units (
+                units=units_to_unschedule
+            )
+
         logger.info ('%s units remain unscheduled' % len(unscheduled))
 
 

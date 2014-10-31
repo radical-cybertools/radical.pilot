@@ -523,13 +523,30 @@ class Session():
         """
         ts = datetime.datetime.utcnow()
 
-        if self._s is None:
+        if  not units :
+            return
+
+        if  self._s is None:
             raise Exception("No active session.")
 
-        self._w.update({"_id": ObjectId(unit_id)},
-                       {"$set":     {"state": state},
-                        "$push": {"statehistory": {"state": state, "timestamp": ts}},
-                        "$pushAll": {"log": log}})
+        # Make sure we work on a list.
+        if not isinstance(units, list):
+            units = [units]
+
+        bulk = self._w.initialize_ordered_bulk_op ()
+
+        for unit in units :
+
+            bulk.find   ({"_id"     : ObjectId(unit.uid)}) \
+                .update ({"$set"    : {"state": state},
+                          "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
+                          "$pushAll": {"log"  : log}})
+
+        result = bulk.execute()
+
+        # TODO: log result.
+        # WHY DON'T WE HAVE A LOGGER HERE?
+
 
     #--------------------------------------------------------------------------
     #

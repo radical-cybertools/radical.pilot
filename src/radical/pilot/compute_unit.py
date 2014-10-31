@@ -426,7 +426,7 @@ class ComputeUnit(object):
             # nothing to do
             logger.debug("Compute unit %s has state %s, can't cancel any longer." % (self._uid, self.state))
 
-        elif self.state in [NEW, PENDING_INPUT_STAGING]:
+        elif self.state in [NEW, UNSCHEDULED, PENDING_INPUT_STAGING]:
             logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
