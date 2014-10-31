@@ -518,7 +518,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def set_compute_unit_state(self, unit_id, state, log):
+    def set_compute_unit_state(self, units, state, log):
         """Update the state and the log of one or more ComputeUnit(s).
         """
         ts = datetime.datetime.utcnow()
