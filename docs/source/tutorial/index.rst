@@ -9,7 +9,7 @@ examples illustrate some common usage patterns in distributed environments.
 
 **Prerequisites:**
 
-* You are familiar with Linux or UNIX .
+* You are familiar with Linux or UNIX.
 * You can read and write Python code.
 * You can use SSH and understand how public and private keys work.
 * You understand the basic concepts of distributed computing.

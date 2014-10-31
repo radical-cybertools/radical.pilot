@@ -4,11 +4,11 @@
 Coupled Tasks
 *************
 
-The script provides a simple workflow which submit a set of tasks(A) and tasks(B)
-and wait until they are completed and then submits set of tasks(C). It
+The script provides a simple workflow which submit a set of tasks A and tasks B
+and wait until they are completed and then submits set of tasks C. It
 demonstrates synchronization mechanisms provided by the Pilot-API. This example
-is useful if an executable C has dependencies on some of the output generated
-from jobs A and B.
+is useful if a task in C has dependencies on some of the output generated
+from tasks in A and B.
 
 ----------------
 Edit The Example
@@ -63,7 +63,7 @@ the C tasks.
 Run the Code
 -------------
 
-** This assumes you have installed RADICAL-Pilot either globally or in a 
+**This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**
 
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
