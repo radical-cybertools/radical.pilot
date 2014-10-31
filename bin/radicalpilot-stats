@@ -22,7 +22,8 @@ if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path :
 _DEFAULT_DBURL = str(_DEFAULT_DBURL)
 
 # for graphing events, we assign numerical pseudo values to each event.  
-# Note: make sure that those are translated back into event tags via 'set # [xy]tics'
+# Note: make sure that those are translated back into event tags via 
+# 'set [xy]tics'
 # 
 #   set xtics ("lbl1" 1, "lbl2" 2, "lbl3" 3, "lbl4" 4)
 #
@@ -59,6 +60,7 @@ _EVENT_ENCODING = {
         }
     }
 
+# # common states
 # DONE                        
 # CANCELED                    
 # FAILED                      
@@ -245,7 +247,7 @@ def hist_session (db, session) :
     # ascii output of time sorted events and slot history
 
     print "session : %s" % session
-    print "start   : %s" % str(start)
+    print "start   : %s" % str(ru.time_stamp (start))
 
     for e in events :
         seconds = ru.time_diff (start, e[4])
@@ -491,7 +493,6 @@ def plot_session (db, session) :
                             queue_size += 1
                             maxqueue    = max (maxqueue, queue_size)
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-                          # print "+ %10.2f  %6d" % (seconds, queue_size)
 
                     if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.EXECUTING] :
                         if  not uid in dequeued :
@@ -499,8 +500,6 @@ def plot_session (db, session) :
                             seconds     = ru.time_diff (start, event[4])
                             queue_size -= 1
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-                          # print "- %10.2f  %6d" % (seconds, queue_size)
-
 
 
         with open ("/tmp/rp.%s.pilot.slots.%s.dat" % (session, pid), "w") as dat :
@@ -886,36 +885,6 @@ def parse_commandline():
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__' :
-
-    # import datetime
-    # h = [ {'s' : 'PendingLaunch',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 3, 959000)},
-    #       {'s' : 'Launching',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 4, 124000)},
-    #       {'s' : 'PendingActive',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 26)},
-    #       {'s' : 'Active',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 21, 11, 498000)},
-    #       {'s' : 'Canceled',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 32, 26, 764000)}]
-
-    # d     = dict()
-    # print h
-    # print h[0]
-
-    # state = h[0]['s']
-    # start = h[0]['ts']
-
-    # for t in h :
-    #     s = t['s']
-    #     x = ru.time_diff(start, t['ts'])
-    #     d[state] = x
-    #     start = t['ts']
-    #     state = t['s']
-
-    # print d
-    # sys.exit (0)
-
 
     import optparse
     parser = optparse.OptionParser (add_help_option=False)
