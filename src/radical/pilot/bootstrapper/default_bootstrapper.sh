@@ -24,6 +24,7 @@ PREBOOTSTRAP=
 PILOTID=
 PYTHON=
 RUNTIME=
+SCHEDULER=
 SESSIONID=
 TASK_LAUNCH_METHOD=
 VERSION=
@@ -87,6 +88,8 @@ OPTIONS:
    -n      The name of the database.
 
    -p      The unique identifier (uid) of the pilot.
+
+   -q      The scheduler to be used by the agent.
 
    -s      The unique identifier (uid) of the session.
 
@@ -280,7 +283,7 @@ printenv
 # parse command line arguments
 USER_SANDBOX=0
 BENCHMARK=0
-while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
+while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:q:rs:t:uv:w:x:yz" OPTION; do
     case $OPTION in
         a)
             # Passed to agent
@@ -349,6 +352,10 @@ while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
             # Passed to agent
             PILOTID=$OPTARG
             ;;
+        q)
+            # Passed to the agent
+            SCHEDULER=$OPTARG
+            ;;
         s)
             # Passed to agent
             SESSIONID=$OPTARG
@@ -389,6 +396,7 @@ if [[ -z $AUTH ]] ||\
    [[ -z $MPI_LAUNCH_METHOD ]] ||\
    [[ -z $PILOTID ]] ||\
    [[ -z $RUNTIME ]] ||\
+   [[ -z $SCHEDULER ]] ||\
    [[ -z $SESSIONID ]] ||\
    [[ -z $TASK_LAUNCH_METHOD ]] ||\
    [[ -z $VERSION ]]; then
@@ -477,6 +485,7 @@ AGENT_CMD="python radical-pilot-agent.py\
     -m $DBURL\
     -n $DBNAME\
     -p $PILOTID\
+    -q $SCHEDULER\
     -s $SESSIONID\
     -t $RUNTIME\
     -v $VERSION"
