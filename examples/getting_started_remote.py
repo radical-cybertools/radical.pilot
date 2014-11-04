@@ -64,8 +64,8 @@ if __name__ == "__main__":
         # Define a 32-core on stampede that runs for 15 minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "xsede.trestles"
-        pdesc.runtime   = 30 # minutes
+        pdesc.resource  = "local.localhost"
+        pdesc.runtime   = 15 # minutes
         pdesc.cores     = 8
         pdesc.cleanup   = True
       # pdesc.queue     = "normal"

@@ -10,15 +10,23 @@ demonstrates synchronization mechanisms provided by the Pilot-API. This example
 is useful if a task in C has dependencies on some of the output generated
 from tasks in A and B.
 
-----------------
-Edit The Example
-----------------
+------------
+Preparation
+------------
 
 Download the file ``coupled_tasks.py`` with the following command:
 
-.. code-block:: bash
+.. only:: tutorial
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/coupled_tasks.py
+    .. code-block:: bash
+
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/tutorial/coupled_tasks.py
+
+.. only:: release
+
+    .. code-block:: bash
+
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/coupled_tasks.py
 
 Open the file ``coupled_tasks.py`` with your favorite editor. The example should 
 work right out of the box on your local machine. However, if you want to try it
@@ -59,9 +67,9 @@ RADICAL-Pilot to wait for all of the submitted tasks to finish, before continuin
 the code. After all the A and B (submitted tasks) have finished, it then submits
 the C tasks. 
 
--------------
-Run the Code
--------------
+----------
+Execution
+----------
 
 **This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**
@@ -69,9 +77,18 @@ Python virtualenv. You also need access to a MongoDB server.**
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
 MongoDB server you want to use, for example:
 
-.. code-block:: bash
-        
-        export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+.. only:: tutorial
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+
+.. only:: release
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://<mongodb_server>:27017/
+
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program: 

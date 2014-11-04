@@ -19,6 +19,8 @@ examples illustrate some common usage patterns in distributed environments.
 * Submit multiple jobs through a 'pilot job' to your local workstation as well as a remote machine.
 * Write programs that run multiple jobs concurrently, sequentially, or both, 
   based on their requirements and dependencies.
+* How to specify input files for tasks.
+* MPI tasks are different from regular tasks.
 
 **Contents:**
 
@@ -31,4 +33,4 @@ examples illustrate some common usage patterns in distributed environments.
    simple_bot.rst
    chained_tasks.rst
    coupled_tasks.rst
-
+   mpi_tasks.rst

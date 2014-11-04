@@ -21,15 +21,24 @@ The code below demonstrates this behavior. As soon as there is a slot available
 to run a job in B (i.e. a job in A has completed), it executes the job in B.
 This keeps the RADICAL-Pilot throughput high. 
 
-----------------
-Edit The Example
-----------------
+------------
+Preparation
+------------
 
 Download the file ``chained_tasks.py`` with the following command:
 
-.. code-block:: bash
+.. only:: tutorial
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/chained_tasks.py
+    .. code-block:: bash
+    
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/tutorial/chained_tasks.py
+
+
+.. only:: release
+
+    .. code-block:: bash
+    
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/chained_tasks.py
 
 Open the file ``chained_tasks.py`` with your favorite editor. The example should 
 work right out of the box on your local machine. However, if you want to try it
@@ -63,9 +72,9 @@ and change the code below accordging to the instructions in the comments.
 .. is a B CU, with its CU number.
 
 
--------------
-Run the Code
--------------
+----------
+Execution
+----------
 
 **This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**
@@ -73,9 +82,17 @@ Python virtualenv. You also need access to a MongoDB server.**
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
 MongoDB server you want to use, for example:
 
-.. code-block:: bash
-        
-        export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+.. only:: tutorial
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+
+.. only:: release
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://<mongodb_server>:27017/
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program: 
