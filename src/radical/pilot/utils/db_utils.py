@@ -57,15 +57,20 @@ def get_last_session (db) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs (db, sid, use_cache=True) :
+def get_session_docs (db, sid, cache=None) :
 
     # session docs may have been cached in /tmp/rp_cache/<sid>.json -- in that
     # case we pull it from there instead of the database, which will be much
     # quicker.  Also, we do cache any retrieved docs to that place, for later
     # use.
-    cache = "%s/%s.json" % (_CACHE_BASEDIR, sid)
+    if  not cache :
+        cache = "%s/%s.json" % (_CACHE_BASEDIR, sid)
+    else :
+        if  not os.path.isfile (cache) :
+            print "cache '%s' does not exist" % cache
+            return None
 
-    if  use_cache and os.path.isfile (cache) :
+    if  os.path.isfile (cache) :
         return ru.read_json (cache)
 
 
@@ -110,7 +115,7 @@ def get_session_docs (db, sid, use_cache=True) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_slothist (db, sid) :
+def get_session_slothist (db, sid, cache=None) :
     """
     For all pilots in the session, get the slot lists and slot histories. and
     return as list of tuples like:
@@ -119,7 +124,7 @@ def get_session_slothist (db, sid) :
       tuple (string  , list (tuple (string  , int    ) ), list (tuple (string   , datetime ) ) )
     """
 
-    docs = get_session_docs (db, sid)
+    docs = get_session_docs (db, sid, cache)
 
     ret = list()
 
@@ -147,7 +152,7 @@ def get_session_slothist (db, sid) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_events (db, sid) :
+def get_session_events (db, sid, cache=None) :
     """
     For all entities in the session, create simple event tuples, and return
     them as a list
@@ -157,7 +162,7 @@ def get_session_events (db, sid) :
       
     """
 
-    docs = get_session_docs (db, sid)
+    docs = get_session_docs (db, sid, cache)
 
     ret = list()
 

@@ -605,3 +605,18 @@ class UnitManagerController(threading.Thread):
             logger.error (traceback.format_exc())
             raise Exception('error in unit manager controler: %s' % e)
 
+    # ------------------------------------------------------------------------
+    #
+    def unschedule_compute_units(self, units):
+        """
+        set the unit state to UNSCHEDULED
+        """
+
+        try:
+            self._db.set_compute_unit_state(units, UNSCHEDULED, "unit remains unscheduled")
+
+        except Exception, e:
+            import traceback
+            logger.error (traceback.format_exc())
+            raise Exception('error in unit manager controler: %s' % e)
+
