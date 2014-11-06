@@ -71,16 +71,27 @@ def find_sid_by_pid (dbclient, dbname, pid) :
 
     for sid in sorted (sids, reverse=True) :
         if  sid > pid :
+            sys.stdout.write ('_')
+            sys.stdout.flush (   )
             continue
 
-        docs = rpu.get_session_docs (dbclient[dbname], sid)
+        try :
+            docs = rpu.get_session_docs (dbclient[dbname], sid)
+        except :
+            sys.stdout.write ('?')
+            sys.stdout.flush (   )
+            continue
 
         for doc in docs['pilot'] :
             if  str(doc['_id']) == pid :
-                print "found pilot %s in session %s" % (pid, sid)
+                sys.stdout.write ('!')
+                sys.stdout.flush (   )
+                print "\nfound pilot %s in session %s" % (pid, sid)
                 return
+        sys.stdout.write ('.')
+        sys.stdout.flush (   )
 
-    print "pilot %s not found in any session"
+    print "\npilot %s not found in any session"
 
 
 # ------------------------------------------------------------------------------
