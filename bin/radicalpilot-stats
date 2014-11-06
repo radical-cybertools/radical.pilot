@@ -657,7 +657,7 @@ def plot_session (db, session, cache, term) :
     END    = "<"
     ONCE   = "!"
     COLORS = {rp.NEW                     : ' 1',
-              rp.UNCSHEDULED             : ' 3',
+              rp.UNSCHEDULED             : ' 2',
               rp.STATE_X                 : ' 3',
               rp.PENDING_INPUT_STAGING   : ' 4',
               rp.STAGING_INPUT           : ' 5',
