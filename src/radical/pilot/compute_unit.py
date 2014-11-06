@@ -397,8 +397,8 @@ class ComputeUnit(object):
             time.sleep(0.1)
 
             new_state = self.state
-            logger.debug(
-                "Compute unit %s in state %s" % (self._uid, new_state))
+            # logger.debug(
+            #     "Compute unit %s in state %s" % (self._uid, new_state))
 
             if(None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
