@@ -18,6 +18,7 @@ import time
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.states import *
+from radical.pilot.logentry import *
 from radical.pilot.exceptions import *
 
 from bson import ObjectId
@@ -282,8 +283,13 @@ class ComputeUnit(object):
         if not self._uid:
             raise IncorrectState("Invalid instance.")
 
+        logs = []
+
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['log']
+        for log in cu_json['log']:
+            logs.append(Logentry(logentry=log["logentry"], timestamp=log["timestamp"]))
+
+        return logs
 
     # -------------------------------------------------------------------------
     #

@@ -148,7 +148,6 @@ class InputFileTransferWorker(threading.Thread):
                                     target = "%s/%s" % (remote_sandbox, sd['target'])
 
                                 log_msg = "Transferring input file %s -> %s" % (input_file_url, target)
-                                logmessage = "Transferred input file %s -> %s" % (input_file_url, target)
                                 log_messages.append(log_msg)
                                 logger.debug(log_msg)
 
@@ -175,20 +174,26 @@ class InputFileTransferWorker(threading.Thread):
                                            'FTW_Input_Directives.target': sd['target'],
                                            },
                                     update={'$set': {'FTW_Input_Directives.$.state': 'Done'},
-                                            '$push': {'log': logmessage}
+                                            '$push': {'log': {
+                                                'timestamp': datetime.datetime.utcnow(), 
+                                                'logentry': log_msg}}
                                     }
                                 )
 
                         except Exception, ex:
                             # Update the CU's state 'FAILED'.
                             ts = datetime.datetime.utcnow()
-                            log_messages = "Input transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
+                            msg = {'timestamp': ts, 'logentry': "Input transfer failed: %s\n%s" % (str(ex), traceback.format_exc())}
+
                             logger.error(log_messages)
                             um_col.update(
-                                {"_id": ObjectId(compute_unit_id)},
-                                {"$set": {"state": FAILED},
-                                 "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                                 "$push": {"log": log_messages}}
+                                {'_id':   ObjectId(compute_unit_id)},
+                                {'$set':  {'state': FAILED},
+                                 '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
+                                 '$push': {'log': {
+                                    'timestamp': datetime.datetime.utcnow(), 
+                                    'logentry': log_msg}}
+                                }
                             )
 
                     # Code below is only to be run by the "first" or only worker
@@ -216,7 +221,11 @@ class InputFileTransferWorker(threading.Thread):
                             # All Input Directives for this FTW are done, mark the CU accordingly
                             um_col.update({"_id": ObjectId(cu["_id"])},
                                           {'$set': {'FTW_Input_Status': DONE},
-                                           '$push': {'log': 'All FTW Input Staging Directives done - %d.' % self._worker_number}})
+                                           '$push': {'log': { 
+                                                'timestamp': datetime.datetime.utcnow(), 
+                                                'logentry': 'All FTW Input Staging Directives done - %d.' % self._worker_number}}
+                                           }
+                            )
 
                         # See if there are any Agent Input Directives still pending or executing,
                         # if not, mark it DONE.
@@ -225,8 +234,11 @@ class InputFileTransferWorker(threading.Thread):
                             # All Input Directives for this Agent are done, mark the CU accordingly
                             um_col.update({"_id": ObjectId(cu["_id"])},
                                            {'$set': {'Agent_Input_Status': DONE},
-                                            '$push': {'log': 'All Agent Input Staging Directives done - %d.' % self._worker_number}
-                                           })
+                                            '$push': {'log': {
+                                                'timestamp': datetime.datetime.utcnow(), 
+                                                'logentry': 'All Agent Input Staging Directives done - %d.' % self._worker_number}}
+                                           }
+                            )
 
                     #
                     # Check for all CUs if both Agent and FTW staging is done, we can then mark the CU PendingExecution

@@ -512,9 +512,9 @@ class Session():
 
         self._w.update({"pilot": pilot_id, "state": { "$in": [EXECUTING, PENDING_EXECUTION, SCHEDULING]}},
                        {"$set": {"state": state},
-                        "$push": {"statehistory": {"state": state, "timestamp": ts},
-                                  "log": log}
-                       })
+                        "$push": {"statehistory": {"state": state, "timestamp": ts}},
+                        "$push": {"logentry": log, "timestamp": ts}}
+                       )
 
     #--------------------------------------------------------------------------
     #
@@ -540,7 +540,7 @@ class Session():
             bulk.find   ({"_id"     : ObjectId(uid)}) \
                 .update ({"$set"    : {"state": state},
                           "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
-                          "$pushAll": {"log"  : log}})
+                          "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
 
         result = bulk.execute()
 

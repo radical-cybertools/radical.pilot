@@ -16,6 +16,7 @@ import time
 import saga
 
 from radical.pilot.states import *
+from radical.pilot.logentry import *
 from radical.pilot.exceptions import *
 
 from radical.pilot.utils.logger import logger
@@ -203,15 +204,17 @@ class ComputePilot (object):
     @property
     def log(self):
         """Returns the log of the pilot.
-
-        This 
         """
-        # Check if this instance is valid
         if not self._uid:
             raise IncorrectState("Invalid instance.")
 
+        logs = []
+
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json['log']
+        for log in pilot_json['log']:
+            logs.append(Logentry(logentry=log["logentry"], timestamp=log["timestamp"]))
+
+        return logs
 
     # -------------------------------------------------------------------------
     #

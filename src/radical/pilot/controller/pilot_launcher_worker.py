@@ -122,7 +122,7 @@ class PilotLauncherWorker(threading.Thread):
                     {"_id": pilot_id},
                     {"$set": {"state": FAILED},
                      "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                     "$push": {"log": log_message}}
+                     "$pushAll": {"log": {log_message}}}
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
@@ -136,7 +136,7 @@ class PilotLauncherWorker(threading.Thread):
                      "state": {"$ne"  : DONE}},
                     {"$set" : {"state": DONE},
                      "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
-                     "$push": {"log": log_message}}
+                     "$pushAll": {"log": log_message}}
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
@@ -293,7 +293,9 @@ class PilotLauncherWorker(threading.Thread):
                         agent_path = os.path.abspath("%s/../agent/%s" % (plw_dir, pilot_agent))
 
                         log_msg = "Using pilot agent %s" % agent_path
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.info(log_msg)
 
                         ########################################################
@@ -306,7 +308,9 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (plw_dir, bootstrapper))
                         
                         log_msg = "Using bootstrapper %s" % bootstrapper_path
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.info(log_msg)
 
                         ########################################################
@@ -329,7 +333,9 @@ class PilotLauncherWorker(threading.Thread):
                         bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
                         bs_script_tgt = saga.Url("%s/%s"               % (sandbox, bootstrapper))
                         log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, bs_script_tgt)
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.debug(log_msg)
 
                         bs_script = saga.filesystem.File(bs_script_url, session=self._session)
@@ -340,7 +346,9 @@ class PilotLauncherWorker(threading.Thread):
                         # Copy the agent script
                         agent_script_url = saga.Url("file://localhost/%s" % agent_path)
                         log_msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_script_url, sandbox)
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.debug(log_msg)
 
                         agent_script = saga.filesystem.File(agent_script_url)
@@ -357,7 +365,9 @@ class PilotLauncherWorker(threading.Thread):
                             worker_script_url = saga.Url("file://localhost/%s" % worker_path)
 
                             log_msg = "Copying '%s' to agent sandbox (%s)." % (worker_script_url, sandbox)
-                            log_messages.append(log_msg)
+                            log_messages.append({
+                                "logentry": log_msg, 
+                                "timestamp": datetime.datetime.utcnow()})
                             logger.debug(log_msg)
 
                             worker_script = saga.filesystem.File(worker_script_url)
@@ -476,7 +486,9 @@ class PilotLauncherWorker(threading.Thread):
                             jd.total_physical_memory = compute_pilot['description']['memory']
 
                         log_msg = "Submitting SAGA job with description: %s" % str(jd.as_dict())
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.debug(log_msg)
 
                         pilotjob = js.create_job(jd)
@@ -489,7 +501,9 @@ class PilotLauncherWorker(threading.Thread):
                         saga_job_id = pilotjob.id
                         log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
 
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.debug(log_msg)
 
                         ##
@@ -504,7 +518,7 @@ class PilotLauncherWorker(threading.Thread):
                             {"$set": {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                             "$pushAll": {"log": log_messages}}                    
+                             "$pushAll": {"log": log_messages}}
                         )
 
                         if  ret['n'] == 0 :
@@ -515,19 +529,22 @@ class PilotLauncherWorker(threading.Thread):
                                 {"_id"  : ObjectId(compute_pilot_id)},
                                 {"$set" : {"saga_job_id": saga_job_id},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                                 "$pushAll": {"log": log_messages}}                    
+                                 "$pushAll": {"log": log_messages}}
                             )
-
 
                     except Exception, ex:
                         # Update the Pilot's state 'FAILED'.
                         ts = datetime.datetime.utcnow()
-                        log_messages = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+                        log_msg = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": ts})
+
                         pilot_col.update(
                             {"_id": ObjectId(compute_pilot_id)},
                             {"$set": {"state": FAILED},
                              "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                             "$push": {"log": log_messages}}
+                             "$pushAll": {"log": log_messages}}
                         )
                         logger.error(log_messages)
 
