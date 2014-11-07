@@ -1,9 +1,9 @@
 #pylint: disable=C0301, C0103, W0212
 
 """
-.. module:: radical.pilot.states
+.. module:: radical.pilot.logentry
    :platform: Unix
-   :synopsis: State constants.
+   :synopsis: log entry wrapper
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
