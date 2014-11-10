@@ -73,7 +73,7 @@ OPTIONS:
 
    -h      Show this message.
 
-   -i      The Python interpreter to use, e.g., python2.6.
+   -i      The Python interpreter to use, e.g., python2.7.
            (default is '/usr/bin/python')
 
    -j      Task launch method.
