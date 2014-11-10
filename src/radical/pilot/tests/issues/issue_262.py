@@ -72,9 +72,7 @@ class TestIssue262(unittest.TestCase):
             assert "timestamp" in ld
             assert "logentry" in ld
 
-            print "%s" % log_entry
-
-        #      s = "%s" % log_entry
-        #      assert type(s) == unicode
+            s = "%s" % log_entry
+            assert type(s) == unicode
 
         session.close()

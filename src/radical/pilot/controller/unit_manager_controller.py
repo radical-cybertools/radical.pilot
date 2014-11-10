@@ -572,7 +572,7 @@ class UnitManagerController(threading.Thread):
                         logger.error('Not sure if action %s makes sense for output staging' % action)
 
                 if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
-                    log = ["Scheduled for data transfer to ComputePilot %s." % pilot_uid]
+                    log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
                     self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
                     cu_transfer.append(unit)
                 else:
@@ -592,7 +592,7 @@ class UnitManagerController(threading.Thread):
             )
 
             for unit in cu_notransfer:
-                log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
+                log = "Scheduled for execution on ComputePilot %s." % pilot_uid
                 self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
                 #self._set_state(uid, PENDING_EXECUTION, log)
 
