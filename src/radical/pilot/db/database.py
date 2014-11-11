@@ -304,7 +304,7 @@ class Session():
 
         if state is not None:
             set_query["state"] = state
-            push_query["statehistory"] = [{'state': state, 'timestamp': datetime.datetime.utcnow()}]
+            push_query["statehistory"] = {"$each": [{'state': state, 'timestamp': datetime.datetime.utcnow()}]}
 
         if started is not None:
             set_query["started"] = started
@@ -322,12 +322,12 @@ class Session():
             set_query["sandbox"] = sandbox
 
         if logs is not None:
-            push_query["log"] = logs
+            push_query["log"] = {"$each": logs}
 
         # update pilot entry.
         self._p.update(
             {"_id": ObjectId(pilot_uid)},
-            {"$set": set_query, "$pushAll": push_query},
+            {"$set": set_query, "$push": push_query},
             multi=True
         )
 
