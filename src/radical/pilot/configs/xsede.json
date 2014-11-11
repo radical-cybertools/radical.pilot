@@ -27,7 +27,8 @@
                                          "module load mvapich2",
                                          "module load python/2.7.3-epd-7.3.2",
                                          "module unload xalt",
-                                         "export TACC_KEEP_FILES=FALSE"
+                                         "export TACC_KEEP_FILES=FALSE",
+                                         "export TACC_DELETE_FILES=TRUE"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
@@ -59,7 +60,8 @@
                                          "module load cluster",
                                          "module load mvapich2",
                                          "module load python/2.7.2-epd",
-                                         "export TACC_KEEP_FILES=FALSE"
+                                         "export TACC_KEEP_FILES=FALSE",
+                                         "export TACC_DELETE_FILES=TRUE"
                                         ],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
