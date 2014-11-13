@@ -170,6 +170,7 @@ def expand_staging_directive(staging_directive, logger):
                                 source, source)
 
         else:
-            raise Exception("Unknown type of staging directive: %s" % sd)
+            raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
 
     return new_staging_directive
+

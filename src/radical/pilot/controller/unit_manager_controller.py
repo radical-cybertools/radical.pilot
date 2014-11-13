@@ -601,9 +601,8 @@ class UnitManagerController(threading.Thread):
                 (cu_notransfer, pilot_uid)
             )
         except Exception, e:
-            import traceback
-            logger.error (traceback.format_exc())
-            raise Exception('error in unit manager controller: %s' % e)
+            logger.exception ('error in unit manager controller (schedule())')
+            raise
 
     # ------------------------------------------------------------------------
     #
@@ -613,10 +612,10 @@ class UnitManagerController(threading.Thread):
         """
 
         try:
-            self._db.set_compute_unit_state(units, UNSCHEDULED, "unit remains unscheduled")
+            unit_ids = [unit.uid for unit in units]
+            self._db.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
 
         except Exception, e:
-            import traceback
-            logger.error (traceback.format_exc())
-            raise Exception('error in unit manager controller: %s' % e)
+            logger.exception ('error in unit manager controller (unschedule())')
+            raise
 

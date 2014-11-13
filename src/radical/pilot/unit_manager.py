@@ -445,9 +445,8 @@ class UnitManager(object):
             schedule = self._scheduler.schedule (units=units)
        
         except Exception as e:
-            import traceback
-            logger.error (traceback.format_exc())
-            raise PilotException("Internal error - unit scheduler failed: %s" % e)
+            logger.exception ("Internal error - unit scheduler failed")
+            raise 
 
         self.handle_schedule (schedule)
 
