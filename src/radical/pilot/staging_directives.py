@@ -110,7 +110,7 @@ def expand_staging_directive(staging_directive, logger):
             else:
                 target = os.path.basename(source)
 
-            if isinstance(source, str):
+            if isinstance(source, basestring):
                 # This is a regular entry, complete and append it
                 new_sd = {'source':   source,
                           'target':   target,
