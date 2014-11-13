@@ -49,7 +49,7 @@ def expand_staging_directive(staging_directive, logger):
     # We loop over the list of staging directives
     for sd in staging_directive:
 
-        if isinstance(sd, str):
+        if isinstance(sd, basestring):
 
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
