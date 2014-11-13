@@ -119,10 +119,20 @@ class PilotLauncherWorker(threading.Thread):
             if  pilot_failed :
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
-                    {"_id": pilot_id},
-                    {"$set": {"state": FAILED},
-                     "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                     "$pushAll": {"log": {log_message}}}
+                    {"_id"  : pilot_id,
+                     "state": {"$ne"     : DONE}},
+                    {"$set" : {"state"   : FAILED},
+                     "$push": {
+                         "statehistory"  : {
+                             "state"     : FAILED, 
+                             "timestamp" : ts
+                             }, 
+                         "log": {
+                             "logentry"  : log_message, 
+                             "timestamp" : ts
+                             }
+                         }
+                     }
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
@@ -133,10 +143,19 @@ class PilotLauncherWorker(threading.Thread):
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
                     {"_id"  : pilot_id,
-                     "state": {"$ne"  : DONE}},
-                    {"$set" : {"state": DONE},
-                     "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
-                     "$pushAll": {"log": log_message}}
+                     "state": {"$ne"     : DONE}},
+                    {"$set" : {"state"   : DONE},
+                     "$push": {
+                         "statehistory"  : {
+                             "state"     : DONE, 
+                             "timestamp" : ts
+                             }, 
+                         "log": {
+                             "logentry"  : log_message, 
+                             "timestamp" : ts
+                             }
+                         }
+                     }
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
