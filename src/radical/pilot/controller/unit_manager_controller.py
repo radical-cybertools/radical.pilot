@@ -603,7 +603,7 @@ class UnitManagerController(threading.Thread):
         except Exception, e:
             import traceback
             logger.error (traceback.format_exc())
-            raise Exception('error in unit manager controler: %s' % e)
+            raise Exception('error in unit manager controller: %s' % e)
 
     # ------------------------------------------------------------------------
     #
@@ -618,5 +618,5 @@ class UnitManagerController(threading.Thread):
         except Exception, e:
             import traceback
             logger.error (traceback.format_exc())
-            raise Exception('error in unit manager controler: %s' % e)
+            raise Exception('error in unit manager controller: %s' % e)
 
