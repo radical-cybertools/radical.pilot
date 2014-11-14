@@ -16,6 +16,7 @@ import threading
 from bson.objectid import ObjectId
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
+from radical.pilot.staging_directives import CREATE_PARENTS
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
@@ -163,7 +164,10 @@ class InputFileTransferWorker(threading.Thread):
                                 else:
                                     copy_flags = 0
 
-                                input_file.copy(target, flags=copy_flags)
+                                try :
+                                    input_file.copy(target, flags=copy_flags)
+                                except Exception as e :
+                                    logger.exception (e)
                                 input_file.close()
 
                                 # If all went fine, update the state of this StagingDirective to Done
@@ -186,7 +190,7 @@ class InputFileTransferWorker(threading.Thread):
                             ts = datetime.datetime.utcnow()
                             msg = {'timestamp': ts, 'logentry': "Input transfer failed: %s\n%s" % (str(ex), traceback.format_exc())}
 
-                            logger.error(log_messages)
+                            logger.exception(log_messages)
                             um_col.update(
                                 {'_id':   ObjectId(compute_unit_id)},
                                 {'$set':  {'state': FAILED},
