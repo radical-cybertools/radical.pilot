@@ -16,7 +16,7 @@ from logging import Formatter
 from radical.utils.singleton import Singleton
 import radical.utils.logger as rul
 
-from version import version
+from version import version, version_detail
 
 
 # -----------------------------------------------------------------------------
@@ -36,7 +36,7 @@ class _MPLogger(object):
         for handler in self._logger.handlers:
             handler.setFormatter(mp_formatter)
 
-        self._logger.info('radical.pilot version: %s' % version)
+        self._logger.info('radical.pilot version: %s (%s)' % (version, version_detail))
 
     def get(self):
         """Return the logger.
@@ -46,3 +46,5 @@ class _MPLogger(object):
 # -----------------------------------------------------------------------------
 #
 logger = _MPLogger().get()
+logger = rul.logger.getLogger(name='radical.pilot')
+

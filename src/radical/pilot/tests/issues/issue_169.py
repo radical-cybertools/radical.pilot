@@ -57,7 +57,7 @@ class TestIssue169(unittest.TestCase):
         pm = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd.resource = "local.localhost"
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/non-/existing/directory..."
@@ -80,14 +80,14 @@ class TestIssue169(unittest.TestCase):
         pmgr = radical.pilot.PilotManager(session=session)
         
         cpd1 = radical.pilot.ComputePilotDescription()
-        cpd1.resource = "localhost"
+        cpd1.resource = "local.localhost"
         cpd1.cores    = 1
         cpd1.runtime  = 1
         cpd1.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
         cpd1.cleanup  = True
 
         cpd2 = radical.pilot.ComputePilotDescription()
-        cpd2.resource = "localhost"
+        cpd2.resource = "local.localhost"
         cpd2.cores    = 1
         cpd2.runtime  = 1
         cpd2.sandbox  = "/tmp/radical.pilot.sandbox.unittests"

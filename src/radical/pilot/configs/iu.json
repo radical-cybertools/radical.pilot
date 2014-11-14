@@ -3,8 +3,7 @@
     "quarry": {
         "description"                 : "The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).",
         "notes"                       : "None",
-        "schemas"                     : ["ssh", "gsissh", "local"],
-        "warn_on_local"               : "True",
+        "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://quarry.uits.indiana.edu/",
@@ -14,11 +13,6 @@
         {
             "job_manager_endpoint"    : "pbs+ssh://quarry.uits.indiana.edu/",
             "filesystem_endpoint"     : "sftp://quarry.uits.indiana.edu/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "pbs://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
         },
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
@@ -31,8 +25,7 @@
     "bigred2": {
         "description"                 : "Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
-        "schemas"                     : ["ssh", "gsissh", "local"],
-        "warn_on_local"               : "True",
+        "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.indiana.edu/",
@@ -42,11 +35,6 @@
         {
             "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.indiana.edu/",
             "filesystem_endpoint"     : "sftp://bigred2.uits.indiana.edu/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "pbs://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
         },
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "APRUN",

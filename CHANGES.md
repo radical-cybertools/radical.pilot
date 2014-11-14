@@ -1,3 +1,24 @@
+0.21 Release                                               2014-10-29
+---------------------------------------------------------------------
+
+
+* For a list of bug fixes, see 
+  https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aclosed+sort%3Aupdated-desc
+* For a list of open issues and known problems, see
+  https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
+
+* Documentation of MPI support
+* Documentation of data staging operations
+* correct handling of data transfer exceptions
+* fix handling of non-ascii data in unit stdio
+* simplify switching of access schemas on pilot submission
+* disable pilot virtualenv for unit execution
+* MPI support for DaVinci
+* performance optimizations on file transfers, unit sandbox setup
+* fix ibrun tmp file problem on stampede
+
+
+
 0.19 Release                                       September 12. 2014
 ---------------------------------------------------------------------
 

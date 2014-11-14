@@ -159,9 +159,18 @@ class Timeout (PilotException) :
 
 # ------------------------------------------------------------------------------
 #
-class NoSuccess (PilotException) :
+class NoSuccess(PilotException) :
     """
     TODO: Document me!
     """
-    def __init__ (self, msg, obj=None) :
+    def __init__(self, msg, obj=None) :
+        PilotException.__init__(self, msg, obj)
+
+# ------------------------------------------------------------------------------
+#
+class NotImplemented(PilotException):
+    """
+    TODO: Document me!
+    """
+    def __init__(self, msg, obj=None):
         PilotException.__init__(self, msg, obj)

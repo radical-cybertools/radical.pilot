@@ -34,7 +34,8 @@ SANDBOX=`pwd`
 #
 # Returns 0 if the specified string contains the specified substring,
 # otherwise returns 1.
-contains() {
+contains() 
+{
     string="$1"
     substring="$2"
     if test "${string#*$substring}" != "$string"
@@ -72,7 +73,7 @@ OPTIONS:
 
    -h      Show this message.
 
-   -i      The Python interpreter to use, e.g., python2.6.
+   -i      The Python interpreter to use, e.g., python2.7.
            (default is '/usr/bin/python')
 
    -j      Task launch method.
@@ -461,6 +462,11 @@ if [[ ! -d $VIRTENV || ! -f $VIRTENV/bin/activate ]]; then
     # actually don't need a virtualenv, and thus continue here.
 fi
 
+# Export the variables related to virtualenv,
+# so that we can disable the virtualenv for the cu.
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PS1
 
 # -----------------------------------------------------------------------------
 # launch the radical agent

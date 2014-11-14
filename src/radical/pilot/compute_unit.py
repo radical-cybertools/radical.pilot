@@ -18,6 +18,7 @@ import time
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.states import *
+from radical.pilot.logentry import *
 from radical.pilot.exceptions import *
 
 from bson import ObjectId
@@ -151,7 +152,7 @@ class ComputeUnit(object):
         """Returns a string representation of the object.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         return str(self.as_dict())
 
@@ -178,7 +179,7 @@ class ComputeUnit(object):
         """Returns the full working directory URL of this ComputeUnit.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['sandbox']
@@ -195,7 +196,7 @@ class ComputeUnit(object):
         .. warning: This can become very inefficient for lareg data volumes.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         return self._worker.get_compute_unit_stdout(self.uid)
 
@@ -211,7 +212,7 @@ class ComputeUnit(object):
         .. warning: This can become very inefficient for large data volumes.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         return self._worker.get_compute_unit_stderr(self.uid)
 
@@ -232,7 +233,7 @@ class ComputeUnit(object):
         """Returns the current state of the ComputeUnit.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
+            raise IncorrectState(msg="Invalid instance.")
 
         # try to get state from worker.  If that fails, return local state.
         try :
@@ -248,7 +249,7 @@ class ComputeUnit(object):
         """Returns the complete state history of the ComputeUnit.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid instance.")
+            raise IncorrectState(msg="Invalid instance.")
 
         states = []
 
@@ -268,7 +269,7 @@ class ComputeUnit(object):
         'DONE' or 'FAILED' state it will return None.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['exit_code']
@@ -280,10 +281,15 @@ class ComputeUnit(object):
         """Returns the logs of the ComputeUnit.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
+
+        logs = []
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['log']
+        for log in cu_json['log']:
+            logs.append(Logentry(logentry=log["logentry"], timestamp=log["timestamp"]))
+
+        return logs
 
     # -------------------------------------------------------------------------
     #
@@ -292,7 +298,7 @@ class ComputeUnit(object):
         """Returns the exeuction location(s) of the ComputeUnit.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json
@@ -313,7 +319,7 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was submitted.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['submitted']
@@ -325,7 +331,7 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was started on the backend.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['started']
@@ -337,7 +343,7 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was stopped.
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['finished']
@@ -385,7 +391,7 @@ class ComputeUnit(object):
         **Raises:**
         """
         if not self._uid:
-            raise exceptions.IncorrectState("Invalid instance.")
+            raise IncorrectState("Invalid instance.")
 
         if not isinstance(state, list):
             state = [state]
@@ -397,8 +403,8 @@ class ComputeUnit(object):
             time.sleep(0.1)
 
             new_state = self.state
-            logger.debug(
-                "Compute unit %s in state %s" % (self._uid, new_state))
+            # logger.debug(
+            #     "Compute unit %s in state %s" % (self._uid, new_state))
 
             if(None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
@@ -417,8 +423,7 @@ class ComputeUnit(object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise exceptions.radical.pilotException(
-                "Invalid Compute Unit instance.")
+            raise BadParameter("Invalid Compute Unit instance.")
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         pilot_uid = cu_json['pilot']
@@ -427,7 +432,7 @@ class ComputeUnit(object):
             # nothing to do
             logger.debug("Compute unit %s has state %s, can't cancel any longer." % (self._uid, self.state))
 
-        elif self.state in [NEW, PENDING_INPUT_STAGING]:
+        elif self.state in [NEW, UNSCHEDULED, PENDING_INPUT_STAGING]:
             logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
@@ -452,8 +457,8 @@ class ComputeUnit(object):
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
         else:
-            raise exceptions.radical.pilotException(
-                "Unknown Compute Unit state: %s, cannot cancel" % self.state)
+            raise IncorrectState("Unknown Compute Unit state: %s, cannot cancel" % self.state)
 
         # done canceling
         return
+
