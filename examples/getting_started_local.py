@@ -26,7 +26,8 @@ def pilot_state_cb (pilot, state) :
 def unit_state_cb (unit, state) :
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s' (on '%s') state: %s." % (unit.uid, unit.pilot_id, state)
+    print "[Callback]: ComputeUnit  '%s: %s' (on '%s') state: %s." \
+        % (unit.name, unit.uid, unit.pilot_id, state)
 
     if  state == rp.FAILED :
         print "stderr: %s" % unit.stderr
@@ -119,6 +120,7 @@ if __name__ == "__main__":
     cuds = []
     for unit_count in range(0, 16):
         cud = rp.ComputeUnitDescription()
+        cud.name          = "unit_%03d" % unit_count
         cud.executable    = "/bin/sh"
         cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
         cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]

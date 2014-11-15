@@ -53,6 +53,7 @@ class ComputeUnit(object):
         """
         # 'static' members
         self._uid = None
+        self._name = None
         self._description = None
         self._manager = None
 
@@ -100,6 +101,7 @@ class ComputeUnit(object):
         computeunit._manager     = unit_manager_obj
         computeunit._worker      = unit_manager_obj._worker
         computeunit._uid         = str(ObjectId())
+        computeunit._name        = unit_description['name']
         computeunit._local_state = local_state
 
         return computeunit
@@ -135,6 +137,7 @@ class ComputeUnit(object):
         """
         obj_dict = {
             'uid':               self.uid,
+            'name':              self.name,
             'state':             self.state,
             'exit_code':         self.exit_code,
             'log':               self.log,
@@ -171,6 +174,19 @@ class ComputeUnit(object):
         # uid is static and doesn't change over the lifetime
         # of a unit, hence it can be stored in a member var.
         return self._uid
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def name(self):
+        """Returns the unit's application specified name.
+
+        **Returns:**
+            * A name (string).
+        """
+        # name is static and doesn't change over the lifetime
+        # of a unit, hence it can be stored in a member var.
+        return self._name
 
     # -------------------------------------------------------------------------
     #
