@@ -57,7 +57,7 @@ class TestPilot(unittest.TestCase):
         pm = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd.resource = "local.localhost"
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
@@ -94,7 +94,7 @@ class TestPilot(unittest.TestCase):
         pm = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd.resource = "local.localhost"
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/non-/existing/directory..."
@@ -105,7 +105,7 @@ class TestPilot(unittest.TestCase):
         assert pilot.state == radical.pilot.FAILED, "State is '%s' instead of 'Failed'." % pilot.state
 
         cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd.resource = "local.localhost"
         cpd.cores = 100000000000  # This should fail - at least in 2014 ;-)
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
@@ -127,7 +127,7 @@ class TestPilot(unittest.TestCase):
         pm = radical.pilot.PilotManager(session=session)
 
         cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd.resource = "local.localhost"
         cpd.cores = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"

@@ -146,18 +146,22 @@ class PilotManagerController(threading.Thread):
         self._initialized.wait()
 
         try:
-            if pilot_ids is None:
-                data = self._db.get_pilots(pilot_manager_id=self._pm_id)
-                return data
+            if  pilot_ids is None:
+                pilot_ids = self._shared_data.keys ()
 
-            else:
-                if not isinstance(pilot_ids, list):
-                    return self._shared_data[pilot_ids]['data']
-                else:
-                    data = list()
-                    for pilot_id in pilot_ids:
-                        data.append(self._shared_data[pilot_id]['data'])
-                    return data
+            return_list_type = True
+            if not isinstance(pilot_ids, list):
+                return_list_type = False
+                pilot_ids = [pilot_ids]
+
+            data = list()
+            for pilot_id in pilot_ids:
+                data.append(self._shared_data[pilot_id]['data'])
+
+            if  return_list_type :
+                return data
+            else :
+                return data[0]
 
         except KeyError, ke:
             msg = "Unknown Pilot ID %s" % ke
@@ -191,19 +195,22 @@ class PilotManagerController(threading.Thread):
 
         for cb in self._shared_data[pilot_id]['callbacks']:
             try:
-                cb(self._shared_data[pilot_id]['facade_object'](),
-                    new_state)
+                if  self._shared_data[pilot_id]['facade_object'] :
+                    cb (self._shared_data[pilot_id]['facade_object'](), new_state)
+                else :
+                    logger.error("Couldn't call callback (no pilot instance)")
             except Exception, ex:
-                logger.error(
-                    "Couldn't call callback function %s" % str(ex))
+                logger.error("Couldn't call callback function %s" % str(ex))
                 raise
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
         for cb in self._manager_callbacks:
             try:
-                cb(self._shared_data[pilot_id]['facade_object'](),
-                     new_state)
+                if  self._shared_data[pilot_id]['facade_object'] :
+                    cb(self._shared_data[pilot_id]['facade_object'](), new_state)
+                else :
+                    logger.error("Couldn't call manager callback (no pilot instance)")
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
@@ -275,6 +282,8 @@ class PilotManagerController(threading.Thread):
                             'facade_object': None
                         }
 
+                    self._shared_data[pilot_id]['data'] = pilot
+
                     if new_state != old_state:
                         # On a state change, we fire zee callbacks.
                         logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
@@ -283,14 +292,12 @@ class PilotManagerController(threading.Thread):
                         # pilot-level callbacks to propagate this.
                         self.call_callbacks(pilot_id, new_state)
 
-                    self._shared_data[pilot_id]['data'] = pilot
-
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
                     # set the state of the compute unit accordingly
-                    if new_state in ['Failed', 'Done', 'Canceled']:
+                    if new_state in [FAILED, DONE, CANCELED]:
                         self._db.set_all_running_compute_units(
                             pilot_id=pilot_id, 
-                            state="Canceled",
+                            state=CANCELED,
                             log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
@@ -308,14 +315,14 @@ class PilotManagerController(threading.Thread):
                 logger.debug("PilotManager.close(): %s terminated." % worker.name)
 
         except SystemExit as e :
-            print "pilot manager controller thread caught system exit -- forcing application shutdown"
+            logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             
 
     # ------------------------------------------------------------------------
     #
-    def register_start_pilot_request(self, pilot, resource_config, use_local_endpoints):
+    def register_start_pilot_request(self, pilot, resource_config):
         """Register a new pilot start request with the worker.
         """
 
@@ -323,46 +330,43 @@ class PilotManagerController(threading.Thread):
         pilot_uid = bson.ObjectId()
 
         # switch endpoint type
-        if use_local_endpoints is True:
-            filesystem_endpoint = resource_config['local_filesystem_endpoint']
-        else:
-            filesystem_endpoint = resource_config['remote_filesystem_endpoint']
+        filesystem_endpoint = resource_config['filesystem_endpoint']
 
-        sandbox = pilot.description.sandbox
         fs = saga.Url(filesystem_endpoint)
-        if sandbox is not None:
-            fs.path = sandbox
+
+        # get the home directory on the remote machine.
+        # Note that this will only work for (gsi)ssh or shell based access
+        # mechanisms (FIXME)
+
+        import saga.utils.pty_shell as sup
+
+        if fs.port is not None:
+            url = "%s://%s:%d/" % (fs.schema, fs.host, fs.port)
         else:
-            # No sandbox defined. try to determine
+            url = "%s://%s/" % (fs.schema, fs.host)
 
-            if filesystem_endpoint.startswith("file"):
-                workdir_expanded = os.path.expanduser("~")
-            else:
-                # get the home directory on the remote machine.
-                # Note that this will only work for (gsi)ssh or shell based access
-                # mechanisms (FIXME)
+        logger.debug ("saga.utils.PTYShell ('%s')" % url)
+        shell = sup.PTYShell (url, self._session, logger, opts={})
 
-                import saga.utils.pty_shell as sup
+        if pilot.description.sandbox is not None:
+            workdir_raw = pilot.description.sandbox
+        elif 'default_remote_workdir' in resource_config and \
+            resource_config['default_remote_workdir'] is not None:
+            workdir_raw = resource_config['default_remote_workdir']
+        else:
+            workdir_raw = "$PWD"
 
-                url = "%s://%s/" % (fs.schema, fs.host)
-                shell = sup.PTYShell (url, self._session, logger, opts={})
+        ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
+        if  ret == 0 and 'WORKDIR:' in out :
+            workdir_expanded = out.split(":")[1].strip()
+            logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
+        else :
+            error_msg = "Couldn't determine remote working directory."
+            logger.error(error_msg)
+            raise Exception(error_msg)
 
-                if 'default_remote_workdir' in resource_config and resource_config['default_remote_workdir'] is not None:
-                    workdir_raw = resource_config['default_remote_workdir']
-                else:
-                    workdir_raw = "$PWD"
-
-                ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
-                if  ret == 0 and 'WORKDIR:' in out :
-                    workdir_expanded = out.split(":")[1].strip()
-                    logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
-                else :
-                    error_msg = "Couldn't determine remote working directory."
-                    logger.error(error_msg)
-                    raise Exception(error_msg)
-
-            # At this point we have determined 'pwd'
-            fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
+        # At this point we have determined 'pwd'
+        fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
 
         # This is the base URL / 'sandbox' for the pilot!
         agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
@@ -392,7 +396,7 @@ class PilotManagerController(threading.Thread):
         self._shared_data[pilot_uid]['callbacks'].append(callback_func)
 
         # Add the facade object if missing, e.g., after a re-connect.
-        if self._shared_data[pilot_uid]['facade_object'] is None:
+        if  self._shared_data[pilot_uid]['facade_object'] is None:
             self._shared_data[pilot_uid]['facade_object'] = weakref.ref(pilot)
 
         # Callbacks can only be registered when the ComputeAlready has a

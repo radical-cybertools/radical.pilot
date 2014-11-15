@@ -99,7 +99,7 @@ class Test_PilotManager(unittest.TestCase):
 
         for i in range(0, 2):
             cpd = radical.pilot.ComputePilotDescription()
-            cpd.resource = "localhost"
+            cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
             cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
@@ -128,7 +128,7 @@ class Test_PilotManager(unittest.TestCase):
 
         for i in range(0, 2):
             cpd = radical.pilot.ComputePilotDescription()
-            cpd.resource = "localhost"
+            cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
             cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
@@ -164,7 +164,7 @@ class Test_PilotManager(unittest.TestCase):
 
         for i in range(0, 2):
             cpd = radical.pilot.ComputePilotDescription()
-            cpd.resource = "localhost"
+            cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
             cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
@@ -178,14 +178,14 @@ class Test_PilotManager(unittest.TestCase):
 
         for i in pm1.list_pilots():
             pilot = pm1.get_pilots(i)
-            assert pilot[0].uid in pm1_pilot_uids, "Wrong pilot ID %s (not in %s)" % (pilot[0].uid, pm1_pilot_uids)
+            assert pilot.uid in pm1_pilot_uids, "Wrong pilot ID %s (not in %s)" % (pilot.uid, pm1_pilot_uids)
 
 
         assert len(pm1.get_pilots()) == 2, "Wrong number of pilots."
 
         for i in pm2.list_pilots():
             pilot = pm2.get_pilots(i)
-            assert pilot[0].uid in pm2_pilot_uids, "Wrong pilot ID %s" % pilot[0].uid
+            assert pilot.uid in pm2_pilot_uids, "Wrong pilot ID %s" % pilot.uid
 
         assert len(pm2.get_pilots()) == 2, "Wrong number of pilots."
 
@@ -201,14 +201,14 @@ class Test_PilotManager(unittest.TestCase):
         pmgr = radical.pilot.PilotManager(session=session)
         
         cpd1 = radical.pilot.ComputePilotDescription()
-        cpd1.resource = "localhost"
+        cpd1.resource = "local.localhost"
         cpd1.cores = 1
         cpd1.runtime = 1
         cpd1.sandbox = "/tmp/radical.pilot.sandbox.unittests"
         cpd1.cleanup = True
 
         cpd2 = radical.pilot.ComputePilotDescription()
-        cpd2.resource = "localhost"
+        cpd2.resource = "local.localhost"
         cpd2.cores = 1
         cpd2.runtime = 2
         cpd2.sandbox = "/tmp/radical.pilot.sandbox.unittests"
@@ -216,7 +216,7 @@ class Test_PilotManager(unittest.TestCase):
 
         pilots = pmgr.submit_pilots([cpd1, cpd2])
 
-        pmgr.wait_pilots(timeout=600)
+        pmgr.wait_pilots(timeout=10*60)
         
         for pilot in pilots:
             assert pilot.state == radical.pilot.DONE, "Expected state 'Done' but state is %s" % pilot.state

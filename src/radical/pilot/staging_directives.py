@@ -5,8 +5,8 @@ import os
 #   staging_directive = {
 #       'source':   None, # radical.pilot.Url() or string
 #       'target':   None, # radical.pilot.Url() or string
-#       'action':   None, # COPY, LINK, MOVE, TRANSFER
-#       'flags':    None, # CREATE_PARENTS
+#       'action':   None, # See 'Action operators' below
+#       'flags':    None, # See 'Flags' below
 #       'priority': 0     # Control ordering of actions
 #   }
 
@@ -30,6 +30,7 @@ SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
 DEFAULT_ACTION   = TRANSFER
 DEFAULT_PRIORITY = 0
 DEFAULT_FLAGS    = [CREATE_PARENTS, SKIP_FAILED]
+STAGING_AREA     = 'staging_area'
 
 #-----------------------------------------------------------------------------
 #
@@ -38,13 +39,17 @@ def expand_staging_directive(staging_directive, logger):
 
     """
 
+    # Convert single entries into a list
+    if not isinstance(staging_directive, list):
+        staging_directive = [staging_directive]
+
     # Use this to collect the return value
     new_staging_directive = []
 
     # We loop over the list of staging directives
     for sd in staging_directive:
 
-        if isinstance(sd, str):
+        if isinstance(sd, basestring):
 
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
@@ -81,9 +86,10 @@ def expand_staging_directive(staging_directive, logger):
         elif isinstance(sd, dict):
             # We detected a dict, will have to distinguish between single and multiple entries
 
-            if not 'action' in sd:
-                raise Exception("Staging directive dict has no action member!")
-            action = sd['action']
+            if 'action' in sd:
+                action = sd['action']
+            else:
+                action = DEFAULT_ACTION
 
             if 'flags' in sd:
                 flags = sd['flags']
@@ -104,7 +110,7 @@ def expand_staging_directive(staging_directive, logger):
             else:
                 target = os.path.basename(source)
 
-            if isinstance(source, str):
+            if isinstance(source, basestring):
                 # This is a regular entry, complete and append it
                 new_sd = {'source':   source,
                           'target':   target,
@@ -159,7 +165,12 @@ def expand_staging_directive(staging_directive, logger):
                 # Add the content of the local list to global list
                 new_staging_directive.extend(new_sds)
 
+            else:
+                raise Exception("Source %s is neither a list or a string!" %
+                                source, source)
+
         else:
-            raise Exception("Unknown type of staging directive: %s" % sd)
+            raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
 
     return new_staging_directive
+

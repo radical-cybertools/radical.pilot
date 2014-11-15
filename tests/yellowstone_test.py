@@ -34,8 +34,8 @@ if __name__ == "__main__":
     session = rp.Session()
 
     # Add an ssh identity to the session.
-    cred = rp.SSHCredential()
-    session.add_credential(cred)
+    cred = rp.Context('ssh')
+    session.add_context(cred)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # Define a X-core on stamped that runs for N minutes and
     # uses $HOME/radical.pilot.sandbox as sandbox directory.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource         = "yellowstone.ucar.edu"
+    pdesc.resource         = "ucar.yellowstone"
     pdesc.runtime          = 15 # N minutes
     pdesc.cores            = 32 # X cores
     pdesc.cleanup          = False

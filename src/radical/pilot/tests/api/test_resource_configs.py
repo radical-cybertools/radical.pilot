@@ -54,15 +54,12 @@ class TestResourceConfigs(unittest.TestCase):
         """
         session = radical.pilot.Session(database_url=DBURL)
 
-        pm = radical.pilot.PilotManager(session=session)
-        len1 = len(session.list_resource_configs())
 
         rc = radical.pilot.ResourceConfig()
         rc.name = "test"
 
         session.add_resource_config(rc)
-        assert len1+1 == len(session.list_resource_configs())
-        assert "test" in session.list_resource_configs()
+        session.get_resource_config('test')
 
         session.close()
 
@@ -74,14 +71,14 @@ class TestResourceConfigs(unittest.TestCase):
         session = radical.pilot.Session(database_url=DBURL)
 
         rc = radical.pilot.ResourceConfig()
-        rc.name = "mylocalhost"
-        rc.lrms = "FORK"
-        rc.task_launch_method = "LOCAL"
-        rc.mpi_launch_method = "MPIRUN"
-        rc.remote_job_manager_endpoint = "fork://localhost"
-        rc.remote_filesystem_endpoint = "file://localhost/"
-        rc.bootstrapper = "default_bootstrapper.sh"
-        rc.pilot_agent = "radical-pilot-agent-multicore.py"
+        rc.name                 = "mylocalhost"
+        rc.lrms                 = "FORK"
+        rc.task_launch_method   = "LOCAL"
+        rc.mpi_launch_method    = "MPIRUN"
+        rc.job_manager_endpoint = "fork://localhost"
+        rc.filesystem_endpoint  = "file://localhost/"
+        rc.bootstrapper         = "default_bootstrapper.sh"
+        rc.pilot_agent          = "radical-pilot-agent-multicore.py"
 
         pm = radical.pilot.PilotManager(session=session)
         session.add_resource_config(rc)

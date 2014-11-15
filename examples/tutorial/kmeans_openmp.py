@@ -62,7 +62,7 @@ if __name__ == "__main__":
 # !!!   you may want to specify a different target resource below
         # this describes the parameters and requirements for our pilot job
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "stampede.tacc.utexas.edu" # NOTE: This is a "label", not a hostname
+        pdesc.resource = "xsede.stampede" # NOTE: This is a "label", not a hostname
         pdesc.runtime  = 5 # minutes
         pdesc.cores    = 8
         pdesc.cleanup  = True

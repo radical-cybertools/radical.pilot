@@ -17,6 +17,7 @@ import saga.attributes  as attributes
 # -----------------------------------------------------------------------------
 # Attribute description keys
 RESOURCE          = 'resource'
+ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
 CORES             = 'cores'
 MEMORY            = 'memory'
@@ -45,7 +46,7 @@ class ComputePilotDescription(attributes.Attributes):
           pm = radical.pilot.PilotManager(session=s)
 
           pd = radical.pilot.ComputePilotDescription()
-          pd.resource = "localhost"  # defined in futuregrid.json
+          pd.resource = "local.localhost"  # defined in futuregrid.json
           pd.cores    = 16
           pd.runtime  = 5 # minutes
 
@@ -53,12 +54,19 @@ class ComputePilotDescription(attributes.Attributes):
 
     .. data:: resource
 
-       [Type: `string` or `list of strings`] [**`mandatory`**] The key of a
+       [Type: `string`] [**`mandatory`**] The key of a
        :ref:`chapter_machconf` entry.
        If the key exists, the machine-specifc configuration is loaded from the
        configuration once the ComputePilotDescription is passed to
        :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't exist,
        a :class:`radical.pilot.pilotException` is thrown.
+
+    .. data:: access_schema
+
+       [Type: `string`] [**`optional`**] The key of an access mechanism to use.
+       The valid access mechanism are defined in the resource configurations,
+       see :ref:`chapter_machconf`.  The first one defined there is used by
+       default, if no other is specified.
 
     .. data:: runtime
 
@@ -120,14 +128,16 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register    (RESOURCE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (RUNTIME,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (SANDBOX,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CORES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (MEMORY,   None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (QUEUE,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (PROJECT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CLEANUP,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RESOURCE,         None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (ACCESS_SCHEMA,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (PILOT_AGENT_PRIV, None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
 
         # Allows to select a different pilot agent - for DEVELOPMENT purposes only !!
@@ -135,6 +145,7 @@ class ComputePilotDescription(attributes.Attributes):
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
+        self.set_attribute (ACCESS_SCHEMA,    None)
         self.set_attribute (RUNTIME,          None)
         self.set_attribute (SANDBOX,          None)
         self.set_attribute (CORES,            None)

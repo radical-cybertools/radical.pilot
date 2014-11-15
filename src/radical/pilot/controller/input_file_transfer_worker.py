@@ -16,6 +16,7 @@ import threading
 from bson.objectid import ObjectId
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
+from radical.pilot.staging_directives import CREATE_PARENTS
 
 # BULK_LIMIT defines the max. number of transfer requests to pull from DB.
 BULK_LIMIT=1
@@ -42,6 +43,10 @@ class InputFileTransferWorker(threading.Thread):
 
         self._worker_number = number
         self.name = "InputFileTransferWorker-%s" % str(self._worker_number)
+
+        # we cache saga directories for performance, to speed up sandbox
+        # creation.
+        self._saga_dirs = dict()
 
     # ------------------------------------------------------------------------
     #
@@ -104,11 +109,21 @@ class InputFileTransferWorker(threading.Thread):
 
                             # Creating the sandbox directory.
                             try:
-                                cu_dir = saga.filesystem.Directory(
-                                    remote_sandbox,
-                                    flags=saga.filesystem.CREATE_PARENTS,
-                                    session=self._session)
-                                cu_dir.close()
+                                logger.debug ("saga.fs.Directory ('%s')" % remote_sandbox)
+
+                                remote_sandbox_keyurl = saga.Url (remote_sandbox)
+                                remote_sandbox_keyurl.path = '/'
+                                remote_sandbox_key = str(remote_sandbox_keyurl)
+
+                                if  remote_sandbox_key not in self._saga_dirs :
+                                    self._saga_dirs[remote_sandbox_key] = \
+                                            saga.filesystem.Directory (remote_sandbox_key,
+                                                    flags=saga.filesystem.CREATE_PARENTS,
+                                                    session=self._session)
+
+                                saga_dir = self._saga_dirs[remote_sandbox_key]
+                                saga_dir.make_dir (remote_sandbox, 
+                                                   flags=saga.filesystem.CREATE_PARENTS)
                             except Exception, ex:
                                 tb = traceback.format_exc()
                                 logger.info('Error: %s. %s' % (str(ex), tb))
@@ -134,21 +149,25 @@ class InputFileTransferWorker(threading.Thread):
                                     target = "%s/%s" % (remote_sandbox, sd['target'])
 
                                 log_msg = "Transferring input file %s -> %s" % (input_file_url, target)
-                                logmessage = "Transferred input file %s -> %s" % (input_file_url, target)
                                 log_messages.append(log_msg)
                                 logger.debug(log_msg)
 
                                 # Execute the transfer.
+                                logger.debug ("saga.fs.File ('%s')" % input_file_url)
                                 input_file = saga.filesystem.File(
                                     input_file_url,
                                     session=self._session
                                 )
-                                try:
-                                    input_file.copy(target)
-                                except Exception, ex:
-                                    tb = traceback.format_exc()
-                                    logger.info('Error: %s. %s' % (str(ex), tb))
 
+                                if CREATE_PARENTS in sd['flags']:
+                                    copy_flags = saga.filesystem.CREATE_PARENTS
+                                else:
+                                    copy_flags = 0
+
+                                try :
+                                    input_file.copy(target, flags=copy_flags)
+                                except Exception as e :
+                                    logger.exception (e)
                                 input_file.close()
 
                                 # If all went fine, update the state of this StagingDirective to Done
@@ -160,20 +179,26 @@ class InputFileTransferWorker(threading.Thread):
                                            'FTW_Input_Directives.target': sd['target'],
                                            },
                                     update={'$set': {'FTW_Input_Directives.$.state': 'Done'},
-                                            '$push': {'log': logmessage}
+                                            '$push': {'log': {
+                                                'timestamp': datetime.datetime.utcnow(), 
+                                                'logentry': log_msg}}
                                     }
                                 )
 
                         except Exception, ex:
                             # Update the CU's state 'FAILED'.
                             ts = datetime.datetime.utcnow()
-                            log_messages = "Input transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
-                            logger.error(log_messages)
+                            msg = {'timestamp': ts, 'logentry': "Input transfer failed: %s\n%s" % (str(ex), traceback.format_exc())}
+
+                            logger.exception(log_messages)
                             um_col.update(
-                                {"_id": ObjectId(compute_unit_id)},
-                                {"$set": {"state": FAILED},
-                                 "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                                 "$push": {"log": log_messages}}
+                                {'_id':   ObjectId(compute_unit_id)},
+                                {'$set':  {'state': FAILED},
+                                 '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
+                                 '$push': {'log': {
+                                    'timestamp': datetime.datetime.utcnow(), 
+                                    'logentry': log_msg}}
+                                }
                             )
 
                     # Code below is only to be run by the "first" or only worker
@@ -201,7 +226,11 @@ class InputFileTransferWorker(threading.Thread):
                             # All Input Directives for this FTW are done, mark the CU accordingly
                             um_col.update({"_id": ObjectId(cu["_id"])},
                                           {'$set': {'FTW_Input_Status': DONE},
-                                           '$push': {'log': 'All FTW Input Staging Directives done - %d.' % self._worker_number}})
+                                           '$push': {'log': { 
+                                                'timestamp': datetime.datetime.utcnow(), 
+                                                'logentry': 'All FTW Input Staging Directives done - %d.' % self._worker_number}}
+                                           }
+                            )
 
                         # See if there are any Agent Input Directives still pending or executing,
                         # if not, mark it DONE.
@@ -210,8 +239,11 @@ class InputFileTransferWorker(threading.Thread):
                             # All Input Directives for this Agent are done, mark the CU accordingly
                             um_col.update({"_id": ObjectId(cu["_id"])},
                                            {'$set': {'Agent_Input_Status': DONE},
-                                            '$push': {'log': 'All Agent Input Staging Directives done - %d.' % self._worker_number}
-                                           })
+                                            '$push': {'log': {
+                                                'timestamp': datetime.datetime.utcnow(), 
+                                                'logentry': 'All Agent Input Staging Directives done - %d.' % self._worker_number}}
+                                           }
+                            )
 
                     #
                     # Check for all CUs if both Agent and FTW staging is done, we can then mark the CU PendingExecution
@@ -234,13 +266,12 @@ class InputFileTransferWorker(threading.Thread):
 
             except Exception as e :
 
-                print        "transfer worker error: %s\n %s" % (str(e), traceback.format_exc())
                 logger.error("transfer worker error: %s\n %s" % (str(e), traceback.format_exc()))
                 self._session.close (delete=False)
                 raise e
 
         except SystemExit as e :
-            print "input file transfer thread caught system exit -- forcing application shutdown"
+            logger.error("input file transfer thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             

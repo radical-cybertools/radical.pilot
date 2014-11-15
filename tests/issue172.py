@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     # Define a X-core on stamped that runs for N minutes and
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource  = "india.futuregrid.org"
+    pdesc.resource  = "futuregrid.india"
     pdesc.runtime   = 15 # N minutes
     pdesc.cores     = 4  # X cores
     pdesc.cleanup   = False
@@ -136,5 +136,7 @@ if __name__ == "__main__":
         assert (unit.state == rp.DONE)
         # FIXME: add some more asserts
 
+    pmgr.cancel_pilots()
+    pmgr.wait_pilots()
     session.close(cleanup=False)
 

@@ -57,10 +57,8 @@ class TestIssue163(unittest.TestCase):
          # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session=session)
 
-        # Get all configs,
-        res = session.list_resource_configs()
-        # ... and the entry specific for localhost
-        s = res['localhost']
+        # Get the config entry specific for localhos
+        s = session.get_resource_config('localhost')
 
         # Build a new one based on localhost
         rc = radical.pilot.ResourceConfig(s)
@@ -70,9 +68,9 @@ class TestIssue163(unittest.TestCase):
         # Now add the entry back to the PM
         session.add_resource_config(rc)
 
-        # Get all configs
-        res = session.list_resource_configs()
-        s = res['testing123-localhost']
+        # Get config
+        s = session.get_resource_config('testing123-localhost')
         assert s['default_queue'] == 'development'
 
         session.close()
+

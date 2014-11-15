@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     # Define a 2-core local pilot that runs for 10 minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "localhost"
+    pdesc.resource = "local.localhost"
     pdesc.runtime  = 10
     pdesc.cores    = 1
 
@@ -91,6 +91,7 @@ if __name__ == "__main__":
 
     # Cancel all pilots.
     pmgr.cancel_pilots()
+    pmgr.wait_pilots()
 
     # Remove session from database
     session.close()

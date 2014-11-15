@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import copy
 import saga
 import stat
 import sys
@@ -39,16 +40,21 @@ from bson.objectid import ObjectId
 FREE                 = 'Free'
 BUSY                 = 'Busy'
 
-LAUNCH_METHOD_SSH     = 'SSH'
-LAUNCH_METHOD_APRUN   = 'APRUN'
-LAUNCH_METHOD_LOCAL   = 'LOCAL'
-LAUNCH_METHOD_MPIRUN  = 'MPIRUN'
-LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
-LAUNCH_METHOD_POE     = 'POE'
-LAUNCH_METHOD_IBRUN   = 'IBRUN'
+LAUNCH_METHOD_SSH           = 'SSH'
+LAUNCH_METHOD_APRUN         = 'APRUN'
+LAUNCH_METHOD_LOCAL         = 'LOCAL'
+LAUNCH_METHOD_MPIRUN        = 'MPIRUN'
+LAUNCH_METHOD_MPIRUN_RSH    = 'MPIRUN_RSH'
+LAUNCH_METHOD_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
+LAUNCH_METHOD_MPIEXEC       = 'MPIEXEC'
+LAUNCH_METHOD_POE           = 'POE'
+LAUNCH_METHOD_IBRUN         = 'IBRUN'
+LAUNCH_METHOD_DPLACE        = 'DPLACE'
 
 MULTI_NODE_LAUNCH_METHODS =  [LAUNCH_METHOD_IBRUN,
                               LAUNCH_METHOD_MPIRUN,
+                              LAUNCH_METHOD_MPIRUN_RSH,
+                              LAUNCH_METHOD_MPIRUN_DPLACE,
                               LAUNCH_METHOD_POE,
                               LAUNCH_METHOD_APRUN,
                               LAUNCH_METHOD_MPIEXEC]
@@ -75,6 +81,8 @@ COPY     = 'Copy'     # local cp
 LINK     = 'Link'     # local ln -s
 MOVE     = 'Move'     # local mv
 TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+
+STAGING_AREA = 'staging_area'
 
 # -----------------------------------------------------------------------------
 # Common States
@@ -103,7 +111,7 @@ PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just
 STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
 
 #---------------------------------------------------------------------------
-MAX_IO_LOGLENGTH            = 1024 # max number of unit out/err chars to push to db
+MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push to db
 
 
 #---------------------------------------------------------------------------
@@ -132,8 +140,11 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     logger.error(message)      
     ts = datetime.datetime.utcnow()
 
+    msg = [{"logentry": message, "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
          "$set"    : {"state"       : FAILED,
                       "capability"  : 0,
@@ -148,8 +159,11 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     logger.warning(message)
     ts = datetime.datetime.utcnow()
 
+    msg = [{"logentry": message, "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
          "$set"    : {"state"       : CANCELED,
                       "capability"  : 0,
@@ -163,9 +177,12 @@ def pilot_DONE(mongo_p, pilot_uid):
     """
     ts = datetime.datetime.utcnow()
 
-    message ("pilot done")
+    msg = [{"logentry": message, "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
+    message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
          "$set"    : {"state"       : DONE,
                       "capability"  : 0,
@@ -186,11 +203,15 @@ class ExecutionEnvironment(object):
         self.node_list = None # TODO: Need to think about a structure that works for all machines
         self.cores_per_node = None # Work with one value for now
 
+        # Derive the environment for the cu's from our own environment
+        self.cu_environment = self._populate_cu_environment()
+
         # Configure nodes and number of cores available
         self._configure(lrms)
 
         task_launch_command = None
         mpi_launch_command = None
+        dplace_command = None
 
         # Regular tasks
         if task_launch_method == LAUNCH_METHOD_LOCAL:
@@ -207,6 +228,15 @@ class ExecutionEnvironment(object):
             command = self._which('aprun')
             if command is not None:
                 task_launch_command = command
+
+        elif task_launch_method == LAUNCH_METHOD_DPLACE:
+            # dplace: job launcher for SGI systems (e.g. on Blacklight)
+            dplace_command = self._which('dplace')
+            if dplace_command is not None:
+                task_launch_command = dplace_command
+            else:
+                raise Exception("dplace not found!")
+
         else:
             raise Exception("Task launch method not set or unknown: %s!" % task_launch_method)
 
@@ -214,8 +244,15 @@ class ExecutionEnvironment(object):
         if mpi_launch_method == LAUNCH_METHOD_MPIRUN:
             command = self._find_executable(['mpirun',           # General case
                                              'mpirun_rsh',       # Gordon @ SDSC
+                                             'mpirun-mpich-mp',  # Mac OSX MacPorts
                                              'mpirun-openmpi-mp' # Mac OSX MacPorts
                                             ])
+            if command is not None:
+                mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # mpirun_rsh (e.g. on Gordon@ SDSC)
+            command = self._which('mpirun_rsh')
             if command is not None:
                 mpi_launch_command = command
 
@@ -224,6 +261,17 @@ class ExecutionEnvironment(object):
             command = self._which('mpiexec')
             if command is not None:
                 mpi_launch_command = command
+
+        elif mpi_launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
+            # mpirun + dplace: mpi job launcher for SGI systems (e.g. on Blacklight)
+            command = self._which('mpirun')
+            if command is not None:
+                mpi_launch_command = command
+
+            if dplace_command is None:
+                dplace_command = self._which('dplace')
+                if dplace_command is None:
+                    raise Exception("dplace not found")
 
         elif mpi_launch_method == LAUNCH_METHOD_APRUN:
             # aprun: job launcher for Cray systems
@@ -253,7 +301,8 @@ class ExecutionEnvironment(object):
             'task_launch_method': task_launch_method,
             'task_launch_command': task_launch_command,
             'mpi_launch_method': mpi_launch_method,
-            'mpi_launch_command': mpi_launch_command
+            'mpi_launch_command': mpi_launch_command,
+            'dplace_command': dplace_command
         }
 
         logger.info("Discovered task launch command: '%s' and MPI launch command: '%s'." % \
@@ -266,6 +315,30 @@ class ExecutionEnvironment(object):
         if cores_avail < int(requested_cores):
             raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." % (str(cores_avail), str(requested_cores)))
 
+    def _populate_cu_environment(self):
+        """Derive the environment for the cu's from our own environment."""
+
+        # Get the environment of the agent
+        new_env = copy.deepcopy(os.environ)
+
+        #
+        # Mimic what virtualenv's "deactivate" would do
+        #
+        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        if old_path:
+            new_env['PATH'] = old_path
+
+        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        if old_home:
+            new_env['PYTHON_HOME'] = old_home
+
+        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        if old_ps:
+            new_env['PS1'] = old_ps
+
+        new_env.pop('VIRTUAL_ENV', None)
+
+        return new_env
 
     def _find_ssh(self):
 
@@ -340,6 +413,15 @@ class ExecutionEnvironment(object):
         torque_nodes = [line.strip() for line in open(torque_nodefile)]
         self.log.info("Found Torque PBS_NODEFILE %s: %s" % (torque_nodefile, torque_nodes))
 
+        # Number of cpus involved in allocation
+        val = os.environ.get('PBS_NCPUS')
+        if val:
+            torque_num_cpus = int(val)
+        else:
+            msg = "$PBS_NCPUS not set! (new Torque version?)"
+            torque_num_cpus = None
+            self.log.warning(msg)
+
         # Number of nodes involved in allocation
         val = os.environ.get('PBS_NUM_NODES')
         if val:
@@ -354,7 +436,7 @@ class ExecutionEnvironment(object):
         if val:
             torque_cores_per_node = int(val)
         else:
-            msg = "$PBS_NUM_PPN not set! (old Torque version?)"
+            msg = "$PBS_NUM_PPN or $PBS_PPN not set!"
             torque_cores_per_node = None
             self.log.warning(msg)
 
@@ -363,7 +445,7 @@ class ExecutionEnvironment(object):
         if torque_num_nodes and torque_cores_per_node and \
             torque_nodes_length != torque_num_nodes * torque_cores_per_node:
             msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
-                  (torque_nodes_length, torque_nodes, torque_cores_per_node)
+                  (torque_nodes_length, torque_num_nodes,  torque_cores_per_node)
             raise Exception(msg)
 
         # only unique node names
@@ -374,6 +456,9 @@ class ExecutionEnvironment(object):
         if torque_num_nodes and torque_cores_per_node:
             # Modern style Torque
             self.cores_per_node = torque_cores_per_node
+        elif torque_num_cpus:
+            # Blacklight style (TORQUE-2.3.13)
+            self.cores_per_node = torque_num_cpus
         else:
             # Old style Torque (Should we just use this for all versions?)
             self.cores_per_node = torque_nodes_length / torque_node_list_length
@@ -775,8 +860,8 @@ class Task(object):
 
         self.state          = None
         self.exit_code      = None
-        self.stdout         = None
-        self.stderr         = None
+        self.stdout         = ""
+        self.stderr         = ""
 
         self._log           = []
         self._proc          = None
@@ -792,14 +877,16 @@ class ExecWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def __init__(self, logger, task_queue, command_queue, output_staging_queue,
-                 node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name,
-                 pilot_id, session_id, benchmark):
+                 node_list, cores_per_node, launch_methods, mongodb_url, mongodb_name, mongodb_auth,
+                 pilot_id, session_id, benchmark, cu_environment):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
         self.daemon      = True
         self._terminate  = False
+
+        self.cu_environment = cu_environment
 
         self._log = logger
 
@@ -808,8 +895,13 @@ class ExecWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"   % session_id]
-        self._w = mongo_db["%s.cu"  % session_id]
+
+        if  len (mongodb_auth) >= 3 :
+            user, pwd = mongodb_auth.split (':', 1)
+            self._mongo_db.authenticate (user, pwd)
+
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         # Queued tasks by the Agent
@@ -844,13 +936,13 @@ class ExecWorker(multiprocessing.Process):
         self._cores_per_node = cores_per_node
 
         #self._capability = self._slots2caps(self._slots)
-        self._capability = self._slots2free(self._slots)
+        self._capability     = self._slots2free(self._slots)
+        self._capability_old = None
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
-        self._slot_history = list()
-        self._slot_history.append (self._slot_status (short=True))
-
+        self._slot_history     = [self._slot_status (short=True)]
+        self._slot_history_old = None
 
         # The available launch methods
         self._available_launch_methods = launch_methods
@@ -945,6 +1037,8 @@ class ExecWorker(multiprocessing.Process):
                 # any work to do?
                 if  task :
 
+                    task_slots = None
+
                     try :
 
                         if task.mpi:
@@ -970,11 +1064,11 @@ class ExecWorker(multiprocessing.Process):
                         task_slots = self._acquire_slots(task.numcores, single_node=True, continuous=req_cont)
 
                         # If that failed, and our launch method supports multiple nodes, try that
-                        if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
+                        if  task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
                             task_slots = self._acquire_slots(task.numcores, single_node=False, continuous=req_cont)
 
                         # Check if we got results
-                        if task_slots is None:
+                        if  task_slots is None:
                             # No resources free, put back in queue
                             self._task_queue.put(task)
                         else:
@@ -984,11 +1078,19 @@ class ExecWorker(multiprocessing.Process):
                             idle = False
 
                     except Exception as e :
-                        self._log.error ("Launching task failed: %s." % e)
-                        task.state = FAILED
+                        # append the startup error to the units stderr.  This is
+                        # not completely correct (as this text is not produced
+                        # by the unit), but it seems the most intuitive way to
+                        # communicate that error to the application/user.
+                        task.state   = FAILED
+                        task.stderr += "\nPilot cannot start compute unit: '%s'" % e
                         
+                        self._log.error ("Launching task failed: '%s'." % e)
+
                         # Free the Slots, Flee the Flots, Ree the Frots!
-                        self._change_slot_states(task.slots, FREE)
+                        if  task_slots :
+                            self._change_slot_states(task_slots, FREE)
+
                         self._update_tasks (task)
 
 
@@ -1225,7 +1327,8 @@ class ExecWorker(multiprocessing.Process):
             cores_per_node=self._cores_per_node,
             launch_method=launch_method,
             launch_command=launch_command,
-            logger=self._log)
+            logger=self._log,
+            cu_environment=self.cu_environment)
 
         task.started=datetime.datetime.utcnow()
         task.state = EXECUTING
@@ -1303,19 +1406,21 @@ class ExecWorker(multiprocessing.Process):
 
                             # Find the task in the database
                             # TODO: shouldnt this be available somewhere already, that would save a roundtrip?!
-                            cu = self._w.find_one({"_id": ObjectId(uid)})
+                            cu = self._cu.find_one({"_id": ObjectId(uid)})
 
                             for directive in cu['Agent_Output_Directives']:
                                 output_staging = {
                                     'directive': directive,
                                     'sandbox': task.workdir,
+                                    # TODO: the staging/area pilot directory should  not be derived like this:
+                                    'staging_area': os.path.join(os.path.dirname(task.workdir), STAGING_AREA),
                                     'cu_id': uid
                                 }
 
                                 # Put the output staging directives in the queue
                                 self._output_staging_queue.put(output_staging)
 
-                                self._w.update(
+                                self._cu.update(
                                     {"_id": ObjectId(uid)},
                                     {"$set": {"Agent_Output_Status": EXECUTING}}
                                 )
@@ -1326,7 +1431,7 @@ class ExecWorker(multiprocessing.Process):
                         # but we need this code to set the state so that the FTW
                         # gets notified that it can start its work.
                         if task.ftw_output_staging:
-                            self._w.update(
+                            self._cu.update(
                                 {"_id": ObjectId(uid)},
                                 {"$set": {"FTW_Output_Status": PENDING}}
                             )
@@ -1340,23 +1445,31 @@ class ExecWorker(multiprocessing.Process):
 
             idle = False
 
-            # store stdout and stderr to GridFS
+            # store stdout and stderr to the database
             workdir = task.workdir
             task_id = task.uid
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = stdout_f.read()
+                    try :
+                        txt = unicode(stdout_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "unit stdout contains binary data -- use file staging directives"
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stdout = txt
+                    task.stdout += txt
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = stderr_f.read()
+                    try :
+                        txt = unicode(stderr_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "unit stderr contains binary data -- use file staging directives"
+
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stderr = txt
+                    task.stderr += txt
 
             task.exit_code = ret_code
 
@@ -1389,6 +1502,10 @@ class ExecWorker(multiprocessing.Process):
         """Updates the database entries for one or more tasks, including
         task state, log, etc.
         """
+
+        if  not isinstance(tasks, list):
+            tasks = [tasks]
+
         ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
         # this information here:
@@ -1405,19 +1522,23 @@ class ExecWorker(multiprocessing.Process):
         # AM: the capability publication cannot be delayed until shutdown
         # though...
         if  self._benchmark :
-            self._p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._slot_history,
-                          #"slots"       : self._slots,
-                          "capability"  : self._capability
-                         }
-                }
-                )
+            if  self._slot_history_old != self._slot_history or \
+                self._capability_old   != self._capability   :
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
+                self._p.update(
+                    {"_id": ObjectId(self._pilot_id)},
+                    {"$set": {"slothistory" : self._slot_history,
+                              #"slots"       : self._slots,
+                              "capability"  : self._capability
+                             }
+                    }
+                    )
+
+                self._slot_history_old = self._slot_history[:]
+                self._capability_old   = self._capability
+
         for task in tasks:
-            self._w.update({"_id": ObjectId(task.uid)}, 
+            self._cu.update({"_id": ObjectId(task.uid)}, 
             {"$set": {"state"         : task.state,
                       "started"       : task.started,
                       "finished"      : task.finished,
@@ -1453,8 +1574,8 @@ class InputStagingWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"   % session_id]
-        self._w = mongo_db["%s.cu"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
@@ -1543,13 +1664,13 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.info(log_message)
 
                 # If all went fine, update the state of this StagingDirective to Done
-                self._w.update({'_id': ObjectId(cu_id),
-                                'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state': PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']},
-                               {'$set': {'Agent_Input_Directives.$.state': DONE},
-                                '$push': {'log': log_message}})
+                self._cu.update({'_id': ObjectId(cu_id),
+                                 'Agent_Input_Status': EXECUTING,
+                                 'Agent_Input_Directives.state': PENDING,
+                                 'Agent_Input_Directives.source': directive['source'],
+                                 'Agent_Input_Directives.target': directive['target']},
+                                {'$set' : {'Agent_Input_Directives.$.state': DONE},
+                                 '$push': {'log': log_message}})
 
             except:
                 # If we catch an exception, assume the staging failed
@@ -1557,15 +1678,15 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.error(log_message)
 
                 # If a staging directive fails, fail the CU also.
-                self._w.update({'_id': ObjectId(cu_id),
-                                'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state': PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']},
-                               {'$set': {'Agent_Input_Directives.$.state': FAILED,
-                                         'Agent_Input_Status': FAILED,
-                                         'state': FAILED},
-                                '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
+                self._cu.update({'_id': ObjectId(cu_id),
+                                 'Agent_Input_Status': EXECUTING,
+                                 'Agent_Input_Directives.state': PENDING,
+                                 'Agent_Input_Directives.source': directive['source'],
+                                 'Agent_Input_Directives.target': directive['target']},
+                                {'$set': {'Agent_Input_Directives.$.state': FAILED,
+                                          'Agent_Input_Status': FAILED,
+                                          'state': FAILED},
+                                 '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
 
 
 # ----------------------------------------------------------------------------
@@ -1593,8 +1714,8 @@ class OutputStagingWorker(multiprocessing.Process):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"   % session_id]
-        self._w = mongo_db["%s.cu"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
@@ -1626,12 +1747,36 @@ class OutputStagingWorker(multiprocessing.Process):
                         directive = directive[0] # TODO: Why is it a fscking tuple?!?!
 
                     sandbox = staging['sandbox']
-                    cu_id = staging ['cu_id']
+                    staging_area = staging['staging_area']
+                    cu_id = staging['cu_id']
                     self._log.info('Task output staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
 
                     source = str(directive['source'])
-                    target = str(directive['target'])
                     abs_source = os.path.join(sandbox, source)
+
+                    # Convert the target_url into a SAGA Url object
+                    target_url = saga.Url(directive['target'])
+
+                    # Handle special 'staging' scheme
+                    if target_url.scheme == 'staging':
+                        self._log.info('Operating from staging')
+                        # Remove the leading slash to get a relative path from the staging area
+                        rel2staging = target_url.path.split('/',1)[1]
+                        target = os.path.join(staging_area, rel2staging)
+                    else:
+                        self._log.info('Operating from absolute path')
+                        target = target_url.path
+
+                    # Create output directory in case it doesn't exist yet
+                    try :
+                        os.makedirs(os.path.dirname(target))
+                    except OSError as e:
+                        # ignore failure on existing directory
+                        if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
+                            pass
+                        else:
+                            raise
+
                     if directive['action'] == LINK:
                         self._log.info('Going to link %s to %s' % (abs_source, target))
                         os.symlink(abs_source, target)
@@ -1653,13 +1798,13 @@ class OutputStagingWorker(multiprocessing.Process):
                         self._log.error('Action %s not supported' % directive['action'])
 
                     # If all went fine, update the state of this StagingDirective to Done
-                    self._w.update({'_id' : ObjectId(cu_id),
-                                    'Agent_Output_Status': EXECUTING,
-                                    'Agent_Output_Directives.state': PENDING,
-                                    'Agent_Output_Directives.source': source,
-                                    'Agent_Output_Directives.target': target},
-                                   {'$set': {'Agent_Output_Directives.$.state': DONE},
-                                    '$push': {'log': logmessage}})
+                    self._cu.update({'_id' : ObjectId(cu_id),
+                                     'Agent_Output_Status': EXECUTING,
+                                     'Agent_Output_Directives.state': PENDING,
+                                     'Agent_Output_Directives.source': directive['source'],
+                                     'Agent_Output_Directives.target': directive['target']},
+                                    {'$set' : {'Agent_Output_Directives.$.state': DONE},
+                                     '$push': {'log': logmessage}})
 
                 except Queue.Empty:
                     # do nothing and sleep if we don't have any queued staging
@@ -1677,7 +1822,7 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, 
+    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, mongodb_auth, 
                  pilot_id, session_id, benchmark):
         """Le Constructeur creates a new Agent instance.
         """
@@ -1697,8 +1842,14 @@ class Agent(threading.Thread):
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db = mongo_client[mongodb_name]
-        self._p = mongo_db["%s.p"   % session_id]
-        self._w = mongo_db["%s.cu"  % session_id]
+
+        # do auth on username *and* password (ignore empty split results)
+        auth_elems = filter (None, mongodb_auth.split (':', 1))
+        if  len (auth_elems) == 2 :
+            mongo_db.authenticate (auth_elems[0], auth_elems[1])
+
+        self._p  = mongo_db["%s.p"  % session_id]
+        self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         # the task queue holds the tasks that are pulled from the MongoDB
@@ -1723,9 +1874,11 @@ class Agent(threading.Thread):
             launch_methods  = self._exec_env.discovered_launch_methods,
             mongodb_url     = mongodb_url,
             mongodb_name    = mongodb_name,
+            mongodb_auth    = mongodb_auth,
             pilot_id        = pilot_id,
             session_id      = session_id,
-            benchmark       = benchmark
+            benchmark       = benchmark,
+            cu_environment  = self._exec_env.cu_environment
         )
         self._exec_worker.start()
         self._log.info("Started up %s serving nodes %s" % (self._exec_worker, self._exec_env.node_list))
@@ -1858,7 +2011,7 @@ class Agent(threading.Thread):
                     # Check if there are compute units waiting for execution,
                     # and log that we pulled it.
                     ts = datetime.datetime.utcnow()
-                    cu_cursor = self._w.find_and_modify(
+                    cu_cursor = self._cu.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : PENDING_EXECUTION},
                         update={"$set" : {"state": SCHEDULING},
@@ -1910,7 +2063,7 @@ class Agent(threading.Thread):
                     # Check if there are compute units waiting for input staging
                     #
                     ts = datetime.datetime.utcnow()
-                    cu_cursor = self._w.find_and_modify(
+                    cu_cursor = self._cu.find_and_modify(
                         query={'pilot' : self._pilot_id,
                                'Agent_Input_Status': PENDING},
                         # TODO: This might/will create double state history for StagingInput
@@ -1961,7 +2114,7 @@ class _Process(subprocess.Popen):
     #-------------------------------------------------------------------------
     #
     def __init__(self, task, all_slots, cores_per_node, launch_method,
-                 launch_command, logger):
+                 launch_command, logger, cu_environment):
 
         self._task = task
         self._log  = logger
@@ -2044,6 +2197,22 @@ class _Process(subprocess.Popen):
 
             cmdline = launch_script.name
 
+        elif launch_method == LAUNCH_METHOD_MPIRUN_RSH:
+            # Construct the hosts_string
+            hosts_string = ''
+            for slot in task.slots:
+                host = slot.split(':')[0]
+                hosts_string += ' %s' % host
+
+            mpirun_rsh_command = "%s -export -np %s%s" % (launch_command, task.numcores, hosts_string)
+
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_rsh_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
         elif launch_method == LAUNCH_METHOD_MPIEXEC:
             # Construct the hosts_string
             hosts_string = ''
@@ -2051,7 +2220,7 @@ class _Process(subprocess.Popen):
                 host = slot.split(':')[0]
                 hosts_string += '%s,' % host
 
-            mpiexec_command = "%s -n %s -hosts %s" % (launch_command, task.numcores, hosts_string)
+            mpiexec_command = "%s -n %s -host %s" % (launch_command, task.numcores, hosts_string)
 
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
@@ -2093,6 +2262,55 @@ class _Process(subprocess.Popen):
             launch_script.write('%s\n'    % pre_exec_string)
             launch_script.write('%s\n'    % env_string)
             launch_script.write('%s %s\n' % (ibrun_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_DPLACE:
+            # Use dplace on SGI
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            dplace_command = "%s -c %d-%d" % \
+                                    (launch_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (dplace_command, task_exec_string))
+            launch_script.write('%s\n'    % post_exec_string)
+
+            cmdline = launch_script.name
+
+        elif launch_method == LAUNCH_METHOD_MPIRUN_DPLACE:
+            # Use mpirun in combination with dplace
+
+            first_slot = task.slots[0]
+            # Get the host and the core part
+            [first_slot_host, first_slot_core] = first_slot.split(':')
+            # Find the entry in the the all_slots list based on the host
+            slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
+            # Transform it into an index in to the all_slots list
+            all_slots_slot_index = all_slots.index(slot_entry)
+
+            # TODO: this should be passed on from the detection mechanism
+            dplace_command = 'dplace'
+
+            dplace_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
+            mpirun_dplace_command = "%s -np %d %s -c %d-%d" % \
+                            (launch_command, task.numcores, dplace_command, dplace_offset, dplace_offset+task.numcores-1)
+
+            # Build launch script
+            launch_script.write('%s\n'    % pre_exec_string)
+            launch_script.write('%s\n'    % env_string)
+            launch_script.write('%s %s\n' % (mpirun_dplace_command, task_exec_string))
             launch_script.write('%s\n'    % post_exec_string)
 
             cmdline = launch_script.name
@@ -2160,7 +2378,7 @@ class _Process(subprocess.Popen):
                                        close_fds=True,
                                        shell=True,
                                        cwd=task.workdir, # TODO: This doesn't always make sense if it runs remotely
-                                       env=None,
+                                       env=cu_environment,
                                        universal_newlines=False,
                                        startupinfo=None,
                                        creationflags=0)
@@ -2187,6 +2405,11 @@ class _Process(subprocess.Popen):
 def parse_commandline():
 
     parser = optparse.OptionParser()
+
+    parser.add_option('-a', '--mongodb-auth',
+                      metavar='AUTH',
+                      dest='mongodb_auth',
+                      help='username:password for MongoDB access.')
 
     parser.add_option('-b', '--benchmark',
                       metavar='BENCHMARK',
@@ -2297,10 +2520,16 @@ if __name__ == "__main__":
     #--------------------------------------------------------------------------
     # Establish database connection
     try:
+        host, port = options.mongodb_url.split(':', 1)
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
+
+        if  len (options.mongodb_auth) >= 3 :
+            user, pwd = options.mongodb_auth.split (':', 1)
+            mongo_db.authenticate (user, pwd)
+
         mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_w      = mongo_db["%s.cu" % options.session_id]  # AM: never used
+        mongo_cu      = mongo_db["%s.cu" % options.session_id]  # AM: never used
         mongo_wm     = mongo_db["%s.um" % options.session_id]  # AM: never used
 
     except Exception, ex:
@@ -2352,6 +2581,7 @@ if __name__ == "__main__":
                       runtime=options.runtime,
                       mongodb_url=options.mongodb_url,
                       mongodb_name=options.database_name,
+                      mongodb_auth=options.mongodb_auth,
                       pilot_id=options.pilot_id,
                       session_id=options.session_id, 
                       benchmark=options.benchmark)

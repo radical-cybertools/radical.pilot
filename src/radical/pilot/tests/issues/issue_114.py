@@ -2,7 +2,7 @@
 """
 import os
 import sys
-import radical.pilot
+import radical.pilot as rp
 import unittest
 
 import uuid
@@ -52,40 +52,50 @@ class TestIssue114(unittest.TestCase):
     def test__issue_114_part_1(self):
         """ https://github.com/radical-cybertools/radical.pilot/issues/114
         """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = radical.pilot.PilotManager(session=session)
+        pm = rp.PilotManager(session=session)
 
-        cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd = rp.ComputePilotDescription()
+        cpd.resource = "local.localhost"
         cpd.cores    = 1
         cpd.runtime  = 5
         cpd.sandbox  = "/tmp/radical.pilot.sandbox.unittests"
         cpd.cleanup  = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        state = pm.wait_pilots(state=[rp.ACTIVE, 
+                                      rp.DONE, 
+                                      rp.FAILED], 
+                                      timeout=5*60)
 
-        um = radical.pilot.UnitManager(
+        assert (pilot.state == rp.ACTIVE), "pilot state: %s" % pilot.state
+
+        um = rp.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
+            scheduler=rp.SCHED_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
         all_tasks = []
 
         for i in range(0,2):
-            cudesc = radical.pilot.ComputeUnitDescription()
+            cudesc = rp.ComputeUnitDescription()
             cudesc.cores      = 1
             cudesc.executable = "/bin/sleep"
-            cudesc.arguments  = ['180']
+            cudesc.arguments  = ['60']
             all_tasks.append(cudesc)
 
-        cu     = um.submit_units(all_tasks)
-        states = um.wait_units (state=[radical.pilot.SCHEDULING, radical.pilot.EXECUTING], 
-                                timeout=60)
+        units  = um.submit_units(all_tasks)
+        states = um.wait_units (state=[rp.SCHEDULING, rp.EXECUTING], 
+                                timeout=2*60)
 
-        assert radical.pilot.SCHEDULING in states
-        assert radical.pilot.EXECUTING  in states
+        assert rp.SCHEDULING in states, "states: %s" % states
+
+        states = um.wait_units (state=[rp.EXECUTING, rp.DONE], 
+                                timeout=1*60)
+
+        assert rp.EXECUTING  in states, "states: %s" % states
 
         session.close()
 
@@ -94,12 +104,12 @@ class TestIssue114(unittest.TestCase):
     def test__issue_114_part_2(self):
         """ https://github.com/radical-cybertools/radical.pilot/issues/114
         """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm  = radical.pilot.PilotManager(session=session)
+        pm  = rp.PilotManager(session=session)
 
-        cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd = rp.ComputePilotDescription()
+        cpd.resource = "local.localhost"
         cpd.cores   = 1
         cpd.runtime = 5
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
@@ -107,29 +117,34 @@ class TestIssue114(unittest.TestCase):
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
-        um = radical.pilot.UnitManager(
+        um = rp.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
+            scheduler=rp.SCHED_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
-        pm.wait_pilots(state=[radical.pilot.ACTIVE, radical.pilot.DONE, radical.pilot.FAILED])
+        state = pm.wait_pilots(state=[rp.ACTIVE, 
+                                      rp.DONE, 
+                                      rp.FAILED], 
+                                      timeout=5*60)
 
-        cudesc = radical.pilot.ComputeUnitDescription()
+        assert (pilot.state == rp.ACTIVE), "pilot state: %s" % pilot.state
+
+        cudesc = rp.ComputeUnitDescription()
         cudesc.cores      = 1
         cudesc.executable = "/bin/sleep"
         cudesc.arguments  = ['60']
 
         cu    = um.submit_units(cudesc)
-        state = um.wait_units(state=[radical.pilot.EXECUTING], timeout=50)
+        state = um.wait_units(state=[rp.EXECUTING], timeout=60)
 
-        assert state    == [radical.pilot.EXECUTING]
-        assert cu.state ==  radical.pilot.EXECUTING
+        assert state    == [rp.EXECUTING], 'state   : %s' % state
+        assert cu.state ==  rp.EXECUTING , 'cu state: %s' % cu.state
 
-        state = um.wait_units(timeout=80)
+        state = um.wait_units(timeout=2*60)
 
-        assert state    == [radical.pilot.DONE]
-        assert cu.state ==  radical.pilot.DONE
+        assert state    == [rp.DONE], 'state   : %s' % state    
+        assert cu.state ==  rp.DONE , 'cu state: %s' % cu.state 
 
         session.close()
 
@@ -138,12 +153,12 @@ class TestIssue114(unittest.TestCase):
     def test__issue_114_part_3(self):
         """ https://github.com/radical-cybertools/radical.pilot/issues/114
         """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session(database_url=DBURL, database_name=DBNAME)
 
-        pm = radical.pilot.PilotManager(session=session)
+        pm = rp.PilotManager(session=session)
 
-        cpd = radical.pilot.ComputePilotDescription()
-        cpd.resource = "localhost"
+        cpd = rp.ComputePilotDescription()
+        cpd.resource = "local.localhost"
         cpd.cores   = 1
         cpd.runtime = 1
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
@@ -151,24 +166,24 @@ class TestIssue114(unittest.TestCase):
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
-        um = radical.pilot.UnitManager(
+        um = rp.UnitManager(
             session   = session,
-            scheduler = radical.pilot.SCHED_DIRECT_SUBMISSION
+            scheduler = rp.SCHED_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
-        state = pm.wait_pilots(state=[radical.pilot.ACTIVE, 
-                                      radical.pilot.DONE, 
-                                      radical.pilot.FAILED], 
-                                      timeout=5*60)
+        state = pm.wait_pilots(state=[rp.ACTIVE, 
+                                      rp.DONE, 
+                                      rp.FAILED], 
+                                      timeout=10*60)
 
-        assert state       == [radical.pilot.ACTIVE]
-        assert pilot.state ==  radical.pilot.ACTIVE
+        assert state       == [rp.ACTIVE], 'state      : %s' % state    
+        assert pilot.state ==  rp.ACTIVE , 'pilot state: %s' % pilot.state 
 
-        state = pm.wait_pilots(timeout=60)
+        state = pm.wait_pilots(timeout=3*60)
 
-        assert state       == [radical.pilot.DONE]
-        assert pilot.state ==  radical.pilot.DONE
+        assert state       == [rp.DONE], 'state      : %s' % state        
+        assert pilot.state ==  rp.DONE , 'pilot state: %s' % pilot.state  
 
         session.close()
 

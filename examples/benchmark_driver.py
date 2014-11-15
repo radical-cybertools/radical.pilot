@@ -1,7 +1,11 @@
+
 import os
 import sys
 import time
 import radical.pilot as rp
+
+os.environ['RADICAL_PILOT_BENCHMARK'] = '1'
+
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
@@ -36,25 +40,19 @@ def unit_state_cb (unit, state) :
 #
 if __name__ == "__main__":
 
-    rp_user     = str(os.getenv ("RP_USER",     "merzky"))
     rp_cores    = int(os.getenv ("RP_CORES",    16))
     rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
-    rp_units    = int(os.getenv ("RP_UNITS",    64))
+    rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2)) # 3 units/core/pilot
     rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
-    rp_host     = str(os.getenv ("RP_HOST",     "india.futuregrid.org"))
+    rp_host     = str(os.getenv ("RP_HOST",     "xsede.stampede"))
     rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
-    rp_project  = str(os.getenv ("RP_PROJECT",  ""))
+    rp_project  = str(os.getenv ("RP_PROJECT",  "TG-MCB090174"))
 
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
     # well as security crendetials.
     session = rp.Session()
     print "session: %s" % session.uid
-
-    # make jenkins happy
-    c         = rp.Context ('ssh')
-    c.user_id = rp_user
-    session.add_context (c)
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -67,40 +65,38 @@ if __name__ == "__main__":
     # Define 1-core local pilots that run for 10 minutes and clean up
     # after themself.
     pdescriptions = list()
-    for i in range (0, 1) :
+    for i in [1, 2, 3] :
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = rp_host
         pdesc.runtime  = rp_runtime
-        pdesc.cores    = rp_cores
+        pdesc.cores    = i*rp_cores
         pdesc.cleanup  = False
         if rp_queue   : pdesc.queue    = rp_queue
         if rp_project : pdesc.project  = rp_project
 
         pdescriptions.append(pdesc)
 
-        import pprint
-        pprint.pprint (pdesc)
-
 
     # Launch the pilots.
     pilots = pmgr.submit_pilots (pdescriptions)
     print "pilots: %s" % pilots
 
-    pmgr.wait_pilots (state=rp.ACTIVE)
+    # Combine the ComputePilot, the ComputeUnits and a scheduler via
+    # a UnitManager object.
+    umgr = rp.UnitManager(
+        session=session,
+        scheduler=rp.SCHED_BACKFILLING)
+
+    # Register our callback with the UnitManager. This callback will get
+    # called every time any of the units managed by the UnitManager
+    # change their state.
+    umgr.register_callback(unit_state_cb)
+
+    # Add the previsouly created ComputePilots to the UnitManager.
+    umgr.add_pilots(pilots)
 
 
-
-    # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-    # uses /bin/cat to concatenate two input files, file1.dat and
-    # file2.dat. The output is written to STDOUT. cu.environment is
-    # used to demonstrate how to set environment variables withih a
-    # ComputeUnit - it's not strictly necessary for this example. As
-    # a shell script, the ComputeUnits would look something like this:
-    #
-    #    export INPUT1=file1.dat
-    #    export INPUT2=file2.dat
-    #    /bin/cat $INPUT1 $INPUT2
-    #
+    # Create a workload of n ComputeUnits.
     cu_descriptions = []
 
     for unit_count in range(0, rp_units):
@@ -115,23 +111,8 @@ if __name__ == "__main__":
 
         cu_descriptions.append(cu)
 
-    # Combine the ComputePilot, the ComputeUnits and a scheduler via
-    # a UnitManager object.
-    umgr = rp.UnitManager(
-        session=session,
-        scheduler=rp.SCHED_ROUND_ROBIN)
-
-    # Register our callback with the UnitManager. This callback will get
-    # called every time any of the units managed by the UnitManager
-    # change their state.
-    umgr.register_callback(unit_state_cb)
-
-    # Add the previsouly created ComputePilots to the UnitManager.
-    umgr.add_pilots(pilots)
-
-    # Submit the previously created ComputeUnit descriptions to the
-    # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
+    # Submit the ComputeUnit descriptions to the UnitManager. This will trigger
+    # the selected scheduler to start assigning the units to the pilots.
     units = umgr.submit_units(cu_descriptions)
     print "units: %s" % umgr.list_units ()
 
@@ -157,5 +138,5 @@ if __name__ == "__main__":
     os.system ("bin/radicalpilot-stats -m plot -s %s" % sid) 
     os.system ("cp -v %s.png report/rp.benchmark.png" % sid) 
 
-    session.close ()
+    session.close (cleanup=True)
 

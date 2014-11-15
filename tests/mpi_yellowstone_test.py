@@ -9,7 +9,7 @@ def pilot_state_cb (pilot, state) :
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if  state in [rp.FAILED, rp.DONE] :
         sys.exit (1)
 
 
@@ -21,6 +21,8 @@ def unit_state_change_cb (unit, state) :
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
     if  state == rp.FAILED :
+        print "                         '%s' stderr: %s." % (unit.uid, unit.stderr)
+        print "                         '%s' stdout: %s." % (unit.uid, unit.stdout)
         sys.exit (1)
 
 
@@ -47,17 +49,17 @@ if __name__ == "__main__":
     pmgr.register_callback(pilot_state_cb)
 
     # Define a X-core that runs for N minutes.
+    # Yellowstone has 16 cores per node.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "yellowstone.ucar.edu"
+    pdesc.resource = "ucar.yellowstone"
     pdesc.project  = "URTG0003"
     pdesc.runtime  = 5 # N minutes
-    pdesc.cores    = 8 # X cores
+    pdesc.cores    = 32 # X cores
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
     cud_list = []
-
     for unit_count in range(0, 4):
 
         mpi_test_task = rp.ComputeUnitDescription()
@@ -67,7 +69,9 @@ if __name__ == "__main__":
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
+        # Yellowstone only allows one CU per node concurrently,
+        # so effectively 'cores' needs to be a multiple of 16.
+        mpi_test_task.cores         = 16
 
         cud_list.append(mpi_test_task)
 
@@ -97,10 +101,25 @@ if __name__ == "__main__":
         units = [units]
 
     for unit in units:
-        print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+        print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s stderr: %s" \
+            % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout, unit.stderr)
         
         assert (unit.state == rp.DONE)
+        assert ('mpi rank 0/16' in unit.stdout)
+        assert ('mpi rank 1/16' in unit.stdout)
+        assert ('mpi rank 2/16' in unit.stdout)
+        assert ('mpi rank 3/16' in unit.stdout)
+        assert ('mpi rank 4/16' in unit.stdout)
+        assert ('mpi rank 5/16' in unit.stdout)
+        assert ('mpi rank 6/16' in unit.stdout)
+        assert ('mpi rank 7/16' in unit.stdout)
+        assert ('mpi rank 8/16' in unit.stdout)
+        assert ('mpi rank 9/16' in unit.stdout)
+        assert ('mpi rank 10/16' in unit.stdout)
+        assert ('mpi rank 11/16' in unit.stdout)
+        assert ('mpi rank 12/16' in unit.stdout)
+        assert ('mpi rank 13/16' in unit.stdout)
+        assert ('mpi rank 14/16' in unit.stdout)
+        assert ('mpi rank 15/16' in unit.stdout)
 
     session.close()
-

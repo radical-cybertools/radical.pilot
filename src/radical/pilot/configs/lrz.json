@@ -1,19 +1,26 @@
 {
-    "supermuc.lrz.de": {
-        "remote_job_manager_endpoint" : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
-        "remote_filesystem_endpoint"  : "gsisftp://supermuc.lrz.de:2222/",
-        "local_job_manager_endpoint"  : "loadl://localhost",
-        "local_filesystem_endpoint"   : "file://localhost/",
+    "supermuc": {
+        "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).",
+        "notes"                       : "Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.",
+        "schemas"                     : ["gsissh", "ssh"],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "loadl+gsissh://supermuc.lrz.de:2222/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
+            "filesystem_endpoint"     : "gsisftp://supermuc.lrz.de:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "loadl+ssh://supermuc.lrz.de/?energy_policy_tag=radical_pilot&island_count=1&node_usage=not_shared&network_mpi=sn_all,not_shared,us",
+            "filesystem_endpoint"     : "sftp://supermuc.lrz.de/"
+        },
         "default_queue"               : "test",
         "lrms"                        : "LOADL",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        #"agent_mongodb_endpoint"      : "login03:24243",
         "forward_tunnel_endpoint"     : "login03",
         "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
         "pre_bootstrap"               : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",
-                                         "echo module purge", "echo module load lrz",
                                          "module load python/2.7.6",
                                          "module unload mpi.ibm", "module load mpi.intel",
                                          "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"

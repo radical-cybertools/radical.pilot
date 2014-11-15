@@ -175,8 +175,11 @@ class UnitManagerController(threading.Thread):
     
         for cb in self._shared_data[unit_id]['callbacks']:
             try:
-                cb(self._shared_data[unit_id]['facade_object'],
-                   new_state)
+
+                if self._shared_data[unit_id]['facade_object'] :
+                    cb(self._shared_data[unit_id]['facade_object'], new_state)
+                else :
+                    logger.error("Couldn't call callback (no pilot instance)")
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
@@ -312,7 +315,7 @@ class UnitManagerController(threading.Thread):
                 logger.debug("UnitManager.close(): %s terminated." % worker.name)
               # worker.join()
         except SystemExit as e :
-            print "unit manager controller thread caught system exit -- forcing application shutdown"
+            logger.exception ("unit manager controller thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             
@@ -569,7 +572,7 @@ class UnitManagerController(threading.Thread):
                         logger.error('Not sure if action %s makes sense for output staging' % action)
 
                 if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
-                    log = ["Scheduled for data transfer to ComputePilot %s." % pilot_uid]
+                    log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
                     self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
                     cu_transfer.append(unit)
                 else:
@@ -589,7 +592,7 @@ class UnitManagerController(threading.Thread):
             )
 
             for unit in cu_notransfer:
-                log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
+                log = "Scheduled for execution on ComputePilot %s." % pilot_uid
                 self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
                 #self._set_state(uid, PENDING_EXECUTION, log)
 
@@ -598,7 +601,21 @@ class UnitManagerController(threading.Thread):
                 (cu_notransfer, pilot_uid)
             )
         except Exception, e:
-            import traceback
-            logger.error (traceback.format_exc())
-            raise Exception('error in unit manager controler: %s' % e)
+            logger.exception ('error in unit manager controller (schedule())')
+            raise
+
+    # ------------------------------------------------------------------------
+    #
+    def unschedule_compute_units(self, units):
+        """
+        set the unit state to UNSCHEDULED
+        """
+
+        try:
+            unit_ids = [unit.uid for unit in units]
+            self._db.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
+
+        except Exception, e:
+            logger.exception ('error in unit manager controller (unschedule())')
+            raise
 

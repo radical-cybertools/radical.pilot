@@ -4,8 +4,8 @@
 Executing Multiple Commands in a Single ComputeUnit  
 ***************************************************
 
-There are scanrios in which you might want to execute more than one command in
-a  ComputeUnit. For example, you might have to create and cange into a
+There are scenarios in which you might want to execute more than one command in
+a  ComputeUnit. For example, you might have to create and change into a
 directory or load a module or a specific version of a software package before
 you call your *main* executable.
 

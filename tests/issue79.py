@@ -13,7 +13,7 @@ umgr    = rp.UnitManager  (session      = session,
 pmgr    = rp.PilotManager (session      = session)
 
 pilot_descr = rp.ComputePilotDescription ()
-pilot_descr.resource = 'localhost'
+pilot_descr.resource = 'local.localhost'
 pilot_descr.cores    = 1
 pilot_descr.runtime  = 10
 
@@ -30,5 +30,7 @@ unit.wait ()
 assert ('/road/to/nowhere/does_not_exist: No such file or directory' in unit.stderr)
 assert (unit.state == rp.FAILED)
 
+pmgr.cancel_pilots()       
+pmgr.wait_pilots()       
 session.close ()
 

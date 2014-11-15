@@ -9,7 +9,7 @@ def pilot_state_cb (pilot, state) :
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if  state in [rp.FAILED, rp.DONE] :
         sys.exit (1)
 
 
@@ -21,6 +21,8 @@ def unit_state_change_cb (unit, state) :
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
     if  state == rp.FAILED :
+        print "                         '%s' stderr: %s." % (unit.uid, unit.stderr)
+        print "                         '%s' stdout: %s." % (unit.uid, unit.stdout)
         sys.exit (1)
 
 
@@ -48,7 +50,7 @@ if __name__ == "__main__":
 
     # Define a X-core that runs for N minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "alamo.futuregrid.org"
+    pdesc.resource = "futuregrid.alamo"
     pdesc.runtime  = 5 # N minutes
     pdesc.cores    = 8 # X cores
 
@@ -63,10 +65,11 @@ if __name__ == "__main__":
 
         # On alamo, environment is not passed with multi-node MPI jobs,
         # so the environment needs to be setup in the user's .bashrc:
+        #
         #   module load python intel openmpi
-        mpi_test_task.input_staging = ["helloworld_mpi.py"]
-        mpi_test_task.executable    = "python"
-        mpi_test_task.arguments     = ["helloworld_mpi.py"]
+        #
+        mpi_test_task.executable    = "/bin/sh"
+        mpi_test_task.arguments     = ["-c", "'echo mpi rank $OMPI_COMM_WORLD_RANK/$OMPI_COMM_WORLD_SIZE'"]
         mpi_test_task.mpi           = True
         mpi_test_task.cores         = 4
 
@@ -102,6 +105,10 @@ if __name__ == "__main__":
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
         
         assert (unit.state == rp.DONE)
+        assert ('mpi rank 0/4' in unit.stdout)
+        assert ('mpi rank 1/4' in unit.stdout)
+        assert ('mpi rank 2/4' in unit.stdout)
+        assert ('mpi rank 3/4' in unit.stdout)
 
-    session.close()
+    session.close ()
 

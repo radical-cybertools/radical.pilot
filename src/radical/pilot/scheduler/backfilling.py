@@ -67,7 +67,7 @@ class BackfillingScheduler(Scheduler):
         for pilot_doc in pilot_docs :
 
             pid = str (pilot_doc['_id'])
-            if  not pid in pilot_ids :
+            if  not pid in self.pilots :
                 raise RuntimeError ("Got invalid pilot doc (%s)" % pid)
 
             self.pilots[pid]['state'] = str(pilot_doc.get ('state'))
@@ -98,7 +98,7 @@ class BackfillingScheduler(Scheduler):
                 pid = unit.execution_details.get ('pilot', None)
 
                 if  not pid :
-                    raise RuntimeError ('cannot handle final unit %s w/o pilot information' % uid)
+                    logger.warning ('cannot handle final unit %s w/o pilot information' % uid)
 
                 if  pid not in self.pilots :
                     logger.warning ('cannot handle unit %s cb for pilot %s (pilot is gone)' % (uid, pid))
@@ -109,6 +109,12 @@ class BackfillingScheduler(Scheduler):
                     self.pilots[pid]['caps'] += unit.description.cores
                     self.runq.remove (unit)
                     self._reschedule (pid=pid)
+              #     logger.debug ('unit %s frees %s cores on (-> %s)' \
+              #                % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
+
+              # else :
+              #     logger.debug ('unit %s freed %s cores on %s (== %s) -- not reused!'
+              #                % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
         except Exception as e :
             logger.error ("error in unit callback for backfiller (%s) - ignored" % e)
@@ -143,6 +149,8 @@ class BackfillingScheduler(Scheduler):
                 # FIXME: how can I *un*register a pilot callback?
     
         except Exception as e :
+          # import traceback
+          # traceback.print_exc ()
             logger.error ("error in pilot callback for backfiller (%s) - ignored" % e)
 
 
@@ -184,9 +192,6 @@ class BackfillingScheduler(Scheduler):
         if  not pid in self.pilots :
             raise RuntimeError ('cannot remove unknown pilot (%s)' % pid)
 
-        # NOTE: we don't care if that pilot had any CUs active -- its up to the
-        # UM what happens to those.
-
         del self.pilots[pid]
         # FIXME: how can I *un*register a pilot callback?
 
@@ -207,8 +212,8 @@ class BackfillingScheduler(Scheduler):
             if  unit in self.runq :
                 raise RuntimeError ('Unit cannot be scheduled twice (%s)' % unit.uid)
 
-            if  unit.state != NEW :
-                raise RuntimeError ('Unit %s not in NEW state (%s)' % unit.uid)
+            if  unit.state not in [NEW, UNSCHEDULED] :
+                raise RuntimeError ('Unit %s not in NEW or UNSCHEDULED state (%s)' % unit.uid)
 
             self.waitq.append (unit)
 
@@ -275,21 +280,30 @@ class BackfillingScheduler(Scheduler):
         schedule['units']  = dict()
         schedule['pilots'] = self.pilots
 
+        logger.debug ("schedule (%s units waiting)" % len(self.waitq))
+
         # iterate on copy of waitq, as we manipulate the list during iteration.
         for unit in self.waitq[:] :
 
             uid = unit.uid
             ud  = unit.description
 
+          # logger.debug ("examine unit  %s (%s cores)" % (uid, ud.cores))
+
             for pid in self.pilots :
+
+              # logger.debug ("        pilot %s (%s caps, state %s)" \
+              #            % (pid, self.pilots[pid]['state'], self.pilots[pid]['caps']))
 
                 if  self.pilots[pid]['state'] in [ACTIVE] :
 
                     if  ud.cores <= self.pilots[pid]['caps'] :
+                
+                      # logger.debug ("        unit  %s fits on pilot %s" % (uid, pid))
 
                         # sanity check on unit state
-                        if  unit.state not in [NEW] :
-                            raise RuntimeError ("scheduler queue should only contain NEW units (%s)" % uid)
+                        if  unit.state not in [NEW, UNSCHEDULED] :
+                            raise RuntimeError ("scheduler queue should only contain NEW or UNSCHEDULED units (%s)" % uid)
 
                         self.pilots[pid]['caps'] -= ud.cores
                         schedule['units'][unit]   = pid
@@ -311,8 +325,9 @@ class BackfillingScheduler(Scheduler):
                     break
 
             if  not can_handle_unit :
-                logger.warning ('cannot handle unit %s cb with current set of pilots' % uid)
+                logger.warning ('cannot handle unit %s with current set of pilots' % uid)
 
+      # pprint.pprint (schedule)
 
         # tell the UM about the schedule
         self.manager.handle_schedule (schedule)

@@ -1,19 +1,46 @@
 
+import os
+import time
 import datetime
 import pymongo
 
+import radical.utils as ru
+
+
+_CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid ()
+
+
 # ------------------------------------------------------------------------------
 #
-def get_session_ids (dbclient, dbname) :
+def bson2json (bson_data) :
 
-    if not dbname : 
-        
-        raise RuntimeError ("require specific database name to list session IDs")
+    # thanks to
+    # http://stackoverflow.com/questions/16586180/typeerror-objectid-is-not-json-serializable
 
-    database = dbclient[dbname]
-    cnames = database.collection_names ()
+    import json
+    from   bson.objectid import ObjectId
 
-    sids = list()
+    class MyJSONEncoder (json.JSONEncoder) :
+        def default (self, o):
+            if  isinstance (o, ObjectId) :
+                return str (o)
+            if  isinstance (o, datetime.datetime) :
+                seconds  = time.mktime (o.timetuple ())
+                seconds += (o.microsecond / 1000000.0) 
+                return seconds
+            return json.JSONEncoder.default (self, o)
+
+    return ru.parse_json (MyJSONEncoder ().encode (bson_data))
+
+
+# ------------------------------------------------------------------------------
+#
+def get_session_ids (db) :
+
+    # this is not bein cashed, as the session list can and will change freqently
+
+    cnames = db.collection_names ()
+    sids   = list()
     for cname in cnames :
         if  not '.' in cname :
             sids.append (cname)
@@ -22,49 +49,77 @@ def get_session_ids (dbclient, dbname) :
 
 
 # ------------------------------------------------------------------------------
-def get_last_session (dbclient, dbname) :
+def get_last_session (db) :
 
     # this assumes that sessions are ordered by time -- which is the case at
     # this point...
-    return get_session_ids (dbclient, dbname)[-1]
+    return get_session_ids (db)[-1]
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs (dbclient, dbname, session) :
+def get_session_docs (db, sid, cache=None) :
 
-    database = dbclient[dbname]
+    # session docs may have been cached in /tmp/rp_cache_<uid>/<sid>.json -- in that
+    # case we pull it from there instead of the database, which will be much
+    # quicker.  Also, we do cache any retrieved docs to that place, for later
+    # use.
+    if  not cache :
+        cache = "%s/%s.json" % (_CACHE_BASEDIR, sid)
+    else :
+        if  not os.path.isfile (cache) :
+            print "cache '%s' does not exist" % cache
+            return None
 
-    ret = dict()
+    try :
+        return ru.read_json (cache)
+    except Exception as e :
+        # we can continue without cache, no problem
+        pass
 
-    ret['session'] = list(database["%s"    % session].find ())
-    ret['pmgr'   ] = list(database["%s.pm" % session].find ())
-    ret['pilot'  ] = list(database["%s.p"  % session].find ())
-    ret['umgr'   ] = list(database["%s.um" % session].find ())
-    ret['unit'   ] = list(database["%s.cu" % session].find ())
 
-    if  len(ret['session']) == 0 :
-        raise ValueError ('no such session %s' % session)
+    # cache not used or not found -- go to db
+    json_data = dict()
 
-  # if  len(ret['session']) > 1 :
-  #     print 'more than one session document -- pick first one'
+    # convert bson to json, i.e. serialize the ObjectIDs into strings.
+    json_data['session'] = bson2json (list(db["%s"    % sid].find ()))
+    json_data['pmgr'   ] = bson2json (list(db["%s.pm" % sid].find ()))
+    json_data['pilot'  ] = bson2json (list(db["%s.p"  % sid].find ()))
+    json_data['umgr'   ] = bson2json (list(db["%s.um" % sid].find ()))
+    json_data['unit'   ] = bson2json (list(db["%s.cu" % sid].find ()))
 
-    ret['session'] = ret['session'][0]
+    if  len(json_data['session']) == 0 :
+        raise ValueError ('no such session %s' % sid)
+
+  # if  len(json_data['session']) > 1 :
+  #     print 'more than one session document -- picking first one'
+
+    # there can only be one session, not a list of one
+    json_data['session'] = json_data['session'][0]
 
     # we want to add a list of handled units to each pilot doc
-    for pilot in ret['pilot'] :
+    for pilot in json_data['pilot'] :
 
         pilot['unit_ids'] = list()
 
-        for unit in ret['unit'] :
+        for unit in json_data['unit'] :
 
             if  unit['pilot'] == str(pilot['_id']) :
                 pilot['unit_ids'].append (str(unit['_id']))
 
-    return ret
+    # if we got here, we did not find a cached version -- thus add this dataset
+    # to the cache
+    try :
+        os.system ('mkdir -p %s' % _CACHE_BASEDIR)
+        ru.write_json (json_data, "%s/%s.json" % (_CACHE_BASEDIR, sid))
+    except Exception as e :
+        # we can live without cache, no problem...
+        pass
+
+    return json_data
 
 
 # ------------------------------------------------------------------------------
-def get_session_slothist (dbclient, dbname, session) :
+def get_session_slothist (db, sid, cache=None) :
     """
     For all pilots in the session, get the slot lists and slot histories. and
     return as list of tuples like:
@@ -73,7 +128,7 @@ def get_session_slothist (dbclient, dbname, session) :
       tuple (string  , list (tuple (string  , int    ) ), list (tuple (string   , datetime ) ) )
     """
 
-    docs = get_session_docs (dbclient, dbname, session)
+    docs = get_session_docs (db, sid, cache)
 
     ret = list()
 
@@ -101,7 +156,7 @@ def get_session_slothist (dbclient, dbname, session) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_events (dbclient, dbname, session) :
+def get_session_events (db, sid, cache=None) :
     """
     For all entities in the session, create simple event tuples, and return
     them as a list
@@ -111,12 +166,12 @@ def get_session_events (dbclient, dbname, session) :
       
     """
 
-    docs = get_session_docs (dbclient, dbname, session)
+    docs = get_session_docs (db, sid, cache)
 
     ret = list()
 
     if  'session' in docs :
-        doc = docs['session']
+        doc   = docs['session']
         odoc  = dict()
         otype = 'session'
         oid   = str(doc['_id'])

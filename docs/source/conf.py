@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# SAGA documentation build configuration file, created by
+# RADICAL-Pilot documentation build configuration file, created by
 # sphinx-quickstart on Mon Dec  3 21:55:42 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -11,8 +11,103 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import glob
+import imp
+import sys
+import os
+import json
+import pprint
+import subprocess as sp
 
+script_dir = os.path.dirname(os.path.realpath(__file__))
+
+################################################################################
+
+cmd = "git branch | grep '*' | cut -f 2 -d \ " \
+    + " | sed -e 's/readthedocs.tutorial/tutorial/g' " \
+    + " | sed -e 's/readthedocs/release/g'"
+mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read().strip()
+
+if 'detached' in mytag :
+    cmd = "git branch | grep '*' | cut -f 2 -d '/' | cut -f 1 -d ')'" \
+        + " | sed -e 's/readthedocs.tutorial/tutorial/g' " \
+        + " | sed -e 's/readthedocs/release/g'"
+    mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read().strip()
+
+tags.add (mytag)
+
+################################################################################
+##
+print "* Generating resource configuration docs: resources.rst"
+print "* using tag: %s" % mytag
+print "* Generating code example list: examples.rst"
+
+try:
+    os.remove("{0}/resources.rst".format(script_dir))
+except OSError:
+    pass
+
+with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
+
+    examples = os.listdir("{0}/../../src/radical/pilot/configs/".format(script_dir))
+    for example in examples:
+
+        if example.endswith(".json") is False:
+            continue # skip all non-python files
+
+        if example.startswith("aliases") is True:
+            continue # skip alias files
+
+        print " * %s" % example
+
+        with open("../../src/radical/pilot/configs/{0}".format(example)) as cfg_file:
+            try: 
+                json_data = json.load(cfg_file)
+            except Exception, ex:
+                print "    * JSON PARSING ERROR: %s" % str(ex)
+                continue
+
+
+            for resource_key, resource_config in json_data.iteritems():
+                print "   * %s" % resource_key
+                try:
+                    default_queue = resource_config["default_queue"]
+                except Exception, ex:
+                    default_queue = None
+
+                try:
+                    working_dir = resource_config["default_remote_workdir"]
+                except Exception, ex:
+                    working_dir = "$HOME"
+
+                try:
+                    python_interpreter = resource_config["python_interpreter"]
+                except Exception, ex:
+                    python_interpreter = None
+
+                try:
+                    access_schemas = resource_config["schemas"]
+                except Exception, ex:
+                    access_schemas = ['n/a']
+
+                resources_rst.write("{0}\n".format(resource_key))
+                resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
+                resources_rst.write("{0}\n\n".format(resource_config["description"]))
+                if resource_config["notes"] != "None":
+                    resources_rst.write(".. note::  {0}\n\n".format(resource_config["notes"]))
+                resources_rst.write("Default values for ComputePilotDescription attributes:\n\n")
+                resources_rst.write("================== ============================\n")
+                resources_rst.write("Parameter               Value\n")
+                resources_rst.write("================== ============================\n")
+                resources_rst.write("``queue``               {0}\n".format(default_queue))
+                resources_rst.write("``sandbox``             {0}\n".format(working_dir))
+                resources_rst.write("``access_schema``       {0}\n".format(access_schemas[0]))
+                resources_rst.write("================== ============================\n\n")
+                resources_rst.write("Available schemas: ``{0}``\n\n".format(', '.join(access_schemas)))
+
+                resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
+##
+################################################################################
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -26,7 +121,16 @@ sys.path.insert(0, os.path.abspath('../../src/'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.intersphinx', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.pngmath', 'sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.viewcode']
+extensions = ['sphinx.ext.autodoc', 
+              'sphinx.ext.doctest',
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.todo',
+              'sphinx.ext.coverage',
+              'sphinx.ext.pngmath',
+              'sphinx.ext.mathjax',
+              'sphinx.ext.ifconfig',
+              'sphinx.ext.viewcode',
+              'sphinx.ext.extlinks']
 
 [extensions]
 todo_include_todos=True
@@ -97,6 +201,9 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+
+extlinks = {'issue': ('https://github.com/radical-cybertools/radical.pilot/issues/%s',
+                      'issue ')}
 
 # -- Options for HTML output ---------------------------------------------------
 

@@ -1,0 +1,40 @@
+
+{
+    "davinci": {
+        "description"                 : "The DAVinCI Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+DAVinCI).",
+        "notes"                       : "DAVinCI compute nodes have 12 or 16 processor cores per node.",
+        "schemas"                     : ["ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://davinci.rice.edu/",
+            "filesystem_endpoint"     : "sftp://davinci.rice.edu/"
+        },
+        "lrms"                        : "TORQUE",
+        "default_queue"               : "parallel",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap"               : ["module load openmpi"],
+        "valid_roots"                 : ["/dascratch"],
+        "default_remote_workdir"      : "$SHARED_SCRATCH/$USER",
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+    "biou": {
+        "description"                 : "The Blue BioU Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+Blue+BioU).",
+        "notes"                       : "Blue BioU compute nodes have 32 processor cores per node.",
+        "schemas"                     : ["ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://biou.rice.edu/",
+            "filesystem_endpoint"     : "sftp://biou.rice.edu/"
+        },
+        "lrms"                        : "TORQUE",
+        "default_queue"               : "serial",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap"               : ["module load openmpi/1.4.3-gcc"],
+        "valid_roots"                 : ["/gpfs-biou"],
+        "default_remote_workdir"      : "$SHARED_SCRATCH/$USER",
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    }
+}
+

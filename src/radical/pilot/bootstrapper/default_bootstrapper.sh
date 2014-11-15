@@ -10,6 +10,7 @@
 # -----------------------------------------------------------------------------
 # global variables
 #
+AUTH=
 CLEANUP=
 CORES=
 DBNAME=
@@ -33,7 +34,8 @@ SANDBOX=`pwd`
 #
 # Returns 0 if the specified string contains the specified substring,
 # otherwise returns 1.
-contains() {
+contains() 
+{
     string="$1"
     substring="$2"
     if test "${string#*$substring}" != "$string"
@@ -71,7 +73,7 @@ OPTIONS:
 
    -h      Show this message.
 
-   -i      The Python interpreter to use, e.g., python2.6.
+   -i      The Python interpreter to use, e.g., python2.7.
            (default is '/usr/bin/python')
 
    -j      Task launch method.
@@ -113,22 +115,20 @@ installvenv()
     # create a fresh virtualenv. we use an older 1.9.x version of 
     # virtualenv as this seems to work more reliable than newer versions.
     # If we can't download, we try to move on with the system virtualenv.
-    CURL_CMD="curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
+    CURL_CMD="curl -k -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
     echo ""
     echo "################################################################################"
     echo "## Downloading and installing virtualenv"
     echo "## CMDLINE: $CURL_CMD"
     $CURL_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "WARNING: Couldn't download virtualenv via curl! Using system version."
         BOOTSTRAP_CMD="virtualenv $VIRTENV"
     else :
         tar xvfz virtualenv-1.9.tar.gz
-        OUT=$?
-        if [[ $OUT != 0 ]]; then
-           echo "Couldn't unpack virtualenv! ABORTING"
-           exit 1
+        if test $? -ne 0 ; then
+            echo "Couldn't unpack virtualenv! ABORTING"
+            exit 1
         fi
         
         BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $VIRTENV"
@@ -139,13 +139,12 @@ installvenv()
     echo "## Creating virtualenv"
     echo "## CMDLINE: $BOOTSTRAP_CMD"
     $BOOTSTRAP_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "Couldn't bootstrap virtualenv! ABORTING"
         exit 1
     fi
-    
-    # active the virtualenv
+
+    # activate the virtualenv
     source $VIRTENV/bin/activate
     
     DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
@@ -154,8 +153,7 @@ installvenv()
     echo "## Downgrading pip to 1.2.1"
     echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
     $DOWNGRADE_PIP_CMD
-    OUT=$?
-    if [[ $OUT != 0 ]]; then
+    if test $? -ne 0 ; then
         echo "Couldn't downgrade pip! Using default version (if it exists)"
     fi
     
@@ -165,8 +163,7 @@ installvenv()
     #echo "## Updating virtualenv"
     #echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
     #$UPDATE_SETUPTOOLS_CMD
-    #OUT=$?
-    #if [ $OUT -ne 0 ]; then
+    #if test $? -ne 0 ; then
     #    echo "Couldn't update virtualenv! ABORTING"
     #    exit 1
     #fi
@@ -180,8 +177,7 @@ installvenv()
     echo "## install/upgrade Apache-LibCloud"
     echo "## CMDLINE: $EI_CMD"
     $EI_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
     fi
     
@@ -193,12 +189,10 @@ installvenv()
     echo "## install/upgrade SAGA-Python"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Couldn't install/upgrade SAGA-Python! Lets see how far we get ..."
         fi
     fi
@@ -210,12 +204,10 @@ installvenv()
     echo "## install/upgrade python-hostlist"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Easy install failed too, couldn't install python-hostlist!  Lets see how far we get..."
         fi
     fi
@@ -228,12 +220,10 @@ installvenv()
     echo "## install/upgrade pymongo"
     echo "## CMDLINE: $PIP_CMD"
     $PIP_CMD
-    OUT=$?
-    if [ $OUT -ne 0 ];then
+    if test $? -ne 0 ; then
         echo "pip install failed, trying easy_install ..."
         $EI_CMD
-        OUT=$?
-        if [ $OUT -ne 0 ];then
+        if test $? -ne 0 ; then
             echo "Easy install failed too, couldn't install pymongo! Oh well..."
         fi
     fi
@@ -290,8 +280,12 @@ printenv
 # parse command line arguments
 USER_SANDBOX=0
 BENCHMARK=0
-while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
+while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
     case $OPTION in
+        a)
+            # Passed to agent
+            AUTH=$OPTARG
+            ;;
         b)
             # Passed to agent
             BENCHMARK=1
@@ -313,8 +307,7 @@ while getopts "abc:d:e:f:g:hi:j:k:l:m:n:op:qrs:t:uv:w:x:yz" OPTION; do
             echo "## Running pre-bootstrapping command"
             echo "## CMDLINE: $PREBOOTSTRAP"
             $PREBOOTSTRAP
-            OUT=$?
-            if [[ $OUT -ne 0 ]]; then
+            if test $? -ne 0 ; then
                 echo "Error running pre-boostrapping command! ABORTING"
                 exit 1
             fi
@@ -387,7 +380,8 @@ done
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if [[ -z $CORES ]] ||\
+if [[ -z $AUTH ]] ||\
+   [[ -z $CORES ]] ||\
    [[ -z $DEBUG ]] ||\
    [[ -z $DBNAME ]] ||\
    [[ -z $DBURL ]] ||\
@@ -441,38 +435,44 @@ if [[ $GLOBAL_VIRTENV ]]; then
 
     VIRTENV=$GLOBAL_VIRTENV
 
-    # we never clean up virtualenvs -- remove the 'v' cleanup flag
+    # activate the virtualenv
+    source $VIRTENV/bin/activate
+    
+    # we never clean up global virtualenvs -- remove the 'v' cleanup flag
     CLEANUP=$(echo $CLEANUP | tr -d 'v')
 
     # this assumes that the VE lives outside of the pilot sandbox, which MUST be
     # true, as at the point where a global VE can be specified, the pilot UID is
     # still unknown.  That only conflicts if the pilot sandbox is specified
-    # explicitly, and the global VE lives therein.  In that case, we have to
-    # remove the 'everything' cleanup flag, too.
-    if  test "$USER_SANDBOX" = "1"
-    then
-      CLEANUP=$(echo $CLEANUP | tr -d 'e')
-    fi
+    # explicitly, and the global VE lives therein.  This case is, at this point,
+    # ignored.
 
 else
     # bootstrap virtualenv at default location
     VIRTENV=$SANDBOX/virtualenv/
+
+    # create/update virtualenv.  This activates it.
+    installvenv $VIRTENV
 fi
-
-
-# create/update virtualenv.  This also sources it.
-installvenv $VIRTENV
 
 # check if creation succeeded
 if [[ ! -d $VIRTENV || ! -f $VIRTENV/bin/activate ]]; then
     echo "Virtual Environment at $VIRTENV not found, install or upgrade failed.  Continue anyways." 
+    # in the rare case that everything is already installed in system space, we
+    # actually don't need a virtualenv, and thus continue here.
 fi
 
+# Export the variables related to virtualenv,
+# so that we can disable the virtualenv for the cu.
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PS1
 
 # -----------------------------------------------------------------------------
 # launch the radical agent
 #
 AGENT_CMD="python radical-pilot-agent.py\
+    -a $AUTH\
     -b $BENCHMARK\
     -c $CORES\
     -d $DEBUG\
@@ -510,4 +510,3 @@ contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
 
 # ... and exit
 exit $AGENT_EXITCODE
-

@@ -1,0 +1,28 @@
+
+{
+    "tutorial": {
+        "description"                 : "Our private tutorial VM on EC2",
+        "notes"                       : "None",
+        "schemas"                     : ["ssh", "local"],
+        "ssh"                         : 
+        {
+            "job_manager_endpoint"    : "pbs+ssh://23.23.136.91/",
+            "filesystem_endpoint"     : "sftp://23.23.136.91/"
+        },
+        "local"                       : 
+        {
+            "job_manager_endpoint"    : "pbs://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "lrms"                        : "TORQUE",
+        "task_launch_method"          : "LOCAL",
+        "mpi_launch_method"           : "MPIRUN",
+        "default_queue"               : "batch",
+        "python_interpreter"          : "/usr/bin/python",
+        "pre_bootstrap"               : [],
+        "valid_roots"                 : ["/home/","/tmp/"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+
+    }
+}
+

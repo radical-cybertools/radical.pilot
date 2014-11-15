@@ -46,7 +46,7 @@ class State(object):
         if type(other) == str:
             return not self.__eq__(other)
         else:
-            return not self.__eq(other.state)
+            return not self.__eq__(other.state)
 
     # ----------------------------------------
     #
@@ -80,6 +80,7 @@ ACTIVE                      = 'Active'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
+UNSCHEDULED                 = 'Unscheduled'
 STATE_X                     = 'StateX'
 PENDING_INPUT_STAGING       = 'PendingInputStaging'
 STAGING_INPUT               = 'StagingInput'

@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # Define a 2-core local pilot that runs for 10 minutes.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "localhost"
+    pdesc.resource = "local.localhost"
     pdesc.runtime  = 5
     pdesc.cores    = 1
 
@@ -101,6 +101,8 @@ if __name__ == "__main__":
         assert (unit.state == rp.DONE)
 
     # Remove session from database
+    pmgr.cancel_pilots()
+    pmgr.wait_pilots()
     session.close()
     sys.exit (0)
 
