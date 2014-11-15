@@ -26,7 +26,7 @@ def pilot_state_cb (pilot, state) :
 def unit_state_cb (unit, state) :
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+    print "[Callback]: ComputeUnit  '%s' (on '%s') state: %s." % (unit.uid, unit.pilot_id, state)
 
     if  state == rp.FAILED :
         print "stderr: %s" % unit.stderr
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        scheduler=rp.SCHED_DIRECT_SUBMISSION)
+        scheduler=rp.SCHED_BACKFILLING)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
