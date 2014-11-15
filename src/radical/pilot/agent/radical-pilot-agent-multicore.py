@@ -222,10 +222,9 @@ def pilot_DONE(mongo_p, pilot_uid):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"logentry": message, "timestamp": ts}, 
+    msg = [{"logentry": "pilot done", "timestamp": ts}, 
            {"logentry": get_rusage(), "timestamp": ts}]
 
-    message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
