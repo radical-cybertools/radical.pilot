@@ -554,7 +554,13 @@ class PilotLauncherWorker(threading.Thread):
                     except Exception, ex:
                         # Update the Pilot's state 'FAILED'.
                         ts = datetime.datetime.utcnow()
-                        log_msg = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+
+                        # FIXME: we seem to be unable to bson/json handle saga
+                        # log messages containing an '#'.  This shows up here.
+                        # Until we find a clean workaround, make log shorter and
+                        # rely on saga logging to reveal the problem.
+                      # log_msg = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+                        log_msg = "Pilot launching failed!"
                         log_messages.append({
                             "logentry": log_msg, 
                             "timestamp": ts})
