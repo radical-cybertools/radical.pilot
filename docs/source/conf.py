@@ -17,12 +17,30 @@ import sys
 import os
 import json
 import pprint
+import subprocess as sp
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 ################################################################################
+
+cmd = "git branch | grep '*' | cut -f 2 -d \ " \
+    + " | sed -e 's/readthedocs.tutorial/tutorial/g' " \
+    + " | sed -e 's/readthedocs/release/g'"
+mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read().strip()
+
+if 'detached' in mytag :
+    cmd = "git branch | grep '*' | cut -f 2 -d '/' | cut -f 1 -d ')'" \
+        + " | sed -e 's/readthedocs.tutorial/tutorial/g' " \
+        + " | sed -e 's/readthedocs/release/g'"
+    mytag = sp.Popen(cmd, shell=True, stdout=sp.PIPE).stdout.read().strip()
+
+tags.add (mytag)
+
+################################################################################
 ##
 print "* Generating resource configuration docs: resources.rst"
+print "* using tag: %s" % mytag
+print "* Generating code example list: examples.rst"
 
 try:
     os.remove("{0}/resources.rst".format(script_dir))

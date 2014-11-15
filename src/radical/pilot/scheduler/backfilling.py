@@ -212,8 +212,8 @@ class BackfillingScheduler(Scheduler):
             if  unit in self.runq :
                 raise RuntimeError ('Unit cannot be scheduled twice (%s)' % unit.uid)
 
-            if  unit.state != NEW :
-                raise RuntimeError ('Unit %s not in NEW state (%s)' % unit.uid)
+            if  unit.state not in [NEW, UNSCHEDULED] :
+                raise RuntimeError ('Unit %s not in NEW or UNSCHEDULED state (%s)' % unit.uid)
 
             self.waitq.append (unit)
 
@@ -302,8 +302,8 @@ class BackfillingScheduler(Scheduler):
                       # logger.debug ("        unit  %s fits on pilot %s" % (uid, pid))
 
                         # sanity check on unit state
-                        if  unit.state not in [NEW] :
-                            raise RuntimeError ("scheduler queue should only contain NEW units (%s)" % uid)
+                        if  unit.state not in [NEW, UNSCHEDULED] :
+                            raise RuntimeError ("scheduler queue should only contain NEW or UNSCHEDULED units (%s)" % uid)
 
                         self.pilots[pid]['caps'] -= ud.cores
                         schedule['units'][unit]   = pid

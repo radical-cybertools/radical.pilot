@@ -8,7 +8,7 @@ Installation
 Requirements 
 ============
 
-RADICAL-Pilot needs Python >= 2.6. All dependencies are installed automatically 
+RADICAL-Pilot needs Python >= 2.7. All dependencies are installed automatically
 by the installer. Besides that, RADICAL-Pilot needs access to a MongoDB 
 database that is reachable from the internet. User groups within the same 
 institution or project can share a single MongoDB instance. 
@@ -60,9 +60,9 @@ Note that some Python installations have a broken multiprocessing module -- if y
 experience the following error during installation::
 
   Traceback (most recent call last):
-    File "/usr/lib/python2.6/atexit.py", line 24, in _run_exitfuncs
+    File "/usr/lib/python2.7/atexit.py", line 24, in _run_exitfuncs
       func(*targs, **kargs)
-    File "/usr/lib/python2.6/multiprocessing/util.py", line 284, in _exit_function
+    File "/usr/lib/python2.7/multiprocessing/util.py", line 284, in _exit_function
       info('process shutting down')
   TypeError: 'NoneType' object is not callable
 

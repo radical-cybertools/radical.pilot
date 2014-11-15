@@ -1,101 +1,80 @@
-bigred2
--------
-
-Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
-
-quarry
+sierra
 ------
 
-The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).
+The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).
 
 Default values for ComputePilotDescription attributes:
 
 ================== ============================
 Parameter               Value
 ================== ============================
-``queue``               None
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
-
-supermuc
---------
-
-The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).
-
-.. note::  Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               test
-``sandbox``             $HOME
-``access_schema``       gsissh
-================== ============================
-
-Available schemas: ``gsissh, ssh``
-
-:download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
-
-fs2
----
-
-The Distributed ASCI Supercomputer 4 (http://www.cs.vu.nl/das4/).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               all.q
+``queue``               batch
 ``sandbox``             $HOME
 ``access_schema``       ssh
 ================== ============================
 
 Available schemas: ``ssh``
 
-:download:`Raw Configuration file: das4.json <../../src/radical/pilot/configs/das4.json>`
+:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
-archer
-------
+alamo
+-----
 
-The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
-
-.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).
 
 Default values for ComputePilotDescription attributes:
 
 ================== ============================
 Parameter               Value
 ================== ============================
-``queue``               standard
-``sandbox``             /work/`id -gn`/`id -gn`/$USER
+``queue``               short
+``sandbox``             $HOME
 ``access_schema``       ssh
 ================== ============================
 
-Available schemas: ``ssh, gsissh``
+Available schemas: ``ssh``
 
-:download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
+:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+
+hotel
+-----
+
+The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).
+
+.. note::  Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               batch
+``sandbox``             $HOME
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh``
+
+:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+
+india
+-----
+
+The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               batch
+``sandbox``             $HOME
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh``
+
+:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
 tutorial
 --------
@@ -137,6 +116,27 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
 
+localhost
+---------
+
+Your local machine.
+
+.. note::  To use the ssh schema, make sure that ssh access to localhost is enabled.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               None
+``sandbox``             $HOME
+``access_schema``       local
+================== ============================
+
+Available schemas: ``local, ssh``
+
+:download:`Raw Configuration file: local.json <../../src/radical/pilot/configs/local.json>`
+
 yellowstone
 -----------
 
@@ -158,12 +158,29 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: ncar.json <../../src/radical/pilot/configs/ncar.json>`
 
-localhost
----------
+fs2
+---
 
-Your local machine.
+The Distributed ASCI Supercomputer 4 (http://www.cs.vu.nl/das4/).
 
-.. note::  To use the ssh schema, make sure that ssh access to localhost is enabled.
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               all.q
+``sandbox``             $HOME
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh``
+
+:download:`Raw Configuration file: das4.json <../../src/radical/pilot/configs/das4.json>`
+
+bigred2
+-------
+
+Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).
 
 Default values for ComputePilotDescription attributes:
 
@@ -172,12 +189,73 @@ Parameter               Value
 ================== ============================
 ``queue``               None
 ``sandbox``             $HOME
-``access_schema``       local
+``access_schema``       ssh
 ================== ============================
 
-Available schemas: ``local, ssh``
+Available schemas: ``ssh, gsissh``
 
-:download:`Raw Configuration file: local.json <../../src/radical/pilot/configs/local.json>`
+:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
+
+quarry
+------
+
+The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               None
+``sandbox``             $HOME
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh, gsissh``
+
+:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
+
+archer
+------
+
+The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
+
+.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               standard
+``sandbox``             /work/`id -gn`/`id -gn`/$USER
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh, gsissh``
+
+:download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
+
+supermuc
+--------
+
+The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).
+
+.. note::  Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               test
+``sandbox``             $HOME
+``access_schema``       gsissh
+================== ============================
+
+Available schemas: ``gsissh, ssh``
+
+:download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
 
 lonestar
 --------
@@ -283,82 +361,4 @@ Parameter               Value
 Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
-
-sierra
-------
-
-The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh``
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-alamo
------
-
-The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               short
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh``
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-hotel
------
-
-The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).
-
-.. note::  Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh``
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-india
------
-
-The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh``
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 

@@ -92,7 +92,6 @@ get_title(i)= sprintf("%s: %-15s (%s cores)", word(pilot_id_list,i), word(pilot_
 #     print word(pilot_queue_dat_list,i)
 # }
 
-terms = 'pdf png'
 do for [term_i=1:words(terms)] {
     term = word(terms, term_i)
     term_t = term.'cairo'
@@ -211,17 +210,18 @@ do for [term_i=1:words(terms)] {
     set xrange [0:maxtime]
     set yrange [0:12]
     set ytics  ("NEW            "  1, \
-                "STATE_X        "  2, \
-                "PEND.   INPUT  "  3, \
-                "TRANSF. INPUT  "  4, \
-                "PEND. EXECUTION"  5, \
-                "SCHEDULING     "  6, \
-                "EXECUTING      "  7, \
-                "PEND.   OUTPUT "  8, \
-                "TRANSF. OUTPUT "  9, \
-                "DONE           " 10, \
-                "CANCELED       " 11, \
-                "FAILED         " 12)
+                "UNSCHEDULED    "  2, \
+                "STATE_X        "  3, \
+                "PEND.   INPUT  "  4, \
+                "TRANSF. INPUT  "  5, \
+                "PEND. EXECUTION"  6, \
+                "SCHEDULING     "  7, \
+                "EXECUTING      "  8, \
+                "PEND.   OUTPUT "  9, \
+                "TRANSF. OUTPUT " 10, \
+                "DONE           " 11, \
+                "CANCELED       " 12, \
+                "FAILED         " 13)
 
     set xlabel ''
     set ylabel "UNITS\n[states]" offset second -0.06,0
@@ -257,7 +257,7 @@ do for [term_i=1:words(terms)] {
     plot for [i=1:pilot_num] \
          word(pilot_slots_dat_list,i) using 1:($2+offset(i,0.1))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*3, \
          for [i=1:pilot_num] \
-         word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.05) title '' with lines  lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
+         word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.05) title '' with steps  lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
          for [i=1:pilot_num] \
          word(slotnum_list,i)+0+offset(i,0.5)                         title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
 

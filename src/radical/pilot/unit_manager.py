@@ -445,9 +445,8 @@ class UnitManager(object):
             schedule = self._scheduler.schedule (units=units)
        
         except Exception as e:
-            import traceback
-            logger.error (traceback.format_exc())
-            raise PilotException("Internal error - unit scheduler failed: %s" % e)
+            logger.exception ("Internal error - unit scheduler failed")
+            raise 
 
         self.handle_schedule (schedule)
 
@@ -541,10 +540,8 @@ class UnitManager(object):
                 units_to_schedule.append (unit)
 
             if  len(units_to_schedule) :
-                self._worker.schedule_compute_units (
-                    pilot_uid=pid,
-                    units=units_to_schedule
-                )
+                self._worker.schedule_compute_units (pilot_uid=pid,
+                                                     units=units_to_schedule)
 
 
         # report any change in wait_queue_size
@@ -554,6 +551,9 @@ class UnitManager(object):
         if  old_wait_queue_size != self.wait_queue_size :
             self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
                                                 self.wait_queue_size)
+
+        if  len(unscheduled) :
+            self._worker.unschedule_compute_units (units=unscheduled)
 
         logger.info ('%s units remain unscheduled' % len(unscheduled))
 

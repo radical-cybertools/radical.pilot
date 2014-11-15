@@ -53,6 +53,10 @@ a RADICAL-Pilot application. Possible values are:
   * `warning`
   * `error`
 
+The environment variable `RADICAL_PILOT_AGENT_VERBOSE` controls the debug log
+level of the agent process on the target resource.  If it is not set, the log
+level from `RADICAL_PILOT_VERBOSE` is used.
+
 
 RADICAL-Pilot Architecture
 ==========================

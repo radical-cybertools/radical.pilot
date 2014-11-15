@@ -157,8 +157,11 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
+    msg = [{"logentry": message, "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
          "$set"    : {"state"       : FAILED,
                       "stdout"      : out,
@@ -187,8 +190,11 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
+    msg = [{"logentry": message, "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
          "$set"    : {"state"       : CANCELED,
                       "stdout"      : out,
@@ -216,9 +222,12 @@ def pilot_DONE(mongo_p, pilot_uid):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
+    msg = [{"logentry": message, "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
     message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
          "$set"    : {"state"       : DONE,
                       "stdout"      : out,
