@@ -20,7 +20,7 @@ def bson2json (bson_data) :
     import json
     from   bson.objectid import ObjectId
 
-    class JSONEncoder (json.JSONEncoder) :
+    class MyJSONEncoder (json.JSONEncoder) :
         def default (self, o):
             if  isinstance (o, ObjectId) :
                 return str (o)
@@ -30,7 +30,7 @@ def bson2json (bson_data) :
                 return seconds
             return json.JSONEncoder.default (self, o)
 
-    return ru.parse_json (JSONEncoder ().encode (bson_data))
+    return ru.parse_json (MyJSONEncoder ().encode (bson_data))
 
 
 # ------------------------------------------------------------------------------
@@ -75,36 +75,39 @@ def get_session_docs (db, sid, cache=None) :
 
 
     # cache not used or not found -- go to db
-    bson_data = dict()
+    json_data = dict()
 
-    bson_data['session'] = list(db["%s"    % sid].find ())
-    bson_data['pmgr'   ] = list(db["%s.pm" % sid].find ())
-    bson_data['pilot'  ] = list(db["%s.p"  % sid].find ())
-    bson_data['umgr'   ] = list(db["%s.um" % sid].find ())
-    bson_data['unit'   ] = list(db["%s.cu" % sid].find ())
+    # convert bson to json, i.e. serialize the ObjectIDs into strings.
+    json_data['session'] = bson2json (list(db["%s"    % sid].find ()))
+    json_data['pmgr'   ] = bson2json (list(db["%s.pm" % sid].find ()))
+    json_data['pilot'  ] = bson2json (list(db["%s.p"  % sid].find ()))
+    json_data['umgr'   ] = bson2json (list(db["%s.um" % sid].find ()))
+    json_data['unit'   ] = bson2json (list(db["%s.cu" % sid].find ()))
 
-    if  len(bson_data['session']) == 0 :
+    if  len(json_data['session']) == 0 :
         raise ValueError ('no such session %s' % sid)
 
-  # if  len(bson_data['session']) > 1 :
+  # if  len(json_data['session']) > 1 :
   #     print 'more than one session document -- picking first one'
 
     # there can only be one session, not a list of one
-    bson_data['session'] = bson_data['session'][0]
+    json_data['session'] = json_data['session'][0]
 
     # we want to add a list of handled units to each pilot doc
-    for pilot in bson_data['pilot'] :
+    for pilot in json_data['pilot'] :
 
         pilot['unit_ids'] = list()
 
-        for unit in bson_data['unit'] :
+        for unit in json_data['unit'] :
 
             if  unit['pilot'] == str(pilot['_id']) :
                 pilot['unit_ids'].append (str(unit['_id']))
 
-    # convert bson to json, i.e. serialize the ObjectIDs into strings.
-    json_data = bson2json (bson_data)
-
+  # import pprint
+  # pprint.pprint (json_data)
+  # print len(json_data)
+  # import sys
+  # print sys.getsizeof(json_data)
 
     # if we got here, we did not find a cached version -- thus add this dataset
     # to the cache
