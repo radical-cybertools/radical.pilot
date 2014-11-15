@@ -118,9 +118,12 @@ class BackfillingScheduler(Scheduler):
 
                     for pid in self.runqs :
 
+                        if  not pid :
+                            logger.warning ('cannot handle final unit %s w/o pilot information' % uid)
+
                         if  uid in self.runqs[pid] :
 
-                            print 'reschedule NEW unit %s from %s' % (uid, pid)
+                            logger.info ('reschedule NEW unit %s from %s' % (uid, pid))
 
                             unit       = self.runqs[pid][uid]
                             found_unit = True
@@ -225,7 +228,9 @@ class BackfillingScheduler(Scheduler):
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : NEW, 
                                                         "timestamp" : timestamp}, 
-                                       "log"         :  "reschedule unit"})
+                                       "log"         : {"logentry"  :  "reschedule unit", 
+                                                        "timestamp" : timestamp}
+                                      })
 
                     self._db.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
@@ -237,7 +242,9 @@ class BackfillingScheduler(Scheduler):
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : NEW, 
                                                         "timestamp" : timestamp}, 
-                                       "log"         :  "reschedule unit" })
+                                       "log"         : {"logentry"  :  "reschedule unit", 
+                                                        "timestamp" : timestamp}
+                                      })
 
                     self._db.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
@@ -248,7 +255,9 @@ class BackfillingScheduler(Scheduler):
                         set_dict    = {"state"       : FAILED},
                         push_dict   = {"statehistory": {"state"     : FAILED, 
                                                         "timestamp" : timestamp}, 
-                                       "log"         :  "reschedule unit" })
+                                       "log"         : {"logentry"  :  "reschedule unit", 
+                                                        "timestamp" : timestamp}
+                                      })
 
                         # make sure that restartable units got back into the
                         # wait queue
@@ -271,9 +280,7 @@ class BackfillingScheduler(Scheduler):
                     
     
         except Exception as e :
-            import traceback
-            traceback.print_exc ()
-            logger.error ("error in pilot callback for backfiller (%s) - ignored" % e)
+            logger.exception ("error in pilot callback for backfiller - ignored")
             raise
 
 
@@ -343,18 +350,17 @@ class BackfillingScheduler(Scheduler):
                 if  uid in self.waitq :
                     raise RuntimeError ('Unit cannot be scheduled twice (%s)' % uid)
 
+                if  unit.state not in [NEW, UNSCHEDULED] :
+                    raise RuntimeError ('Unit %s not in NEW or UNSCHEDULED state (%s)' % unit.uid)
+
                 for pid in self.runqs :
                     if  uid in self.runqs[pid] :
                         raise RuntimeError ('Unit cannot be scheduled twice (%s)' % uid)
-
-                if  unit.state != NEW :
-                    raise RuntimeError ('Unit %s not in NEW state (%s)' % uid)
 
                 self.waitq[uid] = unit
 
             # lets see what we can do about the known units...
             self._reschedule ()
-
 
     
     # -------------------------------------------------------------------------
@@ -441,6 +447,10 @@ class BackfillingScheduler(Scheduler):
 
                 uid = unit.uid
                 ud  = unit.description
+
+                # sanity check on unit state
+                if  unit.state not in [NEW, UNSCHEDULED] :
+                    raise RuntimeError ("scheduler queue should only contain NEW or UNSCHEDULED units (%s)" % uid)
 
               # logger.debug ("examine unit  %s (%s cores)" % (uid, ud.cores))
 

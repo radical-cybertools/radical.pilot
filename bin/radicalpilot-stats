@@ -2,7 +2,6 @@
 
 import os
 import sys
-import numpy
 import pprint
 import pymongo
 import radical.utils       as ru
@@ -23,7 +22,8 @@ if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path :
 _DEFAULT_DBURL = str(_DEFAULT_DBURL)
 
 # for graphing events, we assign numerical pseudo values to each event.  
-# Note: make sure that those are translated back into event tags via 'set # [xy]tics'
+# Note: make sure that those are translated back into event tags via 
+# 'set [xy]tics'
 # 
 #   set xtics ("lbl1" 1, "lbl2" 2, "lbl3" 3, "lbl4" 4)
 #
@@ -46,20 +46,22 @@ _EVENT_ENCODING = {
         }, 
         'unit': {
             rp.NEW                     :  1,
-            rp.STATE_X                 :  2,
-            rp.PENDING_INPUT_STAGING   :  3,
-            rp.STAGING_INPUT           :  4,
-            rp.PENDING_EXECUTION       :  5,
-            rp.SCHEDULING              :  6,
-            rp.EXECUTING               :  7,
-            rp.PENDING_OUTPUT_STAGING  :  8,
-            rp.STAGING_OUTPUT          :  9,
-            rp.DONE                    : 10,
-            rp.CANCELED                : 11,
-            rp.FAILED                  : 12
+            rp.UNSCHEDULED             :  2,
+            rp.STATE_X                 :  3,
+            rp.PENDING_INPUT_STAGING   :  4,
+            rp.STAGING_INPUT           :  5,
+            rp.PENDING_EXECUTION       :  6,
+            rp.SCHEDULING              :  7,
+            rp.EXECUTING               :  8,
+            rp.PENDING_OUTPUT_STAGING  :  9,
+            rp.STAGING_OUTPUT          : 10,
+            rp.DONE                    : 11,
+            rp.CANCELED                : 12,
+            rp.FAILED                  : 13
         }
     }
 
+# # common states
 # DONE                        
 # CANCELED                    
 # FAILED                      
@@ -112,7 +114,7 @@ def usage (msg=None, noexit=False) :
         dump    : show  a  tree   of session objects, with full details
         sort    : show  a  list   of session objects, sorted by type
         hist    : show timeline   of session history
-        stat    : show statistics of session history (not implemented)
+        stat    : show statistics of session history
         plot    : save gnuplot representing session history
 
 
@@ -120,7 +122,9 @@ def usage (msg=None, noexit=False) :
         
         -d      : database URL
         -s      : session id
+        -c      : session cache file (also needs -s)
         -f      : filter for listings
+        -t      : terminal type for plotting (pdf and/or png, default is both)
 
 
       filters   :
@@ -146,22 +150,22 @@ def usage (msg=None, noexit=False) :
 
 # ------------------------------------------------------------------------------
 #
-def dump_session (db, dbname, session) :
+def dump_session (db, dbname, session, cache) :
 
     print "session : %s" % session
-    handle_session (db, 'dump', dbname, session, None)
+    handle_session (db, 'dump', dbname, session, cache, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def tree_session (db, dbname, session) :
+def tree_session (db, dbname, session, cache) :
 
-    handle_session (db, 'tree', dbname, session, None)
+    handle_session (db, 'tree', dbname, session, cache, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (db, session, filters) :
+def list_sessions (db, session, cache, filters) :
 
     if  session :
         print "invalid session parameter on 'list'"
@@ -206,9 +210,9 @@ def list_sessions (db, session, filters) :
 
 
 # ------------------------------------------------------------------------------
-def sort_session (db, session) :
+def sort_session (db, session, cache) :
 
-    docs = rpu.get_session_docs (db, session)
+    docs = rpu.get_session_docs (db, session, cache)
 
     print "pilot managers :" 
     for doc in docs['pmgr'] :
@@ -228,10 +232,10 @@ def sort_session (db, session) :
 
 
 # ------------------------------------------------------------------------------
-def hist_session (db, session) :
+def hist_session (db, session, cache) :
 
-    events    = rpu.get_session_events   (db, session)
-    slothists = rpu.get_session_slothist (db, session)
+    events    = rpu.get_session_events   (db, session, cache)
+    slothists = rpu.get_session_slothist (db, session, cache)
 
     if  not events :
         print "no events found for session %s" % session
@@ -246,7 +250,7 @@ def hist_session (db, session) :
     # ascii output of time sorted events and slot history
 
     print "session : %s" % session
-    print "start   : %s" % str(start)
+    print "start   : %s" % str(ru.time_stamp (start))
 
     for e in events :
         seconds = ru.time_diff (start, e[4])
@@ -323,6 +327,7 @@ def get_stats (docs, events, slothist) :
                 start = ts
 
         for s in pilot_util['unit_states'] :
+            import numpy
             array = numpy.array (pilot_util['unit_states'][s]['dur'])
             pilot_util['unit_states'][s]['num' ] = len        (array)
             pilot_util['unit_states'][s]['mean'] = numpy.mean (array)
@@ -340,11 +345,11 @@ def get_stats (docs, events, slothist) :
 
     
 # ------------------------------------------------------------------------------
-def stat_session (db, session) :
+def stat_session (db, session, cache) :
 
-    docs      = rpu.get_session_docs     (db, session)
-    events    = rpu.get_session_events   (db, session)
-    slothists = rpu.get_session_slothist (db, session)
+    docs      = rpu.get_session_docs     (db, session, cache)
+    events    = rpu.get_session_events   (db, session, cache)
+    slothists = rpu.get_session_slothist (db, session, cache)
 
     stats     = get_stats (docs, events, slothists)
 
@@ -370,14 +375,14 @@ def stat_session (db, session) :
 
 
 # ------------------------------------------------------------------------------
-def plot_session (db, session) :
+def plot_session (db, session, cache, term) :
     """
     plot results :P
     """
 
-    docs      = rpu.get_session_docs     (db, session)
-    events    = rpu.get_session_events   (db, session)
-    slothists = rpu.get_session_slothist (db, session)
+    docs      = rpu.get_session_docs     (db, session, cache)
+    events    = rpu.get_session_events   (db, session, cache)
+    slothists = rpu.get_session_slothist (db, session, cache)
 
     if  not events :
         print "no events found for session %s" % session
@@ -397,6 +402,13 @@ def plot_session (db, session) :
     delete_me  = list()
     maxqueue   = 0
 
+    # some data cleanup
+    for doc in docs['pilot'] :
+        if  not doc['nodes'] :
+            doc['nodes'] = list()
+        if  not doc['cores_per_node'] :
+            doc['cores_per_node'] = 1
+
     # the plots look nicer if the largest pilots are plotted first, and smaller
     # ones are overlayed.  Thus we sort the pilot docs by by size (reversed).
     # Pilot's of same sizes are ordered as-is.
@@ -404,6 +416,7 @@ def plot_session (db, session) :
     for doc in docs['pilot'] :
         cores = len(doc['nodes']) * int(doc['cores_per_node'])
         pilot_sizes.append (cores)
+
 
     pilot_docs = list()
     for pilot_size in sorted (pilot_sizes, reverse=True) :
@@ -491,7 +504,6 @@ def plot_session (db, session) :
                             queue_size += 1
                             maxqueue    = max (maxqueue, queue_size)
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-                          # print "+ %10.2f  %6d" % (seconds, queue_size)
 
                     if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.EXECUTING] :
                         if  not uid in dequeued :
@@ -499,8 +511,6 @@ def plot_session (db, session) :
                             seconds     = ru.time_diff (start, event[4])
                             queue_size -= 1
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-                          # print "- %10.2f  %6d" % (seconds, queue_size)
-
 
 
         with open ("/tmp/rp.%s.pilot.slots.%s.dat" % (session, pid), "w") as dat :
@@ -584,6 +594,8 @@ def plot_session (db, session) :
         slotsscale = maxslots+(nodesize/2)
         queuescale = maxqueue+(nodesize/2)
 
+    terms = " ".join (term.split (','))
+
                                          
     cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
     cmd +=        " -e  timetics=%d "       % timetics
@@ -598,6 +610,7 @@ def plot_session (db, session) :
     cmd +=        "\"'"
     cmd +=        " -e  nodesize=%d "       % nodesize
     cmd +=        " -e 'session=\"%s\"' "   % session
+    cmd +=        " -e  'terms=\"%s\"' "    % terms
     cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n============="
     if plotname :
         cmd +=    "\\n[%s]" % plotname
@@ -644,17 +657,18 @@ def plot_session (db, session) :
     END    = "<"
     ONCE   = "!"
     COLORS = {rp.NEW                     : ' 1',
-              rp.STATE_X                 : ' 2',
-              rp.PENDING_INPUT_STAGING   : ' 3',
-              rp.STAGING_INPUT           : ' 4',
-              rp.PENDING_EXECUTION       : ' 5',
-              rp.SCHEDULING              : ' 6',
-              rp.EXECUTING               : ' 7',
-              rp.PENDING_OUTPUT_STAGING  : ' 8',
-              rp.STAGING_OUTPUT          : ' 9',
-              rp.DONE                    : '10',
-              rp.CANCELED                : '11',
-              rp.FAILED                  : '12'}
+              rp.UNSCHEDULED             : ' 2',
+              rp.STATE_X                 : ' 3',
+              rp.PENDING_INPUT_STAGING   : ' 4',
+              rp.STAGING_INPUT           : ' 5',
+              rp.PENDING_EXECUTION       : ' 6',
+              rp.SCHEDULING              : ' 7',
+              rp.EXECUTING               : ' 8',
+              rp.PENDING_OUTPUT_STAGING  : ' 9',
+              rp.STAGING_OUTPUT          : '10',
+              rp.DONE                    : '11',
+              rp.CANCELED                : '12',
+              rp.FAILED                  : '13'}
 
     for pilot in docs['pilot'] :
 
@@ -779,10 +793,12 @@ def plot_session (db, session) :
 
 
 # ------------------------------------------------------------------------------
-def handle_session (db, mode, dbname, session, pname) :
+def handle_session (db, mode, dbname, session, cache, pname) :
     """
     For the given db, traverse collections
     """
+
+    # FIXME: cache is not used
 
     print " +-- db   %s" % dbname
 
@@ -887,44 +903,16 @@ def parse_commandline():
 #
 if __name__ == '__main__' :
 
-    # import datetime
-    # h = [ {'s' : 'PendingLaunch',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 3, 959000)},
-    #       {'s' : 'Launching',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 4, 124000)},
-    #       {'s' : 'PendingActive',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 18, 26)},
-    #       {'s' : 'Active',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 21, 11, 498000)},
-    #       {'s' : 'Canceled',
-    #        'ts': datetime.datetime(2014, 7, 11, 19, 32, 26, 764000)}]
-
-    # d     = dict()
-    # print h
-    # print h[0]
-
-    # state = h[0]['s']
-    # start = h[0]['ts']
-
-    # for t in h :
-    #     s = t['s']
-    #     x = ru.time_diff(start, t['ts'])
-    #     d[state] = x
-    #     start = t['ts']
-    #     state = t['s']
-
-    # print d
-    # sys.exit (0)
-
-
     import optparse
     parser = optparse.OptionParser (add_help_option=False)
 
-    parser.add_option('-s', '--session', dest='session')
-    parser.add_option('-d', '--dburl',   dest='url')
-    parser.add_option('-m', '--mode',    dest='mode')
-    parser.add_option('-f', '--filter',  dest='filters')
-    parser.add_option('-h', '--help',    dest='help', action="store_true")
+    parser.add_option('-s', '--session',   dest='session')
+    parser.add_option('-d', '--dburl',     dest='url')
+    parser.add_option('-m', '--mode',      dest='mode')
+    parser.add_option('-c', '--cache',     dest='cache')
+    parser.add_option('-f', '--filter',    dest='filters')
+    parser.add_option('-t', '--terminal',  dest='term')
+    parser.add_option('-h', '--help',      dest='help', action="store_true")
 
     options, args = parser.parse_args ()
 
@@ -955,7 +943,12 @@ if __name__ == '__main__' :
     mode    = options.mode 
     url     = options.url
     session = options.session
+    cache   = options.cache
     filters = options.filters
+    term    = options.term
+
+    if  not term :
+        term = "pdf,png"
 
     url = ru.Url (options.url)
     if  not url.path or '/' == url.path :
@@ -974,18 +967,21 @@ if __name__ == '__main__' :
     else :
         print "session : %s" % session
 
+    if  not session and cache :
+        print "ignore cache '%s' -- no session ID specified" % cache
+
     for m in mode.split (',') :
 
         if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'list' : list_sessions (db, session, filters)
-        elif m == 'tree' : tree_session  (db, session) 
-        elif m == 'dump' : dump_session  (db, session) 
-        elif m == 'sort' : sort_session  (db, session) 
-        elif m == 'hist' : hist_session  (db, session) 
-        elif m == 'stat' : stat_session  (db, session) 
-        elif m == 'plot' : plot_session  (db, session) 
+        if   m == 'list' : list_sessions (db, session, cache, filters)
+        elif m == 'tree' : tree_session  (db, dbname, session, cache) 
+        elif m == 'dump' : dump_session  (db, dbname, session, cache)
+        elif m == 'sort' : sort_session  (db, session, cache)
+        elif m == 'hist' : hist_session  (db, session, cache)
+        elif m == 'stat' : stat_session  (db, session, cache)
+        elif m == 'plot' : plot_session  (db, session, cache, term)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 

@@ -136,7 +136,7 @@ You can define and submit a 2-core local pilot that runs for 5 minutes like this
 .. code-block:: python
 
     pdesc = radical.pilot.ComputePilotDescription()
-    pdesc.resource  = "localhost"
+    pdesc.resource  = "local.localhost"
     pdesc.runtime   = 5 # minutes
     pdesc.cores     = 2
 
@@ -224,15 +224,17 @@ Input- / Output-File Transfer
 
 Often, a computational task doesn't just consist of an executable with some 
 arguments but also needs some input data. For this reason, a 
-:class:`radical.pilot.ComputeUnitDescription` allows the definition of ``input_data``
-and ``output_data``:
+:class:`radical.pilot.ComputeUnitDescription` allows the definition of ``input_staging``
+and ``output_staging``:
 
-    * ``input_data`` defines a list of local files that need to be transferred 
+    * ``input_staging`` defines a list of local files that need to be transferred 
       to the execution resource before a ComputeUnit can start running. 
 
-    * ``output_data`` defines a list of remote files that need to be
+    * ``output_staging`` defines a list of remote files that need to be
       transferred back to the local machine after a ComputeUnit has finished
       execution. 
+
+See  :ref:`chapter_data_staging` for more information on data staging.
 
 Furthermore, a ComputeUnit provides two properties 
 :data:`radical.pilot.ComputeUnit.stdout` and :data:`radical.pilot.ComputeUnit.stderr`
@@ -244,10 +246,10 @@ Example:
 .. code-block:: python
 
       cu = radical.pilot.ComputeUnitDescription()
-      cu.executable = "/bin/cat"
-      cu.arguments = ["file1.dat", "file2.dat"]
-      cu.cores = 1
-      cu.input_data = ["./file1.dat", "./file2.dat"]
+      cu.executable    = "/bin/cat"
+      cu.arguments     = ["file1.dat", "file2.dat"]
+      cu.cores         = 1
+      cu.input_staging = ["./file1.dat", "./file2.dat"]
 
 
 Adding Callbacks 

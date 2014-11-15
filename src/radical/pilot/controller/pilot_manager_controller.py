@@ -294,6 +294,14 @@ class PilotManagerController(threading.Thread):
                         # may, or may not, cancel the pilot's units.
                         self.call_callbacks(pilot_id, new_state)
 
+                    # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
+                    # set the state of the compute unit accordingly
+                    if new_state in [FAILED, DONE, CANCELED]:
+                        self._db.set_all_running_compute_units(
+                            pilot_id=pilot_id, 
+                            state=CANCELED,
+                            log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
+
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
                     self._initialized.set()
@@ -309,7 +317,7 @@ class PilotManagerController(threading.Thread):
                 logger.debug("PilotManager.close(): %s terminated." % worker.name)
 
         except SystemExit as e :
-            print "pilot manager controller thread caught system exit -- forcing application shutdown"
+            logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             

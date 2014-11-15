@@ -57,7 +57,7 @@ then
       export RP_CORES=$size
       export RP_UNITS=$jobs
       export RP_CU_CORES=32
-      export RP_HOST=stampede.tacc.utexas.edu
+      export RP_HOST=xsede.stampede
       export RP_QUEUE=normal
       export RP_PROJECT=TG-MCB090174
       export RP_RUNTIME=$runtime
@@ -93,7 +93,7 @@ then
       export RP_CORES=$size
       export RP_UNITS=$jobs
       export RP_CU_CORES=32
-      export RP_HOST=archer.ac.uk
+      export RP_HOST=epsrc.archer
       export RP_QUEUE=standard
       export RP_PROJECT=e290
       export RP_RUNTIME=$runtime

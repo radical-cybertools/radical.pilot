@@ -49,7 +49,7 @@ def expand_staging_directive(staging_directive, logger):
     # We loop over the list of staging directives
     for sd in staging_directive:
 
-        if isinstance(sd, str):
+        if isinstance(sd, basestring):
 
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
@@ -110,7 +110,7 @@ def expand_staging_directive(staging_directive, logger):
             else:
                 target = os.path.basename(source)
 
-            if isinstance(source, str):
+            if isinstance(source, basestring):
                 # This is a regular entry, complete and append it
                 new_sd = {'source':   source,
                           'target':   target,
@@ -170,6 +170,7 @@ def expand_staging_directive(staging_directive, logger):
                                 source, source)
 
         else:
-            raise Exception("Unknown type of staging directive: %s" % sd)
+            raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
 
     return new_staging_directive
+

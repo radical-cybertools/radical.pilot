@@ -23,7 +23,7 @@ from radical.pilot.scheduler    import get_scheduler
 
 from radical.pilot.types        import *
 from radical.pilot.states       import *
-from radical.pilot.exceptions   import PilotException
+from radical.pilot.exceptions   import *
 
 # -----------------------------------------------------------------------------
 #
@@ -159,7 +159,7 @@ class UnitManager(object):
             unit_manager_uid=unit_manager_id)
 
         if not uid_exists:
-            raise exceptions.BadParameter(
+            raise BadParameter(
                 "UnitManager with id '%s' not in database." % unit_manager_id)
 
         # The UnitManager object
@@ -230,7 +230,7 @@ class UnitManager(object):
         """Returns the scheduler name.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         return self._scheduler.name
 
@@ -241,7 +241,7 @@ class UnitManager(object):
         """Returns the scheduler logs.
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         return "NO SCHEDULER DETAILS (Not Implemented)"
 
@@ -261,7 +261,7 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         if not isinstance(pilots, list):
             pilots = [pilots]
@@ -298,7 +298,7 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         return self._worker.get_pilot_uids()
 
@@ -318,7 +318,7 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         return self._pilots
 
@@ -345,7 +345,7 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
@@ -385,7 +385,7 @@ class UnitManager(object):
 
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         return self._worker.get_compute_unit_uids()
 
@@ -412,7 +412,7 @@ class UnitManager(object):
         """
 
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         return_list_type = True
         if not isinstance(unit_descriptions, list):
@@ -446,9 +446,8 @@ class UnitManager(object):
             schedule = self._scheduler.schedule (units=units)
        
         except Exception as e:
-            import traceback
-            logger.error (traceback.format_exc())
-            raise PilotException("Internal error - unit scheduler failed: %s" % e)
+            logger.exception ("Internal error - unit scheduler failed")
+            raise 
 
         self.handle_schedule (schedule)
 
@@ -523,7 +522,7 @@ class UnitManager(object):
                         logger.error ("Kernels are not supported in" \
                               "compute unit descriptions -- install " \
                               "radical.ensemblemd.mdkernels!")
-                        unit.state = FAILED
+                        # FIXME: unit needs a '_set_state() method or something!
                         self._session._dbs.set_compute_unit_state (unit._uid, FAILED, 
                                 ["kernel expansion failed"])
                         continue
@@ -542,10 +541,8 @@ class UnitManager(object):
                 units_to_schedule.append (unit)
 
             if  len(units_to_schedule) :
-                self._worker.schedule_compute_units (
-                    pilot_uid=pid,
-                    units=units_to_schedule
-                )
+                self._worker.schedule_compute_units (pilot_uid=pid,
+                                                     units=units_to_schedule)
 
 
         # report any change in wait_queue_size
@@ -555,6 +552,9 @@ class UnitManager(object):
         if  old_wait_queue_size != self.wait_queue_size :
             self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
                                                 self.wait_queue_size)
+
+        if  len(unscheduled) :
+            self._worker.unschedule_compute_units (units=unscheduled)
 
         logger.info ('%s units remain unscheduled' % len(unscheduled))
 
@@ -578,7 +578,7 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         return_list_type = True
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
@@ -634,7 +634,7 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         if  not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         if not isinstance(state, list):
             state = [state]
@@ -692,7 +692,7 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
         if not self._uid:
-            raise exceptions.IncorrectState(msg="Invalid object instance.")
+            raise IncorrectState(msg="Invalid object instance.")
 
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
             unit_ids = [unit_ids]

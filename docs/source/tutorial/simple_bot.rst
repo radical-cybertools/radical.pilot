@@ -23,15 +23,24 @@ the number of cores needed to run all of your jobs. When this pilot becomes
 active, your tasks (which are named 'Compute Units' or 'CUs') are pulled by
 RADICAL-Pilot from the MongoDB server and executed. 
 
-----------------
-Edit The Example
-----------------
+------------
+Preparation
+------------
 
 Download the file ``simple_bot.py`` with the following command:
 
-.. code-block:: bash
+.. only:: tutorial
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/simple_bot.py
+    .. code-block:: bash
+
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/tutorial/simple_bot.py
+
+.. only:: release
+
+    .. code-block:: bash
+
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/simple_bot.py
+
 
 Open the file ``simple_bot.py`` with your favorite editor. The example should 
 work right out of the box on your local machine. However, if you want to try it
@@ -53,19 +62,28 @@ and change the code below accordging to the instructions in the comments.
 .. a python for loop, therefore, ``i`` corresponds to what iteration we are on.
 .. This is not a parallel code, echo uses just one core, so we specify ``cores=1``.
 
--------------
-Run the Code
--------------
+----------
+Execution
+---------
 
-** This assumes you have installed RADICAL-Pilot either globally or in a 
+**This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**
 
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
 MongoDB server you want to use, for example:
 
-.. code-block:: bash
-        
-        export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+
+.. only:: tutorial
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+
+.. only:: release
+
+    .. code-block:: bash
+            
+            export RADICAL_PILOT_DBURL=mongodb://<mongodb_server>:27017/
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program: 
@@ -99,7 +117,8 @@ complexity is hidden within RADICAL-Pilot, it is necessary to do a lot of
 internal logging. By default, logging output is disabled, but if something goes
 wrong or if you're just curious, you can enable the logging output by setting
 the environment variable ``RADICAL_PILOT_VERBOSE`` to a value between CRITICAL
-(print only critical messages) and DEBUG (print all messages).
+(print only critical messages) and DEBUG (print all messages).  For more details
+on logging, see under 'Debugging' in chapter :ref:`chapter_developers`.
 
 Give it a try with the above example:
 
