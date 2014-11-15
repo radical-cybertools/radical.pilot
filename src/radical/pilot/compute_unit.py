@@ -187,6 +187,18 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
+    def pilot_id(self):
+        """Returns the pilot_id of this ComputeUnit.
+        """
+        if not self._uid:
+            raise IncorrectState("Invalid instance.")
+
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json.get ('pilot', None)
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def stdout(self):
         """Returns a snapshot of the executable's STDOUT stream.
 
