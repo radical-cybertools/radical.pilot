@@ -7,7 +7,7 @@ import pymongo
 import radical.utils as ru
 
 
-_CACHE_BASEDIR = '/tmp/rp_cache/'
+_CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid ()
 
 
 # ------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ def get_last_session (db) :
 # ------------------------------------------------------------------------------
 def get_session_docs (db, sid, cache=None) :
 
-    # session docs may have been cached in /tmp/rp_cache/<sid>.json -- in that
+    # session docs may have been cached in /tmp/rp_cache_<uid>/<sid>.json -- in that
     # case we pull it from there instead of the database, which will be much
     # quicker.  Also, we do cache any retrieved docs to that place, for later
     # use.
@@ -70,8 +70,11 @@ def get_session_docs (db, sid, cache=None) :
             print "cache '%s' does not exist" % cache
             return None
 
-    if  os.path.isfile (cache) :
+    try :
         return ru.read_json (cache)
+    except Exception as e :
+        # we can continue without cache, no problem
+        pass
 
 
     # cache not used or not found -- go to db
@@ -103,16 +106,14 @@ def get_session_docs (db, sid, cache=None) :
             if  unit['pilot'] == str(pilot['_id']) :
                 pilot['unit_ids'].append (str(unit['_id']))
 
-  # import pprint
-  # pprint.pprint (json_data)
-  # print len(json_data)
-  # import sys
-  # print sys.getsizeof(json_data)
-
     # if we got here, we did not find a cached version -- thus add this dataset
     # to the cache
-    os.system ('mkdir -p %s' % _CACHE_BASEDIR)
-    ru.write_json (json_data, "%s/%s.json" % (_CACHE_BASEDIR, sid))
+    try :
+        os.system ('mkdir -p %s' % _CACHE_BASEDIR)
+        ru.write_json (json_data, "%s/%s.json" % (_CACHE_BASEDIR, sid))
+    except Exception as e :
+        # we can live without cache, no problem...
+        pass
 
     return json_data
 
