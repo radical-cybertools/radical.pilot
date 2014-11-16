@@ -195,10 +195,13 @@ class PilotManagerController(threading.Thread):
                 {'timestamp' : datetime.datetime.utcnow(), 
                  'state'     : new_state})
 
-        for cb in self._shared_data[pilot_id]['callbacks']:
+        for [cb, cb_data] in self._shared_data[pilot_id]['callbacks']:
             try:
                 if  self._shared_data[pilot_id]['facade_object'] :
-                    cb (self._shared_data[pilot_id]['facade_object'](), new_state)
+                    if  cb_data :
+                        cb (self._shared_data[pilot_id]['facade_object'](), new_state, cb_data)
+                    else :
+                        cb (self._shared_data[pilot_id]['facade_object'](), new_state)
                 else :
                     logger.error("Couldn't call callback (no pilot instance)")
             except Exception, ex:
@@ -207,10 +210,13 @@ class PilotManagerController(threading.Thread):
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
-        for cb in self._manager_callbacks:
+        for [cb, cb_data] in self._manager_callbacks:
             try:
                 if  self._shared_data[pilot_id]['facade_object'] :
-                    cb(self._shared_data[pilot_id]['facade_object'](), new_state)
+                    if  cb_data :
+                        cb(self._shared_data[pilot_id]['facade_object'](), new_state, cb_data)
+                    else :
+                        cb(self._shared_data[pilot_id]['facade_object'](), new_state)
                 else :
                     logger.error("Couldn't call manager callback (no pilot instance)")
             except Exception, ex:
@@ -393,11 +399,11 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_pilot_callback(self, pilot, callback_func):
+    def register_pilot_callback(self, pilot, callback_func, callback_data=None):
         """Registers a callback function.
         """
         pilot_uid = pilot.uid
-        self._shared_data[pilot_uid]['callbacks'].append(callback_func)
+        self._shared_data[pilot_uid]['callbacks'].append([callback_func, callback_data])
 
         # Add the facade object if missing, e.g., after a re-connect.
         if  self._shared_data[pilot_uid]['facade_object'] is None:
@@ -413,10 +419,10 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_manager_callback(self, callback_func):
+    def register_manager_callback(self, callback_func, callback_data=None):
         """Registers a manager-level callback.
         """
-        self._manager_callbacks.append(callback_func)
+        self._manager_callbacks.append([callback_func, callback_data])
 
     # ------------------------------------------------------------------------
     #

@@ -315,18 +315,19 @@ class ComputePilot (object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_func):
+    def register_callback(self, callback_func, callback_data=None):
         """Registers a callback function that is triggered every time the
         ComputePilot's state changes.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state)
+            def callback_func(obj, state, data)
 
-        where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.
+        where ``object`` is a handle to the object that triggered the callback,
+        ``state`` is the new state of that object, and ``data`` is the data
+        passed on callback registration.
         """
-        self._worker.register_pilot_callback(self, callback_func)
+        self._worker.register_pilot_callback(self, callback_func, callback_data)
 
     # -------------------------------------------------------------------------
     #
