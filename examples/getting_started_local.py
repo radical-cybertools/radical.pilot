@@ -23,11 +23,11 @@ def pilot_state_cb (pilot, state) :
 
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state) :
+def unit_state_cb (unit, state, pilot) :
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s: %s' (on '%s') state: %s." \
-        % (unit.name, unit.uid, unit.pilot_id, state)
+    print "[Callback]: ComputeUnit  '%s: %s' (on %s:%s) state: %s." \
+        % (unit.name, unit.uid, unit.pilot_id, pilot.resource, state)
 
     if  state == rp.FAILED :
         print "stderr: %s" % unit.stderr
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
     # change their state.
-    umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
+    umgr.register_callback(unit_state_cb, rp.UNIT_STATE, callback_data=pilot)
 
     # Add the previously created ComputePilot to the UnitManager.
     umgr.add_pilots(pilot)

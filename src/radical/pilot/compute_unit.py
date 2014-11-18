@@ -171,6 +171,15 @@ class ComputeUnit(object):
         }
         return obj_dict
 
+    # -------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the object.
+        """
+        if not self._uid:
+            return None
+
+        return str(self.as_dict())
 
     # -------------------------------------------------------------------------
     #
@@ -208,7 +217,7 @@ class ComputeUnit(object):
         """Returns the full working directory URL of this ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['sandbox']
@@ -220,7 +229,7 @@ class ComputeUnit(object):
         """Returns the pilot_id of this ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json.get ('pilot', None)
@@ -237,7 +246,7 @@ class ComputeUnit(object):
         .. warning: This can become very inefficient for lareg data volumes.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         return self._worker.get_compute_unit_stdout(self.uid)
 
@@ -253,7 +262,7 @@ class ComputeUnit(object):
         .. warning: This can become very inefficient for large data volumes.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         return self._worker.get_compute_unit_stderr(self.uid)
 
@@ -274,7 +283,7 @@ class ComputeUnit(object):
         """Returns the current state of the ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState(msg="Invalid instance.")
+            return None
 
         # try to get state from worker.  If that fails, return local state.
         # NOTE AM: why?  Isn't that an error which should not occur?
@@ -291,7 +300,7 @@ class ComputeUnit(object):
         """Returns the complete state history of the ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState(msg="Invalid instance.")
+            return None
 
         states = []
 
@@ -311,7 +320,7 @@ class ComputeUnit(object):
         'DONE' or 'FAILED' state it will return None.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['exit_code']
@@ -323,7 +332,7 @@ class ComputeUnit(object):
         """Returns the logs of the ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         logs = []
 
@@ -340,7 +349,7 @@ class ComputeUnit(object):
         """Returns the exeuction location(s) of the ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json
@@ -361,7 +370,7 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was submitted.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['submitted']
@@ -373,7 +382,7 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was started on the backend.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['started']
@@ -385,14 +394,14 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was stopped.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['finished']
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_func):
+    def register_callback(self, callback_func, callback_data=None):
         """Registers a callback function that is triggered every time the
         ComputeUnit's state changes.
 
@@ -403,7 +412,7 @@ class ComputeUnit(object):
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.
         """
-        self._worker.register_unit_callback(self, callback_func)
+        self._worker.register_unit_callback(self, callback_func, callback_data)
 
     # -------------------------------------------------------------------------
     #
