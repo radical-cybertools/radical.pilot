@@ -36,6 +36,7 @@ class InputFileTransferWorker(threading.Thread):
 
         # threading stuff
         threading.Thread.__init__(self)
+        self.daemon = True
 
         self.db_connection_info = db_connection_info
         self.unit_manager_id = unit_manager_id
