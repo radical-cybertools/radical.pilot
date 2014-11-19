@@ -455,11 +455,11 @@ class ExecutionEnvironment(object):
         print "torque_node_list      : %s" % torque_node_list
         print "torque_nodes          : %s" % torque_nodes
 
-        if torque_num_nodes and torque_cores_per_node and \
-            torque_nodes_length < torque_num_nodes * torque_cores_per_node:
-            msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
-                  (torque_nodes_length, torque_num_nodes,  torque_cores_per_node)
-            raise Exception(msg)
+      # if torque_num_nodes and torque_cores_per_node and \
+      #     torque_nodes_length < torque_num_nodes * torque_cores_per_node:
+      #     msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
+      #           (torque_nodes_length, torque_num_nodes,  torque_cores_per_node)
+      #     raise Exception(msg)
 
         # only unique node names
         torque_node_list_length = len(torque_node_list)
