@@ -439,13 +439,23 @@ class ExecutionEnvironment(object):
             torque_cores_per_node = None
             self.log.warning(msg)
 
-        if torque_cores_per_node in (None, 1) :
-            # lets see if SAGA has been forthcoming with some information
-            torque_cores_per_node = int(os.environ.get('SAGA_PPN', torque_cores_per_node))
+        print "torque_cores_per_node : %s" % torque_cores_per_node 
+      # if torque_cores_per_node in [None, 1] :
+      #     # lets see if SAGA has been forthcoming with some information
+      #     self.log.warning("fall back to $SAGA_PPN : %s" % os.environ.get ('SAGA_PPN', None))
+      #     torque_cores_per_node = int(os.environ.get('SAGA_PPN', torque_cores_per_node))
+
 
 
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)
+        torque_node_list    = list(set(torque_nodes))
+
+        print "torque_cores_per_node : %s" % torque_cores_per_node 
+        print "torque_nodes_length   : %s" % torque_nodes_length
+        print "torque_num_nodes      : %s" % torque_num_nodes   
+        print "torque_node_list      : %s" % torque_node_list   
+
         if torque_num_nodes and torque_cores_per_node and \
             torque_nodes_length != torque_num_nodes * torque_cores_per_node:
             msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
@@ -453,7 +463,6 @@ class ExecutionEnvironment(object):
             raise Exception(msg)
 
         # only unique node names
-        torque_node_list = list(set(torque_nodes))
         torque_node_list_length = len(torque_node_list)
         self.log.debug("Node list: %s(%d)" % (torque_node_list, torque_node_list_length))
 

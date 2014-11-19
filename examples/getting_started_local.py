@@ -83,11 +83,11 @@ if __name__ == "__main__":
     # Define a 4-core local pilot that runs for 10 minutes and cleans up
     # after itself.
     pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "local.localhost"
-    pdesc.runtime  = 5 # minutes
-    pdesc.cores    = 1
+    pdesc.resource = "nersc.hopper"
+    pdesc.runtime  = 15 # minutes
+    pdesc.cores    = 60
     pdesc.cleanup  = True
-    pdesc.sandbox  = "/tmp/tmp_sandbox/test/test/"
+    pdesc.queue    = 'regular'
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
