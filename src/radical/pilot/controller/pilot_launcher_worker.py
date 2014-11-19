@@ -38,7 +38,8 @@ class PilotLauncherWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, session, db_connection_info, pilot_manager_id, number=None):
+    def __init__(self, session, db_connection_info, pilot_manager_id, 
+                 shared_worker_data, number=None):
         """Creates a new pilot launcher background process.
         """
         self._session = session
@@ -50,7 +51,7 @@ class PilotLauncherWorker(threading.Thread):
         self.pilot_manager_id   = pilot_manager_id
         self.name               = "PilotLauncherWorker-%s" % str(number)
         self.missing_pilots     = dict()
-        self.job_services       = dict()
+        self._shared_worker_data = shared_worker_data
 
         # Stop event can be set to terminate the main loop
         self._stop = threading.Event()
@@ -93,13 +94,13 @@ class PilotLauncherWorker(threading.Thread):
 
             # Create a job service object:
             try: 
-                js_url       = saga_job_id.split("]-[")[0][1:]
+                js_url = saga_job_id.split("]-[")[0][1:]
 
-                if  js_url in self.job_services :
-                    js = self.job_services[js_url]
+                if  js_url in self._shared_worker_data['job_services'] :
+                    js = self._shared_worker_data['job_services'][js_url]
                 else :
                     js = saga.job.Service(js_url, session=self._session)
-                    self.job_services[js_url] = js
+                    self._shared_worker_data['job_services'][js_url] = js
 
                 saga_job     = js.get_job(saga_job_id)
                 reconnected  = True
@@ -411,13 +412,13 @@ class PilotLauncherWorker(threading.Thread):
                         #########################################################
                         # now that the script is in place and we know where it is,
                         # we can launch the agent
-                        job_service_url = saga.Url(resource_cfg['job_manager_endpoint'])
-                        logger.debug ("saga.job.Service ('%s')" % job_service_url)
-                        if  job_service_url in self.job_services :
-                            js = self.job_services[job_service_url]
+                        js_url = saga.Url(resource_cfg['job_manager_endpoint'])
+                        logger.debug ("saga.job.Service ('%s')" % js_url)
+                        if  js_url in self._shared_worker_data['job_services'] :
+                            js = self._shared_worker_data['job_services'][js_url]
                         else :
-                            js = saga.job.Service(job_service_url, session=self._session)
-                            self.job_services[job_service_url] = js
+                            js = saga.job.Service(js_url, session=self._session)
+                            self._shared_worker_data['job_services'][js_url] = js
 
                         jd = saga.job.Description()
                         jd.working_directory = saga.Url(sandbox).path
@@ -496,7 +497,7 @@ class PilotLauncherWorker(threading.Thread):
                         logger.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
 
                         # fork:// and ssh:// don't support 'queue' and 'project'
-                        if (job_service_url.schema != "fork") and (job_service_url.schema != "ssh"):
+                        if (js_url.schema != "fork") and (js_url.schema != "ssh"):
 
                             # process the 'queue' attribute
                             if queue is not None:
@@ -534,6 +535,8 @@ class PilotLauncherWorker(threading.Thread):
 
                         saga_job_id = pilotjob.id
                         log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
+
+                        self._shared_worker_data['job_ids'][compute_pilot_id] = [saga_job_id, js_url]
 
                         log_messages.append({
                             "logentry": log_msg, 

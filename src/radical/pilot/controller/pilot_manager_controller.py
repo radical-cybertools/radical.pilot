@@ -70,8 +70,14 @@ class PilotManagerController(threading.Thread):
         #      'callbacks':     []
         #      'facade_object': None
         #  }
+        #  self._shared_worker_data = {
+        #      'job_services':  {url: saga.job.Service}    # dict of job services
+        #      'job_ids'     :  {pilot_id : (job_id, url)} # dict of pilot job handles 
+        #  }
         #
         self._shared_data = dict()
+        self._shared_worker_data = {'job_services' : dict(), 
+                                    'job_ids'      : dict()}
 
         # The manager-level callbacks.
         self._manager_callbacks = list()
@@ -100,6 +106,7 @@ class PilotManagerController(threading.Thread):
                 session=self._session,
                 db_connection_info=db_connection_info, 
                 pilot_manager_id=self._pm_id,
+                shared_worker_data=self._shared_worker_data,
                 number=worker_number
             )
             self._pilot_launcher_worker_pool.append(worker)
@@ -443,9 +450,23 @@ class PilotManagerController(threading.Thread):
 
         for pilot_id in pilot_ids :
             if  pilot_id in self._shared_data :
+
                 old_state = self._shared_data[str(pilot["_id"])]["data"]["state"]
 
                 if not old_state in [DONE, FAILED, CANCELED] :
                     self._shared_data[str(pilot["_id"])]["data"]["state"] = CANCELING
 
+                if old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE] :
+                    if pilot_id in self._shared_worker_data['job_ids'] :
+                        
+                        job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
+                        logger.info ("actively cancel pilot %s (%s, %s)" % (pilot_id, job_id, js_url))
+
+                        js = self._shared_worker_data['job_services'][js_url]
+                        job = js.get_job (job_id)
+                        job.cancel ()
+
+
+                    else :
+                        logger.warn ("can't actively cancel pilot %s: no job id known" % pilot_id)
 
