@@ -20,6 +20,7 @@
         "lrms"                        : "SLURM",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
+        "agent_scheduler"             : "CONTINUOUS",
         "python_interpreter"          : "/opt/apps/python/epd/7.3.2/bin/python",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
@@ -86,8 +87,8 @@
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "python_interpreter"          : "/usr/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load pgi", "module load mvapich2_ib", "module load gnubase"],
+        "agent_scheduler"             : "CONTINUOUS",
+        "pre_bootstrap"               : ["module purge", "module load python pgi mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
@@ -111,8 +112,8 @@
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "python_interpreter"          : "/usr/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load intel mvapich2_ib gnubase"],
+        "agent_scheduler"             : "CONTINUOUS",
+        "pre_bootstrap"               : ["module purge", "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
@@ -124,18 +125,19 @@
         "warn_on_local"               : "True",
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://blacklight.sdsc.xsede.org/",
-            "filesystem_endpoint"     : "sftp://blacklight.sdsc.xsede.org/"
+            "job_manager_endpoint"    : "pbs+ssh://blacklight.psc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://blacklight.psc.xsede.org/"
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "pbs+gsissh://blacklight.sdsc.xsede.org/",
-            "filesystem_endpoint"     : "gsisftp://blacklight.sdsc.xsede.org/"
+            "job_manager_endpoint"    : "pbs+gsissh://blacklight.psc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://blacklight.psc.xsede.org/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
         "task_launch_method"          : "DPLACE",
         "mpi_launch_method"           : "MPIRUN_DPLACE",
+        "agent_scheduler"             : "CONTINUOUS",
         "pre_bootstrap"               : ["source /usr/share/modules/init/bash",
                                          "module load python"
                                         ],
