@@ -717,6 +717,23 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
+    def pilot_list_compute_units(self, pilot_uid):
+        """ Lists all compute units associated with a unit manager.
+        """
+        # FIXME: why is this call not updating local unit state?
+        if  self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._w.find({"pilot"      : pilot_uid})
+
+        # cursor -> dict
+        unit_ids = []
+        for obj in cursor:
+            unit_ids.append(str(obj['_id']))
+        return unit_ids
+
+    #--------------------------------------------------------------------------
+    #
     def assign_compute_units_to_pilot(self, units, pilot_uid, pilot_sandbox):
         """Assigns one or more compute units to a pilot.
         """
