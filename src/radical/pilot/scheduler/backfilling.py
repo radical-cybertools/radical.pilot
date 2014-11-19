@@ -114,7 +114,7 @@ class BackfillingScheduler(Scheduler):
 
 
                 found_unit = False
-                if  state in [NEW] :
+                if  state in [NEW, UNSCHEDULED] :
 
                     for pid in self.runqs :
 
@@ -219,14 +219,14 @@ class BackfillingScheduler(Scheduler):
                     timestamp = datetime.datetime.utcnow()
                     self._db.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
-                                       "state"       : {"$in": [STATE_X,
+                                       "state"       : {"$in": [UNSCHEDULED,
                                                                 PENDING_INPUT_STAGING, 
                                                                 STAGING_INPUT, 
                                                                 PENDING_EXECUTION, 
                                                                 SCHEDULING]}},
-                        set_dict    = {"state"       : NEW, 
+                        set_dict    = {"state"       : UNSCHEDULED, 
                                        "pilot"       : None},
-                        push_dict   = {"statehistory": {"state"     : NEW, 
+                        push_dict   = {"statehistory": {"state"     : UNSCHEDULED, 
                                                         "timestamp" : timestamp}, 
                                        "log"         : {"logentry"  :  "reschedule unit", 
                                                         "timestamp" : timestamp}
@@ -238,9 +238,9 @@ class BackfillingScheduler(Scheduler):
                                        "state"       : {"$in": [EXECUTING, 
                                                                 PENDING_OUTPUT_STAGING, 
                                                                 STAGING_OUTPUT]}},
-                        set_dict    = {"state"       : NEW, 
+                        set_dict    = {"state"       : UNSCHEDULED,
                                        "pilot"       : None},
-                        push_dict   = {"statehistory": {"state"     : NEW, 
+                        push_dict   = {"statehistory": {"state"     : UNSCHEDULED,
                                                         "timestamp" : timestamp}, 
                                        "log"         : {"logentry"  :  "reschedule unit", 
                                                         "timestamp" : timestamp}
@@ -464,10 +464,6 @@ class BackfillingScheduler(Scheduler):
                         if  ud.cores <= self.pilots[pid]['caps'] :
                     
                           # logger.debug ("        unit  %s fits on pilot %s" % (uid, pid))
-
-                            # sanity check on unit state
-                            if  unit.state not in [NEW] :
-                                raise RuntimeError ("scheduler queue should only contain NEW units (%s)" % uid)
 
                             self.pilots[pid]['caps'] -= ud.cores
                             schedule['units'][unit]   = pid

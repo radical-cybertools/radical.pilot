@@ -250,10 +250,12 @@ class Session (saga.Session, Object):
               or doesn't exist. 
         """
 
+        logger.error("session %s closing" % (str(self._uid)))
+
         uid = self._uid
 
         if not self._uid:
-            logger.warning("Session object already closed.")
+            logger.error("Session object already closed.")
             return
 
         # we keep 'delete' for backward compatibility.  If it was set, and the
@@ -272,25 +274,20 @@ class Session (saga.Session, Object):
             # cleanup implies terminate
             terminate = True
 
-        if terminate :
-            # cancel all pilots, make sure they are gone, and close the pilot
-            # managers.
-            for pmgr in self._pilot_manager_objects:
-                pmgr.cancel_pilots ()
-
-            for pmgr in self._pilot_manager_objects:
-                pmgr.wait_pilots ()
-
-            for pmgr in self._pilot_manager_objects:
-                pmgr.close ()
+        for pmgr in self._pilot_manager_objects:
+            logger.error("session %s closes   pmgr   %s" % (str(self._uid), pmgr._uid))
+            pmgr.close (terminate=terminate)
+            logger.error("session %s closed   pmgr   %s" % (str(self._uid), pmgr._uid))
 
         for umgr in self._unit_manager_objects:
+            logger.error("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
             umgr.close()
+            logger.error("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
 
         if  cleanup :
             self._destroy_db_entry()
 
-        logger.info("Closed Session %s." % str(uid))
+        logger.error("session %s closed" % (str(self._uid)))
 
 
     #---------------------------------------------------------------------------

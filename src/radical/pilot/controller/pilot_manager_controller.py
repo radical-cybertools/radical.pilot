@@ -46,7 +46,6 @@ class PilotManagerController(threading.Thread):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
-        self.daemon = True
 
         # Stop event can be set to terminate the main loop
         self._stop = threading.Event()
@@ -173,10 +172,13 @@ class PilotManagerController(threading.Thread):
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
+        logger.error("pworker %s stopping" % (self.name))
         self._stop.set()
         self.join()
-        logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s stopped." %
-                    (self.name, self.ident, self._pm_id))
+        logger.error("pworker %s stopped" % (self.name))
+
+      # logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s stopped." %
+      #             (self.name, self.ident, self._pm_id))
 
     # ------------------------------------------------------------------------
     #
@@ -316,16 +318,18 @@ class PilotManagerController(threading.Thread):
                 if  not len(pilot_list) :
                     time.sleep(1)
 
-            # shut down the autonomous pilot launcher worker(s)
-            for worker in self._pilot_launcher_worker_pool:
-              # worker.terminate()
-              # worker.join()
-                logger.debug("PilotManager.close(): %s terminated." % worker.name)
-
         except SystemExit as e :
             logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
+
+        finally :
+            # shut down the autonomous pilot launcher worker(s)
+            for worker in self._pilot_launcher_worker_pool:
+                logger.error("pworker %s stops   launcher %s" % (self.name, worker.name))
+                worker.stop ()
+                logger.error("pworker %s stopped launcher %s" % (self.name, worker.name))
+
             
 
     # ------------------------------------------------------------------------
@@ -424,14 +428,25 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_cancel_pilots_request(self, pilot_ids):
+    def register_cancel_pilots_request(self, pilot_ids=None):
         """Registers one or more pilots for cancelation.
         """
 
         if pilot_ids is None:
-            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_manager_id=self._pm_id)
-            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to all pilots.")
-        else:
-            self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
-            logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
+
+            pilot_ids = list()
+
+            for pilot in self._db.get_pilots(pilot_manager_id=self._pm_id) :
+                pilot_ids.append (str(pilot["_id"]))
+
+
+        self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
+        logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
+
+        for pilot_id in pilot_ids :
+            if  pilot_id in self._shared_data :
+                old_state = self._shared_data[str(pilot["_id"])]["data"]["state"]
+
+                if not old_state in [DONE, FAILED, CANCELED] :
+                    self._shared_data[str(pilot["_id"])]["data"]["state"] = CANCELING
 

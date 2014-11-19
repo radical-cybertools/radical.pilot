@@ -44,6 +44,23 @@ class OutputFileTransferWorker(threading.Thread):
         self._worker_number = number
         self.name = "OutputFileTransferWorker-%s" % str(self._worker_number)
 
+        # Stop event can be set to terminate the main loop
+        self._stop = threading.Event()
+        self._stop.clear()
+
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """stop() signals the process to finish up and terminate.
+        """
+        logger.error("otransfer %s stopping" % (self.name))
+        self._stop.set()
+        self.join()
+        logger.error("otransfer %s stopped" % (self.name))
+      # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
+      #             (self.name, self.ident, self.unit_manager_id))
+
     # ------------------------------------------------------------------------
     #
     def run(self):
@@ -64,7 +81,7 @@ class OutputFileTransferWorker(threading.Thread):
                 logger.error("Connection error: %s. %s" % (str(ex), traceback.format_exc()))
                 return
 
-            while True:
+            while not self._stop.is_set():
                 compute_unit = None
 
                 # See if we can find a ComputeUnit that is waiting for

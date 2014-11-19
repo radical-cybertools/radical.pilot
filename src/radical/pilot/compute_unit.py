@@ -74,17 +74,6 @@ class ComputeUnit(object):
 
     #--------------------------------------------------------------------------
     #
-    def __str__(self):
-        """Returns a string representation of the object.
-        """
-
-        return "%s (%-15s: %s %s)" % (self.uid, self.state,
-                                      self.description.executable, 
-                                      " ".join (self.description.arguments))
-
-
-    #--------------------------------------------------------------------------
-    #
     def __repr__(self):
 
         return "%s (%-15s: %s %s) (%s)" % (self.uid, self.state,

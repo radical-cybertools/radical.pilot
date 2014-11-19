@@ -89,6 +89,7 @@ STAGING_AREA = 'staging_area'
 NEW                         = 'New'
 PENDING                     = 'Pending'
 DONE                        = 'Done'
+CANCELING                  = 'Canceling'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
 
@@ -434,9 +435,14 @@ class ExecutionEnvironment(object):
         if val:
             torque_cores_per_node = int(val)
         else:
-            msg = "$PBS_NUM_PPN or $PBS_PPN not set!"
+            msg = "$PBS_NUM_PPN is not set!"
             torque_cores_per_node = None
             self.log.warning(msg)
+
+        if torque_cores_per_node in (None, 1) :
+            # lets see if SAGA has been forthcoming with some information
+            torque_cores_per_node = int(os.environ.get('SAGA_PPN', torque_cores_per_node))
+
 
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)
@@ -575,18 +581,18 @@ class ExecutionEnvironment(object):
         if val:
             pbspro_node_count = int(val)
         else:
-            msg = "$NODE_COUNT not set!"
-            self.log.error(msg)
-            raise Exception(msg)
+            pbspro_node_count = 0
+            msg = "$NODE_COUNT not set?"
+            self.log.warn(msg)
 
         # Number of Parallel Environments
         val = os.environ.get('NUM_PES')
         if val:
             pbspro_num_pes = int(val)
         else:
-            msg = "$NUM_PES not set!"
-            self.log.error(msg)
-            raise Exception(msg)
+            msg = "$NUM_PES not set?"
+            self.log.warn(msg)
+            pbspro_num_pes = 0
 
         pbspro_vnodes = self._parse_pbspro_vnodes()
 
@@ -1979,19 +1985,22 @@ class Agent(threading.Thread):
                     retdoc = self._p.find_and_modify(
                                 query={"_id":ObjectId(self._pilot_id)},
                                 update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
-                                fields=[COMMAND_FIELD]
+                                fields=[COMMAND_FIELD, 'state']
                     )
 
                     if retdoc:
-                        commands = retdoc['commands']
+                        commands = retdoc[COMMAND_FIELD]
+                        state    = retdoc['state']
                     else:
                         commands = []
+                        state    = CANCELING
 
                     for command in commands:
 
                         idle = False
 
-                        if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+                        if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT or \
+                            state == CANCELING :
                             self._log.info("Received Cancel Pilot command.")
                             pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
                             return # terminate loop
