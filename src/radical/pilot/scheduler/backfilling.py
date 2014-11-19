@@ -151,7 +151,7 @@ class BackfillingScheduler(Scheduler):
         except Exception as e :
           # import traceback
           # traceback.print_exc ()
-            logger.error ("error in pilot callback for backfiller (%s) - ignored" % e)
+            logger.exception ("error in pilot callback for backfiller (%s) - ignored" % e)
 
 
     # -------------------------------------------------------------------------

@@ -23,11 +23,11 @@ def pilot_state_cb (pilot, state) :
 
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state, pilot) :
+def unit_state_cb (unit, state, pilots) :
     """ this callback is invoked on all unit state changes """
 
     print "[Callback]: ComputeUnit  '%s: %s' (on %s:%s) state: %s." \
-        % (unit.name, unit.uid, unit.pilot_id, pilot.resource, state)
+        % (unit.name, unit.uid, unit.pilot_id, pilots[0].resource, state)
 
     if  state == rp.FAILED :
         print "stderr: %s" % unit.stderr
@@ -82,15 +82,25 @@ if __name__ == "__main__":
 
     # Define a 4-core local pilot that runs for 10 minutes and cleans up
     # after itself.
-    pdesc = rp.ComputePilotDescription()
-    pdesc.resource = "local.localhost"
-    pdesc.runtime  = 5 # minutes
-    pdesc.cores    = 1
-    pdesc.cleanup  = True
-    pdesc.sandbox  = "/tmp/tmp_sandbox/test/test/"
+    pdescs = list()
+
+    pdesc1 = rp.ComputePilotDescription()
+    pdesc1.resource = "local.localhost"
+    pdesc1.runtime  = 5 # minutes
+    pdesc1.cores    = 1
+    pdesc1.cleanup  = True
+    pdesc1.sandbox  = "/tmp/tmp_sandbox/test/test/"
+    pdescs.append (pdesc1)
+
+    pdesc2 = rp.ComputePilotDescription()
+    pdesc2.resource = "nersc.hopper"
+    pdesc2.runtime  = 10 # minutes
+    pdesc2.cores    = 1
+    pdesc2.cleanup  = True
+    pdescs.append (pdesc2)
 
     # Launch the pilot.
-    pilot = pmgr.submit_pilots(pdesc)
+    pilots = pmgr.submit_pilots(pdescs)
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
@@ -101,10 +111,10 @@ if __name__ == "__main__":
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
     # change their state.
-    umgr.register_callback(unit_state_cb, rp.UNIT_STATE, callback_data=pilot)
+    umgr.register_callback(unit_state_cb, rp.UNIT_STATE, callback_data=pilots)
 
     # Add the previously created ComputePilot to the UnitManager.
-    umgr.add_pilots(pilot)
+    umgr.add_pilots(pilots)
 
     # Create a workload of ComputeUnits (tasks). Each compute unit
     # uses /bin/cat to concatenate two input files, file1.dat and
@@ -118,7 +128,7 @@ if __name__ == "__main__":
     #    /bin/cat $INPUT1 $INPUT2
     #
     cuds = []
-    for unit_count in range(0, 16):
+    for unit_count in range(0, 1):
         cud = rp.ComputeUnitDescription()
         cud.name          = "unit_%03d" % unit_count
         cud.executable    = "/bin/sh"
@@ -152,7 +162,7 @@ if __name__ == "__main__":
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
     # Close automatically cancels the pilot(s).
-    session.close ()
+    session.close (terminate=True)
 
     # delete the test data files
     os.system ('rm file1.dat')
