@@ -20,6 +20,7 @@
         "lrms"                        : "PBSPRO",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
+        "agent_scheduler"             : "CONTINUOUS",
         "forward_tunnel_endpoint"     : "10.60.0.52",
         "global_virtenv"              : "/work/e290/shared/shared_pilot_ve_20140703",
         "pre_bootstrap"               : ["module load python"],
