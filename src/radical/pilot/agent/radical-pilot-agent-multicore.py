@@ -636,9 +636,8 @@ class SchedulerTorus(Scheduler):
             return slot_matrix
 
     def allocate_slot(self, cores_requested):
-        corner, sub_block_shape = self.lrms.bgq_alloc_cores(
+        return self.lrms.bgq_alloc_cores(
             self.lrms.loadl_block, self.lrms.shape_table, cores_requested)
-        return corner, sub_block_shape
 
     def release_slot(self, (corner, shape)):
         self.lrms.bgq_free_cores(self.lrms.loadl_block, corner, shape)
