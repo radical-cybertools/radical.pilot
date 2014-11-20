@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 import radical.pilot as rp
 
 # READ: The RADICAL-Pilot documentation: 
@@ -14,18 +15,17 @@ import radical.pilot as rp
 def pilot_state_cb (pilot, state) :
     """ this callback is invoked on all pilot state changes """
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    print "[Callback]: ComputePilot '%s' state changed to %s at %s." % (pilot.uid, state, datetime.datetime.now())
 
     if  state == rp.FAILED:
         sys.exit (1)
-
 
 #------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state) :
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+    print "[Callback]: ComputeUnit '%s' state changed to %s at %s." % (unit.uid, state, datetime.datetime.now())
 
     if state in [rp.FAILED] :
         print "stdout: %s" % unit.stdout
@@ -37,8 +37,8 @@ def unit_state_cb (unit, state) :
 if __name__ == "__main__":
 
     # prepare some input files for the compute units
-    os.system ('hostname > file1.dat')
-    os.system ('date     > file2.dat')
+    os.system ('head -c 100000 /dev/urandom > file1.dat') # ~ 100k input file
+    os.system ('head -c 10000  /dev/urandom > file2.dat') # ~ 10k input file
 
     # Create a new session. A session is the 'root' object for all other
     # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         # Define a 32-core on stampede that runs for 15 minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "xsede.trestles"
+        pdesc.resource  = "local.localhost"
         pdesc.runtime   = 15 # minutes
         pdesc.cores     = 8
         pdesc.cleanup   = True

@@ -107,8 +107,8 @@ class ComputeUnitDescription(attributes.Attributes) :
 
     .. data:: cleanup
 
-       [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
-       delete the entire unit sandbox upon termination. This includes all 
+       [Type: `bool`] [optional] If cleanup is set to True, the pilot will
+       delete the entire unit sandbox upon termination. This includes all
        generated output data in that sandbox.  Output staging will be performed
        before cleanup.
 
@@ -156,8 +156,9 @@ class ComputeUnitDescription(attributes.Attributes) :
       # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
-        self._attributes_register_deprecated ('input_data',  'input_staging',  flow=self._DOWN)
-        self._attributes_register_deprecated ('output_data', 'output_staging', flow=self._DOWN)
+      # disabled deprecated attributes
+      # self._attributes_register_deprecated ('input_data',  'input_staging',  flow=self._DOWN)
+      # self._attributes_register_deprecated ('output_data', 'output_staging', flow=self._DOWN)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (KERNEL,         None)
@@ -179,15 +180,14 @@ class ComputeUnitDescription(attributes.Attributes) :
     #------------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
-        """Returns a string representation of the object.
-        """
-   
+
         other = ComputeUnitDescription ()
-   
+
         for key in self.list_attributes () :
             other.set_attribute (key, self.get_attribute (key))
-   
+
         return other
+
 
 # ---------------------------------------------------------------------------------
 

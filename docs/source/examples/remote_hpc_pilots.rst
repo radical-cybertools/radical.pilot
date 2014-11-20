@@ -85,7 +85,7 @@ You can describe a :class:`radical.pilot.ComputePilot` via a :class:`radical.pil
 .. code-block:: python
 
     pdesc = radical.pilot.ComputePilotDescription()
-    pdesc.resource  = "stampede.tacc.utexas.edu"
+    pdesc.resource  = "xsede.stampede"
     pdesc.runtime   = 15
     pdesc.cores     = 32 
 

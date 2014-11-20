@@ -80,7 +80,7 @@ ACTIVE                      = 'Active'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
-STATE_X                     = 'StateX'
+UNSCHEDULED                 = 'Unscheduled'
 PENDING_INPUT_STAGING       = 'PendingInputStaging'
 STAGING_INPUT               = 'StagingInput'
 PENDING_EXECUTION           = 'PendingExecution'

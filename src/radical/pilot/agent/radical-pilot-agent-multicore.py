@@ -166,8 +166,11 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     logger.error(message)      
     ts = datetime.datetime.utcnow()
 
+    msg = [{"logentry": message, "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
          "$set"    : {"state"       : FAILED,
                       "capability"  : 0,
@@ -183,8 +186,11 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     logger.warning(message)
     ts = datetime.datetime.utcnow()
 
+    msg = [{"logentry": message, "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
          "$set"    : {"state"       : CANCELED,
                       "capability"  : 0,
@@ -197,11 +203,12 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
-    ts = datetime.datetime.utcnow()
+    ts  = datetime.datetime.utcnow()
+    msg = [{"logentry": "pilot done", "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
 
-    message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
          "$set"    : {"state"       : DONE,
                       "capability"  : 0,
@@ -219,6 +226,9 @@ class ExecutionEnvironment(object):
     def __init__(self, logger, lrms_name, requested_cores,
                  task_launch_method, mpi_launch_method, scheduler_name):
 
+        # Derive the environment for the cu's from our own environment
+        self.cu_environment = self._populate_cu_environment()
+
         # Configure nodes and number of cores available
         self.lrms = LRMS.factory(lrms_name, requested_cores, logger)
 
@@ -228,6 +238,31 @@ class ExecutionEnvironment(object):
                                                   self.scheduler, logger)
         self.mpi_launcher = LaunchMethod.factory(mpi_launch_method,
                                                  self.scheduler, logger)
+
+    def _populate_cu_environment(self):
+        """Derive the environment for the cu's from our own environment."""
+
+        # Get the environment of the agent
+        new_env = copy.deepcopy(os.environ)
+
+        #
+        # Mimic what virtualenv's "deactivate" would do
+        #
+        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        if old_path:
+            new_env['PATH'] = old_path
+
+        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        if old_home:
+            new_env['PYTHON_HOME'] = old_home
+
+        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        if old_ps:
+            new_env['PS1'] = old_ps
+
+        new_env.pop('VIRTUAL_ENV', None)
+
+        return new_env
 
 
 # ==============================================================================
@@ -244,7 +279,7 @@ class Scheduler(object):
         self.name = name
         self.lrms = lrms
         self.log = logger
-
+        
         self.configure()
 
     # This class-method creates the appropriate sub-class for the Launch Method.
@@ -605,14 +640,6 @@ class SchedulerTorus(Scheduler):
     # Board labels (Rack, Midplane, Node)
     #
     BGQ_BOARD_LABELS = ['R', 'M', 'N']
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Dimensions of a (sub-)block
-    #
-    BGQ_DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
     #
     ##########################################################################
 
@@ -2108,14 +2135,15 @@ class ExecWorker(multiprocessing.Process):
     # ------------------------------------------------------------------------
     #
     def __init__(self, exec_env, logger, task_queue, command_queue, output_staging_queue,
-                 #node_list, cores_per_node, launch_methods,
-                 mongodb_url, mongodb_name, mongodb_auth, pilot_id, session_id, benchmark):
+                 mongodb_url, mongodb_name, mongodb_auth, pilot_id, session_id, benchmark, cu_environment):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
         self.daemon      = True
         self._terminate  = False
+
+        self.cu_environment = cu_environment
 
         self._log = logger
 
@@ -2337,7 +2365,8 @@ class ExecWorker(multiprocessing.Process):
             all_slots=self.exec_env.scheduler._slots,
             cores_per_node=self.exec_env.scheduler._cores_per_node,
             launcher=launcher,
-            logger=self._log)
+            logger=self._log,
+            cu_environment=self.cu_environment)
 
         task.started=datetime.datetime.utcnow()
         task.state = EXECUTING
@@ -2459,7 +2488,10 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stdout_file):
                 with open(task.stdout_file, 'r') as stdout_f:
-                    txt = unicode(stdout_f.read(), "utf-8")
+                    try :
+                        txt = unicode(stdout_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "unit stdout contains binary data -- use file staging directives"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
@@ -2467,7 +2499,10 @@ class ExecWorker(multiprocessing.Process):
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
-                    txt = unicode(stderr_f.read(), "utf-8")
+                    try :
+                        txt = unicode(stderr_f.read(), "utf-8")
+                    except UnicodeDecodeError :
+                        txt = "unit stderr contains binary data -- use file staging directives"
 
                     if  len(txt) > MAX_IO_LOGLENGTH :
                         txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
@@ -2877,7 +2912,8 @@ class Agent(threading.Thread):
             mongodb_auth    = mongodb_auth,
             pilot_id        = pilot_id,
             session_id      = session_id,
-            benchmark       = benchmark
+            benchmark       = benchmark,
+            cu_environment  = self._exec_env.cu_environment
         )
         self._exec_worker.start()
         self._log.info("Started up %s serving nodes %s" % (self._exec_worker, self._exec_env.lrms.node_list))
@@ -3116,7 +3152,7 @@ class _Process(subprocess.Popen):
 
     #-------------------------------------------------------------------------
     #
-    def __init__(self, task, all_slots, cores_per_node, launcher, logger):
+    def __init__(self, task, all_slots, cores_per_node, launcher, logger, cu_environment):
 
         self._task = task
         self._log  = logger
@@ -3222,7 +3258,7 @@ class _Process(subprocess.Popen):
                                        close_fds=True,
                                        shell=True,
                                        cwd=task.workdir, # TODO: This doesn't always make sense if it runs remotely (still true?)
-                                       env=None,
+                                       env=cu_environment,
                                        universal_newlines=False,
                                        startupinfo=None,
                                        creationflags=0)

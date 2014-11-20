@@ -23,10 +23,11 @@ def pilot_state_cb (pilot, state) :
 
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state) :
+def unit_state_cb (unit, state, pilot) :
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+    print "[Callback]: ComputeUnit  '%s: %s' (on %s:%s) state: %s." \
+        % (unit.name, unit.uid, unit.pilot_id, pilot.resource, state)
 
     if  state == rp.FAILED :
         print "stderr: %s" % unit.stderr
@@ -86,6 +87,7 @@ if __name__ == "__main__":
     pdesc.runtime  = 5 # minutes
     pdesc.cores    = 1
     pdesc.cleanup  = True
+    pdesc.sandbox  = "/tmp/tmp_sandbox/test/test/"
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
@@ -94,12 +96,12 @@ if __name__ == "__main__":
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        scheduler=rp.SCHED_DIRECT_SUBMISSION)
+        scheduler=rp.SCHED_BACKFILLING)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
     # change their state.
-    umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
+    umgr.register_callback(unit_state_cb, rp.UNIT_STATE, callback_data=pilot)
 
     # Add the previously created ComputePilot to the UnitManager.
     umgr.add_pilots(pilot)
@@ -118,6 +120,7 @@ if __name__ == "__main__":
     cuds = []
     for unit_count in range(0, 16):
         cud = rp.ComputeUnitDescription()
+        cud.name          = "unit_%03d" % unit_count
         cud.executable    = "/bin/sh"
         cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
         cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]

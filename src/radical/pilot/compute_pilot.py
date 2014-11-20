@@ -16,6 +16,7 @@ import time
 import saga
 
 from radical.pilot.states import *
+from radical.pilot.logentry import *
 from radical.pilot.exceptions import *
 
 from radical.pilot.utils.logger import logger
@@ -37,7 +38,7 @@ class ComputePilot (object):
                       pm = radical.pilot.PilotManager(session=s)
 
                       pd = radical.pilot.ComputePilotDescription()
-                      pd.resource = "localhost"
+                      pd.resource = "local.localhost"
                       pd.cores    = 2
                       pd.runtime  = 5 # minutes
 
@@ -164,7 +165,7 @@ class ComputePilot (object):
             * A URL string.
         """
         if not self._uid:
-            raise IncorrectState(msg="Invalid instance.")
+            return None
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['sandbox']
@@ -176,7 +177,7 @@ class ComputePilot (object):
         """Returns the current state of the pilot.
         """
         if not self._uid:
-            raise IncorrectState(msg="Invalid instance.")
+            return None
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['state']
@@ -188,7 +189,7 @@ class ComputePilot (object):
         """Returns the complete state history of the pilot.
         """
         if not self._uid:
-            raise IncorrectState(msg="Invalid instance.")
+            return None
 
         states = []
 
@@ -203,15 +204,17 @@ class ComputePilot (object):
     @property
     def log(self):
         """Returns the log of the pilot.
-
-        This 
         """
-        # Check if this instance is valid
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
+
+        logs = []
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json['log']
+        for log in pilot_json['log']:
+            logs.append(Logentry(logentry=log["logentry"], timestamp=log["timestamp"]))
+
+        return logs
 
     # -------------------------------------------------------------------------
     #
@@ -221,7 +224,7 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         resource_details = {
@@ -245,7 +248,7 @@ class ComputePilot (object):
         """ Returns the unit manager object UIDs for this pilot.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         raise NotImplemented("Not Implemented")
 
@@ -257,7 +260,7 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         raise NotImplemented("Not Implemented")
 
@@ -269,7 +272,7 @@ class ComputePilot (object):
         """
         # Check if this instance is valid
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['submitted']
@@ -281,7 +284,7 @@ class ComputePilot (object):
         """ Returns the time the pilot was started on the backend.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['started']
@@ -293,7 +296,7 @@ class ComputePilot (object):
         """ Returns the time the pilot was stopped.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['finished']
@@ -305,25 +308,26 @@ class ComputePilot (object):
         """ Returns the resource.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         return pilot_json['description']['resource']
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_func):
+    def register_callback(self, callback_func, callback_data=None):
         """Registers a callback function that is triggered every time the
         ComputePilot's state changes.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state)
+            def callback_func(obj, state, data)
 
-        where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.
+        where ``object`` is a handle to the object that triggered the callback,
+        ``state`` is the new state of that object, and ``data`` is the data
+        passed on callback registration.
         """
-        self._worker.register_pilot_callback(self, callback_func)
+        self._worker.register_pilot_callback(self, callback_func, callback_data)
 
     # -------------------------------------------------------------------------
     #

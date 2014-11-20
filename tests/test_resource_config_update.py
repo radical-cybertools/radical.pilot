@@ -39,7 +39,7 @@ if __name__ == "__main__":
     session.add_context(c)
 
     # Get the config entry specific for stampede
-    s = session.get_resource_config('stampede.tacc.utexas.edu')
+    s = session.get_resource_config('xsede.stampede')
     print 'Default queue of stampede is: "%s".' % s['default_queue']
 
     # Build a new one based on Stampede's
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     session.add_resource_config(rc)
 
     # Get the config entry specific for stampede
-    s = session.get_resource_config('stampede.tacc.utexas.edu')
+    s = session.get_resource_config('xsede.stampede')
     #s = res['testing']
     print 'Default queue of stampede after change is: "%s".' % s['default_queue']
     assert (s['default_queue'] == 'development')

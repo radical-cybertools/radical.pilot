@@ -114,3 +114,18 @@ Q: How many concurrent RADICAL-Pilot scripts can I execute?
 -----------------------------------------------------------
 
 A: From a RADICAL-Pilot perspective there is no limit, but as SSH is used to access many systems, there is a resource specific limit of the number of SSH connections one can make.
+
+
+
+Q: Why do I get errors from setuptools when trying to use a virtualenv?
+-----------------------------------------------------------------------
+
+A: Most likely because an upgrade of pip or setuptools failed
+-------------------------------------------------------------
+
+We have seen occurences where an update of setuptools or pip can make
+a virtualenv unusable.  We don't have any suggestion on how to get the affected
+virtualenv clean again - it seems easiest to just start over with a new
+virtualenv.  If the problem persists, try to use the default version of
+setuptools and pip, i.e. do not upgrade them.
+

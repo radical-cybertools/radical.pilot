@@ -18,6 +18,7 @@ import time
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.states import *
+from radical.pilot.logentry import *
 from radical.pilot.exceptions import *
 
 from bson import ObjectId
@@ -52,6 +53,7 @@ class ComputeUnit(object):
         """
         # 'static' members
         self._uid = None
+        self._name = None
         self._description = None
         self._manager = None
 
@@ -99,6 +101,7 @@ class ComputeUnit(object):
         computeunit._manager     = unit_manager_obj
         computeunit._worker      = unit_manager_obj._worker
         computeunit._uid         = str(ObjectId())
+        computeunit._name        = unit_description['name']
         computeunit._local_state = local_state
 
         return computeunit
@@ -134,6 +137,7 @@ class ComputeUnit(object):
         """
         obj_dict = {
             'uid':               self.uid,
+            'name':              self.name,
             'state':             self.state,
             'exit_code':         self.exit_code,
             'log':               self.log,
@@ -151,7 +155,7 @@ class ComputeUnit(object):
         """Returns a string representation of the object.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         return str(self.as_dict())
 
@@ -174,14 +178,39 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
+    def name(self):
+        """Returns the unit's application specified name.
+
+        **Returns:**
+            * A name (string).
+        """
+        # name is static and doesn't change over the lifetime
+        # of a unit, hence it can be stored in a member var.
+        return self._name
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def working_directory(self):
         """Returns the full working directory URL of this ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['sandbox']
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def pilot_id(self):
+        """Returns the pilot_id of this ComputeUnit.
+        """
+        if not self._uid:
+            return None
+
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        return cu_json.get ('pilot', None)
 
     # -------------------------------------------------------------------------
     #
@@ -195,7 +224,7 @@ class ComputeUnit(object):
         .. warning: This can become very inefficient for lareg data volumes.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         return self._worker.get_compute_unit_stdout(self.uid)
 
@@ -211,7 +240,7 @@ class ComputeUnit(object):
         .. warning: This can become very inefficient for large data volumes.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         return self._worker.get_compute_unit_stderr(self.uid)
 
@@ -232,7 +261,7 @@ class ComputeUnit(object):
         """Returns the current state of the ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState(msg="Invalid instance.")
+            return None
 
         # try to get state from worker.  If that fails, return local state.
         try :
@@ -248,7 +277,7 @@ class ComputeUnit(object):
         """Returns the complete state history of the ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState(msg="Invalid instance.")
+            return None
 
         states = []
 
@@ -268,7 +297,7 @@ class ComputeUnit(object):
         'DONE' or 'FAILED' state it will return None.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['exit_code']
@@ -280,10 +309,15 @@ class ComputeUnit(object):
         """Returns the logs of the ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
+
+        logs = []
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['log']
+        for log in cu_json['log']:
+            logs.append(Logentry(logentry=log["logentry"], timestamp=log["timestamp"]))
+
+        return logs
 
     # -------------------------------------------------------------------------
     #
@@ -292,7 +326,7 @@ class ComputeUnit(object):
         """Returns the exeuction location(s) of the ComputeUnit.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json
@@ -313,7 +347,7 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was submitted.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['submitted']
@@ -325,7 +359,7 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was started on the backend.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['started']
@@ -337,14 +371,14 @@ class ComputeUnit(object):
         """ Returns the time the ComputeUnit was stopped.
         """
         if not self._uid:
-            raise IncorrectState("Invalid instance.")
+            return None
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         return cu_json['finished']
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_func):
+    def register_callback(self, callback_func, callback_data=None):
         """Registers a callback function that is triggered every time the
         ComputeUnit's state changes.
 
@@ -355,7 +389,7 @@ class ComputeUnit(object):
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.
         """
-        self._worker.register_unit_callback(self, callback_func)
+        self._worker.register_unit_callback(self, callback_func, callback_data)
 
     # -------------------------------------------------------------------------
     #
@@ -397,8 +431,8 @@ class ComputeUnit(object):
             time.sleep(0.1)
 
             new_state = self.state
-            logger.debug(
-                "Compute unit %s in state %s" % (self._uid, new_state))
+            # logger.debug(
+            #     "Compute unit %s in state %s" % (self._uid, new_state))
 
             if(None != timeout) and (timeout <= (time.time() - start_wait)):
                 break
@@ -426,7 +460,7 @@ class ComputeUnit(object):
             # nothing to do
             logger.debug("Compute unit %s has state %s, can't cancel any longer." % (self._uid, self.state))
 
-        elif self.state in [NEW, PENDING_INPUT_STAGING]:
+        elif self.state in [NEW, UNSCHEDULED, PENDING_INPUT_STAGING]:
             logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 

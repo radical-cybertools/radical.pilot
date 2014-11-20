@@ -46,3 +46,5 @@ class _MPLogger(object):
 # -----------------------------------------------------------------------------
 #
 logger = _MPLogger().get()
+logger = rul.logger.getLogger(name='radical.pilot')
+

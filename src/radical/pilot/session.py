@@ -118,6 +118,10 @@ class Session (saga.Session, Object):
         saga.Session.__init__ (self)
         Object.__init__ (self)
 
+        # before doing anything else, set up the debug helper for the lifetime
+        # of the session.
+        self._debug_helper = ru.DebugHelper ()
+
         # Dictionaries holding all manager objects created during the session.
         self._pilot_manager_objects = list()
         self._unit_manager_objects = list()
@@ -154,17 +158,36 @@ class Session (saga.Session, Object):
             logger.info("using database name %s" % self._database_name)
 
         # Loading all "default" resource configurations
-        module_path  = os.path.dirname(os.path.abspath(__file__))
-        default_cfgs = "%s/configs/*.json" % module_path
-        config_files = glob.glob(default_cfgs)
+        module_path   = os.path.dirname(os.path.abspath(__file__))
+        default_cfgs  = "%s/configs/*.json" % module_path
+        config_files  = glob.glob(default_cfgs)
 
         for config_file in config_files:
             rcs = ResourceConfig.from_file(config_file)
 
             if  rcs :
-                logger.info("Loaded resource configurations from %s" % config_file)
                 for rc in rcs:
+                    logger.info("Loaded resource configurations for %s" % rc)
                     self._resource_configs[rc] = rcs[rc].as_dict() 
+
+        user_cfgs     = "%s/.radical/pilot/configs/*.json" % os.environ.get ('HOME')
+        config_files  = glob.glob(user_cfgs)
+
+        for config_file in config_files:
+            rcs = ResourceConfig.from_file(config_file)
+
+            if  rcs :
+                for rc in rcs:
+                    logger.info("Loaded resource configurations for %s" % rc)
+
+                    if  rc in self._resource_configs :
+                        # config exists -- merge user config into it
+                        ru.dict_merge (self._resource_configs[rc],
+                                       rcs[rc].as_dict(),
+                                       policy='overwrite')
+                    else :
+                        # new config -- add as is
+                        self._resource_configs[rc] = rcs[rc].as_dict() 
 
         default_aliases = "%s/configs/aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
@@ -473,7 +496,8 @@ class Session (saga.Session, Object):
     #
     def add_resource_config(self, resource_config):
         """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
-           dictionary of known resources.
+           dictionary of known resources, or accept a string which points to
+           a configuration file.
 
            For example::
 
@@ -494,7 +518,17 @@ class Session (saga.Session, Object):
 
                   pilot = pm.submit_pilots(pd)
         """
-        self._resource_configs [resource_config.name] = resource_config.as_dict()
+        if  isinstance (resource_config, basestring) :
+
+            rcs = ResourceConfig.from_file(resource_config)
+
+            if  rcs :
+                for rc in rcs:
+                    logger.info("Loaded resource configurations for %s" % rc)
+                    self._resource_configs[rc] = rcs[rc].as_dict() 
+
+        else :
+            self._resource_configs [resource_config.name] = resource_config.as_dict()
 
     # -------------------------------------------------------------------------
     #
@@ -509,7 +543,7 @@ class Session (saga.Session, Object):
 
         if  resource_key not in self._resource_configs:
             error_msg = "Resource key '%s' is not known." % resource_key
-            raise BadParameter(error_msg)
+            raise PilotException(error_msg)
 
         return self._resource_configs[resource_key]
 

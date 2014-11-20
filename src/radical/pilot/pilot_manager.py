@@ -78,7 +78,7 @@ class PilotManager(Object):
                   pm = radical.pilot.PilotManager(session=s)
 
                   pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "futuregrid.INDIA"  # defined in futuregrid.json
+                  pd.resource = "futuregrid.india"  # defined in futuregrid.json
                   pd.cores    = 16
                   pd.runtime  = 5 # minutes
 
@@ -279,8 +279,8 @@ class PilotManager(Object):
                     schema = resource_cfg['schemas'][0]
 
             if  not schema in resource_cfg :
-                import pprint
-                pprint.pprint (resource_cfg)
+              # import pprint
+              # pprint.pprint (resource_cfg)
                 logger.warning ("schema %s unknown for resource %s -- continue with defaults" \
                              % (schema, resource_key))
 
@@ -289,14 +289,6 @@ class PilotManager(Object):
                     # merge schema specific resource keys into the
                     # resource config
                     resource_cfg[key] = resource_cfg[schema][key]
-
-            warn_on_local = resource_cfg.get (bool('warn_on_local'), False)
-
-            if  schema == 'local' and warn_on_local :
-                logger.error ("===========================================================")
-                logger.error ("you are using a cluster headnode -- is this what you want??")
-                logger.error ("===========================================================")
-                time.sleep (3)
 
             # If 'default_sandbox' is defined, set it.
             if pilot_description.sandbox is not None:
@@ -495,18 +487,20 @@ class PilotManager(Object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_function):
+    def register_callback(self, callback_function, callback_data=None):
         """Registers a new callback function with the PilotManager.
         Manager-level callbacks get called if any of the ComputePilots managed
         by the PilotManager change their state.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state)
+            def callback_func(obj, state, data)
 
-        where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.
+        where ``object`` is a handle to the object that triggered the callback,
+        ``state`` is the new state of that object, and ``data`` are the data
+        passed on callback registration.
         """
         self._assert_obj_is_valid()
 
-        self._worker.register_manager_callback(callback_function)
+        self._worker.register_manager_callback(callback_function, callback_data)
+

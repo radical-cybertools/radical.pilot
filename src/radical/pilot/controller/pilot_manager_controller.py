@@ -193,10 +193,13 @@ class PilotManagerController(threading.Thread):
                 {'timestamp' : datetime.datetime.utcnow(), 
                  'state'     : new_state})
 
-        for cb in self._shared_data[pilot_id]['callbacks']:
+        for [cb, cb_data] in self._shared_data[pilot_id]['callbacks']:
             try:
                 if  self._shared_data[pilot_id]['facade_object'] :
-                    cb (self._shared_data[pilot_id]['facade_object'](), new_state)
+                    if  cb_data :
+                        cb (self._shared_data[pilot_id]['facade_object'](), new_state, cb_data)
+                    else :
+                        cb (self._shared_data[pilot_id]['facade_object'](), new_state)
                 else :
                     logger.error("Couldn't call callback (no pilot instance)")
             except Exception, ex:
@@ -205,10 +208,13 @@ class PilotManagerController(threading.Thread):
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
-        for cb in self._manager_callbacks:
+        for [cb, cb_data] in self._manager_callbacks:
             try:
                 if  self._shared_data[pilot_id]['facade_object'] :
-                    cb(self._shared_data[pilot_id]['facade_object'](), new_state)
+                    if  cb_data :
+                        cb(self._shared_data[pilot_id]['facade_object'](), new_state, cb_data)
+                    else :
+                        cb(self._shared_data[pilot_id]['facade_object'](), new_state)
                 else :
                     logger.error("Couldn't call manager callback (no pilot instance)")
             except Exception, ex:
@@ -294,10 +300,10 @@ class PilotManagerController(threading.Thread):
 
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
                     # set the state of the compute unit accordingly
-                    if new_state in ['Failed', 'Done', 'Canceled']:
+                    if new_state in [FAILED, DONE, CANCELED]:
                         self._db.set_all_running_compute_units(
                             pilot_id=pilot_id, 
-                            state="Canceled",
+                            state=CANCELED,
                             log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
@@ -315,7 +321,7 @@ class PilotManagerController(threading.Thread):
                 logger.debug("PilotManager.close(): %s terminated." % worker.name)
 
         except SystemExit as e :
-            print "pilot manager controller thread caught system exit -- forcing application shutdown"
+            logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             
@@ -389,11 +395,11 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_pilot_callback(self, pilot, callback_func):
+    def register_pilot_callback(self, pilot, callback_func, callback_data=None):
         """Registers a callback function.
         """
         pilot_uid = pilot.uid
-        self._shared_data[pilot_uid]['callbacks'].append(callback_func)
+        self._shared_data[pilot_uid]['callbacks'].append([callback_func, callback_data])
 
         # Add the facade object if missing, e.g., after a re-connect.
         if  self._shared_data[pilot_uid]['facade_object'] is None:
@@ -409,10 +415,10 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_manager_callback(self, callback_func):
+    def register_manager_callback(self, callback_func, callback_data=None):
         """Registers a manager-level callback.
         """
-        self._manager_callbacks.append(callback_func)
+        self._manager_callbacks.append([callback_func, callback_data])
 
     # ------------------------------------------------------------------------
     #

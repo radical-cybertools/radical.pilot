@@ -512,24 +512,41 @@ class Session():
 
         self._w.update({"pilot": pilot_id, "state": { "$in": [EXECUTING, PENDING_EXECUTION, SCHEDULING]}},
                        {"$set": {"state": state},
-                        "$push": {"statehistory": {"state": state, "timestamp": ts},
-                                  "log": log}
-                       })
+                        "$push": {"statehistory": {"state": state, "timestamp": ts}},
+                        "$push": {"logentry": log, "timestamp": ts}}
+                       )
 
     #--------------------------------------------------------------------------
     #
-    def set_compute_unit_state(self, unit_id, state, log):
+    def set_compute_unit_state(self, unit_ids, state, log):
         """Update the state and the log of one or more ComputeUnit(s).
         """
         ts = datetime.datetime.utcnow()
 
-        if self._s is None:
+        if  not unit_ids :
+            return
+
+        if  self._s is None:
             raise Exception("No active session.")
 
-        self._w.update({"_id": ObjectId(unit_id)},
-                       {"$set":     {"state": state},
-                        "$push": {"statehistory": {"state": state, "timestamp": ts}},
-                        "$pushAll": {"log": log}})
+        # Make sure we work on a list.
+        if not isinstance(unit_ids, list):
+            unit_ids = [unit_ids]
+
+        bulk = self._w.initialize_ordered_bulk_op ()
+
+        for uid in unit_ids :
+
+            bulk.find   ({"_id"     : ObjectId(uid)}) \
+                .update ({"$set"    : {"state": state},
+                          "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
+                          "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+
+        result = bulk.execute()
+
+        # TODO: log result.
+        # WHY DON'T WE HAVE A LOGGER HERE?
+
 
     #--------------------------------------------------------------------------
     #
