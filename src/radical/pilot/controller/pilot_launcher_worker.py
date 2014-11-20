@@ -119,11 +119,20 @@ class PilotLauncherWorker(threading.Thread):
             if  pilot_failed :
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
-                    {"_id": pilot_id},
-                    {"$set": {"state": FAILED},
-                     "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                     "$push": {"log": {"$each": log_message}}
-                    }
+                    {"_id"  : pilot_id,
+                     "state": {"$ne"     : DONE}},
+                    {"$set" : {"state"   : FAILED},
+                     "$push": {
+                         "statehistory"  : {
+                             "state"     : FAILED, 
+                             "timestamp" : ts
+                             }, 
+                         "log": {
+                             "logentry"  : log_message, 
+                             "timestamp" : ts
+                             }
+                         }
+                     }
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
@@ -134,11 +143,19 @@ class PilotLauncherWorker(threading.Thread):
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
                     {"_id"  : pilot_id,
-                     "state": {"$ne"  : DONE}},
-                    {"$set" : {"state": DONE},
-                     "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
-                     "$push": {"log": {"$each": log_message}}
-                    }
+                     "state": {"$ne"     : DONE}},
+                    {"$set" : {"state"   : DONE},
+                     "$push": {
+                         "statehistory"  : {
+                             "state"     : DONE, 
+                             "timestamp" : ts
+                             }, 
+                         "log": {
+                             "logentry"  : log_message, 
+                             "timestamp" : ts
+                             }
+                         }
+                     }
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
@@ -539,7 +556,13 @@ class PilotLauncherWorker(threading.Thread):
                     except Exception, ex:
                         # Update the Pilot's state 'FAILED'.
                         ts = datetime.datetime.utcnow()
-                        log_msg = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+
+                        # FIXME: we seem to be unable to bson/json handle saga
+                        # log messages containing an '#'.  This shows up here.
+                        # Until we find a clean workaround, make log shorter and
+                        # rely on saga logging to reveal the problem.
+                      # log_msg = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+                        log_msg = "Pilot launching failed!"
                         log_messages.append({
                             "logentry": log_msg, 
                             "timestamp": ts})

@@ -27,7 +27,6 @@
                                          "module load mvapich2",
                                          "module load python/2.7.3-epd-7.3.2",
                                          "module unload xalt",
-                                         "export TACC_KEEP_FILES=FALSE",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "default_remote_workdir"      : "$WORK",
@@ -60,7 +59,6 @@
                                          "module load cluster",
                                          "module load mvapich2",
                                          "module load python/2.7.2-epd",
-                                         "export TACC_KEEP_FILES=FALSE",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
@@ -121,12 +119,12 @@
         "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://blacklight.psc.xsede.org/",
+            "job_manager_endpoint"    : "pbs+ssh://blacklight.psc.xsede.org/?ppn=16",
             "filesystem_endpoint"     : "sftp://blacklight.psc.xsede.org/"
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "pbs+gsissh://blacklight.psc.xsede.org/",
+            "job_manager_endpoint"    : "pbs+gsissh://blacklight.psc.xsede.org/?ppn=16",
             "filesystem_endpoint"     : "gsisftp://blacklight.psc.xsede.org/"
         },
         "default_queue"               : "batch",

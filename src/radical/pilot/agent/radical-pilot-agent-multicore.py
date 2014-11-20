@@ -175,12 +175,10 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
-    ts = datetime.datetime.utcnow()
-
-    msg = [{"logentry": message, "timestamp": ts}, 
+    ts  = datetime.datetime.utcnow()
+    msg = [{"logentry": "pilot done", "timestamp": ts}, 
            {"logentry": get_rusage(), "timestamp": ts}]
 
-    message = "pilot done"
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push"   : {"log": {"$each": msg}},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
