@@ -303,8 +303,16 @@ class Scheduler(object):
     # --------------------------------------------------------------------------
     #
     def configure(self):
-        raise NotImplementedError("Configure method not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("configure() method not implemented for Scheduler '%s'." % self.name)
 
+    def slot_status(self, short=False):
+        raise NotImplementedError("slot_status() method not implemented for Scheduler '%s'." % self.name)
+
+    def allocate_slot(self, cores_requested):
+        raise NotImplementedError("allocate_slot() method not implemented for Scheduler '%s'." % self.name)
+
+    def release_slot(self, opaque_slot):
+        raise NotImplementedError("release_slot() method not implemented for Scheduler '%s'." % self.name)
 
 #-------------------------------------------------------------------------
 #
@@ -339,13 +347,17 @@ class SchedulerContinuous(Scheduler):
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
-        self._slot_history     = [self._slot_status (short=True)]
+        self._slot_history     = [self.slot_status(short=True)]
         self._slot_history_old = None
 
         #self._capability = self._slots2caps(self._slots)
         #self._capability     = self._slots2free(self._slots)
         #self._capability_old = None
 
+    # ------------------------------------------------------------------------
+    #
+    # Convert a set of slots into an index into the global slots list
+    #
     def slots2offset(self, task_slots):
         # TODO: This assumes all hosts have the same number of cores
 
@@ -361,17 +373,16 @@ class SchedulerContinuous(Scheduler):
 
     # ------------------------------------------------------------------------
     #
-    def _slot_status(self, short=False):
+    def slot_status(self, short=False):
         """Returns a multi-line string corresponding to slot status.
         """
 
         if short:
             slot_matrix = ""
-            # TODO: This is scheduler specific
             for slot in self._slots:
                 slot_matrix += "|"
                 for core in slot['cores']:
-                    if core is FREE:
+                    if core == FREE:
                         slot_matrix += "-"
                     else:
                         slot_matrix += "+"
@@ -381,24 +392,43 @@ class SchedulerContinuous(Scheduler):
 
         else :
             slot_matrix = ""
-            # TODO: This is scheduler specific
             for slot in self._slots:
                 slot_vector  = ""
                 for core in slot['cores']:
-                    if core is FREE:
+                    if core == FREE:
                         slot_vector += " - "
                     else:
                         slot_vector += " X "
                 slot_matrix += "%s: %s\n" % (slot['node'].ljust(24), slot_vector)
             return slot_matrix
 
+    #
+    # (Temporary?) wrapper for acquire_slots
+    #
+    def allocate_slot(self, cores_requested):
+        # If that failed, and our launch method supports multiple nodes, try that
+        #if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
+
+        # TODO: single_node should be enforced for e.g. non-message passing tasks,
+        #       but we don't have that info here.
+        if cores_requested < self.lrms.cores_per_node:
+            single_node = True
+        else:
+            single_node = False
+
+        # Given that we are the continuous scheduler, this is fixed.
+        # TODO: Argument can be removed altogether?
+        continuous = True
+
+        # TODO: Now we rely on "None", maybe throw an exception?
+        return self._acquire_slots(cores_requested, single_node=single_node, continuous=continuous)
+
+    def release_slot(self, (task_slots)):
+        self._change_slot_states(task_slots, FREE)
 
     # ------------------------------------------------------------------------
     #
-    # Returns a data structure in the form of:
-    #
-    #
-    def acquire_slots(self, cores_requested, single_node, continuous):
+    def _acquire_slots(self, cores_requested, single_node, continuous):
 
         #
         # Switch between searching for continuous or scattered slots
@@ -419,26 +449,6 @@ class SchedulerContinuous(Scheduler):
             self._change_slot_states(task_slots, BUSY)
 
         return task_slots
-
-    #
-    # (Temporary?) wrapper for acquire_slots
-    #
-    def schedule(self, cores_requested):
-        # If that failed, and our launch method supports multiple nodes, try that
-        #if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
-
-        # TODO: single_node should be enforced for e.g. non-message passing tasks, but we don't have that info here.
-        if cores_requested < self.lrms.cores_per_node:
-            single_node = True
-        else:
-            single_node = False
-
-        # Given that we are the continuous scheduler, this is fixed.
-        # TODO: Argument can be removed altogether?
-        continuous = True
-
-        # TODO: Now we rely on "None", maybe throw an exception?
-        return self.acquire_slots(cores_requested, single_node=single_node, continuous=continuous)
 
     #
     # Find a needle (continuous sub-list) in a haystack (list)
@@ -474,8 +484,10 @@ class SchedulerContinuous(Scheduler):
             slot_cores_offset = self._find_cores_cont(slot_cores, cores_requested, FREE)
 
             if slot_cores_offset is not None:
-                self.log.info('Node %s satisfies %d cores at offset %d' % (slot_node, cores_requested, slot_cores_offset))
-                return ['%s:%d' % (slot_node, core) for core in range(slot_cores_offset, slot_cores_offset + cores_requested)]
+                self.log.info('Node %s satisfies %d cores at offset %d' %
+                              (slot_node, cores_requested, slot_cores_offset))
+                return ['%s:%d' % (slot_node, core) for core in
+                        range(slot_cores_offset, slot_cores_offset + cores_requested)]
 
         return None
 
@@ -508,7 +520,8 @@ class SchedulerContinuous(Scheduler):
         # Note: We subtract one here, because counting starts at zero;
         #       Imagine a zero offset and a count of 1, the only core used would be core 0.
         #       TODO: Verify this claim :-)
-        all_slots_last_core_offset = (first_slot_index * cores_per_node) + first_slot_core_offset + cores_requested - 1
+        all_slots_last_core_offset = (first_slot_index * cores_per_node) +\
+                                     first_slot_core_offset + cores_requested - 1
         self.log.debug("all_slots_last_core_offset: %s" % all_slots_last_core_offset)
         last_slot_index = (all_slots_last_core_offset) / cores_per_node
         self.log.debug("last_slot_index: %s" % last_slot_index)
@@ -529,8 +542,10 @@ class SchedulerContinuous(Scheduler):
         task_slots = []
 
         # Add cores from first slot for this task
-        # As this is a multi-node search, we can safely assume that we go from the offset all the way to the last core
-        task_slots.extend(['%s:%d' % (first_node, core) for core in range(first_slot_core_offset, cores_per_node)])
+        # As this is a multi-node search, we can safely assume that we go
+        # from the offset all the way to the last core.
+        task_slots.extend(['%s:%d' % (first_node, core) for core in
+                           range(first_slot_core_offset, cores_per_node)])
 
         # Add all cores from "middle" slots
         for slot_index in range(first_slot_index+1, last_slot_index):
@@ -542,11 +557,7 @@ class SchedulerContinuous(Scheduler):
 
         return task_slots
 
-    #
     # Change the reserved state of slots (FREE or BUSY)
-    #
-    # task_slots in the shape of:
-    #
     #
     def _change_slot_states(self, task_slots, new_state):
 
@@ -566,518 +577,81 @@ class SchedulerContinuous(Scheduler):
 
         # something changed - write history!
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
-        # ensue.  We thus limit the slot history size to 4MB, to keep suffient
+        # ensue.  We thus limit the slot history size to 4MB, to keep sufficient
         # space for the actual operational data
-        if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
-            self._slot_history.append (self._slot_status (short=True))
-        else :
+        if len(str(self._slot_history)) < 4 * 1024 * 1024 :
+            self._slot_history.append(self.slot_status (short=True))
+        else:
             # just replace the last entry with the current one.
-            self._slot_history[-1]  =  self._slot_status (short=True)
+            self._slot_history[-1] = self.slot_status(short=True)
+
 
 #-------------------------------------------------------------------------
 #
 class SchedulerTorus(Scheduler):
 
-    ##########################################################################
-    #
-    # BG/Q Topology of Nodes within a Board
-    #
-    BGQ_BOARD_TOPO = {
-        0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
-        1: {'A': 28, 'B':  2, 'C':  0, 'D': 13, 'E':  6},
-        2: {'A': 31, 'B':  1, 'C':  3, 'D': 14, 'E':  5},
-        3: {'A': 30, 'B':  0, 'C':  2, 'D': 15, 'E':  4},
-        4: {'A': 25, 'B':  7, 'C':  5, 'D':  8, 'E':  3},
-        5: {'A': 24, 'B':  6, 'C':  4, 'D':  9, 'E':  2},
-        6: {'A': 27, 'B':  5, 'C':  7, 'D': 10, 'E':  1},
-        7: {'A': 26, 'B':  4, 'C':  6, 'D': 11, 'E':  0},
-        8: {'A': 21, 'B': 11, 'C':  9, 'D':  4, 'E': 15},
-        9: {'A': 20, 'B': 10, 'C':  8, 'D':  5, 'E': 14},
-        10: {'A': 23, 'B':  9, 'C': 11, 'D':  6, 'E': 13},
-        11: {'A': 22, 'B':  8, 'C': 10, 'D':  7, 'E': 12},
-        12: {'A': 17, 'B': 15, 'C': 13, 'D':  0, 'E': 11},
-        13: {'A': 16, 'B': 14, 'C': 12, 'D':  1, 'E': 10},
-        14: {'A': 19, 'B': 13, 'C': 15, 'D':  2, 'E':  9},
-        15: {'A': 18, 'B': 12, 'C': 14, 'D':  3, 'E':  8},
-        16: {'A': 13, 'B': 19, 'C': 17, 'D': 28, 'E': 23},
-        17: {'A': 12, 'B': 18, 'C': 16, 'D': 29, 'E': 22},
-        18: {'A': 15, 'B': 17, 'C': 19, 'D': 30, 'E': 21},
-        19: {'A': 14, 'B': 16, 'C': 18, 'D': 31, 'E': 20},
-        20: {'A':  9, 'B': 23, 'C': 21, 'D': 24, 'E': 19},
-        21: {'A':  8, 'B': 22, 'C': 20, 'D': 25, 'E': 18},
-        22: {'A': 11, 'B': 21, 'C': 23, 'D': 26, 'E': 17},
-        23: {'A': 10, 'B': 20, 'C': 22, 'D': 27, 'E': 16},
-        24: {'A':  5, 'B': 27, 'C': 25, 'D': 20, 'E': 31},
-        25: {'A':  4, 'B': 26, 'C': 24, 'D': 21, 'E': 30},
-        26: {'A':  7, 'B': 25, 'C': 27, 'D': 22, 'E': 29},
-        27: {'A':  6, 'B': 24, 'C': 26, 'D': 23, 'E': 28},
-        28: {'A':  1, 'B': 31, 'C': 29, 'D': 16, 'E': 27},
-        29: {'A':  0, 'B': 30, 'C': 28, 'D': 17, 'E': 26},
-        30: {'A':  3, 'B': 29, 'C': 31, 'D': 18, 'E': 25},
-        31: {'A':  2, 'B': 28, 'C': 30, 'D': 19, 'E': 24},
-        }
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # BG/Q Config
-    BGQ_CORES_PER_NODE      = 16
-    BGQ_NODES_PER_BOARD     = 32 # NODE == Compute Card == Chip module
-    BGQ_BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
-    BGQ_MIDPLANES_PER_RACK  = 2
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Default mapping = "ABCDE(T)"
-    #
-    # http://www.redbooks.ibm.com/redbooks/SG247948/wwhelp/wwhimpl/js/html/wwhelp.htm
-    #
-    BGQ_MAPPING = "ABCDE"
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Board labels (Rack, Midplane, Node)
-    #
-    BGQ_BOARD_LABELS = ['R', 'M', 'N']
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Dimensions of a (sub-)block
-    #
-    BGQ_DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Supported sub-block sizes (number of nodes).
-    # This influences the effectiveness of mixed-size allocations
-    # (and might even be a hard requirement from a topology standpoint).
-    #
-    # TODO: Do we actually need to restrict our sub-block sizes to this set?
-    #
-    BGQ_SUPPORTED_SUB_BLOCK_SIZES = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Mapping of starting corners.
-    #
-    # "board" -> "node"
-    #
-    # Ordering: ['E', 'D', 'DE', etc.]
-    #
-    # TODO: Is this independent of the mapping?
-    #
-    BGQ_BLOCK_STARTING_CORNERS = {
-        0:  0,
-        4: 29,
-        8:  4,
-        12: 25
-    }
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Offsets into block structure
-    #
-    BGQ_BLOCK_INDEX  = 0
-    BGQ_BLOCK_COOR   = 1
-    BGQ_BLOCK_NAME   = 2
-    BGQ_BLOCK_STATUS = 3
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # BG/Q Topology of Boards within a Midplane
-    #
-    BGQ_MIDPLANE_TOPO = {
-        0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
-        1: {'A':  5, 'B':  9, 'C':  0, 'D':  3},
-        2: {'A':  6, 'B': 10, 'C':  3, 'D':  0},
-        3: {'A':  7, 'B': 11, 'C':  2, 'D':  1},
-        4: {'A':  0, 'B': 12, 'C':  5, 'D':  6},
-        5: {'A':  1, 'B': 13, 'C':  4, 'D':  7},
-        6: {'A':  2, 'B': 14, 'C':  7, 'D':  4},
-        7: {'A':  3, 'B': 15, 'C':  6, 'D':  5},
-        8: {'A': 12, 'B':  0, 'C':  9, 'D': 10},
-        9: {'A': 13, 'B':  1, 'C':  8, 'D': 11},
-        10: {'A': 14, 'B':  2, 'C': 11, 'D':  8},
-        11: {'A': 15, 'B':  3, 'C': 10, 'D':  9},
-        12: {'A':  8, 'B':  4, 'C': 13, 'D': 14},
-        13: {'A':  9, 'B':  5, 'C': 12, 'D': 15},
-        14: {'A': 10, 'B':  6, 'C': 15, 'D': 12},
-        15: {'A': 11, 'B':  7, 'C': 14, 'D': 13},
-        }
-    #
-    ##########################################################################
-
+    # TODO: Ultimately all BG/Q specifics should move out of the scheduler
 
     def __init__(self, name, lrms, logger):
         Scheduler.__init__(self, name, lrms, logger)
 
     def configure(self):
-        assert 'time' and 'space' == 'continuous'
+        if not self.lrms.cores_per_node:
+            raise Exception("LRMS %s didn't configure cores_per_node." % self.lrms.name)
+        self._cores_per_node = self.lrms.cores_per_node
 
-    ##########################################################################
+        # keep a slot allocation history (short status), start with presumably
+        # empty state now
+        self._slot_history     = [self.slot_status(short=True)]
+        self._slot_history_old = None
+
+        self._slots = 'bogus'
+
+    # ------------------------------------------------------------------------
     #
-    # Alloc a number of cores
-    #
-    def bgq_alloc_cores(self, block, sub_block_shape_table, num_cores):
+    def slot_status(self, short=False):
+        """Returns a multi-line string corresponding to slot status.
+        """
+        # TODO: Both short and long currently only deal with full-node status
+        if short:
+            slot_matrix = ""
+            for slot in self.lrms.loadl_block:
+                slot_matrix += "|"
+                if slot[self.lrms.BGQ_BLOCK_STATUS] == FREE:
+                    slot_matrix += "-" * self.lrms.cores_per_node
+                else:
+                    slot_matrix += "+" * self.lrms.cores_per_node
+            slot_matrix += "|"
+            ts = datetime.datetime.utcnow()
+            return {'timestamp': ts, 'slotstate': slot_matrix}
+        else:
+            slot_matrix = ""
+            for slot in self.lrms.loadl_block:
+                slot_vector = ""
+                if slot[self.lrms.BGQ_BLOCK_STATUS] == FREE:
+                    slot_vector = " - " * self.lrms.cores_per_node
+                else:
+                    slot_vector = " X " * self.lrms.cores_per_node
+                slot_matrix += "%s: %s\n" % (slot[self.lrms.BGQ_BLOCK_NAME].ljust(24), slot_vector)
+            return slot_matrix
 
-        print "INFO: Trying to allocate %d core(s)." % num_cores
-
-        if num_cores % self.BGQ_CORES_PER_NODE:
-            num_cores = int(math.ceil(num_cores / float(self.BGQ_CORES_PER_NODE)))\
-                        * self.BGQ_CORES_PER_NODE
-            print 'ERROR: core not a multiple of %d, increasing request to %d!' % \
-                  (self.BGQ_CORES_PER_NODE, num_cores)
-
-        num_nodes = num_cores / self.BGQ_CORES_PER_NODE
-
-        offset = self._bgq_alloc_sub_block(block, num_nodes)
-
-        if offset is None:
-            print 'WARNING: No reservation made'
-            return
-
-        corner = block[offset][self.BGQ_BLOCK_COOR]
-        sub_block_shape = sub_block_shape_table[num_nodes]
-
-        print 'Allocating sub-block of %d node(s) with dimensions %s at offset %d with corner %s.' % \
-              (num_nodes, self._bgq_shape2str(sub_block_shape), offset,
-               self._bgq_loc2str(corner))
-        end = self._bgq_get_last_node(corner, sub_block_shape)
-        print 'End location: %s' % self._bgq_loc2str(end)
-
+    def allocate_slot(self, cores_requested):
+        corner, sub_block_shape = self.lrms.bgq_alloc_cores(
+            self.lrms.loadl_block, self.lrms.shape_table, cores_requested)
         return corner, sub_block_shape
-    #
-    ##########################################################################
 
-    ##########################################################################
-    #
-    # Free up an allocation
-    #
-    def bgq_free_cores(self, block, corner, shape):
-
-        # Number of nodes to free
-        num_nodes = self._bgq_shape2num_nodes(shape)
-
-        # Location of where to start freeing
-        offset = self._bgq_corner2offset(block, corner)
-
-        print "INFO: Freeing %d nodes starting at %d." % (num_nodes, offset)
-
-        for peek in range(num_nodes):
-            assert block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY, \
-                'Block %d not Free!' % block[offset+peek]
-            block[offset+peek][self.BGQ_BLOCK_STATUS] = FREE
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Walk the block and return the node name for the given location
-    #
-    def _bgq_nodename_by_loc(self, rack, midplane, board, node, location):
-
-        for dim in self.BGQ_DIMENSION_LABELS:
-            max_length = location[dim]
-
-            cur_length = 0
-            # Loop while we are not at the final depth
-            while cur_length < max_length:
-
-                if cur_length % 2 == 0:
-                    # If the current length is even,
-                    # we remain within the board,
-                    # and select the next node.
-                    node = self.BGQ_BOARD_TOPO[node][dim]
-                else:
-                    # Otherwise we jump to another midplane.
-                    board = self.BGQ_MIDPLANE_TOPO[board][dim]
-
-                # Increase the length for the next iteration
-                cur_length += 1
-
-        return 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Convert the board string as given by llq into a board structure
-    #
-    # E.g. 'R00-M1-N08,R00-M1-N09,R00-M1-N10,R00-M0-N11' =>
-    # [{'R': 0, 'M': 1, 'N': 8}, {'R': 0, 'M': 1, 'N': 9},
-    #  {'R': 0, 'M': 1, 'N': 10}, {'R': 0, 'M': 0, 'N': 11}]
-    #
-    def _bgq_str2boards(self, boards_str):
-
-        boards = boards_str.split(',')
-
-        board_dict_list = []
-
-        for board in boards:
-            elements = board.split('-')
-
-            board_dict = {}
-            for l, e in zip(self.BGQ_BOARD_LABELS, elements):
-                board_dict[l] = int(e.split(l)[1])
-
-            board_dict_list.append(board_dict)
-
-        return board_dict_list
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Convert the string as given by llq into a block shape structure:
-    #
-    # E.g. '1x2x3x4x5' => {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
-    #
-    def _bgq_str2shape(self, shape_str):
-
-        # Get the lengths of the shape
-        shape_lengths = shape_str.split('x', 4)
-
-        shape_dict = {}
-        for dim, length in zip(self.BGQ_DIMENSION_LABELS, shape_lengths):
-            shape_dict[dim] = int(length)
-
-        return shape_dict
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Convert location dict into a tuple string
-    # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '(1,4,1,2,4)'
-    #
-    def _bgq_loc2str(self, loc):
-        return str(tuple(loc[dim] for dim in self.BGQ_DIMENSION_LABELS))
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Convert a shape dict into string format
-    #
-    # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '1x4x1x2x4'
-    #
-    def _bgq_shape2str(self, shape):
-
-        shape_str = ''
-        for l in self.BGQ_DIMENSION_LABELS:
-
-            # Get the corresponding count
-            shape_str += str(shape[l])
-
-            # Add an 'x' behind all but the last label
-            if l in self.BGQ_DIMENSION_LABELS[:-1]:
-                shape_str += 'x'
-
-        return shape_str
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Return list of nodes that make up the block
-    #
-    # Format: [(index, location, nodename, status), (i, c, n, s), ...]
-    #
-    def _bgq_get_block(self, rack, midplane, board, shape):
-
-        nodes = []
-        start_node = self.BGQ_BLOCK_STARTING_CORNERS[board]
-
-        print 'Shape: %s' % shape
-
-        index = 0
-
-        for a in range(shape['A']):
-            for b in range(shape['B']):
-                for c in range(shape['C']):
-                    for d in range(shape['D']):
-                        for e in range(shape['E']):
-                            location = {'A': a, 'B': b, 'C': c, 'D': d, 'E':e}
-                            nodename = self._bgq_nodename_by_loc(rack, midplane, board, start_node, location)
-                            nodes.append([index, location, nodename, FREE])
-                            index += 1
-        return nodes
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Use block shape and board list to construct block structure
-    #
-    def _bgq_shapeandboards2block(self, block_shape_str, boards_str):
-
-        board_dict_list = self._bgq_str2boards(boards_str)
-        print 'Board dict list:'
-        for b in board_dict_list:
-            print b
-
-        # TODO: this assumes a single midplane block
-        rack     = board_dict_list[0]['R']
-        midplane = board_dict_list[0]['M']
-
-        board_list = [entry['N'] for entry in board_dict_list]
-        start_board = min(board_list)
-
-        block_shape = self._bgq_str2shape(block_shape_str)
-
-        return self._bgq_get_block(rack, midplane, start_board, block_shape)
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Construction of sub-block shapes based on overall block allocation.
-    #
-    def _bgq_create_sub_block_shape_table(self, shape_str):
-
-        # Convert the shape string into dict structure
-        block_shape = self._bgq_str2shape(shape_str)
-
-        # Dict to store the results
-        table = {}
-
-        # Create a sub-block dict with shape 1x1x1x1x1
-        sub_block_shape = {l: 1 for l in self.BGQ_DIMENSION_LABELS}
-
-        # Look over all the dimensions starting at the most right
-        for dim in self.BGQ_MAPPING[::-1]:
-            while True:
-
-                # Calculate the number of nodes for the current shape
-                num_nodes = reduce(mul, filter(lambda length: length != 0, sub_block_shape.values()))
-
-                if num_nodes in self.BGQ_SUPPORTED_SUB_BLOCK_SIZES:
-                    table[num_nodes] = copy.copy(sub_block_shape)
-
-                # Done with iterating this dimension
-                if sub_block_shape[dim] >= block_shape[dim]:
-                    break
-
-                # Increase the length in this dimension for the next iteration.
-                sub_block_shape[dim] += 1
-
-        return table
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Return the offset into the node list from a corner
-    #
-    # TODO: Can this be determined instead of searched?
-    #
-    def _bgq_corner2offset(self, block, corner):
-        offset = 0
-
-        for e in block:
-            if corner == e[self.BGQ_BLOCK_COOR]:
-                return offset
-            offset += 1
-
-        return offset
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Follow coordinates to get the last node
-    #
-    def _bgq_get_last_node(self, origin, shape):
-        return {dim: origin[dim] + shape[dim] -1 for dim in self.BGQ_DIMENSION_LABELS}
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Return the number of nodes in a block
-    #
-    def _bgq_block2num_nodes(self, block):
-        return len(block)
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Allocate a sub-block within a block
-    # Currently only works with offset that are exactly the sub-block size
-    #
-    def _bgq_alloc_sub_block(self, block, num_nodes):
-
-        offset = 0
-        # Iterate through all nodes with offset a multiple of the sub-block size
-        while True:
-
-            # Verify the assumption (needs to be an assert?)
-            if offset % num_nodes != 0:
-                print 'ERROR: Sub-block needs to start at correct offset!'
-                exit()
-                # TODO: If we want to workaround this, the coordinates need to overflow
-
-            not_free = False
-            # Check if all nodes from offset till offset+size are FREE
-            for peek in range(num_nodes):
-                if block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY:
-                    # Once we find the first BUSY node we can discard this attempt
-                    not_free = True
-                    break
-
-            if not_free == True:
-                # No success at this offset
-                print "INFO: No free nodes found at this offset: %d"  % offset
-
-                # If we weren't the last attempt, then increase the offset and iterate again.
-                if offset + num_nodes < self._bgq_block2num_nodes(block):
-                    offset += num_nodes
-                    continue
-                else:
-                    return
-
-            else:
-                # At this stage we have found a free spot!
-
-                print "INFO: Free nodes found at this offset: %d" % offset
-
-                # Then mark the nodes busy
-                for peek in range(num_nodes):
-                    block[offset+peek][self.BGQ_BLOCK_STATUS] = BUSY
-
-                return offset
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Return the number of nodes for the given block shape
-    #
-    def _bgq_shape2num_nodes(self, shape):
-
-        nodes = 1
-        for dim in self.BGQ_DIMENSION_LABELS:
-            nodes *= shape[dim]
-
-        return nodes
-    #
-    ##########################################################################
+    def release_slot(self, (corner, shape)):
+        self.lrms.bgq_free_cores(self.lrms.loadl_block, corner, shape)
+
+        # something changed - write history!
+        # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
+        # ensue.  We thus limit the slot history size to 4MB, to keep sufficient
+        # space for the actual operational data
+        if len(str(self._slot_history)) < 4 * 1024 * 1024 :
+            self._slot_history.append(self.slot_status(short=True))
+        else:
+            # just replace the last entry with the current one.
+            self._slot_history[-1] = self.slot_status(short=True)
 
 
 # ==============================================================================
@@ -1097,7 +671,8 @@ class LaunchMethod(object):
 
         self.launch_command = None
         self.configure()
-        # TODO: This doesn't make too much sense for LM's that use multiple commands, perhaps this needs to move to per LM __init__.
+        # TODO: This doesn't make too much sense for LM's that use multiple commands,
+        #       perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
             raise Exception("Launch command not found for LaunchMethod '%s'" % name)
 
@@ -1134,7 +709,7 @@ class LaunchMethod(object):
     def configure(self):
         raise NotImplementedError("configure() not implemented for LaunchMethod: %s." % self.name)
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores, launch_script_name, opaque_slot):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
 
     #-----------------------------------------------------------------------------
@@ -1187,7 +762,8 @@ class LaunchMethodFORK(LaunchMethod):
         # "Regular" tasks
         self.launch_command = ''
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, opaque_slot):
 
         if task_args:
             command = " ".join([task_exec, task_args])
@@ -1212,7 +788,8 @@ class LaunchMethodMPIRUN(LaunchMethod):
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1222,7 +799,8 @@ class LaunchMethodMPIRUN(LaunchMethod):
         # Construct the hosts_string
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
 
-        mpirun_command = "%s -np %s -host %s %s" % (self.launch_command, task_numcores, hosts_string, task_command)
+        mpirun_command = "%s -np %s -host %s %s" % (
+            self.launch_command, task_numcores, hosts_string, task_command)
 
         return mpirun_command
 
@@ -1254,9 +832,11 @@ class LaunchMethodSSH(LaunchMethod):
 
         self.launch_command = command
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
 
-        host = task_slots[0].split(':')[0] # Get the host of the first entry in the acquired slot
+        # Get the host of the first entry in the acquired slot
+        host = task_slots[0].split(':')[0]
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1281,7 +861,8 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         # mpiexec (e.g. on SuperMUC)
         self.launch_command = self._which('mpiexec')
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
 
         # Construct the hosts_string
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
@@ -1309,14 +890,15 @@ class LaunchMethodAPRUN(LaunchMethod):
         # aprun: job launcher for Cray systems
         self.launch_command= self._which('aprun')
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, opaque_slot):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
         else:
             task_command = task_exec
 
-        aprun_command = "%s -n %s %s" % (self.launch_command, task_numcores, task_command)
+        aprun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
 
         return aprun_command
 
@@ -1332,92 +914,34 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # runjob: job launcher for IBM BG/Q systems, e.g. Joule
         self.launch_command= self._which('runjob')
 
-    # def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
-    #
-    #     if task_args:
-    #         task_command = " ".join([task_exec, task_args])
-    #     else:
-    #         task_command = task_exec
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (corner, sub_block_shape)):
 
-        # elif launch_method == LAUNCH_METHOD_RUNJOB:
-        #
-        #     if task.numcores % 16:
-        #         msg = "Num cores (%d) is not a multiple of 16!" % task.numcores
-        #         self._log.error(msg)
-        #         raise Exception(msg)
-        #
-        #     loadl_job_name = os.environ.get('LOADL_JOB_NAME')
-        #     if loadl_job_name is None:
-        #         msg = "$LOADL_JOB_NAME not set!"
-        #         self._log.error(msg)
-        #         raise Exception(msg)
-        #
-        #     # Get the board list and block shape from 'llq -l' output
-        #     output = subprocess.check_output(["llq", "-l", loadl_job_name])
-        #     loadl_bg_board_list_str = None
-        #     loadl_bg_block_shape_str = None
-        #     for line in output.splitlines():
-        #         # Detect BG board list
-        #         if "BG Node Board List: " in line:
-        #             loadl_bg_board_list_str = line.split(':')[1].strip()
-        #         elif "BG Shape Allocated: " in line:
-        #             loadl_bg_block_shape_str = line.split(':')[1].strip()
-        #     if not loadl_bg_board_list_str:
-        #         msg = "No board list found in llq output!"
-        #         self._log.error(msg)
-        #         raise Exception(msg)
-        #     if not loadl_bg_block_shape_str:
-        #         msg = "No board shape found in llq output!"
-        #         self._log.error(msg)
-        #         raise Exception(msg)
-        #
-        #     # Build nodes data structure
-        #     loadl_node_list = bgq_shapeandboards2block(loadl_bg_block_shape_str, loadl_bg_board_list_str)
-        #
-        #     first_slot = task.slots[0]
-        #     # Get the host and the core part
-        #     [first_slot_host, first_slot_core] = first_slot.split(':')
-        #     # Find the entry in the the all_slots list based on the host,
-        #     # use a generator to not have to go through all of the list.
-        #     slot_entry = (slot for slot in all_slots if slot["node"] == first_slot_host).next()
-        #     # Transform it into an index in to the all_slots list
-        #     all_slots_slot_index = all_slots.index(slot_entry)
-        #
-        #     # Construct sub-block table
-        #     # TODO: this needs to be done once at a better place
-        #     shape_table = bgq_create_sub_block_shape_table(loadl_bg_block_shape_str)
-        #
-        #     # Runjob it is!
-        #     runjob_command = launch_command
-        #
-        #     # Run this subjob in the block communicated by LoadLeveler
-        #     # TODO: Don't use env var, but the value we extracted earlier!
-        #     runjob_command += ' --block $LOADL_BG_BLOCK'
-        #
-        #     # Determine the offset of the starting node in the node list
-        #     # and use that as the corner for the subjob.
-        #     #runjob_offset = all_slots_slot_index * cores_per_node + int(first_slot_core)
-        #     runjob_offset = all_slots_slot_index
-        #     corner_node = loadl_node_list[runjob_offset][BGQ_BLOCK_NAME]
-        #     runjob_command += ' --corner %s' % corner_node
-        #
-        #     # Determine the shape based on the number of nodes we require
-        #     shape = shape_table[task.numcores/BGQ_CORES_PER_NODE]
-        #     runjob_command += ' --shape %s' % bgq_shape2str(shape)
-        #
-        #     # And finally add the executable and the arguments
-        #     runjob_command += ' --exe %s' % task_exec_string
-        #     if task_args_string:
-        #         runjob_command += ' --args %s' % task_args_string
-        #
-        #     launch_script.write('%s\n' % pre_exec_string)
-        #     launch_script.write('%s\n' % env_string)
-        #     launch_script.write('%s\n' % runjob_command)
-        #     launch_script.write('%s\n' % post_exec_string)
+        if task_numcores % self.scheduler.lrms.cores_per_node: # TODO: use constant
+            msg = "Num cores (%d) is not a multiple of %d!" % (
+                task_numcores, self.scheduler.lrms.cores_per_node)
+            self.log.exception(msg)
 
-        #     runjob <runkob flags> --exe /bin/hostname --args "-f"
-        #
-        #     cmdline = launch_script.name
+        # Runjob it is!
+        runjob_command = self.launch_command
+
+        # Run this subjob in the block communicated by LoadLeveler
+        runjob_command += ' --block %s' % self.scheduler.lrms.loadl_bg_block
+
+        corner_offset = self.scheduler.lrms._bgq_corner2offset(self.scheduler.lrms.loadl_block, corner)
+        corner_node = self.scheduler.lrms.loadl_block[corner_offset][self.scheduler.lrms.BGQ_BLOCK_NAME]
+        runjob_command += ' --corner %s' % corner_node
+
+        # convert the shape
+        runjob_command += ' --shape %s' % self.scheduler.lrms._bgq_shape2str(sub_block_shape)
+
+        # And finally add the executable and the arguments
+        # usage: runjob <runjob flags> --exe /bin/hostname --args "-f"
+        runjob_command += ' --exe %s' % task_exec
+        if task_args:
+            runjob_command += ' --args %s' % task_args
+
+        return runjob_command
 
 
 #-------------------------------------------------------------------------
@@ -1431,7 +955,8 @@ class LaunchMethodDPLACE(LaunchMethod):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = self._which('dplace')
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1457,7 +982,8 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         # mpirun_rsh (e.g. on Gordon@ SDSC)
         self.launch_command = self._which('mpirun_rsh')
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1486,7 +1012,8 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         self.launch_command = self._which('dplace')
         self.mpirun_command = self._which('mpirun')
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1515,7 +1042,8 @@ class LaunchMethodIBRUN(LaunchMethod):
         # ibrun: wrapper for mpirun at TACC
         self.launch_command = self._which('ibrun')
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1541,7 +1069,8 @@ class LaunchMethodPOE(LaunchMethod):
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
         self.launch_command = self._which('poe')
 
-    def construct_command(self, task_exec, task_args, task_numcores, task_slots, launch_script_name):
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
 
         # Count slots per host in provided slots description.
         hosts = {}
@@ -1580,10 +1109,11 @@ class LRMS(object):
 
     def __init__(self, name, requested_cores, logger):
 
-        print "Configuring LRMS %s." % name
         self.name = name
         self.log = logger
         self.requested_cores = requested_cores
+
+        self.log.info("Configuring LRMS %s." % self.name)
 
         self.slot_list = []
         self.node_list = []
@@ -1687,8 +1217,9 @@ class TORQUELRMS(LRMS):
         torque_nodes_length = len(torque_nodes)
         if torque_num_nodes and torque_cores_per_node and \
             torque_nodes_length != torque_num_nodes * torque_cores_per_node:
-            msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
-                  (torque_nodes_length, torque_num_nodes,  torque_cores_per_node)
+            msg = ("Number of entries in $PBS_NODEFILE (%s) does not match'"
+                   "' with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" %
+                  (torque_nodes_length, torque_num_nodes,  torque_cores_per_node))
             raise Exception(msg)
 
         # only unique node names
@@ -1966,11 +1497,13 @@ class LSFLRMS(LRMS):
         # <hostnameY>
         # <hostnameY>
         #
-        # There are in total "-n" entries (number of tasks) and "-R" entries per host (tasks per host).
+        # There are in total "-n" entries (number of tasks)
+        # and "-R" entries per host (tasks per host).
         # (That results in "-n" / "-R" unique hosts)
         #
         lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
-        self.log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s" % (lsf_hostfile, lsf_nodes))
+        self.log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s" %
+                      (lsf_hostfile, lsf_nodes))
         lsf_node_list = list(set(lsf_nodes))
 
         # Grab the core (slot) count from the environment
@@ -1978,7 +1511,8 @@ class LSFLRMS(LRMS):
         lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
         lsf_core_counts = list(set(lsf_cores_count_list))
         lsf_cores_per_node = min(lsf_core_counts)
-        self.log.info("Found unique core counts: %s Using: %d" % (lsf_core_counts, lsf_cores_per_node))
+        self.log.info("Found unique core counts: %s Using: %d" %
+                      (lsf_core_counts, lsf_cores_per_node))
 
         self.node_list = lsf_node_list
         self.cores_per_node = lsf_cores_per_node
@@ -1988,6 +1522,150 @@ class LSFLRMS(LRMS):
 #
 class LoadLevelerLRMS(LRMS):
 
+    ##########################################################################
+    #
+    # BG/Q Topology of Nodes within a Board
+    #
+    BGQ_BOARD_TOPO = {
+        0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
+        1: {'A': 28, 'B':  2, 'C':  0, 'D': 13, 'E':  6},
+        2: {'A': 31, 'B':  1, 'C':  3, 'D': 14, 'E':  5},
+        3: {'A': 30, 'B':  0, 'C':  2, 'D': 15, 'E':  4},
+        4: {'A': 25, 'B':  7, 'C':  5, 'D':  8, 'E':  3},
+        5: {'A': 24, 'B':  6, 'C':  4, 'D':  9, 'E':  2},
+        6: {'A': 27, 'B':  5, 'C':  7, 'D': 10, 'E':  1},
+        7: {'A': 26, 'B':  4, 'C':  6, 'D': 11, 'E':  0},
+        8: {'A': 21, 'B': 11, 'C':  9, 'D':  4, 'E': 15},
+        9: {'A': 20, 'B': 10, 'C':  8, 'D':  5, 'E': 14},
+        10: {'A': 23, 'B':  9, 'C': 11, 'D':  6, 'E': 13},
+        11: {'A': 22, 'B':  8, 'C': 10, 'D':  7, 'E': 12},
+        12: {'A': 17, 'B': 15, 'C': 13, 'D':  0, 'E': 11},
+        13: {'A': 16, 'B': 14, 'C': 12, 'D':  1, 'E': 10},
+        14: {'A': 19, 'B': 13, 'C': 15, 'D':  2, 'E':  9},
+        15: {'A': 18, 'B': 12, 'C': 14, 'D':  3, 'E':  8},
+        16: {'A': 13, 'B': 19, 'C': 17, 'D': 28, 'E': 23},
+        17: {'A': 12, 'B': 18, 'C': 16, 'D': 29, 'E': 22},
+        18: {'A': 15, 'B': 17, 'C': 19, 'D': 30, 'E': 21},
+        19: {'A': 14, 'B': 16, 'C': 18, 'D': 31, 'E': 20},
+        20: {'A':  9, 'B': 23, 'C': 21, 'D': 24, 'E': 19},
+        21: {'A':  8, 'B': 22, 'C': 20, 'D': 25, 'E': 18},
+        22: {'A': 11, 'B': 21, 'C': 23, 'D': 26, 'E': 17},
+        23: {'A': 10, 'B': 20, 'C': 22, 'D': 27, 'E': 16},
+        24: {'A':  5, 'B': 27, 'C': 25, 'D': 20, 'E': 31},
+        25: {'A':  4, 'B': 26, 'C': 24, 'D': 21, 'E': 30},
+        26: {'A':  7, 'B': 25, 'C': 27, 'D': 22, 'E': 29},
+        27: {'A':  6, 'B': 24, 'C': 26, 'D': 23, 'E': 28},
+        28: {'A':  1, 'B': 31, 'C': 29, 'D': 16, 'E': 27},
+        29: {'A':  0, 'B': 30, 'C': 28, 'D': 17, 'E': 26},
+        30: {'A':  3, 'B': 29, 'C': 31, 'D': 18, 'E': 25},
+        31: {'A':  2, 'B': 28, 'C': 30, 'D': 19, 'E': 24},
+        }
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # BG/Q Config
+    BGQ_CORES_PER_NODE      = 16
+    BGQ_NODES_PER_BOARD     = 32 # NODE == Compute Card == Chip module
+    BGQ_BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
+    BGQ_MIDPLANES_PER_RACK  = 2
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Default mapping = "ABCDE(T)"
+    #
+    # http://www.redbooks.ibm.com/redbooks/SG247948/wwhelp/wwhimpl/js/html/wwhelp.htm
+    #
+    BGQ_MAPPING = "ABCDE"
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Board labels (Rack, Midplane, Node)
+    #
+    BGQ_BOARD_LABELS = ['R', 'M', 'N']
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Dimensions of a (sub-)block
+    #
+    BGQ_DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Supported sub-block sizes (number of nodes).
+    # This influences the effectiveness of mixed-size allocations
+    # (and might even be a hard requirement from a topology standpoint).
+    #
+    # TODO: Do we actually need to restrict our sub-block sizes to this set?
+    #
+    BGQ_SUPPORTED_SUB_BLOCK_SIZES = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Mapping of starting corners.
+    #
+    # "board" -> "node"
+    #
+    # Ordering: ['E', 'D', 'DE', etc.]
+    #
+    # TODO: Is this independent of the mapping?
+    #
+    BGQ_BLOCK_STARTING_CORNERS = {
+        0:  0,
+        4: 29,
+        8:  4,
+        12: 25
+    }
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Offsets into block structure
+    #
+    BGQ_BLOCK_INDEX  = 0
+    BGQ_BLOCK_COOR   = 1
+    BGQ_BLOCK_NAME   = 2
+    BGQ_BLOCK_STATUS = 3
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # BG/Q Topology of Boards within a Midplane
+    #
+    BGQ_MIDPLANE_TOPO = {
+        0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
+        1: {'A':  5, 'B':  9, 'C':  0, 'D':  3},
+        2: {'A':  6, 'B': 10, 'C':  3, 'D':  0},
+        3: {'A':  7, 'B': 11, 'C':  2, 'D':  1},
+        4: {'A':  0, 'B': 12, 'C':  5, 'D':  6},
+        5: {'A':  1, 'B': 13, 'C':  4, 'D':  7},
+        6: {'A':  2, 'B': 14, 'C':  7, 'D':  4},
+        7: {'A':  3, 'B': 15, 'C':  6, 'D':  5},
+        8: {'A': 12, 'B':  0, 'C':  9, 'D': 10},
+        9: {'A': 13, 'B':  1, 'C':  8, 'D': 11},
+        10: {'A': 14, 'B':  2, 'C': 11, 'D':  8},
+        11: {'A': 15, 'B':  3, 'C': 10, 'D':  9},
+        12: {'A':  8, 'B':  4, 'C': 13, 'D': 14},
+        13: {'A':  9, 'B':  5, 'C': 12, 'D': 15},
+        14: {'A': 10, 'B':  6, 'C': 15, 'D': 12},
+        15: {'A': 11, 'B':  7, 'C': 14, 'D': 13},
+        }
+    #
+    ##########################################################################
+
     def __init__(self, name, requested_cores, logger):
         LRMS.__init__(self, name, requested_cores, logger)
 
@@ -1996,8 +1674,8 @@ class LoadLevelerLRMS(LRMS):
         # Determine method for determining hosts,
         # either through hostfile or BG/Q environment.
         loadl_hostfile = os.environ.get('LOADL_HOSTFILE')
-        loadl_bg_block = os.environ.get('LOADL_BG_BLOCK')
-        if loadl_hostfile is None and loadl_bg_block is None:
+        self.loadl_bg_block = os.environ.get('LOADL_BG_BLOCK')
+        if loadl_hostfile is None and self.loadl_bg_block is None:
             msg = "Neither $LOADL_HOSTFILE or $LOADL_BG_BLOCK set!"
             self.log.error(msg)
             raise Exception(msg)
@@ -2016,7 +1694,8 @@ class LoadLevelerLRMS(LRMS):
 
             # Construct the host list
             loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
-            self.log.info("Found LOADL_HOSTFILE %s. Expanded to: %s" % (loadl_hostfile, loadl_nodes))
+            self.log.info("Found LOADL_HOSTFILE %s. Expanded to: %s" %
+                          (loadl_hostfile, loadl_nodes))
             loadl_node_list = list(set(loadl_nodes))
 
             # Verify that $LLOAD_TOTAL_TASKS == len($LOADL_HOSTFILE)
@@ -2028,7 +1707,7 @@ class LoadLevelerLRMS(LRMS):
             # Assume: cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
             loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
 
-        elif loadl_bg_block is not None:
+        elif self.loadl_bg_block is not None:
             # Blue Gene specific.
 
             loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
@@ -2065,14 +1744,371 @@ class LoadLevelerLRMS(LRMS):
                 raise Exception(msg)
 
             # Build nodes data structure
-            #loadl_block = _bgq_shapeandboards2block(loadl_bg_block_shape_str, loadl_bg_board_list_str)
-            #loadl_node_list = [entry[BGQ_BLOCK_NAME] for entry in loadl_block]
+            self.loadl_block = self._bgq_shapeandboards2block(
+                loadl_bg_block_shape_str, loadl_bg_board_list_str)
+            self.loadl_node_list = [entry[self.BGQ_BLOCK_NAME] for entry in self.loadl_block]
+
+            # Construct sub-block table
+            self.shape_table = self._bgq_create_sub_block_shape_table(loadl_bg_block_shape_str)
 
             # Determine the number of cpus per node
-            #loadl_cpus_per_node = BGQ_CORES_PER_NODE
+            loadl_cpus_per_node = self.BGQ_CORES_PER_NODE
 
-        self.node_list = loadl_node_list
+        self.node_list = self.loadl_node_list
         self.cores_per_node = loadl_cpus_per_node
+
+    ##########################################################################
+    #
+    # Alloc a number of cores
+    #
+    def bgq_alloc_cores(self, block, sub_block_shape_table, num_cores):
+
+        self.log.info("Trying to allocate %d core(s)." % num_cores)
+
+        if num_cores % self.BGQ_CORES_PER_NODE:
+            num_cores = int(math.ceil(num_cores / float(self.BGQ_CORES_PER_NODE))) \
+                        * self.BGQ_CORES_PER_NODE
+            self.log.error('Core not a multiple of %d, increasing request to %d!' %
+                  (self.BGQ_CORES_PER_NODE, num_cores))
+
+        num_nodes = num_cores / self.BGQ_CORES_PER_NODE
+
+        offset = self._bgq_alloc_sub_block(block, num_nodes)
+
+        if offset is None:
+            self.log.warning('No allocation made.')
+            return
+
+        corner = block[offset][self.BGQ_BLOCK_COOR]
+        sub_block_shape = sub_block_shape_table[num_nodes]
+
+        self.log.debug('Allocating sub-block of %d node(s) with dimensions %s at offset %d with corner %s.' %
+              (num_nodes, self._bgq_shape2str(sub_block_shape), offset,
+               self._bgq_loc2str(corner)))
+        end = self._bgq_get_last_node(corner, sub_block_shape)
+        self.log.debug('End location: %s' % self._bgq_loc2str(end))
+
+        return corner, sub_block_shape
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Free up an allocation
+    #
+    def bgq_free_cores(self, block, corner, shape):
+
+        # Number of nodes to free
+        num_nodes = self._bgq_shape2num_nodes(shape)
+
+        # Location of where to start freeing
+        offset = self._bgq_corner2offset(block, corner)
+
+        self.log.info("Freeing %d nodes starting at %d." % (num_nodes, offset))
+
+        for peek in range(num_nodes):
+            assert block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY, \
+                'Block %d not Free!' % block[offset+peek]
+            block[offset+peek][self.BGQ_BLOCK_STATUS] = FREE
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Walk the block and return the node name for the given location
+    #
+    def _bgq_nodename_by_loc(self, rack, midplane, board, node, location):
+
+        for dim in self.BGQ_DIMENSION_LABELS:
+            max_length = location[dim]
+
+            cur_length = 0
+            # Loop while we are not at the final depth
+            while cur_length < max_length:
+
+                if cur_length % 2 == 0:
+                    # If the current length is even,
+                    # we remain within the board,
+                    # and select the next node.
+                    node = self.BGQ_BOARD_TOPO[node][dim]
+                else:
+                    # Otherwise we jump to another midplane.
+                    board = self.BGQ_MIDPLANE_TOPO[board][dim]
+
+                # Increase the length for the next iteration
+                cur_length += 1
+
+        return 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Convert the board string as given by llq into a board structure
+    #
+    # E.g. 'R00-M1-N08,R00-M1-N09,R00-M1-N10,R00-M0-N11' =>
+    # [{'R': 0, 'M': 1, 'N': 8}, {'R': 0, 'M': 1, 'N': 9},
+    #  {'R': 0, 'M': 1, 'N': 10}, {'R': 0, 'M': 0, 'N': 11}]
+    #
+    def _bgq_str2boards(self, boards_str):
+
+        boards = boards_str.split(',')
+
+        board_dict_list = []
+
+        for board in boards:
+            elements = board.split('-')
+
+            board_dict = {}
+            for l, e in zip(self.BGQ_BOARD_LABELS, elements):
+                board_dict[l] = int(e.split(l)[1])
+
+            board_dict_list.append(board_dict)
+
+        return board_dict_list
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Convert the string as given by llq into a block shape structure:
+    #
+    # E.g. '1x2x3x4x5' => {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+    #
+    def _bgq_str2shape(self, shape_str):
+
+        # Get the lengths of the shape
+        shape_lengths = shape_str.split('x', 4)
+
+        shape_dict = {}
+        for dim, length in zip(self.BGQ_DIMENSION_LABELS, shape_lengths):
+            shape_dict[dim] = int(length)
+
+        return shape_dict
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Convert location dict into a tuple string
+    # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '(1,4,1,2,4)'
+    #
+    def _bgq_loc2str(self, loc):
+        return str(tuple(loc[dim] for dim in self.BGQ_DIMENSION_LABELS))
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Convert a shape dict into string format
+    #
+    # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '1x4x1x2x4'
+    #
+    def _bgq_shape2str(self, shape):
+
+        shape_str = ''
+        for l in self.BGQ_DIMENSION_LABELS:
+
+            # Get the corresponding count
+            shape_str += str(shape[l])
+
+            # Add an 'x' behind all but the last label
+            if l in self.BGQ_DIMENSION_LABELS[:-1]:
+                shape_str += 'x'
+
+        return shape_str
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return list of nodes that make up the block
+    #
+    # Format: [(index, location, nodename, status), (i, c, n, s), ...]
+    #
+    def _bgq_get_block(self, rack, midplane, board, shape):
+
+        nodes = []
+        start_node = self.BGQ_BLOCK_STARTING_CORNERS[board]
+
+        self.log.debug('Shape: %s' % shape)
+
+        index = 0
+
+        for a in range(shape['A']):
+            for b in range(shape['B']):
+                for c in range(shape['C']):
+                    for d in range(shape['D']):
+                        for e in range(shape['E']):
+                            location = {'A': a, 'B': b, 'C': c, 'D': d, 'E':e}
+                            nodename = self._bgq_nodename_by_loc(rack, midplane, board, start_node, location)
+                            nodes.append([index, location, nodename, FREE])
+                            index += 1
+        return nodes
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Use block shape and board list to construct block structure
+    #
+    def _bgq_shapeandboards2block(self, block_shape_str, boards_str):
+
+        board_dict_list = self._bgq_str2boards(boards_str)
+        self.log.debug('Board dict list:\n%s' % '\n'.join([str(x) for x in board_dict_list]))
+
+        # TODO: this assumes a single midplane block
+        rack     = board_dict_list[0]['R']
+        midplane = board_dict_list[0]['M']
+
+        board_list = [entry['N'] for entry in board_dict_list]
+        start_board = min(board_list)
+
+        block_shape = self._bgq_str2shape(block_shape_str)
+
+        return self._bgq_get_block(rack, midplane, start_board, block_shape)
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Construction of sub-block shapes based on overall block allocation.
+    #
+    def _bgq_create_sub_block_shape_table(self, shape_str):
+
+        # Convert the shape string into dict structure
+        block_shape = self._bgq_str2shape(shape_str)
+
+        # Dict to store the results
+        table = {}
+
+        # Create a sub-block dict with shape 1x1x1x1x1
+        sub_block_shape = {l: 1 for l in self.BGQ_DIMENSION_LABELS}
+
+        # Look over all the dimensions starting at the most right
+        for dim in self.BGQ_MAPPING[::-1]:
+            while True:
+
+                # Calculate the number of nodes for the current shape
+                num_nodes = reduce(mul, filter(lambda length: length != 0, sub_block_shape.values()))
+
+                if num_nodes in self.BGQ_SUPPORTED_SUB_BLOCK_SIZES:
+                    table[num_nodes] = copy.copy(sub_block_shape)
+                else:
+                    self.log.warning("Non supported sub-block size: %d." % num_nodes)
+
+                # Done with iterating this dimension
+                if sub_block_shape[dim] >= block_shape[dim]:
+                    break
+
+                # Increase the length in this dimension for the next iteration.
+                sub_block_shape[dim] += 1
+
+        return table
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the offset into the node list from a corner
+    #
+    # TODO: Can this be determined instead of searched?
+    #
+    def _bgq_corner2offset(self, block, corner):
+        offset = 0
+
+        for e in block:
+            if corner == e[self.BGQ_BLOCK_COOR]:
+                return offset
+            offset += 1
+
+        return offset
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Follow coordinates to get the last node
+    #
+    def _bgq_get_last_node(self, origin, shape):
+        return {dim: origin[dim] + shape[dim] -1 for dim in self.BGQ_DIMENSION_LABELS}
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the number of nodes in a block
+    #
+    def _bgq_block2num_nodes(self, block):
+        return len(block)
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Allocate a sub-block within a block
+    # Currently only works with offset that are exactly the sub-block size
+    #
+    def _bgq_alloc_sub_block(self, block, num_nodes):
+
+        offset = 0
+        # Iterate through all nodes with offset a multiple of the sub-block size
+        while True:
+
+            # Verify the assumption (needs to be an assert?)
+            if offset % num_nodes != 0:
+                self.log.exception('Sub-block needs to start at correct offset!')
+                # TODO: If we want to workaround this, the coordinates need to overflow
+
+            not_free = False
+            # Check if all nodes from offset till offset+size are FREE
+            for peek in range(num_nodes):
+                try:
+                    if block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY:
+                        # Once we find the first BUSY node we can discard this attempt
+                        not_free = True
+                        break
+                except IndexError:
+                    self.log.error('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.' %(
+                        num_nodes, offset, peek))
+
+            if not_free == True:
+                # No success at this offset
+                self.log.info("No free nodes found at this offset: %d." % offset)
+
+                # If we weren't the last attempt, then increase the offset and iterate again.
+                if offset + num_nodes < self._bgq_block2num_nodes(block):
+                    offset += num_nodes
+                    continue
+                else:
+                    return
+
+            else:
+                # At this stage we have found a free spot!
+
+                self.log.info("Free nodes found at this offset: %d." % offset)
+
+                # Then mark the nodes busy
+                for peek in range(num_nodes):
+                    block[offset+peek][self.BGQ_BLOCK_STATUS] = BUSY
+
+                return offset
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the number of nodes for the given block shape
+    #
+    def _bgq_shape2num_nodes(self, shape):
+
+        nodes = 1
+        for dim in self.BGQ_DIMENSION_LABELS:
+            nodes *= shape[dim]
+
+        return nodes
+    #
+    ##########################################################################
 
 
 #-------------------------------------------------------------------------
@@ -2146,35 +2182,36 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, exec_env, logger, task_queue, command_queue, output_staging_queue,
-                 mongodb_url, mongodb_name, mongodb_auth, pilot_id, session_id, benchmark, cu_environment):
+    def __init__(self, exec_env, logger, task_queue, command_queue,
+                 output_staging_queue, mongodb_url, mongodb_name, mongodb_auth,
+                 pilot_id, session_id, benchmark, cu_environment):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
         multiprocessing.Process.__init__(self)
-        self.daemon      = True
-        self._terminate  = False
+        self.daemon = True
+        self._terminate = False
 
         self.cu_environment = cu_environment
 
         self._log = logger
 
-        self._pilot_id  = pilot_id
+        self._pilot_id = pilot_id
         self._benchmark = benchmark
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
 
-        if  len (mongodb_auth) >= 3 :
-            user, pwd = mongodb_auth.split (':', 1)
-            self._mongo_db.authenticate (user, pwd)
+        if len(mongodb_auth) >= 3:
+            user, pwd = mongodb_auth.split(':', 1)
+            self._mongo_db.authenticate(user, pwd)
 
-        self._p  = mongo_db["%s.p"  % session_id]
+        self._p = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
         self._wm = mongo_db["%s.um" % session_id]
 
         # Queued tasks by the Agent
-        self._task_queue     = task_queue
+        self._task_queue = task_queue
 
         # Queued transfers
         self._output_staging_queue = output_staging_queue
@@ -2189,17 +2226,13 @@ class ExecWorker(multiprocessing.Process):
         # Container for scheduler, lrms and launch method.
         self.exec_env = exec_env
 
-
-        # The available launch methods
-        #self._available_launch_methods = launch_methods
-
-        # TODO: This seems scheduler specific
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
             {"$set": {"slothistory" : self.exec_env.scheduler._slot_history,
-                      "capability"  : 0,
-                      "slots"       : self.exec_env.scheduler._slots}}
-            )
+                      #"capability"  : 0,
+                      #"slots"       : self.exec_env.scheduler._slots}
+                     }
+            })
 
     # ------------------------------------------------------------------------
     #
@@ -2235,7 +2268,8 @@ class ExecWorker(multiprocessing.Process):
         for caps_tuple in all_caps_tuples:
             free_cores, cont, single = cap_tuple
             count = all_caps_tuples[cap_tuple]
-            cap_dict = {'free_cores': free_cores, 'continuous': cont, 'single_node': single, 'count': count}
+            cap_dict = {'free_cores': free_cores, 'continuous': cont,
+                        'single_node': single, 'count': count}
             all_caps_dict.append(cap_dict)
 
         return all_caps_dict
@@ -2259,7 +2293,7 @@ class ExecWorker(multiprocessing.Process):
                 idle = True
 
                 # TODO: Where does this abstraction belong?
-                self._log.debug("Slot status:\n%s", self.exec_env.scheduler._slot_status())
+                self._log.debug("Slot status:\n%s", self.exec_env.scheduler.slot_status())
 
                 # See if there are commands for the worker!
                 try:
@@ -2267,7 +2301,8 @@ class ExecWorker(multiprocessing.Process):
                     if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                         self._cuids_to_cancel.append(command[COMMAND_ARG])
                     else:
-                        raise Exception("Command %s not applicable in this context." % command[COMMAND_TYPE])
+                        raise Exception("Command %s not applicable in this context." %
+                                        command[COMMAND_TYPE])
                 except Queue.Empty:
                     # do nothing if we don't have any queued commands
                     pass
@@ -2283,7 +2318,7 @@ class ExecWorker(multiprocessing.Process):
                 # any work to do?
                 if  task :
 
-                    task_slots = None
+                    opaque_slot = None
 
                     try :
 
@@ -2302,23 +2337,17 @@ class ExecWorker(multiprocessing.Process):
                             self._log.debug("Launching task with %s (%s)." % (
                                 launcher.name, launcher.launch_command))
 
-                        # IBRUN (e.g. Stampede) requires continuous slots for multi core execution
-                        # TODO: Dont have scattered scheduler yet, so test disabled.
-                        #if True: # launch_method in [LAUNCH_METHOD_IBRUN]:
-                        #    req_cont = True
-                        #else:
-                        #    req_cont = False
-
-                        # First try to find all cores on a single node
-                        task_slots = self.exec_env.scheduler.schedule(task.numcores)
+                        # Call the scheduler for this task, and receive an opaque handle
+                        # that has meaning to the LRMS, Scheduler and LaunchMethod.
+                        opaque_slot = self.exec_env.scheduler.allocate_slot(task.numcores)
 
                         # Check if we got results
-                        if  task_slots is None:
-                            # No resources free, put back in queue
+                        if opaque_slot is None:
+                            # No resources available, put back in queue
                             self._task_queue.put(task)
                         else:
-                            # We got an allocation go off and launch the process
-                            task.slots = task_slots
+                            # We got an allocation, go off and launch the process
+                            task.opaque_slot = opaque_slot
                             self._launch_task(task, launcher)
                             idle = False
 
@@ -2333,11 +2362,10 @@ class ExecWorker(multiprocessing.Process):
                         self._log.exception("Launching task failed: '%s'." % e)
 
                         # Free the Slots, Flee the Flots, Ree the Frots!
-                        if  task_slots :
-                            # TODO: This should go through the (scheduler?) abstraction!
-                            self.exec_env.scheduler._change_slot_states(task_slots, FREE)
+                        if opaque_slot:
+                            self.exec_env.scheduler.release_slot(opaque_slot)
 
-                        self._update_tasks (task)
+                        self._update_tasks(task)
 
                 # Record if there was activity in launching or monitoring tasks.
                 idle &= self._check_running()
@@ -2451,7 +2479,8 @@ class ExecWorker(multiprocessing.Process):
                         if task.agent_output_staging:
 
                             # Find the task in the database
-                            # TODO: shouldnt this be available somewhere already, that would save a roundtrip?!
+                            # TODO: shouldnt this be available somewhere already,
+                            #       that would save a roundtrip?!
                             cu = self._cu.find_one({"_id": ObjectId(uid)})
 
                             for directive in cu['Agent_Output_Directives']:
@@ -2527,7 +2556,7 @@ class ExecWorker(multiprocessing.Process):
             update_tasks.append(task)
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            self.exec_env.scheduler._change_slot_states(task.slots, FREE)
+            self.exec_env.scheduler.release_slot(task.opaque_slot)
 
         #
         # At this stage we are outside the for loop of running tasks.
@@ -2569,8 +2598,10 @@ class ExecWorker(multiprocessing.Process):
         # though...
         if  self._benchmark :
             # TODO: check that slot history is correctly recorded
-            if  self.exec_env.scheduler._slot_history_old != self.exec_env.scheduler._slot_history: # or \
-                #self.exec_env.scheduler._capability_old   != self.exec_env.scheduler._capability   :
+            if  (self.exec_env.scheduler._slot_history_old !=
+                 self.exec_env.scheduler._slot_history): # or \
+               #(self.exec_env.scheduler._capability_old
+               # != self.exec_env.scheduler._capability):
 
                 self._p.update(
                     {"_id": ObjectId(self._pilot_id)},
@@ -2582,17 +2613,16 @@ class ExecWorker(multiprocessing.Process):
                     )
 
                 self._slot_history_old = self.exec_env.scheduler._slot_history[:]
-                #self._capability_old   = self.exec_env.scheduler._capability
 
         for task in tasks:
             self._cu.update({"_id": ObjectId(task.uid)}, 
-            {"$set": {"state"         : task.state,
-                      "started"       : task.started,
-                      "finished"      : task.finished,
-                      "slots"         : task.slots,
-                      "exit_code"     : task.exit_code,
-                      "stdout"        : task.stdout,
-                      "stderr"        : task.stderr},
+            {"$set": {"state"        : task.state,
+                      "started"      : task.started,
+                      "finished"     : task.finished,
+                      "slots"        : task.slots, # TODO: keep around?
+                      "exit_code"    : task.exit_code,
+                      "stdout"       : task.stdout,
+                      "stderr"       : task.stderr},
              "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
             })
 
@@ -2658,7 +2688,8 @@ class InputStagingWorker(multiprocessing.Process):
             sandbox = staging['sandbox']
             staging_area = staging['staging_area']
             cu_id = staging['cu_id']
-            self._log.info('Task input staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
+            self._log.info('Task input staging directives %s for cu: %s to %s' %
+                           (directive, cu_id, sandbox))
 
             # Create working directory in case it doesn't exist yet
             try :
@@ -2710,13 +2741,14 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.info(log_message)
 
                 # If all went fine, update the state of this StagingDirective to Done
-                self._cu.update({'_id': ObjectId(cu_id),
-                                 'Agent_Input_Status': EXECUTING,
-                                 'Agent_Input_Directives.state': PENDING,
-                                 'Agent_Input_Directives.source': directive['source'],
-                                 'Agent_Input_Directives.target': directive['target']},
-                                {'$set' : {'Agent_Input_Directives.$.state': DONE},
-                                 '$push': {'log': log_message}})
+                self._cu.update(
+                    {'_id': ObjectId(cu_id),
+                     'Agent_Input_Status': EXECUTING,
+                     'Agent_Input_Directives.state': PENDING,
+                     'Agent_Input_Directives.source': directive['source'],
+                     'Agent_Input_Directives.target': directive['target']},
+                    {'$set' : {'Agent_Input_Directives.$.state': DONE},
+                     '$push': {'log': log_message}})
 
             except:
                 # If we catch an exception, assume the staging failed
@@ -2724,15 +2756,16 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.error(log_message)
 
                 # If a staging directive fails, fail the CU also.
-                self._cu.update({'_id': ObjectId(cu_id),
-                                 'Agent_Input_Status': EXECUTING,
-                                 'Agent_Input_Directives.state': PENDING,
-                                 'Agent_Input_Directives.source': directive['source'],
-                                 'Agent_Input_Directives.target': directive['target']},
-                                {'$set': {'Agent_Input_Directives.$.state': FAILED,
-                                          'Agent_Input_Status': FAILED,
-                                          'state': FAILED},
-                                 '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
+                self._cu.update(
+                    {'_id': ObjectId(cu_id),
+                     'Agent_Input_Status': EXECUTING,
+                     'Agent_Input_Directives.state': PENDING,
+                     'Agent_Input_Directives.source': directive['source'],
+                     'Agent_Input_Directives.target': directive['target']},
+                    {'$set': {'Agent_Input_Directives.$.state': FAILED,
+                               'Agent_Input_Status': FAILED,
+                               'state': FAILED},
+                     '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
 
 
 # ----------------------------------------------------------------------------
@@ -2793,7 +2826,8 @@ class OutputStagingWorker(multiprocessing.Process):
                     sandbox = staging['sandbox']
                     staging_area = staging['staging_area']
                     cu_id = staging['cu_id']
-                    self._log.info('Task output staging directives %s for cu: %s to %s' % (directive, cu_id, sandbox))
+                    self._log.info('Task output staging directives %s for cu: %s to %s' % (
+                        directive, cu_id, sandbox))
 
                     source = str(directive['source'])
                     abs_source = os.path.join(sandbox, source)
@@ -2834,7 +2868,8 @@ class OutputStagingWorker(multiprocessing.Process):
                         shutil.move(abs_source, target)
                         logmessage = 'Moved %s to %s' % (abs_source, target)
                     elif directive['action'] == TRANSFER:
-                        self._log.info('Going to transfer %s to %s' % (directive['source'], os.path.join(sandbox, directive['target'])))
+                        self._log.info('Going to transfer %s to %s' % (
+                            directive['source'], os.path.join(sandbox, directive['target'])))
                         # TODO: SAGA REMOTE TRANSFER
                         logmessage = 'Transferred %s to %s' % (abs_source, target)
                     else:
@@ -2926,7 +2961,8 @@ class Agent(threading.Thread):
             cu_environment  = self._exec_env.cu_environment
         )
         self._exec_worker.start()
-        self._log.info("Started up %s serving nodes %s" % (self._exec_worker, self._exec_env.lrms.node_list))
+        self._log.info("Started up %s serving nodes %s" %
+                       (self._exec_worker, self._exec_env.lrms.node_list))
 
         # Start input staging worker
         input_staging_worker = InputStagingWorker(
@@ -3002,12 +3038,14 @@ class Agent(threading.Thread):
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
                 if self._exec_worker.is_alive() is False:
-                    pilot_FAILED(self._p, self._pilot_id, self._log, "Execution worker %s died." % str(self._exec_worker))
+                    pilot_FAILED(self._p, self._pilot_id, self._log,
+                                 "Execution worker %s died." % str(self._exec_worker))
                     return
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
-                    pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated (_terminate set).")
+                    pilot_CANCELED(self._p, self._pilot_id, self._log,
+                                   "Terminated (_terminate set).")
                     return
 
                 # Make sure that we haven't exceeded the agent runtime. if 
@@ -3052,7 +3090,8 @@ class Agent(threading.Thread):
                         elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
                             self._log.info("Received KeepAlive command.")
                         else:
-                            raise Exception("Received unknown command: %s with arg: %s." % (command[COMMAND_TYPE], command[COMMAND_ARG]))
+                            raise Exception("Received unknown command: %s with arg: %s." %
+                                            (command[COMMAND_TYPE], command[COMMAND_ARG]))
 
                     # Check if there are compute units waiting for execution,
                     # and log that we pulled it.
@@ -3087,20 +3126,21 @@ class Agent(threading.Thread):
                             if  stderr : stderr_file = task_dir_name+'/'+stderr
                             else       : stderr_file = task_dir_name+'/STDERR'
 
-                            task = Task(uid         = w_uid,
-                                        executable  = cu["description"]["executable"],
-                                        arguments   = cu["description"]["arguments"],
-                                        environment = cu["description"]["environment"],
-                                        numcores    = cu["description"]["cores"],
-                                        mpi         = cu["description"]["mpi"],
-                                        pre_exec    = cu["description"]["pre_exec"],
-                                        post_exec   = cu["description"]["post_exec"],
-                                        workdir     = task_dir_name,
-                                        stdout_file = stdout_file,
-                                        stderr_file = stderr_file,
-                                        agent_output_staging = True if cu['Agent_Output_Directives'] else False,
-                                        ftw_output_staging   = True if cu['FTW_Output_Directives'] else False
-                                        )
+                            task = Task(
+                                uid         = w_uid,
+                                executable  = cu["description"]["executable"],
+                                arguments   = cu["description"]["arguments"],
+                                environment = cu["description"]["environment"],
+                                numcores    = cu["description"]["cores"],
+                                mpi         = cu["description"]["mpi"],
+                                pre_exec    = cu["description"]["pre_exec"],
+                                post_exec   = cu["description"]["post_exec"],
+                                workdir     = task_dir_name,
+                                stdout_file = stdout_file,
+                                stderr_file = stderr_file,
+                                agent_output_staging = True if cu['Agent_Output_Directives'] else False,
+                                ftw_output_staging   = True if cu['FTW_Output_Directives'] else False
+                                )
 
                             task.state = SCHEDULING
                             self._task_queue.put(task)
@@ -3167,7 +3207,8 @@ class _Process(subprocess.Popen):
         self._task = task
         self._log  = logger
 
-        launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script-', dir=task.workdir, suffix=".sh", delete=False)
+        launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script-',
+                                                    dir=task.workdir, suffix=".sh", delete=False)
         self._log.debug('Created launch_script: %s' % launch_script.name)
         st = os.stat(launch_script.name)
         os.chmod(launch_script.name, st.st_mode | stat.S_IEXEC)
@@ -3217,10 +3258,10 @@ class _Process(subprocess.Popen):
                     task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
         # The actual command line, constructed per launch-method
-        # TODO: Once we start to construct the command, it means we know we will be able to run, make sure this is true!
-        retval = launcher.construct_command(task_exec_string,  task_args_string,
-                                            task.numcores, task.slots,
-                                            launch_script.name)
+        # TODO: Once we start to construct the command, it means we know
+        #       we will be able to run, make sure this is true!
+        retval = launcher.construct_command(task_exec_string,  task_args_string, task.numcores,
+                                            launch_script.name, task.opaque_slot)
         # Check to see what kind of return value we got
         if isinstance(retval, basestring):
             # The launcher informs us to use the scriptname as the command line
@@ -3258,20 +3299,22 @@ class _Process(subprocess.Popen):
 
         self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
 
-        super(_Process, self).__init__(args=cmdline,
-                                       bufsize=0,
-                                       executable=None,
-                                       stdin=None,
-                                       stdout=self._stdout_file_h,
-                                       stderr=self._stderr_file_h,
-                                       preexec_fn=None,
-                                       close_fds=True,
-                                       shell=True,
-                                       cwd=task.workdir, # TODO: This doesn't always make sense if it runs remotely (still true?)
-                                       env=cu_environment,
-                                       universal_newlines=False,
-                                       startupinfo=None,
-                                       creationflags=0)
+        super(_Process, self).__init__(
+            args=cmdline,
+            bufsize=0,
+            executable=None,
+            stdin=None,
+            stdout=self._stdout_file_h,
+            stderr=self._stderr_file_h,
+            preexec_fn=None,
+            close_fds=True,
+            shell=True,
+            # TODO: cwd => This doesn't always make sense if it runs remotely (still true?)
+            cwd=task.workdir,
+            env=cu_environment,
+            universal_newlines=False,
+            startupinfo=None,
+            creationflags=0)
 
     #-------------------------------------------------------------------------
     #
