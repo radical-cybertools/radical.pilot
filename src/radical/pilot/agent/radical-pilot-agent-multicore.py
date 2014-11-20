@@ -342,6 +342,10 @@ class SchedulerContinuous(Scheduler):
         self._slot_history     = [self._slot_status (short=True)]
         self._slot_history_old = None
 
+        #self._capability = self._slots2caps(self._slots)
+        #self._capability     = self._slots2free(self._slots)
+        #self._capability_old = None
+
     def slots2offset(self, task_slots):
         # TODO: This assumes all hosts have the same number of cores
 
@@ -2177,9 +2181,6 @@ class ExecWorker(multiprocessing.Process):
         # Container for scheduler, lrms and launch method.
         self.exec_env = exec_env
 
-        #self._capability = self._slots2caps(self._slots)
-        self._capability     = self._slots2free(self.exec_env.scheduler._slots)
-        self._capability_old = None
 
         # The available launch methods
         #self._available_launch_methods = launch_methods
@@ -2549,7 +2550,7 @@ class ExecWorker(multiprocessing.Process):
 
         # Update capabilities
         #self._capability = self._slots2caps(self._slots)
-        self._capability = self._slots2free(self.exec_env.scheduler._slots)
+        #self._capability = self._slots2free(self.exec_env.scheduler._slots)
 
         # AM: FIXME: this at the moment pushes slot history whenever a task
         # state is updated...  This needs only to be done on ExecWorker
@@ -2559,20 +2560,21 @@ class ExecWorker(multiprocessing.Process):
         # AM: the capability publication cannot be delayed until shutdown
         # though...
         if  self._benchmark :
-            if  self._slot_history_old != self._slot_history or \
-                self._capability_old   != self._capability   :
+            # TODO: check that slot history is correctly recorded
+            if  self.exec_env.scheduler._slot_history_old != self.exec_env.scheduler._slot_history: # or \
+                #self.exec_env.scheduler._capability_old   != self.exec_env.scheduler._capability   :
 
                 self._p.update(
                     {"_id": ObjectId(self._pilot_id)},
-                    {"$set": {"slothistory" : self._slot_history,
+                    {"$set": {"slothistory" : self.exec_env.scheduler._slot_history,
                               #"slots"       : self._slots,
-                              "capability"  : self._capability
+                              #"capability"  : self.exec_env.scheduler._capability
                              }
                     }
                     )
 
-                self._slot_history_old = self._slot_history[:]
-                self._capability_old   = self._capability
+                self._slot_history_old = self.exec_env.scheduler._slot_history[:]
+                #self._capability_old   = self.exec_env.scheduler._capability
 
         for task in tasks:
             self._cu.update({"_id": ObjectId(task.uid)}, 
