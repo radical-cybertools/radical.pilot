@@ -1415,9 +1415,8 @@ class SLURMLRMS(LRMS):
         # $SLURM_CPUS_ON_NODE = Count of processors available to the job on this node.
         slurm_cpus_on_node_str = os.environ.get('SLURM_CPUS_ON_NODE')
         if slurm_cpus_on_node_str is None:
-            msg = "$SLURM_NNODES not set!"
-            self.log.error(msg)
-            raise Exception(msg)
+            msg = "$SLURM_CPUS_ON_NODE not set!"
+            self.log.exception(msg)
         else:
             slurm_cpus_on_node = int(slurm_cpus_on_node_str)
 
