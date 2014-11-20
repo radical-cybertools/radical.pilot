@@ -1,11 +1,9 @@
-
 {
     "stampede": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
@@ -40,7 +38,6 @@
         "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "sge+ssh://lonestar.tacc.utexas.edu/",
@@ -72,7 +69,6 @@
         "description"                 : "The XSEDE 'Trestles' cluster at SDSC (http://www.sdsc.edu/us/resources/trestles/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://trestles.sdsc.xsede.org/",
@@ -97,7 +93,6 @@
         "description"                 : "The XSEDE 'Gordon' cluster at SDSC (http://www.sdsc.edu/us/resources/gordon/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://gordon.sdsc.xsede.org/",
@@ -122,7 +117,6 @@
         "description"                 : "The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://blacklight.psc.xsede.org/",
@@ -145,4 +139,3 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
-

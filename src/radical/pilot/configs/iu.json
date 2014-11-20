@@ -3,7 +3,6 @@
         "description"                 : "The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).",
         "notes"                       : "None",
         "schemas"                     : ["ssh", "gsissh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://quarry.uits.indiana.edu/",
@@ -27,7 +26,6 @@
         "description"                 : "Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
         "schemas"                     : ["ssh", "gsissh"],
-        "warn_on_local"               : "True",
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.iu.edu/",
