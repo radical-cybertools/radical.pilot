@@ -649,6 +649,14 @@ class SchedulerTorus(Scheduler):
 
     ##########################################################################
     #
+    # Dimensions of a (sub-)block
+    #
+    BGQ_DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
     # Supported sub-block sizes (number of nodes).
     # This influences the effectiveness of mixed-size allocations
     # (and might even be a hard requirement from a topology standpoint).
