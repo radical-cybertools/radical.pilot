@@ -69,6 +69,8 @@ List of Pre-Configured Resources
         print " * %s" % config
 
         with open("../../src/radical/pilot/configs/{0}".format(config)) as cfg_file:
+
+            cfg_base = os.path.basename (config)[:-5]    # remove '.json'
             try: 
                 json_data = json.load(cfg_file)
             except Exception, ex:
@@ -77,7 +79,7 @@ List of Pre-Configured Resources
 
 
             for resource_key, resource_config in json_data.iteritems():
-                print "   * %s" % resource_key
+                print "   * %s.%s" % (cfg_base, resource_key)
                 try:
                     default_queue = resource_config["default_queue"]
                 except Exception, ex:
@@ -98,8 +100,9 @@ List of Pre-Configured Resources
                 except Exception, ex:
                     access_schemas = ['n/a']
 
-                resources_rst.write("{0}\n".format(resource_key))
-                resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
+                subtitle = "%s.%s\n" % (cfg_base, resource_key)
+
+                resources_rst.write("%s\n%s\n\n" % (subtitle, '-' * len(subtitle)))
                 resources_rst.write("{0}\n\n".format(resource_config["description"]))
                 if resource_config["notes"] != "None":
                     resources_rst.write(".. note::  {0}\n\n".format(resource_config["notes"]))
