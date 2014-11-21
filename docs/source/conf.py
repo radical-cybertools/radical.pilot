@@ -100,7 +100,7 @@ List of Pre-Configured Resources
                 except Exception, ex:
                     access_schemas = ['n/a']
 
-                subtitle = "%s.%s\n" % (cfg_base, resource_key)
+                subtitle = "%s.%s" % (cfg_base, resource_key)
 
                 resources_rst.write("%s\n%s\n\n" % (subtitle, '-' * len(subtitle)))
                 resources_rst.write("{0}\n\n".format(resource_config["description"]))
