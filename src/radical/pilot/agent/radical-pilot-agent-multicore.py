@@ -343,7 +343,6 @@ class SchedulerContinuous(Scheduler):
                 # TODO: Maybe use the real core numbers in the case of non-exclusive host reservations?
                 'cores': [FREE for _ in range(0, self.lrms.cores_per_node)]
             })
-        self._cores_per_node = self.lrms.cores_per_node
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
@@ -497,7 +496,7 @@ class SchedulerContinuous(Scheduler):
     def _find_slots_multi_cont(self, cores_requested):
 
         # Convenience aliases
-        cores_per_node = self._cores_per_node
+        cores_per_node = self.lrms.cores_per_node
         all_slots = self._slots
 
         # Glue all slot core lists together
@@ -592,19 +591,30 @@ class SchedulerTorus(Scheduler):
 
     # TODO: Ultimately all BG/Q specifics should move out of the scheduler
 
+    ##########################################################################
+    #
+    # Offsets into block structure
+    #
+    TORUS_BLOCK_INDEX  = 0
+    TORUS_BLOCK_COOR   = 1
+    TORUS_BLOCK_NAME   = 2
+    TORUS_BLOCK_STATUS = 3
+    #
+    ##########################################################################
+
     def __init__(self, name, lrms, logger):
         Scheduler.__init__(self, name, lrms, logger)
 
     def configure(self):
         if not self.lrms.cores_per_node:
             raise Exception("LRMS %s didn't configure cores_per_node." % self.lrms.name)
-        self._cores_per_node = self.lrms.cores_per_node
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
         self._slot_history     = [self.slot_status(short=True)]
         self._slot_history_old = None
 
+        # TODO: get rid of field below
         self._slots = 'bogus'
 
     # ------------------------------------------------------------------------
@@ -615,9 +625,9 @@ class SchedulerTorus(Scheduler):
         # TODO: Both short and long currently only deal with full-node status
         if short:
             slot_matrix = ""
-            for slot in self.lrms.loadl_block:
+            for slot in self.lrms.torus_block:
                 slot_matrix += "|"
-                if slot[self.lrms.BGQ_BLOCK_STATUS] == FREE:
+                if slot[self.TORUS_BLOCK_STATUS] == FREE:
                     slot_matrix += "-" * self.lrms.cores_per_node
                 else:
                     slot_matrix += "+" * self.lrms.cores_per_node
@@ -626,21 +636,122 @@ class SchedulerTorus(Scheduler):
             return {'timestamp': ts, 'slotstate': slot_matrix}
         else:
             slot_matrix = ""
-            for slot in self.lrms.loadl_block:
+            for slot in self.lrms.torus_block:
                 slot_vector = ""
-                if slot[self.lrms.BGQ_BLOCK_STATUS] == FREE:
+                if slot[self.TORUS_BLOCK_STATUS] == FREE:
                     slot_vector = " - " * self.lrms.cores_per_node
                 else:
                     slot_vector = " X " * self.lrms.cores_per_node
-                slot_matrix += "%s: %s\n" % (slot[self.lrms.BGQ_BLOCK_NAME].ljust(24), slot_vector)
+                slot_matrix += "%s: %s\n" % (slot[self.TORUS_BLOCK_NAME].ljust(24), slot_vector)
             return slot_matrix
 
+    ##########################################################################
+    #
+    # Allocate a number of cores
+    #
+    # Currently only implements full-node allocation, so core count must
+    # be a multiple of cores_per_node.
+    #
     def allocate_slot(self, cores_requested):
-        return self.lrms.bgq_alloc_cores(
-            self.lrms.loadl_block, self.lrms.shape_table, cores_requested)
+
+        block = self.lrms.torus_block
+        sub_block_shape_table = self.lrms.shape_table
+
+        self.log.info("Trying to allocate %d core(s)." % cores_requested)
+
+        if cores_requested % self.lrms.cores_per_node:
+            num_cores = int(math.ceil(cores_requested / float(self.lrms.cores_per_node))) \
+                        * self.lrms.cores_per_node
+            self.log.error('Core not a multiple of %d, increasing request to %d!' %
+                           (self.lrms.cores_per_node, num_cores))
+
+        num_nodes = cores_requested / self.lrms.cores_per_node
+
+        offset = self._alloc_sub_block(block, num_nodes)
+
+        if offset is None:
+            self.log.warning('No allocation made.')
+            return
+
+        # TODO: return something else than corner location? Corner index?
+        corner = block[offset][self.TORUS_BLOCK_COOR]
+        sub_block_shape = sub_block_shape_table[num_nodes]
+
+        end = self.get_last_node(corner, sub_block_shape)
+        self.log.debug('Allocating sub-block of %d node(s) with dimensions %s'
+                       ' at offset %d with corner %s and end %s.' %
+                       (num_nodes, self.lrms.shape2str(sub_block_shape), offset,
+                        self.lrms.loc2str(corner), self.lrms.loc2str(end)))
+
+        return corner, sub_block_shape
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Allocate a sub-block within a block
+    # Currently only works with offset that are exactly the sub-block size
+    #
+    def _alloc_sub_block(self, block, num_nodes):
+
+        offset = 0
+        # Iterate through all nodes with offset a multiple of the sub-block size
+        while True:
+
+            # Verify the assumption (needs to be an assert?)
+            if offset % num_nodes != 0:
+                msg = 'Sub-block needs to start at correct offset!'
+                self.log.exception(msg)
+                raise Exception(msg)
+                # TODO: If we want to workaround this, the coordinates need to overflow
+
+            not_free = False
+            # Check if all nodes from offset till offset+size are FREE
+            for peek in range(num_nodes):
+                try:
+                    if block[offset+peek][self.TORUS_BLOCK_STATUS] == BUSY:
+                        # Once we find the first BUSY node we can discard this attempt
+                        not_free = True
+                        break
+                except IndexError:
+                    self.log.error('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.' %(
+                        num_nodes, offset, peek))
+
+            if not_free == True:
+                # No success at this offset
+                self.log.info("No free nodes found at this offset: %d." % offset)
+
+                # If we weren't the last attempt, then increase the offset and iterate again.
+                if offset + num_nodes < self._block2num_nodes(block):
+                    offset += num_nodes
+                    continue
+                else:
+                    return
+
+            else:
+                # At this stage we have found a free spot!
+
+                self.log.info("Free nodes found at this offset: %d." % offset)
+
+                # Then mark the nodes busy
+                for peek in range(num_nodes):
+                    block[offset+peek][self.TORUS_BLOCK_STATUS] = BUSY
+
+                return offset
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the number of nodes in a block
+    #
+    def _block2num_nodes(self, block):
+        return len(block)
+    #
+    ##########################################################################
 
     def release_slot(self, (corner, shape)):
-        self.lrms.bgq_free_cores(self.lrms.loadl_block, corner, shape)
+        self._free_cores(self.lrms.torus_block, corner, shape)
 
         # something changed - write history!
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
@@ -651,6 +762,69 @@ class SchedulerTorus(Scheduler):
         else:
             # just replace the last entry with the current one.
             self._slot_history[-1] = self.slot_status(short=True)
+
+
+    ##########################################################################
+    #
+    # Free up an allocation
+    #
+    def _free_cores(self, block, corner, shape):
+
+        # Number of nodes to free
+        num_nodes = self._shape2num_nodes(shape)
+
+        # Location of where to start freeing
+        offset = self.corner2offset(block, corner)
+
+        self.log.info("Freeing %d nodes starting at %d." % (num_nodes, offset))
+
+        for peek in range(num_nodes):
+            assert block[offset+peek][self.TORUS_BLOCK_STATUS] == BUSY, \
+                'Block %d not Free!' % block[offset+peek]
+            block[offset+peek][self.TORUS_BLOCK_STATUS] = FREE
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Follow coordinates to get the last node
+    #
+    def get_last_node(self, origin, shape):
+        return {dim: origin[dim] + shape[dim] -1 for dim in self.lrms.torus_dimension_labels}
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the number of nodes for the given block shape
+    #
+    def _shape2num_nodes(self, shape):
+
+        nodes = 1
+        for dim in self.lrms.torus_dimension_labels:
+            nodes *= shape[dim]
+
+        return nodes
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the offset into the node list from a corner
+    #
+    # TODO: Can this be determined instead of searched?
+    #
+    def corner2offset(self, block, corner):
+        offset = 0
+
+        for e in block:
+            if corner == e[self.TORUS_BLOCK_COOR]:
+                return offset
+            offset += 1
+
+        return offset
+    #
+    ##########################################################################
 
 
 # ==============================================================================
@@ -916,10 +1090,11 @@ class LaunchMethodRUNJOB(LaunchMethod):
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (corner, sub_block_shape)):
 
-        if task_numcores % self.scheduler.lrms.cores_per_node: # TODO: use constant
+        if task_numcores % self.scheduler.lrms.cores_per_node:
             msg = "Num cores (%d) is not a multiple of %d!" % (
                 task_numcores, self.scheduler.lrms.cores_per_node)
             self.log.exception(msg)
+            raise Exception(msg)
 
         # Runjob it is!
         runjob_command = self.launch_command
@@ -927,12 +1102,12 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # Run this subjob in the block communicated by LoadLeveler
         runjob_command += ' --block %s' % self.scheduler.lrms.loadl_bg_block
 
-        corner_offset = self.scheduler.lrms._bgq_corner2offset(self.scheduler.lrms.loadl_block, corner)
-        corner_node = self.scheduler.lrms.loadl_block[corner_offset][self.scheduler.lrms.BGQ_BLOCK_NAME]
+        corner_offset = self.scheduler.corner2offset(self.scheduler.lrms.torus_block, corner)
+        corner_node = self.scheduler.lrms.torus_block[corner_offset][self.scheduler.TORUS_BLOCK_NAME]
         runjob_command += ' --corner %s' % corner_node
 
         # convert the shape
-        runjob_command += ' --shape %s' % self.scheduler.lrms._bgq_shape2str(sub_block_shape)
+        runjob_command += ' --shape %s' % self.scheduler.lrms.shape2str(sub_block_shape)
 
         # And finally add the executable and the arguments
         # usage: runjob <runjob flags> --exe /bin/hostname --args "-f"
@@ -1630,17 +1805,6 @@ class LoadLevelerLRMS(LRMS):
 
     ##########################################################################
     #
-    # Offsets into block structure
-    #
-    BGQ_BLOCK_INDEX  = 0
-    BGQ_BLOCK_COOR   = 1
-    BGQ_BLOCK_NAME   = 2
-    BGQ_BLOCK_STATUS = 3
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
     # BG/Q Topology of Boards within a Midplane
     #
     BGQ_MIDPLANE_TOPO = {
@@ -1741,10 +1905,12 @@ class LoadLevelerLRMS(LRMS):
                 self.log.error(msg)
                 raise Exception(msg)
 
-            # Build nodes data structure
-            self.loadl_block = self._bgq_shapeandboards2block(
+            self.torus_dimension_labels = self.BGQ_DIMENSION_LABELS
+
+            # Build nodes data structure to be handled by Torus Scheduler
+            self.torus_block = self._bgq_shapeandboards2block(
                 loadl_bg_block_shape_str, loadl_bg_board_list_str)
-            self.loadl_node_list = [entry[self.BGQ_BLOCK_NAME] for entry in self.loadl_block]
+            self.loadl_node_list = [entry[SchedulerTorus.TORUS_BLOCK_NAME] for entry in self.torus_block]
 
             # Construct sub-block table
             self.shape_table = self._bgq_create_sub_block_shape_table(loadl_bg_block_shape_str)
@@ -1755,61 +1921,6 @@ class LoadLevelerLRMS(LRMS):
         self.node_list = self.loadl_node_list
         self.cores_per_node = loadl_cpus_per_node
 
-    ##########################################################################
-    #
-    # Alloc a number of cores
-    #
-    def bgq_alloc_cores(self, block, sub_block_shape_table, num_cores):
-
-        self.log.info("Trying to allocate %d core(s)." % num_cores)
-
-        if num_cores % self.BGQ_CORES_PER_NODE:
-            num_cores = int(math.ceil(num_cores / float(self.BGQ_CORES_PER_NODE))) \
-                        * self.BGQ_CORES_PER_NODE
-            self.log.error('Core not a multiple of %d, increasing request to %d!' %
-                  (self.BGQ_CORES_PER_NODE, num_cores))
-
-        num_nodes = num_cores / self.BGQ_CORES_PER_NODE
-
-        offset = self._bgq_alloc_sub_block(block, num_nodes)
-
-        if offset is None:
-            self.log.warning('No allocation made.')
-            return
-
-        corner = block[offset][self.BGQ_BLOCK_COOR]
-        sub_block_shape = sub_block_shape_table[num_nodes]
-
-        self.log.debug('Allocating sub-block of %d node(s) with dimensions %s at offset %d with corner %s.' %
-              (num_nodes, self._bgq_shape2str(sub_block_shape), offset,
-               self._bgq_loc2str(corner)))
-        end = self._bgq_get_last_node(corner, sub_block_shape)
-        self.log.debug('End location: %s' % self._bgq_loc2str(end))
-
-        return corner, sub_block_shape
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Free up an allocation
-    #
-    def bgq_free_cores(self, block, corner, shape):
-
-        # Number of nodes to free
-        num_nodes = self._bgq_shape2num_nodes(shape)
-
-        # Location of where to start freeing
-        offset = self._bgq_corner2offset(block, corner)
-
-        self.log.info("Freeing %d nodes starting at %d." % (num_nodes, offset))
-
-        for peek in range(num_nodes):
-            assert block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY, \
-                'Block %d not Free!' % block[offset+peek]
-            block[offset+peek][self.BGQ_BLOCK_STATUS] = FREE
-    #
-    ##########################################################################
 
     ##########################################################################
     #
@@ -1891,7 +2002,7 @@ class LoadLevelerLRMS(LRMS):
     # Convert location dict into a tuple string
     # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '(1,4,1,2,4)'
     #
-    def _bgq_loc2str(self, loc):
+    def loc2str(self, loc):
         return str(tuple(loc[dim] for dim in self.BGQ_DIMENSION_LABELS))
     #
     ##########################################################################
@@ -1902,7 +2013,7 @@ class LoadLevelerLRMS(LRMS):
     #
     # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '1x4x1x2x4'
     #
-    def _bgq_shape2str(self, shape):
+    def shape2str(self, shape):
 
         shape_str = ''
         for l in self.BGQ_DIMENSION_LABELS:
@@ -2003,108 +2114,6 @@ class LoadLevelerLRMS(LRMS):
                 sub_block_shape[dim] += 1
 
         return table
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Return the offset into the node list from a corner
-    #
-    # TODO: Can this be determined instead of searched?
-    #
-    def _bgq_corner2offset(self, block, corner):
-        offset = 0
-
-        for e in block:
-            if corner == e[self.BGQ_BLOCK_COOR]:
-                return offset
-            offset += 1
-
-        return offset
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Follow coordinates to get the last node
-    #
-    def _bgq_get_last_node(self, origin, shape):
-        return {dim: origin[dim] + shape[dim] -1 for dim in self.BGQ_DIMENSION_LABELS}
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Return the number of nodes in a block
-    #
-    def _bgq_block2num_nodes(self, block):
-        return len(block)
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Allocate a sub-block within a block
-    # Currently only works with offset that are exactly the sub-block size
-    #
-    def _bgq_alloc_sub_block(self, block, num_nodes):
-
-        offset = 0
-        # Iterate through all nodes with offset a multiple of the sub-block size
-        while True:
-
-            # Verify the assumption (needs to be an assert?)
-            if offset % num_nodes != 0:
-                self.log.exception('Sub-block needs to start at correct offset!')
-                # TODO: If we want to workaround this, the coordinates need to overflow
-
-            not_free = False
-            # Check if all nodes from offset till offset+size are FREE
-            for peek in range(num_nodes):
-                try:
-                    if block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY:
-                        # Once we find the first BUSY node we can discard this attempt
-                        not_free = True
-                        break
-                except IndexError:
-                    self.log.error('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.' %(
-                        num_nodes, offset, peek))
-
-            if not_free == True:
-                # No success at this offset
-                self.log.info("No free nodes found at this offset: %d." % offset)
-
-                # If we weren't the last attempt, then increase the offset and iterate again.
-                if offset + num_nodes < self._bgq_block2num_nodes(block):
-                    offset += num_nodes
-                    continue
-                else:
-                    return
-
-            else:
-                # At this stage we have found a free spot!
-
-                self.log.info("Free nodes found at this offset: %d." % offset)
-
-                # Then mark the nodes busy
-                for peek in range(num_nodes):
-                    block[offset+peek][self.BGQ_BLOCK_STATUS] = BUSY
-
-                return offset
-    #
-    ##########################################################################
-
-    ##########################################################################
-    #
-    # Return the number of nodes for the given block shape
-    #
-    def _bgq_shape2num_nodes(self, shape):
-
-        nodes = 1
-        for dim in self.BGQ_DIMENSION_LABELS:
-            nodes *= shape[dim]
-
-        return nodes
     #
     ##########################################################################
 
@@ -2398,7 +2407,7 @@ class ExecWorker(multiprocessing.Process):
         proc = _Process(
             task=task,
             all_slots=self.exec_env.scheduler._slots,
-            cores_per_node=self.exec_env.scheduler._cores_per_node,
+            cores_per_node=self.exec_env.lrms.cores_per_node,
             launcher=launcher,
             logger=self._log,
             cu_environment=self.cu_environment)
