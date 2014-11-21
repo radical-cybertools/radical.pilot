@@ -1099,6 +1099,11 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # Runjob it is!
         runjob_command = self.launch_command
 
+        # Set the number of tasks/ranks per node
+        # TODO: Currently hardcoded, this should be configurable,
+        #       but I don't see how, this would be a leaky abstraction.
+        runjob_command += ' --ranks-per-node %d' % min(self.scheduler.lrms.cores_per_node, task_numcores)
+
         # Run this subjob in the block communicated by LoadLeveler
         runjob_command += ' --block %s' % self.scheduler.lrms.loadl_bg_block
 
