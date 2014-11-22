@@ -15,7 +15,7 @@ import glob
 import imp
 import sys
 import os
-import json
+import radical.utils as ru
 import pprint
 import subprocess as sp
 
@@ -60,52 +60,51 @@ with open("{0}/resources.rst".format(script_dir), "w") as resources_rst:
 
         print " * %s" % example
 
-        with open("../../src/radical/pilot/configs/{0}".format(example)) as cfg_file:
-            try: 
-                json_data = json.load(cfg_file)
+        try: 
+             json_data = ru.read_json_str("../../src/radical/pilot/configs/%s" % example)
+        except Exception, ex:
+             print "    * JSON PARSING ERROR: %s" % str(ex)
+             continue
+
+
+        for resource_key, resource_config in json_data.iteritems():
+            print "   * %s" % resource_key
+            try:
+                default_queue = resource_config["default_queue"]
             except Exception, ex:
-                print "    * JSON PARSING ERROR: %s" % str(ex)
-                continue
+                default_queue = None
 
+            try:
+                working_dir = resource_config["default_remote_workdir"]
+            except Exception, ex:
+                working_dir = "$HOME"
 
-            for resource_key, resource_config in json_data.iteritems():
-                print "   * %s" % resource_key
-                try:
-                    default_queue = resource_config["default_queue"]
-                except Exception, ex:
-                    default_queue = None
+            try:
+                python_interpreter = resource_config["python_interpreter"]
+            except Exception, ex:
+                python_interpreter = None
 
-                try:
-                    working_dir = resource_config["default_remote_workdir"]
-                except Exception, ex:
-                    working_dir = "$HOME"
+            try:
+                access_schemas = resource_config["schemas"]
+            except Exception, ex:
+                access_schemas = ['n/a']
 
-                try:
-                    python_interpreter = resource_config["python_interpreter"]
-                except Exception, ex:
-                    python_interpreter = None
+            resources_rst.write("{0}\n".format(resource_key))
+            resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
+            resources_rst.write("{0}\n\n".format(resource_config["description"]))
+            if resource_config["notes"] != "None":
+                resources_rst.write(".. note::  {0}\n\n".format(resource_config["notes"]))
+            resources_rst.write("Default values for ComputePilotDescription attributes:\n\n")
+            resources_rst.write("================== ============================\n")
+            resources_rst.write("Parameter               Value\n")
+            resources_rst.write("================== ============================\n")
+            resources_rst.write("``queue``               {0}\n".format(default_queue))
+            resources_rst.write("``sandbox``             {0}\n".format(working_dir))
+            resources_rst.write("``access_schema``       {0}\n".format(access_schemas[0]))
+            resources_rst.write("================== ============================\n\n")
+            resources_rst.write("Available schemas: ``{0}``\n\n".format(', '.join(access_schemas)))
 
-                try:
-                    access_schemas = resource_config["schemas"]
-                except Exception, ex:
-                    access_schemas = ['n/a']
-
-                resources_rst.write("{0}\n".format(resource_key))
-                resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
-                resources_rst.write("{0}\n\n".format(resource_config["description"]))
-                if resource_config["notes"] != "None":
-                    resources_rst.write(".. note::  {0}\n\n".format(resource_config["notes"]))
-                resources_rst.write("Default values for ComputePilotDescription attributes:\n\n")
-                resources_rst.write("================== ============================\n")
-                resources_rst.write("Parameter               Value\n")
-                resources_rst.write("================== ============================\n")
-                resources_rst.write("``queue``               {0}\n".format(default_queue))
-                resources_rst.write("``sandbox``             {0}\n".format(working_dir))
-                resources_rst.write("``access_schema``       {0}\n".format(access_schemas[0]))
-                resources_rst.write("================== ============================\n\n")
-                resources_rst.write("Available schemas: ``{0}``\n\n".format(', '.join(access_schemas)))
-
-                resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
+            resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(example))
 ##
 ################################################################################
 
