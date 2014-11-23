@@ -176,9 +176,6 @@ class BackfillingScheduler(Scheduler):
                         logger.error ('unit %s freed %s cores on %s (== %s) -- NOT reused!'
                                    % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
-                else :
-                    print "unit %s not handled"
-
 
         except Exception as e :
             logger.error ("error in unit callback for backfiller (%s) - ignored" % e)
