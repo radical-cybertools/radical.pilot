@@ -285,6 +285,7 @@ class InputFileTransferWorker(threading.Thread):
             except Exception as e :
 
                 logger.error("transfer worker error: %s\n %s" % (str(e), traceback.format_exc()))
+                self._session.close (cleanup=False)
                 raise e
 
         except SystemExit as e :

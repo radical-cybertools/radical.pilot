@@ -151,7 +151,7 @@ class UnitManagerController(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def get_compute_unit_data(self, unit_uid):
-        """Retruns the raw data (json dicts) of one or more ComputeUnits
+        """Returns the raw data (json dicts) of one or more ComputeUnits
            registered with this Worker / UnitManager
         """
         # Wait for the initialized event to assert proper operation.

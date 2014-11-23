@@ -304,14 +304,17 @@ class PilotManagerController(threading.Thread):
                         logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
 
                         # The state of the pilot has changed, We call all
-                        # pilot-level callbacks to propagate this.
+                        # pilot-level callbacks to propagate this.  This also
+                        # includes communication to the unit scheduler which
+                        # may, or may not, cancel the pilot's units.
                         self.call_callbacks(pilot_id, new_state)
 
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
                     # set the state of the compute unit accordingly
                     if new_state in [FAILED, DONE, CANCELED]:
-                        self._db.set_all_running_compute_units(
-                            pilot_id=pilot_id, 
+                        unit_ids = self._db.pilot_list_compute_units(pilot_id=pilot_id)
+                        self._db.set_compute_unit_state (
+                            unit_ids=unit_ids, 
                             state=CANCELED,
                             log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
 
@@ -433,13 +436,13 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_cancel_pilots_request(self, pilot_ids):
+    def register_cancel_pilots_request(self, pilot_ids=None):
         """Registers one or more pilots for cancelation.
         """
 
         if pilot_ids is None:
 
-            pilot_ids  = list()
+            pilot_ids = list()
 
             for pilot in self._db.get_pilots(pilot_manager_id=self._pm_id) :
                 pilot_ids.append (str(pilot["_id"]))
@@ -469,4 +472,6 @@ class PilotManagerController(threading.Thread):
 
                     else :
                         logger.warn ("can't actively cancel pilot %s: no job id known" % pilot_id)
+
+# ------------------------------------------------------------------------------
 

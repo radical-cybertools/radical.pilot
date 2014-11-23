@@ -141,7 +141,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     logger.error(message)      
     ts = datetime.datetime.utcnow()
 
-    msg = [{"logentry": message, "timestamp": ts}, 
+    msg = [{"logentry": message,      "timestamp": ts}, 
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
@@ -160,7 +160,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     logger.warning(message)
     ts = datetime.datetime.utcnow()
 
-    msg = [{"logentry": message, "timestamp": ts}, 
+    msg = [{"logentry": message,      "timestamp": ts}, 
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 

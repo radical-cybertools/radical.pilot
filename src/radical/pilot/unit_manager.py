@@ -376,6 +376,7 @@ class UnitManager(object):
                 if  pilot_id == pilot.uid :
                     self._pilots.remove (pilot)
 
+
     # -------------------------------------------------------------------------
     #
     def list_units(self):
