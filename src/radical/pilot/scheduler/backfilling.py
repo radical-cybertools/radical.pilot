@@ -131,9 +131,9 @@ class BackfillingScheduler(Scheduler):
                             del self.runqs[pid][uid]
                             self.waitq[uid] = unit
 
-                            self._dump ('before reschedule %s' % uid)
+                          # self._dump ('before reschedule %s' % uid)
                             self._reschedule (uid=uid)
-                            self._dump ('after  reschedule %s' % uid)
+                          # self._dump ('after  reschedule %s' % uid)
 
                             return
 
@@ -207,7 +207,7 @@ class BackfillingScheduler(Scheduler):
     
                 if  state in [DONE, FAILED, CANCELED] :
 
-                    self._dump ('pilot is final')
+                  # self._dump ('pilot is final')
 
                     # If the pilot state is 'DONE', 'FAILED' or 'CANCELED', we
                     # need to reschedule the units which are reschedulable --
@@ -431,7 +431,7 @@ class BackfillingScheduler(Scheduler):
             if  uid :
 
                 if  uid not in self.waitq :
-                    self._dump ()
+                  # self._dump ()
                     logger.warning ("cannot schedule -- unknown unit %s" % uid)
                     raise RuntimeError ("Invalid unit (%s)" % uid)
 
