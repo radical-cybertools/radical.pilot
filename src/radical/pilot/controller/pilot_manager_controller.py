@@ -312,7 +312,7 @@ class PilotManagerController(threading.Thread):
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
                     # set the state of the compute unit accordingly
                     if new_state in [FAILED, DONE, CANCELED]:
-                        unit_ids = self._db.pilot_list_compute_units(pilot_id=pilot_id)
+                        unit_ids = self._db.pilot_list_compute_units(pilot_uid=pilot_id)
                         self._db.set_compute_unit_state (
                             unit_ids=unit_ids, 
                             state=CANCELED,
