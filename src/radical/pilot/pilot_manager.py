@@ -149,7 +149,7 @@ class PilotManager(Object):
             return
 
         # If terminate is set, we cancel all pilots. 
-        if terminate is True:
+        if  terminate :
             # cancel all pilots, make sure they are gone, and close the pilot
             # managers.
             for pilot in self.get_pilots () :

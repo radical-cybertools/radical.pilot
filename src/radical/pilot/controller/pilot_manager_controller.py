@@ -10,6 +10,7 @@ import os
 import time
 import saga
 import bson
+import pprint
 import datetime
 import traceback
 import threading
@@ -456,10 +457,12 @@ class PilotManagerController(threading.Thread):
 
                 old_state = self._shared_data[str(pilot["_id"])]["data"]["state"]
 
+                logger.warn ("actively cancel pilot %s? state: %s" % (pilot_id, old_state))
                 if not old_state in [DONE, FAILED, CANCELED] :
+                    logger.warn ("can't actively cancel pilot %s: already in final state" % pilot_id)
                     self._shared_data[str(pilot["_id"])]["data"]["state"] = CANCELING
 
-                if old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE] :
+                elif old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE] :
                     if pilot_id in self._shared_worker_data['job_ids'] :
                         
                         job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
@@ -472,6 +475,14 @@ class PilotManagerController(threading.Thread):
 
                     else :
                         logger.warn ("can't actively cancel pilot %s: no job id known" % pilot_id)
+                        logger.debug (pprint.pformat (self._shared_worker_data))
+
+                else :
+                    logger.error ("can't actively cancel pilot %s: unhandled state %s" % (pilot_id, old_state))
+
+            else :
+                logger.error ("can't actively cancel pilot %s: unknown pilot" % pilot_id)
+                logger.debug (pprint.pformat (self._shared_data))
 
 # ------------------------------------------------------------------------------
 

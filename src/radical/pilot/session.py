@@ -265,7 +265,7 @@ class Session (saga.Session, Object):
         if  delete != None:
 
             if  cleanup == True and terminate == True :
-                cleanup   =  delete
+                cleanup   = delete
                 terminate = delete
                 logger.warning("'delete' flag on session is deprecated. " \
                                "Please use 'cleanup' and 'terminate' instead!")
