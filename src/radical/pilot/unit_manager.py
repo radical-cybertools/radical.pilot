@@ -434,9 +434,9 @@ class UnitManager(object):
         units = list()
         for ud in unit_descriptions :
 
-            units.append (ComputeUnit._create (unit_description=ud,
-                                               unit_manager_obj=self, 
-                                               local_state=NEW))
+            units.append (ComputeUnit.create (unit_description=ud,
+                                              unit_manager_obj=self, 
+                                              local_state=NEW))
 
         self._worker.publish_compute_units (units=units)
 

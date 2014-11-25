@@ -74,7 +74,7 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(unit_manager_obj, unit_description, local_state):
+    def create(unit_manager_obj, unit_description, local_state):
         """ PRIVATE: Create a new compute unit.
         """
         # create and return pilot object

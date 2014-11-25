@@ -100,7 +100,7 @@ class Session():
         creation_time = datetime.datetime.utcnow()
 
         dbs = Session(db_url, db_name)
-        dbs._create(sid, creation_time)
+        dbs.create(sid, creation_time)
 
         connection_info = DBConnectionInfo(
             session_id=sid,
@@ -113,7 +113,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def _create(self, sid, creation_time):
+    def create(self, sid, creation_time):
         """ Creates a new session (private).
 
             A session is a distinct collection with three sub-collections

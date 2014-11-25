@@ -304,7 +304,7 @@ class PilotManager(Object):
             # startup request with the worker process and create a facade
             # object.
 
-            pilot = ComputePilot._create(
+            pilot = ComputePilot.create(
                 pilot_description=pilot_description,
                 pilot_manager_obj=self)
 
