@@ -48,7 +48,7 @@ from bson.objectid import ObjectId
 from operator import mul
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # CONSTANTS
 #
 
@@ -377,7 +377,7 @@ class SchedulerContinuous(Scheduler):
         #self._capability     = self._slots2free(self._slots)
         #self._capability_old = None
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     # Convert a set of slots into an index into the global slots list
     #
@@ -394,7 +394,7 @@ class SchedulerContinuous(Scheduler):
 
         return all_slots_slot_index * self.lrms.cores_per_node + int(first_slot_core)
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def slot_status(self, short=False):
         """Returns a multi-line string corresponding to slot status.
@@ -453,7 +453,7 @@ class SchedulerContinuous(Scheduler):
     def release_slot(self, (task_slots)):
         self._change_slot_states(task_slots, FREE)
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _acquire_slots(self, cores_requested, single_node, continuous):
 
@@ -650,7 +650,7 @@ class SchedulerTorus(Scheduler):
 
         self._slots = 'bogus'
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def slot_status(self, short=False):
         """Returns a multi-line string corresponding to slot status.
@@ -2272,7 +2272,7 @@ class ForkLRMS(LRMS):
         self.cores_per_node = selected_cpus
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class Task(object):
 
@@ -2316,14 +2316,14 @@ class Task(object):
         self._proc          = None
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class ExecWorker(multiprocessing.Process):
     """An ExecWorker competes for the execution of tasks in a task queue
     and writes the results back to MongoDB.
     """
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, exec_env, logger, task_queue, command_queue,
                  output_staging_queue, mongodb_url, mongodb_name, mongodb_auth,
@@ -2349,9 +2349,9 @@ class ExecWorker(multiprocessing.Process):
             user, pwd = mongodb_auth.split(':', 1)
             self._mongo_db.authenticate(user, pwd)
 
-        self._p = mongo_db["%s.p"  % session_id]
+        self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
-        self._wm = mongo_db["%s.um" % session_id]
+        self._um = mongo_db["%s.um" % session_id]
 
         # Queued tasks by the Agent
         self._task_queue = task_queue
@@ -2377,7 +2377,7 @@ class ExecWorker(multiprocessing.Process):
                      }
             })
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _slots2free(self, slots):
         """Convert slots structure into a free core count
@@ -2389,7 +2389,7 @@ class ExecWorker(multiprocessing.Process):
 
         return free_cores
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _slots2caps(self, slots):
         """Convert slots structure into a capability structure.
@@ -2417,7 +2417,7 @@ class ExecWorker(multiprocessing.Process):
 
         return all_caps_dict
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def stop(self):
         """Terminates the process' main loop.
@@ -2425,7 +2425,7 @@ class ExecWorker(multiprocessing.Process):
         # AM: Why does this call exist?  It is never called....
         self._terminate = True
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def run(self):
         """Starts the process when Process.start() is called.
@@ -2524,7 +2524,7 @@ class ExecWorker(multiprocessing.Process):
             pilot_FAILED(self._p, self._pilot_id, self._log, msg)
             return
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _launch_task(self, task, launcher):
 
@@ -2567,7 +2567,7 @@ class ExecWorker(multiprocessing.Process):
         # longer) and send those updates in a bulk.
         self._update_tasks(task)
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Iterate over all running tasks, check their status, and decide on the 
     # next step.  Also check for a requested cancellation for the task.
     def _check_running(self):
@@ -2720,7 +2720,7 @@ class ExecWorker(multiprocessing.Process):
 
         return idle
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _update_tasks(self, tasks):
         """Updates the database entries for one or more tasks, including
@@ -2776,14 +2776,14 @@ class ExecWorker(multiprocessing.Process):
             })
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class InputStagingWorker(multiprocessing.Process):
     """An InputStagingWorker performs the agent side staging directives
        and writes the results back to MongoDB.
     """
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
                  pilot_id, session_id):
@@ -2803,18 +2803,18 @@ class InputStagingWorker(multiprocessing.Process):
         self._mongo_db = mongo_client[mongodb_name]
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
-        self._wm = mongo_db["%s.um" % session_id]
+        self._um = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def stop(self):
         """Terminates the process' main loop.
         """
         self._terminate = True
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def run(self):
 
@@ -2919,14 +2919,14 @@ class InputStagingWorker(multiprocessing.Process):
                      '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class OutputStagingWorker(multiprocessing.Process):
     """An OutputStagingWorker performs the agent side staging directives
        and writes the results back to MongoDB.
     """
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
                  pilot_id, session_id):
@@ -2946,18 +2946,18 @@ class OutputStagingWorker(multiprocessing.Process):
         self._mongo_db = mongo_client[mongodb_name]
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
-        self._wm = mongo_db["%s.um" % session_id]
+        self._um = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def stop(self):
         """Terminates the process' main loop.
         """
         self._terminate = True
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def run(self):
 
@@ -3049,11 +3049,11 @@ class OutputStagingWorker(multiprocessing.Process):
             raise
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class Agent(threading.Thread):
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, 
                  mongodb_auth, pilot_id, session_id, benchmark):
@@ -3083,7 +3083,7 @@ class Agent(threading.Thread):
 
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
-        self._wm = mongo_db["%s.um" % session_id]
+        self._um = mongo_db["%s.um" % session_id]
 
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
@@ -3144,7 +3144,7 @@ class Agent(threading.Thread):
         self._log.info("Started up %s." % output_staging_worker)
         self._output_staging_worker = output_staging_worker
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def stop(self):
         """Terminate the agent main loop.
@@ -3159,7 +3159,7 @@ class Agent(threading.Thread):
         # Next, we set our own termination signal
         self._terminate.set()
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def run(self):
         """Starts the thread when Thread.start() is called.
@@ -3354,14 +3354,14 @@ class Agent(threading.Thread):
         return
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 # TODO: Once we reach this state, what should we have done already? And what 
 #       should still be done?
 #
 class _Process(subprocess.Popen):
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, task, all_slots, cores_per_node, launcher, logger, cu_environment):
 
@@ -3478,7 +3478,7 @@ class _Process(subprocess.Popen):
             startupinfo=None,
             creationflags=0)
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def task(self):
@@ -3486,7 +3486,7 @@ class _Process(subprocess.Popen):
         """
         return self._task
 
-    # ------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def close_and_flush_filehandles(self):
         self._stdout_file_h.flush()
@@ -3495,7 +3495,7 @@ class _Process(subprocess.Popen):
         self._stderr_file_h.close()
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def parse_commandline():
 
@@ -3601,7 +3601,7 @@ def parse_commandline():
     return options
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -3620,7 +3620,7 @@ if __name__ == "__main__":
 
     logger.info("Using SAGA version %s" % saga.version)
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Establish database connection
     try:
         host, port = options.mongodb_url.split(':', 1)
@@ -3631,15 +3631,15 @@ if __name__ == "__main__":
             user, pwd = options.mongodb_auth.split (':', 1)
             mongo_db.authenticate (user, pwd)
 
-        mongo_p      = mongo_db["%s.p"  % options.session_id]
-        mongo_cu      = mongo_db["%s.cu" % options.session_id]  # AM: never used
-        mongo_wm     = mongo_db["%s.um" % options.session_id]  # AM: never used
+        mongo_p  = mongo_db["%s.p"  % options.session_id]
+        mongo_cu = mongo_db["%s.cu" % options.session_id]  # AM: never used
+        mongo_um = mongo_db["%s.um" % options.session_id]  # AM: never used
 
     except Exception, ex:
         logger.error("Couldn't establish database connection: %s" % str(ex))
         sys.exit(1)
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Some signal handling magic
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
@@ -3655,7 +3655,7 @@ if __name__ == "__main__":
         sys.exit (1)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Discover environment, nodes, cores, mpi, etc.
     try:
         exec_env = ExecutionEnvironment(
@@ -3672,7 +3672,7 @@ if __name__ == "__main__":
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit (1)
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Launch the agent thread
     agent = None
     try:
