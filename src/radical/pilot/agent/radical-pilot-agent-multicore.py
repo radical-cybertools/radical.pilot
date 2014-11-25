@@ -236,13 +236,13 @@ class ExecutionEnvironment(object):
         self.cu_environment = self._populate_cu_environment()
 
         # Configure nodes and number of cores available
-        self.lrms = LRMS.factory(lrms_name, requested_cores, logger)
+        self.lrms = LRMS._create(lrms_name, requested_cores, logger)
 
-        self.scheduler = Scheduler.factory(scheduler_name, self.lrms, logger)
+        self.scheduler = Scheduler._create(scheduler_name, self.lrms, logger)
 
-        self.task_launcher = LaunchMethod.factory(task_launch_method,
+        self.task_launcher = LaunchMethod._create(task_launch_method,
                                                   self.scheduler, logger)
-        self.mpi_launcher = LaunchMethod.factory(mpi_launch_method,
+        self.mpi_launcher = LaunchMethod._create(mpi_launch_method,
                                                  self.scheduler, logger)
 
     # --------------------------------------------------------------------------
@@ -295,7 +295,7 @@ class Scheduler(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def factory(cls, name, lrms, logger):
+    def _create(cls, name, lrms, logger):
 
         # Make sure that we are the base-class!
         if cls != Scheduler:
@@ -729,7 +729,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def factory(cls, name, scheduler, logger):
+    def _create(cls, name, scheduler, logger):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -1258,7 +1258,7 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def factory(cls, name, requested_cores, logger):
+    def _create(cls, name, requested_cores, logger):
 
         # TODO: Core counts dont have to be the same number for all hosts.
 
