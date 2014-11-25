@@ -452,10 +452,19 @@ class PilotManagerController(threading.Thread):
         self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
         logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
 
+        # pilots which are in ACTIVE state should now have time to react on the
+        # CANCEL command sent above.  Meanwhile, we'll cancel all pending
+        # pilots.  If that is done, we wait a little, say 10 seconds, to give
+        # the pilot time to pick up the request and shut down -- but if it does
+        # not do that, it will get killed the hard way...
+        delayed_cancel = list()
+
         for pilot_id in pilot_ids :
             if  pilot_id in self._shared_data :
 
-                old_state = self._shared_data[str(pilot["_id"])]["data"]["state"]
+                # read state fomr _shared_data only once, so that it does not
+                # change under us...
+                old_state = str(self._shared_data[str(pilot["_id"])]["data"]["state"])
 
                 logger.warn ("actively cancel pilot %s? state: %s" % (pilot_id, old_state))
                 if  old_state in [DONE, FAILED, CANCELED] :
@@ -477,11 +486,36 @@ class PilotManagerController(threading.Thread):
                         logger.debug (pprint.pformat (self._shared_worker_data))
 
                 else :
-                    logger.error ("can't actively cancel pilot %s: unhandled state %s" % (pilot_id, old_state))
+                    logger.error ("delay to actively cancel pilot %s: state %s" % (pilot_id, old_state))
+                    delayed_cancel.append (pilot_id)
 
             else :
                 logger.error ("can't actively cancel pilot %s: unknown pilot" % pilot_id)
                 logger.debug (pprint.pformat (self._shared_data))
+
+        # now tend to all delayed cancellation requests (ie. active pilots) --
+        # if there are any
+        if  delayed_cancel :
+
+            # grant some levay to the unruly children...
+            time.sleep (10)
+
+            for pilot_id in delayed_cancel :
+
+                if pilot_id in self._shared_worker_data['job_ids'] :
+
+                    job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
+                    logger.info ("actively cancel pilot %s (delayed) (%s, %s)" % (pilot_id, job_id, js_url))
+
+                    js = self._shared_worker_data['job_services'][js_url]
+                    job = js.get_job (job_id)
+                    job.cancel ()
+
+                else :
+                    logger.warn ("can't actively cancel pilot %s: no job id known (delayed)" % pilot_id)
+                    logger.debug (pprint.pformat (self._shared_worker_data))
+
+
 
 # ------------------------------------------------------------------------------
 

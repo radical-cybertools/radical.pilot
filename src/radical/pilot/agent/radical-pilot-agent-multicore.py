@@ -89,7 +89,7 @@ STAGING_AREA = 'staging_area'
 NEW                         = 'New'
 PENDING                     = 'Pending'
 DONE                        = 'Done'
-CANCELING                  = 'Canceling'
+CANCELING                   = 'Canceling'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
 
