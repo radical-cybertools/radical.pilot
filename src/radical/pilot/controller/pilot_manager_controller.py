@@ -458,9 +458,8 @@ class PilotManagerController(threading.Thread):
                 old_state = self._shared_data[str(pilot["_id"])]["data"]["state"]
 
                 logger.warn ("actively cancel pilot %s? state: %s" % (pilot_id, old_state))
-                if not old_state in [DONE, FAILED, CANCELED] :
+                if  old_state in [DONE, FAILED, CANCELED] :
                     logger.warn ("can't actively cancel pilot %s: already in final state" % pilot_id)
-                    self._shared_data[str(pilot["_id"])]["data"]["state"] = CANCELING
 
                 elif old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE] :
                     if pilot_id in self._shared_worker_data['job_ids'] :
