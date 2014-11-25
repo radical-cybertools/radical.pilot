@@ -50,45 +50,46 @@ from operator import mul
 
 # ----------------------------------------------------------------------------
 # CONSTANTS
-FREE = 'Free'
-BUSY = 'Busy'
+#
 
-LAUNCH_METHOD_SSH = 'SSH'
-LAUNCH_METHOD_APRUN = 'APRUN'
-LAUNCH_METHOD_FORK = 'FORK'
-LAUNCH_METHOD_MPIRUN = 'MPIRUN'
-LAUNCH_METHOD_MPIRUN_RSH = 'MPIRUN_RSH'
+# tri-state for unit spawn retval
+OK    = 'OK'
+FAIL  = 'FAIL'
+RETRY = 'RETRY'
+
+# two-state for slot occupation.
+FREE  = 'Free'
+BUSY  = 'Busy'
+
+
+# 'enum' for unit launch method types
+LAUNCH_METHOD_APRUN         = 'APRUN'
+LAUNCH_METHOD_DPLACE        = 'DPLACE'
+LAUNCH_METHOD_FORK          = 'FORK'
+LAUNCH_METHOD_IBRUN         = 'IBRUN'
+LAUNCH_METHOD_MPIEXEC       = 'MPIEXEC'
 LAUNCH_METHOD_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
-LAUNCH_METHOD_MPIEXEC = 'MPIEXEC'
-LAUNCH_METHOD_POE = 'POE'
-LAUNCH_METHOD_IBRUN = 'IBRUN'
-LAUNCH_METHOD_DPLACE = 'DPLACE'
-LAUNCH_METHOD_RUNJOB = 'RUNJOB'
+LAUNCH_METHOD_MPIRUN        = 'MPIRUN'
+LAUNCH_METHOD_MPIRUN_RSH    = 'MPIRUN_RSH'
+LAUNCH_METHOD_POE           = 'POE'
+LAUNCH_METHOD_RUNJOB        = 'RUNJOB'
+LAUNCH_METHOD_SSH           = 'SSH'
 
-# TODO: No longer required probably
-# MULTI_NODE_LAUNCH_METHODS = [
-#     LAUNCH_METHOD_IBRUN,
-#     LAUNCH_METHOD_MPIRUN,
-#     LAUNCH_METHOD_RUNJOB,
-#     LAUNCH_METHOD_MPIRUN_RSH,
-#     LAUNCH_METHOD_MPIRUN_DPLACE,
-#     LAUNCH_METHOD_POE,
-#     LAUNCH_METHOD_APRUN,
-#     LAUNCH_METHOD_MPIEXEC
-# ]
+# 'enum' for local resource manager types
+LRMS_NAME_FORK              = 'FORK'
+LRMS_NAME_LOADLEVELER       = 'LOADL'
+LRMS_NAME_LSF               = 'LSF'
+LRMS_NAME_PBSPRO            = 'PBSPRO'
+LRMS_NAME_SGE               = 'SGE'
+LRMS_NAME_SLURM             = 'SLURM'
+LRMS_NAME_TORQUE            = 'TORQUE'
 
-LRMS_NAME_TORQUE = 'TORQUE'
-LRMS_NAME_PBSPRO = 'PBSPRO'
-LRMS_NAME_SLURM = 'SLURM'
-LRMS_NAME_SGE = 'SGE'
-LRMS_NAME_LSF = 'LSF'
-LRMS_NAME_LOADLEVELER = 'LOADL'
-LRMS_NAME_FORK = 'FORK'
+# 'enum' for pilot's unit scheduler types
+SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
+SCHEDULER_NAME_SCATTERED    = "SCATTERED"
+SCHEDULER_NAME_TORUS        = "TORUS"
 
-SCHEDULER_NAME_SCATTERED = "SCATTERED"
-SCHEDULER_NAME_CONTINUOUS = "CONTINUOUS"
-SCHEDULER_NAME_TORUS = "TORUS"
-
+# defines for pilot commands
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
 COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
 COMMAND_KEEP_ALIVE          = "Keep_Alive"
@@ -96,20 +97,26 @@ COMMAND_FIELD               = "commands"
 COMMAND_TYPE                = "type"
 COMMAND_ARG                 = "arg"
 
-#
-# Staging Action operators
-#
+
+# 'enum' for staging action operators
 COPY     = 'Copy'     # local cp
 LINK     = 'Link'     # local ln -s
 MOVE     = 'Move'     # local mv
-TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+TRANSFER = 'Transfer' # saga remote transfer 
+                      # TODO: This might just be a special case of copy
 
-#
-# Directory for staging files inside the agent sandbox
-#
-STAGING_AREA = 'staging_area'
 
-# -----------------------------------------------------------------------------
+# directory for staging files inside the agent sandbox
+STAGING_AREA      = 'staging_area'
+
+# max number of unit out/err chars to push to db
+MAX_IO_LOGLENGTH  = 64*1024
+
+
+# ------------------------------------------------------------------------------
+#
+# state enums (copied from radical/pilot/states.py
+#
 # Common States
 NEW                         = 'New'
 PENDING                     = 'Pending'
@@ -117,29 +124,27 @@ DONE                        = 'Done'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
 
-# -----------------------------------------------------------------------------
 # ComputePilot States
 PENDING_LAUNCH              = 'PendingLaunch'
 LAUNCHING                   = 'Launching'
 PENDING_ACTIVE              = 'PendingActive'
 ACTIVE                      = 'Active'
 
-# -----------------------------------------------------------------------------
 # ComputeUnit States
 PENDING_EXECUTION           = 'PendingExecution'
 SCHEDULING                  = 'Scheduling'
 EXECUTING                   = 'Executing'
 
-PENDING_INPUT_STAGING       = 'PendingInputStaging'  # These last 4 are not really states,
-STAGING_INPUT               = 'StagingInput'         # as there are distributed entities enacting on them.
-PENDING_OUTPUT_STAGING      = 'PendingOutputStaging' # They should probably just go,
-STAGING_OUTPUT              = 'StagingOutput'        # and be turned into logging events.
+# These last 4 are not really states, as there are distributed entities enacting
+# on them.  They should probably just go, and be turned into logging events.
 
-#---------------------------------------------------------------------------
-MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push to db
+PENDING_INPUT_STAGING       = 'PendingInputStaging'
+STAGING_INPUT               = 'StagingInput'
+PENDING_OUTPUT_STAGING      = 'PendingOutputStaging'
+STAGING_OUTPUT              = 'StagingOutput'
 
 
-#---------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 start_time = time.time ()
 def get_rusage () :
@@ -158,7 +163,7 @@ def get_rusage () :
          % (rtime, utime, stime, rss)
 
 
-#---------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
@@ -178,7 +183,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
         })
 
 
-#---------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
@@ -198,7 +203,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
         })
 
 
-#---------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
@@ -216,12 +221,13 @@ def pilot_DONE(mongo_p, pilot_uid):
         })
 
 
-#-----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class ExecutionEnvironment(object):
     """DOC
     """
-    #-------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
     #
     def __init__(self, logger, lrms_name, requested_cores,
                  task_launch_method, mpi_launch_method, scheduler_name):
@@ -239,6 +245,8 @@ class ExecutionEnvironment(object):
         self.mpi_launcher = LaunchMethod.factory(mpi_launch_method,
                                                  self.scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def _populate_cu_environment(self):
         """Derive the environment for the cu's from our own environment."""
 
@@ -282,7 +290,10 @@ class Scheduler(object):
         
         self.configure()
 
+    # --------------------------------------------------------------------------
+    #
     # This class-method creates the appropriate sub-class for the Launch Method.
+    #
     @classmethod
     def factory(cls, name, lrms, logger):
 
@@ -292,9 +303,9 @@ class Scheduler(object):
 
         try:
             implementation = {
-                SCHEDULER_NAME_CONTINUOUS: SchedulerContinuous,
-                #SCHEDULER_NAME_SCATTERED:  SchedulerScattered,
-                SCHEDULER_NAME_TORUS:      SchedulerTorus
+                SCHEDULER_NAME_CONTINUOUS : SchedulerContinuous,
+              # SCHEDULER_NAME_SCATTERED  : SchedulerScattered,
+                SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
             return implementation(name, lrms, logger)
         except KeyError:
@@ -303,27 +314,38 @@ class Scheduler(object):
     # --------------------------------------------------------------------------
     #
     def configure(self):
-        raise NotImplementedError("configure() method not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("configure() not implemented for Scheduler '%s'." % self.name)
 
+    # --------------------------------------------------------------------------
+    #
     def slot_status(self, short=False):
-        raise NotImplementedError("slot_status() method not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("slot_status() not implemented for Scheduler '%s'." % self.name)
 
+    # --------------------------------------------------------------------------
+    #
     def allocate_slot(self, cores_requested):
-        raise NotImplementedError("allocate_slot() method not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("allocate_slot() not implemented for Scheduler '%s'." % self.name)
 
+    # --------------------------------------------------------------------------
+    #
     def release_slot(self, opaque_slot):
-        raise NotImplementedError("release_slot() method not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("release_slot() not implemented for Scheduler '%s'." % self.name)
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class SchedulerContinuous(Scheduler):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, lrms, logger):
         Scheduler.__init__(self, name, lrms, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         if not self.lrms.node_list:
             raise Exception("LRMS %s didn't configure node_list." % self.lrms.name)
+
         if not self.lrms.cores_per_node:
             raise Exception("LRMS %s didn't configure cores_per_node." % self.lrms.name)
 
@@ -340,7 +362,8 @@ class SchedulerContinuous(Scheduler):
         for node in self.lrms.node_list:
             self._slots.append({
                 'node': node,
-                # TODO: Maybe use the real core numbers in the case of non-exclusive host reservations?
+                # TODO: Maybe use the real core numbers in the case of 
+                # non-exclusive host reservations?
                 'cores': [FREE for _ in range(0, self.lrms.cores_per_node)]
             })
         self._cores_per_node = self.lrms.cores_per_node
@@ -399,18 +422,19 @@ class SchedulerContinuous(Scheduler):
                         slot_vector += " - "
                     else:
                         slot_vector += " X "
-                slot_matrix += "%s: %s\n" % (slot['node'].ljust(24), slot_vector)
+                slot_matrix += "%-24s: %s\n" % (slot['node'], slot_vector)
             return slot_matrix
 
+
+    # --------------------------------------------------------------------------
     #
     # (Temporary?) wrapper for acquire_slots
     #
     def allocate_slot(self, cores_requested):
-        # If that failed, and our launch method supports multiple nodes, try that
-        #if task_slots is None and launch_method in MULTI_NODE_LAUNCH_METHODS:
 
-        # TODO: single_node should be enforced for e.g. non-message passing tasks,
-        #       but we don't have that info here.
+        # TODO: single_node should be enforced for e.g. non-message passing 
+        #       tasks, but we don't have that info here.
+        # NOTE AM: why should non-messaging tasks be confined to one node?
         if cores_requested < self.lrms.cores_per_node:
             single_node = True
         else:
@@ -421,8 +445,11 @@ class SchedulerContinuous(Scheduler):
         continuous = True
 
         # TODO: Now we rely on "None", maybe throw an exception?
-        return self._acquire_slots(cores_requested, single_node=single_node, continuous=continuous)
+        return self._acquire_slots(cores_requested, single_node=single_node, 
+                continuous=continuous)
 
+    # --------------------------------------------------------------------------
+    #
     def release_slot(self, (task_slots)):
         self._change_slot_states(task_slots, FREE)
 
@@ -450,6 +477,8 @@ class SchedulerContinuous(Scheduler):
 
         return task_slots
 
+
+    # --------------------------------------------------------------------------
     #
     # Find a needle (continuous sub-list) in a haystack (list)
     #
@@ -465,6 +494,8 @@ class SchedulerContinuous(Scheduler):
 
         return index
 
+
+    # --------------------------------------------------------------------------
     #
     # Transform the number of cores into a continuous list of "status"es,
     # and use that to find a sub-list.
@@ -472,6 +503,8 @@ class SchedulerContinuous(Scheduler):
     def _find_cores_cont(self, slot_cores, cores_requested, status):
         return self._find_sublist(slot_cores, [status for _ in range(cores_requested)])
 
+
+    # --------------------------------------------------------------------------
     #
     # Find an available continuous slot within node boundaries.
     #
@@ -491,6 +524,7 @@ class SchedulerContinuous(Scheduler):
 
         return None
 
+    # --------------------------------------------------------------------------
     #
     # Find an available continuous slot across node boundaries.
     #
@@ -518,7 +552,8 @@ class SchedulerContinuous(Scheduler):
         self.log.debug("first_slot_core_offset: %s" % first_slot_core_offset)
 
         # Note: We subtract one here, because counting starts at zero;
-        #       Imagine a zero offset and a count of 1, the only core used would be core 0.
+        #       Imagine a zero offset and a count of 1, the only core used 
+        #       would be core 0.
         #       TODO: Verify this claim :-)
         all_slots_last_core_offset = (first_slot_index * cores_per_node) +\
                                      first_slot_core_offset + cores_requested - 1
@@ -557,6 +592,9 @@ class SchedulerContinuous(Scheduler):
 
         return task_slots
 
+
+    # --------------------------------------------------------------------------
+    #
     # Change the reserved state of slots (FREE or BUSY)
     #
     def _change_slot_states(self, task_slots, new_state):
@@ -586,18 +624,23 @@ class SchedulerContinuous(Scheduler):
             self._slot_history[-1] = self.slot_status(short=True)
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class SchedulerTorus(Scheduler):
 
     # TODO: Ultimately all BG/Q specifics should move out of the scheduler
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, lrms, logger):
         Scheduler.__init__(self, name, lrms, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         if not self.lrms.cores_per_node:
             raise Exception("LRMS %s didn't configure cores_per_node." % self.lrms.name)
+
         self._cores_per_node = self.lrms.cores_per_node
 
         # keep a slot allocation history (short status), start with presumably
@@ -635,10 +678,14 @@ class SchedulerTorus(Scheduler):
                 slot_matrix += "%s: %s\n" % (slot[self.lrms.BGQ_BLOCK_NAME].ljust(24), slot_vector)
             return slot_matrix
 
+    # --------------------------------------------------------------------------
+    #
     def allocate_slot(self, cores_requested):
         return self.lrms.bgq_alloc_cores(
             self.lrms.loadl_block, self.lrms.shape_table, cores_requested)
 
+    # --------------------------------------------------------------------------
+    #
     def release_slot(self, (corner, shape)):
         self.lrms.bgq_free_cores(self.lrms.loadl_block, corner, shape)
 
@@ -670,14 +717,17 @@ class LaunchMethod(object):
 
         self.launch_command = None
         self.configure()
-        # TODO: This doesn't make too much sense for LM's that use multiple commands,
-        #       perhaps this needs to move to per LM __init__.
+        # TODO: This doesn't make too much sense for LM's that use multiple 
+        #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
             raise Exception("Launch command not found for LaunchMethod '%s'" % name)
 
         logger.info("Discovered launch command: '%s'." % self.launch_command)
 
+    # --------------------------------------------------------------------------
+    #
     # This class-method creates the appropriate sub-class for the Launch Method.
+    #
     @classmethod
     def factory(cls, name, scheduler, logger):
 
@@ -687,17 +737,17 @@ class LaunchMethod(object):
 
         try:
             implementation = {
-                LAUNCH_METHOD_APRUN: LaunchMethodAPRUN,
-                LAUNCH_METHOD_DPLACE: LaunchMethodDPLACE,
-                LAUNCH_METHOD_IBRUN: LaunchMethodIBRUN,
-                LAUNCH_METHOD_FORK: LaunchMethodFORK,
-                LAUNCH_METHOD_MPIEXEC: LaunchMethodMPIEXEC,
-                LAUNCH_METHOD_MPIRUN: LaunchMethodMPIRUN,
-                LAUNCH_METHOD_MPIRUN_DPLACE: LaunchMethodMPIRUNDPLACE,
-                LAUNCH_METHOD_MPIRUN_RSH: LaunchMethodMPIRUNRSH,
-                LAUNCH_METHOD_POE: LaunchMethodPOE,
-                LAUNCH_METHOD_RUNJOB: LaunchMethodRUNJOB,
-                LAUNCH_METHOD_SSH: LaunchMethodSSH
+                LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
+                LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
+                LAUNCH_METHOD_FORK          : LaunchMethodFORK,
+                LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
+                LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
+                LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
+                LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
+                LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
+                LAUNCH_METHOD_POE           : LaunchMethodPOE,
+                LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
+                LAUNCH_METHOD_SSH           : LaunchMethodSSH
             }[name]
             return implementation(name, scheduler, logger)
         except KeyError:
@@ -708,10 +758,13 @@ class LaunchMethod(object):
     def configure(self):
         raise NotImplementedError("configure() not implemented for LaunchMethod: %s." % self.name)
 
-    def construct_command(self, task_exec, task_args, task_numcores, launch_script_name, opaque_slot):
+    # --------------------------------------------------------------------------
+    #
+    def construct_command(self, task_exec, task_args, task_numcores, 
+                          launch_script_name, opaque_slot):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
 
-    #-----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _find_executable(self, names):
         """Takes a (list of) name(s) and looks for an executable in the path.
@@ -727,13 +780,14 @@ class LaunchMethod(object):
 
         return None
 
-    #-----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _which(self, program):
         """Finds the location of an executable.
-        Taken from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+        Taken from: 
+        http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
         """
-        #-------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         #
         def is_exe(fpath):
             return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -750,17 +804,23 @@ class LaunchMethod(object):
         return None
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodFORK(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # "Regular" tasks
         self.launch_command = ''
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, opaque_slot):
 
@@ -772,13 +832,17 @@ class LaunchMethodFORK(LaunchMethod):
         return command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodMPIRUN(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         self.launch_command = self._find_executable([
             'mpirun',            # General case
@@ -787,6 +851,8 @@ class LaunchMethodMPIRUN(LaunchMethod):
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -804,21 +870,25 @@ class LaunchMethodMPIRUN(LaunchMethod):
         return mpirun_command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodSSH(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # Find ssh command
         command = self._which('ssh')
 
         if command is not None:
 
-            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into the path.
-            # We try to detect that and then use different arguments.
+            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into 
+            # the path.  We try to detect that and then use different arguments.
             if os.path.islink(command):
 
                 target = os.path.realpath(command)
@@ -831,6 +901,8 @@ class LaunchMethodSSH(LaunchMethod):
 
         self.launch_command = command
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -849,17 +921,23 @@ class LaunchMethodSSH(LaunchMethod):
         return task_command, ssh_cmdline
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodMPIEXEC(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # mpiexec (e.g. on SuperMUC)
         self.launch_command = self._which('mpiexec')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -878,17 +956,23 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         return mpiexec_command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodAPRUN(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # aprun: job launcher for Cray systems
         self.launch_command= self._which('aprun')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, opaque_slot):
 
@@ -902,21 +986,28 @@ class LaunchMethodAPRUN(LaunchMethod):
         return aprun_command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodRUNJOB(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # runjob: job launcher for IBM BG/Q systems, e.g. Joule
         self.launch_command= self._which('runjob')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (corner, sub_block_shape)):
 
-        if task_numcores % self.scheduler.lrms.cores_per_node: # TODO: use constant
+        # TODO: use constant
+        if task_numcores % self.scheduler.lrms.cores_per_node: 
             msg = "Num cores (%d) is not a multiple of %d!" % (
                 task_numcores, self.scheduler.lrms.cores_per_node)
             self.log.exception(msg)
@@ -943,17 +1034,23 @@ class LaunchMethodRUNJOB(LaunchMethod):
         return runjob_command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodDPLACE(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = self._which('dplace')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -965,22 +1062,29 @@ class LaunchMethodDPLACE(LaunchMethod):
         dplace_offset = self.scheduler.slots2offset(task_slots)
 
         dplace_command = "%s -c %d-%d %s" % (
-            self.launch_command, dplace_offset, dplace_offset+task_numcores-1, task_command)
+            self.launch_command, dplace_offset, 
+            dplace_offset+task_numcores-1, task_command)
 
         return dplace_command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodMPIRUNRSH(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # mpirun_rsh (e.g. on Gordon@ SDSC)
         self.launch_command = self._which('mpirun_rsh')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -998,19 +1102,25 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         return mpirun_rsh_command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodMPIRUNDPLACE(LaunchMethod):
     # TODO: This needs both mpirun and dplace
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = self._which('dplace')
         self.mpirun_command = self._which('mpirun')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -1028,19 +1138,25 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         return mpirun_dplace_command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodIBRUN(LaunchMethod):
     # NOTE: Don't think that with IBRUN it is possible to have
     # processes != cores ...
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # ibrun: wrapper for mpirun at TACC
         self.launch_command = self._which('ibrun')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -1052,22 +1168,29 @@ class LaunchMethodIBRUN(LaunchMethod):
         ibrun_offset = self.scheduler.slots2offset(task_slots)
 
         ibrun_command = "%s -n %s -o %d %s" % \
-                        (self.launch_command, task_numcores, ibrun_offset, task_command)
+                        (self.launch_command, task_numcores, 
+                         ibrun_offset, task_command)
 
         return ibrun_command
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LaunchMethodPOE(LaunchMethod):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, scheduler, logger):
         LaunchMethod.__init__(self, name, scheduler, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
         self.launch_command = self._which('poe')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -1106,6 +1229,8 @@ class LaunchMethodPOE(LaunchMethod):
 #
 class LRMS(object):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, requested_cores, logger):
 
         self.name = name
@@ -1128,7 +1253,10 @@ class LRMS(object):
             raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." \
                             % (str(cores_avail), str(requested_cores)))
 
+    # --------------------------------------------------------------------------
+    #
     # This class-method creates the appropriate sub-class for the LRMS.
+    #
     @classmethod
     def factory(cls, name, requested_cores, logger):
 
@@ -1136,9 +1264,10 @@ class LRMS(object):
 
         # TODO: We might not have reserved the whole node.
 
-        # TODO: Given that the Agent can determine the real core count, in principle we
-        #       could just ignore the config and use as many as we have to our availability
-        #       (taken into account that we might not have the full node reserved of course)
+        # TODO: Given that the Agent can determine the real core count, in 
+        #       principle we could just ignore the config and use as many as we
+        #       have to our availability (taken into account that we might not
+        #       have the full node reserved of course)
         #       Answer: at least on Yellowstone this doesnt work for MPI,
         #               as you can't spawn more tasks then the number of slots.
 
@@ -1148,29 +1277,35 @@ class LRMS(object):
 
         try:
             implementation = {
-                LRMS_NAME_TORQUE: TORQUELRMS,
-                LRMS_NAME_PBSPRO: PBSProLRMS,
-                LRMS_NAME_SLURM: SLURMLRMS,
-                LRMS_NAME_SGE: SGELRMS,
-                LRMS_NAME_LSF: LSFLRMS,
-                LRMS_NAME_LOADLEVELER: LoadLevelerLRMS,
-                LRMS_NAME_FORK: ForkLRMS
+                LRMS_NAME_FORK        : ForkLRMS
+                LRMS_NAME_LOADLEVELER : LoadLevelerLRMS,
+                LRMS_NAME_LSF         : LSFLRMS,
+                LRMS_NAME_PBSPRO      : PBSProLRMS,
+                LRMS_NAME_SGE         : SGELRMS,
+                LRMS_NAME_SLURM       : SLURMLRMS,
+                LRMS_NAME_TORQUE      : TORQUELRMS,
             }[name]
             return implementation(name, requested_cores, logger)
         except KeyError:
             raise Exception("LRMS type '%s' unknown!" % name)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         raise NotImplementedError("Configure not implemented for LRMS type: %s." % self.name)
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class TORQUELRMS(LRMS):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, requested_cores, logger):
         LRMS.__init__(self, name, requested_cores, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
 
         self.log.info("Configured to run on system with %s." % self.name)
@@ -1218,7 +1353,9 @@ class TORQUELRMS(LRMS):
             torque_nodes_length != torque_num_nodes * torque_cores_per_node:
             msg = ("Number of entries in $PBS_NODEFILE (%s) does not match'"
                    "' with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" %
-                  (torque_nodes_length, torque_num_nodes,  torque_cores_per_node))
+                  (torque_nodes_length, 
+                   torque_num_nodes,  
+                   torque_cores_per_node))
             raise Exception(msg)
 
         # only unique node names
@@ -1238,13 +1375,17 @@ class TORQUELRMS(LRMS):
         self.node_list = torque_node_list
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class PBSProLRMS(LRMS):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, requested_cores, logger):
         LRMS.__init__(self, name, requested_cores, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # TODO: $NCPUS?!?! = 1 on archer
 
@@ -1257,8 +1398,8 @@ class PBSProLRMS(LRMS):
 
         self.log.info("Found PBSPro $PBS_NODEFILE %s." % pbspro_nodefile)
 
-        # Dont need to parse the content of nodefile for PBSPRO,
-        # only the length is interesting, as there are only duplicate entries in it.
+        # Dont need to parse the content of nodefile for PBSPRO, only the length
+        # is interesting, as there are only duplicate entries in it.
         pbspro_nodes_length = len([line.strip() for line in open(pbspro_nodefile)])
 
         # Number of Processors per Node
@@ -1297,6 +1438,8 @@ class PBSProLRMS(LRMS):
         self.cores_per_node = pbspro_num_ppn
         self.node_list = pbspro_vnodes
 
+    # --------------------------------------------------------------------------
+    #
     def _parse_pbspro_vnodes(self):
 
         # PBS Job ID
@@ -1374,13 +1517,17 @@ class PBSProLRMS(LRMS):
         return node_list
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class SLURMLRMS(LRMS):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, requested_cores, logger):
         LRMS.__init__(self, name, requested_cores, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
 
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
@@ -1411,7 +1558,8 @@ class SLURMLRMS(LRMS):
         else:
             slurm_nnodes = int(slurm_nnodes_str)
 
-        # $SLURM_CPUS_ON_NODE = Count of processors available to the job on this node.
+        # $SLURM_CPUS_ON_NODE = Count of processors available to the job 
+        # on this node.
         slurm_cpus_on_node_str = os.environ.get('SLURM_CPUS_ON_NODE')
         if slurm_cpus_on_node_str is None:
             msg = "$SLURM_CPUS_ON_NODE not set!"
@@ -1433,13 +1581,17 @@ class SLURMLRMS(LRMS):
         self.node_list = slurm_nodes
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class SGELRMS(LRMS):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, requested_cores, logger):
         LRMS.__init__(self, name, requested_cores, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
 
         sge_hostfile = os.environ.get('PE_HOSTFILE')
@@ -1448,7 +1600,8 @@ class SGELRMS(LRMS):
             self.log.error(msg)
             raise Exception(msg)
 
-        # SGE core configuration might be different than what multiprocessing announces
+        # SGE core configuration might be different than what multiprocessing 
+        # announces
         # Alternative: "qconf -sq all.q|awk '/^slots *[0-9]+$/{print $2}'"
 
         # Parse SGE hostfile for nodes
@@ -1467,13 +1620,17 @@ class SGELRMS(LRMS):
         self.cores_per_node = sge_cores_per_node
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LSFLRMS(LRMS):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, requested_cores, logger):
         LRMS.__init__(self, name, requested_cores, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
@@ -1516,11 +1673,11 @@ class LSFLRMS(LRMS):
         self.cores_per_node = lsf_cores_per_node
 
 
-#-------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 #
 class LoadLevelerLRMS(LRMS):
 
-    ##########################################################################
+    # --------------------------------------------------------------------------
     #
     # BG/Q Topology of Nodes within a Board
     #
@@ -1558,46 +1715,41 @@ class LoadLevelerLRMS(LRMS):
         30: {'A':  3, 'B': 29, 'C': 31, 'D': 18, 'E': 25},
         31: {'A':  2, 'B': 28, 'C': 30, 'D': 19, 'E': 24},
         }
-    #
-    ##########################################################################
 
-    ##########################################################################
+    # --------------------------------------------------------------------------
     #
     # BG/Q Config
+    #
     BGQ_CORES_PER_NODE      = 16
     BGQ_NODES_PER_BOARD     = 32 # NODE == Compute Card == Chip module
     BGQ_BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
     BGQ_MIDPLANES_PER_RACK  = 2
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Default mapping = "ABCDE(T)"
     #
     # http://www.redbooks.ibm.com/redbooks/SG247948/wwhelp/wwhimpl/js/html/wwhelp.htm
     #
     BGQ_MAPPING = "ABCDE"
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Board labels (Rack, Midplane, Node)
     #
     BGQ_BOARD_LABELS = ['R', 'M', 'N']
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Dimensions of a (sub-)block
     #
     BGQ_DIMENSION_LABELS = ['A', 'B', 'C', 'D', 'E']
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Supported sub-block sizes (number of nodes).
     # This influences the effectiveness of mixed-size allocations
@@ -1606,10 +1758,9 @@ class LoadLevelerLRMS(LRMS):
     # TODO: Do we actually need to restrict our sub-block sizes to this set?
     #
     BGQ_SUPPORTED_SUB_BLOCK_SIZES = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Mapping of starting corners.
     #
@@ -1625,10 +1776,9 @@ class LoadLevelerLRMS(LRMS):
         8:  4,
         12: 25
     }
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Offsets into block structure
     #
@@ -1636,10 +1786,9 @@ class LoadLevelerLRMS(LRMS):
     BGQ_BLOCK_COOR   = 1
     BGQ_BLOCK_NAME   = 2
     BGQ_BLOCK_STATUS = 3
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # BG/Q Topology of Boards within a Midplane
     #
@@ -1661,12 +1810,15 @@ class LoadLevelerLRMS(LRMS):
         14: {'A': 10, 'B':  6, 'C': 15, 'D': 12},
         15: {'A': 11, 'B':  7, 'C': 14, 'D': 13},
         }
-    #
-    ##########################################################################
 
+
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, requested_cores, logger):
         LRMS.__init__(self, name, requested_cores, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
 
         # Determine method for determining hosts,
@@ -1701,8 +1853,8 @@ class LoadLevelerLRMS(LRMS):
                 self.log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)" % \
                                (loadl_total_tasks, len(loadl_nodes)))
 
-            # Determine the number of cpus per node
-            # Assume: cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
+            # Determine the number of cpus per node.  Assume: 
+            # cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
             loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
 
         elif self.loadl_bg_block is not None:
@@ -1755,7 +1907,7 @@ class LoadLevelerLRMS(LRMS):
         self.node_list = self.loadl_node_list
         self.cores_per_node = loadl_cpus_per_node
 
-    ##########################################################################
+    # --------------------------------------------------------------------------
     #
     # Alloc a number of cores
     #
@@ -1787,10 +1939,9 @@ class LoadLevelerLRMS(LRMS):
         self.log.debug('End location: %s' % self._bgq_loc2str(end))
 
         return corner, sub_block_shape
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Free up an allocation
     #
@@ -1808,10 +1959,9 @@ class LoadLevelerLRMS(LRMS):
             assert block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY, \
                 'Block %d not Free!' % block[offset+peek]
             block[offset+peek][self.BGQ_BLOCK_STATUS] = FREE
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Walk the block and return the node name for the given location
     #
@@ -1837,10 +1987,9 @@ class LoadLevelerLRMS(LRMS):
                 cur_length += 1
 
         return 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Convert the board string as given by llq into a board structure
     #
@@ -1864,10 +2013,9 @@ class LoadLevelerLRMS(LRMS):
             board_dict_list.append(board_dict)
 
         return board_dict_list
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Convert the string as given by llq into a block shape structure:
     #
@@ -1883,20 +2031,18 @@ class LoadLevelerLRMS(LRMS):
             shape_dict[dim] = int(length)
 
         return shape_dict
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Convert location dict into a tuple string
     # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '(1,4,1,2,4)'
     #
     def _bgq_loc2str(self, loc):
         return str(tuple(loc[dim] for dim in self.BGQ_DIMENSION_LABELS))
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Convert a shape dict into string format
     #
@@ -1915,10 +2061,9 @@ class LoadLevelerLRMS(LRMS):
                 shape_str += 'x'
 
         return shape_str
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Return list of nodes that make up the block
     #
@@ -1943,10 +2088,9 @@ class LoadLevelerLRMS(LRMS):
                             nodes.append([index, location, nodename, FREE])
                             index += 1
         return nodes
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Use block shape and board list to construct block structure
     #
@@ -1965,10 +2109,9 @@ class LoadLevelerLRMS(LRMS):
         block_shape = self._bgq_str2shape(block_shape_str)
 
         return self._bgq_get_block(rack, midplane, start_board, block_shape)
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Construction of sub-block shapes based on overall block allocation.
     #
@@ -2003,10 +2146,9 @@ class LoadLevelerLRMS(LRMS):
                 sub_block_shape[dim] += 1
 
         return table
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Return the offset into the node list from a corner
     #
@@ -2021,28 +2163,25 @@ class LoadLevelerLRMS(LRMS):
             offset += 1
 
         return offset
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Follow coordinates to get the last node
     #
     def _bgq_get_last_node(self, origin, shape):
         return {dim: origin[dim] + shape[dim] -1 for dim in self.BGQ_DIMENSION_LABELS}
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Return the number of nodes in a block
     #
     def _bgq_block2num_nodes(self, block):
         return len(block)
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Allocate a sub-block within a block
     # Currently only works with offset that are exactly the sub-block size
@@ -2056,14 +2195,15 @@ class LoadLevelerLRMS(LRMS):
             # Verify the assumption (needs to be an assert?)
             if offset % num_nodes != 0:
                 self.log.exception('Sub-block needs to start at correct offset!')
-                # TODO: If we want to workaround this, the coordinates need to overflow
+                # TODO: If we want to workaround this, the coordinates need to 
+                #       overflow
 
             not_free = False
             # Check if all nodes from offset till offset+size are FREE
             for peek in range(num_nodes):
                 try:
                     if block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY:
-                        # Once we find the first BUSY node we can discard this attempt
+                        # Once we find first BUSY node we discard this attempt
                         not_free = True
                         break
                 except IndexError:
@@ -2074,7 +2214,8 @@ class LoadLevelerLRMS(LRMS):
                 # No success at this offset
                 self.log.info("No free nodes found at this offset: %d." % offset)
 
-                # If we weren't the last attempt, then increase the offset and iterate again.
+                # If we weren't the last attempt, then increase the offset 
+                # and iterate again.
                 if offset + num_nodes < self._bgq_block2num_nodes(block):
                     offset += num_nodes
                     continue
@@ -2091,10 +2232,9 @@ class LoadLevelerLRMS(LRMS):
                     block[offset+peek][self.BGQ_BLOCK_STATUS] = BUSY
 
                 return offset
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Return the number of nodes for the given block shape
     #
@@ -2105,17 +2245,20 @@ class LoadLevelerLRMS(LRMS):
             nodes *= shape[dim]
 
         return nodes
-    #
-    ##########################################################################
 
 
-#-------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------
 #
 class ForkLRMS(LRMS):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, name, requested_cores, logger):
         LRMS.__init__(self, name, requested_cores, logger)
 
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
 
         self.log.info("Using fork on localhost.")
@@ -2133,6 +2276,8 @@ class ForkLRMS(LRMS):
 #
 class Task(object):
 
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, uid, executable, arguments, environment, numcores, mpi,
                  pre_exec, post_exec, workdir, stdout_file, stderr_file, 
                  agent_output_staging, ftw_output_staging):
@@ -2335,8 +2480,9 @@ class ExecWorker(multiprocessing.Process):
                             self._log.debug("Launching task with %s (%s)." % (
                                 launcher.name, launcher.launch_command))
 
-                        # Call the scheduler for this task, and receive an opaque handle
-                        # that has meaning to the LRMS, Scheduler and LaunchMethod.
+                        # Call the scheduler for this task, and receive an 
+                        # opaque handle that has meaning to the LRMS, Scheduler 
+                        # and LaunchMethod.
                         opaque_slot = self.exec_env.scheduler.allocate_slot(task.numcores)
 
                         # Check if we got results
@@ -2344,7 +2490,7 @@ class ExecWorker(multiprocessing.Process):
                             # No resources available, put back in queue
                             self._task_queue.put(task)
                         else:
-                            # We got an allocation, go off and launch the process
+                            # got an allocation, go off and launch the process
                             task.opaque_slot = opaque_slot
                             self._launch_task(task, launcher)
                             idle = False
@@ -2422,8 +2568,8 @@ class ExecWorker(multiprocessing.Process):
         self._update_tasks(task)
 
     # ------------------------------------------------------------------------
-    # Iterate over all running tasks, check their status, and decide on the next step.
-    # Also check for a requested cancellation for the task.
+    # Iterate over all running tasks, check their status, and decide on the 
+    # next step.  Also check for a requested cancellation for the task.
     def _check_running(self):
 
         idle = True
@@ -2466,26 +2612,30 @@ class ExecWorker(multiprocessing.Process):
                     # The task failed, no need to deal with its output data.
                     state = FAILED
                 else:
-                    # The task finished cleanly, see if we need to deal with output data.
+                    # The task finished cleanly, see if we need to deal with 
+                    # output data.
 
                     if task.agent_output_staging or task.ftw_output_staging:
 
-                        state = STAGING_OUTPUT # TODO: this should ideally be PendingOutputStaging,
-                                               # but that introduces a race condition currently
+                        # TODO: this should ideally be PendingOutputStaging, but
+                        # that introduces a race condition currently
+                        state = STAGING_OUTPUT 
 
-                        # Check if there are Directives that need to be performed by the Agent.
+                        # Check if there are Directives that need to be 
+                        # performed by the Agent.
                         if task.agent_output_staging:
 
                             # Find the task in the database
-                            # TODO: shouldnt this be available somewhere already,
-                            #       that would save a roundtrip?!
+                            # TODO: shouldnt this be available somewhere 
+                            #       already, that would save a roundtrip?!
                             cu = self._cu.find_one({"_id": ObjectId(uid)})
 
                             for directive in cu['Agent_Output_Directives']:
                                 output_staging = {
                                     'directive': directive,
                                     'sandbox': task.workdir,
-                                    # TODO: the staging/area pilot directory should  not be derived like this:
+                                    # TODO: the staging/area pilot directory 
+                                    # should  not be derived like this:
                                     'staging_area': os.path.join(os.path.dirname(task.workdir), STAGING_AREA),
                                     'cu_id': uid
                                 }
@@ -2498,8 +2648,8 @@ class ExecWorker(multiprocessing.Process):
                                     {"$set": {"Agent_Output_Status": EXECUTING}}
                                 )
 
-                        # Check if there are Directives that need to be performed
-                        # by the FTW.
+                        # Check if there are Directives that need to be 
+                        # performed by the FTW.
                         # Obviously these are not executed here (by the Agent),
                         # but we need this code to set the state so that the FTW
                         # gets notified that it can start its work.
@@ -2509,7 +2659,8 @@ class ExecWorker(multiprocessing.Process):
                                 {"$set": {"FTW_Output_Status": PENDING}}
                             )
                     else:
-                        # If there is no output data to deal with, the task becomes DONE
+                        # If there is no output data to deal with, the task 
+                        # becomes DONE
                         state = DONE
 
             #
@@ -2711,7 +2862,8 @@ class InputStagingWorker(multiprocessing.Process):
                 self._log.info('Operating from absolute path')
                 source = source_url.path
 
-            # Get the target from the directive and convert it to the location in the sandbox
+            # Get the target from the directive and convert it to the location 
+            # in the sandbox
             target = directive['target']
             abs_target = os.path.join(sandbox, target)
 
@@ -2738,7 +2890,8 @@ class InputStagingWorker(multiprocessing.Process):
                 log_message += ' succeeded.'
                 self._log.info(log_message)
 
-                # If all went fine, update the state of this StagingDirective to Done
+                # If all went fine, update the state of this StagingDirective 
+                # to Done
                 self._cu.update(
                     {'_id': ObjectId(cu_id),
                      'Agent_Input_Status': EXECUTING,
@@ -2819,7 +2972,8 @@ class OutputStagingWorker(multiprocessing.Process):
                     directive = staging['directive']
                     if isinstance(directive, tuple):
                         self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
-                        directive = directive[0] # TODO: Why is it a fscking tuple?!?!
+                        directive = directive[0] 
+                        # TODO: Why is it a fucking tuple?!?!
 
                     sandbox = staging['sandbox']
                     staging_area = staging['staging_area']
@@ -2836,7 +2990,8 @@ class OutputStagingWorker(multiprocessing.Process):
                     # Handle special 'staging' scheme
                     if target_url.scheme == 'staging':
                         self._log.info('Operating from staging')
-                        # Remove the leading slash to get a relative path from the staging area
+                        # Remove the leading slash to get a relative path from 
+                        # the staging area
                         rel2staging = target_url.path.split('/',1)[1]
                         target = os.path.join(staging_area, rel2staging)
                     else:
@@ -2874,7 +3029,8 @@ class OutputStagingWorker(multiprocessing.Process):
                         # TODO: raise
                         self._log.error('Action %s not supported' % directive['action'])
 
-                    # If all went fine, update the state of this StagingDirective to Done
+                    # If all went fine, update the state of this 
+                    # StagingDirective to Done
                     self._cu.update({'_id' : ObjectId(cu_id),
                                      'Agent_Output_Status': EXECUTING,
                                      'Agent_Output_Directives.state': PENDING,
@@ -2889,7 +3045,7 @@ class OutputStagingWorker(multiprocessing.Process):
 
 
         except Exception, ex:
-            self._log.error("Error in OutputStagingWorker loop: %s", traceback.format_exc())
+            self._log.exception("Error in OutputStagingWorker loop")
             raise
 
 
@@ -2899,8 +3055,8 @@ class Agent(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, mongodb_auth, 
-                 pilot_id, session_id, benchmark):
+    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, 
+                 mongodb_auth, pilot_id, session_id, benchmark):
         """Le Constructeur creates a new Agent instance.
         """
         threading.Thread.__init__(self)
@@ -3014,7 +3170,8 @@ class Agent(threading.Thread):
         ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : ACTIVE,
-                      # TODO: The two fields below are currently scheduler specific!
+                      # TODO: The two fields below are currently scheduler 
+                      #       specific!
                       "nodes"          : self._exec_env.lrms.node_list,
                       "cores_per_node" : self._exec_env.lrms.cores_per_node,
                       "started"        : ts,
@@ -3037,7 +3194,7 @@ class Agent(threading.Thread):
                 # process has caught a ctrl+C
                 if self._exec_worker.is_alive() is False:
                     pilot_FAILED(self._p, self._pilot_id, self._log,
-                                 "Execution worker %s died." % str(self._exec_worker))
+                            "Execution worker %s died." % str(self._exec_worker))
                     return
 
                 # Exit the main loop if terminate is set. 
@@ -3053,10 +3210,10 @@ class Agent(threading.Thread):
                     pilot_DONE(self._p, self._pilot_id)
                     return
 
-                # Try to get new tasks from the database. for this, we check the 
+                # Try to get new tasks from the database. for this, we check the
                 # cu_queue of the pilot. if there are new entries, we get them,
-                # get the actual pilot entries for them and remove them from 
-                # the cu_queue.
+                # get the actual pilot entries for them and remove them from the
+                # cu_queue.
                 try:
 
                     # Check if there's a command waiting
@@ -3101,8 +3258,8 @@ class Agent(threading.Thread):
                                 "$push": {"statehistory": {"state": SCHEDULING, "timestamp": ts}}}
                     )
 
-                    # There are new compute units in the cu_queue on the database.
-                    # Get the corresponding cu entries.
+                    # There are new compute units in the cu_queue on the
+                    # database.  Get the corresponding cu entries.
                     if cu_cursor is not None:
 
                         idle = False
@@ -3111,7 +3268,8 @@ class Agent(threading.Thread):
                             cu_cursor = [cu_cursor]
 
                         for cu in cu_cursor:
-                            # Create new task objects and put them into the task queue
+                            # Create new task objects and put them into the 
+                            # task queue
                             w_uid = str(cu["_id"])
                             self._log.info("Found new tasks in pilot queue: %s" % w_uid)
 
@@ -3136,8 +3294,8 @@ class Agent(threading.Thread):
                                 workdir     = task_dir_name,
                                 stdout_file = stdout_file,
                                 stderr_file = stderr_file,
-                                agent_output_staging = True if cu['Agent_Output_Directives'] else False,
-                                ftw_output_staging   = True if cu['FTW_Output_Directives'] else False
+                                agent_output_staging = bool(cu['Agent_Output_Directives']),
+                                ftw_output_staging   = bool(cu['FTW_Output_Directives'])
                                 )
 
                             task.state = SCHEDULING
@@ -3150,12 +3308,16 @@ class Agent(threading.Thread):
                     cu_cursor = self._cu.find_and_modify(
                         query={'pilot' : self._pilot_id,
                                'Agent_Input_Status': PENDING},
-                        # TODO: This might/will create double state history for StagingInput
+                        # TODO: This might/will create double state history for 
+                        #       StagingInput
                         update={'$set' : {'Agent_Input_Status': EXECUTING,
                                           'state': STAGING_INPUT},
-                                '$push': {'statehistory': {'state': STAGING_INPUT, 'timestamp': ts}}}#,
-                        #limit=BULK_LIMIT
+                                '$push': {'statehistory': {
+                                              'state'    : STAGING_INPUT, 
+                                              'timestamp': ts}}
+                               }
                     )
+
                     if cu_cursor is not None:
 
                         idle = False
@@ -3192,13 +3354,14 @@ class Agent(threading.Thread):
         return
 
 
-#-----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #
-# TODO: Once we reach this state, what should we have done already? And what should still be done?
+# TODO: Once we reach this state, what should we have done already? And what 
+#       should still be done?
 #
 class _Process(subprocess.Popen):
 
-    #-------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
     #
     def __init__(self, task, all_slots, cores_per_node, launcher, logger, cu_environment):
 
@@ -3258,8 +3421,9 @@ class _Process(subprocess.Popen):
         # The actual command line, constructed per launch-method
         # TODO: Once we start to construct the command, it means we know
         #       we will be able to run, make sure this is true!
-        retval = launcher.construct_command(task_exec_string,  task_args_string, task.numcores,
-                                            launch_script.name, task.opaque_slot)
+        retval = launcher.construct_command(task_exec_string,  task_args_string,
+                                            task.numcores, launch_script.name, 
+                                            task.opaque_slot)
         # Check to see what kind of return value we got
         if isinstance(retval, basestring):
             # The launcher informs us to use the scriptname as the command line
@@ -3314,7 +3478,7 @@ class _Process(subprocess.Popen):
             startupinfo=None,
             creationflags=0)
 
-    #-------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
     #
     @property
     def task(self):
@@ -3322,7 +3486,7 @@ class _Process(subprocess.Popen):
         """
         return self._task
 
-    #-------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
     #
     def close_and_flush_filehandles(self):
         self._stdout_file_h.flush()
@@ -3331,7 +3495,7 @@ class _Process(subprocess.Popen):
         self._stderr_file_h.close()
 
 
-#-----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #
 def parse_commandline():
 
@@ -3437,7 +3601,7 @@ def parse_commandline():
     return options
 
 
-#-----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -3456,7 +3620,7 @@ if __name__ == "__main__":
 
     logger.info("Using SAGA version %s" % saga.version)
 
-    #--------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Establish database connection
     try:
         host, port = options.mongodb_url.split(':', 1)
@@ -3475,7 +3639,7 @@ if __name__ == "__main__":
         logger.error("Couldn't establish database connection: %s" % str(ex))
         sys.exit(1)
 
-    #--------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Some signal handling magic
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
@@ -3483,13 +3647,15 @@ if __name__ == "__main__":
         sys.exit (1)
     signal.signal(signal.SIGINT, sigint_handler)
 
+    # --------------------------------------------------------------------------
+    #
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit (1)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
-    #--------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Discover environment, nodes, cores, mpi, etc.
     try:
         exec_env = ExecutionEnvironment(
@@ -3506,7 +3672,7 @@ if __name__ == "__main__":
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit (1)
 
-    #--------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Launch the agent thread
     agent = None
     try:
