@@ -147,13 +147,24 @@ STAGING_OUTPUT              = 'StagingOutput'
 #
 # time stamp for profiling etc.
 #
+
 def timestamp () :
+    # human readable absolute UTC timestamp for log entries in database
     return datetime.datetime.utcnow ()
 
 def timestamp_epoch () :
+    # absolute timestamp as seconds since epoch
     return float(time.time())
 
-start_time = time.time ()
+# absolute timestamp in seconds since epocj pointing at start of
+# bootstrapper (or 'now' as fallback)
+timestamp_zero = float(os.environ.get ('TIME_ZERO', time.time()))
+
+print "timestamp zero: %s" % timestamp_zero
+
+def timestamp_now () :
+    # relative timestamp seconds since TIME_ZERO (start)
+    return float(time.time()) - timestamp_zero
 
 
 # ------------------------------------------------------------------------------
@@ -165,23 +176,54 @@ start_time = time.time ()
 if 'RADICAL_PILOT_PROFILE' in os.environ:
     profile_agent  = True
     profile_handle = open('AGENT.prof', 'a')
-    timestamp_zero = float(os.environ.get ('TIME_ZERO', 0.0))
 else :
     profile_agent  = False
     profile_handle = sys.stdout
-    timestamp_zero = 0.0
 
 
 # ------------------------------------------------------------------------------
 #
-def profile_event (etype, msg="") :
+profile_tags = dict ()
+def prof (etype, uid="", msg="", tag=None) :
+
+    # whenever a tag changes (to a non-None value), the time since the last tag
+    # change is added
 
     if not profile_agent :
         return
 
-    now = timestamp_epoch() - timestamp_zero
-    profile_handle.write ("%12.2f : %-40s : %s\n" % (now, etype, msg))
-    profile_handle.flush ()  # FIXME: disable this on production runs
+    logged = False
+    tid    = threading.current_thread().name
+    now    = timestamp_now()
+    print "timestamp now: %s" % now
+
+
+    if uid and tag :
+
+        if not uid in profile_tags :
+            profile_tags[uid] = { 'tag'  : "",
+                                  'time' : 0.0 }
+        
+        old_tag = profile_tags[uid]['tag']
+
+        if tag != old_tag :
+
+            tagged_time = now - profile_tags[uid]['time']
+
+            profile_tags[uid]['tag' ] = tag
+            profile_tags[uid]['time'] = timestamp_now()
+
+            profile_handle.write ("> %12.4f : %-20s : %12.4f : %-15s : %-24s : %-40s : %s\n" \
+                               % (tagged_time, tag, now, tid, uid, etype, msg))
+            logged = True
+
+
+    if not logged :
+        profile_handle.write ("  %12s : %-20s : %12.4f : %-15s : %-24s : %-40s : %s\n" \
+                           % (' ' , ' ', now, tid, uid, etype, msg))
+
+    # FIXME: disable flush on production runs
+    profile_handle.flush ()
 
 
 # ------------------------------------------------------------------------------
@@ -193,7 +235,7 @@ def get_rusage () :
     self_usage  = resource.getrusage (resource.RUSAGE_SELF)
     child_usage = resource.getrusage (resource.RUSAGE_CHILDREN)
 
-    rtime = time.time () - start_time
+    rtime = time.time () - timestamp_zero
     utime = self_usage.ru_utime  + child_usage.ru_utime
     stime = self_usage.ru_stime  + child_usage.ru_stime
     rss   = self_usage.ru_maxrss + child_usage.ru_maxrss
@@ -2360,7 +2402,7 @@ class Task(object):
 
 # ------------------------------------------------------------------------------
 #
-class ExecWorker(multiprocessing.Process):
+class ExecWorker(threading.Thread):
     """An ExecWorker competes for the execution of tasks in a task queue
     and writes the results back to MongoDB.
     """
@@ -2373,11 +2415,10 @@ class ExecWorker(multiprocessing.Process):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
-        profile_event ('ExecWorker init')
+        prof ('ExecWorker init')
 
-        multiprocessing.Process.__init__(self)
-        self.daemon = True
-        self._terminate = False
+        threading.Thread.__init__(self)
+        self._terminate = threading.Event()
 
         self.cu_environment = cu_environment
 
@@ -2464,18 +2505,18 @@ class ExecWorker(multiprocessing.Process):
     # --------------------------------------------------------------------------
     #
     def stop(self):
-        """Terminates the process' main loop.
+        """Terminates the thread's main loop.
         """
         # AM: Why does this call exist?  It is never called....
-        self._terminate = True
+        self._terminate.set()
 
     # --------------------------------------------------------------------------
     #
     def run(self):
-        """Starts the process when Process.start() is called.
+        """Starts the thread when Thread.start() is called.
         """
         try:
-            while self._terminate is False:
+            while not self._terminate.isSet () :
 
                 idle = True
 
@@ -2504,6 +2545,8 @@ class ExecWorker(multiprocessing.Process):
 
                 # any work to do?
                 if  task :
+       
+                    prof ('ExecWorker gets task from queue', uid=task.uid, tag='task preprocess')
 
                     opaque_slot = None
 
@@ -2533,6 +2576,7 @@ class ExecWorker(multiprocessing.Process):
                         if opaque_slot is None:
                             # No resources available, put back in queue
                             self._task_queue.put(task)
+                            prof ('ExecWorker returns task to queue', uid=task.uid)
                         else:
                             # got an allocation, go off and launch the process
                             task.opaque_slot = opaque_slot
@@ -2572,7 +2616,7 @@ class ExecWorker(multiprocessing.Process):
     #
     def _launch_task(self, task, launcher):
 
-        profile_event ('ExecWorker task launch', task.uid)
+        prof ('ExecWorker task launch', uid=task.uid)
 
         # create working directory in case it
         # doesn't exist
@@ -2595,7 +2639,7 @@ class ExecWorker(multiprocessing.Process):
             logger=self._log,
             cu_environment=self.cu_environment)
 
-        profile_event ('ExecWorker task launched', task.uid)
+        prof ('ExecWorker task launched', uid=task.uid, tag='task_launching')
 
         task.started = timestamp()
         task.state   = EXECUTING
@@ -2647,7 +2691,7 @@ class ExecWorker(multiprocessing.Process):
                     # No need to continue [sic] further for this iteration
                     continue
             else:
-                profile_event ('ExecWorker task found done', task.uid)
+                prof ('ExecWorker task found done', uid=task.uid, tag='task executing')
 
                 # The task ended (eventually FAILED or DONE).
                 finished_tasks.append(task)
@@ -2676,7 +2720,7 @@ class ExecWorker(multiprocessing.Process):
                         # performed by the Agent.
                         if task.agent_output_staging:
 
-                            profile_event ('ExecWorker task needs output staging', task.uid)
+                            prof ('ExecWorker task needs output staging', uid=task.uid)
 
                             # Find the task in the database
                             # TODO: shouldnt this be available somewhere 
@@ -2701,7 +2745,7 @@ class ExecWorker(multiprocessing.Process):
                                     {"$set": {"Agent_Output_Status": EXECUTING}}
                                 )
 
-                            profile_event ('ExecWorker task gets  output staging', task.uid)
+                            prof ('ExecWorker task gets  output staging', uid=task.uid)
 
 
                         # Check if there are Directives that need to be 
@@ -2710,12 +2754,12 @@ class ExecWorker(multiprocessing.Process):
                         # but we need this code to set the state so that the FTW
                         # gets notified that it can start its work.
                         if task.ftw_output_staging:
-                            profile_event ('ExecWorker task needs FTW_O ', task.uid)
+                            prof ('ExecWorker task needs FTW_O ', uid=task.uid)
                             self._cu.update(
                                 {"_id": ObjectId(uid)},
                                 {"$set": {"FTW_Output_Status": PENDING}}
                             )
-                            profile_event ('ExecWorker task gets  FTW_O ', task.uid)
+                            prof ('ExecWorker task gets  FTW_O ', uid=task.uid)
                     else:
                         # If there is no output data to deal with, the task 
                         # becomes DONE
@@ -2725,7 +2769,7 @@ class ExecWorker(multiprocessing.Process):
             # At this stage the task is ended: DONE, FAILED or CANCELED.
             #
 
-            profile_event ('ExecWorker task postprocess start', task.uid)
+            prof ('ExecWorker task postprocess start', uid=task.uid)
 
             idle = False
 
@@ -2767,7 +2811,7 @@ class ExecWorker(multiprocessing.Process):
             # Free the Slots, Flee the Flots, Ree the Frots!
             self.exec_env.scheduler.release_slot(task.opaque_slot)
 
-            profile_event ('ExecWorker task postprocess done', task.uid)
+            prof ('ExecWorker task postprocess done', uid=task.uid)
 
         #
         # At this stage we are outside the for loop of running tasks.
@@ -2823,7 +2867,7 @@ class ExecWorker(multiprocessing.Process):
                     }
                     )
 
-                profile_event ('ExecWorker pilot state pushed')
+                prof ('ExecWorker pilot state pushed')
 
                 self._slot_history_old = self.exec_env.scheduler._slot_history[:]
 
@@ -2838,12 +2882,16 @@ class ExecWorker(multiprocessing.Process):
                       "stderr"       : task.stderr},
              "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
             })
-            profile_event ('ExecWorker task state pushed', task.uid)
+
+            if task.state in [DONE, CANCELED, FAILED] :
+                prof ('ExecWorker task state pushed', uid=task.uid, tag='task postprocessing')
+            else :
+                prof ('ExecWorker task state pushed', uid=task.uid)
 
 
 # ------------------------------------------------------------------------------
 #
-class InputStagingWorker(multiprocessing.Process):
+class InputStagingWorker(threading.Thread):
     """An InputStagingWorker performs the agent side staging directives
        and writes the results back to MongoDB.
     """
@@ -2855,9 +2903,8 @@ class InputStagingWorker(multiprocessing.Process):
 
         """ Creates a new InputStagingWorker instance.
         """
-        multiprocessing.Process.__init__(self)
-        self.daemon      = True
-        self._terminate  = False
+        threading.Thread.__init__(self)
+        self._terminate  = threading.Event ()
 
         self._log = logger
 
@@ -2877,7 +2924,7 @@ class InputStagingWorker(multiprocessing.Process):
     def stop(self):
         """Terminates the process' main loop.
         """
-        self._terminate = True
+        self._terminate.set ()
 
     # --------------------------------------------------------------------------
     #
@@ -2885,7 +2932,7 @@ class InputStagingWorker(multiprocessing.Process):
 
         self._log.info('InputStagingWorker started ...')
 
-        while self._terminate is False:
+        while not self._terminate.isSet () :
             try:
                 staging = self._staging_queue.get_nowait()
             except Queue.Empty:
@@ -2986,7 +3033,7 @@ class InputStagingWorker(multiprocessing.Process):
 
 # ------------------------------------------------------------------------------
 #
-class OutputStagingWorker(multiprocessing.Process):
+class OutputStagingWorker(threading.Thread):
     """An OutputStagingWorker performs the agent side staging directives
        and writes the results back to MongoDB.
     """
@@ -2998,9 +3045,8 @@ class OutputStagingWorker(multiprocessing.Process):
 
         """ Creates a new OutputStagingWorker instance.
         """
-        multiprocessing.Process.__init__(self)
-        self.daemon      = True
-        self._terminate  = False
+        threading.Thread.__init__(self)
+        self._terminate = threading.Event ()
 
         self._log = logger
 
@@ -3020,7 +3066,7 @@ class OutputStagingWorker(multiprocessing.Process):
     def stop(self):
         """Terminates the process' main loop.
         """
-        self._terminate = True
+        self._terminate.set()
 
     # --------------------------------------------------------------------------
     #
@@ -3029,7 +3075,7 @@ class OutputStagingWorker(multiprocessing.Process):
         self._log.info('OutputStagingWorker started ...')
 
         try:
-            while self._terminate is False:
+            while not self._terminate.isSet () :
                 try:
                     staging = self._staging_queue.get_nowait()
 
@@ -3124,10 +3170,9 @@ class Agent(threading.Thread):
                  mongodb_auth, pilot_id, session_id, benchmark):
         """Le Constructeur creates a new Agent instance.
         """
-        profile_event ('Agent init')
+        prof ('Agent init')
 
         threading.Thread.__init__(self)
-        self.daemon      = True
         self.lock        = threading.Lock()
         self._terminate  = threading.Event()
 
@@ -3164,7 +3209,7 @@ class Agent(threading.Thread):
         self._command_queue = multiprocessing.Queue()
 
         # we assign each node partition to a task execution worker
-        profile_event ('Exec Worker create')
+        prof ('Exec Worker create')
         self._exec_worker = ExecWorker(
             exec_env        = self._exec_env,
             logger          = self._log,
@@ -3187,7 +3232,7 @@ class Agent(threading.Thread):
                        (self._exec_worker, self._exec_env.lrms.node_list))
 
         # Start input staging worker
-        profile_event ('IS Worker create')
+        prof ('IS Worker create')
         input_staging_worker = InputStagingWorker(
             logger          = self._log,
             staging_queue   = self._input_staging_queue,
@@ -3201,7 +3246,7 @@ class Agent(threading.Thread):
         self._input_staging_worker = input_staging_worker
 
         # Start output staging worker
-        profile_event ('OS Worker create')
+        prof ('OS Worker create')
         output_staging_worker = OutputStagingWorker(
             logger          = self._log,
             staging_queue   = self._output_staging_queue,
@@ -3214,21 +3259,21 @@ class Agent(threading.Thread):
         self._log.info("Started up %s." % output_staging_worker)
         self._output_staging_worker = output_staging_worker
 
-        profile_event ('Agent init done')
+        prof ('Agent init done')
 
     # --------------------------------------------------------------------------
     #
     def stop(self):
         """Terminate the agent main loop.
         """
-        profile_event ('Agent stop()')
+        prof ('Agent stop()')
 
         # First, we need to shut down all the workers
-        self._exec_worker.terminate()
+        self._exec_worker._terminate.set()
 
         # Shut down the staging workers
-        self._input_staging_worker.terminate()
-        self._output_staging_worker.terminate()
+        self._input_staging_worker._terminate.set()
+        self._output_staging_worker._terminate.set()
 
         # Next, we set our own termination signal
         self._terminate.set()
@@ -3238,7 +3283,7 @@ class Agent(threading.Thread):
     def run(self):
         """Starts the thread when Thread.start() is called.
         """
-        profile_event ('Agent run()')
+        prof ('Agent run()')
 
         # first order of business: set the start time and state of the pilot
         self._log.info("Agent %s starting ..." % self._pilot_id)
@@ -3260,7 +3305,7 @@ class Agent(threading.Thread):
 
         self._starttime = time.time()
 
-        profile_event ('Agent start loop')
+        prof ('Agent start loop')
 
         while True:
 
@@ -3309,7 +3354,7 @@ class Agent(threading.Thread):
 
                     for command in commands:
 
-                        profile_event ('Agent get command', [command[COMMAND_TYPE], command[COMMAND_ARG]])
+                        prof ('Agent get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
 
                         idle = False
 
@@ -3350,14 +3395,14 @@ class Agent(threading.Thread):
                         if not isinstance(cu_cursor, list):
                             cu_cursor = [cu_cursor]
 
-                        profile_event ('Agent get units', len(cu_cursor))
+                        prof ('Agent get units', msg="number of units: %d" % len(cu_cursor))
 
                         for cu in cu_cursor:
                             
                             # Create new task objects and put them into the 
                             # task queue
                             cu_uid = str(cu["_id"])
-                            profile_event ('Agent get unit', cu_uid)
+                            prof ('Agent get unit', uid=cu_uid, tag='task arriving')
                             self._log.info("Found new tasks in pilot queue: %s" % cu_uid)
 
                             task_dir_name = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
@@ -3369,7 +3414,7 @@ class Agent(threading.Thread):
                             if  stderr : stderr_file = task_dir_name+'/'+stderr
                             else       : stderr_file = task_dir_name+'/STDERR'
 
-                            profile_event ('Task create', cu_uid)
+                            prof ('Task create', uid=cu_uid)
                             task = Task(
                                 uid         = cu_uid,
                                 executable  = cu["description"]["executable"],
@@ -3387,7 +3432,7 @@ class Agent(threading.Thread):
                                 )
 
                             task.state = SCHEDULING
-                            profile_event ('Task queued', cu_uid)
+                            prof ('Task queued', uid=cu_uid)
                             self._task_queue.put(task)
 
                     #
@@ -3413,7 +3458,7 @@ class Agent(threading.Thread):
                         if not isinstance(cu_cursor, list):
                             cu_cursor = [cu_cursor]
                             
-                        profile_event ('Agent input_staging', len(cu_cursor))
+                        prof ('Agent input_staging', msg="number of units: %d"%len(cu_cursor))
 
                         for cu in cu_cursor:
                             cu_uid = str(cu['_id'])
@@ -3426,7 +3471,7 @@ class Agent(threading.Thread):
                                     'cu_id': cu_uid
                                 }
 
-                                profile_event ('Agent input_staging queue', [cu_uid, directive])
+                                prof ('Agent input_staging queue', uid=cu_uid, msg=directive)
                                 # Put the input staging directives in the queue
                                 self._input_staging_queue.put(input_staging)
 
@@ -3460,7 +3505,7 @@ class _Process(subprocess.Popen):
         self._task = task
         self._log  = logger
 
-        profile_event ('_Process init', task.uid)
+        prof ('_Process init', uid=task.uid)
 
         launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script-',
                                                     dir=task.workdir, suffix=".sh", delete=False)
@@ -3515,7 +3560,7 @@ class _Process(subprocess.Popen):
         # The actual command line, constructed per launch-method
         # TODO: Once we start to construct the command, it means we know
         #       we will be able to run, make sure this is true!
-        profile_event ('_Process construct command', task.uid)
+        prof ('_Process construct command', uid=task.uid)
         retval = launcher.construct_command(task_exec_string,  task_args_string,
                                             task.numcores, launch_script.name, 
                                             task.opaque_slot)
@@ -3556,7 +3601,7 @@ class _Process(subprocess.Popen):
 
         self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
 
-        profile_event ('_Process pass to popen', task.uid)
+        prof ('_Process pass to popen', uid=task.uid)
 
         super(_Process, self).__init__(
             args=cmdline,
@@ -3575,7 +3620,7 @@ class _Process(subprocess.Popen):
             startupinfo=None,
             creationflags=0)
 
-        profile_event ('_Process pass to popen done', task.uid)
+        prof ('_Process pass to popen done', uid=task.uid, tag='task spawning')
 
     # --------------------------------------------------------------------------
     #
@@ -3593,7 +3638,7 @@ class _Process(subprocess.Popen):
         self._stdout_file_h.close()
         self._stderr_file_h.close()
 
-        profile_event ('_Process task flush', self._task.uid)
+        prof ('_Process task flush', uid=self._task.uid)
 
 
 # ------------------------------------------------------------------------------
@@ -3706,7 +3751,7 @@ def parse_commandline():
 #
 if __name__ == "__main__":
 
-    profile_event ('start')
+    prof ('start')
 
     # parse command line options
     options = parse_commandline()
@@ -3744,7 +3789,7 @@ if __name__ == "__main__":
     # --------------------------------------------------------------------------
     # Establish database connection
     try:
-        profile_event ('db setup')
+        prof ('db setup')
         host, port = options.mongodb_url.split(':', 1)
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
@@ -3764,7 +3809,7 @@ if __name__ == "__main__":
     # --------------------------------------------------------------------------
     # Discover environment, nodes, cores, mpi, etc.
     try:
-        profile_event ('exec env setup')
+        prof ('exec env setup')
         exec_env = ExecutionEnvironment(
             logger=logger,
             lrms_name=options.lrms,
@@ -3783,7 +3828,7 @@ if __name__ == "__main__":
     # Launch the agent thread
     agent = None
     try:
-        profile_event ('Agent create')
+        prof ('Agent create')
         agent = Agent(logger=logger,
                       exec_env=exec_env,
                       runtime=options.runtime,
@@ -3814,5 +3859,5 @@ if __name__ == "__main__":
             agent.stop()
 
     finally :
-        profile_event ('stop', 'finally')
+        prof ('stop', msg='finally clause')
 

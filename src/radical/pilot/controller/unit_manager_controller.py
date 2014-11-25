@@ -511,8 +511,8 @@ class UnitManagerController(threading.Thread):
                         input_sds = [input_sds]
                     else:
                         input_sds = []
-                for input_sd_entry in input_sds:
 
+                for input_sd_entry in input_sds:
                     action = input_sd_entry['action']
                     source = Url(input_sd_entry['source'])
                     target = Url(input_sd_entry['target'])
@@ -550,8 +550,8 @@ class UnitManagerController(threading.Thread):
                         output_sds = [output_sds]
                     else:
                         output_sds = []
-                for output_sds_entry in output_sds:
 
+                for output_sds_entry in output_sds:
                     action = output_sds_entry['action']
                     source = Url(output_sds_entry['source'])
                     target = Url(output_sds_entry['target'])
