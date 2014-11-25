@@ -473,12 +473,15 @@ class PilotManagerController(threading.Thread):
                 elif old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE] :
                     if pilot_id in self._shared_worker_data['job_ids'] :
                         
-                        job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
-                        logger.info ("actively cancel pilot %s (%s, %s)" % (pilot_id, job_id, js_url))
+                        try :
+                            job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
+                            logger.info ("actively cancel pilot %s (%s, %s)" % (pilot_id, job_id, js_url))
 
-                        js = self._shared_worker_data['job_services'][js_url]
-                        job = js.get_job (job_id)
-                        job.cancel ()
+                            js = self._shared_worker_data['job_services'][js_url]
+                            job = js.get_job (job_id)
+                            job.cancel ()
+                        except Exception as e :
+                            logger.exception ('pilot cancelation failed')
 
 
                     else :
@@ -504,12 +507,16 @@ class PilotManagerController(threading.Thread):
 
                 if pilot_id in self._shared_worker_data['job_ids'] :
 
-                    job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
-                    logger.info ("actively cancel pilot %s (delayed) (%s, %s)" % (pilot_id, job_id, js_url))
+                    try :
+                        job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
+                        logger.info ("actively cancel pilot %s (delayed) (%s, %s)" % (pilot_id, job_id, js_url))
 
-                    js = self._shared_worker_data['job_services'][js_url]
-                    job = js.get_job (job_id)
-                    job.cancel ()
+                        js = self._shared_worker_data['job_services'][js_url]
+                        job = js.get_job (job_id)
+                        job.cancel ()
+                    except Exception as e :
+                        logger.exception ('delayed pilot cancelation failed. '
+                                'This is not necessarily a problem.')
 
                 else :
                     logger.warn ("can't actively cancel pilot %s: no job id known (delayed)" % pilot_id)
