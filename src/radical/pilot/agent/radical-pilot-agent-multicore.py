@@ -1277,13 +1277,13 @@ class LRMS(object):
 
         try:
             implementation = {
-                LRMS_NAME_FORK        : ForkLRMS
+                LRMS_NAME_FORK        : ForkLRMS,
                 LRMS_NAME_LOADLEVELER : LoadLevelerLRMS,
                 LRMS_NAME_LSF         : LSFLRMS,
                 LRMS_NAME_PBSPRO      : PBSProLRMS,
                 LRMS_NAME_SGE         : SGELRMS,
                 LRMS_NAME_SLURM       : SLURMLRMS,
-                LRMS_NAME_TORQUE      : TORQUELRMS,
+                LRMS_NAME_TORQUE      : TORQUELRMS
             }[name]
             return implementation(name, requested_cores, logger)
         except KeyError:
