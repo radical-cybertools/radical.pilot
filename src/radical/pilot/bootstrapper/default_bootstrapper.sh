@@ -55,7 +55,7 @@ profile_event()
     then
         timestamp
         NOW=$((TIMESTAMP-TIME_ZERO))
-        printf "%15.6f : %-25s : \n" "$NOW" "$*" >> AGENT.prof
+        printf "%12.2f : %-40s : \n" "$NOW" "$*" >> AGENT.prof
     fi
 }
 

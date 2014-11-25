@@ -180,7 +180,7 @@ def profile_event (etype, msg="") :
         return
 
     now = timestamp_epoch() - timestamp_zero
-    profile_handle.write ("%15.6f : %-25s : %s\n" % (now, etype, msg))
+    profile_handle.write ("%12.2f : %-40s : %s\n" % (now, etype, msg))
     profile_handle.flush ()  # FIXME: disable this on production runs
 
 
@@ -2572,6 +2572,8 @@ class ExecWorker(multiprocessing.Process):
     #
     def _launch_task(self, task, launcher):
 
+        profile_event ('ExecWorker task launch', task.uid)
+
         # create working directory in case it
         # doesn't exist
         try :
@@ -2593,6 +2595,8 @@ class ExecWorker(multiprocessing.Process):
             logger=self._log,
             cu_environment=self.cu_environment)
 
+        profile_event ('ExecWorker task launched', task.uid)
+
         task.started = timestamp()
         task.state   = EXECUTING
         task._proc   = proc
@@ -2610,6 +2614,7 @@ class ExecWorker(multiprocessing.Process):
         # For example, we could collect all messages for a second (but not
         # longer) and send those updates in a bulk.
         self._update_tasks(task)
+
 
     # --------------------------------------------------------------------------
     # Iterate over all running tasks, check their status, and decide on the 
@@ -2642,6 +2647,8 @@ class ExecWorker(multiprocessing.Process):
                     # No need to continue [sic] further for this iteration
                     continue
             else:
+                profile_event ('ExecWorker task found done', task.uid)
+
                 # The task ended (eventually FAILED or DONE).
                 finished_tasks.append(task)
 
@@ -2669,6 +2676,8 @@ class ExecWorker(multiprocessing.Process):
                         # performed by the Agent.
                         if task.agent_output_staging:
 
+                            profile_event ('ExecWorker task needs output staging', task.uid)
+
                             # Find the task in the database
                             # TODO: shouldnt this be available somewhere 
                             #       already, that would save a roundtrip?!
@@ -2692,16 +2701,21 @@ class ExecWorker(multiprocessing.Process):
                                     {"$set": {"Agent_Output_Status": EXECUTING}}
                                 )
 
+                            profile_event ('ExecWorker task gets  output staging', task.uid)
+
+
                         # Check if there are Directives that need to be 
                         # performed by the FTW.
                         # Obviously these are not executed here (by the Agent),
                         # but we need this code to set the state so that the FTW
                         # gets notified that it can start its work.
                         if task.ftw_output_staging:
+                            profile_event ('ExecWorker task needs FTW_O ', task.uid)
                             self._cu.update(
                                 {"_id": ObjectId(uid)},
                                 {"$set": {"FTW_Output_Status": PENDING}}
                             )
+                            profile_event ('ExecWorker task gets  FTW_O ', task.uid)
                     else:
                         # If there is no output data to deal with, the task 
                         # becomes DONE
@@ -2710,6 +2724,8 @@ class ExecWorker(multiprocessing.Process):
             #
             # At this stage the task is ended: DONE, FAILED or CANCELED.
             #
+
+            profile_event ('ExecWorker task postprocess start', task.uid)
 
             idle = False
 
@@ -2750,6 +2766,8 @@ class ExecWorker(multiprocessing.Process):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             self.exec_env.scheduler.release_slot(task.opaque_slot)
+
+            profile_event ('ExecWorker task postprocess done', task.uid)
 
         #
         # At this stage we are outside the for loop of running tasks.
@@ -2805,6 +2823,8 @@ class ExecWorker(multiprocessing.Process):
                     }
                     )
 
+                profile_event ('ExecWorker pilot state pushed')
+
                 self._slot_history_old = self.exec_env.scheduler._slot_history[:]
 
         for task in tasks:
@@ -2818,6 +2838,7 @@ class ExecWorker(multiprocessing.Process):
                       "stderr"       : task.stderr},
              "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
             })
+            profile_event ('ExecWorker task state pushed', task.uid)
 
 
 # ------------------------------------------------------------------------------
@@ -3439,6 +3460,8 @@ class _Process(subprocess.Popen):
         self._task = task
         self._log  = logger
 
+        profile_event ('_Process init', task.uid)
+
         launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script-',
                                                     dir=task.workdir, suffix=".sh", delete=False)
         self._log.debug('Created launch_script: %s' % launch_script.name)
@@ -3492,6 +3515,7 @@ class _Process(subprocess.Popen):
         # The actual command line, constructed per launch-method
         # TODO: Once we start to construct the command, it means we know
         #       we will be able to run, make sure this is true!
+        profile_event ('_Process construct command', task.uid)
         retval = launcher.construct_command(task_exec_string,  task_args_string,
                                             task.numcores, launch_script.name, 
                                             task.opaque_slot)
@@ -3532,6 +3556,8 @@ class _Process(subprocess.Popen):
 
         self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
 
+        profile_event ('_Process pass to popen', task.uid)
+
         super(_Process, self).__init__(
             args=cmdline,
             bufsize=0,
@@ -3549,6 +3575,8 @@ class _Process(subprocess.Popen):
             startupinfo=None,
             creationflags=0)
 
+        profile_event ('_Process pass to popen done', task.uid)
+
     # --------------------------------------------------------------------------
     #
     @property
@@ -3564,6 +3592,8 @@ class _Process(subprocess.Popen):
         self._stderr_file_h.flush()
         self._stdout_file_h.close()
         self._stderr_file_h.close()
+
+        profile_event ('_Process task flush', self._task.uid)
 
 
 # ------------------------------------------------------------------------------

@@ -120,11 +120,9 @@ if __name__ == "__main__":
     for unit_count in range(0, 16):
         cud = rp.ComputeUnitDescription()
         cud.name          = "unit_%03d" % unit_count
-        cud.executable    = "/bin/sh"
-        cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
-        cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
+        cud.executable    = "/bin/sleep"
+        cud.arguments     = ["5"]
         cud.cores         = 1
-        cud.input_staging = ['file1.dat', 'file2.dat']
 
         cuds.append(cud)
 
