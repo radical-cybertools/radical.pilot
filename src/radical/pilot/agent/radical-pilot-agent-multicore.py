@@ -143,10 +143,49 @@ STAGING_INPUT               = 'StagingInput'
 PENDING_OUTPUT_STAGING      = 'PendingOutputStaging'
 STAGING_OUTPUT              = 'StagingOutput'
 
+# ------------------------------------------------------------------------------
+#
+# time stamp for profiling etc.
+#
+def timestamp () :
+    return datetime.datetime.utcnow ()
+
+def timestamp_epoch () :
+    return float(time.time())
+
+start_time = time.time ()
+
 
 # ------------------------------------------------------------------------------
 #
-start_time = time.time ()
+# profiling support
+#
+# If 'RADICAL_PILOT_PROFILE' is set in environment, the agent logs timed events.
+#
+if 'RADICAL_PILOT_PROFILE' in os.environ:
+    profile_agent  = True
+    profile_handle = open('AGENT.prof', 'a')
+    timestamp_zero = float(os.environ.get ('TIME_ZERO', 0.0))
+else :
+    profile_agent  = False
+    profile_handle = sys.stdout
+    timestamp_zero = 0.0
+
+
+# ------------------------------------------------------------------------------
+#
+def profile_event (etype, msg="") :
+
+    if not profile_agent :
+        return
+
+    now = timestamp_epoch() - timestamp_zero
+    profile_handle.write ("%15.6f : %-25s : %s\n" % (now, etype, msg))
+    profile_handle.flush ()  # FIXME: disable this on production runs
+
+
+# ------------------------------------------------------------------------------
+#
 def get_rusage () :
 
     import resource
@@ -169,14 +208,15 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.error(message)      
-    ts = datetime.datetime.utcnow()
+    ts = timestamp ()
 
-    msg = [{"logentry": message, "timestamp": ts}, 
+    msg = [{"logentry": message,      "timestamp": ts}, 
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push"   : {"log": {"$each": msg}},
-         "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
+         "$push"   : {"statehistory": {"state": FAILED, 
+                                       "timestamp": ts}},
          "$set"    : {"state"       : FAILED,
                       "capability"  : 0,
                       "finished"    : ts}
@@ -189,14 +229,15 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.warning(message)
-    ts = datetime.datetime.utcnow()
+    ts = timestamp ()
 
-    msg = [{"logentry": message, "timestamp": ts}, 
+    msg = [{"logentry": message,      "timestamp": ts}, 
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push"   : {"log": {"$each": msg}},
-         "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
+         "$push"   : {"statehistory": {"state": CANCELED, 
+                                       "timestamp": ts}},
          "$set"    : {"state"       : CANCELED,
                       "capability"  : 0,
                       "finished"    : ts}
@@ -208,13 +249,14 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
-    ts  = datetime.datetime.utcnow()
+    ts  = timestamp()
     msg = [{"logentry": "pilot done", "timestamp": ts}, 
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$push"   : {"log": {"$each": msg}},
-         "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
+         "$push"   : {"statehistory": {"state": DONE, 
+                                       "timestamp": ts}},
          "$set"    : {"state"       : DONE,
                       "capability"  : 0,
                       "finished"    : ts}
@@ -410,8 +452,8 @@ class SchedulerContinuous(Scheduler):
                     else:
                         slot_matrix += "+"
             slot_matrix += "|"
-            ts = datetime.datetime.utcnow()
-            return {'timestamp' : ts, 'slotstate' : slot_matrix}
+            return {'timestamp' : timestamp(), 
+                    'slotstate' : slot_matrix}
 
         else :
             slot_matrix = ""
@@ -665,8 +707,8 @@ class SchedulerTorus(Scheduler):
                 else:
                     slot_matrix += "+" * self.lrms.cores_per_node
             slot_matrix += "|"
-            ts = datetime.datetime.utcnow()
-            return {'timestamp': ts, 'slotstate': slot_matrix}
+            return {'timestamp': timestamp(), 
+                    'slotstate': slot_matrix}
         else:
             slot_matrix = ""
             for slot in self.lrms.loadl_block:
@@ -2331,6 +2373,8 @@ class ExecWorker(multiprocessing.Process):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
+        profile_event ('ExecWorker init')
+
         multiprocessing.Process.__init__(self)
         self.daemon = True
         self._terminate = False
@@ -2549,9 +2593,9 @@ class ExecWorker(multiprocessing.Process):
             logger=self._log,
             cu_environment=self.cu_environment)
 
-        task.started=datetime.datetime.utcnow()
-        task.state = EXECUTING
-        task._proc = proc
+        task.started = timestamp()
+        task.state   = EXECUTING
+        task._proc   = proc
 
         # Add to the list of monitored tasks
         self._running_tasks.append(task) # add task here?
@@ -2698,7 +2742,7 @@ class ExecWorker(multiprocessing.Process):
             task.exit_code = ret_code
 
             # Record the time and state
-            task.finished = datetime.datetime.utcnow()
+            task.finished = timestamp()
             task.state = state
 
             # Put it on the list of tasks to update in bulk
@@ -2730,7 +2774,7 @@ class ExecWorker(multiprocessing.Process):
         if  not isinstance(tasks, list):
             tasks = [tasks]
 
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
         # We need to know which unit manager we are working with. We can pull
         # this information here:
 
@@ -3059,6 +3103,8 @@ class Agent(threading.Thread):
                  mongodb_auth, pilot_id, session_id, benchmark):
         """Le Constructeur creates a new Agent instance.
         """
+        profile_event ('Agent init')
+
         threading.Thread.__init__(self)
         self.daemon      = True
         self.lock        = threading.Lock()
@@ -3097,6 +3143,7 @@ class Agent(threading.Thread):
         self._command_queue = multiprocessing.Queue()
 
         # we assign each node partition to a task execution worker
+        profile_event ('Exec Worker create')
         self._exec_worker = ExecWorker(
             exec_env        = self._exec_env,
             logger          = self._log,
@@ -3119,6 +3166,7 @@ class Agent(threading.Thread):
                        (self._exec_worker, self._exec_env.lrms.node_list))
 
         # Start input staging worker
+        profile_event ('IS Worker create')
         input_staging_worker = InputStagingWorker(
             logger          = self._log,
             staging_queue   = self._input_staging_queue,
@@ -3132,6 +3180,7 @@ class Agent(threading.Thread):
         self._input_staging_worker = input_staging_worker
 
         # Start output staging worker
+        profile_event ('OS Worker create')
         output_staging_worker = OutputStagingWorker(
             logger          = self._log,
             staging_queue   = self._output_staging_queue,
@@ -3144,11 +3193,15 @@ class Agent(threading.Thread):
         self._log.info("Started up %s." % output_staging_worker)
         self._output_staging_worker = output_staging_worker
 
+        profile_event ('Agent init done')
+
     # --------------------------------------------------------------------------
     #
     def stop(self):
         """Terminate the agent main loop.
         """
+        profile_event ('Agent stop()')
+
         # First, we need to shut down all the workers
         self._exec_worker.terminate()
 
@@ -3164,9 +3217,11 @@ class Agent(threading.Thread):
     def run(self):
         """Starts the thread when Thread.start() is called.
         """
+        profile_event ('Agent run()')
+
         # first order of business: set the start time and state of the pilot
         self._log.info("Agent %s starting ..." % self._pilot_id)
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
         ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : ACTIVE,
@@ -3176,12 +3231,15 @@ class Agent(threading.Thread):
                       "cores_per_node" : self._exec_env.lrms.cores_per_node,
                       "started"        : ts,
                       "capability"     : 0},
-             "$push": {"statehistory": {"state": ACTIVE, "timestamp": ts}}
+             "$push": {"statehistory": {"state"    : ACTIVE, 
+                                        "timestamp": ts}}
             })
         # TODO: Check for return value, update should be true!
         self._log.info("Database updated! %s" % ret)
 
         self._starttime = time.time()
+
+        profile_event ('Agent start loop')
 
         while True:
 
@@ -3230,6 +3288,8 @@ class Agent(threading.Thread):
 
                     for command in commands:
 
+                        profile_event ('Agent get command', [command[COMMAND_TYPE], command[COMMAND_ARG]])
+
                         idle = False
 
                         if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
@@ -3250,12 +3310,14 @@ class Agent(threading.Thread):
 
                     # Check if there are compute units waiting for execution,
                     # and log that we pulled it.
-                    ts = datetime.datetime.utcnow()
                     cu_cursor = self._cu.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : PENDING_EXECUTION},
                         update={"$set" : {"state": SCHEDULING},
-                                "$push": {"statehistory": {"state": SCHEDULING, "timestamp": ts}}}
+                                "$push": {"statehistory": {
+                                    "state": SCHEDULING, 
+                                    "timestamp": timestamp()}}
+                               }
                     )
 
                     # There are new compute units in the cu_queue on the
@@ -3267,11 +3329,15 @@ class Agent(threading.Thread):
                         if not isinstance(cu_cursor, list):
                             cu_cursor = [cu_cursor]
 
+                        profile_event ('Agent get units', len(cu_cursor))
+
                         for cu in cu_cursor:
+                            
                             # Create new task objects and put them into the 
                             # task queue
-                            w_uid = str(cu["_id"])
-                            self._log.info("Found new tasks in pilot queue: %s" % w_uid)
+                            cu_uid = str(cu["_id"])
+                            profile_event ('Agent get unit', cu_uid)
+                            self._log.info("Found new tasks in pilot queue: %s" % cu_uid)
 
                             task_dir_name = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
                             stdout = cu["description"].get ('stdout')
@@ -3282,8 +3348,9 @@ class Agent(threading.Thread):
                             if  stderr : stderr_file = task_dir_name+'/'+stderr
                             else       : stderr_file = task_dir_name+'/STDERR'
 
+                            profile_event ('Task create', cu_uid)
                             task = Task(
-                                uid         = w_uid,
+                                uid         = cu_uid,
                                 executable  = cu["description"]["executable"],
                                 arguments   = cu["description"]["arguments"],
                                 environment = cu["description"]["environment"],
@@ -3299,12 +3366,12 @@ class Agent(threading.Thread):
                                 )
 
                             task.state = SCHEDULING
+                            profile_event ('Task queued', cu_uid)
                             self._task_queue.put(task)
 
                     #
                     # Check if there are compute units waiting for input staging
                     #
-                    ts = datetime.datetime.utcnow()
                     cu_cursor = self._cu.find_and_modify(
                         query={'pilot' : self._pilot_id,
                                'Agent_Input_Status': PENDING},
@@ -3314,7 +3381,7 @@ class Agent(threading.Thread):
                                           'state': STAGING_INPUT},
                                 '$push': {'statehistory': {
                                               'state'    : STAGING_INPUT, 
-                                              'timestamp': ts}}
+                                              'timestamp': timestamp()}}
                                }
                     )
 
@@ -3324,17 +3391,21 @@ class Agent(threading.Thread):
 
                         if not isinstance(cu_cursor, list):
                             cu_cursor = [cu_cursor]
+                            
+                        profile_event ('Agent input_staging', len(cu_cursor))
 
                         for cu in cu_cursor:
+                            cu_uid = str(cu['_id'])
                             for directive in cu['Agent_Input_Directives']:
                                 input_staging = {
                                     'directive': directive,
                                     'sandbox': os.path.join(self._workdir,
-                                                            'unit-%s' % str(cu['_id'])),
+                                                            'unit-%s' % cu_uid),
                                     'staging_area': os.path.join(self._workdir, 'staging_area'),
-                                    'cu_id': str(cu['_id'])
+                                    'cu_id': cu_uid
                                 }
 
+                                profile_event ('Agent input_staging queue', [cu_uid, directive])
                                 # Put the input staging directives in the queue
                                 self._input_staging_queue.put(input_staging)
 
@@ -3605,6 +3676,8 @@ def parse_commandline():
 #
 if __name__ == "__main__":
 
+    profile_event ('start')
+
     # parse command line options
     options = parse_commandline()
 
@@ -3620,24 +3693,6 @@ if __name__ == "__main__":
 
     logger.info("Using SAGA version %s" % saga.version)
 
-    # --------------------------------------------------------------------------
-    # Establish database connection
-    try:
-        host, port = options.mongodb_url.split(':', 1)
-        mongo_client = pymongo.MongoClient(options.mongodb_url)
-        mongo_db     = mongo_client[options.database_name]
-
-        if  len (options.mongodb_auth) >= 3 :
-            user, pwd = options.mongodb_auth.split (':', 1)
-            mongo_db.authenticate (user, pwd)
-
-        mongo_p  = mongo_db["%s.p"  % options.session_id]
-        mongo_cu = mongo_db["%s.cu" % options.session_id]  # AM: never used
-        mongo_um = mongo_db["%s.um" % options.session_id]  # AM: never used
-
-    except Exception, ex:
-        logger.error("Couldn't establish database connection: %s" % str(ex))
-        sys.exit(1)
 
     # --------------------------------------------------------------------------
     # Some signal handling magic
@@ -3655,9 +3710,31 @@ if __name__ == "__main__":
         sys.exit (1)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
+
+    # --------------------------------------------------------------------------
+    # Establish database connection
+    try:
+        profile_event ('db setup')
+        host, port = options.mongodb_url.split(':', 1)
+        mongo_client = pymongo.MongoClient(options.mongodb_url)
+        mongo_db     = mongo_client[options.database_name]
+
+        if  len (options.mongodb_auth) >= 3 :
+            user, pwd = options.mongodb_auth.split (':', 1)
+            mongo_db.authenticate (user, pwd)
+
+        mongo_p  = mongo_db["%s.p"  % options.session_id]
+        mongo_cu = mongo_db["%s.cu" % options.session_id]  # AM: never used
+        mongo_um = mongo_db["%s.um" % options.session_id]  # AM: never used
+
+    except Exception, ex:
+        logger.error("Couldn't establish database connection: %s" % str(ex))
+        sys.exit(1)
+
     # --------------------------------------------------------------------------
     # Discover environment, nodes, cores, mpi, etc.
     try:
+        profile_event ('exec env setup')
         exec_env = ExecutionEnvironment(
             logger=logger,
             lrms_name=options.lrms,
@@ -3676,6 +3753,7 @@ if __name__ == "__main__":
     # Launch the agent thread
     agent = None
     try:
+        profile_event ('Agent create')
         agent = Agent(logger=logger,
                       exec_env=exec_env,
                       runtime=options.runtime,
@@ -3704,3 +3782,7 @@ if __name__ == "__main__":
         logger.error("Caught keyboard interrupt. EXITING")
         if  agent :
             agent.stop()
+
+    finally :
+        profile_event ('stop', 'finally')
+

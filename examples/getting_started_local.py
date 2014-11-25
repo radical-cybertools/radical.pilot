@@ -87,7 +87,6 @@ if __name__ == "__main__":
     pdesc.runtime  = 5 # minutes
     pdesc.cores    = 1
     pdesc.cleanup  = True
-    pdesc.sandbox  = "/tmp/tmp_sandbox/test/test/"
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)

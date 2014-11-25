@@ -30,6 +30,38 @@ TASK_LAUNCH_METHOD=
 VERSION=
 SANDBOX=`pwd`
 
+# --------------------------------------------------------------------
+#
+# it is suprisingly difficult to get seconds since epoch in POSIX -- 
+# 'date +%s' is a GNU extension...  Anyway, awk to the rescue! 
+#
+timestamp () {
+  TIMESTAMP=`\awk 'BEGIN{srand(); print srand()}'`
+}
+
+
+if ! test -z "$RADICAL_PILOT_PROFILE"
+then
+    timestamp
+    TIME_ZERO=$TIMESTAMP
+    export TIME_ZERO
+fi
+
+# -----------------------------------------------------------------------------
+#
+profile_event()
+{
+    if ! test -z "$RADICAL_PILOT_PROFILE"
+    then
+        timestamp
+        NOW=$((TIMESTAMP-TIME_ZERO))
+        printf "%15.6f : %-25s : \n" "$NOW" "$*" >> AGENT.prof
+    fi
+}
+
+profile_event 'bootstrap start'
+
+
 # -----------------------------------------------------------------------------
 # contains(string, substring)
 #
@@ -112,6 +144,8 @@ EOF
 #
 installvenv()
 {
+    profile_event 'installenv start'
+
     # first argument is the virtenv target
     VIRTENV=$1
 
@@ -230,6 +264,9 @@ installvenv()
             echo "Easy install failed too, couldn't install pymongo! Oh well..."
         fi
     fi
+
+
+    profile_event 'installenv done'
 }
 
 # -----------------------------------------------------------------------------
@@ -409,6 +446,8 @@ fi
 # with the outside world directly, we will setup a tunnel.
 if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
 
+    profile_event 'tunnel setup start'
+
     echo ""
     echo "################################################################################"
     echo "## Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
@@ -431,6 +470,9 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
 
     # Overwrite DBURL
     DBURL=$BIND_ADDRESS:$DBPORT
+
+    profile_event 'tunnel setup done'
+
 fi
 
 # If PYTHON was not set as an argument, detect it here.
@@ -499,8 +541,13 @@ echo ""
 echo "################################################################################"
 echo "## Launching radical-pilot-agent for $CORES cores."
 echo "## CMDLINE: $AGENT_CMD"
+
+profile_event 'agent start'
+
 $AGENT_CMD
 AGENT_EXITCODE=$?
+
+profile_event 'cleanup start'
 
 # cleanup flags:
 #   l : pilot log files
@@ -517,5 +564,8 @@ contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
 # contains $CLEANUP 'v' && rm -r $VIRTENV/
 # contains $CLEANUP 'e' && rm -r $SANDBOX/
 
+profile_event 'cleanup done'
+
 # ... and exit
 exit $AGENT_EXITCODE
+

@@ -508,6 +508,12 @@ class PilotLauncherWorker(threading.Thread):
                         if compute_pilot['description']['memory'] is not None:
                             jd.total_physical_memory = compute_pilot['description']['memory']
 
+                        env_dict = dict()
+                        if 'RADICAL_PILOT_PROFILE' in os.environ :
+                            env_dict['RADICAL_PILOT_PROFILE'] = 'TRUE'
+
+                        jd.environment = env_dict
+
                         log_msg = "Submitting SAGA job with description: %s" % str(jd.as_dict())
                         log_messages.append({
                             "logentry": log_msg, 
@@ -578,7 +584,7 @@ class PilotLauncherWorker(threading.Thread):
                              "$push": {"log": {"$each": log_messages}}
                             }
                         )
-                        logger.error(log_messages)
+                        logger.exception(log_messages)
 
         except SystemExit as e :
             logger.exception("pilot launcher thread caught system exit -- forcing application shutdown")
