@@ -3751,10 +3751,10 @@ def parse_commandline():
 #
 if __name__ == "__main__":
 
-    prof ('start')
-
     # parse command line options
     options = parse_commandline()
+
+    prof ('start', tag='bootstrapping', uid=options.pilot_id)
 
     # configure the agent logger
     logger = logging.getLogger('radical.pilot.agent')
