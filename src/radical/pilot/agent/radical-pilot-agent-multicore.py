@@ -183,11 +183,16 @@ else :
 
 # ------------------------------------------------------------------------------
 #
-profile_tags = dict ()
+profile_tags  = dict ()
+profile_freqs = dict ()
+
 def prof (etype, uid="", msg="", tag=None) :
 
     # whenever a tag changes (to a non-None value), the time since the last tag
     # change is added
+    #
+    # times between the same tags (but different uids) are recorded, too, and
+    # a frequency is derived (tagged events / second)
 
     if not profile_agent :
         return
@@ -203,7 +208,7 @@ def prof (etype, uid="", msg="", tag=None) :
         if not uid in profile_tags :
             profile_tags[uid] = { 'tag'  : "",
                                   'time' : 0.0 }
-        
+
         old_tag = profile_tags[uid]['tag']
 
         if tag != old_tag :
@@ -216,6 +221,21 @@ def prof (etype, uid="", msg="", tag=None) :
             profile_handle.write ("> %12.4f : %-20s : %12.4f : %-15s : %-24s : %-40s : %s\n" \
                                % (tagged_time, tag, now, tid, uid, etype, msg))
             logged = True
+
+
+            if not tag in profile_freqs :
+                profile_freqs[tag] = {'last'  : now, 
+                                      'diffs' : list()}
+            else :
+                diff = now - profile_freqs[tag]['last']
+                profile_freqs[tag]['diffs'].append (diff)
+                profile_freqs[tag]['last' ] = now
+
+                freq = sum(profile_freqs[tag]['diffs']) / len (profile_freqs[tag]['diffs'])
+
+                profile_handle.write ("> %12s : %-20.4f : %12s : %-15s : %-24s : %-40s : %s\n" \
+                                   % ('frequency', freq, '', '', '', '', ''))
+
 
 
     if not logged :
