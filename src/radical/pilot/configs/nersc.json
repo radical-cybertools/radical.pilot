@@ -2,7 +2,7 @@
 {
     "hopper": {
         "description"                 : "The Nersc Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)", 
-        "notes"                       : "In a fresh virtualenv, run 'easy_install pip=1.2.1' to avoid ssl errors.  Also, use the devel version of RP.",
+        "notes"                       : "In a fresh virtualenv, run 'easy_install pip=1.2.1' to avoid ssl errors.",
         "schemas"                     : ["ssh"],
         "mandatory_args"              : [],
         "ssh"                         :

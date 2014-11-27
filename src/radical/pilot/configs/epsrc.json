@@ -1,19 +1,13 @@
-
 {
     "archer": {
         "description"                 : "The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh"],
+        "schemas"                     : ["ssh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
             "job_manager_endpoint"    : "pbs+ssh://login.archer.ac.uk/",
             "filesystem_endpoint"     : "sftp://login.archer.ac.uk/"
-        },
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "pbs+gsissh://login.archer.ac.uk/",
-            "filesystem_endpoint"     : "gsisftp://login.archer.ac.uk/"
         },
         "default_queue"               : "standard",
         "lrms"                        : "PBSPRO",
@@ -21,7 +15,7 @@
         "mpi_launch_method"           : "APRUN",
         "forward_tunnel_endpoint"     : "10.60.0.52",
         "global_virtenv"              : "/work/e290/shared/shared_pilot_ve_20140703",
-        "pre_bootstrap"               : ["module load python"],
+        "pre_bootstrap"               : ["module unload bolt", "module load python"],
         "default_remote_workdir"      : "/work/`id -gn`/`id -gn`/$USER",
         "valid_roots"                 : ["/work"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",

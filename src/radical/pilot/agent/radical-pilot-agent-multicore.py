@@ -145,7 +145,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : msg},
+        {"$push"   : {"log": {"$each": msg}},
          "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
          "$set"    : {"state"       : FAILED,
                       "capability"  : 0,
@@ -164,7 +164,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : msg},
+        {"$push"   : {"log": {"$each": msg}},
          "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
          "$set"    : {"state"       : CANCELED,
                       "capability"  : 0,
@@ -181,7 +181,7 @@ def pilot_DONE(mongo_p, pilot_uid):
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : msg},
+        {"$push"   : {"log": {"$each": msg}},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
          "$set"    : {"state"       : DONE,
                       "capability"  : 0,
