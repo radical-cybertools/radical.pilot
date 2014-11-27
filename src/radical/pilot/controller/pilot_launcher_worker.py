@@ -613,7 +613,7 @@ class PilotLauncherWorker(threading.Thread):
                             {"$set" : {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                             "$pushAll": {"log": log_messages}}
+                             "$pushAll": {"log": log_messages}
                             }
                         )
 
