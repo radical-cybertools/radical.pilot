@@ -75,6 +75,8 @@ class PilotLauncherWorker(threading.Thread):
     def _get_pilot_logs (self, pilot_col, pilot_id) :
 
         out, err, log = ["", "", ""]
+        return out, err, log
+
         # attempt to get stdout/stderr/log.  We only expect those if pilot was
         # attemptint launch at some point
         launched = False
