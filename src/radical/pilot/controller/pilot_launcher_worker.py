@@ -613,7 +613,7 @@ class PilotLauncherWorker(threading.Thread):
                             {"$set" : {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                             "$push": {"log": {"$each": log_messages}}
+                             "$pushAll": {"log": log_messages}}
                             }
                         )
 
@@ -626,8 +626,7 @@ class PilotLauncherWorker(threading.Thread):
                                 {"_id"  : ObjectId(pilot_id)},
                                 {"$set" : {"saga_job_id": saga_job_id},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                                 "$push": {"log": {"$each": log_messages}}
-                                }
+                                 "$pushAll": {"log": log_messages}}
                             )
 
                     except Exception, ex:
@@ -654,8 +653,7 @@ class PilotLauncherWorker(threading.Thread):
                                 "stderr"  : err,
                                 "logfile" : log},
                              "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                             "$push": {"log": {"$each": log_messages}}
-                            }
+                             "$pushAll": {"log": log_messages}}
                         )
                         logger.exception (log_messages)
 
