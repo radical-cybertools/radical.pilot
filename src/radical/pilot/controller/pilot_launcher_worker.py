@@ -594,7 +594,7 @@ class PilotLauncherWorker(threading.Thread):
                         saga_job_id = pilotjob.id
                         log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
 
-                        self._shared_worker_data['job_ids'][compute_pilot_id] = [saga_job_id, js_url]
+                        self._shared_worker_data['job_ids'][pilot_id] = [saga_job_id, js_url]
 
                         log_messages.append({
                             "logentry": log_msg, 
@@ -656,7 +656,7 @@ class PilotLauncherWorker(threading.Thread):
                              "$push": {"log": {"$each": log_messages}}
                             }
                         )
-                        logger.error(log_messages)
+                        logger.exception (log_messages)
 
         except SystemExit as e :
             logger.exception("pilot launcher thread caught system exit -- forcing application shutdown")
