@@ -136,20 +136,16 @@ class UnitManager(object):
         """Shuts down the UnitManager and its background workers in a 
         coordinated fashion.
         """
-        logger.error("umgr    %s closing" % (str(self._uid)))
-
         if not self._uid:
-            logger.error("UnitManager object already closed.")
+            logger.warning("UnitManager object already closed.")
             return
 
         if self._worker is not None:
-            logger.error("umgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
             self._worker.stop()
-            logger.error("umgr    %s stoped   worker %s" % (str(self._uid), self._worker.name))
             # Remove worker from registry
             self._session._process_registry.remove(self._uid)
 
-        logger.error("umgr    %s closed" % (str(self._uid)))
+        logger.info("Closed UnitManager %s." % str(self._uid))
         self._uid = None
 
     #--------------------------------------------------------------------------
@@ -375,7 +371,6 @@ class UnitManager(object):
             for pilot in self._pilots[:] :
                 if  pilot_id == pilot.uid :
                     self._pilots.remove (pilot)
-
 
     # -------------------------------------------------------------------------
     #
