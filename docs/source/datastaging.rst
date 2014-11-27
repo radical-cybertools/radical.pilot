@@ -45,7 +45,7 @@ The following code snippet shows this in action:
     cud = radical.pilot.ComputeUnitDescription()
     cud.executable = "/usr/bin/sort"
     cud.arguments = ["-o", OUTPUT_FILE_NAME, INPUT_FILE_NAME]
-    cud.input_staging = INPUT_FILE_NAME
+    cud.input_staging  = INPUT_FILE_NAME
     cud.output_staging = OUTPUT_FILE_NAME
 
 Here the `staging directives` ``INPUT_FILE_NAME`` and ``OUTPUT_FILE_NAME``
@@ -131,6 +131,9 @@ default value ``0``:
         'priority': 0
     }
 
+
+.. _staging-area:
+
 Staging Area
 ------------
 
@@ -189,9 +192,12 @@ Examples
 .. note:: All of the following examples are configured to run on localhost,
           but they can be easily changed to run on a remote resource by
           modifying the resource specification in the Compute Pilot Description.
+          Also note the comments in :ref:`staging-area` when changing the
+          examples to a remote target.
 
 These examples require an installation of RADICAL-Pilot of course.
 There are download links for each of the examples.
+
 
 .. _example-string:
 

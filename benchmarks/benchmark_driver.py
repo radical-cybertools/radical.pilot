@@ -161,7 +161,6 @@ try:
     time.sleep (3)
   
     sid = session.uid
-    # session.close(delete=False)
 
     print "session id: %s" % sid
 
@@ -175,5 +174,6 @@ try:
 except radical.pilot.PilotException, ex:
     # Catch all exceptions and exit with and error.
     print "Error during execution: %s" % ex
+    session.close(cleanup=True)
     sys.exit(1)
 
