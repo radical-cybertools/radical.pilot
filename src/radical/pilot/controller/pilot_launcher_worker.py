@@ -613,7 +613,7 @@ class PilotLauncherWorker(threading.Thread):
                             {"$set" : {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                             "$push": {"log": {"each": log_messages}}
+                             "$push": {"log": {"$each": log_messages}}
                             }
                         )
 
@@ -621,6 +621,7 @@ class PilotLauncherWorker(threading.Thread):
                             # could not update, probably because the agent is
                             # running already.  Just update state history and
                             # jobid then
+                            # FIXME: make sure of the agent state!
                             ret = pilot_col.update(
                                 {"_id"  : ObjectId(pilot_id)},
                                 {"$set" : {"saga_job_id": saga_job_id},

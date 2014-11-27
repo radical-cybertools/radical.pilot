@@ -110,7 +110,7 @@ class BackfillingScheduler(Scheduler):
             
                 uid = unit.uid
 
-                logger.error ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
+                logger.info ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
 
                 found_unit = False
