@@ -16,7 +16,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "forward_tunnel_endpoint"     : "10.60.0.52",
         "global_virtenv"              : "/work/e290/shared/shared_pilot_ve_20140703",
-        "pre_bootstrap"               : ["module unload bolt", "module load python"],
+        "pre_bootstrap"               : ["module load python"],
         "default_remote_workdir"      : "/work/`id -gn`/`id -gn`/$USER",
         "valid_roots"                 : ["/work"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",

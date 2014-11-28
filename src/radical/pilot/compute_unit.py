@@ -71,6 +71,17 @@ class ComputeUnit(object):
         if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
             logger.debug("GCDEBUG __del__(): ComputeUnit [object id: %s]." % id(self))
 
+
+    #--------------------------------------------------------------------------
+    #
+    def __repr__(self):
+
+        return "%s (%-15s: %s %s) (%s)" % (self.uid, self.state,
+                                           self.description.executable, 
+                                           " ".join (self.description.arguments), 
+                                           id(self))
+
+
     # -------------------------------------------------------------------------
     #
     @staticmethod
@@ -264,6 +275,7 @@ class ComputeUnit(object):
             return None
 
         # try to get state from worker.  If that fails, return local state.
+        # NOTE AM: why?  Isn't that an error which should not occur?
         try :
             cu_json = self._worker.get_compute_unit_data(self.uid)
             return cu_json['state']

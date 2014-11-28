@@ -23,11 +23,11 @@ def pilot_state_cb (pilot, state) :
 
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state, pilot) :
+def unit_state_cb (unit, state) :
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s: %s' (on %s:%s) state: %s." \
-        % (unit.name, unit.uid, unit.pilot_id, pilot.resource, state)
+    print "[Callback]: ComputeUnit  '%s: %s' (on %s) state: %s." \
+        % (unit.name, unit.uid, unit.pilot_id, state)
 
     if  state == rp.FAILED :
         print "stderr: %s" % unit.stderr
@@ -100,7 +100,12 @@ if __name__ == "__main__":
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
     # change their state.
-    umgr.register_callback(unit_state_cb, rp.UNIT_STATE, callback_data=pilot)
+    umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
+
+    # Register also a callback which tells us when all units have been
+    # assigned to pilots
+    umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
+
 
     # Add the previously created ComputePilot to the UnitManager.
     umgr.add_pilots(pilot)
@@ -117,7 +122,7 @@ if __name__ == "__main__":
     #    /bin/cat $INPUT1 $INPUT2
     #
     cuds = []
-    for unit_count in range(0, 16):
+    for unit_count in range(0, 20):
         cud = rp.ComputeUnitDescription()
         cud.name          = "unit_%03d" % unit_count
         cud.executable    = "/bin/sleep"
@@ -130,10 +135,6 @@ if __name__ == "__main__":
     # PilotManager. This will trigger the selected scheduler to start
     # assigning ComputeUnits to the ComputePilots.
     units = umgr.submit_units(cuds)
-
-    # Register also a callback which tells us when all units have been
-    # assigned to pilots
-    umgr.register_callback(wait_queue_size_cb,   rp.WAIT_QUEUE_SIZE)
 
     # Wait for all compute units to reach a terminal state (DONE or FAILED).
     umgr.wait_units()
@@ -149,7 +150,7 @@ if __name__ == "__main__":
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
     # Close automatically cancels the pilot(s).
-    session.close ()
+    session.close (terminate=True)
 
     # delete the test data files
     os.system ('rm file1.dat')

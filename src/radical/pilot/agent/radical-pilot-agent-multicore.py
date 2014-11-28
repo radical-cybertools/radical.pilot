@@ -121,6 +121,7 @@ MAX_IO_LOGLENGTH  = 64*1024
 NEW                         = 'New'
 PENDING                     = 'Pending'
 DONE                        = 'Done'
+CANCELING                   = 'Canceling'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
 
@@ -147,7 +148,6 @@ STAGING_OUTPUT              = 'StagingOutput'
 #
 # time stamp for profiling etc.
 #
-
 def timestamp () :
     # human readable absolute UTC timestamp for log entries in database
     return datetime.datetime.utcnow ()
@@ -246,7 +246,7 @@ def prof (etype, uid="", msg="", tag=None) :
     profile_handle.flush ()
 
 
-# ------------------------------------------------------------------------------
+#---------------------------------------------------------------------------
 #
 def get_rusage () :
 
@@ -270,16 +270,30 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.error(message)      
-    ts = timestamp ()
 
-    msg = [{"logentry": message,      "timestamp": ts}, 
+    ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
+
+    msg = [{"logentry": message,      "timestamp": ts},
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push"   : {"log": {"$each": msg}},
-         "$push"   : {"statehistory": {"state": FAILED, 
-                                       "timestamp": ts}},
+        {"$pushAll": {"log"         : msg},
+         "$push"   : {"statehistory": {"state"     : FAILED, 
+                                       "timestamp" : ts}},
          "$set"    : {"state"       : FAILED,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -291,16 +305,30 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.warning(message)
-    ts = timestamp ()
 
-    msg = [{"logentry": message,      "timestamp": ts}, 
+    ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
+
+    msg = [{"logentry": message,      "timestamp": ts},
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push"   : {"log": {"$each": msg}},
-         "$push"   : {"statehistory": {"state": CANCELED, 
-                                       "timestamp": ts}},
+        {"$pushAll": {"log"         : msg},
+         "$push"   : {"statehistory": {"state"     : CANCELED, 
+                                       "timestamp" : ts}},
          "$set"    : {"state"       : CANCELED,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -311,15 +339,30 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
+
     ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
+
     msg = [{"logentry": "pilot done", "timestamp": ts}, 
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$push"   : {"log": {"$each": msg}},
-         "$push"   : {"statehistory": {"state": DONE, 
+        {"$pushAll": {"log"         : msg},
+         "$push"   : {"statehistory": {"state"    : DONE, 
                                        "timestamp": ts}},
          "$set"    : {"state"       : DONE,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -391,7 +434,7 @@ class Scheduler(object):
         self.name = name
         self.lrms = lrms
         self.log = logger
-        
+
         self.configure()
 
     # --------------------------------------------------------------------------
@@ -470,7 +513,6 @@ class SchedulerContinuous(Scheduler):
                 # non-exclusive host reservations?
                 'cores': [FREE for _ in range(0, self.lrms.cores_per_node)]
             })
-        self._cores_per_node = self.lrms.cores_per_node
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
@@ -504,7 +546,9 @@ class SchedulerContinuous(Scheduler):
         """Returns a multi-line string corresponding to slot status.
         """
 
+        print 'ss 1'
         if short:
+            print 'ss 2'
             slot_matrix = ""
             for slot in self._slots:
                 slot_matrix += "|"
@@ -514,10 +558,12 @@ class SchedulerContinuous(Scheduler):
                     else:
                         slot_matrix += "+"
             slot_matrix += "|"
+            print 'ss 3'
             return {'timestamp' : timestamp(), 
                     'slotstate' : slot_matrix}
 
         else :
+            print 'ss 4'
             slot_matrix = ""
             for slot in self._slots:
                 slot_vector  = ""
@@ -527,6 +573,7 @@ class SchedulerContinuous(Scheduler):
                     else:
                         slot_vector += " X "
                 slot_matrix += "%-24s: %s\n" % (slot['node'], slot_vector)
+            print 'ss 5'
             return slot_matrix
 
 
@@ -635,7 +682,7 @@ class SchedulerContinuous(Scheduler):
     def _find_slots_multi_cont(self, cores_requested):
 
         # Convenience aliases
-        cores_per_node = self._cores_per_node
+        cores_per_node = self.lrms.cores_per_node
         all_slots = self._slots
 
         # Glue all slot core lists together
@@ -736,6 +783,16 @@ class SchedulerTorus(Scheduler):
 
     # --------------------------------------------------------------------------
     #
+    # Offsets into block structure
+    #
+    TORUS_BLOCK_INDEX  = 0
+    TORUS_BLOCK_COOR   = 1
+    TORUS_BLOCK_NAME   = 2
+    TORUS_BLOCK_STATUS = 3
+    #
+    ##########################################################################
+
+    # --------------------------------------------------------------------------
     def __init__(self, name, lrms, logger):
         Scheduler.__init__(self, name, lrms, logger)
 
@@ -752,6 +809,7 @@ class SchedulerTorus(Scheduler):
         self._slot_history     = [self.slot_status(short=True)]
         self._slot_history_old = None
 
+        # TODO: get rid of field below
         self._slots = 'bogus'
 
     # --------------------------------------------------------------------------
@@ -762,9 +820,9 @@ class SchedulerTorus(Scheduler):
         # TODO: Both short and long currently only deal with full-node status
         if short:
             slot_matrix = ""
-            for slot in self.lrms.loadl_block:
+            for slot in self.lrms.torus_block:
                 slot_matrix += "|"
-                if slot[self.lrms.BGQ_BLOCK_STATUS] == FREE:
+                if slot[self.TORUS_BLOCK_STATUS] == FREE:
                     slot_matrix += "-" * self.lrms.cores_per_node
                 else:
                     slot_matrix += "+" * self.lrms.cores_per_node
@@ -773,25 +831,124 @@ class SchedulerTorus(Scheduler):
                     'slotstate': slot_matrix}
         else:
             slot_matrix = ""
-            for slot in self.lrms.loadl_block:
+            for slot in self.lrms.torus_block:
                 slot_vector = ""
-                if slot[self.lrms.BGQ_BLOCK_STATUS] == FREE:
+                if slot[self.TORUS_BLOCK_STATUS] == FREE:
                     slot_vector = " - " * self.lrms.cores_per_node
                 else:
                     slot_vector = " X " * self.lrms.cores_per_node
-                slot_matrix += "%s: %s\n" % (slot[self.lrms.BGQ_BLOCK_NAME].ljust(24), slot_vector)
+                slot_matrix += "%s: %s\n" % (slot[self.TORUS_BLOCK_NAME].ljust(24), slot_vector)
             return slot_matrix
 
     # --------------------------------------------------------------------------
     #
+    # Allocate a number of cores
+    #
+    # Currently only implements full-node allocation, so core count must
+    # be a multiple of cores_per_node.
+    #
     def allocate_slot(self, cores_requested):
-        return self.lrms.bgq_alloc_cores(
-            self.lrms.loadl_block, self.lrms.shape_table, cores_requested)
+
+        block = self.lrms.torus_block
+        sub_block_shape_table = self.lrms.shape_table
+
+        self.log.info("Trying to allocate %d core(s)." % cores_requested)
+
+        if cores_requested % self.lrms.cores_per_node:
+            num_cores = int(math.ceil(cores_requested / float(self.lrms.cores_per_node))) \
+                        * self.lrms.cores_per_node
+            self.log.error('Core not a multiple of %d, increasing request to %d!' %
+                           (self.lrms.cores_per_node, num_cores))
+
+        num_nodes = cores_requested / self.lrms.cores_per_node
+
+        offset = self._alloc_sub_block(block, num_nodes)
+
+        if offset is None:
+            self.log.warning('No allocation made.')
+            return
+
+        # TODO: return something else than corner location? Corner index?
+        corner = block[offset][self.TORUS_BLOCK_COOR]
+        sub_block_shape = sub_block_shape_table[num_nodes]
+
+        end = self.get_last_node(corner, sub_block_shape)
+        self.log.debug('Allocating sub-block of %d node(s) with dimensions %s'
+                       ' at offset %d with corner %s and end %s.' %
+                       (num_nodes, self.lrms.shape2str(sub_block_shape), offset,
+                        self.lrms.loc2str(corner), self.lrms.loc2str(end)))
+
+        return corner, sub_block_shape
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Allocate a sub-block within a block
+    # Currently only works with offset that are exactly the sub-block size
+    #
+    def _alloc_sub_block(self, block, num_nodes):
+
+        offset = 0
+        # Iterate through all nodes with offset a multiple of the sub-block size
+        while True:
+
+            # Verify the assumption (needs to be an assert?)
+            if offset % num_nodes != 0:
+                msg = 'Sub-block needs to start at correct offset!'
+                self.log.exception(msg)
+                raise Exception(msg)
+                # TODO: If we want to workaround this, the coordinates need to overflow
+
+            not_free = False
+            # Check if all nodes from offset till offset+size are FREE
+            for peek in range(num_nodes):
+                try:
+                    if block[offset+peek][self.TORUS_BLOCK_STATUS] == BUSY:
+                        # Once we find the first BUSY node we can discard this attempt
+                        not_free = True
+                        break
+                except IndexError:
+                    self.log.error('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.' %(
+                        num_nodes, offset, peek))
+
+            if not_free == True:
+                # No success at this offset
+                self.log.info("No free nodes found at this offset: %d." % offset)
+
+                # If we weren't the last attempt, then increase the offset and iterate again.
+                if offset + num_nodes < self._block2num_nodes(block):
+                    offset += num_nodes
+                    continue
+                else:
+                    return
+
+            else:
+                # At this stage we have found a free spot!
+
+                self.log.info("Free nodes found at this offset: %d." % offset)
+
+                # Then mark the nodes busy
+                for peek in range(num_nodes):
+                    block[offset+peek][self.TORUS_BLOCK_STATUS] = BUSY
+
+                return offset
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the number of nodes in a block
+    #
+    def _block2num_nodes(self, block):
+        return len(block)
+    #
+    ##########################################################################
 
     # --------------------------------------------------------------------------
     #
     def release_slot(self, (corner, shape)):
-        self.lrms.bgq_free_cores(self.lrms.loadl_block, corner, shape)
+        self._free_cores(self.lrms.torus_block, corner, shape)
 
         # something changed - write history!
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
@@ -802,6 +959,69 @@ class SchedulerTorus(Scheduler):
         else:
             # just replace the last entry with the current one.
             self._slot_history[-1] = self.slot_status(short=True)
+
+
+    ##########################################################################
+    #
+    # Free up an allocation
+    #
+    def _free_cores(self, block, corner, shape):
+
+        # Number of nodes to free
+        num_nodes = self._shape2num_nodes(shape)
+
+        # Location of where to start freeing
+        offset = self.corner2offset(block, corner)
+
+        self.log.info("Freeing %d nodes starting at %d." % (num_nodes, offset))
+
+        for peek in range(num_nodes):
+            assert block[offset+peek][self.TORUS_BLOCK_STATUS] == BUSY, \
+                'Block %d not Free!' % block[offset+peek]
+            block[offset+peek][self.TORUS_BLOCK_STATUS] = FREE
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Follow coordinates to get the last node
+    #
+    def get_last_node(self, origin, shape):
+        return {dim: origin[dim] + shape[dim] -1 for dim in self.lrms.torus_dimension_labels}
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the number of nodes for the given block shape
+    #
+    def _shape2num_nodes(self, shape):
+
+        nodes = 1
+        for dim in self.lrms.torus_dimension_labels:
+            nodes *= shape[dim]
+
+        return nodes
+    #
+    ##########################################################################
+
+    ##########################################################################
+    #
+    # Return the offset into the node list from a corner
+    #
+    # TODO: Can this be determined instead of searched?
+    #
+    def corner2offset(self, block, corner):
+        offset = 0
+
+        for e in block:
+            if corner == e[self.TORUS_BLOCK_COOR]:
+                return offset
+            offset += 1
+
+        return offset
+    #
+    ##########################################################################
 
 
 # ==============================================================================
@@ -1110,24 +1330,29 @@ class LaunchMethodRUNJOB(LaunchMethod):
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (corner, sub_block_shape)):
 
-        # TODO: use constant
         if task_numcores % self.scheduler.lrms.cores_per_node: 
             msg = "Num cores (%d) is not a multiple of %d!" % (
                 task_numcores, self.scheduler.lrms.cores_per_node)
             self.log.exception(msg)
+            raise Exception(msg)
 
         # Runjob it is!
         runjob_command = self.launch_command
 
+        # Set the number of tasks/ranks per node
+        # TODO: Currently hardcoded, this should be configurable,
+        #       but I don't see how, this would be a leaky abstraction.
+        runjob_command += ' --ranks-per-node %d' % min(self.scheduler.lrms.cores_per_node, task_numcores)
+
         # Run this subjob in the block communicated by LoadLeveler
         runjob_command += ' --block %s' % self.scheduler.lrms.loadl_bg_block
 
-        corner_offset = self.scheduler.lrms._bgq_corner2offset(self.scheduler.lrms.loadl_block, corner)
-        corner_node = self.scheduler.lrms.loadl_block[corner_offset][self.scheduler.lrms.BGQ_BLOCK_NAME]
+        corner_offset = self.scheduler.corner2offset(self.scheduler.lrms.torus_block, corner)
+        corner_node = self.scheduler.lrms.torus_block[corner_offset][self.scheduler.TORUS_BLOCK_NAME]
         runjob_command += ' --corner %s' % corner_node
 
         # convert the shape
-        runjob_command += ' --shape %s' % self.scheduler.lrms._bgq_shape2str(sub_block_shape)
+        runjob_command += ' --shape %s' % self.scheduler.lrms.shape2str(sub_block_shape)
 
         # And finally add the executable and the arguments
         # usage: runjob <runjob flags> --exe /bin/hostname --args "-f"
@@ -1447,23 +1672,33 @@ class TORQUELRMS(LRMS):
         if val:
             torque_cores_per_node = int(val)
         else:
-            msg = "$PBS_NUM_PPN or $PBS_PPN not set!"
+            msg = "$PBS_NUM_PPN is not set!"
             torque_cores_per_node = None
             self.log.warning(msg)
 
+        print "torque_cores_per_node : %s" % torque_cores_per_node
+        if torque_cores_per_node in [None, 1] :
+            # lets see if SAGA has been forthcoming with some information
+            self.log.warning("fall back to $SAGA_PPN : %s" % os.environ.get ('SAGA_PPN', None))
+            torque_cores_per_node = int(os.environ.get('SAGA_PPN', torque_cores_per_node))
+
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)
-        if torque_num_nodes and torque_cores_per_node and \
-            torque_nodes_length != torque_num_nodes * torque_cores_per_node:
-            msg = ("Number of entries in $PBS_NODEFILE (%s) does not match'"
-                   "' with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" %
-                  (torque_nodes_length, 
-                   torque_num_nodes,  
-                   torque_cores_per_node))
-            raise Exception(msg)
+        torque_node_list    = list(set(torque_nodes))
+
+        print "torque_cores_per_node : %s" % torque_cores_per_node
+        print "torque_nodes_length   : %s" % torque_nodes_length
+        print "torque_num_nodes      : %s" % torque_num_nodes
+        print "torque_node_list      : %s" % torque_node_list
+        print "torque_nodes          : %s" % torque_nodes
+
+      # if torque_num_nodes and torque_cores_per_node and \
+      #     torque_nodes_length < torque_num_nodes * torque_cores_per_node:
+      #     msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
+      #           (torque_nodes_length, torque_num_nodes,  torque_cores_per_node)
+      #     raise Exception(msg)
 
         # only unique node names
-        torque_node_list = list(set(torque_nodes))
         torque_node_list_length = len(torque_node_list)
         self.log.debug("Node list: %s(%d)" % (torque_node_list, torque_node_list_length))
 
@@ -1884,16 +2119,6 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    # Offsets into block structure
-    #
-    BGQ_BLOCK_INDEX  = 0
-    BGQ_BLOCK_COOR   = 1
-    BGQ_BLOCK_NAME   = 2
-    BGQ_BLOCK_STATUS = 3
-
-
-    # --------------------------------------------------------------------------
-    #
     # BG/Q Topology of Boards within a Midplane
     #
     BGQ_MIDPLANE_TOPO = {
@@ -1997,10 +2222,12 @@ class LoadLevelerLRMS(LRMS):
                 self.log.error(msg)
                 raise Exception(msg)
 
-            # Build nodes data structure
-            self.loadl_block = self._bgq_shapeandboards2block(
+            self.torus_dimension_labels = self.BGQ_DIMENSION_LABELS
+
+            # Build nodes data structure to be handled by Torus Scheduler
+            self.torus_block = self._bgq_shapeandboards2block(
                 loadl_bg_block_shape_str, loadl_bg_board_list_str)
-            self.loadl_node_list = [entry[self.BGQ_BLOCK_NAME] for entry in self.loadl_block]
+            self.loadl_node_list = [entry[SchedulerTorus.TORUS_BLOCK_NAME] for entry in self.torus_block]
 
             # Construct sub-block table
             self.shape_table = self._bgq_create_sub_block_shape_table(loadl_bg_block_shape_str)
@@ -2010,59 +2237,6 @@ class LoadLevelerLRMS(LRMS):
 
         self.node_list = self.loadl_node_list
         self.cores_per_node = loadl_cpus_per_node
-
-    # --------------------------------------------------------------------------
-    #
-    # Alloc a number of cores
-    #
-    def bgq_alloc_cores(self, block, sub_block_shape_table, num_cores):
-
-        self.log.info("Trying to allocate %d core(s)." % num_cores)
-
-        if num_cores % self.BGQ_CORES_PER_NODE:
-            num_cores = int(math.ceil(num_cores / float(self.BGQ_CORES_PER_NODE))) \
-                        * self.BGQ_CORES_PER_NODE
-            self.log.error('Core not a multiple of %d, increasing request to %d!' %
-                  (self.BGQ_CORES_PER_NODE, num_cores))
-
-        num_nodes = num_cores / self.BGQ_CORES_PER_NODE
-
-        offset = self._bgq_alloc_sub_block(block, num_nodes)
-
-        if offset is None:
-            self.log.warning('No allocation made.')
-            return
-
-        corner = block[offset][self.BGQ_BLOCK_COOR]
-        sub_block_shape = sub_block_shape_table[num_nodes]
-
-        self.log.debug('Allocating sub-block of %d node(s) with dimensions %s at offset %d with corner %s.' %
-              (num_nodes, self._bgq_shape2str(sub_block_shape), offset,
-               self._bgq_loc2str(corner)))
-        end = self._bgq_get_last_node(corner, sub_block_shape)
-        self.log.debug('End location: %s' % self._bgq_loc2str(end))
-
-        return corner, sub_block_shape
-
-
-    # --------------------------------------------------------------------------
-    #
-    # Free up an allocation
-    #
-    def bgq_free_cores(self, block, corner, shape):
-
-        # Number of nodes to free
-        num_nodes = self._bgq_shape2num_nodes(shape)
-
-        # Location of where to start freeing
-        offset = self._bgq_corner2offset(block, corner)
-
-        self.log.info("Freeing %d nodes starting at %d." % (num_nodes, offset))
-
-        for peek in range(num_nodes):
-            assert block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY, \
-                'Block %d not Free!' % block[offset+peek]
-            block[offset+peek][self.BGQ_BLOCK_STATUS] = FREE
 
 
     # --------------------------------------------------------------------------
@@ -2142,7 +2316,7 @@ class LoadLevelerLRMS(LRMS):
     # Convert location dict into a tuple string
     # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '(1,4,1,2,4)'
     #
-    def _bgq_loc2str(self, loc):
+    def loc2str(self, loc):
         return str(tuple(loc[dim] for dim in self.BGQ_DIMENSION_LABELS))
 
 
@@ -2152,7 +2326,7 @@ class LoadLevelerLRMS(LRMS):
     #
     # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '1x4x1x2x4'
     #
-    def _bgq_shape2str(self, shape):
+    def shape2str(self, shape):
 
         shape_str = ''
         for l in self.BGQ_DIMENSION_LABELS:
@@ -2252,106 +2426,6 @@ class LoadLevelerLRMS(LRMS):
         return table
 
 
-    # --------------------------------------------------------------------------
-    #
-    # Return the offset into the node list from a corner
-    #
-    # TODO: Can this be determined instead of searched?
-    #
-    def _bgq_corner2offset(self, block, corner):
-        offset = 0
-
-        for e in block:
-            if corner == e[self.BGQ_BLOCK_COOR]:
-                return offset
-            offset += 1
-
-        return offset
-
-
-    # --------------------------------------------------------------------------
-    #
-    # Follow coordinates to get the last node
-    #
-    def _bgq_get_last_node(self, origin, shape):
-        return {dim: origin[dim] + shape[dim] -1 for dim in self.BGQ_DIMENSION_LABELS}
-
-
-    # --------------------------------------------------------------------------
-    #
-    # Return the number of nodes in a block
-    #
-    def _bgq_block2num_nodes(self, block):
-        return len(block)
-
-
-    # --------------------------------------------------------------------------
-    #
-    # Allocate a sub-block within a block
-    # Currently only works with offset that are exactly the sub-block size
-    #
-    def _bgq_alloc_sub_block(self, block, num_nodes):
-
-        offset = 0
-        # Iterate through all nodes with offset a multiple of the sub-block size
-        while True:
-
-            # Verify the assumption (needs to be an assert?)
-            if offset % num_nodes != 0:
-                self.log.exception('Sub-block needs to start at correct offset!')
-                # TODO: If we want to workaround this, the coordinates need to 
-                #       overflow
-
-            not_free = False
-            # Check if all nodes from offset till offset+size are FREE
-            for peek in range(num_nodes):
-                try:
-                    if block[offset+peek][self.BGQ_BLOCK_STATUS] == BUSY:
-                        # Once we find first BUSY node we discard this attempt
-                        not_free = True
-                        break
-                except IndexError:
-                    self.log.error('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.' %(
-                        num_nodes, offset, peek))
-
-            if not_free == True:
-                # No success at this offset
-                self.log.info("No free nodes found at this offset: %d." % offset)
-
-                # If we weren't the last attempt, then increase the offset 
-                # and iterate again.
-                if offset + num_nodes < self._bgq_block2num_nodes(block):
-                    offset += num_nodes
-                    continue
-                else:
-                    return
-
-            else:
-                # At this stage we have found a free spot!
-
-                self.log.info("Free nodes found at this offset: %d." % offset)
-
-                # Then mark the nodes busy
-                for peek in range(num_nodes):
-                    block[offset+peek][self.BGQ_BLOCK_STATUS] = BUSY
-
-                return offset
-
-
-    # --------------------------------------------------------------------------
-    #
-    # Return the number of nodes for the given block shape
-    #
-    def _bgq_shape2num_nodes(self, shape):
-
-        nodes = 1
-        for dim in self.BGQ_DIMENSION_LABELS:
-            nodes *= shape[dim]
-
-        return nodes
-
-
-
 # ------------------------------------------------------------------------
 #
 class ForkLRMS(LRMS):
@@ -2435,17 +2509,16 @@ class ExecWorker(threading.Thread):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
+        self._log = logger
+
         prof ('ExecWorker init')
 
         threading.Thread.__init__(self)
         self._terminate = threading.Event()
 
         self.cu_environment = cu_environment
-
-        self._log = logger
-
-        self._pilot_id = pilot_id
-        self._benchmark = benchmark
+        self._pilot_id      = pilot_id
+        self._benchmark     = benchmark
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
@@ -2536,12 +2609,13 @@ class ExecWorker(threading.Thread):
         """Starts the thread when Thread.start() is called.
         """
         try:
+            # report initial slot status
+            # TODO: Where does this abstraction belong?
+            self._log.debug(self.exec_env.scheduler.slot_status())
+
             while not self._terminate.isSet () :
 
                 idle = True
-
-                # TODO: Where does this abstraction belong?
-                self._log.debug("Slot status:\n%s", self.exec_env.scheduler.slot_status())
 
                 # See if there are commands for the worker!
                 try:
@@ -2590,8 +2664,8 @@ class ExecWorker(threading.Thread):
                         # Call the scheduler for this task, and receive an 
                         # opaque handle that has meaning to the LRMS, Scheduler 
                         # and LaunchMethod.
-                        opaque_slot = self.exec_env.scheduler.allocate_slot(task.numcores)
-
+                        opaque_slot = self.exec_env.scheduler.allocate_slot(task.numcores) 
+                        
                         # Check if we got results
                         if opaque_slot is None:
                             # No resources available, put back in queue
@@ -2608,11 +2682,13 @@ class ExecWorker(threading.Thread):
                         # not completely correct (as this text is not produced
                         # by the unit), but it seems the most intuitive way to
                         # communicate that error to the application/user.
+                        task.stderr += "\nPilot cannot start compute unit:\n%s\n%s" \
+                                     % (str(e), traceback.format_exc())
                         task.state   = FAILED
                         task.stderr += "\nPilot cannot start compute unit: '%s'" % e
                         
-                        self._log.exception("Launching task failed: '%s'." % e)
-
+                        self._log.exception("Launching task failed: '%s'." % e) 
+                        
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if opaque_slot:
                             self.exec_env.scheduler.release_slot(opaque_slot)
@@ -2624,11 +2700,13 @@ class ExecWorker(threading.Thread):
 
                 # If nothing happened in this cycle, zzzzz for a bit.
                 if idle:
-                    self._log.debug("Sleep now for a jiffy ...")
+                  # self._log.debug("Sleep now for a jiffy ...")
                     time.sleep(0.1)
 
+
         except Exception, ex:
-            msg = ("Error in ExecWorker loop: %s", traceback.format_exc())
+            msg = "Error in ExecWorker loop"
+            self._log.exception (msg)
             pilot_FAILED(self._p, self._pilot_id, self._log, msg)
             return
 
@@ -2654,7 +2732,7 @@ class ExecWorker(threading.Thread):
         proc = _Process(
             task=task,
             all_slots=self.exec_env.scheduler._slots,
-            cores_per_node=self.exec_env.scheduler._cores_per_node,
+            cores_per_node=self.exec_env.lrms.cores_per_node,
             launcher=launcher,
             logger=self._log,
             cu_environment=self.cu_environment)
@@ -3337,8 +3415,8 @@ class Agent(threading.Thread):
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
                 if self._exec_worker.is_alive() is False:
-                    pilot_FAILED(self._p, self._pilot_id, self._log,
-                            "Execution worker %s died." % str(self._exec_worker))
+                    msg = 'Execution worker %s died' % str(self._exec_worker)
+                    pilot_FAILED(self._p, self._pilot_id, self._log, msg)
                     return
 
                 # Exit the main loop if terminate is set. 
@@ -3364,13 +3442,15 @@ class Agent(threading.Thread):
                     retdoc = self._p.find_and_modify(
                                 query={"_id":ObjectId(self._pilot_id)},
                                 update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
-                                fields=[COMMAND_FIELD]
+                                fields=[COMMAND_FIELD, 'state']
                     )
 
                     if retdoc:
-                        commands = retdoc['commands']
+                        commands = retdoc[COMMAND_FIELD]
+                        state    = retdoc['state']
                     else:
                         commands = []
+                        state    = CANCELING
 
                     for command in commands:
 
@@ -3378,7 +3458,8 @@ class Agent(threading.Thread):
 
                         idle = False
 
-                        if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+                        if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT or \
+                            state == CANCELING :
                             self._log.info("Received Cancel Pilot command.")
                             pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
                             return # terminate loop
@@ -3794,7 +3875,7 @@ if __name__ == "__main__":
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit (2)
     signal.signal(signal.SIGINT, sigint_handler)
 
     # --------------------------------------------------------------------------
@@ -3802,7 +3883,7 @@ if __name__ == "__main__":
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit (3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
 
@@ -3826,7 +3907,8 @@ if __name__ == "__main__":
         logger.error("Couldn't establish database connection: %s" % str(ex))
         sys.exit(1)
 
-    # --------------------------------------------------------------------------
+
+    #--------------------------------------------------------------------------
     # Discover environment, nodes, cores, mpi, etc.
     try:
         prof ('exec env setup')
@@ -3838,11 +3920,17 @@ if __name__ == "__main__":
             mpi_launch_method=options.mpi_launch_method,
             scheduler_name=options.agent_scheduler
         )
+        # TODO: Shouldn't this case be covered by the exception block?
+        if exec_env is None:
+            msg = "Couldn't set up execution environment."
+            logger.error(msg)
+            pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+            sys.exit(4)
     except Exception as ex:
         msg = "Error setting up execution environment: %s" % str(ex)
         logger.exception(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit(5)
 
     # --------------------------------------------------------------------------
     # Launch the agent thread
@@ -3869,15 +3957,17 @@ if __name__ == "__main__":
         msg = "Error running agent: %s" % str(ex)
         logger.exception(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        if  agent :
+        if agent:
             agent.stop()
-        sys.exit (1)
+        sys.exit(6)
 
     except SystemExit:
         logger.error("Caught keyboard interrupt. EXITING")
-        if  agent :
+        if agent:
             agent.stop()
 
     finally :
         prof ('stop', msg='finally clause')
+        sys.exit(7)
+
 

@@ -48,6 +48,24 @@ class InputFileTransferWorker(threading.Thread):
         # creation.
         self._saga_dirs = dict()
 
+        # Stop event can be set to terminate the main loop
+        self._stop = threading.Event()
+        self._stop.clear()
+
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """stop() signals the process to finish up and terminate.
+        """
+        logger.error("itransfer %s stopping" % (self.name))
+        self._stop.set()
+        self.join()
+        logger.error("itransfer %s stopped" % (self.name))
+      # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
+      #             (self.name, self.ident, self.unit_manager_id))
+
+
     # ------------------------------------------------------------------------
     #
     def run(self):
@@ -71,7 +89,7 @@ class InputFileTransferWorker(threading.Thread):
                 raise ex
 
             try :
-                while True:
+                while not self._stop.is_set():
                     # See if we can find a ComputeUnit that is waiting for
                     # input file transfer.
                     compute_unit = None
@@ -267,7 +285,7 @@ class InputFileTransferWorker(threading.Thread):
             except Exception as e :
 
                 logger.error("transfer worker error: %s\n %s" % (str(e), traceback.format_exc()))
-                self._session.close (delete=False)
+                self._session.close (cleanup=False)
                 raise e
 
         except SystemExit as e :
