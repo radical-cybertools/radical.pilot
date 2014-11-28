@@ -283,8 +283,8 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"logentry": message,      "timestamp": ts},
-           {"logentry": get_rusage(), "timestamp": ts}]
+    msg = [{"message": message,      "timestamp": ts},
+           {"message": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : msg},
@@ -318,8 +318,8 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"logentry": message,      "timestamp": ts},
-           {"logentry": get_rusage(), "timestamp": ts}]
+    msg = [{"message": message,      "timestamp": ts},
+           {"message": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : msg},
@@ -352,8 +352,8 @@ def pilot_DONE(mongo_p, pilot_uid):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"logentry": "pilot done", "timestamp": ts}, 
-           {"logentry": get_rusage(), "timestamp": ts}]
+    msg = [{"message": "pilot done", "timestamp": ts}, 
+           {"message": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : msg},

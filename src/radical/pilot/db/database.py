@@ -540,7 +540,7 @@ class Session():
             bulk.find   ({"_id"     : ObjectId(uid)}) \
                 .update ({"$set"    : {"state": state},
                           "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
-                          "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+                          "$push"   : {"log"  : {"message": log, "timestamp": ts}}})
 
         result = bulk.execute()
 

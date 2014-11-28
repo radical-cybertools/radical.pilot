@@ -404,23 +404,19 @@ done
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if [[ -z $AUTH ]] ||\
-   [[ -z $CORES ]] ||\
-   [[ -z $DEBUG ]] ||\
-   [[ -z $DBNAME ]] ||\
-   [[ -z $DBURL ]] ||\
-   [[ -z $LRMS ]] ||\
-   [[ -z $MPI_LAUNCH_METHOD ]] ||\
-   [[ -z $PILOTID ]] ||\
-   [[ -z $RUNTIME ]] ||\
-   [[ -z $SCHEDULER ]] ||\
-   [[ -z $SESSIONID ]] ||\
-   [[ -z $TASK_LAUNCH_METHOD ]] ||\
-   [[ -z $VERSION ]]; then
-     echo "Missing option"
-     usage
-     exit 1
-fi
+if test -z $AUTH               ; then echo "missing AUTH              "; usage; exit 1; fi
+if test -z $CORES              ; then echo "missing CORES             "; usage; exit 1; fi
+if test -z $DEBUG              ; then echo "missing DEBUG             "; usage; exit 1; fi
+if test -z $DBNAME             ; then echo "missing DBNAME            "; usage; exit 1; fi
+if test -z $DBURL              ; then echo "missing DBURL             "; usage; exit 1; fi
+if test -z $LRMS               ; then echo "missing LRMS              "; usage; exit 1; fi
+if test -z $MPI_LAUNCH_METHOD  ; then echo "missing MPI_LAUNCH_METHOD "; usage; exit 1; fi
+if test -z $PILOTID            ; then echo "missing PILOTID           "; usage; exit 1; fi
+if test -z $RUNTIME            ; then echo "missing RUNTIME           "; usage; exit 1; fi
+if test -z $SCHEDULER          ; then echo "missing SCHEDULER         "; usage; exit 1; fi
+if test -z $SESSIONID          ; then echo "missing SESSIONID         "; usage; exit 1; fi
+if test -z $TASK_LAUNCH_METHOD ; then echo "missing TASK_LAUNCH_METHOD"; usage; exit 1; fi
+if test -z $VERSION            ; then echo "missing VERSION           "; usage; exit 1; fi
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.

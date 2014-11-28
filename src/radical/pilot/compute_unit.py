@@ -327,7 +327,7 @@ class ComputeUnit(object):
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         for log in cu_json['log']:
-            logs.append(Logentry(logentry=log["logentry"], timestamp=log["timestamp"]))
+            logs.append(Logentry.from_dict (log))
 
         return logs
 

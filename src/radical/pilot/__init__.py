@@ -14,10 +14,9 @@ __license__   = "MIT"
 
 # ------------------------------------------------------------------------------
 # Scheduler name constant
-from types import *
-from states import *
-from logentry import * 
-
+from types     import *
+from states    import *
+from logentry  import * 
 from scheduler import *
 
 # ------------------------------------------------------------------------------

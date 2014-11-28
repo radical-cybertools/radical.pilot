@@ -62,7 +62,7 @@ class TestIssue262(unittest.TestCase):
         for log_entry in pilot.log:
              ld = log_entry.as_dict()
              assert "timestamp" in ld
-             assert "logentry" in ld
+             assert "message"   in ld
 
              s = "%s" % log_entry
              assert type(s) == unicode
@@ -70,7 +70,7 @@ class TestIssue262(unittest.TestCase):
         for log_entry in unit.log:
             ld = log_entry.as_dict()
             assert "timestamp" in ld
-            assert "logentry" in ld
+            assert "message"   in ld
 
             s = "%s" % log_entry
             assert type(s) == unicode

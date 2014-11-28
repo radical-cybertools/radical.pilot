@@ -225,7 +225,7 @@ class BackfillingScheduler(Scheduler):
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : UNSCHEDULED, 
                                                         "timestamp" : timestamp}, 
-                                       "log"         : {"logentry"  :  "reschedule unit", 
+                                       "log"         : {"message"   :  "reschedule unit", 
                                                         "timestamp" : timestamp}
                                       })
 
@@ -239,7 +239,7 @@ class BackfillingScheduler(Scheduler):
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : UNSCHEDULED,
                                                         "timestamp" : timestamp}, 
-                                       "log"         : {"logentry"  :  "reschedule unit", 
+                                       "log"         : {"message"   :  "reschedule unit", 
                                                         "timestamp" : timestamp}
                                       })
 
@@ -252,7 +252,7 @@ class BackfillingScheduler(Scheduler):
                         set_dict    = {"state"       : FAILED},
                         push_dict   = {"statehistory": {"state"     : FAILED, 
                                                         "timestamp" : timestamp}, 
-                                       "log"         : {"logentry"  :  "reschedule unit", 
+                                       "log"         : {"message"   :  "reschedule unit", 
                                                         "timestamp" : timestamp}
                                       })
 
