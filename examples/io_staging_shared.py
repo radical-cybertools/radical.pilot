@@ -2,7 +2,7 @@ import os
 import radical.pilot
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
-MY_STAGING_AREA = '/tmp/my_staging_area'
+MY_STAGING_AREA = 'staging_area'
 
 #------------------------------------------------------------------------------
 #
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         # Define a C-core on $RESOURCE that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "local.localhost"
+        pdesc.resource = "xsede.trestles"
         pdesc.runtime  = 5 # M minutes
         pdesc.cores    = 8 # C cores
 
@@ -40,17 +40,22 @@ if __name__ == "__main__":
         # Define the url of the local file in the local directory
         shared_input_file_url = 'file://%s/%s' % (os.getcwd(), SHARED_INPUT_FILE)
 
+        staged_file = "~/%s/%s" % (MY_STAGING_AREA, SHARED_INPUT_FILE)
+        print "##########################"
+        print staged_file
+        print "##########################"
+
         # Configure the staging directive for to insert the shared file into
         # the pilot staging directory.
         sd_pilot = {'source': shared_input_file_url,
-                    'target': os.path.join(MY_STAGING_AREA, SHARED_INPUT_FILE),
+                    'target': staged_file,
                     'action': radical.pilot.TRANSFER
         }
         # Synchronously stage the data to the pilot
         pilot.stage_in(sd_pilot)
 
         # Configure the staging directive for shared input file.
-        sd_shared = {'source': os.path.join(MY_STAGING_AREA, SHARED_INPUT_FILE),
+        sd_shared = {'source': staged_file, 
                      'target': SHARED_INPUT_FILE,
                      'action': radical.pilot.LINK
         }

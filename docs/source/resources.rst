@@ -116,6 +116,27 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
 
+biou
+----
+
+The Blue BioU Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+Blue+BioU).
+
+.. note::  Blue BioU compute nodes have 32 processor cores per node.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               serial
+``sandbox``             $SHARED_SCRATCH/$USER
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh``
+
+:download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
+
 localhost
 ---------
 
@@ -232,9 +253,30 @@ Parameter               Value
 ``access_schema``       ssh
 ================== ============================
 
-Available schemas: ``ssh, gsissh``
+Available schemas: ``ssh``
 
 :download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
+
+hopper
+------
+
+The Nersc Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)
+
+.. note::  In a fresh virtualenv, run 'easy_install pip=1.2.1' to avoid ssl errors.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               devel
+``sandbox``             /scratch/scratchdirs/$USER
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh``
+
+:download:`Raw Configuration file: nersc.json <../../src/radical/pilot/configs/nersc.json>`
 
 supermuc
 --------

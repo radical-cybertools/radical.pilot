@@ -116,6 +116,9 @@ class ComputePilot (object):
         obj_dict = {
             'uid':             self.uid,
             'state':           self.state,
+            'stdout':          self.stdout,
+            'stderr':          self.stderr,
+            'logfile':         self.logfile,
             'log':             self.log,
             'sandbox':         self.sandbox,
             'resource':        self.resource,
@@ -198,6 +201,45 @@ class ComputePilot (object):
             states.append(State(state=state["state"], timestamp=state["timestamp"]))
 
         return states
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def stdout(self):
+        """Returns the stdout of the pilot.
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            raise IncorrectState("Invalid instance.")
+
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
+        return pilot_json.get ('stdout')
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def stderr(self):
+        """Returns the stderr of the pilot.
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            raise IncorrectState("Invalid instance.")
+
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
+        return pilot_json.get ('stderr')
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def logfile(self):
+        """Returns the logfile of the pilot.
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            raise IncorrectState("Invalid instance.")
+
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
+        return pilot_json.get ('logfile')
 
     # -------------------------------------------------------------------------
     #

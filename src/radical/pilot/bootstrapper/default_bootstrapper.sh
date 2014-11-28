@@ -52,56 +52,35 @@ contains()
 #
 usage()
 {
-cat << EOF > /dev/stderr
+cat << EOF >> /dev/stderr
 usage: $0 options
 
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
    -a      The name of project / allocation to charge.
-
    -b      enable agent benchmarking
-
    -c      Number of requested cores.
-
    -d      Specify debug level.
-
    -e      List of commands to run before bootstrapping.
-
    -f      Tunnel endpoint for connection forwarding.
-
    -g      Global shared virtualenv (create if missing)
-
    -h      Show this message.
-
    -i      The Python interpreter to use, e.g., python2.7.
            (default is '/usr/bin/python')
-
    -j      Task launch method.
-
    -k      MPI launch method.
-
    -l      Type of Local Resource Management System.
-
    -m      Address and port of the coordination service host (MongoDB).
-
    -n      The name of the database.
-
    -p      The unique identifier (uid) of the pilot.
-
    -q      The scheduler to be used by the agent.
-
    -s      The unique identifier (uid) of the session.
-
    -t      Runtime in minutes.
-
    -u      sandbox is user defined
-
    -v      Version - the RADICAL-Pilot package version.
-
    -w      The working directory (sandbox) of the pilot.
            (default is '.')
-
    -x      Cleanup - delete pilot sandbox, virtualenv etc. after completion
 
 EOF
@@ -273,6 +252,7 @@ find_available_port()
 # Report where we are, as this is not always what you expect ;-)
 echo "################################################################################"
 echo "## Bootstrapper running on host: `hostname -f`."
+echo "## Bootstrapper started as     : '$0 $*'"
 
 # Print environment, useful for debugging
 echo ""

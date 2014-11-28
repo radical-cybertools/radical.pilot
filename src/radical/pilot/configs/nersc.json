@@ -7,11 +7,11 @@
         "mandatory_args"              : [],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
+            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/?ppn=24",
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
         },
-        "default_queue"               : "devel",
-        "lrms"                        : "PBSPRO",
+        "default_queue"               : "debug",
+        "lrms"                        : "TORQUE",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
 #       "forward_tunnel_endpoint"     : "10.60.0.52",
