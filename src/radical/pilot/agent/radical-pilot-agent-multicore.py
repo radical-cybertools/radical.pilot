@@ -2505,7 +2505,7 @@ class ExecWorker(threading.Thread):
     #
     def __init__(self, exec_env, logger, task_queue, command_queue,
                  output_staging_queue, mongodb_url, mongodb_name, mongodb_auth,
-                 pilot_id, session_id, benchmark, cu_environment):
+                 pilot_id, session_id, cu_environment):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
@@ -2518,7 +2518,6 @@ class ExecWorker(threading.Thread):
 
         self.cu_environment = cu_environment
         self._pilot_id      = pilot_id
-        self._benchmark     = benchmark
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
@@ -2949,25 +2948,24 @@ class ExecWorker(threading.Thread):
         # though show no negative impact on agent performance.
         # AM: the capability publication cannot be delayed until shutdown
         # though...
-        if  self._benchmark :
-            # TODO: check that slot history is correctly recorded
-            if  (self.exec_env.scheduler._slot_history_old !=
-                 self.exec_env.scheduler._slot_history): # or \
-               #(self.exec_env.scheduler._capability_old
-               # != self.exec_env.scheduler._capability):
+        # TODO: check that slot history is correctly recorded
+        if  (self.exec_env.scheduler._slot_history_old !=
+             self.exec_env.scheduler._slot_history): # or \
+           #(self.exec_env.scheduler._capability_old
+           # != self.exec_env.scheduler._capability):
 
-                self._p.update(
-                    {"_id": ObjectId(self._pilot_id)},
-                    {"$set": {"slothistory" : self.exec_env.scheduler._slot_history,
-                              #"slots"       : self._slots,
-                              #"capability"  : self.exec_env.scheduler._capability
-                             }
-                    }
-                    )
+            self._p.update(
+                {"_id": ObjectId(self._pilot_id)},
+                {"$set": {"slothistory" : self.exec_env.scheduler._slot_history,
+                          #"slots"       : self._slots,
+                          #"capability"  : self.exec_env.scheduler._capability
+                         }
+                }
+                )
 
-                prof ('ExecWorker pilot state pushed')
+            prof ('ExecWorker pilot state pushed')
 
-                self._slot_history_old = self.exec_env.scheduler._slot_history[:]
+            self._slot_history_old = self.exec_env.scheduler._slot_history[:]
 
         for task in tasks:
             self._cu.update({"_id": ObjectId(task.uid)}, 
@@ -3265,7 +3263,7 @@ class Agent(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, 
-                 mongodb_auth, pilot_id, session_id, benchmark):
+                 mongodb_auth, pilot_id, session_id):
         """Le Constructeur creates a new Agent instance.
         """
         prof ('Agent init')
@@ -3279,7 +3277,6 @@ class Agent(threading.Thread):
         self._exec_env   = exec_env
         self._runtime    = runtime
         self._starttime  = None
-        self._benchmark  = benchmark
 
         self._workdir    = os.getcwd()
 
@@ -3322,7 +3319,6 @@ class Agent(threading.Thread):
             mongodb_auth    = mongodb_auth,
             pilot_id        = pilot_id,
             session_id      = session_id,
-            benchmark       = benchmark,
             cu_environment  = self._exec_env.cu_environment
         )
         self._exec_worker.start()
@@ -3753,12 +3749,6 @@ def parse_commandline():
                       dest='mongodb_auth',
                       help='username:password for MongoDB access.')
 
-    parser.add_option('-b', '--benchmark',
-                      metavar='BENCHMARK',
-                      type='int',
-                      dest='benchmark',
-                      help='Enables timing for benchmarking purposes.')
-
     parser.add_option('-c', '--cores',
                       metavar='CORES',
                       dest='cores',
@@ -3811,7 +3801,7 @@ def parse_commandline():
                       dest='session_id',
                       help='Specifies the Session ID.')
 
-    parser.add_option('-t', '--runtime',
+    parser.add_option('-r', '--runtime',
                       metavar='RUNTIME',
                       dest='runtime',
                       help='Specifies the agent runtime in minutes.')
@@ -3837,7 +3827,7 @@ def parse_commandline():
     if options.cores is None:
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
     if options.runtime is None:
-        parser.error("You must define the agent runtime (-t/--runtime). Try --help for help.")
+        parser.error("You must define the agent runtime (-r/--runtime). Try --help for help.")
     if options.package_version is None:
         parser.error("You must pass the RADICAL-Pilot package version (-v/--version). Try --help for help.")
     if options.debug_level is None:
@@ -3944,8 +3934,7 @@ if __name__ == "__main__":
                       mongodb_name=options.database_name,
                       mongodb_auth=options.mongodb_auth,
                       pilot_id=options.pilot_id,
-                      session_id=options.session_id, 
-                      benchmark=options.benchmark)
+                      session_id=options.session_id)
 
         # AM: why is this done in a thread?  This thread blocks anyway, so it
         # could just *do* the things.  That would avoid those global vars and

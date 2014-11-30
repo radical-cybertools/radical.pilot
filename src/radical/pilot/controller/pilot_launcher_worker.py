@@ -429,13 +429,23 @@ class PilotLauncherWorker(threading.Thread):
                         agent_scheduler         = resource_cfg.get ('agent_scheduler')
                         default_queue           = resource_cfg.get ('default_queue')
                         forward_tunnel_endpoint = resource_cfg.get ('forward_tunnel_endpoint')
-                        global_virtenv          = resource_cfg.get ('global_virtenv')
                         lrms                    = resource_cfg.get ('lrms')
                         mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
                         pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
                         python_interpreter      = resource_cfg.get ('python_interpreter')
                         spmd_variation          = resource_cfg.get ('spmd_variation')
                         task_launch_method      = resource_cfg.get ('task_launch_method')
+                        virtenv                 = resource_cfg.get ('virtenv', './virtenv/')
+                        virtenv_mode            = resource_cfg.get ('virtenv_mode', 'private')
+
+
+                        # use global_virtenv as legacy fallback to virtenv
+                        if 'global_virtenv' in resource_cfg :
+                            logger.warn ("'global_virtenv' keyword is deprecated -- use 'virtenv'/'virtenv_mode'")
+                            virtenv = resource_cfg.get ('global_virtenv')
+                            if not virtenv_mode :
+                                virtenv_mode = 'private'
+
 
                         # sanity checks
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
@@ -475,13 +485,14 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -p '%s'" % pilot_id
                         bootstrap_args += " -q '%s'" % agent_scheduler
                         bootstrap_args += " -s '%s'" % session_uid
-                        bootstrap_args += " -t '%s'" % runtime
+                        bootstrap_args += " -r '%s'" % runtime
                         bootstrap_args += " -v '%s'" % VERSION
+                        bootstrap_args += " -g '%s'" % virtenv
+                        bootstrap_args += " -u '%s'" % virtenv_mode  # FIXME
 
                         # set optional args
                         if cleanup                 : bootstrap_args += " -x '%s'" % cleanup
                         if forward_tunnel_endpoint : bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
-                        if global_virtenv          : bootstrap_args += " -g '%s'" % global_virtenv
                         if pre_bootstrap           : bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
                         if python_interpreter      : bootstrap_args += " -i '%s'" % python_interpreter
 

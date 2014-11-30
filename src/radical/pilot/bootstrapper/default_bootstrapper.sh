@@ -1,13 +1,13 @@
 #!/bin/bash -l
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Copyright 2013-2014, radical@rutgers.edu
 # License under the MIT License
 #
 # This script launches a radical.pilot compute pilot.
 #
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # global variables
 #
 AUTH=
@@ -17,10 +17,9 @@ DBNAME=
 DBURL=
 DEBUG=
 VIRTENV=
-GLOBAL_VIRTENV=
+VIRTENV_MODE=
 LRMS=
 MPI_LAUNCH_METHOD=
-PREBOOTSTRAP=
 PILOTID=
 PYTHON=
 RUNTIME=
@@ -47,7 +46,7 @@ then
     export TIME_ZERO
 fi
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 profile_event()
 {
@@ -55,14 +54,16 @@ profile_event()
     then
         timestamp
         NOW=$((TIMESTAMP-TIME_ZERO))
-        printf '  %12s : %-20s : %12.4f : %-15s : %-24s : %-40s : \n' ' '  ' '  "$NOW"  'Bootstrap'  "$*" >> AGENT.prof
+        printf '  %12s : %-20s : %12.4f : %-15s : %-24s : %-40s : \n' \
+                  ' '    ' '     "$NOW"   ' '     'Bootstrap' "$@"    \
+        >> AGENT.prof
     fi
 }
 
 profile_event 'bootstrap start'
 
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # contains(string, substring)
 #
 # Returns 0 if the specified string contains the specified substring,
@@ -79,19 +80,24 @@ contains()
     fi
 }
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # print out script usage help
 #
 usage()
 {
-cat << EOF >> /dev/stderr
+    msg="$@"
+
+    if test -z "$msg"; then
+        printf "\n\tERROR: $msg\n\n"
+    fi
+
+    cat << EOF >> /dev/stderr
 usage: $0 options
 
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
    -a      The name of project / allocation to charge.
-   -b      enable agent benchmarking
    -c      Number of requested cores.
    -d      Specify debug level.
    -e      List of commands to run before bootstrapping.
@@ -108,7 +114,7 @@ OPTIONS:
    -p      The unique identifier (uid) of the pilot.
    -q      The scheduler to be used by the agent.
    -s      The unique identifier (uid) of the session.
-   -t      Runtime in minutes.
+   -r      Runtime in minutes.
    -u      sandbox is user defined
    -v      Version - the RADICAL-Pilot package version.
    -w      The working directory (sandbox) of the pilot.
@@ -116,17 +122,83 @@ OPTIONS:
    -x      Cleanup - delete pilot sandbox, virtualenv etc. after completion
 
 EOF
+
+    # On error message, exit with error code
+    if test -z "$msg"; then
+        exit 1
+    fi
 }
 
-# -----------------------------------------------------------------------------
+setup_virtenv()
+{
+    VIRTENV="$1"
+    VIRTENV_MODE="$2"
+
+    VIRTENV_CREATE=TRUE
+    VIRTENV_UPDATE=TRUE
+
+    # virtenv modes:
+    #
+    #   'private' : error  if it exists, otherwise create
+    #   'update'  : update if it exists, otherwise create
+    #   'create'  : use    if it exists, otherwise create
+    #   'use'     : use    if it exists, otherwise error
+
+    if test "$VIRTENV_MODE" = "private"
+    then
+        if test -s "$VIRTENV"
+        then
+            printf "\nERROR: private virtenv already exists at $VIRTENV\n\n"
+            exit 1
+        fi
+        VIRTENV_CREATE=TRUE
+        VIRTENV_UPDATE=FALSE
+    
+    elif test "$VIRTENV_MODE" = "update"
+    then
+        test -d "$VIRTENV" || VIRTENV_CREATE=TRUE
+        VIRTENV_UPDATE=TRUE
+
+    elif test "$VIRTENV_MODE" = "create"
+    then
+        VIRTENV_CREATE=TRUE
+        VIRTENV_UPDATE=FALSE
+
+    elif test "$VIRTENV_MODE" = "use"
+    then
+        if ! test -s "$VIRTENV"
+        then
+            printf "\nERROR: given virtenv does not exists at $VIRTENV\n\n"
+            exit 1
+        fi
+        VIRTENV_CREATE=FALSE
+        VIRTENV_UPDATE=FALSE
+
+    fi
+
+
+    # create virtenv if needed.  This also activates the virtenv.
+    if test "$VIRTENV_CREATE" = "TRUE" -a -d "$VIRTENV"
+    then
+        virtenv_create "$VIRTENV"
+    fi
+    
+    # update virtenv if needed.  This also activates the virtenv.
+    if test "$VIRTENV_UPDATE" = "TRUE"
+    then
+        virtenv_update "$VIRTENV"
+    fi
+}
+
+
+# ------------------------------------------------------------------------------
 # bootstrap virtualenv - we always use the latest version from GitHub
 #
-installvenv()
+virtenv_create()
 {
-    profile_event 'installenv start'
+    profile_event 'virtenv_create start'
 
-    # first argument is the virtenv target
-    VIRTENV=$1
+    VIRTENV="$1"
 
     # create a fresh virtualenv. we use an older 1.9.x version of 
     # virtualenv as this seems to work more reliable than newer versions.
@@ -245,10 +317,10 @@ installvenv()
     fi
 
 
-    profile_event 'installenv done'
+    profile_event 'virtenv_create done'
 }
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Find available port on the remote host where we can bind to
 #
 find_available_port()
@@ -282,14 +354,36 @@ find_available_port()
     AVAILABLE_PORT=$port
 }
 
-# -----------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
+#
+# run a preprocess command -- and exit if it happens to fail
+#
+preprocess()
+{
+    # Note: Executed preprocess right in arg parser loop because -e can be 
+    # passed multiple times.
+    cmd="$@"
+    echo ""
+    echo "################################################################################"
+    echo "## Running pre-process command"
+    echo "## CMDLINE: $cmd"
+    $cmd
+    if test $? -ne 0 ; then
+        echo "Error running pre-boostrapping command! ABORTING"
+        exit 1
+    fi
+}
+
+    
+# ------------------------------------------------------------------------------
 # MAIN 
 #
 
 # Report where we are, as this is not always what you expect ;-)
 echo "################################################################################"
 echo "## Bootstrapper running on host: `hostname -f`."
-echo "## Bootstrapper started as     : '$0 $*'"
+echo "## Bootstrapper started as     : '$0 $@'"
 
 # Print environment, useful for debugging
 echo ""
@@ -298,125 +392,49 @@ echo "## Environment of bootstrapper process:"
 printenv
 
 # parse command line arguments
-USER_SANDBOX=0
-BENCHMARK=0
-while getopts "a:bc:d:e:f:g:hi:j:k:l:m:n:op:q:rs:t:uv:w:x:yz" OPTION; do
+# free letters: b h o t 
+while getopts "a:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:v:w:x:y:z:" OPTION; do
+    PRE_PROCESS=
     case $OPTION in
-        a)
-            # Passed to agent
-            AUTH=$OPTARG
-            ;;
-        b)
-            # Passed to agent
-            BENCHMARK=1
-            ;;
-        c)
-            # Passed to agent
-            CORES=$OPTARG
-            ;;
-        d)
-            # Passed to agent
-            DEBUG=$OPTARG
-            ;;
-        e)
-            PREBOOTSTRAP=$OPTARG
-
-            # Note: Executed inline here because -e can be passed multiple times.
-            echo ""
-            echo "################################################################################"
-            echo "## Running pre-bootstrapping command"
-            echo "## CMDLINE: $PREBOOTSTRAP"
-            $PREBOOTSTRAP
-            if test $? -ne 0 ; then
-                echo "Error running pre-boostrapping command! ABORTING"
-                exit 1
-            fi
-            ;;
-        f)
-            FORWARD_TUNNEL_ENDPOINT=$OPTARG
-            ;;
-        g)
-            GLOBAL_VIRTENV=$OPTARG
-            ;;
-        h)
-            usage
-            exit 1
-            ;;
-        i)
-            PYTHON=$OPTARG
-            ;;
-        j)
-            # Passed to agent
-            TASK_LAUNCH_METHOD=$OPTARG
-            ;;
-        k)
-            # Passed to agent
-            MPI_LAUNCH_METHOD=$OPTARG
-            ;;
-        l)
-            # Passed to agent
-            LRMS=$OPTARG
-            ;;
-        m)
-            # Passed to agent, possibly after rewrite for proxy
-            DBURL=$OPTARG
-            ;;
-        n)
-            # Passed to agent
-            DBNAME=$OPTARG
-            ;;
-        p)
-            # Passed to agent
-            PILOTID=$OPTARG
-            ;;
-        q)
-            # Passed to the agent
-            SCHEDULER=$OPTARG
-            ;;
-        s)
-            # Passed to agent
-            SESSIONID=$OPTARG
-            ;;
-        t)
-            # Passed to agent
-            RUNTIME=$OPTARG
-            ;;
-        u)
-            USER_SANDBOX=1
-            ;;
-        v)
-            # Passed to agent
-            VERSION=$OPTARG
-            ;;
-        w)
-            SANDBOX=$OPTARG
-            ;;
-        x)
-            CLEANUP=$OPTARG
-            ;;
-        *)
-            echo "Unknown option: $OPTION=$OPTARG"
-            usage
-            exit
-            ;;
+        a)  AUTH=$OPTARG  ;;
+        c)  CORES=$OPTARG  ;;
+        d)  DEBUG=$OPTARG  ;;
+        e)  preprocess $OPTARG  ;;
+        f)  FORWARD_TUNNEL_ENDPOINT=$OPTARG  ;;
+        g)  VIRTENV=$OPTARG  ;;
+        i)  PYTHON=$OPTARG  ;;
+        j)  TASK_LAUNCH_METHOD=$OPTARG  ;;
+        k)  MPI_LAUNCH_METHOD=$OPTARG  ;;
+        l)  LRMS=$OPTARG  ;;
+        m)  DBURL=$OPTARG   ;;
+        n)  DBNAME=$OPTARG  ;;
+        p)  PILOTID=$OPTARG  ;;
+        q)  SCHEDULER=$OPTARG  ;;
+        r)  RUNTIME=$OPTARG  ;;
+        s)  SESSIONID=$OPTARG  ;;
+        u)  VIRTENV_MODE=$OPTARG  ;;
+        v)  VERSION=$OPTARG  ;;
+        w)  SANDBOX=$OPTARG  ;;
+        x)  CLEANUP=$OPTARG  ;;
+        *)  usage "Unknown option: $OPTION=$OPTARG"  ;;
     esac
 done
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z $AUTH               ; then echo "missing AUTH              "; usage; exit 1; fi
-if test -z $CORES              ; then echo "missing CORES             "; usage; exit 1; fi
-if test -z $DEBUG              ; then echo "missing DEBUG             "; usage; exit 1; fi
-if test -z $DBNAME             ; then echo "missing DBNAME            "; usage; exit 1; fi
-if test -z $DBURL              ; then echo "missing DBURL             "; usage; exit 1; fi
-if test -z $LRMS               ; then echo "missing LRMS              "; usage; exit 1; fi
-if test -z $MPI_LAUNCH_METHOD  ; then echo "missing MPI_LAUNCH_METHOD "; usage; exit 1; fi
-if test -z $PILOTID            ; then echo "missing PILOTID           "; usage; exit 1; fi
-if test -z $RUNTIME            ; then echo "missing RUNTIME           "; usage; exit 1; fi
-if test -z $SCHEDULER          ; then echo "missing SCHEDULER         "; usage; exit 1; fi
-if test -z $SESSIONID          ; then echo "missing SESSIONID         "; usage; exit 1; fi
-if test -z $TASK_LAUNCH_METHOD ; then echo "missing TASK_LAUNCH_METHOD"; usage; exit 1; fi
-if test -z $VERSION            ; then echo "missing VERSION           "; usage; exit 1; fi
+if test -z "$AUTH"               ; then  usage "missing AUTH              ";  fi
+if test -z "$CORES"              ; then  usage "missing CORES             ";  fi
+if test -z "$DEBUG"              ; then  usage "missing DEBUG             ";  fi
+if test -z "$DBNAME"             ; then  usage "missing DBNAME            ";  fi
+if test -z "$DBURL"              ; then  usage "missing DBURL             ";  fi
+if test -z "$LRMS"               ; then  usage "missing LRMS              ";  fi
+if test -z "$MPI_LAUNCH_METHOD"  ; then  usage "missing MPI_LAUNCH_METHOD ";  fi
+if test -z "$PILOTID"            ; then  usage "missing PILOTID           ";  fi
+if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
+if test -z "$SCHEDULER"          ; then  usage "missing SCHEDULER         ";  fi
+if test -z "$SESSIONID"          ; then  usage "missing SESSIONID         ";  fi
+if test -z "$TASK_LAUNCH_METHOD" ; then  usage "missing TASK_LAUNCH_METHOD";  fi
+if test -z "$VERSION"            ; then  usage "missing VERSION           ";  fi
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -452,41 +470,11 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
 fi
 
 # If PYTHON was not set as an argument, detect it here.
-if [[ -z $PYTHON ]]; then
+if [[ -z "$PYTHON" ]]; then
     PYTHON=`which python`
 fi
 
-# Reuse existing VE if specified
-if [[ $GLOBAL_VIRTENV ]]; then
-
-    VIRTENV=$GLOBAL_VIRTENV
-
-    # activate the virtualenv
-    source $VIRTENV/bin/activate
-    
-    # we never clean up global virtualenvs -- remove the 'v' cleanup flag
-    CLEANUP=$(echo $CLEANUP | tr -d 'v')
-
-    # this assumes that the VE lives outside of the pilot sandbox, which MUST be
-    # true, as at the point where a global VE can be specified, the pilot UID is
-    # still unknown.  That only conflicts if the pilot sandbox is specified
-    # explicitly, and the global VE lives therein.  This case is, at this point,
-    # ignored.
-
-else
-    # bootstrap virtualenv at default location
-    VIRTENV=$SANDBOX/virtualenv/
-
-    # create/update virtualenv.  This activates it.
-    installvenv $VIRTENV
-fi
-
-# check if creation succeeded
-if [[ ! -d $VIRTENV || ! -f $VIRTENV/bin/activate ]]; then
-    echo "Virtual Environment at $VIRTENV not found, install or upgrade failed.  Continue anyways." 
-    # in the rare case that everything is already installed in system space, we
-    # actually don't need a virtualenv, and thus continue here.
-fi
+setup_virtenv "$VIRTENV" "$VIRTENV_MODE"
 
 # Export the variables related to virtualenv,
 # so that we can disable the virtualenv for the cu.
@@ -494,12 +482,11 @@ export _OLD_VIRTUAL_PATH
 export _OLD_VIRTUAL_PYTHONHOME
 export _OLD_VIRTUAL_PS1
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # launch the radical agent
 #
 AGENT_CMD="python radical-pilot-agent.py\
     -a $AUTH\
-    -b $BENCHMARK\
     -c $CORES\
     -d $DEBUG\
     -j $TASK_LAUNCH_METHOD\
@@ -510,7 +497,7 @@ AGENT_CMD="python radical-pilot-agent.py\
     -p $PILOTID\
     -q $SCHEDULER\
     -s $SESSIONID\
-    -t $RUNTIME\
+    -r $RUNTIME\
     -v $VERSION"
 
 echo ""
