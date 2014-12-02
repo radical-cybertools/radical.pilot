@@ -20,7 +20,7 @@ VIRTENV=
 VIRTENV_MODE=
 LRMS=
 MPI_LAUNCH_METHOD=
-PILOTID=
+PILOT_ID=
 PYTHON=
 RUNTIME=
 SCHEDULER=
@@ -88,7 +88,7 @@ lock()
 
     if test -z $timeout
     then
-        $timeout=$LOCK_TIMEOUT
+        timeout=$LOCK_TIMEOUT
     fi
 
     lockfile="$entry.lock"
@@ -97,12 +97,14 @@ lock()
     set -C
     until echo $pid 2>/dev/null >$lockfile
     do       
-        old_pid=`cat $lockfile 2>/dev/null`
+        owner=`cat $lockfile 2>/dev/null`
         count=$((cnt+1))
 
-        if test $count > $timeout
+        echo "wait for lock $lockfile (owned by $owner)"
+
+        if test $count -gt $timeout
         then
-            echo "lock timeout for $entry -- removing stale lock for '$old_pid'"
+            echo "lock timeout for $entry -- removing stale lock for '$owner'"
             rm $lockfile
             # we do not exit the loop here, but race again against other pilots
             # waiting for this lock.
@@ -141,7 +143,7 @@ unlock()
     fi
 
     owner=`cat $lockfile`
-    if ! test "$owner" -eq `echo $pid`
+    if ! test "$owner" = "`echo $pid`"
     then
         echo "ERROR: cannot unlock $entry for $pid: owner is $owner"
         exit 1
@@ -232,7 +234,7 @@ usage()
 {
     msg="$@"
 
-    if test -z "$msg"
+    if ! test -z "$msg"
     then
         printf "\n\tERROR: $msg\n\n"
     fi
@@ -270,7 +272,7 @@ OPTIONS:
 EOF
 
     # On error message, exit with error code
-    if test -z "$msg"
+    if ! test -z "$msg"
     then
         exit 1
     fi
@@ -308,7 +310,7 @@ setup_virtenv()
 
     if test "$virtenv_mode" = "private"
     then
-        if test -S "$virtenv"
+        if test -d "$virtenv"
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             unlock "$pid" "$virtenv"
@@ -340,21 +342,31 @@ setup_virtenv()
 
     fi
 
+    echo "virtenv_create: $virtenv_create"
+    echo "virtenv_update: $virtenv_update"
+
 
     # create virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_create" = "TRUE" -a -d "$virtenv"
+    if test "$virtenv_create" = "TRUE"
     then
-        virtenv_create "$virtenv"
-        if ! test "$?" = 0
-           echo "Error on virtenv creation -- abort"
-           unlock "$pid" "$virtenv"
-           exit 1
-       fi
-
+        if ! test -d "$virtenv"
+        then
+            virtenv_create "$virtenv"
+            if ! test "$?" = 0
+            then
+               echo "Error on virtenv creation -- abort"
+               unlock "$pid" "$virtenv"
+               exit 1
+            fi
+        else
+            echo "virtenv $virtenv exists"
+        fi
+    else
+        echo "do not create virtenv $virtenv"
     fi
 
     # creation or not -- at this point it needs activation
-    if test "$VIRTENV_IS_ACTIVATED" -eq "FALSE"
+    if test "$VIRTENV_IS_ACTIVATED" = "FALSE"
     then
         source "$virtenv/bin/activate"
         VIRTENV_IS_ACTIVATED=TRUE
@@ -366,10 +378,13 @@ setup_virtenv()
     then
         virtenv_update "$virtenv"
         if ! test "$?" = 0
+        then
            echo "Error on virtenv update -- abort"
            unlock "$pid" "$virtenv"
            exit 1
        fi
+    else
+        echo "do not update virtenv $virtenv"
     fi
 
     unlock "$pid" "$virtenv"
@@ -576,7 +591,7 @@ while getopts "a:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:v:w:x:y:z:" OPTION; do
         l)  LRMS=$OPTARG  ;;
         m)  DBURL=$OPTARG   ;;
         n)  DBNAME=$OPTARG  ;;
-        p)  PILOTID=$OPTARG  ;;
+        p)  PILOT_ID=$OPTARG  ;;
         q)  SCHEDULER=$OPTARG  ;;
         r)  RUNTIME=$OPTARG  ;;
         s)  SESSIONID=$OPTARG  ;;
@@ -597,7 +612,7 @@ if test -z "$DBNAME"             ; then  usage "missing DBNAME            ";  fi
 if test -z "$DBURL"              ; then  usage "missing DBURL             ";  fi
 if test -z "$LRMS"               ; then  usage "missing LRMS              ";  fi
 if test -z "$MPI_LAUNCH_METHOD"  ; then  usage "missing MPI_LAUNCH_METHOD ";  fi
-if test -z "$PILOTID"            ; then  usage "missing PILOTID           ";  fi
+if test -z "$PILOT_ID"           ; then  usage "missing PILOT_ID          ";  fi
 if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
 if test -z "$SCHEDULER"          ; then  usage "missing SCHEDULER         ";  fi
 if test -z "$SESSIONID"          ; then  usage "missing SESSIONID         ";  fi
@@ -662,7 +677,7 @@ AGENT_CMD="python radical-pilot-agent.py\
     -l $LRMS\
     -m $DBURL\
     -n $DBNAME\
-    -p $PILOTID\
+    -p $PILOT_ID\
     -q $SCHEDULER\
     -s $SESSIONID\
     -r $RUNTIME\
