@@ -399,7 +399,7 @@ class PilotManagerController(threading.Thread):
             pilot_manager_uid=self._pm_id,
             pilot_description=pilot.description,
             pilot_sandbox=str(agent_dir_url), 
-            global_sandbox=workdir_expanded, 
+            global_sandbox=str(fs.path)
             )
 
         # Create a shared data store entry
