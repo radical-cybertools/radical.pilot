@@ -20,6 +20,8 @@ BOOTSTRAPPER                = 'bootstrapper'
 PILOT_AGENT                 = 'pilot_agent'
 PILOT_AGENT_WORKER          = 'pilot_agent_worker'
 GLOBAL_VIRTENV              = 'global_virtenv'
+VIRTENV                     = 'virtenv'
+VIRTENV_MODE                = 'private'
 LRMS                        = 'lrms'
 TASK_LAUNCH_METHOD          = 'task_launch_method'
 MPI_LAUNCH_METHOD           = 'mpi_launch_method'
@@ -35,7 +37,7 @@ SCHEMAS                     = 'schemas'
 VALID_KEYS = [JOB_MANAGER_ENDPOINT, FILESYSTEM_ENDPOINT, SCHEMAS,
               DEFAULT_QUEUE, SPMD_VARIATION, PYTHON_INTERPRETER, PRE_BOOTSTRAP, 
               VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_WORKER,
-              GLOBAL_VIRTENV, LRMS, TASK_LAUNCH_METHOD, AGENT_SCHEDULER,
+              VIRTENV, VIRTENV_MODE, LRMS, TASK_LAUNCH_METHOD, AGENT_SCHEDULER,
               MPI_LAUNCH_METHOD, FORWARD_TUNNEL_ENDPOINT, AGENT_MONGODB_ENDPOINT,
               DEFAULT_REMOTE_WORKDIR, NOTES, DESCRIPTION]
 
@@ -119,7 +121,11 @@ class ResourceConfig(attributes.Attributes):
 
        [Type: `string`] [optional] TODO
 
-    .. data:: global_virtenv
+    .. data:: virtenv
+
+       [Type: `string`] [optional] TODO
+
+    .. data:: virtenv_mode
 
        [Type: `string`] [optional] TODO
 
@@ -157,10 +163,10 @@ class ResourceConfig(attributes.Attributes):
               # create config from resource section
               cls = ResourceConfig(cfg)
 
-              # make sure all keys are initialized
-              for key in VALID_KEYS:
-                  if not key in cls :
-                      cls[key] = None
+            # # make sure all keys are initialized
+            # for key in VALID_KEYS:
+            #     if not key in cls :
+            #         cls[key] = None
             
               rcfgs["%s.%s" % (rcf_name, res_name)] = cls
 
@@ -193,7 +199,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(BOOTSTRAPPER,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT_WORKER,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GLOBAL_VIRTENV,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(VIRTENV,                 None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(VIRTENV_MODE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(LRMS,                    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SCHEDULER,         None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(TASK_LAUNCH_METHOD,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -204,6 +211,10 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(DESCRIPTION,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(NOTES,                   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
+        self._attributes_register_deprecated (GLOBAL_VIRTENV, VIRTENV)
+
+
+
 
     # -------------------------------------------------------------------------
     #
@@ -211,3 +222,4 @@ class ResourceConfig(attributes.Attributes):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+

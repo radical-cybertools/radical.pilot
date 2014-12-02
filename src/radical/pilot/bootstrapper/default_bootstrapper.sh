@@ -32,7 +32,7 @@ SANDBOX=`pwd`
 
 # seconds to wait for lock files 
 # 5 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=300  
+LOCK_TIMEOUT=30
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
@@ -86,6 +86,9 @@ lock()
     entry="$2"    # entry to lock
     timeout="$3"  # time to wait for a lock to expire In seconds)
 
+    # clean $entry (normalize path, remove trailing slash, etc
+    entry="`dirname $entry`/`basename $entry`"
+
     if test -z $timeout
     then
         timeout=$LOCK_TIMEOUT
@@ -98,9 +101,9 @@ lock()
     until echo $pid 2>/dev/null >$lockfile
     do       
         owner=`cat $lockfile 2>/dev/null`
-        count=$((cnt+1))
+        count=$((count+1))
 
-        echo "wait for lock $lockfile (owned by $owner)"
+        echo "wait for lock $lockfile (owned by $owner) $((timeout-count))"
 
         if test $count -gt $timeout
         then
@@ -132,6 +135,9 @@ unlock()
 {
     pid="$1"      # ID of pilot/bootstrapper which has the lock 
     entry="$2"    # locked entry
+
+    # clean $entry (normalize path, remove trailing slash, etc
+    entry="`dirname $entry`/`basename $entry`"
 
     lockfile="$entry.lock"
 
@@ -572,7 +578,9 @@ echo "# Bootstrapper running on host: `hostname -f`."
 echo "# Bootstrapper started as     : '$0 $@'"
 echo "# Environment of bootstrapper process:"
 echo "#"
+echo "#"
 printenv
+echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
 # free letters: b h o t 
@@ -700,7 +708,10 @@ profile_event 'cleanup start'
 #   u : unit work dirs
 #   v : virtualenv
 #   e : everything
-echo "CLEANUP: $CLEANUP"
+echo
+echo "# -------------------------------------------------------------------"
+echo "# CLEANUP: $CLEANUP"
+echo "#"
 contains $CLEANUP 'l' && echo "rm -r $SANDBOX/AGENT.*"
 contains $CLEANUP 'u' && echo "rm -r $SANDBOX/unit-*"
 contains $CLEANUP 'v' && echo "rm -r $VIRTENV/"
@@ -711,6 +722,8 @@ contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
 # contains $CLEANUP 'e' && rm -r $SANDBOX/
 
 profile_event 'cleanup done'
+echo "#"
+echo "# -------------------------------------------------------------------"
 
 # ... and exit
 exit $AGENT_EXITCODE

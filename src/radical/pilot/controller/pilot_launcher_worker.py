@@ -29,6 +29,11 @@ JOB_CHECK_INTERVAL   = 60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
                            # declaring it dead
 
+DEFAULT_AGENT         = 'radical-pilot-agent-multicore.py'
+DEFAULT_AGENT_VERSION = 'stage'
+DEFAULT_VIRTENV       = '%(pilot_sandbox)s/virtenv'
+DEFAULT_VIRTENV_MODE  = 'private'
+
 # ----------------------------------------------------------------------------
 #
 class PilotLauncherWorker(threading.Thread):
@@ -305,39 +310,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         pilot_id     = str(compute_pilot["_id"])
 
-                        number_cores = compute_pilot['description']['cores']
-                        runtime      = compute_pilot['description']['runtime']
-                        queue        = compute_pilot['description']['queue']
-                        project      = compute_pilot['description']['project']
-                        cleanup      = compute_pilot['description']['cleanup']
-                        resource_key = compute_pilot['description']['resource']
-                        schema       = compute_pilot['description']['access_schema']
-                        memory       = compute_pilot['description']['memory']
-
-                        sandbox      = compute_pilot['sandbox']
-
                         logger.info("Launching ComputePilot %s" % pilot_id)
-
-                        resource_cfg = self._session.get_resource_config(resource_key)
-                        agent_worker = resource_cfg.get ('pilot_agent_worker', None)
-
-                        # we expand and exchange keys in the resource config,
-                        # depending on the selected schema so better use a deep
-                        # copy..
-                        resource_cfg = copy.deepcopy (resource_cfg)
-
-                        if  not schema :
-                            if 'schemas' in resource_cfg :
-                                schema = resource_cfg['schemas'][0]
-
-                        if  schema not in resource_cfg :
-                            raise RuntimeError ("schema %s unknown for resource %s" \
-                                             % (schema, resource_key))
-
-                        for key in resource_cfg[schema] :
-                            # merge schema specific resource keys into the
-                            # resource config
-                            resource_cfg[key] = resource_cfg[schema][key]
 
 
                         # ------------------------------------------------------
@@ -358,12 +331,75 @@ class PilotLauncherWorker(threading.Thread):
 
 
                         # ------------------------------------------------------
+                        # pilot desxcription and resorce configuration
+                        number_cores   = compute_pilot['description']['cores']
+                        runtime        = compute_pilot['description']['runtime']
+                        queue          = compute_pilot['description']['queue']
+                        project        = compute_pilot['description']['project']
+                        cleanup        = compute_pilot['description']['cleanup']
+                        resource_key   = compute_pilot['description']['resource']
+                        schema         = compute_pilot['description']['access_schema']
+                        memory         = compute_pilot['description']['memory']
+                        pilot_sandbox  = compute_pilot['sandbox']
+                        global_sandbox = compute_pilot['global_sandbox']
+
+
+                        # we expand and exchange keys in the resource config,
+                        # depending on the selected schema so better use a deep
+                        # copy..
+                        resource_cfg = self._session.get_resource_config(resource_key)
+                        resource_cfg = copy.deepcopy (resource_cfg)
+
+                        if  not schema :
+                            if 'schemas' in resource_cfg :
+                                schema = resource_cfg['schemas'][0]
+
+                        if  schema not in resource_cfg :
+                            raise RuntimeError ("schema %s unknown for resource %s" \
+                                             % (schema, resource_key))
+
+                        for key in resource_cfg[schema] :
+                            # merge schema specific resource keys into the
+                            # resource config
+                            resource_cfg[key] = resource_cfg[schema][key]
+
+
+                        # ------------------------------------------------------
+                        # get parameters from cfg, set defaults where needed
+                        agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', db_url)
+                        agent_scheduler         = resource_cfg.get ('agent_scheduler')
+                        default_queue           = resource_cfg.get ('default_queue')
+                        forward_tunnel_endpoint = resource_cfg.get ('forward_tunnel_endpoint')
+                        js_endpoint             = resource_cfg.get ('job_manager_endpoint')
+                        lrms                    = resource_cfg.get ('lrms')
+                        mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
+                        pilot_agent             = resource_cfg.get ('pilot_agent',         DEFAULT_AGENT)
+                        pilot_agent_version     = resource_cfg.get ('pilot_agent_version', DEFAULT_AGENT_VERSION)
+                        pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
+                        python_interpreter      = resource_cfg.get ('python_interpreter')
+                        spmd_variation          = resource_cfg.get ('spmd_variation')
+                        task_launch_method      = resource_cfg.get ('task_launch_method')
+                        virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
+                        virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
+
+                        # deprecated
+                        global_virtenv          = resource_cfg.get ('global_virtenv')
+                        if  global_virtenv :
+                            logger.warn ("'global_virtenv' keyword is deprecated -- use 'virtenv' and 'virtenv_mode'")
+                            virtenv      = global_virtenv
+                            virtenv_mode = 'create'
+
+
+                        # expand variables in virtenv string
+                        virtenv = virtenv % {'pilot_sandbox'  : pilot_sandbox, 
+                                             'global_sandbox' : global_sandbox }  
+
+                        # ------------------------------------------------------
                         # pilot agent to be stages
                         # Get directory where this module lives
                         mod_dir = os.path.dirname(os.path.realpath(__file__))
 
                         # take 'pilot_agent' as defined in the resource configuration
-                        pilot_agent = resource_cfg['pilot_agent']
                         agent_path  = os.path.abspath("%s/../agent/%s" % (mod_dir, pilot_agent))
 
                         msg = "Using pilot agent %s" % agent_path
@@ -384,7 +420,7 @@ class PilotLauncherWorker(threading.Thread):
                         # Copy the bootstrap shell script.  This also creates
                         # the sandbox
                         bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
-                        bs_script_tgt = saga.Url("%s/%s"               % (sandbox, bootstrapper))
+                        bs_script_tgt = saga.Url("%s/%s"               % (pilot_sandbox, bootstrapper))
 
                         msg = "Copying bootstrapper '%s' to agent sandbox (%s)." \
                                 % (bs_script_url, bs_script_tgt)
@@ -398,53 +434,13 @@ class PilotLauncherWorker(threading.Thread):
                         # ------------------------------------------------------
                         # Copy the agent script
                         agent_script_url = saga.Url("file://localhost/%s" % agent_path)
-                        msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_script_url, sandbox)
+                        msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_script_url, pilot_sandbox)
                         logentries.append(Logentry (msg, logger=logger.debug))
 
                         agent_script = saga.filesystem.File(agent_script_url)
-                        agent_script.copy("%s/radical-pilot-agent.py" % str(sandbox))
+                        agent_script.copy("%s/radical-pilot-agent.py" % str(pilot_sandbox))
                         agent_script.close()
 
-
-                        # ------------------------------------------------------
-                        # copying agent-worker.py script to sandbox
-
-                        if agent_worker is not None:
-                            logger.warning("Using custom agent worker script: %s" % agent_worker)
-                            worker_path = os.path.abspath("%s/../agent/%s"
-                                    % (mod_dir, agent_worker))
-
-                            worker_script_url = saga.Url("file://localhost/%s" % worker_path)
-
-                            msg = "Copying '%s' to agent sandbox (%s)." % (worker_script_url, sandbox)
-                            logentries.append (Logentry (msg, logger=logger.debug))
-
-                            worker_script = saga.filesystem.File(worker_script_url)
-                            worker_script.copy("%s/agent-worker.py" % str(sandbox))
-                            worker_script.close()
-
-
-                        # get parameters from cfg, set defaults where needed
-                        agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', db_url)
-                        agent_scheduler         = resource_cfg.get ('agent_scheduler')
-                        default_queue           = resource_cfg.get ('default_queue')
-                        forward_tunnel_endpoint = resource_cfg.get ('forward_tunnel_endpoint')
-                        lrms                    = resource_cfg.get ('lrms')
-                        mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
-                        pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
-                        python_interpreter      = resource_cfg.get ('python_interpreter')
-                        spmd_variation          = resource_cfg.get ('spmd_variation')
-                        task_launch_method      = resource_cfg.get ('task_launch_method')
-                        virtenv                 = resource_cfg.get ('virtenv', './virtenv/')
-                        virtenv_mode            = resource_cfg.get ('virtenv_mode', 'private')
-
-
-                        # use global_virtenv as legacy fallback to virtenv
-                        if 'global_virtenv' in resource_cfg :
-                            logger.warn ("'global_virtenv' keyword is deprecated -- use 'virtenv'/'virtenv_mode'")
-                            virtenv = resource_cfg.get ('global_virtenv')
-                            if not virtenv_mode :
-                                virtenv_mode = 'private'
 
 
                         # sanity checks
@@ -500,7 +496,7 @@ class PilotLauncherWorker(threading.Thread):
                         # ------------------------------------------------------
                         # now that the script is in place and we know where it is,
                         # we can launch the agent
-                        js_url = saga.Url(resource_cfg['job_manager_endpoint'])
+                        js_url = saga.Url(js_endpoint)
                         logger.debug ("saga.job.Service ('%s')" % js_url)
                         if  js_url in self._shared_worker_data['job_services'] :
                             js = self._shared_worker_data['job_services'][js_url]
@@ -517,7 +513,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd.executable            = "/bin/bash"
                         jd.arguments             = ["-l", bootstrapper, bootstrap_args]
                         jd.spmd_variation        = spmd_variation
-                        jd.working_directory     = saga.Url(sandbox).path
+                        jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
                         jd.output                = "AGENT.STDOUT"
                         jd.error                 = "AGENT.STDERR"
