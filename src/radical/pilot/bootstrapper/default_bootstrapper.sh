@@ -29,6 +29,15 @@ TASK_LAUNCH_METHOD=
 VERSION=
 SANDBOX=`pwd`
 
+
+# seconds to wait for lock files 
+# 5 min should be enough for anybody to create/update a virtenv...
+LOCK_TIMEOUT=300  
+VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
+VIRTENV_TGZ="virtualenv-1.9.tar.gz"
+VIRTENV_IS_ACTIVATED=FALSE
+
+
 # --------------------------------------------------------------------
 #
 # it is suprisingly difficult to get seconds since epoch in POSIX -- 
@@ -45,6 +54,7 @@ then
     TIME_ZERO=$TIMESTAMP
     export TIME_ZERO
 fi
+
 
 # ------------------------------------------------------------------------------
 #
@@ -64,10 +74,89 @@ profile_event 'bootstrap start'
 
 
 # ------------------------------------------------------------------------------
+#
+# some virtenv operations need to be protected against pilots starting up 
+# concurrently.
+#
+# I/O redirect under noclobber is atomic in POSIX
+#
+lock()
+{
+    pid="$1"      # ID of pilot/bootstrapper waiting
+    entry="$2"    # entry to lock
+    timeout="$3"  # time to wait for a lock to expire In seconds)
+
+    if test -z $timeout
+    then
+        $timeout=$LOCK_TIMEOUT
+    fi
+
+    lockfile="$entry.lock"
+    count=0
+
+    set -C
+    until echo $pid 2>/dev/null >$lockfile
+    do       
+        old_pid=`cat $lockfile 2>/dev/null`
+        count=$((cnt+1))
+
+        if test $count > $timeout
+        then
+            echo "lock timeout for $entry -- removing stale lock for '$old_pid'"
+            rm $lockfile
+            # we do not exit the loop here, but race again against other pilots
+            # waiting for this lock.
+            count=0
+        else
+
+            # need to wait longer for lock release
+            sleep 1
+        fi
+    done
+
+    # one way or the other, we got the lock finally.  Reset noclobber option and
+    # return
+    set +C
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# remove an previously qcquired lock.  This will abort if the lock is already
+# gone, or if it is not owned by us -- both cases indicate that a different
+# pilot got tired of waiting for us and forcefully took over the lock
+#
+unlock()
+{
+    pid="$1"      # ID of pilot/bootstrapper which has the lock 
+    entry="$2"    # locked entry
+
+    lockfile="$entry.lock"
+
+
+    if ! test -f $lockfile
+    then
+        echo "ERROR: cannot unlock $entry for $pid: missing lock $lockfile"
+        exit 1
+    fi
+
+    owner=`cat $lockfile`
+    if ! test "$owner" -eq `echo $pid`
+    then
+        echo "ERROR: cannot unlock $entry for $pid: owner is $owner"
+        exit 1
+    fi
+
+    rm $lockfile
+}
+    
+
+# ------------------------------------------------------------------------------
 # contains(string, substring)
 #
 # Returns 0 if the specified string contains the specified substring,
 # otherwise returns 1.
+#
 contains() 
 {
     string="$1"
@@ -80,6 +169,62 @@ contains()
     fi
 }
 
+
+# ------------------------------------------------------------------------------
+#
+# run a command, log command line and I/O, return success/failure
+#
+run_cmd()
+{
+    msg="$1"
+    cmd="$2"
+    fallback="$3"
+
+    echo ""
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# $msg"
+    echo "# cmd: $cmd"
+    echo "#"
+    $cmd
+    if test "$?" = 0
+    then
+        echo "#"
+        echo "# SUCCESS"
+        echo "#"
+        echo "# -------------------------------------------------------------------"
+        return 0
+    else
+        echo "#"
+        echo "# ERROR"
+
+        if test -z "$3"
+        then
+            echo "# no fallback command available"
+        else
+            echo "# running fallback command:"
+            echo "# $fallback"
+            echo "#"
+            $fallback
+            if test "$?" = 0
+            then
+                echo "#"
+                echo "# SUCCESS (fallback)"
+                echo "#"
+                echo "# -------------------------------------------------------------------"
+                return 0
+            else
+                echo "#"
+                echo "# ERROR (fallback)"
+            fi
+        fi
+        echo "#"
+        echo "# -------------------------------------------------------------------"
+        return 1
+    fi
+}
+
+
 # ------------------------------------------------------------------------------
 # print out script usage help
 #
@@ -87,7 +232,8 @@ usage()
 {
     msg="$@"
 
-    if test -z "$msg"; then
+    if test -z "$msg"
+    then
         printf "\n\tERROR: $msg\n\n"
     fi
 
@@ -124,75 +270,120 @@ OPTIONS:
 EOF
 
     # On error message, exit with error code
-    if test -z "$msg"; then
+    if test -z "$msg"
+    then
         exit 1
-    fi
-}
-
-setup_virtenv()
-{
-    VIRTENV="$1"
-    VIRTENV_MODE="$2"
-
-    VIRTENV_CREATE=TRUE
-    VIRTENV_UPDATE=TRUE
-
-    # virtenv modes:
-    #
-    #   'private' : error  if it exists, otherwise create
-    #   'update'  : update if it exists, otherwise create
-    #   'create'  : use    if it exists, otherwise create
-    #   'use'     : use    if it exists, otherwise error
-
-    if test "$VIRTENV_MODE" = "private"
-    then
-        if test -s "$VIRTENV"
-        then
-            printf "\nERROR: private virtenv already exists at $VIRTENV\n\n"
-            exit 1
-        fi
-        VIRTENV_CREATE=TRUE
-        VIRTENV_UPDATE=FALSE
-    
-    elif test "$VIRTENV_MODE" = "update"
-    then
-        test -d "$VIRTENV" || VIRTENV_CREATE=TRUE
-        VIRTENV_UPDATE=TRUE
-
-    elif test "$VIRTENV_MODE" = "create"
-    then
-        VIRTENV_CREATE=TRUE
-        VIRTENV_UPDATE=FALSE
-
-    elif test "$VIRTENV_MODE" = "use"
-    then
-        if ! test -s "$VIRTENV"
-        then
-            printf "\nERROR: given virtenv does not exists at $VIRTENV\n\n"
-            exit 1
-        fi
-        VIRTENV_CREATE=FALSE
-        VIRTENV_UPDATE=FALSE
-
-    fi
-
-
-    # create virtenv if needed.  This also activates the virtenv.
-    if test "$VIRTENV_CREATE" = "TRUE" -a -d "$VIRTENV"
-    then
-        virtenv_create "$VIRTENV"
-    fi
-    
-    # update virtenv if needed.  This also activates the virtenv.
-    if test "$VIRTENV_UPDATE" = "TRUE"
-    then
-        virtenv_update "$VIRTENV"
     fi
 }
 
 
 # ------------------------------------------------------------------------------
-# bootstrap virtualenv - we always use the latest version from GitHub
+#
+# create and/or update a virtenv, depending on mode specifier:
+#
+#   'private' : error  if it exists, otherwise create, then use
+#   'update'  : update if it exists, otherwise create, then use
+#   'create'  : use    if it exists, otherwise create, then use
+#   'use'     : use    if it exists, otherwise error,  then exit
+#
+# create and update ops will be locked and thus protected against concurrent
+# bootstrapper invokations.  
+#
+# That locking will likely not scale nicely for larger numbers of concurrent
+# pilot, at least not for slow running updates (time for update of n pilots
+# needs to be smaller than lock timeout).  OTOH, concurrent pip updates should
+# not have a negative impact on the virtenv in the first place, AFAIU -- lock on
+# create is more important, and should be less critical
+# 
+setup_virtenv()
+{
+    pid="$1"
+    virtenv="$2"
+    virtenv_mode="$3"
+
+    virtenv_create=TRUE
+    virtenv_update=TRUE
+
+    lock "$pid" "$virtenv" # use default timeout
+
+    if test "$virtenv_mode" = "private"
+    then
+        if test -S "$virtenv"
+        then
+            printf "\nERROR: private virtenv already exists at $virtenv\n\n"
+            unlock "$pid" "$virtenv"
+            exit 1
+        fi
+        virtenv_create=TRUE
+        virtenv_update=FALSE
+    
+    elif test "$virtenv_mode" = "update"
+    then
+        test -d "$virtenv" || virtenv_create=TRUE
+        virtenv_update=TRUE
+
+    elif test "$virtenv_mode" = "create"
+    then
+        virtenv_create=TRUE
+        virtenv_update=FALSE
+
+    elif test "$virtenv_mode" = "use"
+    then
+        if ! test -s "$virtenv"
+        then
+            printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
+            unlock "$pid" "$virtenv"
+            exit 1
+        fi
+        virtenv_create=FALSE
+        virtenv_update=FALSE
+
+    fi
+
+
+    # create virtenv if needed.  This also activates the virtenv.
+    if test "$virtenv_create" = "TRUE" -a -d "$virtenv"
+    then
+        virtenv_create "$virtenv"
+        if ! test "$?" = 0
+           echo "Error on virtenv creation -- abort"
+           unlock "$pid" "$virtenv"
+           exit 1
+       fi
+
+    fi
+
+    # creation or not -- at this point it needs activation
+    if test "$VIRTENV_IS_ACTIVATED" -eq "FALSE"
+    then
+        source "$virtenv/bin/activate"
+        VIRTENV_IS_ACTIVATED=TRUE
+    fi
+
+    
+    # update virtenv if needed.  This also activates the virtenv.
+    if test "$virtenv_update" = "TRUE"
+    then
+        virtenv_update "$virtenv"
+        if ! test "$?" = 0
+           echo "Error on virtenv update -- abort"
+           unlock "$pid" "$virtenv"
+           exit 1
+       fi
+    fi
+
+    unlock "$pid" "$virtenv"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# create virtualenv - we always use the latest version from GitHub
+#
+# The virtenv creation will alson install the required packges, but will *not*
+# use '--upgrade', so that will become a noop if the packages have been
+# installed before.  An eventual upgrade will be triggered independently in
+# virtenv_update().
 #
 virtenv_create()
 {
@@ -203,122 +394,100 @@ virtenv_create()
     # create a fresh virtualenv. we use an older 1.9.x version of 
     # virtualenv as this seems to work more reliable than newer versions.
     # If we can't download, we try to move on with the system virtualenv.
-    CURL_CMD="curl -k -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
-    echo ""
-    echo "################################################################################"
-    echo "## Downloading and installing virtualenv"
-    echo "## CMDLINE: $CURL_CMD"
-    $CURL_CMD
-    if test $? -ne 0 ; then
+    run_cmd "Download virtualenv tgz" \
+            "curl -k -O '$VIRTENV_TGZ_URL'"
+
+    if ! test "$?" = 0 
+    then
         echo "WARNING: Couldn't download virtualenv via curl! Using system version."
         BOOTSTRAP_CMD="virtualenv $VIRTENV"
+
     else :
-        tar xvfz virtualenv-1.9.tar.gz
-        if test $? -ne 0 ; then
-            echo "Couldn't unpack virtualenv! ABORTING"
-            exit 1
+        run_cmd "unpacking virtualenv tgz" \
+                "tar xvfz '$VRTENV_TGZ'"
+
+        if test $? -ne 0 
+        then
+            echo "Couldn't unpack virtualenv!"
+            return 1
         fi
         
         BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $VIRTENV"
     fi
 
-    echo ""
-    echo "################################################################################"
-    echo "## Creating virtualenv"
-    echo "## CMDLINE: $BOOTSTRAP_CMD"
-    $BOOTSTRAP_CMD
-    if test $? -ne 0 ; then
-        echo "Couldn't bootstrap virtualenv! ABORTING"
-        exit 1
+
+    run_cmd "Create virtualenv" \
+            "$BOOTSTRAP_CMD"
+    if test $? -ne 0 
+    then
+        echo "Couldn't create virtualenv"
+        return 1
     fi
 
     # activate the virtualenv
     source $VIRTENV/bin/activate
+    VIRTENV_IS_ACTIVATED=TRUE
     
-    DOWNGRADE_PIP_CMD="easy_install pip==1.2.1"
-    echo ""
-    echo "################################################################################"
-    echo "## Downgrading pip to 1.2.1"
-    echo "## CMDLINE: $DOWNGRADE_PIP_CMD"
-    $DOWNGRADE_PIP_CMD
-    if test $? -ne 0 ; then
+
+    run_cmd "Downgrade pip to 1.2.1" \
+            "easy_install pip==1.2.1"
+    if test $? -ne 0
+    then
         echo "Couldn't downgrade pip! Using default version (if it exists)"
     fi
+
     
-    #UPDATE_SETUPTOOLS_CMD="pip install --upgrade setuptools"
-    #echo ""
-    #echo "################################################################################"
-    #echo "## Updating virtualenv"
-    #echo "## CMDLINE: $UPDATE_SETUPTOOLS_CMD"
-    #$UPDATE_SETUPTOOLS_CMD
-    #if test $? -ne 0 ; then
-    #    echo "Couldn't update virtualenv! ABORTING"
-    #    exit 1
-    #fi
+    # run_cmd "update setuptools" \
+    #         "pip install --upgrade setuptools"
+    # if test $? -ne 0 
+    # then
+    #     echo "Couldn't update setuptools -- using default version"
+    # fi
+
     
     # On india/fg 'pip install saga-python' does not work as pip fails to
     # install apache-libcloud (missing bz2 compression).  We thus install that
     # dependency via easy_install.
-    EI_CMD="easy_install --upgrade apache-libcloud"
-    echo ""
-    echo "################################################################################"
-    echo "## install/upgrade Apache-LibCloud"
-    echo "## CMDLINE: $EI_CMD"
-    $EI_CMD
-    if test $? -ne 0 ; then
+    run_cmd "install apache-libcloud" \
+            "easy_install --upgrade apache-libcloud"
+    if test $? -ne 0 
+    then
         echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
     fi
+
     
-    # Now pip install should work...
-    PIP_CMD="pip install --upgrade saga-python"
-    EA_CMD="easy_install --upgrade saga-python"
-    echo ""
-    echo "################################################################################"
-    echo "## install/upgrade SAGA-Python"
-    echo "## CMDLINE: $PIP_CMD"
-    $PIP_CMD
-    if test $? -ne 0 ; then
-        echo "pip install failed, trying easy_install ..."
-        $EI_CMD
-        if test $? -ne 0 ; then
-            echo "Couldn't install/upgrade SAGA-Python! Lets see how far we get ..."
-        fi
-    fi
-    
-    PIP_CMD="pip install --upgrade python-hostlist"
-    EI_CMD="easy_install --upgrade python-hostlist"
-    echo ""
-    echo "################################################################################"
-    echo "## install/upgrade python-hostlist"
-    echo "## CMDLINE: $PIP_CMD"
-    $PIP_CMD
-    if test $? -ne 0 ; then
-        echo "pip install failed, trying easy_install ..."
-        $EI_CMD
-        if test $? -ne 0 ; then
-            echo "Easy install failed too, couldn't install python-hostlist!  Lets see how far we get..."
-        fi
-    fi
-    
-    # pymongo should be pulled by saga, via utils.  But whatever...
-    PIP_CMD="pip install --upgrade pymongo"
-    EI_CMD="easy_install --upgrade pymongo"
-    echo ""
-    echo "################################################################################"
-    echo "## install/upgrade pymongo"
-    echo "## CMDLINE: $PIP_CMD"
-    $PIP_CMD
-    if test $? -ne 0 ; then
-        echo "pip install failed, trying easy_install ..."
-        $EI_CMD
-        if test $? -ne 0 ; then
-            echo "Easy install failed too, couldn't install pymongo! Oh well..."
-        fi
+    run_cmd "install radical.pilot via pip/easy_install" \
+            "pip install  radical.pilot" \
+            "easy_install radical.pilot"
+    if test $? -ne 0 
+    then
+        echo "Couldn't install radical.pilot! Lets see how far we get ..."
     fi
 
 
     profile_event 'virtenv_create done'
 }
+
+
+# ------------------------------------------------------------------------------
+#
+# update virtualenv - this assumes that the virtenv has been activated
+#
+virtenv_update()
+{
+    profile_event 'virtenv_update start'
+
+    run_cmd "update radical.pilot via pip/easy_install" \
+            "pip install  --upgrade radical.pilot" \
+            "easy_install --upgrade radical.pilot"
+    if test $? -ne 0 
+    then
+        echo "Couldn't upgrade radical.pilot! Lets see how far we get ..."
+    fi
+
+    profile_event 'virtenv_update done'
+}
+
 
 # ------------------------------------------------------------------------------
 # Find available port on the remote host where we can bind to
@@ -339,7 +508,8 @@ find_available_port()
         # Kill child
         kill $! 2>/dev/null
         # If the kill command succeeds, assume that we have found our match!
-        if [ "$?" == "0" ]; then
+        if [ "$?" == "0" ]
+        then
             break
         fi
 
@@ -359,36 +529,34 @@ find_available_port()
 #
 # run a preprocess command -- and exit if it happens to fail
 #
+# preprocess commands are executed right in arg parser loop because -e can be 
+# passed multiple times
+#
 preprocess()
 {
-    # Note: Executed preprocess right in arg parser loop because -e can be 
-    # passed multiple times.
     cmd="$@"
-    echo ""
-    echo "################################################################################"
-    echo "## Running pre-process command"
-    echo "## CMDLINE: $cmd"
-    $cmd
-    if test $? -ne 0 ; then
-        echo "Error running pre-boostrapping command! ABORTING"
+    run_cmd  "Running pre-process command" "$@"
+
+    if test $? -ne 0 
+    then
+        echo "#ABORT"
         exit 1
     fi
 }
 
     
 # ------------------------------------------------------------------------------
+#
 # MAIN 
 #
 
 # Report where we are, as this is not always what you expect ;-)
-echo "################################################################################"
-echo "## Bootstrapper running on host: `hostname -f`."
-echo "## Bootstrapper started as     : '$0 $@'"
-
 # Print environment, useful for debugging
-echo ""
-echo "################################################################################"
-echo "## Environment of bootstrapper process:"
+echo "# -------------------------------------------------------------------"
+echo "# Bootstrapper running on host: `hostname -f`."
+echo "# Bootstrapper started as     : '$0 $@'"
+echo "# Environment of bootstrapper process:"
+echo "#"
 printenv
 
 # parse command line arguments
@@ -442,9 +610,8 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
 
     profile_event 'tunnel setup start'
 
-    echo ""
-    echo "################################################################################"
-    echo "## Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
+    echo "# -------------------------------------------------------------------"
+    echo "# Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
 
     find_available_port $FORWARD_TUNNEL_ENDPOINT
     if [ $AVAILABLE_PORT ]; then
@@ -470,11 +637,12 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
 fi
 
 # If PYTHON was not set as an argument, detect it here.
-if [[ -z "$PYTHON" ]]; then
+if [[ -z "$PYTHON" ]]
+then
     PYTHON=`which python`
 fi
 
-setup_virtenv "$VIRTENV" "$VIRTENV_MODE"
+setup_virtenv "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"
 
 # Export the variables related to virtualenv,
 # so that we can disable the virtualenv for the cu.
@@ -500,10 +668,10 @@ AGENT_CMD="python radical-pilot-agent.py\
     -r $RUNTIME\
     -v $VERSION"
 
-echo ""
-echo "################################################################################"
-echo "## Launching radical-pilot-agent for $CORES cores."
-echo "## CMDLINE: $AGENT_CMD"
+echo
+echo "# -------------------------------------------------------------------"
+echo "# Launching radical-pilot-agent for $CORES cores."
+echo "# CMDLINE: $AGENT_CMD"
 
 profile_event 'agent start'
 
