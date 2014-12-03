@@ -662,7 +662,7 @@ while getopts "a:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
         q)  SCHEDULER=$OPTARG  ;;
         r)  RUNTIME=$OPTARG  ;;
         s)  SESSIONID=$OPTARG  ;;
-        s)  PILOT_TYPE=$OPTARG  ;;
+        t)  PILOT_TYPE=$OPTARG  ;;
         u)  VIRTENV_MODE=$OPTARG  ;;
         v)  PILOT_VERSION=$OPTARG  ;;
         w)  SANDBOX=$OPTARG  ;;

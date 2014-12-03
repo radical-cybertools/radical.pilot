@@ -561,6 +561,7 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -a '%s'" % database_auth
                         bootstrap_args += " -c '%s'" % number_cores
                         bootstrap_args += " -d '%s'" % debug_level
+                        bootstrap_args += " -g '%s'" % virtenv
                         bootstrap_args += " -j '%s'" % task_launch_method
                         bootstrap_args += " -k '%s'" % mpi_launch_method
                         bootstrap_args += " -l '%s'" % lrms
@@ -568,12 +569,11 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -n '%s'" % database_name
                         bootstrap_args += " -p '%s'" % pilot_id
                         bootstrap_args += " -q '%s'" % agent_scheduler
+                        bootstrap_args += " -r '%s'" % runtime
                         bootstrap_args += " -s '%s'" % session_uid
                         bootstrap_args += " -t '%s'" % agent_type
-                        bootstrap_args += " -r '%s'" % runtime
+                        bootstrap_args += " -u '%s'" % virtenv_mode
                         bootstrap_args += " -v '%s'" % agent_version
-                        bootstrap_args += " -g '%s'" % virtenv
-                        bootstrap_args += " -u '%s'" % virtenv_mode  # FIXME
 
                         # set optional args
                         if cleanup                 : bootstrap_args += " -x '%s'" % cleanup
