@@ -29,8 +29,8 @@ JOB_CHECK_INTERVAL   = 60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
                            # declaring it dead
 
-DEFAULT_AGENT         = 'radical-pilot-agent-multicore.py'
-DEFAULT_AGENT_VERSION = 'stage'
+DEFAULT_AGENT         = 'multicore'
+DEFAULT_AGENT_VERSION = 'stage@local'
 DEFAULT_VIRTENV       = '%(pilot_sandbox)s/virtenv'
 DEFAULT_VIRTENV_MODE  = 'private'
 
@@ -256,6 +256,8 @@ class PilotLauncherWorker(threading.Thread):
 
         # make sure to catch sys.exit (which raises SystemExit)
         try :
+            # Get directory where this module lives
+            mod_dir = os.path.dirname(os.path.realpath(__file__))
 
             # Try to connect to the database
             try:
@@ -373,8 +375,8 @@ class PilotLauncherWorker(threading.Thread):
                         js_endpoint             = resource_cfg.get ('job_manager_endpoint')
                         lrms                    = resource_cfg.get ('lrms')
                         mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
-                        pilot_agent             = resource_cfg.get ('pilot_agent',         DEFAULT_AGENT)
-                        pilot_agent_version     = resource_cfg.get ('pilot_agent_version', DEFAULT_AGENT_VERSION)
+                        agent_type              = resource_cfg.get ('pilot_agent_type',    DEFAULT_AGENT)
+                        agent_version           = resource_cfg.get ('pilot_agent_version', DEFAULT_AGENT_VERSION)
                         pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
                         python_interpreter      = resource_cfg.get ('python_interpreter')
                         spmd_variation          = resource_cfg.get ('spmd_variation')
@@ -395,19 +397,7 @@ class PilotLauncherWorker(threading.Thread):
                                              'global_sandbox' : global_sandbox }  
 
                         # ------------------------------------------------------
-                        # pilot agent to be stages
-                        # Get directory where this module lives
-                        mod_dir = os.path.dirname(os.path.realpath(__file__))
-
-                        # take 'pilot_agent' as defined in the resource configuration
-                        agent_path  = os.path.abspath("%s/../agent/%s" % (mod_dir, pilot_agent))
-
-                        msg = "Using pilot agent %s" % agent_path
-                        logentries.append (Logentry (msg, logger=logger.info))
-
-
-                        # ------------------------------------------------------
-                        # we use always "default_bootstrapper.sh" unless a resource
+                        # we use always "default_bootstrapper.sh"
                         bootstrapper = 'default_bootstrapper.sh'
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, bootstrapper))
@@ -432,17 +422,115 @@ class PilotLauncherWorker(threading.Thread):
 
 
                         # ------------------------------------------------------
-                        # Copy the agent script
-                        agent_script_url = saga.Url("file://localhost/%s" % agent_path)
-                        msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_script_url, pilot_sandbox)
-                        logentries.append(Logentry (msg, logger=logger.debug))
+                        # the version of the agent is derived from
+                        # pilot_agent_version, which has the following format
+                        # and interpretation:
+                        #
+                        # format: mode@source
+                        #
+                        # mode     :
+                        #   virtenv: use pilot agent as installed in the
+                        #            virtenv on the target resource
+                        #   stage  : stage pilot agent from local to target
+                        #            resource
+                        #
+                        # sourcen  :
+                        #   tag    : a git tag
+                        #   branch : a git branch
+                        #   release: pypi release
+                        #   local  : locally installed version
+                        #   path   : a specific file on localhost
+                        #
+                        # examples :
+                        #   virtenv@v0.20
+                        #   virtenv@devel
+                        #   stage@devel
+                        #   stage@release
+                        #   stage@local
+                        #   stage@/tmp/my_agent.py
+                        #
+                        # Note that some combinations may be invalid,
+                        # specifically in the context of virtenv_mode.  If, for
+                        # example, virtenv_mode is 'use', then the 'virtenv:tag'
+                        # will not make sense, as the virtenv is not updated.
+                        # In those cases, the virtenv_mode is honored, and
+                        # a warning is printed.
+                        #
+                        # Also, the 'stage' mode can only be combined with the
+                        # 'local' source, or with a path to the agent (relative
+                        # to mod_dir, or absolute).
+                        #
+                        # A pilot_agent_version which does not adhere to the
+                        # above syntax is ignored, and the fallback stage@local
+                        # is used.
+                        
+                        if not '@' in agent_version :
+                            logger.warn ("invalid pilot_agent_version '%s', using default '%s'" \
+                                      % (agent_version, DEFAULT_AGENT_VERSION))
+                            agent_version = DEFAULT_AGENT_VERSION
 
-                        agent_script = saga.filesystem.File(agent_script_url)
-                        agent_script.copy("%s/radical-pilot-agent.py" % str(pilot_sandbox))
-                        agent_script.close()
+
+                        agent_mode, agent_source = agent_version.split ('@', 1)
+
+                        if not agent_mode or not agent_source :
+                            logger.warn ("invalid pilot_agent_version '%s', using default '%s'" \
+                                      % (agent_version, DEFAULT_AGENT_VERSION))
+                            agent_version = DEFAULT_AGENT_VERSION
+                            agent_mode, agent_source = agent_version.split ('@', 1)
+
+
+                        if not agent_mode in ['stage', 'virtenv'] :
+                            logger.error ("invalid pilot_agent_version '%s', using default '%s'" \
+                                      % (agent_version, DEFAULT_AGENT_VERSION))
+                            agent_version = DEFAULT_AGENT_VERSION
+                            agent_mode, agent_source = agent_version.split ('@', 1)
 
 
 
+                        # we only stage the agent on agent_mode==stage --
+                        # otherwise the bootstrapper will have to take care of
+                        # it
+                        if agent_mode == 'stage' :
+
+                            # staging can handle 'local', which is the old
+                            # behavior of using the locally installed agent, or
+                            # a path, which we expect to be specified if the
+                            # agent_source!=local
+                            if  agent_source == 'local' :
+                                agent_name = "radical-pilot-agent-%s.py" % agent_type
+                                agent_path = os.path.abspath("%s/../agent/%s" % (mod_dir, agent_name))
+
+                            else :
+                                if  agent_source.beginswith ('/') :
+                                    agent_path = agent_source
+                                else :
+                                    agent_path = os.path.abspath("%s/%s" % (mod_dir, agent_source))
+
+                            msg = "Using pilot agent %s" % agent_path
+                            logentries.append (Logentry (msg, logger=logger.info))
+
+                            # --------------------------------------------------
+                            # Copy the agent script
+                            #
+                            agent_url = saga.Url("file://localhost/%s" % agent_path)
+                            msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_url, pilot_sandbox)
+                            logentries.append(Logentry (msg, logger=logger.debug))
+
+                            agent_file = saga.filesystem.File(agent_url)
+                            agent_file.copy("%s/radical-pilot-agent.py" % str(pilot_sandbox))
+                            agent_file.close()
+
+
+                            # if the agent was staged, we tell the bootstrapper
+                            agent_version = 'staged'
+
+                        else :  # agent_mode == 'virtenv' :
+                            # otherwise, we let the bootstrapper know what
+                            # version to use
+                            agent_version = agent_source
+
+
+                        # ------------------------------------------------------
                         # sanity checks
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
                         if not lrms               : raise RuntimeError("missing LRMS")
@@ -481,8 +569,9 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -p '%s'" % pilot_id
                         bootstrap_args += " -q '%s'" % agent_scheduler
                         bootstrap_args += " -s '%s'" % session_uid
+                        bootstrap_args += " -t '%s'" % agent_type
                         bootstrap_args += " -r '%s'" % runtime
-                        bootstrap_args += " -v '%s'" % VERSION
+                        bootstrap_args += " -v '%s'" % agent_version
                         bootstrap_args += " -g '%s'" % virtenv
                         bootstrap_args += " -u '%s'" % virtenv_mode  # FIXME
 

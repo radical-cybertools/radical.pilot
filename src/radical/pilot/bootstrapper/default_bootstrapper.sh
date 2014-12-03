@@ -21,12 +21,13 @@ VIRTENV_MODE=
 LRMS=
 MPI_LAUNCH_METHOD=
 PILOT_ID=
+PILOT_VERSION=
+PILOT_TYPE=
 PYTHON=
 RUNTIME=
 SCHEDULER=
 SESSIONID=
 TASK_LAUNCH_METHOD=
-VERSION=
 SANDBOX=`pwd`
 
 
@@ -270,7 +271,7 @@ OPTIONS:
    -s      The unique identifier (uid) of the session.
    -r      Runtime in minutes.
    -u      sandbox is user defined
-   -v      Version - the RADICAL-Pilot package version.
+   -v      Version - the RADICAL-Pilot version to install in virtenv
    -w      The working directory (sandbox) of the pilot.
            (default is '.')
    -x      Cleanup - delete pilot sandbox, virtualenv etc. after completion
@@ -348,8 +349,32 @@ setup_virtenv()
 
     fi
 
-    echo "virtenv_create: $virtenv_create"
-    echo "virtenv_update: $virtenv_update"
+    echo "virtenv_create   : $virtenv_create"
+    echo "virtenv_update   : $virtenv_update"
+
+
+    # radical_pilot installation and update is governed by PILOT_VERSION.  If
+    # that is set to 'stage', we install the release and use the pilot which was
+    # staged to pwd.  If set to 'release', we install from pypi.  In all other
+    # cases, we install from git at a specific tag or branch
+    #
+    # Note though that some virtenv modes won't be able to cope with specific
+    # tag or branch requests (RP_MODE_CHECK)
+    #
+    if test "$PILOT_VERSION" = 'stage' \
+         -o "$PILOT_VERSION" = 'release'
+    then
+        RP_INSTALL_SOURCE='radical.pilot'
+        RP_INSTALL_EASY=TRUE
+        RP_MODE_CHECK=FALSE
+    else
+        RP_INSTALL_SOURCE="-e git://github.com/radical-cybertools/radical.pilot.git@$PILOT_VERSION#egg=radical.pilot"
+        RP_INSTALL_EASY=FALSE # easy_install cannot handle git...
+        RP_MODE_CHECK=TRUE
+    fi
+
+    echo "rp install source: $RP_INSTALL_SOURCE"
+    echo "rp install easy  : $RP_INSTALL_EASY"
 
 
     # create virtenv if needed.  This also activates the virtenv.
@@ -369,6 +394,10 @@ setup_virtenv()
         fi
     else
         echo "do not create virtenv $virtenv"
+        if test "$RP_MODE_CHECK" = "TRUE"
+        then
+            echo "WARNING: the requested pilot version '$PILOT_VERSION' make not be available!"
+        fi
     fi
 
     # creation or not -- at this point it needs activation
@@ -391,6 +420,10 @@ setup_virtenv()
        fi
     else
         echo "do not update virtenv $virtenv"
+        if test "$RP_MODE_CHECK" = "TRUE"
+        then
+            echo "WARNING: the requested pilot version '$PILOT_VERSION' make not be available!"
+        fi
     fi
 
     unlock "$pid" "$virtenv"
@@ -477,14 +510,21 @@ virtenv_create()
     fi
 
     
-    run_cmd "install radical.pilot via pip/easy_install" \
-            "pip install  radical.pilot" \
-            "easy_install radical.pilot"
+    echo "Using RADICAL-Pilot installation source '$RP_INSTALL_SOURCE'"
+
+    if test "$RP_INSTALL_EASY" = 'TRUE'
+    then
+        run_cmd "install radical.pilot via pip/easy_install" \
+                "pip install  $RP_INSTALL_SOURCE" \
+                "easy_install $RP_INSTALL_SOURCE"
+    else
+        run_cmd "install radical.pilot via pip" \
+                "pip install  $RP_INSTALL_SOURCE"
+    fi
     if test $? -ne 0 
     then
         echo "Couldn't install radical.pilot! Lets see how far we get ..."
     fi
-
 
     profile_event 'virtenv_create done'
 }
@@ -498,9 +538,28 @@ virtenv_update()
 {
     profile_event 'virtenv_update start'
 
-    run_cmd "update radical.pilot via pip/easy_install" \
-            "pip install  --upgrade radical.pilot" \
-            "easy_install --upgrade radical.pilot"
+    # we first uninstall radical pilot, so that any request for a specific
+    # version can be honored even if the version is lower than what is
+    # installed.  Failure to do so will only result in a warning though.
+    echo "uninstalling RADICAL-Pilot"
+    run_cmd "uninstall radical.pilot via pip" \
+            "yes | head -n 1 | pip uninstall radical.pilot"
+    if test $? -ne 0 
+    then
+        echo "Couldn't uninstall radical.pilot! Lets see how far we get ..."
+    fi
+
+    echo "Using RADICAL-Pilot update source '$RP_INSTALL_SOURCE'"
+
+    if test "$RP_INSTALL_EASY" = 'TRUE'
+    then
+        run_cmd "update radical.pilot via pip/easy_install" \
+                "pip install  --upgrade $RP_INSTALL_SOURCE" \
+                "easy_install --upgrade $RP_INSTALL_SOURCE"
+    else
+        run_cmd "update radical.pilot via pip" \
+                "pip install  --upgrade $RP_INSTALL_SOURCE"
+    fi
     if test $? -ne 0 
     then
         echo "Couldn't upgrade radical.pilot! Lets see how far we get ..."
@@ -583,8 +642,8 @@ printenv
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-# free letters: b h o t 
-while getopts "a:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:v:w:x:y:z:" OPTION; do
+# free letters: b h o
+while getopts "a:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
     PRE_PROCESS=
     case $OPTION in
         a)  AUTH=$OPTARG  ;;
@@ -603,8 +662,9 @@ while getopts "a:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:v:w:x:y:z:" OPTION; do
         q)  SCHEDULER=$OPTARG  ;;
         r)  RUNTIME=$OPTARG  ;;
         s)  SESSIONID=$OPTARG  ;;
+        s)  PILOT_TYPE=$OPTARG  ;;
         u)  VIRTENV_MODE=$OPTARG  ;;
-        v)  VERSION=$OPTARG  ;;
+        v)  PILOT_VERSION=$OPTARG  ;;
         w)  SANDBOX=$OPTARG  ;;
         x)  CLEANUP=$OPTARG  ;;
         *)  usage "Unknown option: $OPTION=$OPTARG"  ;;
@@ -625,7 +685,7 @@ if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
 if test -z "$SCHEDULER"          ; then  usage "missing SCHEDULER         ";  fi
 if test -z "$SESSIONID"          ; then  usage "missing SESSIONID         ";  fi
 if test -z "$TASK_LAUNCH_METHOD" ; then  usage "missing TASK_LAUNCH_METHOD";  fi
-if test -z "$VERSION"            ; then  usage "missing VERSION           ";  fi
+if test -z "$PILOT_VERSION"      ; then  usage "missing PILOT_VERSION     ";  fi
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -676,20 +736,29 @@ export _OLD_VIRTUAL_PS1
 # ------------------------------------------------------------------------------
 # launch the radical agent
 #
-AGENT_CMD="python radical-pilot-agent.py\
-    -a $AUTH\
-    -c $CORES\
-    -d $DEBUG\
-    -j $TASK_LAUNCH_METHOD\
-    -k $MPI_LAUNCH_METHOD\
-    -l $LRMS\
-    -m $DBURL\
-    -n $DBNAME\
-    -p $PILOT_ID\
-    -q $SCHEDULER\
-    -s $SESSIONID\
-    -r $RUNTIME\
-    -v $VERSION"
+# the actual agent script lives in PWD if it was staged -- otherwise we use it
+# from the virtenv
+if test "$PILOT_VERSION" = 'stage'
+then
+    PILOT_SCRIPT='./radical-pilot-agent'
+else
+    PYTHON_PATH=`which python`
+    PILOT_SCRIPT="`dirname $PYTHON_PATH`/radical-pilot-agent-$PILOT_TYPE"
+fi
+
+AGENT_CMD="python $PILOT_SCRIPT \
+    -a $AUTH \
+    -c $CORES \
+    -d $DEBUG \
+    -j $TASK_LAUNCH_METHOD \
+    -k $MPI_LAUNCH_METHOD \
+    -l $LRMS \
+    -m $DBURL \
+    -n $DBNAME \
+    -p $PILOT_ID \
+    -q $SCHEDULER \
+    -s $SESSIONID \
+    -r $RUNTIME "
 
 echo
 echo "# -------------------------------------------------------------------"

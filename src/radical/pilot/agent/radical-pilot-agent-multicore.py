@@ -48,6 +48,9 @@ from bson.objectid import ObjectId
 from operator import mul
 
 
+git_ident = "$Id$"
+
+
 # ------------------------------------------------------------------------------
 # CONSTANTS
 #
@@ -3806,11 +3809,6 @@ def parse_commandline():
                       dest='runtime',
                       help='Specifies the agent runtime in minutes.')
 
-    parser.add_option('-v', '--version',
-                      metavar='VERSION ',
-                      dest='package_version',
-                      help='The RADICAL-Pilot package version.')
-
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
@@ -3828,8 +3826,6 @@ def parse_commandline():
         parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
     if options.runtime is None:
         parser.error("You must define the agent runtime (-r/--runtime). Try --help for help.")
-    if options.package_version is None:
-        parser.error("You must pass the RADICAL-Pilot package version (-v/--version). Try --help for help.")
     if options.debug_level is None:
         parser.error("You must pass the DEBUG level (-d/--debug). Try --help for help.")
     if options.lrms is None:
@@ -3855,9 +3851,10 @@ if __name__ == "__main__":
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    logger.info("RADICAL-Pilot multi-core agent for package/API version %s" % options.package_version)
 
     logger.info("Using SAGA version %s" % saga.version)
+    logger.info("Using RADICAL-Pilot multicore agent, version %s" % git_ident)
+  # logger.info("Using RADICAL-Pilot version %s" % rp.version)
 
 
     # --------------------------------------------------------------------------
