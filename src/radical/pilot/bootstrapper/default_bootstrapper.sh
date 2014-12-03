@@ -483,31 +483,26 @@ virtenv_create()
     VIRTENV_IS_ACTIVATED=TRUE
     
 
-    run_cmd "Downgrade pip to 1.2.1" \
-            "easy_install pip==1.2.1"
-    if test $? -ne 0
-    then
-        echo "Couldn't downgrade pip! Using default version (if it exists)"
-    fi
+  # run_cmd "Downgrade pip to 1.2.1" \
+  #         "easy_install pip==1.2.1" \
+  #      || echo "Couldn't downgrade pip! Using default version (if it exists)"
 
     
-    # run_cmd "update setuptools" \
-    #         "pip install --upgrade setuptools"
-    # if test $? -ne 0 
-    # then
-    #     echo "Couldn't update setuptools -- using default version"
-    # fi
+    run_cmd "update setuptools" \
+            "pip install --upgrade setuptools" \
+         || echo "Couldn't update setuptools -- using default version"
+    
+    run_cmd "update pip" \
+            "pip install --upgrade pip" \
+         || echo "Couldn't update pip -- using default version"
 
     
     # On india/fg 'pip install saga-python' does not work as pip fails to
     # install apache-libcloud (missing bz2 compression).  We thus install that
     # dependency via easy_install.
     run_cmd "install apache-libcloud" \
-            "easy_install --upgrade apache-libcloud"
-    if test $? -ne 0 
-    then
-        echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
-    fi
+            "easy_install --upgrade apache-libcloud" \
+         || echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
 
     
     echo "Using RADICAL-Pilot installation source '$RP_INSTALL_SOURCE'"
@@ -543,11 +538,8 @@ virtenv_update()
     # installed.  Failure to do so will only result in a warning though.
     echo "uninstalling RADICAL-Pilot"
     run_cmd "uninstall radical.pilot via pip" \
-            "yes | head -n 1 | pip uninstall radical.pilot"
-    if test $? -ne 0 
-    then
-        echo "Couldn't uninstall radical.pilot! Lets see how far we get ..."
-    fi
+            "yes | head -n 1 | pip uninstall radical.pilot" \
+         || echo "Couldn't uninstall radical.pilot! Lets see how far we get ..."
 
     echo "Using RADICAL-Pilot update source '$RP_INSTALL_SOURCE'"
 
