@@ -521,7 +521,7 @@ def plot_session (db, session, cache, term) :
             else :
 
                 slotidxs = list()
-                slotstr  = pilot['slothistory'][0]['slotstate']
+                slotstr  = pilot['slothistory'][0]
                 slotnum  = slotstr.count ('-') + slotstr.count ('+')
 
                 nodesize = max (nodesize, pilot['cores_per_node'])
@@ -535,11 +535,11 @@ def plot_session (db, session, cache, term) :
                 for number,slotidx in enumerate(slotidxs) :
 
                     used = False
-                    for entry in pilot['slothistory'] :
+                    for entry in pilot['slothistory'][1:] :
 
-                        seconds   = ru.time_diff (start, entry['timestamp'])
+                        seconds   = ru.time_diff (start, entry[0])
                         maxtime   = max (maxtime, seconds)
-                        slotstate = entry['slotstate'][slotidx]
+                        slotstate = entry[1][slotidx]
 
                         if  slotstate == '-' : 
                             if  used :
