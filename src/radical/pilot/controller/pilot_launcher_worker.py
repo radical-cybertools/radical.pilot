@@ -397,7 +397,8 @@ class PilotLauncherWorker(threading.Thread):
                                              'global_sandbox' : global_sandbox }  
 
                         # ------------------------------------------------------
-                        # we use always "default_bootstrapper.sh"
+                        # Copy the bootstrap shell script.  This also creates
+                        # the sandbox. We use always "default_bootstrapper.sh"
                         bootstrapper = 'default_bootstrapper.sh'
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, bootstrapper))
@@ -406,11 +407,8 @@ class PilotLauncherWorker(threading.Thread):
                         logentries.append (Logentry (msg, logger=logger.info))
 
 
-                        # ------------------------------------------------------
-                        # Copy the bootstrap shell script.  This also creates
-                        # the sandbox
                         bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
-                        bs_script_tgt = saga.Url("%s/%s"               % (pilot_sandbox, bootstrapper))
+                        bs_script_tgt = saga.Url("%s/pilot_bootstrapper.sh" % pilot_sandbox)
 
                         msg = "Copying bootstrapper '%s' to agent sandbox (%s)." \
                                 % (bs_script_url, bs_script_tgt)
@@ -444,8 +442,7 @@ class PilotLauncherWorker(threading.Thread):
                         # examples :
                         #   virtenv@v0.20
                         #   virtenv@devel
-                        #   stage@devel
-                        #   stage@release
+                        #   virtenv@release
                         #   stage@local
                         #   stage@/tmp/my_agent.py
                         #
@@ -501,7 +498,7 @@ class PilotLauncherWorker(threading.Thread):
                                 agent_path = os.path.abspath("%s/../agent/%s" % (mod_dir, agent_name))
 
                             else :
-                                if  agent_source.beginswith ('/') :
+                                if  agent_source.startswith ('/') :
                                     agent_path = agent_source
                                 else :
                                     agent_path = os.path.abspath("%s/%s" % (mod_dir, agent_source))
@@ -600,7 +597,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd = saga.job.Description()
 
                         jd.executable            = "/bin/bash"
-                        jd.arguments             = ["-l", bootstrapper, bootstrap_args]
+                        jd.arguments             = ["-l pilot_bootstrapper.sh", bootstrap_args]
                         jd.spmd_variation        = spmd_variation
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
