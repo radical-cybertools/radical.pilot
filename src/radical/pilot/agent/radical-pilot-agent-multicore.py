@@ -48,6 +48,7 @@ from bson.objectid import ObjectId
 from operator import mul
 
 
+# this needs git attribute 'ident' set for this file
 git_ident = "$Id$"
 
 
