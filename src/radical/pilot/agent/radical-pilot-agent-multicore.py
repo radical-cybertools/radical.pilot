@@ -158,7 +158,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"logentry": message,      "timestamp": ts}, 
+    msg = [{"logentry": message,      "timestamp": ts},
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
@@ -191,7 +191,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"logentry": message,      "timestamp": ts}, 
+    msg = [{"logentry": message,      "timestamp": ts},
            {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
@@ -488,7 +488,7 @@ class ExecutionEnvironment(object):
             torque_cores_per_node = None
             self.log.warning(msg)
 
-        print "torque_cores_per_node : %s" % torque_cores_per_node 
+        print "torque_cores_per_node : %s" % torque_cores_per_node
         if torque_cores_per_node in [None, 1] :
             # lets see if SAGA has been forthcoming with some information
             self.log.warning("fall back to $SAGA_PPN : %s" % os.environ.get ('SAGA_PPN', None))
