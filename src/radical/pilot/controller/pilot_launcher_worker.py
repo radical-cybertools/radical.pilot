@@ -522,7 +522,7 @@ class PilotLauncherWorker(threading.Thread):
 
 
                             # if the agent was staged, we tell the bootstrapper
-                            agent_version = 'staged'
+                            agent_version = 'stage'
 
                         else :  # agent_mode == 'virtenv' :
                             # otherwise, we let the bootstrapper know what

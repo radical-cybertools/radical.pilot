@@ -195,7 +195,7 @@ run_cmd()
     echo "# $msg"
     echo "# cmd: $cmd"
     echo "#"
-    $cmd
+    eval $cmd
     if test "$?" = 0
     then
         echo "#"
@@ -214,7 +214,7 @@ run_cmd()
             echo "# running fallback command:"
             echo "# $fallback"
             echo "#"
-            $fallback
+            eval $fallback
             if test "$?" = 0
             then
                 echo "#"
@@ -740,10 +740,10 @@ export _OLD_VIRTUAL_PS1
 # from the virtenv
 if test "$PILOT_VERSION" = 'stage'
 then
-    PILOT_SCRIPT='./radical-pilot-agent'
+    PILOT_SCRIPT='./radical-pilot-agent.py'
 else
     PYTHON_PATH=`which python`
-    PILOT_SCRIPT="`dirname $PYTHON_PATH`/radical-pilot-agent-$PILOT_TYPE"
+    PILOT_SCRIPT="`dirname $PYTHON_PATH`/radical-pilot-agent-${PILOT_TYPE}.py"
 fi
 
 AGENT_CMD="python $PILOT_SCRIPT \
