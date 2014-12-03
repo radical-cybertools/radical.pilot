@@ -518,8 +518,11 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def set_compute_unit_state(self, unit_ids, state, log):
-        """Update the state and the log of one or more ComputeUnit(s).
+    def set_compute_unit_state(self, unit_ids, state, log, src_states=None):
+        """
+        Update the state and the log of one or more ComputeUnit(s).
+        If src_states is given, this will only update units which are currently
+        in those src states.
         """
         ts = datetime.datetime.utcnow()
 
@@ -533,14 +536,24 @@ class Session():
         if not isinstance(unit_ids, list):
             unit_ids = [unit_ids]
 
+        if src_states and not isinstance (src_states, list) :
+            src_states = [src_states]
+
         bulk = self._w.initialize_ordered_bulk_op ()
 
         for uid in unit_ids :
 
-            bulk.find   ({"_id"     : ObjectId(uid)}) \
-                .update ({"$set"    : {"state": state},
-                          "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
-                          "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+            if src_states :
+                bulk.find   ({"_id"     : ObjectId(uid), 
+                              "state"   : {"$in"  : src_states} }) \
+                    .update ({"$set"    : {"state": state},
+                              "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
+                              "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+            else :
+                bulk.find   ({"_id"     : ObjectId(uid)}) \
+                    .update ({"$set"    : {"state": state},
+                              "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
+                              "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
 
         result = bulk.execute()
 
