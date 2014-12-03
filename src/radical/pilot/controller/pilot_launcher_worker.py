@@ -393,8 +393,8 @@ class PilotLauncherWorker(threading.Thread):
 
 
                         # expand variables in virtenv string
-                        virtenv = virtenv % {'pilot_sandbox'  : pilot_sandbox, 
-                                             'global_sandbox' : global_sandbox }  
+                        virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path, 
+                                             'global_sandbox': saga.Url(global_sandbox).path }  
 
                         # ------------------------------------------------------
                         # Copy the bootstrap shell script.  This also creates

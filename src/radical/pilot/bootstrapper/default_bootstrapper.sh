@@ -458,7 +458,7 @@ virtenv_create()
 
     else :
         run_cmd "unpacking virtualenv tgz" \
-                "tar xvfz '$VRTENV_TGZ'"
+                "tar xvfz '$VIRTENV_TGZ'"
 
         if test $? -ne 0 
         then
