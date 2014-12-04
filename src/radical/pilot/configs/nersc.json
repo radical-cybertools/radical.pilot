@@ -16,7 +16,32 @@
         "agent_scheduler"             : "CONTINUOUS",
         "global_virtenv"              : "/global/project/projectdirs/m2178/shared_pilot_ve_20141119",
         "pre_bootstrap"               : ["module load python"],
-        "default_remote_workdir"      : "/scratch/scratchdirs/$USER",
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["/global", "/scratch",  "/scratch2"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py",
+        "bootstrapper"                : "default_bootstrapper.sh"
+    },
+    "hopper_ccm": {
+        "description"                 : "The NERSC Hopper Cray XE6 in Cluster Compatibility Mode (https://www.nersc.gov/users/computational-systems/hopper/)",
+        "notes"                       : "In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.",
+        "schemas"                     : ["ssh"],
+        "mandatory_args"              : [],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/?ppn=24",
+            "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
+        },
+        "default_queue"               : "regular",
+        "lrms"                        : "TORQUE",
+        "task_launch_method"          : "CCMRUN",
+        "mpi_launch_method"           : "MPIRUN_CCMRUN",
+        "agent_scheduler"             : "CONTINUOUS",
+        "global_virtenv"              : "/global/project/projectdirs/m2178/shared_pilot_ve_20141119",
+        "pre_bootstrap"               : ["module load ccm",
+                                         #"export CRAY_ROOTFS=DSL",
+                                         "module load openmpi-ccm",
+                                         "module load python"],
+        "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch",  "/scratch2"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "bootstrapper"                : "default_bootstrapper.sh"
