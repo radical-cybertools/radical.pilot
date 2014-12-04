@@ -93,6 +93,10 @@ SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
 SCHEDULER_NAME_SCATTERED    = "SCATTERED"
 SCHEDULER_NAME_TORUS        = "TORUS"
 
+# 'enum' for pilot's task spawner types
+SPAWNER_NAME_POPEN          = "POPEN"
+SPAWNER_NAME_PTY            = "PTY"
+
 # defines for pilot commands
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
 COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
@@ -395,6 +399,8 @@ class ExecutionEnvironment(object):
                                                   self.scheduler, logger)
         self.mpi_launcher = LaunchMethod.create(mpi_launch_method,
                                                  self.scheduler, logger)
+
+        self.spawner = Spawner.create (SPAWNER_NAME_POPEN, logger)
 
     # --------------------------------------------------------------------------
     #
@@ -2520,10 +2526,11 @@ class ExecWorker(threading.Thread):
         threading.Thread.__init__(self)
         self._terminate = threading.Event()
 
-        self.cu_environment = cu_environment
-        self._pilot_id      = pilot_id
+        self.cu_environment    = cu_environment
+        self._pilot_id         = pilot_id
+        self._slot_history_old = None
 
-        mongo_client = pymongo.MongoClient(mongodb_url)
+        mongo_client   = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
 
         if len(mongodb_auth) >= 3:
@@ -2732,13 +2739,9 @@ class ExecWorker(threading.Thread):
 
         # Start a new subprocess to launch the task
         # TODO: This is scheduler specific
-        proc = _Process(
-            task=task,
-            all_slots=self.exec_env.scheduler._slots,
-            cores_per_node=self.exec_env.lrms.cores_per_node,
-            launcher=launcher,
-            logger=self._log,
-            cu_environment=self.cu_environment)
+        proc = self.exec_env.spawner.spawn (task     = task,
+                                            launcher = launcher,
+                                            env      = self.cu_environment)
 
         prof ('ExecWorker task launched', uid=task.uid, tag='task_launching')
 
@@ -2797,8 +2800,9 @@ class ExecWorker(threading.Thread):
                 # The task ended (eventually FAILED or DONE).
                 finished_tasks.append(task)
 
-                # Make sure all stuff reached the spindles
-                proc.close_and_flush_filehandles()
+              # # Make sure all stuff reached the spindles
+              # # FIXME: do we still need this?
+              # proc.close_and_flush_filehandles()
 
                 # Convenience shortcut
                 uid = task.uid
@@ -2953,10 +2957,10 @@ class ExecWorker(threading.Thread):
         # AM: the capability publication cannot be delayed until shutdown
         # though...
         # TODO: check that slot history is correctly recorded
-        if  (self.exec_env.scheduler._slot_history_old !=
-             self.exec_env.scheduler._slot_history): # or \
-           #(self.exec_env.scheduler._capability_old
-           # != self.exec_env.scheduler._capability):
+        if  (self._slot_history_old !=
+             self.exec_env.scheduler._slot_history) : # or \
+          # (self._capability_old
+          #  != self.exec_env.scheduler._capability):
 
             self._p.update(
                 {"_id": ObjectId(self._pilot_id)},
@@ -3592,30 +3596,74 @@ class Agent(threading.Thread):
         return
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
-# TODO: Once we reach this state, what should we have done already? And what 
-#       should still be done?
+# Spawners
 #
-class _Process(subprocess.Popen):
+# ==============================================================================
+class Spawner (object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, task, all_slots, cores_per_node, launcher, logger, cu_environment):
+    def __init__(self, name, logger):
 
-        self._task = task
-        self._log  = logger
+        self.name     = name
+        self.log      = logger
 
-        prof ('_Process init', uid=task.uid)
 
+    # --------------------------------------------------------------------------
+    #
+    # This class-method creates the appropriate sub-class for the Launch Method.
+    #
+    @classmethod
+    def create(cls, name, logger):
+
+        # Make sure that we are the base-class!
+        if cls != Spawner:
+            raise Exception("Spawner Factory only available to base class!")
+
+        try:
+            implementation = { SPAWNER_NAME_POPEN : SpawnerPopen,
+                               SPAWNER_NAME_PTY   : SpawnerPty  }[name]
+
+            return implementation(name, logger)
+
+        except KeyError:
+            raise Exception("Spawner '%s' unknown!" % name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def spawn (self, launcher, task, env):
+        raise NotImplementedError("spawn() not implemented for Spawner '%s'." % self.name)
+
+
+# ------------------------------------------------------------------------------
+#
+class SpawnerPopen (Spawner):
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger):
+
+        Spawner.__init__(self, name, logger)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def spawn (self, launcher, task, env):
+        
+        prof ('Spawner spawn', uid=task.uid)
+    
         launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script-',
                                                     dir=task.workdir, suffix=".sh", delete=False)
-        self._log.debug('Created launch_script: %s' % launch_script.name)
+        self.log.debug('Created launch_script: %s' % launch_script.name)
         st = os.stat(launch_script.name)
         os.chmod(launch_script.name, st.st_mode | stat.S_IEXEC)
         launch_script.write('#!/bin/bash -l\n')
         launch_script.write('\n# Change to working directory for task\ncd %s\n' % task.workdir)
-
+    
         # Before the Big Bang there was nothing
         pre_exec = task.pre_exec
         pre_exec_string = ''
@@ -3624,26 +3672,26 @@ class _Process(subprocess.Popen):
                 pre_exec = [pre_exec]
             for bb in pre_exec:
                 pre_exec_string += "%s\n" % bb
-
+    
             # Append the pre-exec commands
             launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
-
+    
         # Create string for environment variable setting
         env_string = ''
         if task.environment is not None and len(task.environment.keys()):
             env_string += 'export'
             for key in task.environment:
                 env_string += ' %s=%s' % (key, task.environment[key])
-
+    
             # Append the environment declarations
             launch_script.write('# Environment variables\n%s\n' % env_string)
-
+    
         # Task executable (non-optional)
         if task.executable is not None:
             task_exec_string = task.executable # TODO: Do we allow $ENV/bin/program constructs here?
         else:
             raise Exception("No executable specified!") # TODO: This should be caught earlier?
-
+    
         # Task Arguments (if any)
         task_args_string = ''
         if task.arguments is not None:
@@ -3651,13 +3699,13 @@ class _Process(subprocess.Popen):
                 if not arg:
                      # ignore empty args
                      continue
-
+    
                 arg = arg.replace('"', '\\"')          # Escape all double quotes
                 if arg[0] == arg[-1] == "'" :          # If a string is between outer single quotes,
                     task_args_string += '%s ' % arg    # ... pass it as is.
                 else:
                     task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
-
+    
         # The actual command line, constructed per launch-method
         # TODO: Once we start to construct the command, it means we know
         #       we will be able to run, make sure this is true!
@@ -3679,9 +3727,9 @@ class _Process(subprocess.Popen):
             launch_command, cmdline = retval
         else:
             raise Exception("construct_command() returned neither a tuple nor a string")
-
+    
         launch_script.write('# The command to run\n%s\n' % launch_command)
-
+    
         # After the universe dies the infrared death, there will be nothing
         post_exec = task.post_exec
         post_exec_string = ''
@@ -3690,57 +3738,46 @@ class _Process(subprocess.Popen):
                 post_exec = [post_exec]
             for bb in post_exec:
                 post_exec_string += "%s\n" % bb
-
+    
             # Append post-exec commands
             launch_script.write('%s\n' % post_exec_string)
-
+    
         # We are done writing to the launch script, its ready for execution now.
         launch_script.close()
-
+    
         self._stdout_file_h = open(task.stdout_file, "w")
         self._stderr_file_h = open(task.stderr_file, "w")
+    
+        self.log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
+    
+        prof ('spawning pass to popen', uid=task.uid, tag='task spawning')
 
-        self._log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
+        proc = subprocess.Popen ( args               = cmdline,
+                                  bufsize            = 0,
+                                  executable         = None,
+                                  stdin              = None,
+                                  stdout             = self._stdout_file_h,
+                                  stderr             = self._stderr_file_h,
+                                  preexec_fn         = None,
+                                  close_fds          = True,
+                                  shell              = True,
+                                  # TODO: cwd        d oesn't always make sense if it runs remotely (still true?)
+                                  cwd                = task.workdir,
+                                  env                = env,
+                                  universal_newlines = False,
+                                  startupinfo        = None,
+                                  creationflags      = 0)
+    
+        prof ('spawning passed to popen', uid=task.uid, tag='task spawning')
+        prof ('Spawner spawned', uid=task.uid)
 
-        prof ('_Process pass to popen', uid=task.uid)
+        return proc
 
-        super(_Process, self).__init__(
-            args=cmdline,
-            bufsize=0,
-            executable=None,
-            stdin=None,
-            stdout=self._stdout_file_h,
-            stderr=self._stderr_file_h,
-            preexec_fn=None,
-            close_fds=True,
-            shell=True,
-            # TODO: cwd => This doesn't always make sense if it runs remotely (still true?)
-            cwd=task.workdir,
-            env=cu_environment,
-            universal_newlines=False,
-            startupinfo=None,
-            creationflags=0)
 
-        prof ('_Process pass to popen done', uid=task.uid, tag='task spawning')
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def task(self):
-        """Returns the task object associated with the process.
-        """
-        return self._task
-
-    # --------------------------------------------------------------------------
-    #
-    def close_and_flush_filehandles(self):
-        self._stdout_file_h.flush()
-        self._stderr_file_h.flush()
-        self._stdout_file_h.close()
-        self._stderr_file_h.close()
-
-        prof ('_Process task flush', uid=self._task.uid)
-
+# ------------------------------------------------------------------------------
+#
+class SpawnerPty (Spawner):
+    pass
 
 # ------------------------------------------------------------------------------
 #
