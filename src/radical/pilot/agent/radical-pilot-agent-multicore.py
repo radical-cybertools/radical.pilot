@@ -55,6 +55,8 @@ BUSY = 'Busy'
 
 LAUNCH_METHOD_SSH = 'SSH'
 LAUNCH_METHOD_APRUN = 'APRUN'
+LAUNCH_METHOD_CCMRUN = 'CCMRUN'
+LAUNCH_METHOD_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LAUNCH_METHOD_FORK = 'FORK'
 LAUNCH_METHOD_MPIRUN = 'MPIRUN'
 LAUNCH_METHOD_MPIRUN_RSH = 'MPIRUN_RSH'
@@ -912,6 +914,8 @@ class LaunchMethod(object):
         try:
             implementation = {
                 LAUNCH_METHOD_APRUN: LaunchMethodAPRUN,
+                LAUNCH_METHOD_CCMRUN: LaunchMethodCCMRUN,
+                LAUNCH_METHOD_MPIRUN_CCMRUN: LaunchMethodMPIRUNCCMRUN,
                 LAUNCH_METHOD_DPLACE: LaunchMethodDPLACE,
                 LAUNCH_METHOD_IBRUN: LaunchMethodIBRUN,
                 LAUNCH_METHOD_FORK: LaunchMethodFORK,
@@ -1124,6 +1128,74 @@ class LaunchMethodAPRUN(LaunchMethod):
         aprun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
 
         return aprun_command
+
+
+#-------------------------------------------------------------------------
+#
+class LaunchMethodCCMRUN(LaunchMethod):
+
+    def __init__(self, name, scheduler, logger):
+        LaunchMethod.__init__(self, name, scheduler, logger)
+
+    def configure(self):
+        # ccmrun: Cluster Compatibility Mode (CCM) job launcher for Cray systems
+        self.launch_command= self._which('ccmrun')
+
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, opaque_slot):
+
+        if task_args:
+            task_command = " ".join([task_exec, task_args])
+        else:
+            task_command = task_exec
+
+        ccmrun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
+
+        return ccmrun_command
+
+
+#-------------------------------------------------------------------------
+#
+class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
+    # TODO: This needs both mpirun and ccmrun
+
+    def __init__(self, name, scheduler, logger):
+        LaunchMethod.__init__(self, name, scheduler, logger)
+
+    def configure(self):
+        # ccmrun: Cluster Compatibility Mode job launcher for Cray systems
+        self.launch_command= self._which('ccmrun')
+
+        self.mpirun_command = self._which('mpirun')
+        if not self.mpirun_command:
+            raise Exception("mpirun not found!")
+
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_name, (task_slots)):
+
+        if task_args:
+            task_command = " ".join([task_exec, task_args])
+        else:
+            task_command = task_exec
+
+        # Construct the hosts_string
+        # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
+        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+
+        # TODO: Other mpirun LM's could probably also benefit from this!
+        candidate_vars = [
+            'LD_LIBRARY_PATH',
+            'PATH',
+            'PYTHONPATH'
+            'PYTHON_DIR',
+        ]
+        export_vars = ' '.join(['-x ' + var for var in candidate_vars if var in os.environ])
+
+        mpirun_ccmrun_command = "%s %s %s -np %d -host %s %s" % (
+            self.launch_command, self.mpirun_command, export_vars,
+            task_numcores, hosts_string, task_command)
+
+        return mpirun_ccmrun_command
 
 
 #-------------------------------------------------------------------------
