@@ -6,7 +6,7 @@
         "mandatory_args"              : [],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/?ppn=24",
+            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
         },
         "default_queue"               : "regular",
@@ -28,7 +28,7 @@
         "mandatory_args"              : [],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/?ppn=24",
+            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
         },
         "default_queue"               : "regular",
