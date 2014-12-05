@@ -86,7 +86,7 @@ if __name__ == "__main__":
             mpi_test_task = radical.pilot.ComputeUnitDescription()
             mpi_test_task.pre_exec = [
                 "module load python/2.7.5",
-                "source /gpfs/home/HCP056/sxz03/mas16-sxz03/shared_cu_ve_20141205/bin/activate"
+                "source $HOME/cu_ve_20141205/bin/activate"
             ]
             mpi_test_task.input_staging = ["helloworld_mpi.py"]
             mpi_test_task.executable = "python"
@@ -131,4 +131,3 @@ if __name__ == "__main__":
         # Catch all exceptions and exit with and error.
         print "Error during execution: %s" % ex
         sys.exit(1)
-
