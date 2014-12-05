@@ -13,7 +13,7 @@
         "agent_scheduler"             : "TORUS",
         "task_launch_method"          : "RUNJOB",
         "mpi_launch_method"           : "RUNJOB",
-        "global_virtenv"              : "/gpfs/home/HCP056/sxz03/mas16-sxz03/shared_pilot_ve_20140801",
+        "global_virtenv"              : "/gpfs/home/HCP056/sxz03/mas16-sxz03/shared_pilot_ve_20141205",
         "pre_bootstrap"               : ["source /etc/profile.d/modules.sh",
                                          "export MODULEPATH=/gpfs/packages/Modules/modulefiles/production:/gpfs/packages/Modules/modulefiles/packages:/gpfs/packages/Modules/modulefiles/other",
                                          "module list",
