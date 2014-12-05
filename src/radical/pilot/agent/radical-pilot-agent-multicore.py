@@ -1236,6 +1236,17 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # convert the shape
         runjob_command += ' --shape %s' % self.scheduler.lrms.shape2str(sub_block_shape)
 
+        # runjob needs the full path to the executable
+        if os.path.basename(task_exec) == task_exec:
+            if not self._which(task_exec):
+                raise Exception("Can't find executable '%s' in path." % task_exec)
+
+            # Use `which` with back-ticks as the executable,
+            # will be expanded in the shell script.
+            task_exec = '`which %s`' % task_exec
+            # Note: We can't use the expansion from here,
+            #       as the pre-execs of the CU aren't run yet!!
+
         # And finally add the executable and the arguments
         # usage: runjob <runjob flags> --exe /bin/hostname --args "-f"
         runjob_command += ' --exe %s' % task_exec
