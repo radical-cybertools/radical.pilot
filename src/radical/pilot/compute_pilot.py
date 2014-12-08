@@ -102,7 +102,7 @@ class ComputePilot (object):
 
             pilot._worker = pilot._manager._worker
 
-            logger.info("Reconnected to existing ComputePilot %s" % str(pilot))
+            logger.debug("Reconnected to existing ComputePilot %s" % str(pilot))
             pilots.append(pilot)
 
         return pilots

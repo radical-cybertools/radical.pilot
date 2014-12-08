@@ -177,6 +177,17 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
+    def cancel_launcher(self):
+        """cancel the launcher threads
+        """
+        for worker in self._pilot_launcher_worker_pool:
+            logger.error("pworker %s stops   launcher %s" % (self.name, worker.name))
+            worker.stop ()
+            logger.error("pworker %s stopped launcher %s" % (self.name, worker.name))
+
+
+    # ------------------------------------------------------------------------
+    #
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
@@ -473,7 +484,7 @@ class PilotManagerController(threading.Thread):
 
                 # read state fomr _shared_data only once, so that it does not
                 # change under us...
-                old_state = str(self._shared_data[str(pilot["_id"])]["data"]["state"])
+                old_state = str(self._shared_data[pilot_id]["data"]["state"])
 
                 logger.warn ("actively cancel pilot %s? state: %s" % (pilot_id, old_state))
                 if  old_state in [DONE, FAILED, CANCELED] :
@@ -484,6 +495,7 @@ class PilotManagerController(threading.Thread):
                         
                         try :
                             job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
+                            self._shared_data[pilot_id]["data"]["state"] = CANCELING
                             logger.info ("actively cancel pilot %s (%s, %s)" % (pilot_id, job_id, js_url))
 
                             js = self._shared_worker_data['job_services'][js_url]
