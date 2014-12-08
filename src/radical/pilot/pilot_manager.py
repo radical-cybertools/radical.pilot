@@ -150,7 +150,7 @@ class PilotManager(Object):
 
         # before we terminare pilots, we have to kill the pilot launcher threads
         # -- otherwise we'll run into continous race conditions due to the
-        # angoing state checks...
+        # ongoing state checks...
         if self._worker is not None:
             # Stop the worker process
             logger.error("pmgr    %s cancel   worker %s" % (str(self._uid), self._worker.name))
