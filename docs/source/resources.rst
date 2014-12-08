@@ -5,6 +5,46 @@
 List of Pre-Configured Resources
 ================================
 
+das4.fs2
+--------
+
+The Distributed ASCI Supercomputer 4 (http://www.cs.vu.nl/das4/).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               all.q
+``sandbox``             $HOME
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh``
+
+:download:`Raw Configuration file: das4.json<../../src/radical/pilot/configs/das4.json>`
+
+epsrc.archer
+------------
+
+The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
+
+.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               standard
+``sandbox``             /work/`id -gn`/`id -gn`/$USER
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh, gsissh``
+
+:download:`Raw Configuration file: epsrc.json<../../src/radical/pilot/configs/epsrc.json>`
+
 futuregrid.sierra
 -----------------
 
@@ -83,6 +123,107 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json<../../src/radical/pilot/configs/futuregrid.json>`
 
+iu.bigred2
+----------
+
+Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               None
+``sandbox``             $HOME
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh, gsissh``
+
+:download:`Raw Configuration file: iu.json<../../src/radical/pilot/configs/iu.json>`
+
+iu.quarry
+---------
+
+The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               None
+``sandbox``             $HOME
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh, gsissh``
+
+:download:`Raw Configuration file: iu.json<../../src/radical/pilot/configs/iu.json>`
+
+local.localhost
+---------------
+
+Your local machine.
+
+.. note::  To use the ssh schema, make sure that ssh access to localhost is enabled.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               None
+``sandbox``             $HOME
+``access_schema``       local
+================== ============================
+
+Available schemas: ``local, ssh``
+
+:download:`Raw Configuration file: local.json<../../src/radical/pilot/configs/local.json>`
+
+lrz.supermuc
+------------
+
+The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).
+
+.. note::  Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               test
+``sandbox``             $HOME
+``access_schema``       gsissh
+================== ============================
+
+Available schemas: ``gsissh, ssh``
+
+:download:`Raw Configuration file: lrz.json<../../src/radical/pilot/configs/lrz.json>`
+
+ncar.yellowstone
+----------------
+
+The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).
+
+.. note::  We only support one concurrent CU per node currently.
+
+Default values for ComputePilotDescription attributes:
+
+================== ============================
+Parameter               Value
+================== ============================
+``queue``               premium
+``sandbox``             $HOME
+``access_schema``       ssh
+================== ============================
+
+Available schemas: ``ssh``
+
+:download:`Raw Configuration file: ncar.json<../../src/radical/pilot/configs/ncar.json>`
+
 radical.tutorial
 ----------------
 
@@ -122,147 +263,6 @@ Parameter               Value
 Available schemas: ``ssh``
 
 :download:`Raw Configuration file: rice.json<../../src/radical/pilot/configs/rice.json>`
-
-local.localhost
----------------
-
-Your local machine.
-
-.. note::  To use the ssh schema, make sure that ssh access to localhost is enabled.
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME
-``access_schema``       local
-================== ============================
-
-Available schemas: ``local, ssh``
-
-:download:`Raw Configuration file: local.json<../../src/radical/pilot/configs/local.json>`
-
-ncar.yellowstone
-----------------
-
-The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).
-
-.. note::  We only support one concurrent CU per node currently.
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               premium
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh``
-
-:download:`Raw Configuration file: ncar.json<../../src/radical/pilot/configs/ncar.json>`
-
-das4.fs2
---------
-
-The Distributed ASCI Supercomputer 4 (http://www.cs.vu.nl/das4/).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               all.q
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh``
-
-:download:`Raw Configuration file: das4.json<../../src/radical/pilot/configs/das4.json>`
-
-iu.bigred2
-----------
-
-Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: iu.json<../../src/radical/pilot/configs/iu.json>`
-
-iu.quarry
----------
-
-The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: iu.json<../../src/radical/pilot/configs/iu.json>`
-
-epsrc.archer
-------------
-
-The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
-
-.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               standard
-``sandbox``             /work/`id -gn`/`id -gn`/$USER
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: epsrc.json<../../src/radical/pilot/configs/epsrc.json>`
-
-lrz.supermuc
-------------
-
-The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).
-
-.. note::  Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.
-
-Default values for ComputePilotDescription attributes:
-
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               test
-``sandbox``             $HOME
-``access_schema``       gsissh
-================== ============================
-
-Available schemas: ``gsissh, ssh``
-
-:download:`Raw Configuration file: lrz.json<../../src/radical/pilot/configs/lrz.json>`
 
 xsede.lonestar
 --------------
