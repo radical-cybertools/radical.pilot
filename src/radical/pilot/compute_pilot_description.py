@@ -129,7 +129,7 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_camelcasing (True)
 
         self._attributes_register    (RESOURCE,         None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (ACCESS_SCHEMA,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (ACCESS_SCHEMA,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)

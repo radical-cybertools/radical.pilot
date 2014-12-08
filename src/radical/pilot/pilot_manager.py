@@ -322,6 +322,9 @@ class PilotManager(Object):
             if  not schema :
                 if 'schemas' in resource_cfg :
                     schema = resource_cfg['schemas'][0]
+              # import pprint
+              # print "no schema, using %s" % schema
+              # pprint.pprint (pilot_description)
 
             if  not schema in resource_cfg :
               # import pprint
