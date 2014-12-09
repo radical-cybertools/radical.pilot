@@ -85,8 +85,13 @@ def list_sessions (dbclient, dbname, age, session) :
     sessions = dict()
     created  = list()
     for sid in sids :
-        docs = rpu.get_session_docs (dbclient, dbname, sid)
+
+        docs = rpu.get_session_docs (dbclient[dbname], sid)
         c    = docs['session']['created']
+
+        if isinstance (c, float) :
+            c = datetime.datetime.utcfromtimestamp(c) 
+
         if (now-c) > age :
             sessions[sid] = docs
             created.append (c)
@@ -99,7 +104,10 @@ def list_sessions (dbclient, dbname, age, session) :
 
     for c in sorted (created) :
         for sid in sessions :
-            if  sessions[sid]['session']['created'] == c :
+            session_created = sessions[sid]['session']['created']
+            if  isinstance (c, float) :
+                session_created = datetime.datetime.utcfromtimestamp(session_created) 
+            if  session_created == c :
                 print 'match  session %s   (%17s)' % (sid, now-c)
 
     return sessions
