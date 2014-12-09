@@ -16,7 +16,67 @@
    - The LaunchMethods configure how to execute (regular and MPI) tasks,
      and know about the specific format to specify the subset of resources.
 
-.. moduleauthor:: Mark Santcroos <mark.santcroos@rutgers.edu>
+
+   Structure:
+   ----------
+   This represents the planned architecture, which is not fully represented in
+   code, yet.
+
+     - class Agent
+       - represents the whole thing
+       - has a set of InputStagingWorkers (threads or procs)
+       - has a set of OutputStagingWorkers (threads or procs)
+       - has a set of ExecWorkers (threads or procs)
+       - has a set of UpdateWorkers (threads or procs)
+       - has a inputstaging  queue
+       - has a outputstaging queue
+       - has a execution queue
+       - has a update queue
+       - loops forever
+       - in each iteration
+         - pulls CU bulks from DB
+         - pushes CUs into inputstaging queue or execution queue (based on
+           obvious metric)
+
+     class InputeStagingWorker
+       - competes for CU input staging requests from inputstaging queue
+       - for each received CU 
+         - performs staging
+         - pushes CU into execution queue
+         - pushes stage change notification request into update queue
+
+     class OutputeStagingWorker
+       - competes for CU output staging requests from outputstaging queue
+       - for each received CU 
+         - performs staging
+         - pushes stage change notification request into update queue
+
+     class ExecWorker
+       - manages a partition of the allocated cores
+         (partition size == max cu size)
+       - has one spawner (operating on that partition)
+       - competes for CU execution reqeusts from execute queue
+       - for each CU
+         - prepares execition command (LRMS, Launcher, ...)
+         - pushes command to spawner
+         - pushes stage change notification request into update queue
+
+     class Spawner
+       - executes CUs according to ExecWorker instruction
+       - monitors CU execution (for completion)
+       - gets CU execution reqeusts from ExecWorker
+       - for each CU
+         - executes CU command
+         - monitors CU execution
+         - on CU completion
+           - pushes CU to outputstaging queue (if staging is needed)
+           - pushes stage change notification request into update queue
+
+     class Updater
+       - competes for CU state update reqeusts from update queue
+       - for each CU
+         - pushes state update (collected into bulks if possible)
+         - cleans CU workdir if CU is final and cleanup is requested
 """
 
 __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
@@ -294,17 +354,21 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     msg = [{"message": message,      "timestamp": ts},
            {"message": get_rusage(), "timestamp": ts}]
 
-    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : msg},
-         "$push"   : {"statehistory": {"state"     : FAILED, 
-                                       "timestamp" : ts}},
-         "$set"    : {"state"       : FAILED,
-                      "stdout"      : out,
-                      "stderr"      : err,
-                      "logfile"     : log,
-                      "capability"  : 0,
-                      "finished"    : ts}
-        })
+    if  mongo_p :
+        mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+            {"$pushAll": {"log"         : msg},
+             "$push"   : {"statehistory": {"state"     : FAILED, 
+                                           "timestamp" : ts}},
+             "$set"    : {"state"       : FAILED,
+                          "stdout"      : out,
+                          "stderr"      : err,
+                          "logfile"     : log,
+                          "capability"  : 0,
+                          "finished"    : ts}
+            })
+
+    else :
+        logger.error ("cannot log error state in database!")
 
 
 # ------------------------------------------------------------------------------
@@ -2620,7 +2684,6 @@ class ExecWorker(threading.Thread):
 
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
-        self._um = mongo_db["%s.um" % session_id]
 
         # Queued tasks by the Agent
         self._task_queue = task_queue
@@ -3100,7 +3163,6 @@ class InputStagingWorker(threading.Thread):
         self._mongo_db = mongo_client[mongodb_name]
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
-        self._um = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
 
@@ -3242,7 +3304,6 @@ class OutputStagingWorker(threading.Thread):
         self._mongo_db = mongo_client[mongodb_name]
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
-        self._um = mongo_db["%s.um" % session_id]
 
         self._staging_queue = staging_queue
 
@@ -3368,7 +3429,7 @@ class Agent (object):
         self._workdir    = os.getcwd()
 
         mongo_client = pymongo.MongoClient(mongodb_url)
-        mongo_db = mongo_client[mongodb_name]
+        mongo_db     = mongo_client[mongodb_name]
 
         # do auth on username *and* password (ignore empty split results)
         auth_elems = filter (None, mongodb_auth.split (':', 1))
@@ -3377,14 +3438,13 @@ class Agent (object):
 
         self._p  = mongo_db["%s.p"  % session_id]
         self._cu = mongo_db["%s.cu" % session_id]
-        self._um = mongo_db["%s.um" % session_id]
 
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
         self._task_queue = multiprocessing.Queue()
 
         # The staging queues holds the staging directives to be performed
-        self._input_staging_queue = multiprocessing.Queue()
+        self._input_staging_queue  = multiprocessing.Queue()
         self._output_staging_queue = multiprocessing.Queue()
 
         # Channel for the Agent to communicate commands with the ExecWorker
@@ -3954,19 +4014,19 @@ def parse_commandline():
 #
 if __name__ == "__main__":
 
-    # parse command line options
+    mongo_p = None
     options = parse_commandline()
 
     prof ('start', tag='bootstrapping', uid=options.pilot_id)
 
     # configure the agent logger
-    logger = logging.getLogger('radical.pilot.agent')
+    logger    = logging.getLogger   ('radical.pilot.agent')
+    handle    = logging.FileHandler ("AGENT.LOG")
+    formatter = logging.Formatter   ('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
     logger.setLevel(options.debug_level)
-    ch = logging.FileHandler("AGENT.LOG")
-    #ch.setLevel(logging.DEBUG) # TODO: redundant if you have just one file?
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    handle.setFormatter(formatter)
+    logger.addHandler(handle)
 
     logger.info("Using SAGA version %s" % saga.version)
     logger.info("Using RADICAL-Pilot multicore agent, version %s" % git_ident)
@@ -3974,15 +4034,14 @@ if __name__ == "__main__":
 
 
     # --------------------------------------------------------------------------
-    # Some signal handling magic
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit (2)
     signal.signal(signal.SIGINT, sigint_handler)
 
+
     # --------------------------------------------------------------------------
-    #
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
@@ -3990,11 +4049,11 @@ if __name__ == "__main__":
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
 
-    # --------------------------------------------------------------------------
-    # Establish database connection
     try:
+        # --------------------------------------------------------------------------
+        # Establish database connection
         prof ('db setup')
-        host, port = options.mongodb_url.split(':', 1)
+        host, port   = options.mongodb_url.split(':', 1)
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
 
@@ -4002,63 +4061,47 @@ if __name__ == "__main__":
             user, pwd = options.mongodb_auth.split (':', 1)
             mongo_db.authenticate (user, pwd)
 
-        mongo_p  = mongo_db["%s.p"  % options.session_id]
-        mongo_cu = mongo_db["%s.cu" % options.session_id]  # AM: never used
-        mongo_um = mongo_db["%s.um" % options.session_id]  # AM: never used
-
-    except Exception, ex:
-        logger.error("Couldn't establish database connection: %s" % str(ex))
-        sys.exit(1)
+        mongo_p = mongo_db["%s.p" % options.session_id]
 
 
-    #--------------------------------------------------------------------------
-    # Discover environment, nodes, cores, mpi, etc.
-    try:
+        #--------------------------------------------------------------------------
+        # Discover environment, nodes, cores, mpi, etc.
         prof ('exec env setup')
         exec_env = ExecutionEnvironment(
-            logger=logger,
-            lrms_name=options.lrms,
-            requested_cores=options.cores,
-            task_launch_method=options.task_launch_method,
-            mpi_launch_method=options.mpi_launch_method,
-            scheduler_name=options.agent_scheduler
+                logger             = logger,
+                lrms_name          = options.lrms,
+                requested_cores    = options.cores,
+                task_launch_method = options.task_launch_method,
+                mpi_launch_method  = options.mpi_launch_method,
+                scheduler_name     = options.agent_scheduler
         )
-        # TODO: Shouldn't this case be covered by the exception block?
-        if exec_env is None:
-            msg = "Couldn't set up execution environment."
-            logger.error(msg)
-            pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-            sys.exit(4)
-    except Exception as ex:
-        msg = "Error setting up execution environment: %s" % str(ex)
-        logger.exception(msg)
-        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit(5)
 
-    # --------------------------------------------------------------------------
-    # Launch the agent thread
-    agent = None
-    try:
+
+        # --------------------------------------------------------------------------
+        # Launch the agent thread
         prof ('Agent create')
-        agent = Agent(logger=logger,
-                      exec_env=exec_env,
-                      runtime=options.runtime,
-                      mongodb_url=options.mongodb_url,
-                      mongodb_name=options.database_name,
-                      mongodb_auth=options.mongodb_auth,
-                      pilot_id=options.pilot_id,
-                      session_id=options.session_id)
+        agent = Agent(
+                logger       = logger,
+                exec_env     = exec_env,
+                runtime      = options.runtime,
+                mongodb_url  = options.mongodb_url,
+                mongodb_name = options.database_name,
+                mongodb_auth = options.mongodb_auth,
+                pilot_id     = options.pilot_id,
+                session_id   = options.session_id
+        )
 
         agent.run()
+        prof ('Agent done')
+
+    except SystemExit:
+        logger.error("Caught keyboard interrupt. EXITING")
 
     except Exception as ex:
         msg = "Error running agent: %s" % str(ex)
         logger.exception(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(6)
-
-    except SystemExit:
-        logger.error("Caught keyboard interrupt. EXITING")
 
     finally :
         prof ('stop', msg='finally clause')
