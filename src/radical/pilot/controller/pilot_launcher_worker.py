@@ -274,9 +274,10 @@ class PilotLauncherWorker(threading.Thread):
             last_job_check = time.time()
 
             while not self._stop.is_set():
-                # Periodically, we pull up all ComputePilots that are pending
-                # execution or were last seen executing and check if the corresponding
-                # SAGA job is still pending in the queue. If that is not the case,
+
+                # Periodically, we pull up all ComputePilots that are pending 
+                # execution or were last seen executing and check if the corresponding  
+                # SAGA job is still pending in the queue. If that is not the case, 
                 # we assume that the job has failed for some reasons and update
                 # the state of the ComputePilot accordingly.
                 if  last_job_check + JOB_CHECK_INTERVAL < time.time() :

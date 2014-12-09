@@ -148,6 +148,16 @@ class PilotManager(Object):
             logger.error("PilotManager object already closed.")
             return
 
+        # before we terminare pilots, we have to kill the pilot launcher threads
+        # -- otherwise we'll run into continous race conditions due to the
+        # angoing state checks...
+        if self._worker is not None:
+            # Stop the worker process
+            logger.error("pmgr    %s cancel   worker %s" % (str(self._uid), self._worker.name))
+            self._worker.cancel_launcher()
+            logger.error("pmgr    %s canceled worker %s" % (str(self._uid), self._worker.name))
+
+
         # If terminate is set, we cancel all pilots. 
         if  terminate :
             # cancel all pilots, make sure they are gone, and close the pilot
@@ -179,10 +189,11 @@ class PilotManager(Object):
           #
           # self.wait_pilots ()
             wait_for_cancel = True
+            all_pilots = self.get_pilots ()
             while wait_for_cancel :
                 wait_for_cancel = False
-                for pilot in self.get_pilots () :
-                    logger.error("pmgr    %s wait for pilot  %s" % (str(self._uid), pilot._uid))
+                for pilot in all_pilots :
+                    logger.error("pmgr    %s wait for pilot  %s (%s)" % (str(self._uid), pilot._uid, pilot.state))
                     if  pilot.state not in [DONE, FAILED, CANCELED, CANCELING] :
                         time.sleep (1)
                         wait_for_cancel = True
@@ -322,6 +333,9 @@ class PilotManager(Object):
             if  not schema :
                 if 'schemas' in resource_cfg :
                     schema = resource_cfg['schemas'][0]
+              # import pprint
+              # print "no schema, using %s" % schema
+              # pprint.pprint (pilot_description)
 
             if  not schema in resource_cfg :
               # import pprint

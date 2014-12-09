@@ -315,8 +315,8 @@ class UnitManagerController(threading.Thread):
             import thread
             thread.interrupt_main ()
 
-        finally :
 
+        finally :
             # shut down the autonomous input / output transfer worker(s)
             for worker in self._input_file_transfer_worker_pool:
                 logger.error("uworker %s stops   itransfer %s" % (self.name, worker.name))

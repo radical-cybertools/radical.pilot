@@ -56,15 +56,6 @@ git_ident = "$Id$"
 # CONSTANTS
 #
 
-# tri-state for unit spawn retval
-OK    = 'OK'
-FAIL  = 'FAIL'
-RETRY = 'RETRY'
-
-# two-state for slot occupation.
-FREE  = 'Free'
-BUSY  = 'Busy'
-
 # 'enum' for unit launch method types
 LAUNCH_METHOD_APRUN         = 'APRUN'
 LAUNCH_METHOD_CCMRUN        = 'CCMRUN'
@@ -114,6 +105,14 @@ MOVE     = 'Move'     # local mv
 TRANSFER = 'Transfer' # saga remote transfer 
                       # TODO: This might just be a special case of copy
 
+# tri-state for unit spawn retval
+OK    = 'OK'
+FAIL  = 'FAIL'
+RETRY = 'RETRY'
+
+# two-state for slot occupation.
+FREE  = 'Free'
+BUSY  = 'Busy'
 
 # directory for staging files inside the agent sandbox
 STAGING_AREA = 'staging_area'
@@ -3348,7 +3347,7 @@ class OutputStagingWorker(threading.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class Agent(threading.Thread):
+class Agent (object):
 
     # --------------------------------------------------------------------------
     #
@@ -3358,8 +3357,6 @@ class Agent(threading.Thread):
         """
         prof ('Agent init')
 
-        threading.Thread.__init__(self)
-        self.lock        = threading.Lock()
         self._terminate  = threading.Event()
 
         self._log        = logger
@@ -3465,8 +3462,7 @@ class Agent(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def run(self):
-        """Starts the thread when Thread.start() is called.
-        """
+
         prof ('Agent run()')
 
         # first order of business: set the start time and state of the pilot
@@ -4053,27 +4049,21 @@ if __name__ == "__main__":
                       pilot_id=options.pilot_id,
                       session_id=options.session_id)
 
-        # AM: why is this done in a thread?  This thread blocks anyway, so it
-        # could just *do* the things.  That would avoid those global vars and
-        # would allow for cleaner shutdown.
-        agent.start()
-        agent.join()
+        agent.run()
 
     except Exception as ex:
         msg = "Error running agent: %s" % str(ex)
         logger.exception(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        if agent:
-            agent.stop()
         sys.exit(6)
 
     except SystemExit:
         logger.error("Caught keyboard interrupt. EXITING")
-        if agent:
-            agent.stop()
 
     finally :
         prof ('stop', msg='finally clause')
         sys.exit(7)
 
+
+# ------------------------------------------------------------------------------
 
