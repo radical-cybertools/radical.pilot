@@ -84,12 +84,16 @@ if __name__ == "__main__":
 
         for unit_count in range(0, 4):
             mpi_test_task = radical.pilot.ComputeUnitDescription()
-            mpi_test_task.pre_exec    = ["module load python/2.7.5", "printenv"]
-            mpi_test_task.executable  = "/gpfs/home/HCP056/sxz03/mas16-sxz03/cuve/bin/python"
-            mpi_test_task.arguments   = ["/gpfs/home/HCP056/sxz03/mas16-sxz03/helloworld_mpi.py"]
-            mpi_test_task.cores       = 32
+            mpi_test_task.pre_exec = [
+                "module load python/2.7.5",
+                "source $HOME/cu_ve_20141205/bin/activate"
+            ]
+            mpi_test_task.input_staging = ["helloworld_mpi.py"]
+            mpi_test_task.executable = "python"
+            mpi_test_task.arguments = ["helloworld_mpi.py"]
+            mpi_test_task.cores = 32
+            mpi_test_task.mpi = True
 
-            mpi_test_task.mpi         = True
             cud_list.append(mpi_test_task)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -127,4 +131,3 @@ if __name__ == "__main__":
         # Catch all exceptions and exit with and error.
         print "Error during execution: %s" % ex
         sys.exit(1)
-
