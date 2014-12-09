@@ -77,6 +77,13 @@
        - for each CU
          - pushes state update (collected into bulks if possible)
          - cleans CU workdir if CU is final and cleanup is requested
+
+    TODO:
+    -----
+
+    - add option to scheduler to ignore node 0 (which hosts the agent process)
+    - add LRMS.partition (n) to return a set of partitioned LRMS for partial
+      ExecWorkers
 """
 
 __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
@@ -115,6 +122,7 @@ git_ident = "$Id$"
 # ------------------------------------------------------------------------------
 # CONSTANTS
 #
+N_EXEC_WORKER = 1
 
 # 'enum' for unit launch method types
 LAUNCH_METHOD_APRUN         = 'APRUN'
@@ -2658,7 +2666,7 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, exec_env, logger, task_queue, command_queue,
+    def __init__(self, exec_env, logger, execution_queue, command_queue,
                  output_staging_queue, mongodb_url, mongodb_name, mongodb_auth,
                  pilot_id, session_id, cu_environment):
 
@@ -2686,7 +2694,7 @@ class ExecWorker(threading.Thread):
         self._cu = mongo_db["%s.cu" % session_id]
 
         # Queued tasks by the Agent
-        self._task_queue = task_queue
+        self._execution_queue = execution_queue
 
         # Queued transfers
         self._output_staging_queue = output_staging_queue
@@ -2785,7 +2793,7 @@ class ExecWorker(threading.Thread):
 
                 task = None
                 try:
-                    task = self._task_queue.get_nowait()
+                    task = self._execution_queue.get_nowait()
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
@@ -2823,7 +2831,7 @@ class ExecWorker(threading.Thread):
                         # Check if we got results
                         if opaque_slot is None:
                             # No resources available, put back in queue
-                            self._task_queue.put(task)
+                            self._execution_queue.put(task)
                             prof ('ExecWorker returns task to queue', uid=task.uid)
                         else:
                             # got an allocation, go off and launch the process
@@ -3412,8 +3420,11 @@ class Agent (object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, exec_env, runtime, mongodb_url, mongodb_name, 
-                 mongodb_auth, pilot_id, session_id):
+    def __init__(self, logger, lrms_name, requested_cores, 
+            task_launch_method, mpi_launch_method, 
+            scheduler_name, runtime, 
+            mongodb_url, mongodb_name, mongodb_auth, 
+            pilot_id, session_id):
         """Le Constructeur creates a new Agent instance.
         """
         prof ('Agent init')
@@ -3422,7 +3433,6 @@ class Agent (object):
 
         self._log        = logger
         self._pilot_id   = pilot_id
-        self._exec_env   = exec_env
         self._runtime    = runtime
         self._starttime  = None
 
@@ -3441,7 +3451,7 @@ class Agent (object):
 
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
-        self._task_queue = multiprocessing.Queue()
+        self._execution_queue = multiprocessing.Queue()
 
         # The staging queues holds the staging directives to be performed
         self._input_staging_queue  = multiprocessing.Queue()
@@ -3450,27 +3460,41 @@ class Agent (object):
         # Channel for the Agent to communicate commands with the ExecWorker
         self._command_queue = multiprocessing.Queue()
 
-        # we assign each node partition to a task execution worker
-        prof ('Exec Worker create')
-        self._exec_worker = ExecWorker(
-            exec_env        = self._exec_env,
-            logger          = self._log,
-            task_queue      = self._task_queue,
-            output_staging_queue   = self._output_staging_queue,
-            command_queue   = self._command_queue,
-            #node_list       = self._exec_env.lrms.node_list,
-            #cores_per_node  = self._exec_env.lrms.cores_per_node,
-            #launch_methods  = self._exec_env.discovered_launch_methods,
-            mongodb_url     = mongodb_url,
-            mongodb_name    = mongodb_name,
-            mongodb_auth    = mongodb_auth,
-            pilot_id        = pilot_id,
-            session_id      = session_id,
-            cu_environment  = self._exec_env.cu_environment
+        #--------------------------------------------------------------------------
+        # Discover environment, nodes, cores, mpi, etc.
+        prof ('exec env setup')
+        self._exec_env = ExecutionEnvironment(
+                logger             = self._log,
+                lrms_name          = lrms_name,
+                requested_cores    = requested_cores,
+                task_launch_method = task_launch_method,
+                mpi_launch_method  = mpi_launch_method,
+                scheduler_name     = scheduler_name
         )
-        self._exec_worker.start()
-        self._log.info("Started up %s serving nodes %s" %
-                       (self._exec_worker, self._exec_env.lrms.node_list))
+
+        self._exec_worker_list = list()
+        for n in range(N_EXEC_WORKER) :
+            prof ('Exec Worker create %s' % n)
+            exec_worker = ExecWorker(
+                exec_env        = self._exec_env,
+                logger          = self._log,
+                execution_queue = self._execution_queue,
+                output_staging_queue   = self._output_staging_queue,
+                command_queue   = self._command_queue,
+                #node_list       = self._exec_env.lrms.node_list,
+                #cores_per_node  = self._exec_env.lrms.cores_per_node,
+                #launch_methods  = self._exec_env.discovered_launch_methods,
+                mongodb_url     = mongodb_url,
+                mongodb_name    = mongodb_name,
+                mongodb_auth    = mongodb_auth,
+                pilot_id        = pilot_id,
+                session_id      = session_id,
+                cu_environment  = self._exec_env.cu_environment
+            )
+            exec_worker.start()
+            self._log.info("Started up %s serving nodes %s" %
+                           (exec_worker, self._exec_env.lrms.node_list))
+            self._exec_worker_list.append (exec_worker)
 
         # Start input staging worker
         prof ('IS Worker create')
@@ -3510,7 +3534,8 @@ class Agent (object):
         prof ('Agent stop()')
 
         # First, we need to shut down all the workers
-        self._exec_worker._terminate.set()
+        for exec_worker in self._exec_worker_list :
+            exec_worker._terminate.set()
 
         # Shut down the staging workers
         self._input_staging_worker._terminate.set()
@@ -3556,10 +3581,11 @@ class Agent (object):
                 # Check the workers periodically. If they have died, we 
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
-                if self._exec_worker.is_alive() is False:
-                    msg = 'Execution worker %s died' % str(self._exec_worker)
-                    pilot_FAILED(self._p, self._pilot_id, self._log, msg)
-                    return
+                for exec_worker in self._exec_worker_list :
+                    if  exec_worker.is_alive() is False:
+                        msg = 'Execution worker %s died' % str(exec_worker)
+                        pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+                        return
 
                 # Exit the main loop if terminate is set. 
                 if self._terminate.isSet():
@@ -3676,7 +3702,7 @@ class Agent (object):
 
                             task.state = SCHEDULING
                             prof ('Task queued', uid=cu_uid)
-                            self._task_queue.put(task)
+                            self._execution_queue.put(task)
 
                     #
                     # Check if there are compute units waiting for input staging
@@ -3923,89 +3949,33 @@ def parse_commandline():
 
     parser = optparse.OptionParser()
 
-    parser.add_option('-a', '--mongodb-auth',
-                      metavar='AUTH',
-                      dest='mongodb_auth',
-                      help='username:password for MongoDB access.')
-
-    parser.add_option('-c', '--cores',
-                      metavar='CORES',
-                      dest='cores',
-                      type='int',
-                      help='Specifies the number of cores to allocate.')
-
-    parser.add_option('-d', '--debug',
-                      metavar='DEBUG',
-                      dest='debug_level',
-                      type='int',
-                      help='The DEBUG level for the agent.')
-
-    parser.add_option('-j', '--task-launch-method',
-                      metavar='METHOD',
-                      dest='task_launch_method',
-                      help='Specifies the task launch method.')
-
-    parser.add_option('-k', '--mpi-launch-method',
-                      metavar='METHOD',
-                      dest='mpi_launch_method',
-                      help='Specifies the MPI launch method.')
-
-    parser.add_option('-l', '--lrms',
-                      metavar='LRMS',
-                      dest='lrms',
-                      help='Specifies the LRMS type.')
-
-    parser.add_option('-m', '--mongodb-url',
-                      metavar='URL',
-                      dest='mongodb_url',
-                      help='Specifies the MongoDB Url.')
-
-    parser.add_option('-n', '--database-name',
-                      metavar='URL',
-                      dest='database_name',
-                      help='Specifies the MongoDB database name.')
-
-    parser.add_option('-p', '--pilot-id',
-                      metavar='PID',
-                      dest='pilot_id',
-                      help='Specifies the Pilot ID.')
-
-    parser.add_option('-q', '--agent-scheduler',
-                      metavar='SCHEDULER',
-                      dest='agent_scheduler',
-                      help='Specifies the scheduler of the agent.')
-
-    parser.add_option('-s', '--session-id',
-                      metavar='SID',
-                      dest='session_id',
-                      help='Specifies the Session ID.')
-
-    parser.add_option('-r', '--runtime',
-                      metavar='RUNTIME',
-                      dest='runtime',
-                      help='Specifies the agent runtime in minutes.')
+    parser.add_option('-a', dest='mongodb_auth')
+    parser.add_option('-c', dest='cores',       type='int')
+    parser.add_option('-d', dest='debug_level', type='int')
+    parser.add_option('-j', dest='task_launch_method')
+    parser.add_option('-k', dest='mpi_launch_method')
+    parser.add_option('-l', dest='lrms')
+    parser.add_option('-m', dest='mongodb_url')
+    parser.add_option('-n', dest='database_name')
+    parser.add_option('-p', dest='pilot_id')
+    parser.add_option('-q', dest='agent_scheduler')
+    parser.add_option('-r', dest='runtime',     type='int')
+    parser.add_option('-s', dest='session_id')
 
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
-    if options.mongodb_url is None:
-        parser.error("You must define MongoDB URL (-m/--mongodb-url). Try --help for help.")
-    if options.database_name is None:
-        parser.error("You must define a database name (-n/--database-name). Try --help for help.")
-    if options.session_id is None:
-        parser.error("You must define a session id (-s/--session-id). Try --help for help.")
-    if options.pilot_id is None:
-        parser.error("You must define a pilot id (-p/--pilot-id). Try --help for help.")
-    if options.agent_scheduler is None:
-        parser.error("You must define a scheduler for the agent (-q/--agent-scheduler). Try --help for help.")
-    if options.cores is None:
-        parser.error("You must define the number of cores (-c/--cores). Try --help for help.")
-    if options.runtime is None:
-        parser.error("You must define the agent runtime (-r/--runtime). Try --help for help.")
-    if options.debug_level is None:
-        parser.error("You must pass the DEBUG level (-d/--debug). Try --help for help.")
-    if options.lrms is None:
-        parser.error("You must pass the LRMS (-l/--lrms). Try --help for help.")
+    if not options.cores                : parser.error("Missing number of cores (-c)")
+    if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
+    if not options.task_launcher_method : parser.error("Missing task launcher method (-j)")
+    if not options.mpi_launcher_method  : parser.error("Missing mpi launcher method (-k)")
+    if not options.lrms                 : parser.error("Missing LRMS (-l)")
+    if not options.mongodb_url          : parser.error("Missing MongoDB URL (-m)")
+    if not options.database_name        : parser.error("Missing database name (-n)")
+    if not options.pilot_id             : parser.error("Missing pilot id (-p)")
+    if not options.agent_scheduler      : parser.error("Missing agent scheduler (-q)")
+    if not options.runtime              : parser.error("Missing agent runtime (-r)")
+    if not options.session_id           : parser.error("Missing session id (-s)")
 
     return options
 
@@ -4064,31 +4034,22 @@ if __name__ == "__main__":
         mongo_p = mongo_db["%s.p" % options.session_id]
 
 
-        #--------------------------------------------------------------------------
-        # Discover environment, nodes, cores, mpi, etc.
-        prof ('exec env setup')
-        exec_env = ExecutionEnvironment(
+        # --------------------------------------------------------------------------
+        # Launch the agent thread
+        prof ('Agent create')
+        agent = Agent(
                 logger             = logger,
                 lrms_name          = options.lrms,
                 requested_cores    = options.cores,
                 task_launch_method = options.task_launch_method,
                 mpi_launch_method  = options.mpi_launch_method,
-                scheduler_name     = options.agent_scheduler
-        )
-
-
-        # --------------------------------------------------------------------------
-        # Launch the agent thread
-        prof ('Agent create')
-        agent = Agent(
-                logger       = logger,
-                exec_env     = exec_env,
-                runtime      = options.runtime,
-                mongodb_url  = options.mongodb_url,
-                mongodb_name = options.database_name,
-                mongodb_auth = options.mongodb_auth,
-                pilot_id     = options.pilot_id,
-                session_id   = options.session_id
+                scheduler_name     = options.agent_scheduler,
+                runtime            = options.runtime,
+                mongodb_url        = options.mongodb_url,
+                mongodb_name       = options.database_name,
+                mongodb_auth       = options.mongodb_auth,
+                pilot_id           = options.pilot_id,
+                session_id         = options.session_id
         )
 
         agent.run()
