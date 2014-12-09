@@ -76,7 +76,7 @@ def list_sessions (dbclient, dbname, age, session) :
     if  session :
         sids.append (session)
     else :
-        sids = rpu.get_session_ids (dbclient, dbname)
+        sids = rpu.get_session_ids (dbclient[dbname])
 
     if not sids :
         print 'no matching session in database at %s' % url
