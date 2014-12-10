@@ -842,7 +842,10 @@ class SchedulerTorus(Scheduler):
     # Follow coordinates to get the last node
     #
     def get_last_node(self, origin, shape):
-        return {dim: origin[dim] + shape[dim] -1 for dim in self.lrms.torus_dimension_labels}
+        ret = {}
+        for dim in self.lrms.torus_dimension_labels:
+            ret[dim] = origin[dim] + shape[dim] -1
+        return ret
     #
     ##########################################################################
 
@@ -2242,7 +2245,9 @@ class LoadLevelerLRMS(LRMS):
         table = {}
 
         # Create a sub-block dict with shape 1x1x1x1x1
-        sub_block_shape = {l: 1 for l in self.BGQ_DIMENSION_LABELS}
+        sub_block_shape = {}
+        for l in self.BGQ_DIMENSION_LABELS:
+            sub_block_shape[l] = 1
 
         # Look over all the dimensions starting at the most right
         for dim in self.BGQ_MAPPING[::-1]:
