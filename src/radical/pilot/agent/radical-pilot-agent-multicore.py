@@ -3166,17 +3166,19 @@ class UpdateWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, update_queue, mongodb_url, mongodb_name):
+    def __init__(self, logger, session_id, 
+                 update_queue, mongodb_url, mongodb_name):
 
         threading.Thread.__init__(self)
 
         self._log           = logger
+        self._session_id    = session_id
         self._update_queue  = update_queue
         self._terminate     = threading.Event ()
 
         mongo_client        = pymongo.MongoClient(mongodb_url)
         self._mongo_db      = mongo_client[mongodb_name]
-        self._collections   = dict()  # collection cache
+        self._cinfo         = dict()  # collection cache
 
 
     # --------------------------------------------------------------------------
@@ -3194,23 +3196,71 @@ class UpdateWorker(threading.Thread):
 
         while not self._terminate.isSet () :
 
+            # ------------------------------------------------------------------
+            def timed_bulk_execute (cinfo) :
+                # returns number of bulks pushed (0 or 1)
+
+                now = time.time ()
+                age = now - cinfo['last']
+
+                if  cinfo['bulk'] and age > BULK_COLLECTION_TIME :
+
+                    res  = cinfo['bulk'].execute ()
+                    self._log ('bulk update result: %s' % res)
+
+                    for uid in cinfo['uids'] :
+                        prof ('state update bulk pushed', uid=uid)
+
+                    cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op (),
+                    cinfo['last'] = now
+                    cinfo['uids'] = list()
+                    return 1
+
+                else :
+                    return 0
+            # ------------------------------------------------------------------
+
             try :
 
                 try:
                     update_request = self._update_queue.get_nowait()
 
                 except Queue.Empty:
-                    time.sleep(QUEUE_POLL_SLEEPTIME)
+
+                    # no new requests: push any pending bulks
+                    action = 0
+                    for cname in self._cinfo :
+                        action += timed_bulk_execute (self._cinfo[cname])
+
+                    if  not action :
+                        time.sleep(QUEUE_POLL_SLEEPTIME)
+
                     continue
 
-                # Perform input staging
-                collection_name, query_dict, update_dict = update_request
 
-                if not collection_name in self._collections :
-                    self._collections[collection_name] = self._mongo_db[collection_name]
+                # got a new request.  Add to bulk (create as needed), 
+                # and push bulk if time is up.
+                cbase, uid, query_dict, update_dict = update_request
+                prof ('state update pulled', uid=uid)
 
-                collection = self._collections[collection_name]
-                collection.update (query_dict, update_dict)
+                cname = self._session_id + cbase
+
+                if not cname in self._cinfo :
+                    coll =  self._mongo_db[cname]
+                    self._cinfo[cname] = {
+                            'coll' : coll,
+                            'bulk' : coll.initialize_ordered_bulk_op (),
+                            'last' : time.time(),  # time of last push
+                            'uids' : list()
+                            }
+
+                cinfo = self._cinfo[cname]
+                cinfo['uids'].append (uid)
+                cinfo['bulk'].find   (query_dict) \
+                             .update (update_dict)
+                
+                timed_bulk_execute (cinfo)
+                prof ('state update bulked', uid=uid)
 
             except Exception as e :
                 self._log.exception ("state update failed")
@@ -3227,17 +3277,15 @@ class StageinWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, stagein_queue, mongodb_url, mongodb_name, session_id):
+    def __init__(self, logger, execution_queue, stagein_queue, update_queue) :
 
         threading.Thread.__init__(self)
 
-        self._log           = logger
-        self._stagein_queue = stagein_queue
-        self._terminate     = threading.Event ()
-
-        mongo_client        = pymongo.MongoClient(mongodb_url)
-        mongo_db            = mongo_client[mongodb_name]
-        self._cu            = mongo_db["%s.cu" % session_id]
+        self._log             = logger
+        self._execution_queue = execution_queue
+        self._stagein_queue   = stagein_queue
+        self._update_queue    = update_queue
+        self._terminate       = threading.Event ()
 
 
     # --------------------------------------------------------------------------
@@ -3325,14 +3373,25 @@ class StageinWorker(threading.Thread):
 
                 # If all went fine, update the state of this StagingDirective 
                 # to Done
-                self._cu.update(
-                    {'_id': ObjectId(cu_id),
-                     'Agent_Input_Status': EXECUTING,
-                     'Agent_Input_Directives.state': PENDING,
-                     'Agent_Input_Directives.source': directive['source'],
-                     'Agent_Input_Directives.target': directive['target']},
-                    {'$set' : {'Agent_Input_Directives.$.state': DONE},
-                     '$push': {'log': log_message}})
+                self._update_queue.push (
+                        [   # collection name
+                            '.cu',
+                            # uid
+                            cu_id,
+                            # query dict
+                            {
+                                '_id': ObjectId(cu_id),
+                                'Agent_Input_Status': EXECUTING,
+                                'Agent_Input_Directives.state': PENDING,
+                                'Agent_Input_Directives.source': directive['source'],
+                                'Agent_Input_Directives.target': directive['target']
+                            },
+                            # update dict
+                            {
+                                '$set' : {'Agent_Input_Directives.$.state': DONE},
+                                '$push': {'log': log_message}
+                            }
+                        ])
 
             except:
                 # If we catch an exception, assume the staging failed
@@ -3340,16 +3399,27 @@ class StageinWorker(threading.Thread):
                 self._log.error(log_message)
 
                 # If a staging directive fails, fail the CU also.
-                self._cu.update(
-                    {'_id': ObjectId(cu_id),
-                     'Agent_Input_Status': EXECUTING,
-                     'Agent_Input_Directives.state': PENDING,
-                     'Agent_Input_Directives.source': directive['source'],
-                     'Agent_Input_Directives.target': directive['target']},
-                    {'$set': {'Agent_Input_Directives.$.state': FAILED,
-                               'Agent_Input_Status': FAILED,
-                               'state': FAILED},
-                     '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}})
+                self._update_queue.push (
+                        [   # collection name
+                            '.cu',
+                            # uid
+                            cu_id,
+                            # query dict
+                            {
+                                '_id': ObjectId(cu_id),
+                                'Agent_Input_Status': EXECUTING,
+                                'Agent_Input_Directives.state': PENDING,
+                                'Agent_Input_Directives.source': directive['source'],
+                                'Agent_Input_Directives.target': directive['target']
+                            },
+                            # update dict
+                            {
+                                '$set' : {'Agent_Input_Directives.$.state': FAILED,
+                                          'Agent_Input_Status': FAILED,
+                                          'state': FAILED},
+                                '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}
+                            }
+                        ])
 
 
 # ------------------------------------------------------------------------------
@@ -3360,17 +3430,15 @@ class StageoutWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, stageout_queue, mongodb_url, mongodb_name, session_id):
+    def __init__(self, logger, execution_queue, stageout_queue, update_queue) :
 
         threading.Thread.__init__(self)
 
-        self._log            = logger
-        self._stageout_queue = stageout_queue
-        self._terminate      = threading.Event ()
-
-        mongo_client         = pymongo.MongoClient(mongodb_url)
-        mongo_db             = mongo_client[mongodb_name]
-        self._cu             = mongo_db["%s.cu" % session_id]
+        self._log             = logger
+        self._execution_queue = execution_queue
+        self._stageout_queue  = stageout_queue
+        self._update_queue    = update_queue
+        self._terminate       = threading.Event ()
 
 
     # --------------------------------------------------------------------------
@@ -3454,13 +3522,25 @@ class StageoutWorker(threading.Thread):
 
                     # If all went fine, update the state of this 
                     # StagingDirective to Done
-                    self._cu.update({'_id' : ObjectId(cu_id),
-                                     'Agent_Output_Status': EXECUTING,
-                                     'Agent_Output_Directives.state': PENDING,
-                                     'Agent_Output_Directives.source': directive['source'],
-                                     'Agent_Output_Directives.target': directive['target']},
-                                    {'$set' : {'Agent_Output_Directives.$.state': DONE},
-                                     '$push': {'log': logmessage}})
+                    self._update_queue.push (
+                            [   # collection name
+                                '.cu',
+                                # uid
+                                cu_id,
+                                # query dict
+                                {
+                                    '_id': ObjectId(cu_id),
+                                    'Agent_Output_Status': EXECUTING,
+                                    'Agent_Output_Directives.state': PENDING,
+                                    'Agent_Output_Directives.source': directive['source'],
+                                    'Agent_Output_Directives.target': directive['target']
+                                },
+                                # update dict
+                                {
+                                    '$set' : {'Agent_Output_Directives.$.state': DONE},
+                                    '$push': {'log': logmessage}
+                                }
+                            ])
 
                 except Queue.Empty:
                     # do nothing and sleep if we don't have any queued staging
@@ -3492,6 +3572,8 @@ class Agent (object):
         self._terminate             = threading.Event()
         self._starttime             = time.time()
         self._workdir               = os.getcwd()
+        self._session_id            = session_id
+        self._pilot_id              = pilot_id
 
         self._execution_worker_list = list()
         self._update_worker_list    = list()
@@ -3511,8 +3593,8 @@ class Agent (object):
         if  len (auth_elems) == 2 :
             mongo_db.authenticate (auth_elems[0], auth_elems[1])
 
-        self._p  = mongo_db["%s.p"  % session_id]
-        self._cu = mongo_db["%s.cu" % session_id]
+        self._p  = mongo_db["%s.p"  % self._session_id]
+        self._cu = mongo_db["%s.cu" % self._session_id]
 
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
@@ -3551,8 +3633,8 @@ class Agent (object):
                 mongodb_url     = mongodb_url,
                 mongodb_name    = mongodb_name,
                 mongodb_auth    = mongodb_auth,
-                pilot_id        = pilot_id,
-                session_id      = session_id,
+                pilot_id        = self._pilot_id,
+                session_id      = self._session_id,
                 cu_environment  = self._exec_env.cu_environment
             )
             exec_worker.start()
@@ -3565,6 +3647,7 @@ class Agent (object):
             prof ('Update Worker create')
             update_worker = UpdateWorker(
                 logger          = self._log,
+                session_id      = self._session_id,
                 update_queue    = self._update_queue,
                 mongodb_url     = mongodb_url,
                 mongodb_name    = mongodb_name
@@ -3578,10 +3661,9 @@ class Agent (object):
             prof ('IS Worker create')
             stagein_worker = StageinWorker(
                 logger          = self._log,
+                execution_queue = self._execution_queue,
                 stagein_queue   = self._stagein_queue,
-                mongodb_url     = mongodb_url,
-                mongodb_name    = mongodb_name,
-                session_id      = session_id
+                update_queue    = self._update_queue
             )
             stagein_worker.start()
             self._log.info("Started up %s." % stagein_worker)
@@ -3592,10 +3674,9 @@ class Agent (object):
             prof ('OS Worker create')
             stageout_worker = StageoutWorker(
                 logger          = self._log,
+                execution_queue = self._execution_queue,
                 stageout_queue  = self._stageout_queue,
-                mongodb_url     = mongodb_url,
-                mongodb_name    = mongodb_name,
-                session_id      = session_id
+                update_queue    = self._update_queue
             )
             stageout_worker.start()
             self._log.info("Started up %s." % stageout_worker)
