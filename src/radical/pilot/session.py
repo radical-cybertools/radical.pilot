@@ -13,6 +13,7 @@ __license__   = "MIT"
 
 import os 
 import glob
+import copy
 import saga
 import radical.utils as ru
 
