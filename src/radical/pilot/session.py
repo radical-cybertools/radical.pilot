@@ -529,7 +529,7 @@ class Session (saga.Session, Object):
 
     # -------------------------------------------------------------------------
     #
-    def get_resource_config (self, resource_key):
+    def get_resource_config (self, resource_key, schema=None):
         """Returns a dictionary of the requested resource config
         """
 
@@ -542,5 +542,21 @@ class Session (saga.Session, Object):
             error_msg = "Resource key '%s' is not known." % resource_key
             raise PilotException(error_msg)
 
-        return self._resource_configs[resource_key]
+        resource_cfg = copy.deepcopy (self._resource_configs[resource_key])
+
+        if  not schema :
+            if 'schemas' in resource_cfg :
+                schema = resource_cfg['schemas'][0]
+
+        if  schema not in resource_cfg :
+            raise RuntimeError ("schema %s unknown for resource %s" \
+                             % (schema, resource_key))
+
+        for key in resource_cfg[schema] :
+            # merge schema specific resource keys into the
+            # resource config
+            resource_cfg[key] = resource_cfg[schema][key]
+
+
+        return resource_cfg
 
