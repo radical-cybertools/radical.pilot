@@ -201,10 +201,10 @@ STAGING_AREA         = 'staging_area'
 MAX_IO_LOGLENGTH     = 64*1024
 
 # max time period to collec db requests into bulks (seconds)
-BULK_COLLECTION_TIME = 1.0
+BULK_COLLECTION_TIME = 1.0   # FIXME: 2*latency
 
 # time to sleep between queue polls (seconds)
-QUEUE_POLL_SLEEPTIME = 0.1
+QUEUE_POLL_SLEEPTIME = 1.0   # FIXME: 2*latency
 
 
 # ------------------------------------------------------------------------------
@@ -228,6 +228,7 @@ ACTIVE                      = 'Active'
 # ComputeUnit States
 PENDING_EXECUTION           = 'PendingExecution'
 SCHEDULING                  = 'Scheduling'
+ALLOCATING                  = 'Allocating'
 EXECUTING                   = 'Executing'
 
 # These last 4 are not really states, as there are distributed entities enacting
@@ -280,7 +281,11 @@ else :
 profile_tags  = dict ()
 profile_freqs = dict ()
 
-def prof (etype, uid="", msg="", tag=None) :
+def prof (etype, uid="", msg="", tag="", logger=None) :
+
+    if  logger :
+        logger ("%s -- %s (%s): %s" % (etype, msg, uid, tag))
+
 
     # whenever a tag changes (to a non-None value), the time since the last tag
     # change is added
@@ -1255,7 +1260,7 @@ class LaunchMethodFORK(LaunchMethod):
         else:
             command = task_exec
 
-        return command
+        return command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1293,7 +1298,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
         mpirun_command = "%s -np %s -host %s %s" % (
             self.launch_command, task_numcores, hosts_string, task_command)
 
-        return mpirun_command
+        return mpirun_command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1379,7 +1384,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         mpiexec_command = "%s -n %s -host %s %s" % (
             self.launch_command, task_numcores, hosts_string, task_command)
 
-        return mpiexec_command
+        return mpiexec_command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1409,7 +1414,7 @@ class LaunchMethodAPRUN(LaunchMethod):
 
         aprun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
 
-        return aprun_command
+        return aprun_command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1433,7 +1438,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
         ccmrun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
 
-        return ccmrun_command
+        return ccmrun_command, launch_script_name
 
 
 #-------------------------------------------------------------------------
@@ -1477,7 +1482,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
             self.launch_command, self.mpirun_command, export_vars,
             task_numcores, hosts_string, task_command)
 
-        return mpirun_ccmrun_command
+        return mpirun_ccmrun_command, launch_script_name
 
 
 #-------------------------------------------------------------------------
@@ -1541,7 +1546,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
         if task_args:
             runjob_command += ' --args %s' % task_args
 
-        return runjob_command
+        return runjob_command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1575,7 +1580,7 @@ class LaunchMethodDPLACE(LaunchMethod):
             self.launch_command, dplace_offset, 
             dplace_offset+task_numcores-1, task_command)
 
-        return dplace_command
+        return dplace_command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1609,7 +1614,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         mpirun_rsh_command = "%s -export -np %s %s %s" % (
             self.launch_command, task_numcores, hosts_string, task_command)
 
-        return mpirun_rsh_command
+        return mpirun_rsh_command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1645,7 +1650,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
             (self.mpirun_command, task_numcores, self.launch_command,
              dplace_offset, dplace_offset+task_numcores-1, task_command)
 
-        return mpirun_dplace_command
+        return mpirun_dplace_command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1681,7 +1686,7 @@ class LaunchMethodIBRUN(LaunchMethod):
                         (self.launch_command, task_numcores, 
                          ibrun_offset, task_command)
 
-        return ibrun_command
+        return ibrun_command, launch_script_name
 
 
 # ------------------------------------------------------------------------
@@ -1728,7 +1733,7 @@ class LaunchMethodPOE(LaunchMethod):
         poe_command = 'LSB_MCPU_HOSTS="%s" %s %s' % (
             hosts_string, self.launch_command, task_command)
 
-        return poe_command
+        return poe_command, launch_script_name
 
 
 # ==============================================================================
@@ -2623,7 +2628,8 @@ class ForkLRMS(LRMS):
         self.log.info("Using fork on localhost.")
 
         detected_cpus = multiprocessing.cpu_count()
-        selected_cpus = min(detected_cpus, self.requested_cores)
+        selected_cpus = max(detected_cpus, self.requested_cores)
+        # FIXME: max -> min
 
         self.log.info("Detected %d cores on localhost, using %d." % (detected_cpus, selected_cpus))
 
@@ -2826,11 +2832,9 @@ class ExecWorker(threading.Thread):
                 # any work to do?
                 if  cu :
 
-                    cu_uid = str(cu['_id'])
+                    prof ('ExecWorker gets cu from queue', uid=cu['uid'], tag='preprocess')
 
-                    prof ('ExecWorker gets cu from queue', uid=cu_uid, tag='preprocess')
-
-                    task_dir_name = "%s/unit-%s" % (self._workdir, cu_uid)
+                    task_dir_name = "%s/unit-%s" % (self._workdir, cu['uid'])
                     stdout = cu["description"].get ('stdout')
                     stderr = cu["description"].get ('stderr')
 
@@ -2839,9 +2843,9 @@ class ExecWorker(threading.Thread):
                     if  stderr : stderr_file = task_dir_name+'/'+stderr
                     else       : stderr_file = task_dir_name+'/STDERR'
 
-                    prof ('Task create', uid=cu_uid)
+                    prof ('Task create', uid=cu['uid'])
                     task = Task(
-                        uid         = cu_uid,
+                        uid         = cu['uid'],
                         executable  = cu["description"]["executable"],
                         arguments   = cu["description"]["arguments"],
                         environment = cu["description"]["environment"],
@@ -2856,7 +2860,7 @@ class ExecWorker(threading.Thread):
                         ftw_output_staging   = bool(cu['FTW_Output_Directives'])
                         )
 
-                    task.state  = SCHEDULING
+                    task.state  = ALLOCATING
                     opaque_slot = None
 
                     # FIXME: push scheduling state update into updater queue
@@ -2886,7 +2890,7 @@ class ExecWorker(threading.Thread):
                         # Check if we got results
                         if opaque_slot is None:
                             # No resources available, put back in queue
-                            self._execution_queue.put(task)
+                            self._execution_queue.put(cu)
                             prof ('ExecWorker returns task to queue', uid=task.uid)
                         else:
                             # got an allocation, go off and launch the process
@@ -3238,7 +3242,10 @@ class UpdateWorker(threading.Thread):
 
             # ------------------------------------------------------------------
             def timed_bulk_execute (cinfo) :
+
                 # returns number of bulks pushed (0 or 1)
+                if  not cinfo['bulk'] :
+                    return 0
 
                 now = time.time ()
                 age = now - cinfo['last']
@@ -3246,13 +3253,13 @@ class UpdateWorker(threading.Thread):
                 if  cinfo['bulk'] and age > BULK_COLLECTION_TIME :
 
                     res  = cinfo['bulk'].execute ()
-                    self._log ('bulk update result: %s' % res)
+                    self._log.debug ('bulk update result: %s' % res)
 
                     for uid in cinfo['uids'] :
                         prof ('state update bulk pushed', uid=uid)
 
-                    cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op (),
                     cinfo['last'] = now
+                    cinfo['bulk'] = None
                     cinfo['uids'] = list()
                     return 1
 
@@ -3280,8 +3287,14 @@ class UpdateWorker(threading.Thread):
 
                 # got a new request.  Add to bulk (create as needed), 
                 # and push bulk if time is up.
-                cbase, uid, query_dict, update_dict = update_request
-                prof ('state update pulled', uid=uid)
+                cu = update_request['unit']
+                prof ('state update pulled', uid=cu['uid'])
+
+                cbase       = update_request.get ('cbase', '.cu')
+                query_dict  = update_request.get ('query',  dict())
+                update_dict = update_request.get ('update', dict())
+
+                query_dict['_id'] = cu['_id']
 
                 cname = self._session_id + cbase
 
@@ -3289,18 +3302,22 @@ class UpdateWorker(threading.Thread):
                     coll =  self._mongo_db[cname]
                     self._cinfo[cname] = {
                             'coll' : coll,
-                            'bulk' : coll.initialize_ordered_bulk_op (),
+                            'bulk' : None,
                             'last' : time.time(),  # time of last push
                             'uids' : list()
                             }
 
                 cinfo = self._cinfo[cname]
-                cinfo['uids'].append (uid)
+
+                if  not cinfo['bulk'] : 
+                    cinfo['bulk'] = coll.initialize_ordered_bulk_op ()
+
+                cinfo['uids'].append (cu['uid'])
                 cinfo['bulk'].find   (query_dict) \
                              .update (update_dict)
                 
                 timed_bulk_execute (cinfo)
-                prof ('state update bulked', uid=uid)
+                prof ('state update bulked', uid=cu['uid'])
 
             except Exception as e :
                 self._log.exception ("state update failed")
@@ -3351,18 +3368,16 @@ class StageinWorker(threading.Thread):
                     time.sleep(QUEUE_POLL_SLEEPTIME)
                     continue
 
-                cu_uid = str(cu['_id'])
-
-                sandbox      = os.path.join (self._workdir, 'unit-%s' % cu_uid),
+                sandbox      = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
                 staging_area = os.path.join (self._workdir, 'staging_area'),
 
 
                 for directive in cu['Agent_Input_Directives']:
-                    prof ('Agent input_staging queue', uid=cu_uid, msg=directive)
+                    prof ('Agent input_staging queue', uid=cu['uid'], msg=directive)
 
                     # Perform input staging
                     self._log.info('Task input staging directives %s for cu: %s to %s' %
-                                   (directive, cu_uid, sandbox))
+                                   (directive, cu['uid'], sandbox))
 
                     # Convert the source_url into a SAGA Url object
                     source_url = saga.Url(directive['source'])
@@ -3406,25 +3421,19 @@ class StageinWorker(threading.Thread):
 
                 # If all went fine, update the state of this StagingDirective 
                 # to done
-                self._update_queue.push (
-                        [   # collection name
-                            '.cu',
-                            # uid
-                            cu_uid,
-                            # query dict
-                            {
-                                '_id': ObjectId(cu_uid),
-                                'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state' : PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']
-                            },
-                            # update dict
-                            {
-                                '$set' : {'Agent_Input_Directives.$.state': DONE},
-                                '$push': {'log': log_message}
-                            }
-                        ])
+                self._update_queue.put ({
+                    'unit'   : cu, 
+                    'query'  : {
+                        'Agent_Input_Status'           : EXECUTING,
+                        'Agent_Input_Directives.state' : PENDING,
+                        'Agent_Input_Directives.source': directive['source'],
+                        'Agent_Input_Directives.target': directive['target']
+                        },
+                    'update' : {
+                        '$set' : {'Agent_Input_Directives.$.state': DONE},
+                        '$push': {'log': log_message}
+                        }
+                    })
 
             except:
                 # If we catch an exception, assume the staging failed
@@ -3432,27 +3441,22 @@ class StageinWorker(threading.Thread):
                 self._log.error(log_message)
 
                 # If a staging directive fails, fail the CU also.
-                self._update_queue.push (
-                        [   # collection name
-                            '.cu',
-                            # uid
-                            cu_uid,
-                            # query dict
-                            {
-                                '_id': ObjectId(cu_uid),
-                                'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state': PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']
-                            },
-                            # update dict
-                            {
-                                '$set' : {'Agent_Input_Directives.$.state': FAILED,
-                                          'Agent_Input_Status': FAILED,
-                                          'state': FAILED},
-                                '$push': {'log': 'Marking Compute Unit FAILED because of FAILED Staging Directive.'}
-                            }
-                        ])
+                self._update_queue.put ({
+                    'unit'   : cu, 
+                    'query'  : {
+                        'Agent_Input_Status'           : EXECUTING,
+                        'Agent_Input_Directives.state' : PENDING,
+                        'Agent_Input_Directives.source': directive['source'],
+                        'Agent_Input_Directives.target': directive['target']
+                        },
+                    'update' : {
+                        '$set' : { 'Agent_Input_Directives.$.state': FAILED,
+                                   'Agent_Input_Status'            : FAILED,
+                                   'state'                         : FAILED},
+                        '$push': {
+                            'log': 'Staging Directive failed'}
+                        }
+                    })
 
 
 # ------------------------------------------------------------------------------
@@ -3488,23 +3492,25 @@ class StageoutWorker(threading.Thread):
 
         self._log.info('StageoutWorker started ...')
 
-        try:
-            while not self._terminate.isSet () :
+        while not self._terminate.isSet () :
+            try :
                 try:
-                    staging = self._stageout_queue.get_nowait()
+                    cu = self._stageout_queue.get_nowait()
+
+                except Queue.Empty:
+                    time.sleep(QUEUE_POLL_SLEEPTIME)
+                    continue
+
+                sandbox      = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
+                staging_area = os.path.join (self._workdir, 'staging_area'),
+
+
+                for directive in cu['Agent_Output_Directives']:
 
                     # Perform output staging
-                    directive = staging['directive']
-                    if isinstance(directive, tuple):
-                        self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
-                        directive = directive[0] 
-                        # TODO: Why is it a fucking tuple?!?!
 
-                    sandbox = staging['sandbox']
-                    staging_area = staging['staging_area']
-                    cu_id = staging['cu_id']
                     self._log.info('Task output staging directives %s for cu: %s to %s' % (
-                        directive, cu_id, sandbox))
+                        directive, cu['uid'], sandbox))
 
                     source = str(directive['source'])
                     abs_source = os.path.join(sandbox, source)
@@ -3556,34 +3562,23 @@ class StageoutWorker(threading.Thread):
 
                     # If all went fine, update the state of this 
                     # StagingDirective to Done
-                    self._update_queue.push (
-                            [   # collection name
-                                '.cu',
-                                # uid
-                                cu_id,
-                                # query dict
-                                {
-                                    '_id': ObjectId(cu_id),
-                                    'Agent_Output_Status': EXECUTING,
-                                    'Agent_Output_Directives.state': PENDING,
-                                    'Agent_Output_Directives.source': directive['source'],
-                                    'Agent_Output_Directives.target': directive['target']
-                                },
-                                # update dict
-                                {
-                                    '$set' : {'Agent_Output_Directives.$.state': DONE},
-                                    '$push': {'log': logmessage}
-                                }
-                            ])
+                    self._update_queue.put ({
+                        'unit'   : cu, 
+                        'query'  : {
+                            'Agent_Output_Status'           : EXECUTING,
+                            'Agent_Output_Directives.state' : PENDING,
+                            'Agent_Output_Directives.source': directive['source'],
+                            'Agent_Output_Directives.target': directive['target']
+                            },
+                        'update' : {
+                            '$set' : {'Agent_Output_Directives.$.state': DONE},
+                            '$push': {'log': logmessage}
+                            }
+                        })
 
-                except Queue.Empty:
-                    # do nothing and sleep if we don't have any queued staging
-                    time.sleep(QUEUE_POLL_SLEEPTIME)
-
-
-        except Exception, ex:
-            self._log.exception("Error in StageoutWorker loop")
-            raise
+            except Exception, ex:
+                self._log.exception("Error in StageoutWorker loop")
+                raise
 
 
 # ------------------------------------------------------------------------------
@@ -3772,131 +3767,16 @@ class Agent (object):
 
         prof ('Agent start loop')
 
-        while True:
+        while not self._terminate.isSet() :
 
             try:
 
-                idle = True
+                action  = 0
+                action += self._check_worker_state ()
+                action += self._check_commands     ()
+                action += self._check_units        ()
 
-                # Check the workers periodically. If they have died, we 
-                # exit as well. this can happen, e.g., if the worker 
-                # process has caught a ctrl+C
-                for exec_worker in self._execution_worker_list :
-                    if  exec_worker.is_alive() is False:
-                        msg = 'Execution worker %s died' % str(exec_worker)
-                        pilot_FAILED(self._p, self._pilot_id, self._log, msg)
-                        return
-
-                # Exit the main loop if terminate is set. 
-                if self._terminate.isSet():
-                    pilot_CANCELED(self._p, self._pilot_id, self._log,
-                                   "Terminated (_terminate set).")
-                    return
-
-                # Make sure that we haven't exceeded the agent runtime. if 
-                # we have, terminate. 
-                if time.time() >= self._starttime + (int(self._runtime) * 60):
-                    self._log.info("Agent has reached runtime limit of %s seconds." % str(int(self._runtime)*60))
-                    pilot_DONE(self._p, self._pilot_id)
-                    return
-
-                # Try to get new tasks from the database. for this, we check the
-                # cu_queue of the pilot. if there are new entries, we get them,
-                # get the actual pilot entries for them and remove them from the
-                # cu_queue.
-                try:
-
-                    # Check if there's a command waiting
-                    retdoc = self._p.find_and_modify(
-                                query  = {"_id"  : ObjectId(self._pilot_id)},
-                                update = {"$set" : {COMMAND_FIELD: []}}, # Wipe content of array
-                                fields = [COMMAND_FIELD, 'state']
-                    )
-
-                    if retdoc:
-                        commands = retdoc[COMMAND_FIELD]
-                        state    = retdoc['state']
-                    else:
-                        # no document found - session is gone?  Bail out!
-                        commands = []
-                        state    = CANCELING
-
-
-                    for command in commands:
-
-                        prof ('Agent get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
-
-                        idle = False
-
-                        if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT :
-                            pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                            return # terminate loop
-
-                        elif state == CANCELING :
-                            pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
-                            return # terminate loop
-
-                        elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
-                            self._log.info("Received Cancel Compute Unit command for: %s" % command[COMMAND_ARG])
-                            # Put it on the command queue of the ExecWorker
-                            self._command_queue.put(command)
-
-                        elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
-                            self._log.info("Received KeepAlive command.")
-
-                        else:
-                            raise Exception("Received unknown command: %s with arg: %s." %
-                                            (command[COMMAND_TYPE], command[COMMAND_ARG]))
-
-
-                    # Check if there are compute units waiting for execution,
-                    # and log that we pulled it.
-                    cu_cursor  = self._cu.find_and_modify(
-                        query  = {"pilot" : self._pilot_id,
-                                  "state" : PENDING_EXECUTION},
-                        update = {"$set"  : {"state"       : SCHEDULING},
-                                  "$push" : {"statehistory": {
-                                      "state"    : SCHEDULING, 
-                                      "timestamp": timestamp()}}
-                                 }
-                        )
-
-                    if cu_cursor is not None:
-
-                        idle = False
-
-                        if not isinstance(cu_cursor, list):
-                            cu_cursor = [cu_cursor]
-                            
-                        prof ('Agent get units', msg="number of units: %d" % len(cu_cursor))
-
-                        for cu in cu_cursor:
-
-                            cu_uid  = str(cu['_id'])
-                            prof ('Agent get unit', uid=cu_uid, tag='task arriving')
-                            self._log.info("Found new unit in db: %s" % cu_uid)
-
-                            # create unit sandbox
-                            sandbox = os.path.join (self._workdir, 'unit-%s' % cu_uid)
-                            try :
-                                os.makedirs(sandbox)
-                            except OSError as e :
-                                if  e.errno == errno.EEXIST :
-                                    pass
-                                else :
-                                    raise
-
-                            # and send to staging / execution, respectively
-                            if cu['Agent_Input_Directives'] :
-                                self._stagein_queue.put (cu)
-
-                            else :
-                                self._execution_queue.put (cu)
-
-                except Exception, ex:
-                    raise
-
-                if  idle :
+                if  not action :
                     time.sleep(QUEUE_POLL_SLEEPTIME)
 
             except Exception, ex:
@@ -3905,8 +3785,210 @@ class Agent (object):
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
                 return
 
-        # MAIN LOOP TERMINATED
-        return
+        # main loop terminated, so self._terminate was set
+        pilot_CANCELED(self._p, self._pilot_id, self._log,
+                "Terminated (_terminate set).")
+        sys.exit (0)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_worker_state (self) :
+
+        # Check the workers periodically. If they have died, we 
+        # exit as well. this can happen, e.g., if the worker 
+        # process has caught a ctrl+C
+        for worker in self._execution_worker_list :
+            if  worker.is_alive() is False:
+                msg = 'Execution worker %s died' % str(worker)
+                pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+                sys.exit (1)
+
+        for worker in self._update_worker_list :
+            if  worker.is_alive() is False:
+                msg = 'Update worker %s died' % str(worker)
+                pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+                sys.exit (1)
+
+        for worker in self._stagein_worker_list :
+            if  worker.is_alive() is False:
+                msg = 'Stagein worker %s died' % str(worker)
+                pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+                sys.exit (1)
+
+        for worker in self._stageout_worker_list :
+            if  worker.is_alive() is False:
+                msg = 'Stageout worker %s died' % str(worker)
+                pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+                sys.exit (1)
+
+        # Make sure that we haven't exceeded the agent runtime. if 
+        # we have, terminate. 
+        if  time.time() >= self._starttime + (int(self._runtime) * 60):
+            self._log.info("Agent has reached runtime limit of %s seconds." % self._runtime*60)
+            pilot_DONE(self._p, self._pilot_id)
+            sys.exit (1)
+
+        # don't increase idle count
+        return 0  
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_commands (self) :
+
+        # Check if there's a command waiting
+        retdoc = self._p.find_and_modify(
+                    query  = {"_id"  : ObjectId(self._pilot_id)},
+                    update = {"$set" : {COMMAND_FIELD: []}}, # Wipe content of array
+                    fields = [COMMAND_FIELD, 'state']
+                    )
+
+        commands = list()
+        if retdoc:
+            commands = retdoc[COMMAND_FIELD]
+            state    = retdoc['state']
+
+
+        for command in commands:
+
+            prof ('Agent get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
+
+            if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT :
+                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                sys.exit (1)
+
+            elif state == CANCELING :
+                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
+                sys.exit (1)
+
+            elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                self._log.info("Received Cancel Compute Unit command for: %s" % command[COMMAND_ARG])
+                # Put it on the command queue of the ExecWorker
+                self._command_queue.put(command)
+
+            elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
+                self._log.info("Received KeepAlive command.")
+
+            else:
+                raise Exception("Received unknown command: %s with arg: %s." %
+                                (command[COMMAND_TYPE], command[COMMAND_ARG]))
+
+        # only increase idle timer if anything happened
+        return len(commands)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_units (self) :
+
+        # Check if there are compute units waiting for execution,
+        # and log that we pulled it.
+        #
+        # Unfortunately, find_and_modify is not bulkable, so we have to use
+        # find.  To avoid finding the same units over and over again, we have to
+        # update the state *before* running the next find -- so we basically do
+        # it right here...
+        cu_cursor  = self._cu.find (multi = True, 
+                                    spec  = {"pilot" : self._pilot_id,
+                                             "state" : PENDING_EXECUTION})
+
+        if cu_cursor.count() :
+            prof ('Agent get units', msg="number of units: %d" % cu_cursor.count(),
+                  logger=self._log.info)
+
+        cu_list = list (cu_cursor)
+
+
+        cu_uids = list()
+        for cu in cu_list :
+            cu_uids.append (cu['_id'])
+
+        if  cu_uids :
+            updated_ids = self._cu.update (
+                    multi    = True, 
+                    spec     = {"_id"   : {"$in"    : cu_uids}},
+                    document = {"$set"  : {"state"  : ALLOCATING}, 
+                                "$push" : {"statehistory" : 
+                                    {
+                                        "state"     : ALLOCATING, 
+                                        "timestamp" : timestamp()
+                                    }
+                               }})
+            self._log.debug ("found   IDs: %s" % len(cu_uids))
+            self._log.debug ("found   IDs: %s" % cu_uids)
+            self._log.debug ("updated IDs: %s" % updated_ids)
+
+
+        for cu in cu_list :
+
+            try :
+                cu['uid'] = str(cu['_id'])
+
+                prof ('Agent get unit', uid=cu['uid'], tag='cu arriving', 
+                      logger=self._log.info)
+
+                # create unit sandbox
+                sandbox = os.path.join (self._workdir, 'unit-%s' % cu['uid'])
+                try :
+                    os.makedirs(sandbox)
+                except OSError as e :
+                    if  e.errno == errno.EEXIST :
+                        pass
+                    else :
+                        raise
+
+                # and send to staging / execution, respectively
+                if cu['Agent_Input_Directives'] :
+
+                    self._update_queue.put ({
+                        'unit'   :  cu,
+                        'update' : {
+                            "$set"  : {"state"       : ALLOCATING},
+                            "$push" : {"statehistory": {
+                                "state"    : ALLOCATING, 
+                                "timestamp": timestamp()}}
+                            }
+                        })
+                    self._stagein_queue.put (cu)
+
+                else :
+                    self._update_queue.put ({
+                        'unit'   :  cu,
+                        'update' : {
+                            "$set"  : {"state"       : STAGING_INPUT},
+                            "$push" : {"statehistory": {
+                                "state"    : STAGING_INPUT, 
+                                "timestamp": timestamp()}}
+                            }
+                        })
+                    self._execution_queue.put (cu)
+
+
+            except Exception as e :
+                # if any unit sorting step failed, the unit did
+                # not end up in a queue -- we set it to FAILED
+                self._log.exception ('oops')
+                msg = "could not sort unit (%s)" % e
+                prof ('error', msg=msg, tag="failed", 
+                      uid=cu['uid'], logger=logger.exception)
+                self._update_queue.put ({
+                    'unit'   : cu, 
+                    'update' : {
+                        '$set' : {'state'   : FAILED},
+                        '$push': {
+                            'log'           : msg,
+                            'statehistory'  : {
+                                'state'     : FAILED, 
+                                'timestamp' : timestamp()
+                                }
+                            }
+                        }
+                    })
+                # this is final, the unit will not be touched
+                # anymore.
+
+        return len(cu_list)
 
 
 # ==============================================================================
@@ -3969,100 +4051,73 @@ class SpawnerPopen (Spawner):
         
         prof ('Spawner spawn', uid=task.uid)
     
-        launch_script = tempfile.NamedTemporaryFile(prefix='radical_pilot_cu_launch_script-',
-                                                    dir=task.workdir, suffix=".sh", delete=False)
-        self.log.debug('Created launch_script: %s' % launch_script.name)
-        st = os.stat(launch_script.name)
-        os.chmod(launch_script.name, st.st_mode | stat.S_IEXEC)
-        launch_script.write('#!/bin/bash -l\n')
-        launch_script.write('\n# Change to working directory for task\ncd %s\n' % task.workdir)
+        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % task.workdir
+        self.log.debug('Created launch_script: %s' % launch_script_name)
+
+        with open (launch_script_name, "w") as launch_script :
+            launch_script.write('#!/bin/bash -l\n')
+            launch_script.write('\n# Change to working directory for task\ncd %s\n' % task.workdir)
     
-        # Before the Big Bang there was nothing
-        pre_exec = task.pre_exec
-        pre_exec_string = ''
-        if pre_exec:
-            if not isinstance(pre_exec, list):
-                pre_exec = [pre_exec]
-            for bb in pre_exec:
-                pre_exec_string += "%s\n" % bb
+            # Before the Big Bang there was nothing
+            if task.pre_exec:
+                pre_exec_string = ''
+                if isinstance(task.pre_exec, list):
+                    for elem in task.pre_exec:
+                        pre_exec_string += "%s\n" % elem
+                else :
+                    pre_exec_string += "%s\n" % task.pre_exec
+                launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
     
-            # Append the pre-exec commands
-            launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
+            # Create string for environment variable setting
+            if task.environment and len(task.environment.keys()):
+                env_string = 'export'
+                for key,val in task.environment.itemize ():
+                    env_string += ' %s=%s' % (key, val)
+                launch_script.write('# Environment variables\n%s\n' % env_string)
     
-        # Create string for environment variable setting
-        env_string = ''
-        if task.environment is not None and len(task.environment.keys()):
-            env_string += 'export'
-            for key in task.environment:
-                env_string += ' %s=%s' % (key, task.environment[key])
+            # Task Arguments (if any)
+            task_args_string = ''
+            if  task.arguments :
+                for arg in task.arguments:
+                    if not arg:
+                         # ignore empty args
+                         continue
     
-            # Append the environment declarations
-            launch_script.write('# Environment variables\n%s\n' % env_string)
+                    arg = arg.replace('"', '\\"')          # Escape all double quotes
+                    if arg[0] == arg[-1] == "'" :          # If a string is between outer single quotes,
+                        task_args_string += '%s ' % arg    # ... pass it as is.
+                    else:
+                        task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
     
-        # Task executable (non-optional)
-        if task.executable is not None:
-            task_exec_string = task.executable # TODO: Do we allow $ENV/bin/program constructs here?
-        else:
-            raise Exception("No executable specified!") # TODO: This should be caught earlier?
+            # The actual command line, constructed per launch-method
+            prof ('_Process construct command', uid=task.uid)
+            launch_command, cmdline = \
+                    launcher.construct_command(task.executable,  
+                                               task_args_string,
+                                               task.numcores, 
+                                               launch_script_name, 
+                                               task.opaque_slot)
     
-        # Task Arguments (if any)
-        task_args_string = ''
-        if task.arguments is not None:
-            for arg in task.arguments:
-                if not arg:
-                     # ignore empty args
-                     continue
+            launch_script.write('# The command to run\n%s\n' % launch_command)
     
-                arg = arg.replace('"', '\\"')          # Escape all double quotes
-                if arg[0] == arg[-1] == "'" :          # If a string is between outer single quotes,
-                    task_args_string += '%s ' % arg    # ... pass it as is.
-                else:
-                    task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
+            # After the universe dies the infrared death, there will be nothing
+            if  task.post_exec:
+                post_exec_string = ''
+                if isinstance(task.post_exec, list):
+                    for elem in task.post_exec:
+                        post_exec_string += "%s\n" % elem
+                else :
+                    post_exec_string += "%s\n" % task.post_exec
+                launch_script.write('%s\n' % post_exec_string)
     
-        # The actual command line, constructed per launch-method
-        # TODO: Once we start to construct the command, it means we know
-        #       we will be able to run, make sure this is true!
-        prof ('_Process construct command', uid=task.uid)
-        retval = launcher.construct_command(task_exec_string,  task_args_string,
-                                            task.numcores, launch_script.name, 
-                                            task.opaque_slot)
-        # Check to see what kind of return value we got
-        if isinstance(retval, basestring):
-            # The launcher informs us to use the scriptname as the command line
-            # (default case)
-            launch_command = retval
-            cmdline = launch_script.name
-        elif isinstance(retval, tuple):
-            # The launcher informs us to override the cmdline
-            # (e.g. in case of ssh)
-            if len(retval) != 2:
-                raise Exception("construct_command() returned a tuple with other than two members")
-            launch_command, cmdline = retval
-        else:
-            raise Exception("construct_command() returned neither a tuple nor a string")
-    
-        launch_script.write('# The command to run\n%s\n' % launch_command)
-    
-        # After the universe dies the infrared death, there will be nothing
-        post_exec = task.post_exec
-        post_exec_string = ''
-        if post_exec:
-            if not isinstance(post_exec, list):
-                post_exec = [post_exec]
-            for bb in post_exec:
-                post_exec_string += "%s\n" % bb
-    
-            # Append post-exec commands
-            launch_script.write('%s\n' % post_exec_string)
-    
-        # We are done writing to the launch script, its ready for execution now.
-        launch_script.close()
+        # done writing to launch script, get it ready for execution.
+        st = os.stat(launch_script_name)
+        os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
     
         self._stdout_file_h = open(task.stdout_file, "w")
         self._stderr_file_h = open(task.stderr_file, "w")
     
         self.log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
-    
         prof ('spawning pass to popen', uid=task.uid, tag='task spawning')
 
         proc = subprocess.Popen ( args               = cmdline,
