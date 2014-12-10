@@ -24,10 +24,10 @@
 
      - class Agent
        - represents the whole thing
-       - has a set of InputStagingWorkers (threads or procs)
+       - has a set of InputStagingWorkers  (threads or procs)
        - has a set of OutputStagingWorkers (threads or procs)
-       - has a set of ExecWorkers (threads or procs)
-       - has a set of UpdateWorkers (threads or procs)
+       - has a set of ExecWorkers          (threads or procs)
+       - has a set of UpdateWorkers        (threads or procs)
        - has a inputstaging  queue
        - has a outputstaging queue
        - has a execution queue
@@ -122,7 +122,10 @@ git_ident = "$Id$"
 # ------------------------------------------------------------------------------
 # CONSTANTS
 #
-N_EXEC_WORKER = 1
+N_EXECUTION_WORKER          = 1
+N_UPDATE_WORKER             = 1
+N_STAGEIN_WORKER            = 1
+N_STAGEOUT_WORKER           = 1
 
 # 'enum' for unit launch method types
 LAUNCH_METHOD_APRUN         = 'APRUN'
@@ -174,19 +177,25 @@ TRANSFER = 'Transfer' # saga remote transfer
                       # TODO: This might just be a special case of copy
 
 # tri-state for unit spawn retval
-OK    = 'OK'
-FAIL  = 'FAIL'
-RETRY = 'RETRY'
+OK       = 'OK'
+FAIL     = 'FAIL'
+RETRY    = 'RETRY'
 
 # two-state for slot occupation.
-FREE  = 'Free'
-BUSY  = 'Busy'
+FREE     = 'Free'
+BUSY     = 'Busy'
 
 # directory for staging files inside the agent sandbox
-STAGING_AREA = 'staging_area'
+STAGING_AREA         = 'staging_area'
 
-# max number of unit out/err chars to push to db
-MAX_IO_LOGLENGTH = 64*1024
+# max number of cu out/err chars to push to db
+MAX_IO_LOGLENGTH     = 64*1024
+
+# max time period to collec db requests into bulks (seconds)
+BULK_COLLECTION_TIME = 1.0
+
+# time to sleep between queue polls (seconds)
+QUEUE_POLL_SLEEPTIME = 0.1
 
 
 # ------------------------------------------------------------------------------
@@ -2862,8 +2871,7 @@ class ExecWorker(threading.Thread):
 
                 # If nothing happened in this cycle, zzzzz for a bit.
                 if idle:
-                  # self._log.debug("Sleep now for a jiffy ...")
-                    time.sleep(0.1)
+                    time.sleep(QUEUE_POLL_SLEEPTIME)
 
 
         except Exception, ex:
@@ -3147,32 +3155,90 @@ class ExecWorker(threading.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class InputStagingWorker(threading.Thread):
-    """An InputStagingWorker performs the agent side staging directives
-       and writes the results back to MongoDB.
+class UpdateWorker(threading.Thread):
+    """
+    An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
+    compete for update requests on the update_queue.  Those requests will be
+    triplets of collection name, query dict, and update dict.  Update requests
+    will be collected into bulks over some time (BULK_COLLECTION_TIME), to
+    reduce number of roundtrips.
     """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
-                 pilot_id, session_id):
+    def __init__(self, logger, update_queue, mongodb_url, mongodb_name):
 
-        """ Creates a new InputStagingWorker instance.
-        """
         threading.Thread.__init__(self)
-        self._terminate  = threading.Event ()
 
-        self._log = logger
+        self._log           = logger
+        self._update_queue  = update_queue
+        self._terminate     = threading.Event ()
 
-        self._unitmanager_id = None
-        self._pilot_id = pilot_id
+        mongo_client        = pymongo.MongoClient(mongodb_url)
+        self._mongo_db      = mongo_client[mongodb_name]
+        self._collections   = dict()  # collection cache
 
-        mongo_client = pymongo.MongoClient(mongodb_url)
-        self._mongo_db = mongo_client[mongodb_name]
-        self._p  = mongo_db["%s.p"  % session_id]
-        self._cu = mongo_db["%s.cu" % session_id]
 
-        self._staging_queue = staging_queue
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+
+        self._terminate.set ()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info('UpdateWorker started ...')
+
+        while not self._terminate.isSet () :
+
+            try :
+
+                try:
+                    update_request = self._update_queue.get_nowait()
+
+                except Queue.Empty:
+                    time.sleep(QUEUE_POLL_SLEEPTIME)
+                    continue
+
+                # Perform input staging
+                collection_name, query_dict, update_dict = update_request
+
+                if not collection_name in self._collections :
+                    self._collections[collection_name] = self._mongo_db[collection_name]
+
+                collection = self._collections[collection_name]
+                collection.update (query_dict, update_dict)
+
+            except Exception as e :
+                self._log.exception ("state update failed")
+
+                # FIXME: should we fail the pilot at this point?  
+                # FIXME: Are the strategies to recover?
+
+
+# ------------------------------------------------------------------------------
+#
+class StageinWorker(threading.Thread):
+    """An StageinWorker performs the agent side staging directives.
+    """
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, logger, stagein_queue, mongodb_url, mongodb_name, session_id):
+
+        threading.Thread.__init__(self)
+
+        self._log           = logger
+        self._stagein_queue = stagein_queue
+        self._terminate     = threading.Event ()
+
+        mongo_client        = pymongo.MongoClient(mongodb_url)
+        mongo_db            = mongo_client[mongodb_name]
+        self._cu            = mongo_db["%s.cu" % session_id]
+
 
     # --------------------------------------------------------------------------
     #
@@ -3185,14 +3251,14 @@ class InputStagingWorker(threading.Thread):
     #
     def run(self):
 
-        self._log.info('InputStagingWorker started ...')
+        self._log.info('StageinWorker started ...')
 
         while not self._terminate.isSet () :
             try:
-                staging = self._staging_queue.get_nowait()
+                staging = self._stagein_queue.get_nowait()
             except Queue.Empty:
                 # do nothing and sleep if we don't have any queued staging
-                time.sleep(0.1)
+                time.sleep(QUEUE_POLL_SLEEPTIME)
                 continue
 
             # Perform input staging
@@ -3288,50 +3354,42 @@ class InputStagingWorker(threading.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class OutputStagingWorker(threading.Thread):
-    """An OutputStagingWorker performs the agent side staging directives
-       and writes the results back to MongoDB.
+class StageoutWorker(threading.Thread):
+    """An StageoutWorker performs the agent side staging directives.
     """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, staging_queue, mongodb_url, mongodb_name,
-                 pilot_id, session_id):
+    def __init__(self, logger, stageout_queue, mongodb_url, mongodb_name, session_id):
 
-        """ Creates a new OutputStagingWorker instance.
-        """
         threading.Thread.__init__(self)
-        self._terminate = threading.Event ()
 
-        self._log = logger
+        self._log            = logger
+        self._stageout_queue = stageout_queue
+        self._terminate      = threading.Event ()
 
-        self._unitmanager_id = None
-        self._pilot_id = pilot_id
+        mongo_client         = pymongo.MongoClient(mongodb_url)
+        mongo_db             = mongo_client[mongodb_name]
+        self._cu             = mongo_db["%s.cu" % session_id]
 
-        mongo_client = pymongo.MongoClient(mongodb_url)
-        self._mongo_db = mongo_client[mongodb_name]
-        self._p  = mongo_db["%s.p"  % session_id]
-        self._cu = mongo_db["%s.cu" % session_id]
-
-        self._staging_queue = staging_queue
 
     # --------------------------------------------------------------------------
     #
     def stop(self):
-        """Terminates the process' main loop.
-        """
+
         self._terminate.set()
+
 
     # --------------------------------------------------------------------------
     #
     def run(self):
 
-        self._log.info('OutputStagingWorker started ...')
+        self._log.info('StageoutWorker started ...')
 
         try:
             while not self._terminate.isSet () :
                 try:
-                    staging = self._staging_queue.get_nowait()
+                    staging = self._stageout_queue.get_nowait()
 
                     # Perform output staging
                     directive = staging['directive']
@@ -3406,11 +3464,11 @@ class OutputStagingWorker(threading.Thread):
 
                 except Queue.Empty:
                     # do nothing and sleep if we don't have any queued staging
-                    time.sleep(0.1)
+                    time.sleep(QUEUE_POLL_SLEEPTIME)
 
 
         except Exception, ex:
-            self._log.exception("Error in OutputStagingWorker loop")
+            self._log.exception("Error in StageoutWorker loop")
             raise
 
 
@@ -3425,18 +3483,25 @@ class Agent (object):
             scheduler_name, runtime, 
             mongodb_url, mongodb_name, mongodb_auth, 
             pilot_id, session_id):
-        """Le Constructeur creates a new Agent instance.
-        """
+
         prof ('Agent init')
 
-        self._terminate  = threading.Event()
+        self._log                   = logger
+        self._pilot_id              = pilot_id
+        self._runtime               = runtime
+        self._terminate             = threading.Event()
+        self._starttime             = time.time()
+        self._workdir               = os.getcwd()
 
-        self._log        = logger
-        self._pilot_id   = pilot_id
-        self._runtime    = runtime
-        self._starttime  = None
+        self._execution_worker_list = list()
+        self._update_worker_list    = list()
+        self._stagein_worker_list   = list()
+        self._stageout_worker_list  = list()
 
-        self._workdir    = os.getcwd()
+        self._execution_queue       = multiprocessing.Queue()
+        self._update_queue          = multiprocessing.Queue()
+        self._stagein_queue         = multiprocessing.Queue()
+        self._stageout_queue        = multiprocessing.Queue()
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db     = mongo_client[mongodb_name]
@@ -3451,7 +3516,6 @@ class Agent (object):
 
         # the task queue holds the tasks that are pulled from the MongoDB
         # server. The ExecWorkers compete for the tasks in the queue. 
-        self._execution_queue = multiprocessing.Queue()
 
         # The staging queues holds the staging directives to be performed
         self._input_staging_queue  = multiprocessing.Queue()
@@ -3472,8 +3536,8 @@ class Agent (object):
                 scheduler_name     = scheduler_name
         )
 
-        self._exec_worker_list = list()
-        for n in range(N_EXEC_WORKER) :
+
+        for n in range(N_EXECUTION_WORKER) :
             prof ('Exec Worker create %s' % n)
             exec_worker = ExecWorker(
                 exec_env        = self._exec_env,
@@ -3494,37 +3558,52 @@ class Agent (object):
             exec_worker.start()
             self._log.info("Started up %s serving nodes %s" %
                            (exec_worker, self._exec_env.lrms.node_list))
-            self._exec_worker_list.append (exec_worker)
+            self._execution_worker_list.append (exec_worker)
 
-        # Start input staging worker
-        prof ('IS Worker create')
-        input_staging_worker = InputStagingWorker(
-            logger          = self._log,
-            staging_queue   = self._input_staging_queue,
-            mongodb_url     = mongodb_url,
-            mongodb_name    = mongodb_name,
-            pilot_id        = pilot_id,
-            session_id      = session_id
-        )
-        input_staging_worker.start()
-        self._log.info("Started up %s." % input_staging_worker)
-        self._input_staging_worker = input_staging_worker
 
-        # Start output staging worker
-        prof ('OS Worker create')
-        output_staging_worker = OutputStagingWorker(
-            logger          = self._log,
-            staging_queue   = self._output_staging_queue,
-            mongodb_url     = mongodb_url,
-            mongodb_name    = mongodb_name,
-            pilot_id        = pilot_id,
-            session_id      = session_id
-        )
-        output_staging_worker.start()
-        self._log.info("Started up %s." % output_staging_worker)
-        self._output_staging_worker = output_staging_worker
+        for n in range(N_UPDATE_WORKER) :
+            prof ('Update Worker create')
+            update_worker = UpdateWorker(
+                logger          = self._log,
+                update_queue    = self._update_queue,
+                mongodb_url     = mongodb_url,
+                mongodb_name    = mongodb_name
+            )
+            update_worker.start()
+            self._log.info("Started up %s." % update_worker)
+            self._update_worker_list.append (update_worker)
+
+
+        for n in range(N_STAGEIN_WORKER) :
+            prof ('IS Worker create')
+            stagein_worker = StageinWorker(
+                logger          = self._log,
+                stagein_queue   = self._stagein_queue,
+                mongodb_url     = mongodb_url,
+                mongodb_name    = mongodb_name,
+                session_id      = session_id
+            )
+            stagein_worker.start()
+            self._log.info("Started up %s." % stagein_worker)
+            self._stagein_worker_list.append (stagein_worker)
+
+
+        for n in range(N_STAGEOUT_WORKER) :
+            prof ('OS Worker create')
+            stageout_worker = StageoutWorker(
+                logger          = self._log,
+                stageout_queue  = self._stageout_queue,
+                mongodb_url     = mongodb_url,
+                mongodb_name    = mongodb_name,
+                session_id      = session_id
+            )
+            stageout_worker.start()
+            self._log.info("Started up %s." % stageout_worker)
+            self._stageout_worker_list.append (stageout_worker)
+
 
         prof ('Agent init done')
+
 
     # --------------------------------------------------------------------------
     #
@@ -3534,12 +3613,17 @@ class Agent (object):
         prof ('Agent stop()')
 
         # First, we need to shut down all the workers
-        for exec_worker in self._exec_worker_list :
-            exec_worker._terminate.set()
+        for exec_worker in self._execution_worker_list :
+            exec_worker.stop ()
 
-        # Shut down the staging workers
-        self._input_staging_worker._terminate.set()
-        self._output_staging_worker._terminate.set()
+        for update_worker in self._update_worker_list :
+            update_worker.stop ()
+
+        for stagein_worker in self._stagein_worker_list :
+            stagein_worker.stop ()
+
+        for stageout_worker in self._stageout_worker_list :
+            stageout_worker.stop ()
 
         # Next, we set our own termination signal
         self._terminate.set()
@@ -3568,8 +3652,6 @@ class Agent (object):
         # TODO: Check for return value, update should be true!
         self._log.info("Database updated! %s" % ret)
 
-        self._starttime = time.time()
-
         prof ('Agent start loop')
 
         while True:
@@ -3581,7 +3663,7 @@ class Agent (object):
                 # Check the workers periodically. If they have died, we 
                 # exit as well. this can happen, e.g., if the worker 
                 # process has caught a ctrl+C
-                for exec_worker in self._exec_worker_list :
+                for exec_worker in self._execution_worker_list :
                     if  exec_worker.is_alive() is False:
                         msg = 'Execution worker %s died' % str(exec_worker)
                         pilot_FAILED(self._p, self._pilot_id, self._log, msg)
@@ -3748,7 +3830,7 @@ class Agent (object):
                     raise
 
                 if  idle :
-                    time.sleep(1)
+                    time.sleep(QUEUE_POLL_SLEEPTIME)
 
             except Exception, ex:
                 # If we arrive here, there was an exception in the main loop.
@@ -3967,8 +4049,8 @@ def parse_commandline():
 
     if not options.cores                : parser.error("Missing number of cores (-c)")
     if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
-    if not options.task_launcher_method : parser.error("Missing task launcher method (-j)")
-    if not options.mpi_launcher_method  : parser.error("Missing mpi launcher method (-k)")
+    if not options.task_launch_method   : parser.error("Missing task launch method (-j)")
+    if not options.mpi_launch_method    : parser.error("Missing mpi launch method (-k)")
     if not options.lrms                 : parser.error("Missing LRMS (-l)")
     if not options.mongodb_url          : parser.error("Missing MongoDB URL (-m)")
     if not options.database_name        : parser.error("Missing database name (-n)")

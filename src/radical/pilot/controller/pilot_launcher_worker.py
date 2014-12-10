@@ -29,7 +29,7 @@ JOB_CHECK_INTERVAL   = 60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
                            # declaring it dead
 
-DEFAULT_AGENT         = 'multicore'
+DEFAULT_AGENT_TYPE    = 'multicore'
 DEFAULT_AGENT_VERSION = 'stage@local'
 DEFAULT_VIRTENV       = '%(pilot_sandbox)s/virtenv'
 DEFAULT_VIRTENV_MODE  = 'private'
@@ -376,7 +376,7 @@ class PilotLauncherWorker(threading.Thread):
                         js_endpoint             = resource_cfg.get ('job_manager_endpoint')
                         lrms                    = resource_cfg.get ('lrms')
                         mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
-                        agent_type              = resource_cfg.get ('pilot_agent_type',    DEFAULT_AGENT)
+                        agent_type              = resource_cfg.get ('pilot_agent_type',    DEFAULT_AGENT_TYPE)
                         agent_version           = resource_cfg.get ('pilot_agent_version', DEFAULT_AGENT_VERSION)
                         pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
                         python_interpreter      = resource_cfg.get ('python_interpreter')
@@ -569,7 +569,7 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -q '%s'" % agent_scheduler
                         bootstrap_args += " -r '%s'" % runtime
                         bootstrap_args += " -s '%s'" % session_uid
-                        bootstrap_args += " -t '%s'" % agent_type
+                        bootstrap_args += " -t '%s'" % agent_name
                         bootstrap_args += " -u '%s'" % virtenv_mode
                         bootstrap_args += " -v '%s'" % agent_version
 
