@@ -325,28 +325,8 @@ class PilotLauncherWorker(threading.Thread):
                             user_sandbox = False
 
 
-                        resource_cfg = self._session.get_resource_config(resource_key)
+                        resource_cfg = self._session.get_resource_config(resource_key, schema)
                         agent_worker = resource_cfg.get ('pilot_agent_worker', None)
-
-                        # we expand and exchange keys in the resource config,
-                        # depending on the selected schema so better use a deep
-                        # copy..
-                        import copy
-                        resource_cfg = copy.deepcopy (resource_cfg)
-
-                        if  not schema :
-                            if 'schemas' in resource_cfg :
-                                schema = resource_cfg['schemas'][0]
-
-                        if  not schema in resource_cfg :
-                            logger.warning ("schema %s unknown for resource %s -- continue with defaults" \
-                                         % (schema, resource_key))
-
-                        else :
-                            for key in resource_cfg[schema] :
-                                # merge schema specific resource keys into the
-                                # resource config
-                                resource_cfg[key] = resource_cfg[schema][key]
 
                         ########################################################
                         # Database connection parameters
