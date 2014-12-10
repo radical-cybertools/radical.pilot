@@ -78,6 +78,15 @@
          - pushes state update (collected into bulks if possible)
          - cleans CU workdir if CU is final and cleanup is requested
 
+    NOTE:
+    -----
+      - each CU will be passed to the different threads via queues.
+        cu state changes are pushed onto the update_queue.  As long as events in
+        the update queue remain ordered, no invalid state transitions of the CU
+        can occur.  TO ensure that, always *first* push state transition
+        requests onto the update queue, *then* move the CU to the next thread
+        (state)...
+
     TODO:
     -----
 
@@ -2677,7 +2686,7 @@ class ExecWorker(threading.Thread):
     #
     def __init__(self, exec_env, logger, execution_queue, command_queue,
                  output_staging_queue, mongodb_url, mongodb_name, mongodb_auth,
-                 pilot_id, session_id, cu_environment):
+                 pilot_id, session_id, cu_environment, workdir):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
@@ -2689,6 +2698,7 @@ class ExecWorker(threading.Thread):
         self._terminate = threading.Event()
 
         self.cu_environment    = cu_environment
+        self._workdir          = workdir
         self._pilot_id         = pilot_id
         self._slot_history_old = None
 
@@ -2800,20 +2810,56 @@ class ExecWorker(threading.Thread):
                     # do nothing if we don't have any queued commands
                     pass
 
-                task = None
+                
                 try:
-                    task = self._execution_queue.get_nowait()
+                    cu = self._execution_queue.get_nowait()
 
                 except Queue.Empty:
                     # do nothing if we don't have any queued tasks
-                    pass
+                    idle += self._check_running ()
+
+                    if idle :
+                        time.sleep (QUEUE_POLL_SLEEPTIME)
+                    continue
+                    
 
                 # any work to do?
-                if  task :
-       
-                    prof ('ExecWorker gets task from queue', uid=task.uid, tag='task preprocess')
+                if  cu :
 
+                    cu_uid = str(cu['_id'])
+
+                    prof ('ExecWorker gets cu from queue', uid=cu_uid, tag='preprocess')
+
+                    task_dir_name = "%s/unit-%s" % (self._workdir, cu_uid)
+                    stdout = cu["description"].get ('stdout')
+                    stderr = cu["description"].get ('stderr')
+
+                    if  stdout : stdout_file = task_dir_name+'/'+stdout
+                    else       : stdout_file = task_dir_name+'/STDOUT'
+                    if  stderr : stderr_file = task_dir_name+'/'+stderr
+                    else       : stderr_file = task_dir_name+'/STDERR'
+
+                    prof ('Task create', uid=cu_uid)
+                    task = Task(
+                        uid         = cu_uid,
+                        executable  = cu["description"]["executable"],
+                        arguments   = cu["description"]["arguments"],
+                        environment = cu["description"]["environment"],
+                        numcores    = cu["description"]["cores"],
+                        mpi         = cu["description"]["mpi"],
+                        pre_exec    = cu["description"]["pre_exec"],
+                        post_exec   = cu["description"]["post_exec"],
+                        workdir     = task_dir_name,
+                        stdout_file = stdout_file,
+                        stderr_file = stderr_file,
+                        agent_output_staging = bool(cu['Agent_Output_Directives']),
+                        ftw_output_staging   = bool(cu['FTW_Output_Directives'])
+                        )
+
+                    task.state  = SCHEDULING
                     opaque_slot = None
+
+                    # FIXME: push scheduling state update into updater queue
 
                     try :
 
@@ -2866,12 +2912,6 @@ class ExecWorker(threading.Thread):
 
                         self._update_tasks(task)
 
-                # Record if there was activity in launching or monitoring tasks.
-                idle &= self._check_running()
-
-                # If nothing happened in this cycle, zzzzz for a bit.
-                if idle:
-                    time.sleep(QUEUE_POLL_SLEEPTIME)
 
 
         except Exception, ex:
@@ -3277,7 +3317,7 @@ class StageinWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, execution_queue, stagein_queue, update_queue) :
+    def __init__(self, logger, execution_queue, stagein_queue, update_queue, workdir) :
 
         threading.Thread.__init__(self)
 
@@ -3285,6 +3325,7 @@ class StageinWorker(threading.Thread):
         self._execution_queue = execution_queue
         self._stagein_queue   = stagein_queue
         self._update_queue    = update_queue
+        self._workdir         = workdir
         self._terminate       = threading.Event ()
 
 
@@ -3303,86 +3344,78 @@ class StageinWorker(threading.Thread):
 
         while not self._terminate.isSet () :
             try:
-                staging = self._stagein_queue.get_nowait()
-            except Queue.Empty:
-                # do nothing and sleep if we don't have any queued staging
-                time.sleep(QUEUE_POLL_SLEEPTIME)
-                continue
+                try:
+                    cu = self._stagein_queue.get_nowait()
 
-            # Perform input staging
-            directive = staging['directive']
-            if isinstance(directive, tuple):
-                self._log.warning('Directive is a tuple %s and %s' % (directive, directive[0]))
-                directive = directive[0] # TODO: Why is it a fscking tuple?!?!
+                except Queue.Empty:
+                    time.sleep(QUEUE_POLL_SLEEPTIME)
+                    continue
 
-            sandbox = staging['sandbox']
-            staging_area = staging['staging_area']
-            cu_id = staging['cu_id']
-            self._log.info('Task input staging directives %s for cu: %s to %s' %
-                           (directive, cu_id, sandbox))
+                cu_uid = str(cu['_id'])
 
-            # Create working directory in case it doesn't exist yet
-            try :
-                os.makedirs(sandbox)
-            except OSError as e:
-                # ignore failure on existing directory
-                if e.errno == errno.EEXIST and os.path.isdir(sandbox):
-                    pass
-                else:
-                    raise
+                sandbox      = os.path.join (self._workdir, 'unit-%s' % cu_uid),
+                staging_area = os.path.join (self._workdir, 'staging_area'),
 
-            # Convert the source_url into a SAGA Url object
-            source_url = saga.Url(directive['source'])
 
-            if source_url.scheme == 'staging':
-                self._log.info('Operating from staging')
-                # Remove the leading slash to get a relative path from the staging area
-                rel2staging = source_url.path.split('/',1)[1]
-                source = os.path.join(staging_area, rel2staging)
-            else:
-                self._log.info('Operating from absolute path')
-                source = source_url.path
+                for directive in cu['Agent_Input_Directives']:
+                    prof ('Agent input_staging queue', uid=cu_uid, msg=directive)
 
-            # Get the target from the directive and convert it to the location 
-            # in the sandbox
-            target = directive['target']
-            abs_target = os.path.join(sandbox, target)
+                    # Perform input staging
+                    self._log.info('Task input staging directives %s for cu: %s to %s' %
+                                   (directive, cu_uid, sandbox))
 
-            log_message = ''
-            try:
-                # Act upon the directive now.
+                    # Convert the source_url into a SAGA Url object
+                    source_url = saga.Url(directive['source'])
 
-                if directive['action'] == LINK:
-                    log_message = 'Linking %s to %s' % (source, abs_target)
-                    os.symlink(source, abs_target)
-                elif directive['action'] == COPY:
-                    log_message = 'Copying %s to %s' % (source, abs_target)
-                    shutil.copyfile(source, abs_target)
-                elif directive['action'] == MOVE:
-                    log_message = 'Moving %s to %s' % (source, abs_target)
-                    shutil.move(source, abs_target)
-                elif directive['action'] == TRANSFER:
-                    # TODO: SAGA REMOTE TRANSFER
-                    log_message = 'Transferring %s to %s' % (source, abs_target)
-                else:
-                    raise Exception('Action %s not supported' % directive['action'])
+                    if source_url.scheme == 'staging':
+                        self._log.info('Operating from staging')
+                        # Remove the leading slash to get a relative path from the staging area
+                        rel2staging = source_url.path.split('/',1)[1]
+                        source = os.path.join(staging_area, rel2staging)
+                    else:
+                        self._log.info('Operating from absolute path')
+                        source = source_url.path
 
-                # If we reached this far, assume the staging succeeded
-                log_message += ' succeeded.'
-                self._log.info(log_message)
+                    # Get the target from the directive and convert it to the location 
+                    # in the sandbox
+                    target = directive['target']
+                    abs_target = os.path.join(sandbox, target)
+
+                    log_message = ''
+                    # Act upon the directive now.
+
+                    if directive['action'] == LINK:
+                        log_message = 'Linking %s to %s' % (source, abs_target)
+                        os.symlink(source, abs_target)
+                    elif directive['action'] == COPY:
+                        log_message = 'Copying %s to %s' % (source, abs_target)
+                        shutil.copyfile(source, abs_target)
+                    elif directive['action'] == MOVE:
+                        log_message = 'Moving %s to %s' % (source, abs_target)
+                        shutil.move(source, abs_target)
+                    elif directive['action'] == TRANSFER:
+                        # TODO: SAGA REMOTE TRANSFER
+                        log_message = 'Transferring %s to %s' % (source, abs_target)
+                    else:
+                        raise Exception('Action %s not supported' % directive['action'])
+
+                    # If we reached this far, assume the staging succeeded
+                    log_message += ' succeeded.'
+                    self._log.info(log_message)
+
 
                 # If all went fine, update the state of this StagingDirective 
-                # to Done
+                # to done
                 self._update_queue.push (
                         [   # collection name
                             '.cu',
                             # uid
-                            cu_id,
+                            cu_uid,
                             # query dict
                             {
-                                '_id': ObjectId(cu_id),
+                                '_id': ObjectId(cu_uid),
                                 'Agent_Input_Status': EXECUTING,
-                                'Agent_Input_Directives.state': PENDING,
+                                'Agent_Input_Directives.state' : PENDING,
                                 'Agent_Input_Directives.source': directive['source'],
                                 'Agent_Input_Directives.target': directive['target']
                             },
@@ -3403,10 +3436,10 @@ class StageinWorker(threading.Thread):
                         [   # collection name
                             '.cu',
                             # uid
-                            cu_id,
+                            cu_uid,
                             # query dict
                             {
-                                '_id': ObjectId(cu_id),
+                                '_id': ObjectId(cu_uid),
                                 'Agent_Input_Status': EXECUTING,
                                 'Agent_Input_Directives.state': PENDING,
                                 'Agent_Input_Directives.source': directive['source'],
@@ -3430,7 +3463,7 @@ class StageoutWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, execution_queue, stageout_queue, update_queue) :
+    def __init__(self, logger, execution_queue, stageout_queue, update_queue, workdir) :
 
         threading.Thread.__init__(self)
 
@@ -3438,6 +3471,7 @@ class StageoutWorker(threading.Thread):
         self._execution_queue = execution_queue
         self._stageout_queue  = stageout_queue
         self._update_queue    = update_queue
+        self._workdir         = workdir
         self._terminate       = threading.Event ()
 
 
@@ -3635,7 +3669,8 @@ class Agent (object):
                 mongodb_auth    = mongodb_auth,
                 pilot_id        = self._pilot_id,
                 session_id      = self._session_id,
-                cu_environment  = self._exec_env.cu_environment
+                cu_environment  = self._exec_env.cu_environment,
+                workdir         = self._workdir
             )
             exec_worker.start()
             self._log.info("Started up %s serving nodes %s" %
@@ -3663,7 +3698,8 @@ class Agent (object):
                 logger          = self._log,
                 execution_queue = self._execution_queue,
                 stagein_queue   = self._stagein_queue,
-                update_queue    = self._update_queue
+                update_queue    = self._update_queue,
+                workdir         = self._workdir
             )
             stagein_worker.start()
             self._log.info("Started up %s." % stagein_worker)
@@ -3676,7 +3712,8 @@ class Agent (object):
                 logger          = self._log,
                 execution_queue = self._execution_queue,
                 stageout_queue  = self._stageout_queue,
-                update_queue    = self._update_queue
+                update_queue    = self._update_queue,
+                workdir         = self._workdir
             )
             stageout_worker.start()
             self._log.info("Started up %s." % stageout_worker)
@@ -3771,17 +3808,19 @@ class Agent (object):
 
                     # Check if there's a command waiting
                     retdoc = self._p.find_and_modify(
-                                query={"_id":ObjectId(self._pilot_id)},
-                                update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
-                                fields=[COMMAND_FIELD, 'state']
+                                query  = {"_id"  : ObjectId(self._pilot_id)},
+                                update = {"$set" : {COMMAND_FIELD: []}}, # Wipe content of array
+                                fields = [COMMAND_FIELD, 'state']
                     )
 
                     if retdoc:
                         commands = retdoc[COMMAND_FIELD]
                         state    = retdoc['state']
                     else:
+                        # no document found - session is gone?  Bail out!
                         commands = []
                         state    = CANCELING
+
 
                     for command in commands:
 
@@ -3789,10 +3828,12 @@ class Agent (object):
 
                         idle = False
 
-                        if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT or \
-                            state == CANCELING :
-                            self._log.info("Received Cancel Pilot command.")
+                        if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT :
                             pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                            return # terminate loop
+
+                        elif state == CANCELING :
+                            pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
                             return # terminate loop
 
                         elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
@@ -3802,110 +3843,55 @@ class Agent (object):
 
                         elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
                             self._log.info("Received KeepAlive command.")
+
                         else:
                             raise Exception("Received unknown command: %s with arg: %s." %
                                             (command[COMMAND_TYPE], command[COMMAND_ARG]))
 
+
                     # Check if there are compute units waiting for execution,
                     # and log that we pulled it.
-                    cu_cursor = self._cu.find_and_modify(
-                        query={"pilot" : self._pilot_id,
-                               "state" : PENDING_EXECUTION},
-                        update={"$set" : {"state": SCHEDULING},
-                                "$push": {"statehistory": {
-                                    "state": SCHEDULING, 
-                                    "timestamp": timestamp()}}
-                               }
-                    )
+                    cu_cursor  = self._cu.find_and_modify(
+                        query  = {"pilot" : self._pilot_id,
+                                  "state" : PENDING_EXECUTION},
+                        update = {"$set"  : {"state"       : SCHEDULING},
+                                  "$push" : {"statehistory": {
+                                      "state"    : SCHEDULING, 
+                                      "timestamp": timestamp()}}
+                                 }
+                        )
 
-                    # There are new compute units in the cu_queue on the
-                    # database.  Get the corresponding cu entries.
                     if cu_cursor is not None:
 
                         idle = False
 
                         if not isinstance(cu_cursor, list):
                             cu_cursor = [cu_cursor]
-
+                            
                         prof ('Agent get units', msg="number of units: %d" % len(cu_cursor))
 
                         for cu in cu_cursor:
-                            
-                            # Create new task objects and put them into the 
-                            # task queue
-                            cu_uid = str(cu["_id"])
+
+                            cu_uid  = str(cu['_id'])
                             prof ('Agent get unit', uid=cu_uid, tag='task arriving')
-                            self._log.info("Found new tasks in pilot queue: %s" % cu_uid)
+                            self._log.info("Found new unit in db: %s" % cu_uid)
 
-                            task_dir_name = "%s/unit-%s" % (self._workdir, str(cu["_id"]))
-                            stdout = cu["description"].get ('stdout')
-                            stderr = cu["description"].get ('stderr')
+                            # create unit sandbox
+                            sandbox = os.path.join (self._workdir, 'unit-%s' % cu_uid)
+                            try :
+                                os.makedirs(sandbox)
+                            except OSError as e :
+                                if  e.errno == errno.EEXIST :
+                                    pass
+                                else :
+                                    raise
 
-                            if  stdout : stdout_file = task_dir_name+'/'+stdout
-                            else       : stdout_file = task_dir_name+'/STDOUT'
-                            if  stderr : stderr_file = task_dir_name+'/'+stderr
-                            else       : stderr_file = task_dir_name+'/STDERR'
+                            # and send to staging / execution, respectively
+                            if cu['Agent_Input_Directives'] :
+                                self._stagein_queue.put (cu)
 
-                            prof ('Task create', uid=cu_uid)
-                            task = Task(
-                                uid         = cu_uid,
-                                executable  = cu["description"]["executable"],
-                                arguments   = cu["description"]["arguments"],
-                                environment = cu["description"]["environment"],
-                                numcores    = cu["description"]["cores"],
-                                mpi         = cu["description"]["mpi"],
-                                pre_exec    = cu["description"]["pre_exec"],
-                                post_exec   = cu["description"]["post_exec"],
-                                workdir     = task_dir_name,
-                                stdout_file = stdout_file,
-                                stderr_file = stderr_file,
-                                agent_output_staging = bool(cu['Agent_Output_Directives']),
-                                ftw_output_staging   = bool(cu['FTW_Output_Directives'])
-                                )
-
-                            task.state = SCHEDULING
-                            prof ('Task queued', uid=cu_uid)
-                            self._execution_queue.put(task)
-
-                    #
-                    # Check if there are compute units waiting for input staging
-                    #
-                    cu_cursor = self._cu.find_and_modify(
-                        query={'pilot' : self._pilot_id,
-                               'Agent_Input_Status': PENDING},
-                        # TODO: This might/will create double state history for 
-                        #       StagingInput
-                        update={'$set' : {'Agent_Input_Status': EXECUTING,
-                                          'state': STAGING_INPUT},
-                                '$push': {'statehistory': {
-                                              'state'    : STAGING_INPUT, 
-                                              'timestamp': timestamp()}}
-                               }
-                    )
-
-                    if cu_cursor is not None:
-
-                        idle = False
-
-                        if not isinstance(cu_cursor, list):
-                            cu_cursor = [cu_cursor]
-                            
-                        prof ('Agent input_staging', msg="number of units: %d"%len(cu_cursor))
-
-                        for cu in cu_cursor:
-                            cu_uid = str(cu['_id'])
-                            for directive in cu['Agent_Input_Directives']:
-                                input_staging = {
-                                    'directive': directive,
-                                    'sandbox': os.path.join(self._workdir,
-                                                            'unit-%s' % cu_uid),
-                                    'staging_area': os.path.join(self._workdir, 'staging_area'),
-                                    'cu_id': cu_uid
-                                }
-
-                                prof ('Agent input_staging queue', uid=cu_uid, msg=directive)
-                                # Put the input staging directives in the queue
-                                self._input_staging_queue.put(input_staging)
+                            else :
+                                self._execution_queue.put (cu)
 
                 except Exception, ex:
                     raise
