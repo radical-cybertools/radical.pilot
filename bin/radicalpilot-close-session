@@ -87,7 +87,14 @@ def list_sessions (dbclient, dbname, age, session) :
     for sid in sids :
 
         docs = rpu.get_session_docs (dbclient[dbname], sid)
-        c    = docs['session']['created']
+        if  not docs or \
+            not 'session' in docs or \
+            not 'created' in docs['session'] :
+            # invalid session
+            print 'check  session %s ? (%17s)' % (sid, '???')
+            continue
+
+        c = docs['session']['created']
 
         if isinstance (c, float) :
             c = datetime.datetime.utcfromtimestamp(c) 
@@ -98,7 +105,7 @@ def list_sessions (dbclient, dbname, age, session) :
             print 'check  session %s + (%17s)' % (sid, now-c)
         else :
             print 'check  session %s - (%17s)' % (sid, now-c)
-          # print 'optimignore remaining sessions'
+            print 'optimignore remaining sessions'
             break
 
 
@@ -120,7 +127,7 @@ def purge_sessions (dbclient, dbname, age, session) :
     sessions = list_sessions (dbclient, dbname, age, session)
     database = dbclient[dbname]
 
-    for sid in sessions () :
+    for sid in sessions :
         print 'purge  session %s' % sid
         database.drop_collection (name)
 
