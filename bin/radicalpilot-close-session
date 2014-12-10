@@ -129,7 +129,11 @@ def purge_sessions (dbclient, dbname, age, session) :
 
     for sid in sessions :
         print 'purge  session %s' % sid
-        database.drop_collection (name)
+        database.drop_collection ("%s")
+        database.drop_collection ("%s.p")
+        database.drop_collection ("%s.pm")
+        database.drop_collection ("%s.um")
+        database.drop_collection ("%s.cu")
 
 
 
