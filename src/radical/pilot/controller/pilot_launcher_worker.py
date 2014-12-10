@@ -177,8 +177,8 @@ class PilotLauncherWorker(threading.Thread):
                     log_message  = "Couldn't determine job state for ComputePilot %s. " \
                                    "Assuming it has failed." % pilot_id
 
-            if  pilot_failed :
 
+            if  pilot_failed :
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
@@ -647,7 +647,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         pilot_col.update(
                             {"_id"  : ObjectId(pilot_id),
-                             "state": {"$ne"     : FAILED}},
+                             "state": {"$ne" : FAILED}},
                             {"$set" : {
                                 "state"   : FAILED,
                                 "stdout"  : out,

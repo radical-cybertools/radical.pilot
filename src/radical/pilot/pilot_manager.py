@@ -148,7 +148,7 @@ class PilotManager(Object):
             logger.error("PilotManager object already closed.")
             return
 
-        # before we terminare pilots, we have to kill the pilot launcher threads
+        # before we terminate pilots, we have to kill the pilot launcher threads
         # -- otherwise we'll run into continous race conditions due to the
         # ongoing state checks...
         if self._worker is not None:
@@ -156,6 +156,7 @@ class PilotManager(Object):
             logger.error("pmgr    %s cancel   worker %s" % (str(self._uid), self._worker.name))
             self._worker.cancel_launcher()
             logger.error("pmgr    %s canceled worker %s" % (str(self._uid), self._worker.name))
+
 
 
         # If terminate is set, we cancel all pilots. 
@@ -202,16 +203,14 @@ class PilotManager(Object):
                 logger.error("pmgr    %s canceled pilot  %s" % (str(self._uid), pilot._uid))
 
 
-        # Shut down all worker processes if still active. stop() returns
-        # only after a successful join(). 
-        if self._worker is not None:
-            # Stop the worker process
-            logger.error("pmgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
-            self._worker.stop()
-            logger.error("pmgr    %s stoped   worker %s" % (str(self._uid), self._worker.name))
+        logger.error("pmgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
+        self._worker.stop()
+        self._worker.join()
+        logger.error("pmgr    %s stopped  worker %s" % (str(self._uid), self._worker.name))
 
-            # Remove worker from registry
-            self._session._process_registry.remove(self._uid)
+        # Remove worker from registry
+        self._session._process_registry.remove(self._uid)
+
 
         logger.error("pmgr    %s closed" % (str(self._uid)))
         self._uid = None

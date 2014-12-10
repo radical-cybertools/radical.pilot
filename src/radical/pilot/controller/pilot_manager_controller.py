@@ -183,6 +183,7 @@ class PilotManagerController(threading.Thread):
         for worker in self._pilot_launcher_worker_pool:
             logger.error("pworker %s stops   launcher %s" % (self.name, worker.name))
             worker.stop ()
+            worker.join ()
             logger.error("pworker %s stopped launcher %s" % (self.name, worker.name))
 
 
@@ -311,7 +312,22 @@ class PilotManagerController(threading.Thread):
 
                     self._shared_data[pilot_id]['data'] = pilot
 
-                    if new_state != old_state:
+                    # FIXME: *groan* what a hack...  The Canceling state is by
+                    # the nature of it not recorded in the database, but only in
+                    # the local cache.  So if we see it as old state, we have to
+                    # avoid state transitions into non-final states in the cache
+                    # at all cost -- so we catch this here specifically
+                    no_cb = False
+                    if  old_state == CANCELING :
+                        if  new_state not in [DONE, FAILED, CANCELED] :
+                            # restore old state, making the cache explicitly
+                            # different than the DB recorded state
+                            self._shared_data[pilot_id]["data"]["state"] = old_state 
+
+                            # do not tr igger a state cb!
+                            no_cb = True
+
+                    if (new_state != old_state) and not no_cb :
                         # On a state change, we fire zee callbacks.
                         logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
 
