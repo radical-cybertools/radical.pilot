@@ -1,22 +1,4 @@
 {
-    "alamo": {
-        "description"                 : "The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).",
-        "notes"                       : "None",
-        "schemas"                     : ["ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "pbs+ssh://alamo.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://alamo.futuregrid.org/"
-        },
-        "default_queue"               : "short",
-        "lrms"                        : "TORQUE",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
-        "python_interpreter"          : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
-        "valid_roots"                 : ["/N", "/home"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
-    },
     "india": {
         "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
@@ -36,44 +18,6 @@
         "valid_roots"                 : ["/N"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
 
-    },
-
-    "sierra": {
-        "description"                 : "The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).",
-        "notes"                       : "None",
-        "schemas"                     : ["ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "pbs+ssh://sierra.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://sierra.futuregrid.org/"
-        },
-        "default_queue"               : "batch",
-        "lrms"                        : "TORQUE",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
-        "python_interpreter"          : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
-        "valid_roots"                 : ["/N"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
-    },
-
-    "hotel": {
-        "description"                 : "The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).",
-        "notes"                       : "Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.",
-        "schemas"                     : ["ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "pbs+ssh://hotel.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://hotel.futuregrid.org/"
-        },
-        "default_queue"               : "batch",
-        "lrms"                        : "TORQUE",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
-        "python_interpreter"          : "/soft/python/gnu-4.1/2.7/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
-        "valid_roots"                 : ["/N", "/gpfs"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     },
     "xray": {
         "description"                 : "FutureGrid Cray XT5m cluster (https://futuregrid.github.io/manual/hardware.html).",
