@@ -75,20 +75,6 @@ if __name__ == "__main__":
 
         cud_list.append(mpi_test_task)
 
-
-    for unit_count in range(0, 4):
-
-        mpi_test_task = rp.ComputeUnitDescription()
-
-        # india uses openmpi
-        mpi_test_task.executable    = "/bin/sh"
-        mpi_test_task.arguments     = ["-c", "'echo mpi rank $OMPI_COMM_WORLD_RANK/$OMPI_COMM_WORLD_SIZE'"]
-        mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
-
-        cud_list.append(mpi_test_task)
-
-
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
     umgr = rp.UnitManager(
