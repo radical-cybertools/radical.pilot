@@ -78,6 +78,7 @@
          - pushes state update (collected into bulks if possible)
          - cleans CU workdir if CU is final and cleanup is requested
 
+
     NOTE:
     -----
       - each CU will be passed to the different threads via queues.
@@ -87,12 +88,16 @@
         requests onto the update queue, *then* move the CU to the next thread
         (state)...
 
+
     TODO:
     -----
 
     - add option to scheduler to ignore node 0 (which hosts the agent process)
     - add LRMS.partition (n) to return a set of partitioned LRMS for partial
       ExecWorkers
+    - publish pilot slot history once on shutdown?  Or once in a while when
+      idle?  Or push continuously?
+
 """
 
 __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
@@ -165,7 +170,7 @@ SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
 SCHEDULER_NAME_SCATTERED    = "SCATTERED"
 SCHEDULER_NAME_TORUS        = "TORUS"
 
-# 'enum' for pilot's task spawner types
+# 'enum' for pilot's unit spawner types
 SPAWNER_NAME_POPEN          = "POPEN"
 SPAWNER_NAME_PTY            = "PTY"
 
@@ -832,7 +837,7 @@ class SchedulerContinuous(Scheduler):
         # Collect all node:core slots here
         task_slots = []
 
-        # Add cores from first slot for this task
+        # Add cores from first slot for this unit
         # As this is a multi-node search, we can safely assume that we go
         # from the offset all the way to the last core.
         task_slots.extend(['%s:%d' % (first_node, core) for core in
@@ -858,7 +863,7 @@ class SchedulerContinuous(Scheduler):
         # Convenience alias
         all_slots = self._slots
 
-        # logger.debug("change_slot_states: task slots: %s" % task_slots)
+        # logger.debug("change_slot_states: unit slots: %s" % task_slots)
 
         for slot in task_slots:
             # logger.debug("change_slot_states: slot content: %s" % slot)
@@ -2612,6 +2617,7 @@ class LoadLevelerLRMS(LRMS):
         return table
 
 
+
 # ------------------------------------------------------------------------
 #
 class ForkLRMS(LRMS):
@@ -2637,49 +2643,6 @@ class ForkLRMS(LRMS):
         self.cores_per_node = selected_cpus
 
 
-# ------------------------------------------------------------------------------
-#
-class Task(object):
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, uid, executable, arguments, environment, numcores, mpi,
-                 pre_exec, post_exec, workdir, stdout_file, stderr_file, 
-                 agent_output_staging, ftw_output_staging):
-
-        self._log         = None
-        self._description = None
-
-        # static task properties
-        self.uid            = uid
-        self.environment    = environment
-        self.executable     = executable
-        self.arguments      = arguments
-        self.workdir        = workdir
-        self.stdout_file    = stdout_file
-        self.stderr_file    = stderr_file
-        self.agent_output_staging = agent_output_staging
-        self.ftw_output_staging = ftw_output_staging
-        self.numcores       = numcores
-        self.mpi            = mpi
-        self.pre_exec       = pre_exec
-        self.post_exec      = post_exec
-
-        # Location
-        self.slots          = None
-
-        # dynamic task properties
-        self.started        = None
-        self.finished       = None
-
-        self.state          = None
-        self.exit_code      = None
-        self.stdout         = ""
-        self.stderr         = ""
-
-        self._log           = []
-        self._proc          = None
-
 
 # ------------------------------------------------------------------------------
 #
@@ -2690,8 +2653,9 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, exec_env, logger, execution_queue, command_queue,
-                 output_staging_queue, mongodb_url, mongodb_name, mongodb_auth,
+    def __init__(self, exec_env, logger, execution_queue, 
+                 update_queue, stageout_queue, command_queue,
+                 mongodb_url, mongodb_name, mongodb_auth,
                  pilot_id, session_id, cu_environment, workdir):
 
         """Le Constructeur creates a new ExecWorker instance.
@@ -2720,15 +2684,12 @@ class ExecWorker(threading.Thread):
 
         # Queued tasks by the Agent
         self._execution_queue = execution_queue
-
-        # Queued transfers
-        self._output_staging_queue = output_staging_queue
-
-        # Queued commands by the Agent
-        self._command_queue = command_queue
+        self._update_queue    = update_queue
+        self._stageout_queue  = stageout_queue
+        self._command_queue   = command_queue
 
         # Launched tasks by this ExecWorker
-        self._running_tasks = []
+        self.running_cus = []
         self._cuids_to_cancel = []
 
         # Container for scheduler, lrms and launch method.
@@ -2843,78 +2804,68 @@ class ExecWorker(threading.Thread):
                     if  stderr : stderr_file = task_dir_name+'/'+stderr
                     else       : stderr_file = task_dir_name+'/STDERR'
 
-                    prof ('Task create', uid=cu['uid'])
-                    task = Task(
-                        uid         = cu['uid'],
-                        executable  = cu["description"]["executable"],
-                        arguments   = cu["description"]["arguments"],
-                        environment = cu["description"]["environment"],
-                        numcores    = cu["description"]["cores"],
-                        mpi         = cu["description"]["mpi"],
-                        pre_exec    = cu["description"]["pre_exec"],
-                        post_exec   = cu["description"]["post_exec"],
-                        workdir     = task_dir_name,
-                        stdout_file = stdout_file,
-                        stderr_file = stderr_file,
-                        agent_output_staging = bool(cu['Agent_Output_Directives']),
-                        ftw_output_staging   = bool(cu['FTW_Output_Directives'])
-                        )
-
-                    task.state  = ALLOCATING
-                    opaque_slot = None
+                    cu['workdir']     = task_dir_name
+                    cu['stdout']      = ''
+                    cu['stderr']      = ''
+                    cu['stdout_file'] = stdout_file
+                    cu['stderr_file'] = stderr_file
+                    cu['state']       = ALLOCATING
+                    cu['opaque_slot'] = None
 
                     # FIXME: push scheduling state update into updater queue
 
                     try :
 
-                        if task.mpi:
+                        if cu['description']['mpi']:
                             if not self.exec_env.mpi_launcher:
                                 raise Exception("Can't launch MPI tasks without MPI launcher.")
 
                             launcher = self.exec_env.mpi_launcher
-                            self._log.debug("Launching MPI task with %s (%s)." % (
+                            self._log.debug("Launching MPI unit with %s (%s)." % (
                                     launcher.name, launcher.launch_command))
+
                         else:
                             if not self.exec_env.task_launcher:
-                                raise Exception("Can't launch tasks without Task launcher.")
+                                raise Exception("Can't launch tasks without launcher.")
 
                             launcher = self.exec_env.task_launcher
-                            self._log.debug("Launching task with %s (%s)." % (
+                            self._log.debug("Launching unit with %s (%s)." % (
                                 launcher.name, launcher.launch_command))
 
-                        # Call the scheduler for this task, and receive an 
+                        # Call the scheduler for this unit, and receive an 
                         # opaque handle that has meaning to the LRMS, Scheduler 
                         # and LaunchMethod.
-                        opaque_slot = self.exec_env.scheduler.allocate_slot(task.numcores) 
+                        cu['opaque_slot'] = self.exec_env.scheduler.allocate_slot(cu['description']['cores']) 
                         
                         # Check if we got results
-                        if opaque_slot is None:
+                        if  cu['opaque_slot'] :
+                            # got an allocation, go off and launch the process
+                            self._launch_task(cu, launcher)
+                            idle = False
+
+                        else:
                             # No resources available, put back in queue
                             self._execution_queue.put(cu)
-                            prof ('ExecWorker returns task to queue', uid=task.uid)
-                        else:
-                            # got an allocation, go off and launch the process
-                            task.opaque_slot = opaque_slot
-                            self._launch_task(task, launcher)
-                            idle = False
+                            prof ('push', msg="towards execution", uid=cu['uid'])
+
 
                     except Exception as e :
                         # append the startup error to the units stderr.  This is
                         # not completely correct (as this text is not produced
                         # by the unit), but it seems the most intuitive way to
                         # communicate that error to the application/user.
-                        task.stderr += "\nPilot cannot start compute unit:\n%s\n%s" \
+                        cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
                                      % (str(e), traceback.format_exc())
-                        task.state   = FAILED
-                        task.stderr += "\nPilot cannot start compute unit: '%s'" % e
+                        cu['state']   = FAILED
+                        cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
                         
-                        self._log.exception("Launching task failed: '%s'." % e) 
+                        self._log.exception("Launching unit failed: '%s'." % e) 
                         
                         # Free the Slots, Flee the Flots, Ree the Frots!
-                        if opaque_slot:
-                            self.exec_env.scheduler.release_slot(opaque_slot)
+                        if cu['opaque_slot']:
+                            self.exec_env.scheduler.release_slot(cu['opaque_slot'])
 
-                        self._update_tasks(task)
+                        self._update_tasks(cu)
 
 
 
@@ -2926,35 +2877,35 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _launch_task(self, task, launcher):
+    def _launch_task(self, cu, launcher):
 
-        prof ('ExecWorker task launch', uid=task.uid)
+        prof ('ExecWorker unit launch', uid=cu['uid'])
 
         # create working directory in case it
         # doesn't exist
         try :
-            os.makedirs(task.workdir)
+            os.makedirs(cu['workdir'])
         except OSError as e :
             # ignore failure on existing directory
-            if  e.errno == errno.EEXIST and os.path.isdir (task.workdir) :
+            if  e.errno == errno.EEXIST and os.path.isdir (cu['workdir']) :
                 pass
             else :
                 raise
 
-        # Start a new subprocess to launch the task
+        # Start a new subprocess to launch the unit
         # TODO: This is scheduler specific
-        proc = self.exec_env.spawner.spawn (task     = task,
+        proc = self.exec_env.spawner.spawn (cu       = cu,
                                             launcher = launcher,
                                             env      = self.cu_environment)
 
-        prof ('ExecWorker task launched', uid=task.uid, tag='task_launching')
+        prof ('ExecWorker unit launched', uid=cu['uid'], tag='task_launching')
 
-        task.started = timestamp()
-        task.state   = EXECUTING
-        task._proc   = proc
+        cu['started'] = timestamp()
+        cu['state']   = EXECUTING
+        cu['proc']    = proc
 
         # Add to the list of monitored tasks
-        self._running_tasks.append(task) # add task here?
+        self.running_cus.append(cu)
 
         # Update to mongodb
         #
@@ -2965,195 +2916,125 @@ class ExecWorker(threading.Thread):
         # inefficient.  We should consider to use a async communication scheme.
         # For example, we could collect all messages for a second (but not
         # longer) and send those updates in a bulk.
-        self._update_tasks(task)
+        self._update_tasks(cu)
 
 
     # --------------------------------------------------------------------------
     # Iterate over all running tasks, check their status, and decide on the 
-    # next step.  Also check for a requested cancellation for the task.
+    # next step.  Also check for a requested cancellation for the tasks.
     def _check_running(self):
 
-        idle = True
+        action = 0
 
-        # we update tasks in 'bulk' after each iteration.
-        # all tasks that require DB updates are in update_tasks
-        update_tasks = []
+        for cu in self.running_cus:
 
-        # We record all completed tasks
-        finished_tasks = []
+            # poll subprocess object
+            exit_code = cu['proc'].poll()
+            now       = timestamp()
 
-        for task in self._running_tasks:
-
-            # Get the subprocess object to poll on
-            proc = task._proc
-            ret_code = proc.poll()
-            if ret_code is None:
+            if exit_code is None:
                 # Process is still running
 
-                if task.uid in self._cuids_to_cancel:
-                    # We got a request to cancel this task.
-                    proc.kill()
-                    state = CANCELED
-                    finished_tasks.append(task)
-                else:
-                    # No need to continue [sic] further for this iteration
-                    continue
-            else:
-                prof ('ExecWorker task found done', uid=task.uid, tag='task executing')
+                if  cu['uid'] in self._cuids_to_cancel :
 
-                # The task ended (eventually FAILED or DONE).
-                finished_tasks.append(task)
+                    # We got a request to cancel this cu
+                    action += 1
+                    cu['proc'].kill()
+                    self._cuids_to_cancel.remove (cu['uid'])
 
-              # # Make sure all stuff reached the spindles
-              # # FIXME: do we still need this?
-              # proc.close_and_flush_filehandles()
-
-                # Convenience shortcut
-                uid = task.uid
-                self._log.info("Task %s terminated with return code %s." % (uid, ret_code))
-
-                if ret_code != 0:
-                    # The task failed, no need to deal with its output data.
-                    state = FAILED
-                else:
-                    # The task finished cleanly, see if we need to deal with 
-                    # output data.
-
-                    if task.agent_output_staging or task.ftw_output_staging:
-
-                        # TODO: this should ideally be PendingOutputStaging, but
-                        # that introduces a race condition currently
-                        state = STAGING_OUTPUT 
-
-                        # Check if there are Directives that need to be 
-                        # performed by the Agent.
-                        if task.agent_output_staging:
-
-                            prof ('ExecWorker task needs output staging', uid=task.uid)
-
-                            # Find the task in the database
-                            # TODO: shouldnt this be available somewhere 
-                            #       already, that would save a roundtrip?!
-                            cu = self._cu.find_one({"_id": ObjectId(uid)})
-
-                            for directive in cu['Agent_Output_Directives']:
-                                output_staging = {
-                                    'directive': directive,
-                                    'sandbox': task.workdir,
-                                    # TODO: the staging/area pilot directory 
-                                    # should  not be derived like this:
-                                    'staging_area': os.path.join(os.path.dirname(task.workdir), STAGING_AREA),
-                                    'cu_id': uid
+                    self._update_queue.put ({
+                        'unit'   : cu, 
+                        'update' : {
+                            '$set' : {'state': CANCELED},
+                            '$push': {'log'  : "unit execution canceled", 
+                                      'statehistory' : {
+                                          'state'     : CANCELED, 
+                                          'timestamp' : now
+                                          }
+                                      }
                                 }
+                            })
+                    prof ('final', msg="execution canceled", uid=cu['uid'], tag='execution')
+                    # this is final, cu will not be touched anymore
 
-                                # Put the output staging directives in the queue
-                                self._output_staging_queue.put(output_staging)
-
-                                self._cu.update(
-                                    {"_id": ObjectId(uid)},
-                                    {"$set": {"Agent_Output_Status": EXECUTING}}
-                                )
-
-                            prof ('ExecWorker task gets  output staging', uid=task.uid)
+                # Nothing to do here (anymore), carry on
+                continue
 
 
-                        # Check if there are Directives that need to be 
-                        # performed by the FTW.
-                        # Obviously these are not executed here (by the Agent),
-                        # but we need this code to set the state so that the FTW
-                        # gets notified that it can start its work.
-                        if task.ftw_output_staging:
-                            prof ('ExecWorker task needs FTW_O ', uid=task.uid)
-                            self._cu.update(
-                                {"_id": ObjectId(uid)},
-                                {"$set": {"FTW_Output_Status": PENDING}}
-                            )
-                            prof ('ExecWorker task gets  FTW_O ', uid=task.uid)
-                    else:
-                        # If there is no output data to deal with, the task 
-                        # becomes DONE
-                        state = DONE
+            # we have a valid return code -- unit is final
+            action += 1
+            self._log.info("Unit %s has return code %s." % (cu['uid'], exit_code))
 
-            #
-            # At this stage the task is ended: DONE, FAILED or CANCELED.
-            #
-
-            prof ('ExecWorker task postprocess start', uid=task.uid)
-
-            idle = False
-
-            # store stdout and stderr to the database
-            workdir = task.workdir
-            task_id = task.uid
-
-            if  os.path.isfile(task.stdout_file):
-                with open(task.stdout_file, 'r') as stdout_f:
-                    try :
-                        txt = unicode(stdout_f.read(), "utf-8")
-                    except UnicodeDecodeError :
-                        txt = "unit stdout contains binary data -- use file staging directives"
-
-                    if  len(txt) > MAX_IO_LOGLENGTH :
-                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stdout += txt
-
-            if  os.path.isfile(task.stderr_file):
-                with open(task.stderr_file, 'r') as stderr_f:
-                    try :
-                        txt = unicode(stderr_f.read(), "utf-8")
-                    except UnicodeDecodeError :
-                        txt = "unit stderr contains binary data -- use file staging directives"
-
-                    if  len(txt) > MAX_IO_LOGLENGTH :
-                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stderr += txt
-
-            task.exit_code = ret_code
-
-            # Record the time and state
-            task.finished = timestamp()
-            task.state = state
-
-            # Put it on the list of tasks to update in bulk
-            update_tasks.append(task)
+            cu['exit_code'] = exit_code
+            cu['finished']  = now
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            self.exec_env.scheduler.release_slot(task.opaque_slot)
+            self.running_cus.remove(cu)
+            self.exec_env.scheduler.release_slot(cu['opaque_slot'])
 
-            prof ('ExecWorker task postprocess done', uid=task.uid)
 
-        #
-        # At this stage we are outside the for loop of running tasks.
-        #
+          # # Make sure all stuff reached the spindles
+          # # FIXME: do we still need this?  Will only apply to specific
+          # # spawn methods?
+          # cu['proc'].close_and_flush_filehandles()
 
-        # Update all the tasks that were marked for update.
-        self._update_tasks(update_tasks)
+            if exit_code != 0:
 
-        # Remove all tasks that don't require monitoring anymore.
-        for e in finished_tasks:
-            self._running_tasks.remove(e)
+                # The unit failed, no need to deal with its output data.
+                self._update_queue.put ({
+                    'unit'   : cu, 
+                    'update' : {
+                        '$set' : {'state': FAILED},
+                        '$push': {'log'  : "unit execution failed", 
+                                  'statehistory' : {
+                                      'state'     : FAILED, 
+                                      'timestamp' : now
+                                      }
+                                  }
+                            }
+                        })
+                prof ('final', msg="execution failed", uid=cu['uid'], tag='execution')
+                # this is final, cu will not be touched anymore
 
-        return idle
+            else:
+                # The unit finished cleanly, see if we need to deal with 
+                # output data.  We always move to stageout, even if there are no
+                # directives -- at the very least, we'll uplocad stdout/stderr
+
+                self._update_queue.put ({
+                    'unit'   : cu, 
+                    'update' : {
+                        '$set' : {'state': STAGING_OUTPUT},
+                        '$push': {'log'  : "unit execution completed", 
+                                  'statehistory' : {
+                                      'state'     : STAGING_OUTPUT,
+                                      'timestamp' : now
+                                      }
+                                  }
+                            }
+                        })
+                self._stageout_queue.put (cu)
+                prof ('push', msg="toward stageout", uid=cu['uid'], tag='execution')
+
+        return action
 
     # --------------------------------------------------------------------------
     #
-    def _update_tasks(self, tasks):
+    def _update_tasks(self, cus):
         """Updates the database entries for one or more tasks, including
-        task state, log, etc.
+        unit state, log, etc.
         """
 
-        if  not isinstance(tasks, list):
-            tasks = [tasks]
+        if  not isinstance(cus, list):
+            cus = [cus]
 
         ts = timestamp()
-        # We need to know which unit manager we are working with. We can pull
-        # this information here:
 
         # Update capabilities
         #self._capability = self._slots2caps(self._slots)
         #self._capability = self._slots2free(self.exec_env.scheduler._slots)
 
-        # AM: FIXME: this at the moment pushes slot history whenever a task
+        # AM: FIXME: this at the moment pushes slot history whenever a unit
         # state is updated...  This needs only to be done on ExecWorker
         # shutdown.  Well, alas, there is currently no way for it to find out
         # when it is shut down... Some quick and  superficial measurements 
@@ -3178,23 +3059,6 @@ class ExecWorker(threading.Thread):
             prof ('ExecWorker pilot state pushed')
 
             self._slot_history_old = self.exec_env.scheduler._slot_history[:]
-
-        for task in tasks:
-            self._cu.update({"_id": ObjectId(task.uid)}, 
-            {"$set": {"state"        : task.state,
-                      "started"      : task.started,
-                      "finished"     : task.finished,
-                      "slots"        : task.slots, # TODO: keep around?
-                      "exit_code"    : task.exit_code,
-                      "stdout"       : task.stdout,
-                      "stderr"       : task.stderr},
-             "$push": {"statehistory": {"state": task.state, "timestamp": ts}}
-            })
-
-            if task.state in [DONE, CANCELED, FAILED] :
-                prof ('ExecWorker task state pushed', uid=task.uid, tag='task postprocessing')
-            else :
-                prof ('ExecWorker task state pushed', uid=task.uid)
 
 
 # ------------------------------------------------------------------------------
@@ -3257,6 +3121,8 @@ class UpdateWorker(threading.Thread):
 
                     for uid in cinfo['uids'] :
                         prof ('state update bulk pushed', uid=uid)
+
+                    prof ('state update bulk pushed (%d)' % len(cinfo['uids']))
 
                     cinfo['last'] = now
                     cinfo['bulk'] = None
@@ -3371,12 +3237,11 @@ class StageinWorker(threading.Thread):
                 sandbox      = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
                 staging_area = os.path.join (self._workdir, 'staging_area'),
 
-
                 for directive in cu['Agent_Input_Directives']:
                     prof ('Agent input_staging queue', uid=cu['uid'], msg=directive)
 
                     # Perform input staging
-                    self._log.info('Task input staging directives %s for cu: %s to %s' %
+                    self._log.info('unit input staging directives %s for cu: %s to %s' %
                                    (directive, cu['uid'], sandbox))
 
                     # Convert the source_url into a SAGA Url object
@@ -3396,67 +3261,82 @@ class StageinWorker(threading.Thread):
                     target = directive['target']
                     abs_target = os.path.join(sandbox, target)
 
-                    log_message = ''
-                    # Act upon the directive now.
+                    log_message  = ''
 
-                    if directive['action'] == LINK:
-                        log_message = 'Linking %s to %s' % (source, abs_target)
-                        os.symlink(source, abs_target)
-                    elif directive['action'] == COPY:
-                        log_message = 'Copying %s to %s' % (source, abs_target)
-                        shutil.copyfile(source, abs_target)
-                    elif directive['action'] == MOVE:
-                        log_message = 'Moving %s to %s' % (source, abs_target)
-                        shutil.move(source, abs_target)
-                    elif directive['action'] == TRANSFER:
-                        # TODO: SAGA REMOTE TRANSFER
-                        log_message = 'Transferring %s to %s' % (source, abs_target)
-                    else:
-                        raise Exception('Action %s not supported' % directive['action'])
+                    try :
+                        if directive['action'] == LINK:
+                            log_message = 'Linking %s to %s' % (source, abs_target)
+                            os.symlink(source, abs_target)
+                        elif directive['action'] == COPY:
+                            log_message = 'Copying %s to %s' % (source, abs_target)
+                            shutil.copyfile(source, abs_target)
+                        elif directive['action'] == MOVE:
+                            log_message = 'Moving %s to %s' % (source, abs_target)
+                            shutil.move(source, abs_target)
+                        elif directive['action'] == TRANSFER:
+                            # TODO: SAGA REMOTE TRANSFER
+                            log_message = 'Transferring %s to %s' % (source, abs_target)
+                        else:
+                            raise Exception('Action %s not supported' % directive['action'])
 
-                    # If we reached this far, assume the staging succeeded
-                    log_message += ' succeeded.'
-                    self._log.info(log_message)
+                        # If we reached this far, assume the staging succeeded
+                        log_message += ' succeeded.'
+                        self._log.info(log_message)
 
+                        # If all went fine, update the state of this StagingDirective 
+                        # to done
+                        self._update_queue.put ({
+                            'unit'   : cu, 
+                            'query'  : {
+                                'Agent_Input_Status'           : EXECUTING,
+                                'Agent_Input_Directives.state' : PENDING,
+                                'Agent_Input_Directives.source': directive['source'],
+                                'Agent_Input_Directives.target': directive['target']
+                                },
+                            'update' : {
+                                '$set' : {'Agent_Input_Directives.$.state': DONE},
+                                '$push': {'log': log_message}
+                                }
+                            })
 
-                # If all went fine, update the state of this StagingDirective 
-                # to done
+                    except:
+                        # If we catch an exception, assume the staging failed
+                        log_message += ' failed.'
+                        self._log.error(log_message)
+
+                        # If a staging directive fails, fail the CU also.
+                        self._update_queue.put ({
+                            'unit'   : cu, 
+                            'query'  : {
+                                'Agent_Input_Status'           : EXECUTING,
+                                'Agent_Input_Directives.state' : PENDING,
+                                'Agent_Input_Directives.source': directive['source'],
+                                'Agent_Input_Directives.target': directive['target']
+                                },
+                            'update' : {
+                                '$set' : { 'Agent_Input_Directives.$.state': FAILED,
+                                           'Agent_Input_Status'            : FAILED,
+                                           'state'                         : FAILED},
+                                '$push': {
+                                    'log': 'Staging Directive failed'}
+                                }
+                            })
+
+                # cu staging is all done, unit can go to execution
                 self._update_queue.put ({
                     'unit'   : cu, 
-                    'query'  : {
-                        'Agent_Input_Status'           : EXECUTING,
-                        'Agent_Input_Directives.state' : PENDING,
-                        'Agent_Input_Directives.source': directive['source'],
-                        'Agent_Input_Directives.target': directive['target']
-                        },
                     'update' : {
-                        '$set' : {'Agent_Input_Directives.$.state': DONE},
-                        '$push': {'log': log_message}
+                        '$set' : {'state': ALLOCATING},
+                        '$push': {'log'  : "agent input staging done"}
                         }
                     })
+                self._execution_queue.put (cu)
+                prof ('push', msg="towards execution", uid=cu['uid'], tag='stagein')
 
-            except:
-                # If we catch an exception, assume the staging failed
-                log_message += ' failed.'
-                self._log.error(log_message)
 
-                # If a staging directive fails, fail the CU also.
-                self._update_queue.put ({
-                    'unit'   : cu, 
-                    'query'  : {
-                        'Agent_Input_Status'           : EXECUTING,
-                        'Agent_Input_Directives.state' : PENDING,
-                        'Agent_Input_Directives.source': directive['source'],
-                        'Agent_Input_Directives.target': directive['target']
-                        },
-                    'update' : {
-                        '$set' : { 'Agent_Input_Directives.$.state': FAILED,
-                                   'Agent_Input_Status'            : FAILED,
-                                   'state'                         : FAILED},
-                        '$push': {
-                            'log': 'Staging Directive failed'}
-                        }
-                    })
+            except Exception as e :
+                self._log.exception ('worker died')
+                sys.exit (1)
 
 
 # ------------------------------------------------------------------------------
@@ -3492,7 +3372,10 @@ class StageoutWorker(threading.Thread):
 
         self._log.info('StageoutWorker started ...')
 
+        staging_area = os.path.join (self._workdir, 'staging_area'),
+
         while not self._terminate.isSet () :
+
             try :
                 try:
                     cu = self._stageout_queue.get_nowait()
@@ -3501,15 +3384,60 @@ class StageoutWorker(threading.Thread):
                     time.sleep(QUEUE_POLL_SLEEPTIME)
                     continue
 
-                sandbox      = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
-                staging_area = os.path.join (self._workdir, 'staging_area'),
+                sandbox = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
 
+                ## parked from unit state checker: unit postprocessing
+
+                # Check if there are Directives that need to be 
+                # performed by the FTW.
+                # Obviously these are not executed here (by the Agent),
+                # but we need this code to set the state so that the FTW
+                # gets notified that it can start its work.
+                if cu['FTW_Output_Directives'] :
+                    prof ('ExecWorker unit needs FTW_O ', uid=cu['uid'])
+                    self._update_queue.put ({
+                        'unit'   : cu, 
+                        'update' : {
+                            '$set' : {
+                                'FTW_Output_Status' : PENDING
+                            }
+                        }
+                    })
+                    prof ('ExecWorker unit gets  FTW_O ', uid=cu['uid'])
+
+                else :
+                    # FIXME: update to DONE
+                    pass
+
+                if  os.path.isfile(cu['stdout_file']):
+                    with open(cu['stdout_file'], 'r') as stdout_f:
+                        try :
+                            txt = unicode(stdout_f.read(), "utf-8")
+                        except UnicodeDecodeError :
+                            txt = "unit stdout contains binary data -- use file staging directives"
+
+                        if  len(txt) > MAX_IO_LOGLENGTH :
+                            txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
+                        cu['stdout'] += txt
+
+                if  os.path.isfile(cu['stderr_file']):
+                    with open(cu['stderr_file'], 'r') as stderr_f:
+                        try :
+                            txt = unicode(stderr_f.read(), "utf-8")
+                        except UnicodeDecodeError :
+                            txt = "unit stderr contains binary data -- use file staging directives"
+
+                        if  len(txt) > MAX_IO_LOGLENGTH :
+                            txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
+                        cu['stderr'] += txt
+
+                # FIXME: include stdio in upload to DB
 
                 for directive in cu['Agent_Output_Directives']:
 
                     # Perform output staging
 
-                    self._log.info('Task output staging directives %s for cu: %s to %s' % (
+                    self._log.info('unit output staging directives %s for cu: %s to %s' % (
                         directive, cu['uid'], sandbox))
 
                     source = str(directive['source'])
@@ -3571,13 +3499,36 @@ class StageoutWorker(threading.Thread):
                             'Agent_Output_Directives.target': directive['target']
                             },
                         'update' : {
-                            '$set' : {'Agent_Output_Directives.$.state': DONE},
+                            '$set' : {
+                                'Agent_Output_Directives.$.state': DONE, 
+                            },
                             '$push': {'log': logmessage}
-                            }
-                        })
+                        }
+                    })
+
+                # If all directives went ok, update the unit state
+                # FIXME: are the updates above really needed?
+                self._update_queue.put ({
+                    'unit'   : cu, 
+                    'update' : {
+                        '$set' : {
+                            'state'     : DONE, 
+                            'stdout'    : cu['stdout'], 
+                            'stderr'    : cu['stderr'],
+                            'exit_code' : cu['exit_code'],
+                            'started'   : cu['started'],
+                            'finished'  : cu['finished'],
+                            'slots'     : cu['opaque_slot'],
+                        },
+                        '$push': {'log' : 'output staging completed'}
+                    }
+                })
+                prof ('final', msg="stageout done", uid=cu['uid'], tag='stageout')
+                # this is final, the cu is not touched anymore
 
             except Exception, ex:
                 self._log.exception("Error in StageoutWorker loop")
+                # FIXME: that should move the unit to FAILED?
                 raise
 
 
@@ -3613,6 +3564,7 @@ class Agent (object):
         self._update_queue          = multiprocessing.Queue()
         self._stagein_queue         = multiprocessing.Queue()
         self._stageout_queue        = multiprocessing.Queue()
+        self._command_queue         = multiprocessing.Queue()
 
         mongo_client = pymongo.MongoClient(mongodb_url)
         mongo_db     = mongo_client[mongodb_name]
@@ -3624,16 +3576,6 @@ class Agent (object):
 
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
-
-        # the task queue holds the tasks that are pulled from the MongoDB
-        # server. The ExecWorkers compete for the tasks in the queue. 
-
-        # The staging queues holds the staging directives to be performed
-        self._input_staging_queue  = multiprocessing.Queue()
-        self._output_staging_queue = multiprocessing.Queue()
-
-        # Channel for the Agent to communicate commands with the ExecWorker
-        self._command_queue = multiprocessing.Queue()
 
         #--------------------------------------------------------------------------
         # Discover environment, nodes, cores, mpi, etc.
@@ -3654,11 +3596,12 @@ class Agent (object):
                 exec_env        = self._exec_env,
                 logger          = self._log,
                 execution_queue = self._execution_queue,
-                output_staging_queue   = self._output_staging_queue,
+                update_queue    = self._update_queue,
+                stageout_queue  = self._stageout_queue,
                 command_queue   = self._command_queue,
-                #node_list       = self._exec_env.lrms.node_list,
-                #cores_per_node  = self._exec_env.lrms.cores_per_node,
-                #launch_methods  = self._exec_env.discovered_launch_methods,
+              # node_list       = self._exec_env.lrms.node_list,
+              # cores_per_node  = self._exec_env.lrms.cores_per_node,
+              # launch_methods  = self._exec_env.discovered_launch_methods,
                 mongodb_url     = mongodb_url,
                 mongodb_name    = mongodb_name,
                 mongodb_auth    = mongodb_auth,
@@ -3884,42 +3827,17 @@ class Agent (object):
 
         # Check if there are compute units waiting for execution,
         # and log that we pulled it.
-        #
-        # Unfortunately, find_and_modify is not bulkable, so we have to use
-        # find.  To avoid finding the same units over and over again, we have to
-        # update the state *before* running the next find -- so we basically do
-        # it right here...
-        cu_cursor  = self._cu.find (multi = True, 
-                                    spec  = {"pilot" : self._pilot_id,
-                                             "state" : PENDING_EXECUTION})
+        cu_cursor = self._cu.find (multi = True, 
+                                   spec  = {"pilot" : self._pilot_id,
+                                            "state" : PENDING_EXECUTION})
 
         if cu_cursor.count() :
             prof ('Agent get units', msg="number of units: %d" % cu_cursor.count(),
                   logger=self._log.info)
 
+
         cu_list = list (cu_cursor)
-
-
-        cu_uids = list()
-        for cu in cu_list :
-            cu_uids.append (cu['_id'])
-
-        if  cu_uids :
-            updated_ids = self._cu.update (
-                    multi    = True, 
-                    spec     = {"_id"   : {"$in"    : cu_uids}},
-                    document = {"$set"  : {"state"  : ALLOCATING}, 
-                                "$push" : {"statehistory" : 
-                                    {
-                                        "state"     : ALLOCATING, 
-                                        "timestamp" : timestamp()
-                                    }
-                               }})
-            self._log.debug ("found   IDs: %s" % len(cu_uids))
-            self._log.debug ("found   IDs: %s" % cu_uids)
-            self._log.debug ("updated IDs: %s" % updated_ids)
-
-
+        cu_uids = [cu['_id'] for cu in cu_list]
         for cu in cu_list :
 
             try :
@@ -3939,20 +3857,8 @@ class Agent (object):
                         raise
 
                 # and send to staging / execution, respectively
-                if cu['Agent_Input_Directives'] :
+                if  cu['Agent_Input_Directives'] :
 
-                    self._update_queue.put ({
-                        'unit'   :  cu,
-                        'update' : {
-                            "$set"  : {"state"       : ALLOCATING},
-                            "$push" : {"statehistory": {
-                                "state"    : ALLOCATING, 
-                                "timestamp": timestamp()}}
-                            }
-                        })
-                    self._stagein_queue.put (cu)
-
-                else :
                     self._update_queue.put ({
                         'unit'   :  cu,
                         'update' : {
@@ -3962,7 +3868,21 @@ class Agent (object):
                                 "timestamp": timestamp()}}
                             }
                         })
+                    self._stagein_queue.put (cu)
+                    prof ('push', msg="towards stagein", uid=cu['uid'], tag='ingest')
+
+                else :
+                    self._update_queue.put ({
+                        'unit'   :  cu,
+                        'update' : {
+                            "$set"  : {"state"       : ALLOCATING},
+                            "$push" : {"statehistory": {
+                                "state"    : ALLOCATING, 
+                                "timestamp": timestamp()}}
+                            }
+                        })
                     self._execution_queue.put (cu)
+                    prof ('push', msg="towards execution", uid=cu['uid'], tag='ingest')
 
 
             except Exception as e :
@@ -3970,8 +3890,7 @@ class Agent (object):
                 # not end up in a queue -- we set it to FAILED
                 self._log.exception ('oops')
                 msg = "could not sort unit (%s)" % e
-                prof ('error', msg=msg, tag="failed", 
-                      uid=cu['uid'], logger=logger.exception)
+                prof ('error', msg=msg, tag="failed", uid=cu['uid'], logger=logger.exception)
                 self._update_queue.put ({
                     'unit'   : cu, 
                     'update' : {
@@ -3988,7 +3907,25 @@ class Agent (object):
                 # this is final, the unit will not be touched
                 # anymore.
 
-        return len(cu_list)
+
+        # Unfortunately, 'find_and_modify' is not bulkable, so we have to use
+        # 'find' above.  To avoid finding the same units over and over again, we
+        # have to update the state *before* running the next find -- so we
+        # do it right here...  No idea how to avoid that roundtrip...
+        if  cu_uids :
+            updated_ids = self._cu.update (
+                    multi    = True, 
+                    spec     = {"_id"   : {"$in"    : cu_uids}},
+                    document = {"$set"  : {"state"  : ALLOCATING}, 
+                                "$push" : {"statehistory" : 
+                                    {
+                                        "state"     : ALLOCATING, 
+                                        "timestamp" : timestamp()
+                                    }
+                               }})
+
+
+        return len(cu_uids)
 
 
 # ==============================================================================
@@ -4029,7 +3966,7 @@ class Spawner (object):
 
     # --------------------------------------------------------------------------
     #
-    def spawn (self, launcher, task, env):
+    def spawn (self, launcher, unit, env):
         raise NotImplementedError("spawn() not implemented for Spawner '%s'." % self.name)
 
 
@@ -4047,38 +3984,39 @@ class SpawnerPopen (Spawner):
 
     # --------------------------------------------------------------------------
     #
-    def spawn (self, launcher, task, env):
+    def spawn (self, launcher, cu, env):
         
-        prof ('Spawner spawn', uid=task.uid)
+        prof ('Spawner spawn', uid=cu['uid'])
     
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % task.workdir
+        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
         self.log.debug('Created launch_script: %s' % launch_script_name)
 
         with open (launch_script_name, "w") as launch_script :
             launch_script.write('#!/bin/bash -l\n')
-            launch_script.write('\n# Change to working directory for task\ncd %s\n' % task.workdir)
+            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
     
             # Before the Big Bang there was nothing
-            if task.pre_exec:
+            if cu['description']['pre_exec']:
                 pre_exec_string = ''
-                if isinstance(task.pre_exec, list):
-                    for elem in task.pre_exec:
+                if isinstance(cu['description']['pre_exec'], list):
+                    for elem in cu['description']['pre_exec']:
                         pre_exec_string += "%s\n" % elem
                 else :
-                    pre_exec_string += "%s\n" % task.pre_exec
+                    pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
     
             # Create string for environment variable setting
-            if task.environment and len(task.environment.keys()):
+            if  cu['description']['environment'] and    \
+                cu['description']['environment'].keys() :
                 env_string = 'export'
-                for key,val in task.environment.itemize ():
+                for key,val in cu['description']['environment'].itemize ():
                     env_string += ' %s=%s' % (key, val)
                 launch_script.write('# Environment variables\n%s\n' % env_string)
     
-            # Task Arguments (if any)
+            # unit Arguments (if any)
             task_args_string = ''
-            if  task.arguments :
-                for arg in task.arguments:
+            if  cu['description']['arguments'] :
+                for arg in cu['description']['arguments']:
                     if not arg:
                          # ignore empty args
                          continue
@@ -4090,35 +4028,35 @@ class SpawnerPopen (Spawner):
                         task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
     
             # The actual command line, constructed per launch-method
-            prof ('_Process construct command', uid=task.uid)
+            prof ('_Process construct command', uid=cu['uid'])
             launch_command, cmdline = \
-                    launcher.construct_command(task.executable,  
+                    launcher.construct_command(cu['description']['executable'],  
                                                task_args_string,
-                                               task.numcores, 
+                                               cu['description']['cores'],
                                                launch_script_name, 
-                                               task.opaque_slot)
+                                               cu['opaque_slot'])
     
             launch_script.write('# The command to run\n%s\n' % launch_command)
     
             # After the universe dies the infrared death, there will be nothing
-            if  task.post_exec:
+            if  cu['description']['post_exec']:
                 post_exec_string = ''
-                if isinstance(task.post_exec, list):
-                    for elem in task.post_exec:
+                if isinstance(cu['description']['post_exec'], list):
+                    for elem in cu['description']['post_exec']:
                         post_exec_string += "%s\n" % elem
                 else :
-                    post_exec_string += "%s\n" % task.post_exec
+                    post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write('%s\n' % post_exec_string)
     
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
     
-        self._stdout_file_h = open(task.stdout_file, "w")
-        self._stderr_file_h = open(task.stderr_file, "w")
+        self._stdout_file_h = open(cu['stdout_file'], "w")
+        self._stderr_file_h = open(cu['stderr_file'], "w")
     
-        self.log.info("Launching task %s via %s in %s" % (task.uid, cmdline, task.workdir))
-        prof ('spawning pass to popen', uid=task.uid, tag='task spawning')
+        self.log.info("Launching unit %s via %s in %s" % (cu['uid'], cmdline, cu['workdir']))
+        prof ('spawning pass to popen', uid=cu['uid'], tag='unit spawning')
 
         proc = subprocess.Popen ( args               = cmdline,
                                   bufsize            = 0,
@@ -4130,14 +4068,13 @@ class SpawnerPopen (Spawner):
                                   close_fds          = True,
                                   shell              = True,
                                   # TODO: cwd        d oesn't always make sense if it runs remotely (still true?)
-                                  cwd                = task.workdir,
+                                  cwd                = cu['workdir'],
                                   env                = env,
                                   universal_newlines = False,
                                   startupinfo        = None,
                                   creationflags      = 0)
     
-        prof ('spawning passed to popen', uid=task.uid, tag='task spawning')
-        prof ('Spawner spawned', uid=task.uid)
+        prof ('spawning passed to popen', uid=cu['uid'], tag='unit spawning')
 
         return proc
 
@@ -4171,7 +4108,7 @@ def parse_commandline():
 
     if not options.cores                : parser.error("Missing number of cores (-c)")
     if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
-    if not options.task_launch_method   : parser.error("Missing task launch method (-j)")
+    if not options.task_launch_method   : parser.error("Missing unit launch method (-j)")
     if not options.mpi_launch_method    : parser.error("Missing mpi launch method (-k)")
     if not options.lrms                 : parser.error("Missing LRMS (-l)")
     if not options.mongodb_url          : parser.error("Missing MongoDB URL (-m)")
