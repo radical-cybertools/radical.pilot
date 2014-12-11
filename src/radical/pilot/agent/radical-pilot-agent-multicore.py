@@ -1029,10 +1029,24 @@ class LaunchMethodMPIRUN(LaunchMethod):
         # Construct the hosts_string
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
 
-        mpirun_command = "%s -np %s -host %s %s" % (
-            self.launch_command, task_numcores, hosts_string, task_command)
+        export_vars = LaunchMethodMPIRUN.create_export_vars()
+
+        mpirun_command = "%s %s -np %s -host %s %s" % (
+            self.launch_command, export_vars, task_numcores, hosts_string, task_command)
 
         return mpirun_command
+
+    @classmethod
+    def create_export_vars(cls):
+        # Class method so that other LM's can also benefit from this.
+        candidate_vars = [
+            'LD_LIBRARY_PATH',
+            'PATH',
+            'PYTHONPATH'
+            'PYTHON_DIR',
+            ]
+        export_vars = ' '.join(['-x ' + var for var in candidate_vars if var in os.environ])
+        return export_vars
 
 
 #-------------------------------------------------------------------------
@@ -1185,14 +1199,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
 
-        # TODO: Other mpirun LM's could probably also benefit from this!
-        candidate_vars = [
-            'LD_LIBRARY_PATH',
-            'PATH',
-            'PYTHONPATH'
-            'PYTHON_DIR',
-        ]
-        export_vars = ' '.join(['-x ' + var for var in candidate_vars if var in os.environ])
+        export_vars = LaunchMethodMPIRUN.create_export_vars()
 
         mpirun_ccmrun_command = "%s %s %s -np %d -host %s %s" % (
             self.launch_command, self.mpirun_command, export_vars,
