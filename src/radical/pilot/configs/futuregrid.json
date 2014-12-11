@@ -42,6 +42,42 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
 
     },
+    "delta": {
+        "description"                 : "FutureGrid Supermicro GPU cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "Untested.",
+        "schemas"                     : ["ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
+        },
+        "lrms"                        : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "default_queue"               : "delta",
+        "valid_roots"                 : ["/N"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+
+    },
+    "echo": {
+        "description"                 : "FutureGrid Supermicro ScaleMP cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "Untested",
+        "schemas"                     : ["ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
+        },
+        "lrms"                        : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "default_queue"               : "echo",
+        "valid_roots"                 : ["/N"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+
+    },
     "xray": {
         "description"                 : "FutureGrid Cray XT5m cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "One needs to add 'module load torque' to ~/.profile on xray.",
