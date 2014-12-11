@@ -19,6 +19,29 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
 
     },
+    "bravo": {
+        "description"                 : "FutureGrid Hewlett-Packard ProLiant compute cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "Works only up to 64 cores, beyond that Torque configuration is broken.",
+        "schemas"                     : ["ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
+        },
+        "global_virtenv"              : "~marksant/pilot-ve-20141211",
+        "lrms"                        : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "default_queue"               : "bravo",
+        "pre_bootstrap"               : [
+            "module load python/2.7",
+            "module load openmpi/1.4.3-gnu"
+        ],
+        "valid_roots"                 : ["/N"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+
+    },
     "xray": {
         "description"                 : "FutureGrid Cray XT5m cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "One needs to add 'module load torque' to ~/.profile on xray.",
