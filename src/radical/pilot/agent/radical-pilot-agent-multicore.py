@@ -97,6 +97,9 @@
       ExecWorkers
     - publish pilot slot history once on shutdown?  Or once in a while when
       idle?  Or push continuously?
+    - make updater a class where the methods accept simple update requests,
+      translate into query/update dicts, and push those onto the updater queue.
+      Also use that for pilot state updates.
 
 """
 
@@ -206,10 +209,16 @@ STAGING_AREA         = 'staging_area'
 MAX_IO_LOGLENGTH     = 64*1024
 
 # max time period to collec db requests into bulks (seconds)
-BULK_COLLECTION_TIME = 1.0   # FIXME: 2*latency
+BULK_COLLECTION_TIME = 1.0
 
 # time to sleep between queue polls (seconds)
-QUEUE_POLL_SLEEPTIME = 1.0   # FIXME: 2*latency
+QUEUE_POLL_SLEEPTIME = 0.1 
+
+# time to sleep between database polls (seconds)
+DB_POLL_SLEEPTIME    = 0.5
+
+# frequency to check internal state and for commands from mothership (seconds)
+KEEPALIVE_FREQUENCY  = 10
 
 
 # ------------------------------------------------------------------------------
@@ -375,7 +384,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """
     logger.error(message)      
 
-    ts  = timestamp()
+    now = timestamp()
     out = None
     err = None
     log = None
@@ -387,20 +396,20 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"message": message,      "timestamp": ts},
-           {"message": get_rusage(), "timestamp": ts}]
+    msg = [{"message": message,      "timestamp": now},
+           {"message": get_rusage(), "timestamp": now}]
 
     if  mongo_p :
         mongo_p.update({"_id": ObjectId(pilot_uid)}, 
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : FAILED, 
-                                           "timestamp" : ts}},
+                                           "timestamp" : now}},
              "$set"    : {"state"       : FAILED,
                           "stdout"      : out,
                           "stderr"      : err,
                           "logfile"     : log,
                           "capability"  : 0,
-                          "finished"    : ts}
+                          "finished"    : now}
             })
 
     else :
@@ -414,7 +423,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """
     logger.warning(message)
 
-    ts  = timestamp()
+    now = timestamp()
     out = None
     err = None
     log = None
@@ -426,19 +435,19 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"message": message,      "timestamp": ts},
-           {"message": get_rusage(), "timestamp": ts}]
+    msg = [{"message": message,      "timestamp": now},
+           {"message": get_rusage(), "timestamp": now}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state"     : CANCELED, 
-                                       "timestamp" : ts}},
+                                       "timestamp" : now}},
          "$set"    : {"state"       : CANCELED,
                       "stdout"      : out,
                       "stderr"      : err,
                       "logfile"     : log,
                       "capability"  : 0,
-                      "finished"    : ts}
+                      "finished"    : now}
         })
 
 
@@ -448,7 +457,7 @@ def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
 
-    ts  = timestamp()
+    now = timestamp()
     out = None
     err = None
     log = None
@@ -460,19 +469,19 @@ def pilot_DONE(mongo_p, pilot_uid):
     try    : log = open ('./AGENT.LOG',    'r').read ()
     except : pass
 
-    msg = [{"message": "pilot done", "timestamp": ts}, 
-           {"message": get_rusage(), "timestamp": ts}]
+    msg = [{"message": "pilot done", "timestamp": now}, 
+           {"message": get_rusage(), "timestamp": now}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state"    : DONE, 
-                                       "timestamp": ts}},
+                                       "timestamp": now}},
          "$set"    : {"state"       : DONE,
                       "stdout"      : out,
                       "stderr"      : err,
                       "logfile"     : log,
                       "capability"  : 0,
-                      "finished"    : ts}
+                      "finished"    : now}
         })
 
 
@@ -3028,7 +3037,7 @@ class ExecWorker(threading.Thread):
         if  not isinstance(cus, list):
             cus = [cus]
 
-        ts = timestamp()
+        now = timestamp()
 
         # Update capabilities
         #self._capability = self._slots2caps(self._slots)
@@ -3577,8 +3586,7 @@ class Agent (object):
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
 
-        #--------------------------------------------------------------------------
-        # Discover environment, nodes, cores, mpi, etc.
+
         prof ('exec env setup')
         self._exec_env = ExecutionEnvironment(
                 logger             = self._log,
@@ -3599,9 +3607,6 @@ class Agent (object):
                 update_queue    = self._update_queue,
                 stageout_queue  = self._stageout_queue,
                 command_queue   = self._command_queue,
-              # node_list       = self._exec_env.lrms.node_list,
-              # cores_per_node  = self._exec_env.lrms.cores_per_node,
-              # launch_methods  = self._exec_env.discovered_launch_methods,
                 mongodb_url     = mongodb_url,
                 mongodb_name    = mongodb_name,
                 mongodb_auth    = mongodb_auth,
@@ -3668,7 +3673,7 @@ class Agent (object):
         """
         prof ('Agent stop()')
 
-        # First, we need to shut down all the workers
+        # First, we need to signal shut down to all workers
         for exec_worker in self._execution_worker_list :
             exec_worker.stop ()
 
@@ -3684,6 +3689,7 @@ class Agent (object):
         # Next, we set our own termination signal
         self._terminate.set()
 
+
     # --------------------------------------------------------------------------
     #
     def run(self):
@@ -3692,7 +3698,7 @@ class Agent (object):
 
         # first order of business: set the start time and state of the pilot
         self._log.info("Agent %s starting ..." % self._pilot_id)
-        ts = timestamp()
+        now = timestamp()
         ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : ACTIVE,
@@ -3700,35 +3706,53 @@ class Agent (object):
                       #       specific!
                       "nodes"          : self._exec_env.lrms.node_list,
                       "cores_per_node" : self._exec_env.lrms.cores_per_node,
-                      "started"        : ts,
+                      "started"        : now,
                       "capability"     : 0},
              "$push": {"statehistory": {"state"    : ACTIVE, 
-                                        "timestamp": ts}}
+                                        "timestamp": now}}
             })
         # TODO: Check for return value, update should be true!
         self._log.info("Database updated! %s" % ret)
 
         prof ('Agent start loop')
 
+        heartbeat = 0.0
         while not self._terminate.isSet() :
 
             try:
 
-                action  = 0
-                action += self._check_worker_state ()
-                action += self._check_commands     ()
-                action += self._check_units        ()
+                # In each agent iteration, we perform three actions:
+                #
+                #  - check if all workers are still alive
+                #  - check if there are any commands pending
+                #  - check if any workload arrived.
+                #
+                # The emphasis in performance is on the third one, the unit
+                # ingest, so we want to do that as frequent as possible.  So we
+                # do the first two actions only every 'KEEPALIVE_FREQUENCY'
+                # seconds.
+                now    = time.time()
+                if  now - heartbeat > KEEPALIVE_FREQUENCY :
+                    heartbeat = now
+                    self._check_worker_state ()
+                    self._check_commands     ()
 
+                # always check for new units
+                action = self._check_units ()
+
+                # if no units have been seen, then wait for juuuust a little...
                 if  not action :
-                    time.sleep(QUEUE_POLL_SLEEPTIME)
+                    time.sleep(DB_POLL_SLEEPTIME)
 
             except Exception, ex:
-                # If we arrive here, there was an exception in the main loop.
+                # exception in the main loop is fatal
+                self.stop()
                 pilot_FAILED(self._p, self._pilot_id, self._log, 
                     "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
-                return
+                sys.exit (1)
 
         # main loop terminated, so self._terminate was set
+        self.stop()
         pilot_CANCELED(self._p, self._pilot_id, self._log,
                 "Terminated (_terminate set).")
         sys.exit (0)
@@ -3742,26 +3766,30 @@ class Agent (object):
         # exit as well. this can happen, e.g., if the worker 
         # process has caught a ctrl+C
         for worker in self._execution_worker_list :
-            if  worker.is_alive() is False:
+            if  not worker.is_alive() :
                 msg = 'Execution worker %s died' % str(worker)
+                self.stop ()
                 pilot_FAILED(self._p, self._pilot_id, self._log, msg)
                 sys.exit (1)
 
         for worker in self._update_worker_list :
-            if  worker.is_alive() is False:
+            if  not worker.is_alive() :
                 msg = 'Update worker %s died' % str(worker)
+                self.stop ()
                 pilot_FAILED(self._p, self._pilot_id, self._log, msg)
                 sys.exit (1)
 
         for worker in self._stagein_worker_list :
-            if  worker.is_alive() is False:
+            if  not worker.is_alive() :
                 msg = 'Stagein worker %s died' % str(worker)
+                self.stop ()
                 pilot_FAILED(self._p, self._pilot_id, self._log, msg)
                 sys.exit (1)
 
         for worker in self._stageout_worker_list :
-            if  worker.is_alive() is False:
+            if  not worker.is_alive() :
                 msg = 'Stageout worker %s died' % str(worker)
+                self.stop ()
                 pilot_FAILED(self._p, self._pilot_id, self._log, msg)
                 sys.exit (1)
 
@@ -3769,11 +3797,9 @@ class Agent (object):
         # we have, terminate. 
         if  time.time() >= self._starttime + (int(self._runtime) * 60):
             self._log.info("Agent has reached runtime limit of %s seconds." % self._runtime*60)
+            self.stop ()
             pilot_DONE(self._p, self._pilot_id)
             sys.exit (1)
-
-        # don't increase idle count
-        return 0  
 
 
     # --------------------------------------------------------------------------
@@ -3798,10 +3824,12 @@ class Agent (object):
             prof ('Agent get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
 
             if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT :
+                self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
                 sys.exit (1)
 
             elif state == CANCELING :
+                self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
                 sys.exit (1)
 
@@ -3814,11 +3842,8 @@ class Agent (object):
                 self._log.info("Received KeepAlive command.")
 
             else:
-                raise Exception("Received unknown command: %s with arg: %s." %
+                self._log.error("Received unknown command: %s with arg: %s." %
                                 (command[COMMAND_TYPE], command[COMMAND_ARG]))
-
-        # only increase idle timer if anything happened
-        return len(commands)
 
 
     # --------------------------------------------------------------------------
@@ -3924,7 +3949,7 @@ class Agent (object):
                                     }
                                }})
 
-
+        # indicate that we did some work (if we did...)
         return len(cu_uids)
 
 
@@ -4084,8 +4109,12 @@ class SpawnerPopen (Spawner):
 class SpawnerPty (Spawner):
     pass
 
-# ------------------------------------------------------------------------------
+
+# ==============================================================================
 #
+# Agent main code
+#
+# ==============================================================================
 def parse_commandline():
 
     parser = optparse.OptionParser()
@@ -4198,6 +4227,7 @@ if __name__ == "__main__":
 
     except SystemExit:
         logger.error("Caught keyboard interrupt. EXITING")
+        sys.exit(6)
 
     except Exception as ex:
         msg = "Error running agent: %s" % str(ex)
