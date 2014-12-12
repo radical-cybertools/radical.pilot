@@ -100,6 +100,8 @@
     - make updater a class where the methods accept simple update requests,
       translate into query/update dicts, and push those onto the updater queue.
       Also use that for pilot state updates.
+    - Schedulers, LRMSs, LaunchMethods, etc need to be made threadsafe, for the
+      case where more than one execution worker threads are running.
 
 """
 
@@ -139,7 +141,7 @@ git_ident = "$Id$"
 # ------------------------------------------------------------------------------
 # CONSTANTS
 #
-N_EXECUTION_WORKER          = 1
+N_EXEC_WORKER               = 1
 N_UPDATE_WORKER             = 1
 N_STAGEIN_WORKER            = 1
 N_STAGEOUT_WORKER           = 1
@@ -217,8 +219,8 @@ QUEUE_POLL_SLEEPTIME = 0.1
 # time to sleep between database polls (seconds)
 DB_POLL_SLEEPTIME    = 0.5
 
-# frequency to check internal state and for commands from mothership (seconds)
-KEEPALIVE_FREQUENCY  = 10
+# time between checks of internal state and commands from mothership (seconds)
+HEARTBEAT_INTERVAL   = 10
 
 
 # ------------------------------------------------------------------------------
@@ -376,6 +378,18 @@ def get_rusage () :
     return "real %3f sec | user %.3f sec | system %.3f sec | mem %.2f kB" \
          % (rtime, utime, stime, rss)
 
+
+#---------------------------------------------------------------------------
+#
+def rec_makedir (target) :
+    try :
+        os.makedirs(os.path.dirname(target))
+    except OSError as e:
+        # ignore failure on existing directory
+        if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
+            pass
+        else:
+            raise
 
 # ------------------------------------------------------------------------------
 #
@@ -2902,16 +2916,8 @@ class ExecWorker(threading.Thread):
 
         prof ('ExecWorker unit launch', uid=cu['uid'])
 
-        # create working directory in case it
-        # doesn't exist
-        try :
-            os.makedirs(cu['workdir'])
-        except OSError as e :
-            # ignore failure on existing directory
-            if  e.errno == errno.EEXIST and os.path.isdir (cu['workdir']) :
-                pass
-            else :
-                raise
+        # create working directory in case it doesn't exist
+        rec_makedir (cu['workdir'])
 
         # Start a new subprocess to launch the unit
         # TODO: This is scheduler specific
@@ -3363,7 +3369,17 @@ class StageinWorker(threading.Thread):
 # ------------------------------------------------------------------------------
 #
 class StageoutWorker(threading.Thread):
-    """An StageoutWorker performs the agent side staging directives.
+    """
+    An StageoutWorker performs the agent side staging directives.  
+
+    It competes for units on the stageout queue, and handles all relevant
+    staging directives.  It also takes care of uploading stdout/stderr (which
+    can also be considered staging, really).  
+
+    Upon completion, the units are moved into the respective final state.
+
+    Multiple StageoutWorker instances can co-exist -- this class needs to be
+    threadsafe.
     """
 
     # --------------------------------------------------------------------------
@@ -3397,6 +3413,7 @@ class StageoutWorker(threading.Thread):
 
         while not self._terminate.isSet () :
 
+            cu = None
             try :
                 try:
                     cu = self._stageout_queue.get_nowait()
@@ -3408,27 +3425,6 @@ class StageoutWorker(threading.Thread):
                 sandbox = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
 
                 ## parked from unit state checker: unit postprocessing
-
-                # Check if there are Directives that need to be 
-                # performed by the FTW.
-                # Obviously these are not executed here (by the Agent),
-                # but we need this code to set the state so that the FTW
-                # gets notified that it can start its work.
-                if cu['FTW_Output_Directives'] :
-                    prof ('ExecWorker unit needs FTW_O ', uid=cu['uid'])
-                    self._update_queue.put ({
-                        'unit'   : cu, 
-                        'update' : {
-                            '$set' : {
-                                'FTW_Output_Status' : PENDING
-                            }
-                        }
-                    })
-                    prof ('ExecWorker unit gets  FTW_O ', uid=cu['uid'])
-
-                else :
-                    # FIXME: update to DONE
-                    pass
 
                 if  os.path.isfile(cu['stdout_file']):
                     with open(cu['stdout_file'], 'r') as stdout_f:
@@ -3452,7 +3448,6 @@ class StageoutWorker(threading.Thread):
                             txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
                         cu['stderr'] += txt
 
-                # FIXME: include stdio in upload to DB
 
                 for directive in cu['Agent_Output_Directives']:
 
@@ -3476,38 +3471,23 @@ class StageoutWorker(threading.Thread):
                         target = os.path.join(staging_area, rel2staging)
                     else:
                         self._log.info('Operating from absolute path')
+                        # FIXME: will this work for TRANSFER mode?
                         target = target_url.path
 
                     # Create output directory in case it doesn't exist yet
-                    try :
-                        os.makedirs(os.path.dirname(target))
-                    except OSError as e:
-                        # ignore failure on existing directory
-                        if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
-                            pass
-                        else:
-                            raise
+                    # FIXME: will this work for TRANSFER mode?
+                    rec_makedir (target)
 
-                    if directive['action'] == LINK:
-                        self._log.info('Going to link %s to %s' % (abs_source, target))
-                        os.symlink(abs_source, target)
-                        logmessage = 'Linked %s to %s' % (abs_source, target)
-                    elif directive['action'] == COPY:
-                        self._log.info('Going to copy %s to %s' % (abs_source, target))
-                        shutil.copyfile(abs_source, target)
-                        logmessage = 'Copied %s to %s' % (abs_source, target)
-                    elif directive['action'] == MOVE:
-                        self._log.info('Going to move %s to %s' % (abs_source, target))
-                        shutil.move(abs_source, target)
-                        logmessage = 'Moved %s to %s' % (abs_source, target)
-                    elif directive['action'] == TRANSFER:
-                        self._log.info('Going to transfer %s to %s' % (
-                            directive['source'], os.path.join(sandbox, directive['target'])))
-                        # TODO: SAGA REMOTE TRANSFER
-                        logmessage = 'Transferred %s to %s' % (abs_source, target)
+                    self._log.info("Going to '%s' %s to %s" % (directive['action'], abs_source, target))
+
+                    if   directive['action'] == LINK: os.symlink      (abs_source, target)
+                    elif directive['action'] == COPY: shutil.copyfile (abs_source, target)
+                    elif directive['action'] == MOVE: shutil.move     (abs_source, target)
                     else:
-                        # TODO: raise
-                        self._log.error('Action %s not supported' % directive['action'])
+                        # FIXME: implement TRANSFER mode
+                        raise NotImplementedError ('Action %s not supported' % directive['action'])
+
+                    self._log.info("%s'ed %s to %s" % (directive['action'], abs_source, target))
 
                     # If all went fine, update the state of this 
                     # StagingDirective to Done
@@ -3526,30 +3506,76 @@ class StageoutWorker(threading.Thread):
                             '$push': {'log': logmessage}
                         }
                     })
+                    # FIXME: is the update above really needed?
 
-                # If all directives went ok, update the unit state
-                # FIXME: are the updates above really needed?
-                self._update_queue.put ({
-                    'unit'   : cu, 
-                    'update' : {
-                        '$set' : {
-                            'state'     : DONE, 
-                            'stdout'    : cu['stdout'], 
-                            'stderr'    : cu['stderr'],
-                            'exit_code' : cu['exit_code'],
-                            'started'   : cu['started'],
-                            'finished'  : cu['finished'],
-                            'slots'     : cu['opaque_slot'],
-                        },
-                        '$push': {'log' : 'output staging completed'}
-                    }
-                })
-                prof ('final', msg="stageout done", uid=cu['uid'], tag='stageout')
-                # this is final, the cu is not touched anymore
+                # local staging is done. Now check if there are Directives that 
+                # need to be performed by the FTW.
+                # Obviously these are not executed here (by the Agent),
+                # but we need this code to set the state so that the FTW
+                # gets notified that it can start its work.
+                if cu['FTW_Output_Directives'] :
+
+                    prof ('ExecWorker unit needs FTW_O ', uid=cu['uid'])
+                    self._update_queue.put ({
+                        'unit'   : cu, 
+                        'update' : {
+                            '$set' : {
+                                'FTW_Output_Status' : PENDING
+                            }
+                        }
+                    })
+                    # NOTE: this is final for the agent scope -- further state
+                    # transitions are done by the FTW.
+
+                else :
+                    # no FTW staging is needed, local staging is done -- we can
+                    # move the unit into final state.
+                    prof ('final', msg="stageout done", uid=cu['uid'], tag='stageout')
+                    self._update_queue.put ({
+                        'unit'   : cu, 
+                        'update' : {
+                            '$set' : {
+                                'state'     : DONE, 
+                                'stdout'    : cu['stdout'], 
+                                'stderr'    : cu['stderr'],
+                                'exit_code' : cu['exit_code'],
+                                'started'   : cu['started'],
+                                'finished'  : cu['finished'],
+                                'slots'     : cu['opaque_slot'],
+                            },
+                            '$push': {'log' : 'output staging completed'}
+                        }
+                    })
+                    # NOTE: this is final, the cu is not touched anymore
+
+                # make sure the CU is not touched anymore (see except below)
+                cu = None
 
             except Exception, ex:
                 self._log.exception("Error in StageoutWorker loop")
-                # FIXME: that should move the unit to FAILED?
+
+                # check if we have any cu in operation.  If so, mark as final.
+                # This check relies on the pushes to the update queue to be the
+                # *last* actions of the loop above -- otherwise we may get
+                # invalid state transitions...
+                if  cu :
+                    prof ('final', msg="stageout failed", uid=cu['uid'], tag='stageout')
+                    self._update_queue.put ({
+                        'unit'   : cu, 
+                        'update' : {
+                            '$set' : {
+                                'state'     : FAILED, 
+                                'stdout'    : cu['stdout'], 
+                                'stderr'    : cu['stderr'],
+                                'exit_code' : cu['exit_code'],
+                                'started'   : cu['started'],
+                                'finished'  : cu['finished'],
+                                'slots'     : cu['opaque_slot'],
+                            },
+                            '$push': {'log' : 'output staging failed'}
+                        }
+                    })
+                # NOTE: this is final, the cu is not touched anymore
                 raise
 
 
@@ -3576,7 +3602,7 @@ class Agent (object):
         self._session_id            = session_id
         self._pilot_id              = pilot_id
 
-        self._execution_worker_list = list()
+        self._exec_worker_list      = list()
         self._update_worker_list    = list()
         self._stagein_worker_list   = list()
         self._stageout_worker_list  = list()
@@ -3610,7 +3636,7 @@ class Agent (object):
         )
 
 
-        for n in range(N_EXECUTION_WORKER) :
+        for n in range(N_EXEC_WORKER) :
             prof ('Exec Worker create %s' % n)
             exec_worker = ExecWorker(
                 exec_env        = self._exec_env,
@@ -3630,7 +3656,7 @@ class Agent (object):
             exec_worker.start()
             self._log.info("Started up %s serving nodes %s" %
                            (exec_worker, self._exec_env.lrms.node_list))
-            self._execution_worker_list.append (exec_worker)
+            self._exec_worker_list.append (exec_worker)
 
 
         for n in range(N_UPDATE_WORKER) :
@@ -3686,7 +3712,7 @@ class Agent (object):
         prof ('Agent stop()')
 
         # First, we need to signal shut down to all workers
-        for exec_worker in self._execution_worker_list :
+        for exec_worker in self._exec_worker_list :
             exec_worker.stop ()
 
         for update_worker in self._update_worker_list :
@@ -3724,7 +3750,7 @@ class Agent (object):
                                         "timestamp": now}}
             })
         # TODO: Check for return value, update should be true!
-        self._log.info("Database updated! %s" % ret)
+        self._log.info("Database updated: %s" % ret)
 
         prof ('Agent start loop')
 
@@ -3741,18 +3767,20 @@ class Agent (object):
                 #
                 # The emphasis in performance is on the third one, the unit
                 # ingest, so we want to do that as frequent as possible.  So we
-                # do the first two actions only every 'KEEPALIVE_FREQUENCY'
+                # do the first two actions only every 'HEARTBEAT_INTERVAL'
                 # seconds.
-                now    = time.time()
-                if  now - heartbeat > KEEPALIVE_FREQUENCY :
-                    heartbeat = now
+                now = time.time()
+                if  now - heartbeat > HEARTBEAT_INTERVAL :
                     self._check_worker_state ()
                     self._check_commands     ()
+                    heartbeat = now
 
                 # always check for new units
                 action = self._check_units ()
 
-                # if no units have been seen, then wait for juuuust a little...
+                # if no units have been seen, then wait for juuuust a little...  
+                # FIXME: use some mongodb notification mechanism to avoid busy
+                # polling.  Tailed cursors or whatever...
                 if  not action :
                     time.sleep(DB_POLL_SLEEPTIME)
 
@@ -3777,7 +3805,7 @@ class Agent (object):
         # Check the workers periodically. If they have died, we 
         # exit as well. this can happen, e.g., if the worker 
         # process has caught a ctrl+C
-        for worker in self._execution_worker_list :
+        for worker in self._exec_worker_list :
             if  not worker.is_alive() :
                 msg = 'Execution worker %s died' % str(worker)
                 self.stop ()
@@ -3885,13 +3913,7 @@ class Agent (object):
 
                 # create unit sandbox
                 sandbox = os.path.join (self._workdir, 'unit-%s' % cu['uid'])
-                try :
-                    os.makedirs(sandbox)
-                except OSError as e :
-                    if  e.errno == errno.EEXIST :
-                        pass
-                    else :
-                        raise
+                rec_makedir (sandbox)
 
                 # and send to staging / execution, respectively
                 if  cu['Agent_Input_Directives'] :
