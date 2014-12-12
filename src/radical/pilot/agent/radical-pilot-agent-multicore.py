@@ -315,8 +315,6 @@ def prof (etype, uid="", msg="", tag="", logger=None) :
     logged = False
     tid    = threading.current_thread().name
     now    = timestamp_now()
-    print "timestamp now: %s" % now
-
 
     if uid and tag :
 
@@ -383,7 +381,7 @@ def get_rusage () :
 #
 def rec_makedir (target) :
     try :
-        os.makedirs(os.path.dirname(target))
+        os.makedirs(target)
     except OSError as e:
         # ignore failure on existing directory
         if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
@@ -507,8 +505,9 @@ class ExecutionEnvironment(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, lrms_name, requested_cores,
-                 task_launch_method, mpi_launch_method, scheduler_name):
+    def __init__(self, logger, lrms_name,
+                 task_launch_method, mpi_launch_method, 
+                 scheduler_name, requested_cores):
 
         # Derive the environment for the cu's from our own environment
         self.cu_environment = self._populate_cu_environment()
@@ -679,9 +678,7 @@ class SchedulerContinuous(Scheduler):
         """Returns a multi-line string corresponding to slot status.
         """
 
-        print 'ss 1'
         if short:
-            print 'ss 2'
             slot_matrix = ""
             for slot in self._slots:
                 slot_matrix += "|"
@@ -691,12 +688,10 @@ class SchedulerContinuous(Scheduler):
                     else:
                         slot_matrix += "+"
             slot_matrix += "|"
-            print 'ss 3'
             return {'timestamp' : timestamp(), 
                     'slotstate' : slot_matrix}
 
         else :
-            print 'ss 4'
             slot_matrix = ""
             for slot in self._slots:
                 slot_vector  = ""
@@ -706,7 +701,6 @@ class SchedulerContinuous(Scheduler):
                     else:
                         slot_vector += " X "
                 slot_matrix += "%-24s: %s\n" % (slot['node'], slot_vector)
-            print 'ss 5'
             return slot_matrix
 
 
@@ -1900,7 +1894,6 @@ class TORQUELRMS(LRMS):
             torque_cores_per_node = None
             self.log.warning(msg)
 
-        print "torque_cores_per_node : %s" % torque_cores_per_node
         if torque_cores_per_node in [None, 1] :
             # lets see if SAGA has been forthcoming with some information
             self.log.warning("fall back to $SAGA_PPN : %s" % os.environ.get ('SAGA_PPN', None))
@@ -1909,12 +1902,6 @@ class TORQUELRMS(LRMS):
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)
         torque_node_list    = list(set(torque_nodes))
-
-        print "torque_cores_per_node : %s" % torque_cores_per_node
-        print "torque_nodes_length   : %s" % torque_nodes_length
-        print "torque_num_nodes      : %s" % torque_num_nodes
-        print "torque_node_list      : %s" % torque_node_list
-        print "torque_nodes          : %s" % torque_nodes
 
       # if torque_num_nodes and torque_cores_per_node and \
       #     torque_nodes_length < torque_num_nodes * torque_cores_per_node:
@@ -2688,7 +2675,7 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, exec_env, logger, execution_queue, 
+    def __init__(self, agent, exec_env, logger, execution_queue, 
                  update_queue, stageout_queue, command_queue,
                  mongodb_url, mongodb_name, mongodb_auth,
                  pilot_id, session_id, cu_environment, workdir):
@@ -2702,6 +2689,7 @@ class ExecWorker(threading.Thread):
         threading.Thread.__init__(self)
         self._terminate = threading.Event()
 
+        self._agent            = 	agent
         self.cu_environment    = cu_environment
         self._workdir          = workdir
         self._pilot_id         = pilot_id
@@ -2969,20 +2957,12 @@ class ExecWorker(threading.Thread):
                     cu['proc'].kill()
                     self._cuids_to_cancel.remove (cu['uid'])
 
-                    self._update_queue.put ({
-                        'unit'   : cu, 
-                        'update' : {
-                            '$set' : {'state': CANCELED},
-                            '$push': {'log'  : "unit execution canceled", 
-                                      'statehistory' : {
-                                          'state'     : CANCELED, 
-                                          'timestamp' : now
-                                          }
-                                      }
-                                }
-                            })
+                    self._agent.update_unit_state (_id    = cu['_id'],
+                                                   state  = CANCELED, 
+                                                   msg    = "unit execution canceled")
                     prof ('final', msg="execution canceled", uid=cu['uid'], tag='execution')
-                    # this is final, cu will not be touched anymore
+                    # NOTE: this is final, cu will not be touched anymore
+                    cu = None
 
                 # Nothing to do here (anymore), carry on
                 continue
@@ -3008,38 +2988,21 @@ class ExecWorker(threading.Thread):
             if exit_code != 0:
 
                 # The unit failed, no need to deal with its output data.
-                self._update_queue.put ({
-                    'unit'   : cu, 
-                    'update' : {
-                        '$set' : {'state': FAILED},
-                        '$push': {'log'  : "unit execution failed", 
-                                  'statehistory' : {
-                                      'state'     : FAILED, 
-                                      'timestamp' : now
-                                      }
-                                  }
-                            }
-                        })
+                self._agent.update_unit_state (_id    = cu['_id'],
+                                               state  = FAILED, 
+                                               msg    = "unit execution failed")
                 prof ('final', msg="execution failed", uid=cu['uid'], tag='execution')
-                # this is final, cu will not be touched anymore
+                # NOTE: this is final, cu will not be touched anymore
+                cu = None
 
             else:
                 # The unit finished cleanly, see if we need to deal with 
                 # output data.  We always move to stageout, even if there are no
                 # directives -- at the very least, we'll uplocad stdout/stderr
 
-                self._update_queue.put ({
-                    'unit'   : cu, 
-                    'update' : {
-                        '$set' : {'state': STAGING_OUTPUT},
-                        '$push': {'log'  : "unit execution completed", 
-                                  'statehistory' : {
-                                      'state'     : STAGING_OUTPUT,
-                                      'timestamp' : now
-                                      }
-                                  }
-                            }
-                        })
+                self._agent.update_unit_state (_id    = cu['_id'],
+                                               state  = STAGING_OUTPUT, 
+                                               msg    = "unit execution completed")
                 self._stageout_queue.put (cu)
                 prof ('push', msg="toward stageout", uid=cu['uid'], tag='execution')
 
@@ -3101,11 +3064,12 @@ class UpdateWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, session_id, 
+    def __init__(self, agent, logger, session_id, 
                  update_queue, mongodb_url, mongodb_name):
 
         threading.Thread.__init__(self)
 
+        self._agent         = agent
         self._log           = logger
         self._session_id    = session_id
         self._update_queue  = update_queue
@@ -3180,14 +3144,13 @@ class UpdateWorker(threading.Thread):
 
                 # got a new request.  Add to bulk (create as needed), 
                 # and push bulk if time is up.
-                cu = update_request['unit']
-                prof ('state update pulled', uid=cu['uid'])
-
+                uid         = update_request.get ('uid')
                 cbase       = update_request.get ('cbase', '.cu')
                 query_dict  = update_request.get ('query',  dict())
                 update_dict = update_request.get ('update', dict())
 
-                query_dict['_id'] = cu['_id']
+                prof ('state update pulled', uid=uid)
+
 
                 cname = self._session_id + cbase
 
@@ -3205,12 +3168,12 @@ class UpdateWorker(threading.Thread):
                 if  not cinfo['bulk'] : 
                     cinfo['bulk'] = coll.initialize_ordered_bulk_op ()
 
-                cinfo['uids'].append (cu['uid'])
+                cinfo['uids'].append (uid)
                 cinfo['bulk'].find   (query_dict) \
                              .update (update_dict)
                 
                 timed_bulk_execute (cinfo)
-                prof ('state update bulked', uid=cu['uid'])
+                prof ('state update bulked', uid=uid)
 
             except Exception as e :
                 self._log.exception ("state update failed")
@@ -3227,10 +3190,11 @@ class StageinWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, execution_queue, stagein_queue, update_queue, workdir) :
+    def __init__(self, agent, logger, execution_queue, stagein_queue, update_queue, workdir) :
 
         threading.Thread.__init__(self)
 
+        self._agent           = agent
         self._log             = logger
         self._execution_queue = execution_queue
         self._stagein_queue   = stagein_queue
@@ -3274,6 +3238,7 @@ class StageinWorker(threading.Thread):
                     # Convert the source_url into a SAGA Url object
                     source_url = saga.Url(directive['source'])
 
+                    # Handle special 'staging' scheme
                     if source_url.scheme == 'staging':
                         self._log.info('Operating from staging')
                         # Remove the leading slash to get a relative path from the staging area
@@ -3288,75 +3253,61 @@ class StageinWorker(threading.Thread):
                     target = directive['target']
                     abs_target = os.path.join(sandbox, target)
 
-                    log_message  = ''
+                    # Create output directory in case it doesn't exist yet
+                    #
+                    rec_makedir (os.path.dirname (abs_target))
 
                     try :
-                        if directive['action'] == LINK:
-                            log_message = 'Linking %s to %s' % (source, abs_target)
-                            os.symlink(source, abs_target)
-                        elif directive['action'] == COPY:
-                            log_message = 'Copying %s to %s' % (source, abs_target)
-                            shutil.copyfile(source, abs_target)
-                        elif directive['action'] == MOVE:
-                            log_message = 'Moving %s to %s' % (source, abs_target)
-                            shutil.move(source, abs_target)
-                        elif directive['action'] == TRANSFER:
-                            # TODO: SAGA REMOTE TRANSFER
-                            log_message = 'Transferring %s to %s' % (source, abs_target)
-                        else:
-                            raise Exception('Action %s not supported' % directive['action'])
+                        self._log.info("Going to '%s' %s to %s" % (directive['action'], source, abs_target))
 
-                        # If we reached this far, assume the staging succeeded
-                        log_message += ' succeeded.'
+                        if   directive['action'] == LINK: os.symlink      (source, abs_target)
+                        elif directive['action'] == COPY: shutil.copyfile (source, abs_target)
+                        elif directive['action'] == MOVE: shutil.move     (source, abs_target)
+                        else:
+                            # FIXME: implement TRANSFER mode
+                            raise NotImplementedError ('Action %s not supported' % directive['action'])
+
+                        log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
                         self._log.info(log_message)
 
-                        # If all went fine, update the state of this StagingDirective 
-                        # to done
-                        self._update_queue.put ({
-                            'unit'   : cu, 
-                            'query'  : {
-                                'Agent_Input_Status'           : EXECUTING,
-                                'Agent_Input_Directives.state' : PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']
-                                },
-                            'update' : {
-                                '$set' : {'Agent_Input_Directives.$.state': DONE},
-                                '$push': {'log': log_message}
-                                }
-                            })
-
+                        # If all went fine, update the state of this 
+                        # StagingDirective to DONE
+                        # FIXME: is this update below really *needed*?
+                        self._agent.update_unit (_id    = cu['_id'],
+                                                 msg    = log_message, 
+                                                 query  = {
+                                                     'Agent_Input_Status'            : EXECUTING,
+                                                     'Agent_Input_Directives.state'  : PENDING,
+                                                     'Agent_Input_Directives.source' : directive['source'],
+                                                     'Agent_Input_Directives.target' : directive['target']
+                                                 },
+                                                 update = {
+                                                     '$set' : {'Agent_Input_Directives.$.state' : DONE}
+                                                 })
                     except:
                         # If we catch an exception, assume the staging failed
-                        log_message += ' failed.'
+                        log_message = "%s'ed %s to %s - failure" % (directive['action'], source, abs_target)
                         self._log.error(log_message)
 
                         # If a staging directive fails, fail the CU also.
-                        self._update_queue.put ({
-                            'unit'   : cu, 
-                            'query'  : {
-                                'Agent_Input_Status'           : EXECUTING,
-                                'Agent_Input_Directives.state' : PENDING,
-                                'Agent_Input_Directives.source': directive['source'],
-                                'Agent_Input_Directives.target': directive['target']
-                                },
-                            'update' : {
-                                '$set' : { 'Agent_Input_Directives.$.state': FAILED,
-                                           'Agent_Input_Status'            : FAILED,
-                                           'state'                         : FAILED},
-                                '$push': {
-                                    'log': 'Staging Directive failed'}
-                                }
-                            })
+                        self._agent.update_unit_state (_id    = cu['_id'],
+                                                       state  = FAILED, 
+                                                       msg    = log_message, 
+                                                       query  = {
+                                                           'Agent_Input_Status'             : EXECUTING,
+                                                           'Agent_Input_Directives.state'   : PENDING,
+                                                           'Agent_Input_Directives.source'  : directive['source'],
+                                                           'Agent_Input_Directives.target'  : directive['target']
+                                                       },
+                                                       update = {
+                                                           '$set' : {'Agent_Input_Directives.$.state'  : FAILED,
+                                                                     'Agent_Input_Status'              : FAILED}
+                                                       })
 
                 # cu staging is all done, unit can go to execution
-                self._update_queue.put ({
-                    'unit'   : cu, 
-                    'update' : {
-                        '$set' : {'state': ALLOCATING},
-                        '$push': {'log'  : "agent input staging done"}
-                        }
-                    })
+                self._agent.update_unit_state (_id    = cu['_id'],
+                                               state  = ALLOCATING, 
+                                               msg    = 'agent input staging done')
                 self._execution_queue.put (cu)
                 prof ('push', msg="towards execution", uid=cu['uid'], tag='stagein')
 
@@ -3384,10 +3335,11 @@ class StageoutWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, execution_queue, stageout_queue, update_queue, workdir) :
+    def __init__(self, agent, logger, execution_queue, stageout_queue, update_queue, workdir) :
 
         threading.Thread.__init__(self)
 
+        self._agent           = agent
         self._log             = logger
         self._execution_queue = execution_queue
         self._stageout_queue  = stageout_queue
@@ -3456,9 +3408,6 @@ class StageoutWorker(threading.Thread):
                     self._log.info('unit output staging directives %s for cu: %s to %s' % (
                         directive, cu['uid'], sandbox))
 
-                    source = str(directive['source'])
-                    abs_source = os.path.join(sandbox, source)
-
                     # Convert the target_url into a SAGA Url object
                     target_url = saga.Url(directive['target'])
 
@@ -3474,39 +3423,62 @@ class StageoutWorker(threading.Thread):
                         # FIXME: will this work for TRANSFER mode?
                         target = target_url.path
 
+                    # Get the source from the directive and convert it to the location 
+                    # in the sandbox
+                    source = str(directive['source'])
+                    abs_source = os.path.join(sandbox, source)
+
                     # Create output directory in case it doesn't exist yet
                     # FIXME: will this work for TRANSFER mode?
-                    rec_makedir (target)
+                    rec_makedir (os.path.dirname (target))
 
-                    self._log.info("Going to '%s' %s to %s" % (directive['action'], abs_source, target))
+                    try :
+                        self._log.info("Going to '%s' %s to %s" % (directive['action'], abs_source, target))
 
-                    if   directive['action'] == LINK: os.symlink      (abs_source, target)
-                    elif directive['action'] == COPY: shutil.copyfile (abs_source, target)
-                    elif directive['action'] == MOVE: shutil.move     (abs_source, target)
-                    else:
-                        # FIXME: implement TRANSFER mode
-                        raise NotImplementedError ('Action %s not supported' % directive['action'])
+                        if   directive['action'] == LINK: os.symlink      (abs_source, target)
+                        elif directive['action'] == COPY: shutil.copyfile (abs_source, target)
+                        elif directive['action'] == MOVE: shutil.move     (abs_source, target)
+                        else:
+                            # FIXME: implement TRANSFER mode
+                            raise NotImplementedError ('Action %s not supported' % directive['action'])
 
-                    self._log.info("%s'ed %s to %s" % (directive['action'], abs_source, target))
+                        log_message = "%s'ed %s to %s - success" % (directive['action'], abs_source, target)
+                        self._log.info(log_message)
 
-                    # If all went fine, update the state of this 
-                    # StagingDirective to Done
-                    self._update_queue.put ({
-                        'unit'   : cu, 
-                        'query'  : {
-                            'Agent_Output_Status'           : EXECUTING,
-                            'Agent_Output_Directives.state' : PENDING,
-                            'Agent_Output_Directives.source': directive['source'],
-                            'Agent_Output_Directives.target': directive['target']
-                            },
-                        'update' : {
-                            '$set' : {
-                                'Agent_Output_Directives.$.state': DONE, 
-                            },
-                            '$push': {'log': logmessage}
-                        }
-                    })
-                    # FIXME: is the update above really needed?
+                        # If all went fine, update the state of this 
+                        # StagingDirective to DONE
+                        # FIXME: is this update below really *needed*?
+                        self._agent.update_unit (_id    = cu['_id'], 
+                                                 msg    = log_message,
+                                                 query  = {
+                                                     'Agent_Output_Status'           : EXECUTING,
+                                                     'Agent_Output_Directives.state' : PENDING,
+                                                     'Agent_Output_Directives.source': directive['source'],
+                                                     'Agent_Output_Directives.target': directive['target']
+                                                 },
+                                                 update = {
+                                                     '$set' : {'Agent_Output_Directives.$.state': DONE}
+                                                 })
+                    except:
+                        # If we catch an exception, assume the staging failed
+                        log_message = "%s'ed %s to %s - failure" % (directive['action'], abs_source, target)
+                        self._log.error(log_message)
+
+                        # If a staging directive fails, fail the CU also.
+                        self._agent.update_unit_state (_id    = cu['_id'],
+                                                       state  = FAILED, 
+                                                       msg    = log_message, 
+                                                       query  = {
+                                                           'Agent_Output_Status'            : EXECUTING,
+                                                           'Agent_Output_Directives.state'  : PENDING,
+                                                           'Agent_Output_Directives.source' : directive['source'],
+                                                           'Agent_Output_Directives.target' : directive['target']
+                                                       },
+                                                       update = {
+                                                           '$set' : {'Agent_Output_Directives.$.state' : FAILED,
+                                                                     'Agent_Output_Status'             : FAILED}
+                                                       })
+
 
                 # local staging is done. Now check if there are Directives that 
                 # need to be performed by the FTW.
@@ -3516,37 +3488,36 @@ class StageoutWorker(threading.Thread):
                 if cu['FTW_Output_Directives'] :
 
                     prof ('ExecWorker unit needs FTW_O ', uid=cu['uid'])
-                    self._update_queue.put ({
-                        'unit'   : cu, 
-                        'update' : {
-                            '$set' : {
-                                'FTW_Output_Status' : PENDING
-                            }
-                        }
-                    })
+                    self._agent.update (unit   = cu, 
+                                        msg    = 'FTW output staging needed', 
+                                        update = {
+                                            '$set' : {
+                                                'FTW_Output_Status' : PENDING
+                                            }
+                                        })
                     # NOTE: this is final for the agent scope -- further state
                     # transitions are done by the FTW.
+                    cu = None
 
                 else :
                     # no FTW staging is needed, local staging is done -- we can
                     # move the unit into final state.
                     prof ('final', msg="stageout done", uid=cu['uid'], tag='stageout')
-                    self._update_queue.put ({
-                        'unit'   : cu, 
-                        'update' : {
-                            '$set' : {
-                                'state'     : DONE, 
-                                'stdout'    : cu['stdout'], 
-                                'stderr'    : cu['stderr'],
-                                'exit_code' : cu['exit_code'],
-                                'started'   : cu['started'],
-                                'finished'  : cu['finished'],
-                                'slots'     : cu['opaque_slot'],
-                            },
-                            '$push': {'log' : 'output staging completed'}
-                        }
-                    })
+                    self._agent.update_unit_state (_id    = cu['_id'],
+                                                   state  = DONE, 
+                                                   msg    = 'output staging completed', 
+                                                   update = {
+                                                       '$set' : {
+                                                           'stdout'    : cu['stdout'], 
+                                                           'stderr'    : cu['stderr'],
+                                                           'exit_code' : cu['exit_code'],
+                                                           'started'   : cu['started'],
+                                                           'finished'  : cu['finished'],
+                                                           'slots'     : cu['opaque_slot'],
+                                                       }
+                                                   })
                     # NOTE: this is final, the cu is not touched anymore
+                    cu = None
 
                 # make sure the CU is not touched anymore (see except below)
                 cu = None
@@ -3560,22 +3531,21 @@ class StageoutWorker(threading.Thread):
                 # invalid state transitions...
                 if  cu :
                     prof ('final', msg="stageout failed", uid=cu['uid'], tag='stageout')
-                    self._update_queue.put ({
-                        'unit'   : cu, 
-                        'update' : {
-                            '$set' : {
-                                'state'     : FAILED, 
-                                'stdout'    : cu['stdout'], 
-                                'stderr'    : cu['stderr'],
-                                'exit_code' : cu['exit_code'],
-                                'started'   : cu['started'],
-                                'finished'  : cu['finished'],
-                                'slots'     : cu['opaque_slot'],
-                            },
-                            '$push': {'log' : 'output staging failed'}
-                        }
-                    })
-                # NOTE: this is final, the cu is not touched anymore
+                    self._agent.update_unit_state (_id    = cu['_id'],
+                                                  state  = FAILED, 
+                                                  msg    = 'output staging failed', 
+                                                  update = {
+                                                      '$set' : {
+                                                          'stdout'    : cu['stdout'], 
+                                                          'stderr'    : cu['stderr'],
+                                                          'exit_code' : cu['exit_code'],
+                                                          'started'   : cu['started'],
+                                                          'finished'  : cu['finished'],
+                                                          'slots'     : cu['opaque_slot'],
+                                                      }
+                                                  })
+                    # NOTE: this is final, the cu is not touched anymore
+                    cu = None
                 raise
 
 
@@ -3629,16 +3599,17 @@ class Agent (object):
         self._exec_env = ExecutionEnvironment(
                 logger             = self._log,
                 lrms_name          = lrms_name,
-                requested_cores    = requested_cores,
                 task_launch_method = task_launch_method,
                 mpi_launch_method  = mpi_launch_method,
-                scheduler_name     = scheduler_name
+                scheduler_name     = scheduler_name,
+                requested_cores    = requested_cores
         )
 
 
         for n in range(N_EXEC_WORKER) :
             prof ('Exec Worker create %s' % n)
             exec_worker = ExecWorker(
+                agent           = self,
                 exec_env        = self._exec_env,
                 logger          = self._log,
                 execution_queue = self._execution_queue,
@@ -3662,6 +3633,7 @@ class Agent (object):
         for n in range(N_UPDATE_WORKER) :
             prof ('Update Worker create')
             update_worker = UpdateWorker(
+                agent           = self,
                 logger          = self._log,
                 session_id      = self._session_id,
                 update_queue    = self._update_queue,
@@ -3676,6 +3648,7 @@ class Agent (object):
         for n in range(N_STAGEIN_WORKER) :
             prof ('IS Worker create')
             stagein_worker = StageinWorker(
+                agent           = self,
                 logger          = self._log,
                 execution_queue = self._execution_queue,
                 stagein_queue   = self._stagein_queue,
@@ -3690,6 +3663,7 @@ class Agent (object):
         for n in range(N_STAGEOUT_WORKER) :
             prof ('OS Worker create')
             stageout_worker = StageoutWorker(
+                agent           = self,
                 logger          = self._log,
                 execution_queue = self._execution_queue,
                 stageout_queue  = self._stageout_queue,
@@ -3726,6 +3700,66 @@ class Agent (object):
 
         # Next, we set our own termination signal
         self._terminate.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def update_unit (self, _id, msg=None, query={}, update={}) :
+            
+        query_dict  = dict()
+        update_dict = update
+
+        query_dict['_id'] = _id
+
+        for key,val in query.iteritems() :
+            query_dict[key] = val
+
+
+        if  msg :
+            if  not '$push' in update_dict :
+                update_dict['$push'] = dict()
+
+            now = timestamp()
+
+            update_dict['$push']['log'] = {'message'   : msg, 
+                                           'timestamp' : timestamp()}
+
+
+        self._update_queue.put ({'uid'    : str(_id),
+                                 'cbase'  : '.cu', 
+                                 'query'  : query_dict,
+                                 'update' : update_dict})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def update_unit_state (self, _id, state, msg=None, query={}, update={}) :
+
+        now = timestamp ()
+        update_dict = {
+                '$set' : {
+                    'state' : state
+                },
+                '$push': {
+                    'statehistory' : {
+                        'state'     : state, 
+                        'timestamp' : now
+                    }
+                }
+            }
+
+        if '$set' in update :
+            for key,val in update['$set'].iteritems() :
+                update['$set'][key] = val
+
+        if '$push' in update :
+            for key,val in update['$push'].iteritems() :
+                update['$push'][key] = val
+
+        self.update_unit (_id    = _id, 
+                          msg    = msg, 
+                          query  = query, 
+                          update = update_dict)
 
 
     # --------------------------------------------------------------------------
@@ -3918,28 +3952,16 @@ class Agent (object):
                 # and send to staging / execution, respectively
                 if  cu['Agent_Input_Directives'] :
 
-                    self._update_queue.put ({
-                        'unit'   :  cu,
-                        'update' : {
-                            "$set"  : {"state"       : STAGING_INPUT},
-                            "$push" : {"statehistory": {
-                                "state"    : STAGING_INPUT, 
-                                "timestamp": timestamp()}}
-                            }
-                        })
+                    self.update_unit_state (_id    = cu['_id'],
+                                            state  = STAGING_INPUT, 
+                                            msg    = 'unit needs input staging')
                     self._stagein_queue.put (cu)
                     prof ('push', msg="towards stagein", uid=cu['uid'], tag='ingest')
 
                 else :
-                    self._update_queue.put ({
-                        'unit'   :  cu,
-                        'update' : {
-                            "$set"  : {"state"       : ALLOCATING},
-                            "$push" : {"statehistory": {
-                                "state"    : ALLOCATING, 
-                                "timestamp": timestamp()}}
-                            }
-                        })
+                    self.update_unit_state (_id    = cu['_id'],
+                                            state  = ALLOCATING, 
+                                            msg    = 'unit needs no input staging')
                     self._execution_queue.put (cu)
                     prof ('push', msg="towards execution", uid=cu['uid'], tag='ingest')
 
@@ -3950,21 +3972,12 @@ class Agent (object):
                 self._log.exception ('oops')
                 msg = "could not sort unit (%s)" % e
                 prof ('error', msg=msg, tag="failed", uid=cu['uid'], logger=logger.exception)
-                self._update_queue.put ({
-                    'unit'   : cu, 
-                    'update' : {
-                        '$set' : {'state'   : FAILED},
-                        '$push': {
-                            'log'           : msg,
-                            'statehistory'  : {
-                                'state'     : FAILED, 
-                                'timestamp' : timestamp()
-                                }
-                            }
-                        }
-                    })
-                # this is final, the unit will not be touched
+                self.update_unit_state (_id    = cu['_id'],
+                                        state  = FAILED, 
+                                        msg    = msg)
+                # NOTE: this is final, the unit will not be touched
                 # anymore.
+                cu = None
 
 
         # Unfortunately, 'find_and_modify' is not bulkable, so we have to use
@@ -4068,7 +4081,7 @@ class SpawnerPopen (Spawner):
             if  cu['description']['environment'] and    \
                 cu['description']['environment'].keys() :
                 env_string = 'export'
-                for key,val in cu['description']['environment'].itemize ():
+                for key,val in cu['description']['environment'].iteritems ():
                     env_string += ' %s=%s' % (key, val)
                 launch_script.write('# Environment variables\n%s\n' % env_string)
     
