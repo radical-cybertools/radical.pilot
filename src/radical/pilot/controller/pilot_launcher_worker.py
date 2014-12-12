@@ -309,9 +309,8 @@ class PilotLauncherWorker(threading.Thread):
                         #
                         # LAUNCH THE PILOT AGENT VIA SAGA
                         #
-                        logentries   = []
-
-                        pilot_id     = str(compute_pilot["_id"])
+                        logentries = []
+                        pilot_id   = str(compute_pilot["_id"])
 
                         logger.info("Launching ComputePilot %s" % pilot_id)
 

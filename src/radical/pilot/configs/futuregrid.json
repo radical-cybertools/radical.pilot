@@ -1,23 +1,4 @@
 {
-    "alamo": {
-        "description"                 : "The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).",
-        "notes"                       : "None",
-        "schemas"                     : ["ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "pbs+ssh://alamo.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://alamo.futuregrid.org/"
-        },
-        "default_queue"               : "short",
-        "lrms"                        : "TORQUE",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
-        "python_interpreter"          : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
-        "valid_roots"                 : ["/N", "/home"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
-    },
-
     "india": {
         "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
@@ -38,43 +19,100 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
 
     },
-
-    "sierra": {
-        "description"                 : "The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).",
-        "notes"                       : "None",
+    "bravo": {
+        "description"                 : "FutureGrid Hewlett-Packard ProLiant compute cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "Works only up to 64 cores, beyond that Torque configuration is broken.",
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://sierra.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://sierra.futuregrid.org/"
+            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
-        "default_queue"               : "batch",
+        "global_virtenv"              : "~marksant/pilot-ve-20141211",
         "lrms"                        : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "python_interpreter"          : "/N/soft/python/2.7/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
+        "default_queue"               : "bravo",
+        "pre_bootstrap"               : [
+            "module load python/2.7",
+            "module load openmpi/1.4.3-gnu"
+        ],
         "valid_roots"                 : ["/N"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
-    },
 
-    "hotel": {
-        "description"                 : "The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).",
-        "notes"                       : "Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.",
+    },
+    "delta": {
+        "description"                 : "FutureGrid Supermicro GPU cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "Untested.",
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://hotel.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://hotel.futuregrid.org/"
+            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
-        "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "python_interpreter"          : "/soft/python/gnu-4.1/2.7/bin/python",
-        "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi"],
-        "valid_roots"                 : ["/N", "/gpfs"],
+        "default_queue"               : "delta",
+        "valid_roots"                 : ["/N"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+
+    },
+    "echo": {
+        "description"                 : "FutureGrid Supermicro ScaleMP cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "Untested",
+        "schemas"                     : ["ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
+        },
+        "lrms"                        : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "default_queue"               : "echo",
+        "valid_roots"                 : ["/N"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+
+    },
+    "xray": {
+        "description"                 : "FutureGrid Cray XT5m cluster (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "One needs to add 'module load torque' to ~/.profile on xray.",
+        "schemas"                     : ["ssh"],
+        "ssh"                         : {
+            "job_manager_endpoint"    : "pbs+ssh://xray.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
+        },
+        "lrms"                        : "TORQUE",
+        "global_virtenv"              : "~marksant/pilot_ve_20141210",
+        "agent_scheduler"             : "CONTINUOUS",
+        "task_launch_method"          : "APRUN",
+        "mpi_launch_method"           : "APRUN",
+        "default_queue"               : "batch",
+        "default_remote_workdir"      : "/scratch/$USER",
+        "valid_roots"                 : ["/scratch", "/home/users"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+    },
+    "xray_ccm": {
+        "description"                 : "FutureGrid Cray XT5m cluster in Cluster Compatibility Mode (CCM) (https://futuregrid.github.io/manual/hardware.html).",
+        "notes"                       : "One needs to add 'module load torque' to ~/.profile on xray.",
+        "schemas"                     : ["ssh"],
+        "ssh"                         : {
+            "job_manager_endpoint"    : "pbs+ssh://xray.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
+        },
+        "lrms"                        : "TORQUE",
+        "global_virtenv"              : "~marksant/pilot_ve_20141210",
+        "agent_scheduler"             : "CONTINUOUS",
+        "task_launch_method"          : "CCMRUN",
+        "mpi_launch_method"           : "APRUN",
+        "pre_bootstrap"               : ["module load ccm"],
+        "default_queue"               : "ccm_queue",
+        "default_remote_workdir"      : "/scratch/$USER",
+        "valid_roots"                 : ["/scratch", "/home/users"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
-

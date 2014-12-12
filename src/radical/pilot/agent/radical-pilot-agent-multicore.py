@@ -1106,7 +1106,10 @@ class SchedulerTorus(Scheduler):
     # Follow coordinates to get the last node
     #
     def get_last_node(self, origin, shape):
-        return {dim: origin[dim] + shape[dim] -1 for dim in self.lrms.torus_dimension_labels}
+        ret = {}
+        for dim in self.lrms.torus_dimension_labels:
+            ret[dim] = origin[dim] + shape[dim] -1
+        return ret
     #
     ##########################################################################
 
@@ -1309,10 +1312,24 @@ class LaunchMethodMPIRUN(LaunchMethod):
         # Construct the hosts_string
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
 
-        mpirun_command = "%s -np %s -host %s %s" % (
-            self.launch_command, task_numcores, hosts_string, task_command)
+        export_vars = LaunchMethodMPIRUN.create_export_vars()
+
+        mpirun_command = "%s %s -np %s -host %s %s" % (
+            self.launch_command, export_vars, task_numcores, hosts_string, task_command)
 
         return mpirun_command, launch_script_name
+
+    @classmethod
+    def create_export_vars(cls):
+        # Class method so that other LM's can also benefit from this.
+        candidate_vars = [
+            'LD_LIBRARY_PATH',
+            'PATH',
+            'PYTHONPATH'
+            'PYTHON_DIR',
+            ]
+        export_vars = ' '.join(['-x ' + var for var in candidate_vars if var in os.environ])
+        return export_vars
 
 
 # ------------------------------------------------------------------------
@@ -1483,14 +1500,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
 
-        # TODO: Other mpirun LM's could probably also benefit from this!
-        candidate_vars = [
-            'LD_LIBRARY_PATH',
-            'PATH',
-            'PYTHONPATH'
-            'PYTHON_DIR',
-        ]
-        export_vars = ' '.join(['-x ' + var for var in candidate_vars if var in os.environ])
+        export_vars = LaunchMethodMPIRUN.create_export_vars()
 
         mpirun_ccmrun_command = "%s %s %s -np %d -host %s %s" % (
             self.launch_command, self.mpirun_command, export_vars,
@@ -2602,7 +2612,9 @@ class LoadLevelerLRMS(LRMS):
         table = {}
 
         # Create a sub-block dict with shape 1x1x1x1x1
-        sub_block_shape = {l: 1 for l in self.BGQ_DIMENSION_LABELS}
+        sub_block_shape = {}
+        for l in self.BGQ_DIMENSION_LABELS:
+            sub_block_shape[l] = 1
 
         # Look over all the dimensions starting at the most right
         for dim in self.BGQ_MAPPING[::-1]:

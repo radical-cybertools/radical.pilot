@@ -23,7 +23,7 @@
     },
 
     "bigred2": {
-        "description"                 : "Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).",
+        "description"                 : "Indiana University's Cray XE6/XK7 cluster (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
         "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
