@@ -4,7 +4,7 @@
         "notes"                       : "This currently needs an outbound ssh tunnel.",
         "schemas"                     : ["ssh"],
         "ssh"                         : {
-            "job_manager_endpoint"    : "loadl+ssh://login.joule.hartree.stfc.ac.uk/?job_type=bluegene",
+            "job_manager_endpoint"    : "loadl+ssh://login.joule.hartree.stfc.ac.uk/?job_type=bluegene&explicit_exec=true",
             "filesystem_endpoint"     : "sftp://login.joule.hartree.stfc.ac.uk/"
         },
         "default_queue"               : "prod",
