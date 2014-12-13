@@ -652,6 +652,7 @@ class Scheduler(threading.Thread):
     #
     def _reschedule (self) :
 
+        prof ("try reschedule")
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
         # fly
@@ -3101,7 +3102,7 @@ class ExecWorker(threading.Thread):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             self.running_cus.remove(cu)
-            self.exec_env.scheduler.release_slot(cu['opaque_slot'])
+            self.exec_env.scheduler.unschedule(cu)
 
 
           # # Make sure all stuff reached the spindles
