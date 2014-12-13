@@ -186,6 +186,7 @@ COMMAND_KEEP_ALIVE          = "Keep_Alive"
 COMMAND_FIELD               = "commands"
 COMMAND_TYPE                = "type"
 COMMAND_ARG                 = "arg"
+COMMAND_RESCHEDULE          = "Reschedule"
 
 
 # 'enum' for staging action operators
@@ -557,7 +558,7 @@ class ExecutionEnvironment(object):
 # Schedulers
 #
 # ==============================================================================
-class Scheduler(object):
+class Scheduler(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
@@ -565,7 +566,12 @@ class Scheduler(object):
 
         self.name = name
         self.lrms = lrms
-        self.log = logger
+        self.log  = logger
+
+        threading.Thread.__init__(self)
+        self._terminate = threading.Event()
+        self._lock      = threading.RLock ()
+        self._queue     = multiprocessing.Queue()
 
         self.configure()
 
@@ -609,6 +615,114 @@ class Scheduler(object):
     #
     def release_slot(self, opaque_slot):
         raise NotImplementedError("release_slot() not implemented for Scheduler '%s'." % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+        self._terminate.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _try_execution (self, cu) :
+
+        # schedule this unit, and receive an opaque handle that has meaning to
+        # the LRMS, Scheduler and LaunchMethod.
+        cu['opaque_slot'] = self.allocate_slot(cu['description']['cores']) 
+        
+        if  cu['opaque_slot'] :
+            # got an allocation, go off and launch the process
+            # FIXME: state update toward EXECUTING (or is that done in
+            # launcher?)
+            prof ('push', msg="towards execution", uid=cu['uid'])
+            self._execution_queue.put(cu)
+            return True
+
+
+        else:
+            # otherwise signal that CU remains unhandled
+            return False
+                
+    # --------------------------------------------------------------------------
+    #
+    def _reschedule (self) :
+
+        # cycle through wait queue, and see if we get anything running now.  We
+        # cycle over a copy of the list, so that we can modify the list on the
+        # fly
+        for cu in self.wait_queue[:] :
+
+            if  self._try_execution (cu) :
+                # yep, that worked - remove it from the qit queue
+                wait_queue.remove (cu)
+
+                
+    # --------------------------------------------------------------------------
+    #
+    def schedule(self, cus):
+
+        # FIXME: is that the right place to unroll the bulk?
+        if isinstance (cus, list) :
+            for cu in cus : 
+                self._queue.put (cu)
+        else :
+            self._queue.put (cus)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule(self, cus):
+        # release (for whatever reason) all slots allocated to this CU
+
+        slots_released = False
+
+        if  not isinstance (cus, list) :
+            cus = [cus]
+                self._unschedule (cu)
+
+        for cu in cus :
+            if  cu['opaque_slot'] :
+                self.release_slot (cu['opaque_slot'])
+                slots_released = True
+
+        # notify the scheduling thread of released slots
+        if  slots_released :
+            self._queue.put (COMMAND_RESCHEDULE)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self.wait_queue = list()
+
+        while not self._terminate.isSet () :
+
+            request = self._queue.get()
+
+            # we either get a new scheduled CU, or get a trigger that cores were
+            # freed, and we can try to reschedule waiting CUs
+            if  isinstance (request, basestring) :
+
+                if  request == COMMAND_RESCHEDULE :
+                    self._reschedule ()
+
+                else :
+                    self._log.error ("Unknown scheduler command: %s (ignored)" % request)
+
+            else :
+
+                # we got a new unit.  Either we can place it straight away and
+                # move it to execution, or we have to put it on the wait queue
+                if  not self._try_execution (cu) :
+                    # No resources available, put in wait queue
+                    self._wait_queue.append (cu)
+
+
+            except Exception as e :
+                raise
+
 
 # ------------------------------------------------------------------------------
 #
@@ -2769,10 +2883,8 @@ class ExecWorker(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def stop(self):
-        """Terminates the thread's main loop.
-        """
-        # AM: Why does this call exist?  It is never called....
         self._terminate.set()
+
 
     # --------------------------------------------------------------------------
     #
@@ -2833,10 +2945,8 @@ class ExecWorker(threading.Thread):
                     cu['stdout_file'] = stdout_file
                     cu['stderr_file'] = stderr_file
                     cu['state']       = ALLOCATING
-                    cu['opaque_slot'] = None
 
-                    # FIXME: push scheduling state update into updater queue
-
+                    # FIXME: push ALLOCATING state update into updater queue
                     try :
 
                         if cu['description']['mpi']:
@@ -2855,21 +2965,8 @@ class ExecWorker(threading.Thread):
                             self._log.debug("Launching unit with %s (%s)." % (
                                 launcher.name, launcher.launch_command))
 
-                        # Call the scheduler for this unit, and receive an 
-                        # opaque handle that has meaning to the LRMS, Scheduler 
-                        # and LaunchMethod.
-                        cu['opaque_slot'] = self.exec_env.scheduler.allocate_slot(cu['description']['cores']) 
-                        
-                        # Check if we got results
-                        if  cu['opaque_slot'] :
-                            # got an allocation, go off and launch the process
-                            self._launch_task(cu, launcher)
-                            idle = False
-
-                        else:
-                            # No resources available, put back in queue
-                            self._execution_queue.put(cu)
-                            prof ('push', msg="towards execution", uid=cu['uid'])
+                        assert (cu['opaque_slot']) # FIXME: no assert, buch chek
+                        self._exec_env._launch_task(cu, launcher)
 
 
                     except Exception as e :
@@ -2878,7 +2975,7 @@ class ExecWorker(threading.Thread):
                         # by the unit), but it seems the most intuitive way to
                         # communicate that error to the application/user.
                         cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
-                                     % (str(e), traceback.format_exc())
+                                        % (str(e), traceback.format_exc())
                         cu['state']   = FAILED
                         cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
                         
@@ -2886,7 +2983,7 @@ class ExecWorker(threading.Thread):
                         
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if cu['opaque_slot']:
-                            self.exec_env.scheduler.release_slot(cu['opaque_slot'])
+                            self.exec_env.scheduler.unschedule(cu)
 
                         self._update_tasks(cu)
 
@@ -3083,7 +3180,6 @@ class UpdateWorker(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def stop(self):
-
         self._terminate.set ()
 
 
@@ -3206,9 +3302,8 @@ class StageinWorker(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def stop(self):
-        """Terminates the process' main loop.
-        """
-        self._terminate.set ()
+        self._terminate.set()
+
 
     # --------------------------------------------------------------------------
     #
@@ -3351,7 +3446,6 @@ class StageoutWorker(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def stop(self):
-
         self._terminate.set()
 
 
@@ -3686,6 +3780,8 @@ class Agent (object):
         prof ('Agent stop()')
 
         # First, we need to signal shut down to all workers
+        self._exec_env.scheduler.stop ()
+
         for exec_worker in self._exec_worker_list :
             exec_worker.stop ()
 
@@ -3839,6 +3935,12 @@ class Agent (object):
         # Check the workers periodically. If they have died, we 
         # exit as well. this can happen, e.g., if the worker 
         # process has caught a ctrl+C
+        if  not self._exec_env.scheduler.is_alive() :
+            msg = 'scheduler %s died' % str(self._exec_env.scheduler)
+            self.stop ()
+            pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+            sys.exit (1)
+
         for worker in self._exec_worker_list :
             if  not worker.is_alive() :
                 msg = 'Execution worker %s died' % str(worker)
