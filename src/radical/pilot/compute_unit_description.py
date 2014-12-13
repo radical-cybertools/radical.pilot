@@ -29,6 +29,7 @@ KERNEL                 = 'kernel'
 CLEANUP                = 'cleanup'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
+RESTARTABLE            = 'restartable'
 
 # ------------------------------------------------------------------------------
 #
@@ -105,10 +106,18 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        .. note:: TODO: explain in detal, reference ENMDTK.
 
+    .. data:: restartable
+
+       (`Attribute`) If the unit starts to execute on a pilot, but cannot finish
+       because the pilot fails or is canceled, can the unit be restarted on
+       a different pilot / resource? (default: False)
+
+       .. note:: TODO: explain in detal, reference ENMDTK.
+
     .. data:: cleanup
 
-       [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
-       delete the entire unit sandbox upon termination. This includes all 
+       [Type: `bool`] [optional] If cleanup is set to True, the pilot will
+       delete the entire unit sandbox upon termination. This includes all
        generated output data in that sandbox.  Output staging will be performed
        before cleanup.
 
@@ -133,6 +142,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self._attributes_register(ENVIRONMENT,      None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
         self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
       # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
@@ -156,8 +166,9 @@ class ComputeUnitDescription(attributes.Attributes) :
       # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
-        self._attributes_register_deprecated ('input_data',  'input_staging',  flow=self._DOWN)
-        self._attributes_register_deprecated ('output_data', 'output_staging', flow=self._DOWN)
+      # disabled deprecated attributes
+      # self._attributes_register_deprecated ('input_data',  'input_staging',  flow=self._DOWN)
+      # self._attributes_register_deprecated ('output_data', 'output_staging', flow=self._DOWN)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (KERNEL,         None)
@@ -173,21 +184,21 @@ class ComputeUnitDescription(attributes.Attributes) :
         self.set_attribute (OUTPUT_STAGING, None)
         self.set_attribute (CORES,             1)
         self.set_attribute (MPI,           False)
+        self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
 
 
     #------------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
-        """Returns a string representation of the object.
-        """
-   
+
         other = ComputeUnitDescription ()
-   
+
         for key in self.list_attributes () :
             other.set_attribute (key, self.get_attribute (key))
-   
+
         return other
+
 
 # ---------------------------------------------------------------------------------
 

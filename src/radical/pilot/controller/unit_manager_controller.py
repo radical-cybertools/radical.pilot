@@ -43,7 +43,6 @@ class UnitManagerController(threading.Thread):
 
         # Multithreading stuff
         threading.Thread.__init__(self)
-        self.daemon = True
 
         # Stop event can be set to terminate the main loop
         self._stop = threading.Event()
@@ -142,15 +141,17 @@ class UnitManagerController(threading.Thread):
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
+        logger.error("uworker  %s stopping" % (self.name))
         self._stop.set()
         self.join()
-        logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
-                    (self.name, self.ident, self._um_id))
+        logger.error("uworker  %s stopped" % (self.name))
+      # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
+      #             (self.name, self.ident, self._um_id))
 
     # ------------------------------------------------------------------------
     #
     def get_compute_unit_data(self, unit_uid):
-        """Retruns the raw data (json dicts) of one or more ComputeUnits
+        """Returns the raw data (json dicts) of one or more ComputeUnits
            registered with this Worker / UnitManager
         """
         # Wait for the initialized event to assert proper operation.
@@ -173,11 +174,14 @@ class UnitManagerController(threading.Thread):
                 {'timestamp' : datetime.datetime.utcnow(), 
                  'state'     : new_state})
     
-        for cb in self._shared_data[unit_id]['callbacks']:
+        for [cb, cb_data] in self._shared_data[unit_id]['callbacks']:
             try:
 
                 if self._shared_data[unit_id]['facade_object'] :
-                    cb(self._shared_data[unit_id]['facade_object'], new_state)
+                    if  cb_data :
+                        cb(self._shared_data[unit_id]['facade_object'], new_state, cb_data)
+                    else :
+                        cb(self._shared_data[unit_id]['facade_object'], new_state)
                 else :
                     logger.error("Couldn't call callback (no pilot instance)")
             except Exception, ex:
@@ -190,10 +194,12 @@ class UnitManagerController(threading.Thread):
         if  not UNIT_STATE in self._manager_callbacks :
             self._manager_callbacks[UNIT_STATE] = list()
 
-        for cb in self._manager_callbacks[UNIT_STATE]:
+        for [cb, cb_data] in self._manager_callbacks[UNIT_STATE]:
             try:
-                cb(self._shared_data[unit_id]['facade_object'],
-                   new_state)
+                if  cb_data :
+                    cb(self._shared_data[unit_id]['facade_object'], new_state, cb_data)
+                else :
+                    cb(self._shared_data[unit_id]['facade_object'], new_state)
             except Exception, ex:
                 logger.error(
                     "Couldn't call callback function %s" % str(ex))
@@ -304,31 +310,34 @@ class UnitManagerController(threading.Thread):
                     time.sleep(0.1)
 
 
-            # shut down the autonomous input / output transfer worker(s)
-            for worker in self._input_file_transfer_worker_pool:
-              # worker.terminate()
-                logger.debug("UnitManager.close(): %s terminated." % worker.name)
-              # worker.join()
-
-            for worker in self._output_file_transfer_worker_pool:
-              # worker.terminate()
-                logger.debug("UnitManager.close(): %s terminated." % worker.name)
-              # worker.join()
         except SystemExit as e :
             logger.exception ("unit manager controller thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
+
+
+        finally :
+            # shut down the autonomous input / output transfer worker(s)
+            for worker in self._input_file_transfer_worker_pool:
+                logger.error("uworker %s stops   itransfer %s" % (self.name, worker.name))
+                worker.stop ()
+                logger.error("uworker %s stopped itransfer %s" % (self.name, worker.name))
+
+            for worker in self._output_file_transfer_worker_pool:
+                logger.error("uworker %s stops   otransfer %s" % (self.name, worker.name))
+                worker.stop ()
+                logger.error("uworker %s stopped otransfer %s" % (self.name, worker.name))
             
 
     # ------------------------------------------------------------------------
     #
-    def register_unit_callback(self, unit, callback_func):
+    def register_unit_callback(self, unit, callback_func, callback_data=None):
         """Registers a callback function for a ComputeUnit.
         """
         unit_uid = unit.uid
 
         self._shared_data_lock.acquire()
-        self._shared_data[unit_uid]['callbacks'].append(callback_func)
+        self._shared_data[unit_uid]['callbacks'].append([callback_func, callback_data])
         self._shared_data_lock.release()
 
         # Add the facade object if missing, e.g., after a re-connect.
@@ -347,13 +356,14 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_manager_callback(self, callback_func, metric):
+    def register_manager_callback(self, callback_func, metric, callback_data=None):
         """Registers a manager-level callback.
         """
         if not metric in self._manager_callbacks :
             self._manager_callbacks[metric] = list()
 
-        self._manager_callbacks[metric].append(callback_func)
+        self._manager_callbacks[metric].append([callback_func, callback_data])
+
 
     # ------------------------------------------------------------------------
     #
@@ -363,9 +373,12 @@ class UnitManagerController(threading.Thread):
         if  not metric in self._manager_callbacks :
             self._manager_callbacks[metric] = list()
 
-        for cb in self._manager_callbacks[metric] :
+        for [cb, cb_data] in self._manager_callbacks[metric] :
             try:
-                cb (obj, value)
+                if  cb_data :
+                    cb (obj, value, cb_data)
+                else :
+                    cb (obj, value)
             except Exception, ex:
                 logger.error ("Couldn't call '%s' callback function %s: %s" \
                            % (metric, cb, ex))
@@ -572,7 +585,7 @@ class UnitManagerController(threading.Thread):
                         logger.error('Not sure if action %s makes sense for output staging' % action)
 
                 if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
-                    log = ["Scheduled for data transfer to ComputePilot %s." % pilot_uid]
+                    log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
                     self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
                     cu_transfer.append(unit)
                 else:
@@ -592,7 +605,7 @@ class UnitManagerController(threading.Thread):
             )
 
             for unit in cu_notransfer:
-                log = ["Scheduled for execution on ComputePilot %s." % pilot_uid]
+                log = "Scheduled for execution on ComputePilot %s." % pilot_uid
                 self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
                 #self._set_state(uid, PENDING_EXECUTION, log)
 
@@ -601,7 +614,21 @@ class UnitManagerController(threading.Thread):
                 (cu_notransfer, pilot_uid)
             )
         except Exception, e:
-            import traceback
-            logger.error (traceback.format_exc())
-            raise Exception('error in unit manager controler: %s' % e)
+            logger.exception ('error in unit manager controller (schedule())')
+            raise
+
+    # ------------------------------------------------------------------------
+    #
+    def unschedule_compute_units(self, units):
+        """
+        set the unit state to UNSCHEDULED
+        """
+
+        try:
+            unit_ids = [unit.uid for unit in units]
+            self._db.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
+
+        except Exception, e:
+            logger.exception ('error in unit manager controller (unschedule())')
+            raise
 

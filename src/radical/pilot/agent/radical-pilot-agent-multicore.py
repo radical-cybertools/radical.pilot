@@ -89,6 +89,7 @@ STAGING_AREA = 'staging_area'
 NEW                         = 'New'
 PENDING                     = 'Pending'
 DONE                        = 'Done'
+CANCELING                   = 'Canceling'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
 
@@ -116,6 +117,12 @@ MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push
 
 #---------------------------------------------------------------------------
 #
+def timestamp () :
+    return datetime.datetime.utcnow()
+
+
+#---------------------------------------------------------------------------
+#
 start_time = time.time ()
 def get_rusage () :
 
@@ -138,12 +145,29 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.error(message)      
-    ts = datetime.datetime.utcnow()
+
+    ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
+
+    msg = [{"logentry": message,      "timestamp": ts},
+           {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
          "$set"    : {"state"       : FAILED,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -154,12 +178,29 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     """Updates the state of one or more pilots.
     """
     logger.warning(message)
-    ts = datetime.datetime.utcnow()
+
+    ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
+
+    msg = [{"logentry": message,      "timestamp": ts},
+           {"logentry": get_rusage(), "timestamp": ts}]
 
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
          "$set"    : {"state"       : CANCELED,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -169,13 +210,29 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 def pilot_DONE(mongo_p, pilot_uid):
     """Updates the state of one or more pilots.
     """
-    ts = datetime.datetime.utcnow()
 
-    message = "pilot done"
+    ts  = timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    except : pass
+    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    except : pass
+    try    : log = open ('./AGENT.LOG',    'r').read ()
+    except : pass
+
+    msg = [{"logentry": "pilot done", "timestamp": ts}, 
+           {"logentry": get_rusage(), "timestamp": ts}]
+
     mongo_p.update({"_id": ObjectId(pilot_uid)}, 
-        {"$pushAll": {"log"         : [message, get_rusage()]},
+        {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
          "$set"    : {"state"       : DONE,
+                      "stdout"      : out,
+                      "stderr"      : err,
+                      "logfile"     : log,
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -427,20 +484,33 @@ class ExecutionEnvironment(object):
         if val:
             torque_cores_per_node = int(val)
         else:
-            msg = "$PBS_NUM_PPN or $PBS_PPN not set!"
+            msg = "$PBS_NUM_PPN is not set!"
             torque_cores_per_node = None
             self.log.warning(msg)
 
+        print "torque_cores_per_node : %s" % torque_cores_per_node
+        if torque_cores_per_node in [None, 1] :
+            # lets see if SAGA has been forthcoming with some information
+            self.log.warning("fall back to $SAGA_PPN : %s" % os.environ.get ('SAGA_PPN', None))
+            torque_cores_per_node = int(os.environ.get('SAGA_PPN', torque_cores_per_node))
+
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)
-        if torque_num_nodes and torque_cores_per_node and \
-            torque_nodes_length != torque_num_nodes * torque_cores_per_node:
-            msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
-                  (torque_nodes_length, torque_num_nodes,  torque_cores_per_node)
-            raise Exception(msg)
+        torque_node_list    = list(set(torque_nodes))
+
+        print "torque_cores_per_node : %s" % torque_cores_per_node
+        print "torque_nodes_length   : %s" % torque_nodes_length
+        print "torque_num_nodes      : %s" % torque_num_nodes
+        print "torque_node_list      : %s" % torque_node_list
+        print "torque_nodes          : %s" % torque_nodes
+
+      # if torque_num_nodes and torque_cores_per_node and \
+      #     torque_nodes_length < torque_num_nodes * torque_cores_per_node:
+      #     msg = "Number of entries in $PBS_NODEFILE (%s) does not match with $PBS_NUM_NODES*$PBS_NUM_PPN (%s*%s)" % \
+      #           (torque_nodes_length, torque_num_nodes,  torque_cores_per_node)
+      #     raise Exception(msg)
 
         # only unique node names
-        torque_node_list = list(set(torque_nodes))
         torque_node_list_length = len(torque_node_list)
         self.log.debug("Node list: %s(%d)" % (torque_node_list, torque_node_list_length))
 
@@ -568,18 +638,18 @@ class ExecutionEnvironment(object):
         if val:
             pbspro_node_count = int(val)
         else:
-            msg = "$NODE_COUNT not set!"
-            self.log.error(msg)
-            raise Exception(msg)
+            pbspro_node_count = 0
+            msg = "$NODE_COUNT not set?"
+            self.log.warn(msg)
 
         # Number of Parallel Environments
         val = os.environ.get('NUM_PES')
         if val:
             pbspro_num_pes = int(val)
         else:
-            msg = "$NUM_PES not set!"
-            self.log.error(msg)
-            raise Exception(msg)
+            msg = "$NUM_PES not set?"
+            self.log.warn(msg)
+            pbspro_num_pes = 0
 
         pbspro_vnodes = self._parse_pbspro_vnodes()
 
@@ -606,7 +676,7 @@ class ExecutionEnvironment(object):
         slurm_nodes = hostlist.expand_hostlist(slurm_nodelist)
         self.log.info("Found SLURM_NODELIST %s. Expanded to: %s" % (slurm_nodelist, slurm_nodes))
 
-        # $SLURM_NPROCS = Total number of processes in the current job
+        # $SLURM_NPROCS = Total number of cores allocated for the current job
         slurm_nprocs_str = os.environ.get('SLURM_NPROCS')
         if slurm_nprocs_str is None:
             msg = "$SLURM_NPROCS not set!"
@@ -615,7 +685,7 @@ class ExecutionEnvironment(object):
         else:
             slurm_nprocs = int(slurm_nprocs_str)
 
-        # $SLURM_NNODES = Total number of nodes in the job's resource allocation
+        # $SLURM_NNODES = Total number of (partial) nodes in the job's resource allocation
         slurm_nnodes_str = os.environ.get('SLURM_NNODES')
         if slurm_nnodes_str is None:
             msg = "$SLURM_NNODES not set!"
@@ -624,26 +694,29 @@ class ExecutionEnvironment(object):
         else:
             slurm_nnodes = int(slurm_nnodes_str)
 
-        # $SLURM_CPUS_ON_NODE = Count of processors available to the job on this node.
+        # $SLURM_CPUS_ON_NODE = Number of cores per node (physically)
         slurm_cpus_on_node_str = os.environ.get('SLURM_CPUS_ON_NODE')
         if slurm_cpus_on_node_str is None:
-            msg = "$SLURM_NNODES not set!"
+            msg = "$SLURM_CPUS_ON_NODE not set!"
             self.log.error(msg)
             raise Exception(msg)
         else:
             slurm_cpus_on_node = int(slurm_cpus_on_node_str)
 
-        # Verify that $SLURM_NPROCS == $SLURM_NNODES * $SLURM_CPUS_ON_NODE
-        if slurm_nnodes * slurm_cpus_on_node != slurm_nprocs:
-            self.log.error("$SLURM_NPROCS(%d) != $SLURM_NNODES(%d) * $SLURM_CPUS_ON_NODE(%d)" % \
-                           (slurm_nnodes, slurm_cpus_on_node, slurm_nprocs))
+        # Verify that $SLURM_NPROCS <= $SLURM_NNODES * $SLURM_CPUS_ON_NODE
+        if not slurm_nprocs <= slurm_nnodes * slurm_cpus_on_node:
+            self.log.warning("$SLURM_NPROCS(%d) <= $SLURM_NNODES(%d) * $SLURM_CPUS_ON_NODE(%d)" % \
+                             (slurm_nprocs, slurm_nnodes, slurm_cpus_on_node))
 
         # Verify that $SLURM_NNODES == len($SLURM_NODELIST)
         if slurm_nnodes != len(slurm_nodes):
             self.log.error("$SLURM_NNODES(%d) != len($SLURM_NODELIST)(%d)" % \
                            (slurm_nnodes, len(slurm_nodes)))
 
-        self.cores_per_node = slurm_cpus_on_node
+        # Report the physical number of cores or the total number of cores
+        # in case of a single partial node allocation.
+        self.cores_per_node = min(slurm_cpus_on_node, slurm_nprocs)
+
         self.node_list = slurm_nodes
 
     #-------------------------------------------------------------------------
@@ -930,9 +1003,9 @@ class ExecWorker(multiprocessing.Process):
         self._capability     = self._slots2free(self._slots)
         self._capability_old = None
 
-        # keep a slot allocation history (short status), start with presumably
+        # keep a slot allocation history, start with presumably
         # empty state now
-        self._slot_history     = [self._slot_status (short=True)]
+        self._slot_history     = [self._slot_status ()]
         self._slot_history_old = None
 
         # The available launch methods
@@ -1000,11 +1073,13 @@ class ExecWorker(multiprocessing.Process):
         """Starts the process when Process.start() is called.
         """
         try:
+
+            # report initial slot status
+            self._log.debug(self._slot_status())
+
             while self._terminate is False:
 
                 idle = True
-
-                self._log.debug("Slot status:\n%s", self._slot_status())
 
                 # See if there are commands for the worker!
                 try:
@@ -1073,6 +1148,8 @@ class ExecWorker(multiprocessing.Process):
                         # not completely correct (as this text is not produced
                         # by the unit), but it seems the most intuitive way to
                         # communicate that error to the application/user.
+                        task.stderr += "\nPilot cannot start compute unit:\n%s\n%s" \
+                                     % (str(e), traceback.format_exc())
                         task.state   = FAILED
                         task.stderr += "\nPilot cannot start compute unit: '%s'" % e
                         
@@ -1090,7 +1167,7 @@ class ExecWorker(multiprocessing.Process):
 
                 # If nothing happened in this cycle, zzzzz for a bit.
                 if idle:
-                    self._log.debug("Sleep now for a jiffy ...")
+                  # self._log.debug("Sleep now for a jiffy ...")
                     time.sleep(0.1)
 
         except Exception, ex:
@@ -1101,34 +1178,20 @@ class ExecWorker(multiprocessing.Process):
 
     # ------------------------------------------------------------------------
     #
-    def _slot_status(self, short=False):
+    def _slot_status(self):
         """Returns a multi-line string corresponding to slot status.
         """
 
-        if short:
-            slot_matrix = ""
-            for slot in self._slots:
-                slot_matrix += "|"
-                for core in slot['cores']:
-                    if core is FREE:
-                        slot_matrix += "-"
-                    else:
-                        slot_matrix += "+"
-            slot_matrix += "|"
-            ts = datetime.datetime.utcnow()
-            return {'timestamp' : ts, 'slotstate' : slot_matrix}
-
-        else :
-            slot_matrix = ""
-            for slot in self._slots:
-                slot_vector  = ""
-                for core in slot['cores']:
-                    if core is FREE:
-                        slot_vector += " - "
-                    else:
-                        slot_vector += " X "
-                slot_matrix += "%s: %s\n" % (slot['node'].ljust(24), slot_vector)
-            return slot_matrix
+        slot_status = ""
+        for slot in self._slots:
+            slot_status += "|"
+            for core in slot['cores']:
+                if core is FREE:
+                    slot_status += "-"
+                else:
+                    slot_status += "+"
+        slot_status += "|"
+        return slot_status
 
 
     # ------------------------------------------------------------------------
@@ -1290,10 +1353,13 @@ class ExecWorker(multiprocessing.Process):
         # ensue.  We thus limit the slot history size to 4MB, to keep suffient
         # space for the actual operational data
         if  len(str(self._slot_history)) < 4 * 1024 * 1024 :
-            self._slot_history.append (self._slot_status (short=True))
+            self._slot_history.append ([timestamp(), self._slot_status ()])
         else :
             # just replace the last entry with the current one.
-            self._slot_history[-1]  =  self._slot_status (short=True)
+            self._slot_history[-1]  =  [timestamp(), self._slot_status ()]
+
+        # report changed slot status
+        self._log.debug(self._slot_status())
 
 
     # ------------------------------------------------------------------------
@@ -1321,7 +1387,7 @@ class ExecWorker(multiprocessing.Process):
             logger=self._log,
             cu_environment=self.cu_environment)
 
-        task.started=datetime.datetime.utcnow()
+        task.started=timestamp()
         task.state = EXECUTING
         task._proc = proc
 
@@ -1465,7 +1531,7 @@ class ExecWorker(multiprocessing.Process):
             task.exit_code = ret_code
 
             # Record the time and state
-            task.finished = datetime.datetime.utcnow()
+            task.finished = timestamp()
             task.state = state
 
             # Put it on the list of tasks to update in bulk
@@ -1493,11 +1559,11 @@ class ExecWorker(multiprocessing.Process):
         """Updates the database entries for one or more tasks, including
         task state, log, etc.
         """
+        ts = timestamp()
 
         if  not isinstance(tasks, list):
             tasks = [tasks]
 
-        ts = datetime.datetime.utcnow()
         # We need to know which unit manager we are working with. We can pull
         # this information here:
 
@@ -1922,7 +1988,7 @@ class Agent(threading.Thread):
         """
         # first order of business: set the start time and state of the pilot
         self._log.info("Agent %s starting ..." % self._pilot_id)
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
         ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
             {"$set": {"state"          : ACTIVE,
@@ -1972,19 +2038,22 @@ class Agent(threading.Thread):
                     retdoc = self._p.find_and_modify(
                                 query={"_id":ObjectId(self._pilot_id)},
                                 update={"$set":{COMMAND_FIELD: []}}, # Wipe content of array
-                                fields=[COMMAND_FIELD]
+                                fields=[COMMAND_FIELD, 'state']
                     )
 
                     if retdoc:
-                        commands = retdoc['commands']
+                        commands = retdoc[COMMAND_FIELD]
+                        state    = retdoc['state']
                     else:
                         commands = []
+                        state    = CANCELING
 
                     for command in commands:
 
                         idle = False
 
-                        if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+                        if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT or \
+                            state == CANCELING :
                             self._log.info("Received Cancel Pilot command.")
                             pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
                             return # terminate loop
@@ -2001,7 +2070,7 @@ class Agent(threading.Thread):
 
                     # Check if there are compute units waiting for execution,
                     # and log that we pulled it.
-                    ts = datetime.datetime.utcnow()
+                    ts = timestamp()
                     cu_cursor = self._cu.find_and_modify(
                         query={"pilot" : self._pilot_id,
                                "state" : PENDING_EXECUTION},
@@ -2053,7 +2122,7 @@ class Agent(threading.Thread):
                     #
                     # Check if there are compute units waiting for input staging
                     #
-                    ts = datetime.datetime.utcnow()
+                    ts = timestamp()
                     cu_cursor = self._cu.find_and_modify(
                         query={'pilot' : self._pilot_id,
                                'Agent_Input_Status': PENDING},
@@ -2221,7 +2290,7 @@ class _Process(subprocess.Popen):
             cmdline = launch_script.name
 
         elif launch_method == LAUNCH_METHOD_APRUN:
-            
+
             aprun_command = "%s -n %s" % (launch_command, task.numcores)
 
             launch_script.write('%s\n'    % pre_exec_string)
@@ -2532,13 +2601,13 @@ if __name__ == "__main__":
     def sigint_handler(signal, frame):
         msg = 'Caught SIGINT. EXITING.'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit (2)
     signal.signal(signal.SIGINT, sigint_handler)
 
     def sigalarm_handler(signal, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit (3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
     #--------------------------------------------------------------------------
@@ -2555,13 +2624,13 @@ if __name__ == "__main__":
             msg = "Couldn't set up execution environment."
             logger.error(msg)
             pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-            sys.exit (1)
+            sys.exit (4)
 
     except Exception, ex:
         msg = "Error setting up execution environment: %s" % str(ex)
         logger.error(msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (1)
+        sys.exit (5)
 
     #--------------------------------------------------------------------------
     # Launch the agent thread
@@ -2589,11 +2658,12 @@ if __name__ == "__main__":
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         if  agent :
             agent.stop()
-        sys.exit (1)
+        sys.exit (6)
 
     except SystemExit:
 
         logger.error("Caught keyboard interrupt. EXITING")
         if  agent :
             agent.stop()
+        sys.exit (7)
 

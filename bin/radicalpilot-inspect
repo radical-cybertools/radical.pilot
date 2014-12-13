@@ -38,11 +38,13 @@ def usage (msg=None, noexit=False) :
       modes :
 
         help      : show this message
-        sid       : find session ID
+        pid2sid   : find session ID for a pilot id (pid)
+        uid2sid   : find session ID for a unit id  (uid)
         resources : list resource information
 
       options :
         -p <pid>  : apply mode to pilot   with given ID
+        -u <pid>  : apply mode to unit    with given ID
         -s <sid>  : apply mode to session with given ID
         -d <url>  : use given database URL instead of default (%s).
 
@@ -71,16 +73,64 @@ def find_sid_by_pid (dbclient, dbname, pid) :
 
     for sid in sorted (sids, reverse=True) :
         if  sid > pid :
+            sys.stdout.write ('_')
+            sys.stdout.flush (   )
             continue
 
-        docs = rpu.get_session_docs (dbclient[dbname], sid)
+        try :
+            docs = rpu.get_session_docs (dbclient[dbname], sid)
+        except :
+            sys.stdout.write ('?')
+            sys.stdout.flush (   )
+            continue
 
         for doc in docs['pilot'] :
             if  str(doc['_id']) == pid :
-                print "found pilot %s in session %s" % (pid, sid)
+                sys.stdout.write ('!')
+                sys.stdout.flush (   )
+                print "\nfound pilot %s in session %s" % (pid, sid)
                 return
+        sys.stdout.write ('.')
+        sys.stdout.flush (   )
 
-    print "pilot %s not found in any session"
+    print "\npilot %s not found in any session"
+
+
+# ------------------------------------------------------------------------------
+#
+def find_sid_by_uid (dbclient, dbname, uid) :
+
+    sids = rpu.get_session_ids (dbclient[dbname])
+
+    print "%d sessions" % len(sids)
+
+    # IDs are globally time ordered.  We start looking from last session
+    # (request is likely of recent run), but only look at session IDs which have
+    # IDs older than the pilot ID
+
+    for sid in sorted (sids, reverse=True) :
+        if  sid > uid :
+            sys.stdout.write ('_')
+            sys.stdout.flush (   )
+            continue
+
+        try :
+            docs = rpu.get_session_docs (dbclient[dbname], sid)
+        except :
+            sys.stdout.write ('?')
+            sys.stdout.flush (   )
+            continue
+
+        for doc in docs['unit'] :
+            if  str(doc['_id']) == uid :
+                sys.stdout.write ('!')
+                sys.stdout.flush (   )
+                print "\nfound unit %s in session %s" % (uid, sid)
+                return
+        sys.stdout.write ('.')
+        sys.stdout.flush (   )
+
+    print "\nunit %s not found in any session"
 
 
 # ------------------------------------------------------------------------------
@@ -178,6 +228,7 @@ if __name__ == '__main__' :
     parser.add_option('-d', '--dburl',   dest='url')
     parser.add_option('-m', '--mode',    dest='mode')
     parser.add_option('-p', '--pid',     dest='pid')
+    parser.add_option('-u', '--uid',     dest='uid')
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true')
     parser.add_option('-h', '--help',    dest='help',    action="store_true")
 
@@ -202,6 +253,7 @@ if __name__ == '__main__' :
     mode    = options.mode 
     url     = options.url
     pid     = options.pid
+    uid     = options.uid
     verbose = bool(options.verbose)
 
     host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
@@ -213,13 +265,17 @@ if __name__ == '__main__' :
     if  pid :
         print "pid     : %s" % pid
 
+    if  uid :
+        print "uid     : %s" % uid
+
 
     for m in mode.split (',') :
 
-        if  m not in ['sid', 'resources', 'help'] : 
+        if  m not in ['pid2sid', 'uid2sid', 'resources', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'sid'       : find_sid_by_pid (dbclient, dbname, pid)
+        if   m == 'pid2sid'   : find_sid_by_pid (dbclient, dbname, pid)
+        if   m == 'uid2sid'   : find_sid_by_uid (dbclient, dbname, uid)
         elif m == 'resources' : list_resources  (verbose)
         elif m == 'help'      : usage (noexit=True)
         else                  : usage ("unknown mode '%s'" % mode)

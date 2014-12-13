@@ -67,6 +67,7 @@ class State(object):
 # Common States
 NEW                         = 'New'
 DONE                        = 'Done'
+CANCELING                   = 'Canceling'
 CANCELED                    = 'Canceled'
 FAILED                      = 'Failed'
 PENDING                     = 'Pending'
@@ -80,7 +81,7 @@ ACTIVE                      = 'Active'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
-STATE_X                     = 'StateX'
+UNSCHEDULED                 = 'Unscheduled'
 PENDING_INPUT_STAGING       = 'PendingInputStaging'
 STAGING_INPUT               = 'StagingInput'
 PENDING_EXECUTION           = 'PendingExecution'

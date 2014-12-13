@@ -66,7 +66,7 @@ and change the code below accordging to the instructions in the comments.
 Execution
 ---------
 
-** This assumes you have installed RADICAL-Pilot either globally or in a 
+**This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**
 
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
@@ -117,7 +117,8 @@ complexity is hidden within RADICAL-Pilot, it is necessary to do a lot of
 internal logging. By default, logging output is disabled, but if something goes
 wrong or if you're just curious, you can enable the logging output by setting
 the environment variable ``RADICAL_PILOT_VERBOSE`` to a value between CRITICAL
-(print only critical messages) and DEBUG (print all messages).
+(print only critical messages) and DEBUG (print all messages).  For more details
+on logging, see under 'Debugging' in chapter :ref:`chapter_developers`.
 
 Give it a try with the above example:
 

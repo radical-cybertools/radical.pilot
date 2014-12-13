@@ -38,20 +38,81 @@ class PilotLauncherWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, session, db_connection_info, pilot_manager_id, number=None):
+    def __init__(self, session, db_connection_info, pilot_manager_id, 
+                 shared_worker_data, number=None):
         """Creates a new pilot launcher background process.
         """
         self._session = session
 
         # threading stuff
         threading.Thread.__init__(self)
-        self.daemon = True
 
         self.db_connection_info = db_connection_info
         self.pilot_manager_id   = pilot_manager_id
         self.name               = "PilotLauncherWorker-%s" % str(number)
         self.missing_pilots     = dict()
-        self.job_services       = dict()
+        self._shared_worker_data = shared_worker_data
+
+        # Stop event can be set to terminate the main loop
+        self._stop = threading.Event()
+        self._stop.clear()
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """stop() signals the process to finish up and terminate.
+        """
+        logger.error("launcher %s stopping" % (self.name))
+        self._stop.set()
+        self.join()
+        logger.error("launcher %s stopped" % (self.name))
+      # logger.debug("Launcher thread (ID: %s[%s]) for PilotManager %s stopped." %
+      #             (self.name, self.ident, self.pilot_manager_id))
+
+
+    # ------------------------------------------------------------------------
+    #
+    def _get_pilot_logs (self, pilot_col, pilot_id) :
+
+        out, err, log = ["", "", ""]
+        return out, err, log
+
+        # attempt to get stdout/stderr/log.  We only expect those if pilot was
+        # attemptint launch at some point
+        launched = False
+        pilot    = pilot_col.find ({"_id": pilot_id})[0]
+
+        for entry in pilot['statehistory'] :
+            if entry['state'] == LAUNCHING :
+                launched = True
+                break
+
+        if  launched :
+            MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
+
+            try :
+                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.STDOUT'))
+                out   = f_out.read()[-MAX_IO_LOGLENGTH:]
+                f_out.close ()
+            except :
+                pass
+
+            try :
+                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.STDERR'))
+                err   = f_err.read()[-MAX_IO_LOGLENGTH:]
+                f_err.close ()
+            except :
+                pass
+
+            try :
+                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.LOG'))
+                log   = f_log.read()[-MAX_IO_LOGLENGTH:]
+                f_log.close ()
+            except :
+                pass
+
+        return out, err, log
+
 
     # --------------------------------------------------------------------------
     #
@@ -78,13 +139,13 @@ class PilotLauncherWorker(threading.Thread):
 
             # Create a job service object:
             try: 
-                js_url       = saga_job_id.split("]-[")[0][1:]
+                js_url = saga_job_id.split("]-[")[0][1:]
 
-                if  js_url in self.job_services :
-                    js = self.job_services[js_url]
+                if  js_url in self._shared_worker_data['job_services'] :
+                    js = self._shared_worker_data['job_services'][js_url]
                 else :
                     js = saga.job.Service(js_url, session=self._session)
-                    self.job_services[js_url] = js
+                    self._shared_worker_data['job_services'][js_url] = js
 
                 saga_job     = js.get_job(saga_job_id)
                 reconnected  = True
@@ -116,27 +177,59 @@ class PilotLauncherWorker(threading.Thread):
                     log_message  = "Couldn't determine job state for ComputePilot %s. " \
                                    "Assuming it has failed." % pilot_id
 
+
             if  pilot_failed :
+                out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
-                    {"_id": pilot_id},
-                    {"$set": {"state": FAILED},
-                     "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                     "$push": {"log": log_message}}
+                    {"_id"  : pilot_id,
+                     "state": {"$ne"     : DONE}},
+                    {"$set" : {
+                        "state"          : FAILED,
+                        "stdout"         : out,
+                        "stderr"         : err,
+                        "logfile"        : log
+                        },
+                     "$push": {
+                         "statehistory"  : {
+                             "state"     : FAILED, 
+                             "timestamp" : ts
+                             }, 
+                         "log": {
+                             "logentry"  : log_message, 
+                             "timestamp" : ts
+                             }
+                         }
+                     }
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
 
+
             elif pilot_done :
                 # FIXME: this should only be done if the state is not yet
                 # done...
+                out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                 ts = datetime.datetime.utcnow()
                 pilot_col.update(
                     {"_id"  : pilot_id,
-                     "state": {"$ne"  : DONE}},
-                    {"$set" : {"state": DONE},
-                     "$push": {"statehistory": {"state": DONE, "timestamp": ts}},
-                     "$push": {"log": log_message}}
+                     "state": {"$ne"     : DONE}},
+                    {"$set" : {
+                        "state"          : DONE,
+                        "stdout"         : out,
+                        "stderr"         : err,
+                        "logfile"        : log},
+                     "$push": {
+                         "statehistory"  : {
+                             "state"     : DONE, 
+                             "timestamp" : ts
+                             }, 
+                         "log": {
+                             "logentry"  : log_message, 
+                             "timestamp" : ts
+                             }
+                         }
+                     }
                 )
                 logger.error (log_message)
                 logger.error ('pilot %s declared dead' % pilot_id)
@@ -173,7 +266,8 @@ class PilotLauncherWorker(threading.Thread):
 
             last_job_check = time.time()
 
-            while True:
+            while not self._stop.is_set():
+
                 # Periodically, we pull up all ComputePilots that are pending 
                 # execution or were last seen executing and check if the corresponding  
                 # SAGA job is still pending in the queue. If that is not the case, 
@@ -210,7 +304,7 @@ class PilotLauncherWorker(threading.Thread):
                         ## LAUNCH THE PILOT AGENT VIA SAGA
                         log_messages = []
 
-                        compute_pilot_id = str(compute_pilot["_id"])
+                        pilot_id = str(compute_pilot["_id"])
                         logger.info("Launching ComputePilot %s" % compute_pilot)
 
                         number_cores = compute_pilot['description']['cores']
@@ -293,7 +387,9 @@ class PilotLauncherWorker(threading.Thread):
                         agent_path = os.path.abspath("%s/../agent/%s" % (plw_dir, pilot_agent))
 
                         log_msg = "Using pilot agent %s" % agent_path
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.info(log_msg)
 
                         ########################################################
@@ -306,7 +402,9 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" % (plw_dir, bootstrapper))
                         
                         log_msg = "Using bootstrapper %s" % bootstrapper_path
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.info(log_msg)
 
                         ########################################################
@@ -329,7 +427,9 @@ class PilotLauncherWorker(threading.Thread):
                         bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
                         bs_script_tgt = saga.Url("%s/%s"               % (sandbox, bootstrapper))
                         log_msg = "Copying bootstrapper '%s' to agent sandbox (%s)." % (bs_script_url, bs_script_tgt)
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.debug(log_msg)
 
                         bs_script = saga.filesystem.File(bs_script_url, session=self._session)
@@ -340,7 +440,9 @@ class PilotLauncherWorker(threading.Thread):
                         # Copy the agent script
                         agent_script_url = saga.Url("file://localhost/%s" % agent_path)
                         log_msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_script_url, sandbox)
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.debug(log_msg)
 
                         agent_script = saga.filesystem.File(agent_script_url)
@@ -357,7 +459,9 @@ class PilotLauncherWorker(threading.Thread):
                             worker_script_url = saga.Url("file://localhost/%s" % worker_path)
 
                             log_msg = "Copying '%s' to agent sandbox (%s)." % (worker_script_url, sandbox)
-                            log_messages.append(log_msg)
+                            log_messages.append({
+                                "logentry": log_msg, 
+                                "timestamp": datetime.datetime.utcnow()})
                             logger.debug(log_msg)
 
                             worker_script = saga.filesystem.File(worker_script_url)
@@ -367,20 +471,20 @@ class PilotLauncherWorker(threading.Thread):
                         #########################################################
                         # now that the script is in place and we know where it is,
                         # we can launch the agent
-                        job_service_url = saga.Url(resource_cfg['job_manager_endpoint'])
-                        logger.debug ("saga.job.Service ('%s')" % job_service_url)
-                        if  job_service_url in self.job_services :
-                            js = self.job_services[job_service_url]
+                        js_url = saga.Url(resource_cfg['job_manager_endpoint'])
+                        logger.debug ("saga.job.Service ('%s')" % js_url)
+                        if  js_url in self._shared_worker_data['job_services'] :
+                            js = self._shared_worker_data['job_services'][js_url]
                         else :
-                            js = saga.job.Service(job_service_url, session=self._session)
-                            self.job_services[job_service_url] = js
+                            js = saga.job.Service(js_url, session=self._session)
+                            self._shared_worker_data['job_services'][js_url] = js
 
                         jd = saga.job.Description()
                         jd.working_directory = saga.Url(sandbox).path
 
-                        bootstrap_args = "-n %s -s %s -p %s -t %s -d %s -c %s -v %s" %\
-                            (database_name, session_uid, str(compute_pilot_id),
-                             runtime, logger.level, number_cores, VERSION)
+                        bootstrap_args = "-n %s -s %s -p %s -t %s -c %s -v %s" %\
+                            (database_name, session_uid, str(pilot_id),
+                             runtime, number_cores, VERSION)
 
                         if  user_sandbox :
                             bootstrap_args += " -u"
@@ -392,7 +496,6 @@ class PilotLauncherWorker(threading.Thread):
                             bootstrap_args += " -m %s " % database_hostport
  
                         bootstrap_args += " -a %s " % database_auth
-
 
                         if 'python_interpreter' in resource_cfg and resource_cfg['python_interpreter'] is not None:
                             bootstrap_args += " -i %s " % resource_cfg['python_interpreter']
@@ -423,11 +526,29 @@ class PilotLauncherWorker(threading.Thread):
                             #   v : virtualenv
                             #   e : everything (== pilot sandbox)
                             # FIXME: get cleanup flags from somewhere
-                            logger.info ('request cleanup for pilot %s' % compute_pilot_id)
+                            logger.info ('request cleanup for pilot %s' % pilot_id)
                             bootstrap_args += " -x %s" % 'luve' # the cleanup flag
 
+                        if 'RADICAL_PILOT_AGENT_VERBOSE' in os.environ :
+                            debug_level = {
+                                    'CRITICAL' : 1,
+                                    'ERROR'    : 2,
+                                    'WARNING'  : 3,
+                                    'WARN'     : 3,
+                                    'INFO'     : 4,
+                                    'DEBUG'    : 5}.get (os.environ['RADICAL_PILOT_AGENT_VERBOSE'], 
+                                                     int(os.environ['RADICAL_PILOT_AGENT_VERBOSE']))
+                            bootstrap_args += " -d %s" % debug_level
+                            bootstrap_args += " -b"  # also keep slot statuses around
+                        else :
+                            # fall back to local log level, if such one is set
+                            if  logger.level :
+                                bootstrap_args += " -d %s" % logger.level
+                                bootstrap_args += " -b"  # also keep slot statuses around
+
                         if  'RADICAL_PILOT_BENCHMARK' in os.environ :
-                            bootstrap_args += " -b"
+                            if  not " -b" in bootstrap_args :
+                                bootstrap_args += " -b"
 
                         jd.executable = "/bin/bash"
                         jd.arguments = ["-l", bootstrapper, bootstrap_args]
@@ -435,7 +556,7 @@ class PilotLauncherWorker(threading.Thread):
                         logger.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
 
                         # fork:// and ssh:// don't support 'queue' and 'project'
-                        if (job_service_url.schema != "fork") and (job_service_url.schema != "ssh"):
+                        if (js_url.schema != "fork") and (js_url.schema != "ssh"):
 
                             # process the 'queue' attribute
                             if queue is not None:
@@ -459,7 +580,9 @@ class PilotLauncherWorker(threading.Thread):
                             jd.total_physical_memory = compute_pilot['description']['memory']
 
                         log_msg = "Submitting SAGA job with description: %s" % str(jd.as_dict())
-                        log_messages.append(log_msg)
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.debug(log_msg)
 
                         pilotjob = js.create_job(jd)
@@ -472,7 +595,11 @@ class PilotLauncherWorker(threading.Thread):
                         saga_job_id = pilotjob.id
                         log_msg = "SAGA job submitted with job id %s" % str(saga_job_id)
 
-                        log_messages.append(log_msg)
+                        self._shared_worker_data['job_ids'][pilot_id] = [saga_job_id, js_url]
+
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": datetime.datetime.utcnow()})
                         logger.debug(log_msg)
 
                         ##
@@ -482,37 +609,54 @@ class PilotLauncherWorker(threading.Thread):
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
                         ts = datetime.datetime.utcnow()
                         ret = pilot_col.update(
-                            {"_id"  : ObjectId(compute_pilot_id),
+                            {"_id"  : ObjectId(pilot_id),
                              "state": 'Launching'},
-                            {"$set": {"state": PENDING_ACTIVE,
+                            {"$set" : {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                             "$pushAll": {"log": log_messages}}                    
+                             "$pushAll": {"log": log_messages}
+                            }
                         )
 
                         if  ret['n'] == 0 :
                             # could not update, probably because the agent is
                             # running already.  Just update state history and
                             # jobid then
+                            # FIXME: make sure of the agent state!
                             ret = pilot_col.update(
-                                {"_id"  : ObjectId(compute_pilot_id)},
+                                {"_id"  : ObjectId(pilot_id)},
                                 {"$set" : {"saga_job_id": saga_job_id},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
-                                 "$pushAll": {"log": log_messages}}                    
+                                 "$pushAll": {"log": log_messages}}
                             )
-
 
                     except Exception, ex:
                         # Update the Pilot's state 'FAILED'.
+                        out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                         ts = datetime.datetime.utcnow()
-                        log_messages = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+
+                        # FIXME: we seem to be unable to bson/json handle saga
+                        # log messages containing an '#'.  This shows up here.
+                        # Until we find a clean workaround, make log shorter and
+                        # rely on saga logging to reveal the problem.
+                      # log_msg = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
+                        log_msg = "Pilot launching failed!"
+                        log_messages.append({
+                            "logentry": log_msg, 
+                            "timestamp": ts})
+
                         pilot_col.update(
-                            {"_id": ObjectId(compute_pilot_id)},
-                            {"$set": {"state": FAILED},
+                            {"_id"  : ObjectId(pilot_id),
+                             "state": {"$ne" : FAILED}},
+                            {"$set" : {
+                                "state"   : FAILED,
+                                "stdout"  : out,
+                                "stderr"  : err,
+                                "logfile" : log},
                              "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                             "$push": {"log": log_messages}}
+                             "$pushAll": {"log": log_messages}}
                         )
-                        logger.error(log_messages)
+                        logger.exception (log_messages)
 
         except SystemExit as e :
             logger.exception("pilot launcher thread caught system exit -- forcing application shutdown")

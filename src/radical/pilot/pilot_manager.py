@@ -140,24 +140,79 @@ class PilotManager(Object):
               get canceled (default: False).
 
         """
+
+        logger.error("pmgr    %s closing" % (str(self._uid)))
+
         # Spit out a warning in case the object was already closed.
         if not self._uid:
-            logger.warning("PilotManager object already closed.")
+            logger.error("PilotManager object already closed.")
             return
 
-        # If terminate is set, we cancel all pilots. 
-        if terminate is True:
-            self.cancel_pilots()
-
-        # Shut down all worker processes if still active. stop() returns
-        # only after a successful join(). 
+        # before we terminate pilots, we have to kill the pilot launcher threads
+        # -- otherwise we'll run into continous race conditions due to the
+        # ongoing state checks...
         if self._worker is not None:
             # Stop the worker process
-            self._worker.stop()
-            # Remove worker from registry
-            self._session._process_registry.remove(self._uid)
+            logger.error("pmgr    %s cancel   worker %s" % (str(self._uid), self._worker.name))
+            self._worker.cancel_launcher()
+            logger.error("pmgr    %s canceled worker %s" % (str(self._uid), self._worker.name))
 
-        logger.info("Closed PilotManager %s." % str(self._uid))
+
+
+        # If terminate is set, we cancel all pilots. 
+        if  terminate :
+            # cancel all pilots, make sure they are gone, and close the pilot
+            # managers.
+            for pilot in self.get_pilots () :
+                logger.error("pmgr    %s cancels  pilot  %s" % (str(self._uid), pilot._uid))
+            self.cancel_pilots ()
+
+          # FIXME:
+          #
+          # wait_pilots() will wait until all pilots picked up the sent cancel
+          # signal and died.  However, that can take a loooong time.  For
+          # example, if a pilot is in 'PENDING_ACTIVE' state, this will have to
+          # wait until the pilot is bootstrapped, started, connected to the DB,
+          # and shut down again.  Or, for a pilot which just got a shitload of
+          # units, it will have to wait until the pilot started all those units
+          # and then checks its command queue again.  Or, if the pilot job
+          # already died, wait will block until the state checker kicks in and
+          # declares the pilot as dead, which takes a couple of minutes.
+          #
+          # Solution would be to add a CANCELING state and to wait for that one,
+          # too, which basically means to wait until the cancel signal has been
+          # sent.  There is not much more to do at this point anyway.  This is at
+          # the moment faked in the manager controler, which sets that state
+          # after sending the cancel command.  This should be converted into
+          # a proper state -- that would, btw, remove the need for a cancel
+          # command in the first place, as the pilot can just pull its own state
+          # instead, and cancel on CANCELING...
+          #
+          # self.wait_pilots ()
+            wait_for_cancel = True
+            all_pilots = self.get_pilots ()
+            while wait_for_cancel :
+                wait_for_cancel = False
+                for pilot in all_pilots :
+                    logger.error("pmgr    %s wait for pilot  %s (%s)" % (str(self._uid), pilot._uid, pilot.state))
+                    if  pilot.state not in [DONE, FAILED, CANCELED, CANCELING] :
+                        time.sleep (1)
+                        wait_for_cancel = True
+                        break
+            for pilot in self.get_pilots () :
+                logger.error("pmgr    %s canceled pilot  %s" % (str(self._uid), pilot._uid))
+
+
+        logger.error("pmgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
+        self._worker.stop()
+        self._worker.join()
+        logger.error("pmgr    %s stopped  worker %s" % (str(self._uid), self._worker.name))
+
+        # Remove worker from registry
+        self._session._process_registry.remove(self._uid)
+
+
+        logger.error("pmgr    %s closed" % (str(self._uid)))
         self._uid = None
 
     #--------------------------------------------------------------------------
@@ -277,10 +332,13 @@ class PilotManager(Object):
             if  not schema :
                 if 'schemas' in resource_cfg :
                     schema = resource_cfg['schemas'][0]
+              # import pprint
+              # print "no schema, using %s" % schema
+              # pprint.pprint (pilot_description)
 
             if  not schema in resource_cfg :
-                import pprint
-                pprint.pprint (resource_cfg)
+              # import pprint
+              # pprint.pprint (resource_cfg)
                 logger.warning ("schema %s unknown for resource %s -- continue with defaults" \
                              % (schema, resource_key))
 
@@ -487,18 +545,20 @@ class PilotManager(Object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_function):
+    def register_callback(self, callback_function, callback_data=None):
         """Registers a new callback function with the PilotManager.
         Manager-level callbacks get called if any of the ComputePilots managed
         by the PilotManager change their state.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state)
+            def callback_func(obj, state, data)
 
-        where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.
+        where ``object`` is a handle to the object that triggered the callback,
+        ``state`` is the new state of that object, and ``data`` are the data
+        passed on callback registration.
         """
         self._assert_obj_is_valid()
 
-        self._worker.register_manager_callback(callback_function)
+        self._worker.register_manager_callback(callback_function, callback_data)
+

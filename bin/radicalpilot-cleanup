@@ -58,7 +58,7 @@ def list_sessions (dbclient, dbname, session) :
         print "invalid session parameter on 'list'"
         sys.exit (-1)
 
-    sids = rpu.get_session_ids (dbclient, dbname)
+    sids = rpu.get_session_ids (dbclient[dbname])
 
 
     if not sids :

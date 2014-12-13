@@ -76,7 +76,7 @@ def list_sessions (dbclient, dbname, age, session) :
     if  session :
         sids.append (session)
     else :
-        sids = rpu.get_session_ids (dbclient, dbname)
+        sids = rpu.get_session_ids (dbclient[dbname])
 
     if not sids :
         print 'no matching session in database at %s' % url
@@ -85,21 +85,36 @@ def list_sessions (dbclient, dbname, age, session) :
     sessions = dict()
     created  = list()
     for sid in sids :
-        docs = rpu.get_session_docs (dbclient, dbname, sid)
-        c    = docs['session']['created']
+
+        docs = rpu.get_session_docs (dbclient[dbname], sid)
+        if  not docs or \
+            not 'session' in docs or \
+            not 'created' in docs['session'] :
+            # invalid session
+            print 'check  session %s ? (%17s)' % (sid, '???')
+            continue
+
+        c = docs['session']['created']
+
+        if isinstance (c, float) :
+            c = datetime.datetime.utcfromtimestamp(c) 
+
         if (now-c) > age :
             sessions[sid] = docs
             created.append (c)
             print 'check  session %s + (%17s)' % (sid, now-c)
         else :
             print 'check  session %s - (%17s)' % (sid, now-c)
-          # print 'optimignore remaining sessions'
+            print 'optimignore remaining sessions'
             break
 
 
     for c in sorted (created) :
         for sid in sessions :
-            if  sessions[sid]['session']['created'] == c :
+            session_created = sessions[sid]['session']['created']
+            if  isinstance (c, float) :
+                session_created = datetime.datetime.utcfromtimestamp(session_created) 
+            if  session_created == c :
                 print 'match  session %s   (%17s)' % (sid, now-c)
 
     return sessions
@@ -112,9 +127,13 @@ def purge_sessions (dbclient, dbname, age, session) :
     sessions = list_sessions (dbclient, dbname, age, session)
     database = dbclient[dbname]
 
-    for sid in sessions () :
-        print 'purge  session %s' % sid
-        database.drop_collection (name)
+    for sid in sessions :
+        database.drop_collection ("%s")
+        database.drop_collection ("%s.p")
+        database.drop_collection ("%s.pm")
+        database.drop_collection ("%s.um")
+        database.drop_collection ("%s.cu")
+        print 'purged session %s' % sid
 
 
 

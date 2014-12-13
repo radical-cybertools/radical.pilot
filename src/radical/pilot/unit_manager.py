@@ -445,9 +445,8 @@ class UnitManager(object):
             schedule = self._scheduler.schedule (units=units)
        
         except Exception as e:
-            import traceback
-            logger.error (traceback.format_exc())
-            raise PilotException("Internal error - unit scheduler failed: %s" % e)
+            logger.exception ("Internal error - unit scheduler failed")
+            raise 
 
         self.handle_schedule (schedule)
 
@@ -541,10 +540,8 @@ class UnitManager(object):
                 units_to_schedule.append (unit)
 
             if  len(units_to_schedule) :
-                self._worker.schedule_compute_units (
-                    pilot_uid=pid,
-                    units=units_to_schedule
-                )
+                self._worker.schedule_compute_units (pilot_uid=pid,
+                                                     units=units_to_schedule)
 
 
         # report any change in wait_queue_size
@@ -554,6 +551,9 @@ class UnitManager(object):
         if  old_wait_queue_size != self.wait_queue_size :
             self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
                                                 self.wait_queue_size)
+
+        if  len(unscheduled) :
+            self._worker.unschedule_compute_units (units=unscheduled)
 
         logger.info ('%s units remain unscheduled' % len(unscheduled))
 
@@ -703,7 +703,7 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_function, metric=UNIT_STATE):
+    def register_callback(self, callback_function, metric=UNIT_STATE, callback_data=None):
 
         """
         Registers a new callback function with the UnitManager.  Manager-level
@@ -713,10 +713,11 @@ class UnitManager(object):
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, value)
+            def callback_func(obj, value, data)
 
-        where ``object`` is a handle to the object that triggered the callback
-        and ``value`` is the metric.  In the example of `UNIT_STATE` above, the
+        where ``object`` is a handle to the object that triggered the callback,
+        ``value`` is the metric, and ``data`` is the data provided on
+        callback registration..  In the example of `UNIT_STATE` above, the
         object would be the unit in question, and the value would be the new
         state of the unit.
 
@@ -734,5 +735,5 @@ class UnitManager(object):
         if  metric not in UNIT_MANAGER_METRICS :
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
-        self._worker.register_manager_callback(callback_function, metric)
+        self._worker.register_manager_callback(callback_function, metric, callback_data)
 

@@ -501,7 +501,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def set_all_running_compute_units(self, pilot_id, state, log):
+    def change_compute_units (self, filter_dict, set_dict, push_dict):
         """Update the state and the log of all compute units belonging to
            a specific pilot.
         """
@@ -510,26 +510,56 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        self._w.update({"pilot": pilot_id, "state": { "$in": [EXECUTING, PENDING_EXECUTION, SCHEDULING]}},
-                       {"$set": {"state": state},
-                        "$push": {"statehistory": {"state": state, "timestamp": ts},
-                                  "log": log}
-                       })
+        self._w.update(spec     = filter_dict, 
+                       document = {"$set" : set_dict, 
+                                   "$push": push_dict}, 
+                       multi    = True)
+        
 
     #--------------------------------------------------------------------------
     #
-    def set_compute_unit_state(self, unit_id, state, log):
-        """Update the state and the log of one or more ComputeUnit(s).
+    def set_compute_unit_state(self, unit_ids, state, log, src_states=None):
+        """
+        Update the state and the log of one or more ComputeUnit(s).
+        If src_states is given, this will only update units which are currently
+        in those src states.
         """
         ts = datetime.datetime.utcnow()
 
-        if self._s is None:
+        if  not unit_ids :
+            return
+
+        if  self._s is None:
             raise Exception("No active session.")
 
-        self._w.update({"_id": ObjectId(unit_id)},
-                       {"$set":     {"state": state},
-                        "$push": {"statehistory": {"state": state, "timestamp": ts}},
-                        "$pushAll": {"log": log}})
+        # Make sure we work on a list.
+        if not isinstance(unit_ids, list):
+            unit_ids = [unit_ids]
+
+        if src_states and not isinstance (src_states, list) :
+            src_states = [src_states]
+
+        bulk = self._w.initialize_ordered_bulk_op ()
+
+        for uid in unit_ids :
+
+            if src_states :
+                bulk.find   ({"_id"     : ObjectId(uid), 
+                              "state"   : {"$in"  : src_states} }) \
+                    .update ({"$set"    : {"state": state},
+                              "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
+                              "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+            else :
+                bulk.find   ({"_id"     : ObjectId(uid)}) \
+                    .update ({"$set"    : {"state": state},
+                              "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
+                              "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+
+        result = bulk.execute()
+
+        # TODO: log result.
+        # WHY DON'T WE HAVE A LOGGER HERE?
+
 
     #--------------------------------------------------------------------------
     #
@@ -679,13 +709,35 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def unit_manager_list_compute_units(self, unit_manager_uid):
+    def unit_manager_list_compute_units(self, unit_manager_uid, pilot_uid=None):
         """ Lists all compute units associated with a unit manager.
         """
-        if self._s is None:
+        # FIXME: why is this call not updating local unit state?
+        if  self._s is None:
             raise Exception("No active session.")
 
-        cursor = self._w.find({"unitmanager": unit_manager_uid})
+        if  pilot_uid :
+            cursor = self._w.find({"unitmanager": unit_manager_uid, 
+                                   "pilot"      : pilot_uid})
+        else :
+            cursor = self._w.find({"unitmanager": unit_manager_uid})
+
+        # cursor -> dict
+        unit_ids = []
+        for obj in cursor:
+            unit_ids.append(str(obj['_id']))
+        return unit_ids
+
+    #--------------------------------------------------------------------------
+    #
+    def pilot_list_compute_units(self, pilot_uid):
+        """ Lists all compute units associated with a unit manager.
+        """
+        # FIXME: why is this call not updating local unit state?
+        if  self._s is None:
+            raise Exception("No active session.")
+
+        cursor = self._w.find({"pilot"      : pilot_uid})
 
         # cursor -> dict
         unit_ids = []
@@ -766,6 +818,7 @@ class Session():
             unit_json = {
                 "_id":           ObjectId(unit.uid),
                 "description":   unit.description.as_dict(),
+                "restartable":   unit.description.restartable,
                 "unitmanager":   unit_manager_uid,
                 "pilot":         None,
                 "pilot_sandbox": None,
@@ -781,13 +834,13 @@ class Session():
                 "stdout":        None,
                 "stderr":        None,
                 "log":           unit_log,
-                "FTW_Input_Status": None,
-                "FTW_Input_Directives": None,
-                "Agent_Input_Status": None,
-                "Agent_Input_Directives": None,
-                "FTW_Output_Status": None,
-                "FTW_Output_Directives": None,
-                "Agent_Output_Status": None,
+                "FTW_Input_Status":        None,
+                "FTW_Input_Directives":    None,
+                "Agent_Input_Status":      None,
+                "Agent_Input_Directives":  None,
+                "FTW_Output_Status":       None,
+                "FTW_Output_Directives":   None,
+                "Agent_Output_Status":     None,
                 "Agent_Output_Directives": None
             }
             unit_docs.append(unit_json)

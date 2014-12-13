@@ -8,7 +8,7 @@ What if you had two different executables to run? What if this second set of
 executables had some dependencies on data from A? Can you use one RADICAL-Pilot
 to run both jobs? Yes!
 
-The below example submits a set of echo jobs (set A) using RADICAL-Pilot, and
+The example below submits a set of echo jobs (set A) using RADICAL-Pilot, and
 for every successful job (with state ``DONE``), it submits another job (set B)
 to the same Pilot-Job.
 
@@ -19,7 +19,7 @@ as a slot becomes available – i.e. {a2} could finish before {a1}.
 
 The code below demonstrates this behavior. As soon as there is a slot available
 to run a job in B (i.e. a job in A has completed), it executes the job in B.
-This keeps the RADICAL-Pilot utilization high. 
+This keeps the RADICAL-Pilot throughput high. 
 
 ------------
 Preparation
@@ -76,7 +76,7 @@ and change the code below accordging to the instructions in the comments.
 Execution
 ----------
 
-** This assumes you have installed RADICAL-Pilot either globally or in a 
+**This assumes you have installed RADICAL-Pilot either globally or in a 
 Python virtualenv. You also need access to a MongoDB server.**
 
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 

@@ -44,6 +44,23 @@ class OutputFileTransferWorker(threading.Thread):
         self._worker_number = number
         self.name = "OutputFileTransferWorker-%s" % str(self._worker_number)
 
+        # Stop event can be set to terminate the main loop
+        self._stop = threading.Event()
+        self._stop.clear()
+
+
+    # ------------------------------------------------------------------------
+    #
+    def stop(self):
+        """stop() signals the process to finish up and terminate.
+        """
+        logger.error("otransfer %s stopping" % (self.name))
+        self._stop.set()
+        self.join()
+        logger.error("otransfer %s stopped" % (self.name))
+      # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
+      #             (self.name, self.ident, self.unit_manager_id))
+
     # ------------------------------------------------------------------------
     #
     def run(self):
@@ -64,7 +81,7 @@ class OutputFileTransferWorker(threading.Thread):
                 logger.error("Connection error: %s. %s" % (str(ex), traceback.format_exc()))
                 return
 
-            while True:
+            while not self._stop.is_set():
                 compute_unit = None
 
                 # See if we can find a ComputeUnit that is waiting for
@@ -90,8 +107,6 @@ class OutputFileTransferWorker(threading.Thread):
                     # AM: The code below seems wrong when BULK_LIMIT != 1 -- the
                     # compute_unit will be a list then I assume.
                     try:
-                        log_messages = []
-
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) wit SAGA.
                         compute_unit_id = str(compute_unit["_id"])
@@ -127,7 +142,9 @@ class OutputFileTransferWorker(threading.Thread):
                                        'FTW_Output_Directives.target': sd['target'],
                                        },
                                 update={'$set': {'FTW_Output_Directives.$.state': EXECUTING},
-                                        '$push': {'log': 'Starting transfer of %s' % source}
+                                        '$push': {'log': {
+                                            'timestamp': datetime.datetime.utcnow(),
+                                            'logentry': 'Starting transfer of %s' % source}}
                                 }
                             )
 
@@ -139,8 +156,6 @@ class OutputFileTransferWorker(threading.Thread):
                                 abs_target = "file://localhost%s" % os.path.abspath(target)
 
                             log_msg = "Transferring output file %s -> %s" % (abs_source, abs_target)
-                            logmessage = "Transferred output file %s -> %s" % (abs_source, abs_target)
-                            log_messages.append(log_msg)
                             logger.debug(log_msg)
 
                             logger.debug ("saga.fs.File ('%s')" % saga.Url(abs_source))
@@ -165,22 +180,25 @@ class OutputFileTransferWorker(threading.Thread):
                                        'FTW_Output_Directives.target': sd['target'],
                                        },
                                 update={'$set': {'FTW_Output_Directives.$.state': DONE},
-                                        '$push': {'log': logmessage}
+                                        '$push': {'log': {
+                                            'timestamp': datetime.datetime.utcnow(),
+                                            'logentry': log_msg}}
                                 }
                             )
 
                     except Exception, ex:
                         # Update the CU's state to 'FAILED'.
                         ts = datetime.datetime.utcnow()
-                        log_messages = "Output transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
+                        log_message = "Output transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
                         # TODO: not only mark the CU as failed, but also the specific Directive
                         um_col.update(
-                            {"_id": ObjectId(compute_unit_id)},
-                            {"$set": {"state": FAILED},
-                             "$push": {"statehistory": {"state": FAILED, "timestamp": ts}},
-                             "$push": {"log": log_messages}}
+                            {'_id': ObjectId(compute_unit_id)},
+                            {'$set': {'state': FAILED},
+                             '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
+                             '$push': {'log': {'logentry': log_message, 'timestamp': ts}}
+                            }
                         )
-                        logger.error(log_messages)
+                        logger.error(log_message)
 
 
                 # Code below is only to be run by the "first" or only worker
@@ -208,7 +226,11 @@ class OutputFileTransferWorker(threading.Thread):
                         # All Output Directives for this FTW are done, mark the CU accordingly
                         um_col.update({"_id": ObjectId(cu["_id"])},
                                       {'$set': {'FTW_Output_Status': DONE},
-                                       '$push': {'log': 'All FTW output staging directives done - %d.' % self._worker_number}})
+                                       '$push': {'log': {
+                                           'timestamp': datetime.datetime.utcnow(),
+                                           'logentry': 'All FTW output staging directives done - %d.' % self._worker_number}}
+                                       }
+                        )
 
                     # See if there are any Agent Output Directives still pending
                     if cu['Agent_Output_Status'] == EXECUTING and \
@@ -216,8 +238,11 @@ class OutputFileTransferWorker(threading.Thread):
                         # All Output Directives for this Agent are done, mark the CU accordingly
                         um_col.update({"_id": ObjectId(cu["_id"])},
                                       {'$set': {'Agent_Output_Status': DONE},
-                                       '$push': {'log': 'All Agent Output Staging Directives done-%d.' % self._worker_number}
-                                      })
+                                       '$push': {'log': {
+                                           'timestamp': datetime.datetime.utcnow(),
+                                           'logentry': 'All Agent Output Staging Directives done-%d.' % self._worker_number}}
+                                      }
+                        )
 
                 #
                 # Check for all CUs if both Agent and FTW staging is done, we can then mark the CU Done
