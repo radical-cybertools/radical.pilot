@@ -757,6 +757,9 @@ echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent for $CORES cores."
 echo "# CMDLINE: $AGENT_CMD"
 
+# enable DebugHelper in agent
+export RADICAL_DEBUG=TRUE
+
 profile_event 'agent start'
 
 $AGENT_CMD

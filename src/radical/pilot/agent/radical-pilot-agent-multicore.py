@@ -130,8 +130,10 @@ import threading
 import subprocess
 import multiprocessing
 
+import radical.utils as ru
+
 from bson.objectid import ObjectId
-from operator import mul
+from operator      import mul
 
 
 # this needs git attribute 'ident' set for this file
@@ -3687,6 +3689,7 @@ class Agent (object):
         prof ('Agent init')
 
         self._log                   = logger
+        self._debug_helper          = ru.DebugHelper()
         self._pilot_id              = pilot_id
         self._runtime               = runtime
         self._terminate             = threading.Event()
