@@ -51,12 +51,13 @@ _EVENT_ENCODING = {
             rp.STAGING_INPUT           :  4,
             rp.PENDING_EXECUTION       :  5,
             rp.SCHEDULING              :  6,
-            rp.EXECUTING               :  7,
-            rp.PENDING_OUTPUT_STAGING  :  8,
-            rp.STAGING_OUTPUT          :  9,
-            rp.DONE                    : 10,
-            rp.CANCELED                : 11,
-            rp.FAILED                  : 12
+            "Allocating"               :  7,
+            rp.EXECUTING               :  8,
+            rp.PENDING_OUTPUT_STAGING  :  9,
+            rp.STAGING_OUTPUT          : 10,
+            rp.DONE                    : 11,
+            rp.CANCELED                : 12,
+            rp.FAILED                  : 13
         }
     }
 
@@ -78,6 +79,7 @@ _EVENT_ENCODING = {
 # 
 # PENDING_EXECUTION           
 # SCHEDULING                  
+# ALLOCATING
 # EXECUTING                   
 # 
 # PENDING_OUTPUT_TRANSFER     
@@ -521,7 +523,7 @@ def plot_session (db, session, cache, term) :
             else :
 
                 slotidxs = list()
-                slotstr  = pilot['slothistory'][0]
+                slotstr  = pilot['slothistory'][0]['slotstate']
                 slotnum  = slotstr.count ('-') + slotstr.count ('+')
 
                 nodesize = max (nodesize, pilot['cores_per_node'])
@@ -537,9 +539,9 @@ def plot_session (db, session, cache, term) :
                     used = False
                     for entry in pilot['slothistory'][1:] :
 
-                        seconds   = ru.time_diff (start, entry[0])
+                        seconds   = ru.time_diff (start, entry['timestamp'])
                         maxtime   = max (maxtime, seconds)
-                        slotstate = entry[1][slotidx]
+                        slotstate = entry['slotstate'][slotidx]
 
                         if  slotstate == '-' : 
                             if  used :
@@ -661,12 +663,13 @@ def plot_session (db, session, cache, term) :
               rp.STAGING_INPUT           : ' 4',
               rp.PENDING_EXECUTION       : ' 5',
               rp.SCHEDULING              : ' 6',
-              rp.EXECUTING               : ' 7',
-              rp.PENDING_OUTPUT_STAGING  : ' 8',
-              rp.STAGING_OUTPUT          : ' 9',
-              rp.DONE                    : '10',
-              rp.CANCELED                : '11',
-              rp.FAILED                  : '12'}
+              "Allocating"               : ' 8',
+              rp.EXECUTING               : ' 8',
+              rp.PENDING_OUTPUT_STAGING  : ' 9',
+              rp.STAGING_OUTPUT          : '10',
+              rp.DONE                    : '11',
+              rp.CANCELED                : '12',
+              rp.FAILED                  : '13'}
 
     for pilot in docs['pilot'] :
 

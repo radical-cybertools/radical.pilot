@@ -215,12 +215,13 @@ do for [term_i=1:words(terms)] {
                 "TRANSF. INPUT  "  4, \
                 "PEND. EXECUTION"  5, \
                 "SCHEDULING     "  6, \
-                "EXECUTING      "  7, \
-                "PEND.   OUTPUT "  8, \
-                "TRANSF. OUTPUT "  9, \
-                "DONE           " 10, \
-                "CANCELED       " 11, \
-                "FAILED         " 12)
+                "ALLOCATING     "  7, \
+                "EXECUTING      "  8, \
+                "PEND.   OUTPUT "  9, \
+                "TRANSF. OUTPUT " 10, \
+                "DONE           " 11, \
+                "CANCELED       " 12, \
+                "FAILED         " 13)
 
     set xlabel ''
     set ylabel "UNITS\n[states]" offset second -0.06,0
