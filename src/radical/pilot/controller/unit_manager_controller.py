@@ -272,7 +272,6 @@ class UnitManagerController(threading.Thread):
                 # or triggered by a tailable MongoDB cursor, etc.
                 unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
 
-
                 for unit in unit_list:
                     unit_id = str(unit["_id"])
 

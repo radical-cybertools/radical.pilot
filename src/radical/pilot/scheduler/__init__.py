@@ -18,8 +18,12 @@ from backfilling       import BackfillingScheduler
 # -----------------------------------------------------------------------------
 # Constants
 SCHED_ROUND_ROBIN       = "round_robin"
-SCHED_DIRECT_SUBMISSION = "direct_submission"
+SCHED_DIRECT            = "direct_submission"
 SCHED_BACKFILLING       = "backfilling"
+
+# alias:
+SCHED_DIRECT_SUBMISSION = SCHED_DIRECT
+
 
 # -----------------------------------------------------------------------------
 # 

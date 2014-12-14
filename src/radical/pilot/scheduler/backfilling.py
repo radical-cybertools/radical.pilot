@@ -19,6 +19,10 @@ from radical.pilot.utils.logger        import logger
 from radical.pilot.scheduler.interface import Scheduler
 from radical.pilot.states              import *
 
+# to reduce roundtrips, we can oversubscribe a pilot, and schedule more units
+# than it can immediately execute.  Value is in %.
+OVERSUBSCRIPTION_RATE = 200
+
 # -----------------------------------------------------------------------------
 # 
 class BackfillingScheduler(Scheduler):
@@ -72,32 +76,6 @@ class BackfillingScheduler(Scheduler):
         for pid in self.pilots :
             print "%s (%-15s: %s)" % (pid, self.pilots[pid]['state'], self.pilots[pid]['resource'])
         print '----------------------------------------'
-
-
-    # -------------------------------------------------------------------------
-    #
-    def _update_caps (self) :
-
-        with self.lock :
-
-            # we keep track of available cores on our own.  However, we should sync
-            # our bookkeeping with reality now and then...  
-            #
-            # NOTE: Not sure yet when this methid will be called -- calling it too
-            # frequently will slow scheduling down significantly, calling it very
-            # infrequently can result in invalid schedules.  Accuracy vs.
-            # performance...
-
-            pilot_docs = self._db.get_pilots (pilot_ids=self.pilots.keys ())
-
-            for pilot_doc in pilot_docs :
-
-                pid = str (pilot_doc['_id'])
-                if  not pid in self.pilots :
-                    raise RuntimeError ("Got invalid pilot doc (%s)" % pid)
-
-                self.pilots[pid]['state'] = str(pilot_doc.get ('state'))
-                self.pilots[pid]['cap']   = int(pilot_doc.get ('capability', 0))
 
 
     # -------------------------------------------------------------------------
@@ -166,7 +144,7 @@ class BackfillingScheduler(Scheduler):
 
                             del self.runqs[pid][uid]
                             self.pilots[pid]['caps'] += unit.description.cores
-                            self._reschedule (pid=pid)
+                            self._reschedule (target_pid=pid)
                             found_unit = True
 
                       #     logger.debug ('unit %s frees %s cores on (-> %s)' \
@@ -203,7 +181,7 @@ class BackfillingScheduler(Scheduler):
     
                 if  state in [ACTIVE] :
                     # the pilot is now ready to be used
-                    self._reschedule (pid=pid)
+                    self._reschedule (target_pid=pid)
     
                 if  state in [DONE, FAILED, CANCELED] :
 
@@ -307,6 +285,10 @@ class BackfillingScheduler(Scheduler):
             self.pilots[pid]['resource'] = pilot.resource
             self.pilots[pid]['sandbox']  = pilot.sandbox
 
+            if  OVERSUBSCRIPTION_RATE :
+                self.pilots[pid]['over']  = int(float(OVERSUBSCRIPTION_RATE * pilot.description.cores)/100.0)
+                self.pilots[pid]['caps'] += self.pilots[pid]['over']
+
             # make sure we register callback only once per pmgr
             pmgr = pilot.pilot_manager
             if  pmgr not in self.pmgrs :
@@ -314,7 +296,7 @@ class BackfillingScheduler(Scheduler):
                 pmgr.register_callback (self._pilot_state_callback)
 
             # if we have any pending units, we better serve them now...
-            self._reschedule (pid=pid)
+            self._reschedule (target_pid=pid)
 
 
     # -------------------------------------------------------------------------
@@ -346,15 +328,15 @@ class BackfillingScheduler(Scheduler):
 
                 uid = unit.uid
                 
+                for pid in self.runqs :
+                    if  uid in self.runqs[pid] :
+                        raise RuntimeError ('Unit cannot be scheduled twice (%s)' % uid)
+
                 if  uid in self.waitq :
                     raise RuntimeError ('Unit cannot be scheduled twice (%s)' % uid)
 
                 if  unit.state not in [NEW, UNSCHEDULED] :
                     raise RuntimeError ('Unit %s not in NEW or UNSCHEDULED state (%s)' % unit.uid)
-
-                for pid in self.runqs :
-                    if  uid in self.runqs[pid] :
-                        raise RuntimeError ('Unit cannot be scheduled twice (%s)' % uid)
 
                 self.waitq[uid] = unit
 
@@ -391,14 +373,13 @@ class BackfillingScheduler(Scheduler):
 
     # -------------------------------------------------------------------------
     #
-    def _reschedule (self, pid=None, uid=None) :
+    def _reschedule (self, target_pid=None, uid=None) :
 
         with self.lock :
 
             # dig through the list of waiting CUs, and try to find a pilot for each
             # of them.  This enacts first-come-first-served, but will be unbalanced
-            # if the units in the queue are of different sizes (it is kind of
-            # opposite to backfilling -- its frontfilling ;).  That problem is
+            # if the units in the queue are of different sizes.  That problem is
             # ignored at this point.
             #
             # if any units get scheduled, we push a dictionary to the UM to enact
@@ -415,9 +396,9 @@ class BackfillingScheduler(Scheduler):
                 logger.warning ("cannot schedule -- no pilots available")
                 return 
 
-            if  pid and pid not in self.pilots :
-                logger.warning ("cannot schedule -- invalid target pilot %s" % pid)
-                raise RuntimeError ("Invalid pilot (%s)" % pid)
+            if  target_pid and target_pid not in self.pilots :
+                logger.warning ("cannot schedule -- invalid target pilot %s" % target_pid)
+                raise RuntimeError ("Invalid pilot (%s)" % target_pid)
                 
 
             schedule           = dict()
@@ -438,6 +419,7 @@ class BackfillingScheduler(Scheduler):
                 units_to_schedule.append (self.waitq[uid])
 
             else :
+                # just copy the whole waitq
                 for uid in self.waitq :
                     units_to_schedule.append (self.waitq[uid])
 

@@ -124,7 +124,6 @@ import optparse
 import logging
 import datetime
 import hostlist
-import tempfile
 import traceback
 import threading 
 import subprocess
@@ -304,7 +303,7 @@ profile_freqs = dict ()
 def prof (etype, uid="", msg="", tag="", logger=None) :
 
     if  logger :
-        logger ("%s -- %s (%s): %s" % (etype, msg, uid, tag))
+        logger ("%s -- %s (%s): %s", etype, msg, uid, tag)
 
 
     # whenever a tag changes (to a non-None value), the time since the last tag
@@ -363,7 +362,7 @@ def prof (etype, uid="", msg="", tag="", logger=None) :
     profile_handle.flush ()
 
 
-#---------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #
 def get_rusage () :
 
@@ -381,7 +380,7 @@ def get_rusage () :
          % (rtime, utime, stime, rss)
 
 
-#---------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------
 #
 def rec_makedir (target) :
 
@@ -425,7 +424,6 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
                           "stdout"      : out,
                           "stderr"      : err,
                           "logfile"     : log,
-                          "capability"  : 0,
                           "finished"    : now}
             })
 
@@ -462,7 +460,6 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
                       "stdout"      : out,
                       "stderr"      : err,
                       "logfile"     : log,
-                      "capability"  : 0,
                       "finished"    : now}
         })
 
@@ -494,7 +491,6 @@ def pilot_DONE(mongo_p, pilot_uid):
                       "stdout"      : out,
                       "stderr"      : err,
                       "logfile"     : log,
-                      "capability"  : 0,
                       "finished"    : now}
         })
 
@@ -505,8 +501,9 @@ class ExecutionEnvironment(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, lrms, scheduler, task_launcher, mpi_launcher, spawner) :
+    def __init__(self, name, logger, lrms, scheduler, task_launcher, mpi_launcher, spawner) :
 
+        self.name          = name
         self._log          = logger
         self.lrms          = lrms
         self.scheduler     = scheduler
@@ -555,14 +552,14 @@ class Scheduler(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lrms, logger, schedule_queue, execution_queue, 
+    def __init__(self, name, logger, lrms, schedule_queue, execution_queue, 
                  update_queue):
 
         threading.Thread.__init__(self)
 
         self.name             = name
-        self.lrms             = lrms
         self._log             = logger
+        self.lrms             = lrms
         self._schedule_queue  = schedule_queue
         self._execution_queue = execution_queue
         self._update_queue    = update_queue
@@ -594,7 +591,7 @@ class Scheduler(threading.Thread):
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            return implementation(name, lrms, logger, schedule_queue, 
+            return implementation(name, logger, lrms, schedule_queue, 
                                   execution_queue, update_queue)
 
         except KeyError:
@@ -699,7 +696,7 @@ class Scheduler(threading.Thread):
     #
     def run(self):
 
-        self._log.info("started %s." % self)
+        self._log.info("started %s.", self)
 
         while not self._terminate.isSet () :
 
@@ -716,7 +713,7 @@ class Scheduler(threading.Thread):
                         self._reschedule ()
 
                     else :
-                        self._log.error ("Unknown scheduler command: %s (ignored)" % command)
+                        self._log.error ("Unknown scheduler command: %s (ignored)", command)
 
                 else :
 
@@ -729,6 +726,7 @@ class Scheduler(threading.Thread):
 
 
             except Exception as e :
+                self._log.exception ('Error in scheduler loop: %s', e)
                 raise
 
 
@@ -738,10 +736,16 @@ class SchedulerContinuous(Scheduler):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, name, lrms, scheduler_queue, 
+    def __init__(self, name, logger, lrms, scheduler_queue, 
                  execution_queue, update_queue):
-        Scheduler.__init__(self, logger, name, lrms, scheduler_queue, 
+
+        self.slots            = None
+        self.slot_history     = None
+        self.slot_history_old = None
+
+        Scheduler.__init__(self, name, logger, lrms, scheduler_queue, 
                 execution_queue, update_queue)
+
 
     # --------------------------------------------------------------------------
     #
@@ -761,9 +765,9 @@ class SchedulerContinuous(Scheduler):
         #
         # We put it in a list because we care about (and make use of) the order.
         #
-        self._slots = []
+        self.slots = []
         for node in self.lrms.node_list:
-            self._slots.append({
+            self.slots.append({
                 'node': node,
                 # TODO: Maybe use the real core numbers in the case of 
                 # non-exclusive host reservations?
@@ -772,12 +776,9 @@ class SchedulerContinuous(Scheduler):
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
-        self._slot_history     = [self.slot_status(short=True)]
-        self._slot_history_old = None
+        self.slot_history     = [self.slot_status(short=True)]
+        self.slot_history_old = None
 
-        #self._capability = self._slots2caps(self._slots)
-        #self._capability     = self._slots2free(self._slots)
-        #self._capability_old = None
 
     # --------------------------------------------------------------------------
     #
@@ -790,9 +791,9 @@ class SchedulerContinuous(Scheduler):
         # Get the host and the core part
         [first_slot_host, first_slot_core] = first_slot.split(':')
         # Find the entry in the the all_slots list based on the host
-        slot_entry = (slot for slot in self._slots if slot["node"] == first_slot_host).next()
+        slot_entry = (slot for slot in self.slots if slot["node"] == first_slot_host).next()
         # Transform it into an index in to the all_slots list
-        all_slots_slot_index = self._slots.index(slot_entry)
+        all_slots_slot_index = self.slots.index(slot_entry)
 
         return all_slots_slot_index * self.lrms.cores_per_node + int(first_slot_core)
 
@@ -804,7 +805,7 @@ class SchedulerContinuous(Scheduler):
 
         if short:
             slot_matrix = ""
-            for slot in self._slots:
+            for slot in self.slots:
                 slot_matrix += "|"
                 for core in slot['cores']:
                     if core == FREE:
@@ -817,7 +818,7 @@ class SchedulerContinuous(Scheduler):
 
         else :
             slot_matrix = ""
-            for slot in self._slots:
+            for slot in self.slots:
                 slot_vector  = ""
                 for core in slot['cores']:
                     if core == FREE:
@@ -912,14 +913,14 @@ class SchedulerContinuous(Scheduler):
     #
     def _find_slots_single_cont(self, cores_requested):
 
-        for slot in self._slots:
+        for slot in self.slots:
             slot_node = slot['node']
             slot_cores = slot['cores']
 
             slot_cores_offset = self._find_cores_cont(slot_cores, cores_requested, FREE)
 
             if slot_cores_offset is not None:
-                self._log.info('Node %s satisfies %d cores at offset %d' %
+                self._log.info('Node %s satisfies %d cores at offset %d',
                               (slot_node, cores_requested, slot_cores_offset))
                 return ['%s:%d' % (slot_node, core) for core in
                         range(slot_cores_offset, slot_cores_offset + cores_requested)]
@@ -934,24 +935,24 @@ class SchedulerContinuous(Scheduler):
 
         # Convenience aliases
         cores_per_node = self.lrms.cores_per_node
-        all_slots = self._slots
+        all_slots = self.slots
 
         # Glue all slot core lists together
         all_slot_cores = [core for node in [node['cores'] for node in all_slots] for core in node]
-        # self._log.debug("all_slot_cores: %s" % all_slot_cores)
+        # self._log.debug("all_slot_cores: %s", all_slot_cores)
 
         # Find the start of the first available region
         all_slots_first_core_offset = self._find_cores_cont(all_slot_cores, cores_requested, FREE)
-        self._log.debug("all_slots_first_core_offset: %s" % all_slots_first_core_offset)
+        self._log.debug("all_slots_first_core_offset: %s", all_slots_first_core_offset)
         if all_slots_first_core_offset is None:
             return None
 
         # Determine the first slot in the slot list
         first_slot_index = all_slots_first_core_offset / cores_per_node
-        self._log.debug("first_slot_index: %s" % first_slot_index)
+        self._log.debug("first_slot_index: %s", first_slot_index)
         # And the core offset within that node
         first_slot_core_offset = all_slots_first_core_offset % cores_per_node
-        self._log.debug("first_slot_core_offset: %s" % first_slot_core_offset)
+        self._log.debug("first_slot_core_offset: %s", first_slot_core_offset)
 
         # Note: We subtract one here, because counting starts at zero;
         #       Imagine a zero offset and a count of 1, the only core used 
@@ -959,21 +960,21 @@ class SchedulerContinuous(Scheduler):
         #       TODO: Verify this claim :-)
         all_slots_last_core_offset = (first_slot_index * cores_per_node) +\
                                      first_slot_core_offset + cores_requested - 1
-        self._log.debug("all_slots_last_core_offset: %s" % all_slots_last_core_offset)
+        self._log.debug("all_slots_last_core_offset: %s", all_slots_last_core_offset)
         last_slot_index = (all_slots_last_core_offset) / cores_per_node
-        self._log.debug("last_slot_index: %s" % last_slot_index)
+        self._log.debug("last_slot_index: %s", last_slot_index)
         last_slot_core_offset = all_slots_last_core_offset % cores_per_node
-        self._log.debug("last_slot_core_offset: %s" % last_slot_core_offset)
+        self._log.debug("last_slot_core_offset: %s", last_slot_core_offset)
 
         # Convenience aliases
-        last_slot = self._slots[last_slot_index]
-        self._log.debug("last_slot: %s" % last_slot)
+        last_slot = self.slots[last_slot_index]
+        self._log.debug("last_slot: %s", last_slot)
         last_node = last_slot['node']
-        self._log.debug("last_node: %s" % last_node)
-        first_slot = self._slots[first_slot_index]
-        self._log.debug("first_slot: %s" % first_slot)
+        self._log.debug("last_node: %s", last_node)
+        first_slot = self.slots[first_slot_index]
+        self._log.debug("first_slot: %s", first_slot)
         first_node = first_slot['node']
-        self._log.debug("first_node: %s" % first_node)
+        self._log.debug("first_node: %s", first_node)
 
         # Collect all node:core slots here
         task_slots = []
@@ -1002,12 +1003,12 @@ class SchedulerContinuous(Scheduler):
     def _change_slot_states(self, task_slots, new_state):
 
         # Convenience alias
-        all_slots = self._slots
+        all_slots = self.slots
 
-        # logger.debug("change_slot_states: unit slots: %s" % task_slots)
+        # logger.debug("change_slot_states: unit slots: %s", task_slots)
 
         for slot in task_slots:
-            # logger.debug("change_slot_states: slot content: %s" % slot)
+            # logger.debug("change_slot_states: slot content: %s", slot)
             # Get the node and the core part
             [slot_node, slot_core] = slot.split(':')
             # Find the entry in the the all_slots list
@@ -1019,11 +1020,11 @@ class SchedulerContinuous(Scheduler):
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
         # ensue.  We thus limit the slot history size to 4MB, to keep sufficient
         # space for the actual operational data
-        if len(str(self._slot_history)) < 4 * 1024 * 1024 :
-            self._slot_history.append(self.slot_status (short=True))
+        if len(str(self.slot_history)) < 4 * 1024 * 1024 :
+            self.slot_history.append(self.slot_status (short=True))
         else:
             # just replace the last entry with the current one.
-            self._slot_history[-1] = self.slot_status(short=True)
+            self.slot_history[-1] = self.slot_status(short=True)
 
 
 # ------------------------------------------------------------------------------
@@ -1033,7 +1034,7 @@ class SchedulerScattered(Scheduler):
     pass
 
 
-# ------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class SchedulerTorus(Scheduler):
 
@@ -1047,14 +1048,20 @@ class SchedulerTorus(Scheduler):
     TORUS_BLOCK_COOR   = 1
     TORUS_BLOCK_NAME   = 2
     TORUS_BLOCK_STATUS = 3
-    #
-    ##########################################################################
+
 
     # --------------------------------------------------------------------------
-    def __init__(self, logger, name, lrms, scheduler_queue, 
+    def __init__(self, name, logger, lrms, scheduler_queue, 
                  execution_queue, update_queue):
-        Scheduler.__init__(self, logger, name, lrms, scheduler_queue, 
+
+        self.slots            = None
+        self.slot_history     = None
+        self.slot_history_old = None
+        self._cores_per_node  = None
+
+        Scheduler.__init__(self, name, logger, lrms, scheduler_queue, 
                 execution_queue, update_queue)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1066,11 +1073,12 @@ class SchedulerTorus(Scheduler):
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
-        self._slot_history     = [self.slot_status(short=True)]
-        self._slot_history_old = None
+        self.slot_history     = [self.slot_status(short=True)]
+        self.slot_history_old = None
 
         # TODO: get rid of field below
-        self._slots = 'bogus'
+        self.slots = 'bogus'
+
 
     # --------------------------------------------------------------------------
     #
@@ -1100,6 +1108,7 @@ class SchedulerTorus(Scheduler):
                 slot_matrix += "%s: %s\n" % (slot[self.TORUS_BLOCK_NAME].ljust(24), slot_vector)
             return slot_matrix
 
+
     # --------------------------------------------------------------------------
     #
     # Allocate a number of cores
@@ -1112,12 +1121,12 @@ class SchedulerTorus(Scheduler):
         block = self.lrms.torus_block
         sub_block_shape_table = self.lrms.shape_table
 
-        self._log.info("Trying to allocate %d core(s)." % cores_requested)
+        self._log.info("Trying to allocate %d core(s).", cores_requested)
 
         if cores_requested % self.lrms.cores_per_node:
             num_cores = int(math.ceil(cores_requested / float(self.lrms.cores_per_node))) \
                         * self.lrms.cores_per_node
-            self._log.error('Core not a multiple of %d, increasing request to %d!' %
+            self._log.error('Core not multiple of %d, increasing to %d!',
                            (self.lrms.cores_per_node, num_cores))
 
         num_nodes = cores_requested / self.lrms.cores_per_node
@@ -1134,15 +1143,13 @@ class SchedulerTorus(Scheduler):
 
         end = self.get_last_node(corner, sub_block_shape)
         self._log.debug('Allocating sub-block of %d node(s) with dimensions %s'
-                       ' at offset %d with corner %s and end %s.' %
+                       ' at offset %d with corner %s and end %s.',
                        (num_nodes, self.lrms.shape2str(sub_block_shape), offset,
                         self.lrms.loc2str(corner), self.lrms.loc2str(end)))
 
         return corner, sub_block_shape
-    #
-    ##########################################################################
 
-    ##########################################################################
+    # --------------------------------------------------------------------------
     #
     # Allocate a sub-block within a block
     # Currently only works with offset that are exactly the sub-block size
@@ -1169,12 +1176,12 @@ class SchedulerTorus(Scheduler):
                         not_free = True
                         break
                 except IndexError:
-                    self._log.error('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.' %(
-                        num_nodes, offset, peek))
+                    self._log.exception('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.', 
+                            (num_nodes, offset, peek))
 
             if not_free == True:
                 # No success at this offset
-                self._log.info("No free nodes found at this offset: %d." % offset)
+                self._log.info("No free nodes found at this offset: %d.", offset)
 
                 # If we weren't the last attempt, then increase the offset and iterate again.
                 if offset + num_nodes < self._block2num_nodes(block):
@@ -1186,24 +1193,22 @@ class SchedulerTorus(Scheduler):
             else:
                 # At this stage we have found a free spot!
 
-                self._log.info("Free nodes found at this offset: %d." % offset)
+                self._log.info("Free nodes found at this offset: %d.", offset)
 
                 # Then mark the nodes busy
                 for peek in range(num_nodes):
                     block[offset+peek][self.TORUS_BLOCK_STATUS] = BUSY
 
                 return offset
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Return the number of nodes in a block
     #
     def _block2num_nodes(self, block):
         return len(block)
-    #
-    ##########################################################################
+
 
     # --------------------------------------------------------------------------
     #
@@ -1214,14 +1219,14 @@ class SchedulerTorus(Scheduler):
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
         # ensue.  We thus limit the slot history size to 4MB, to keep sufficient
         # space for the actual operational data
-        if len(str(self._slot_history)) < 4 * 1024 * 1024 :
-            self._slot_history.append(self.slot_status(short=True))
+        if len(str(self.slot_history)) < 4 * 1024 * 1024 :
+            self.slot_history.append(self.slot_status(short=True))
         else:
             # just replace the last entry with the current one.
-            self._slot_history[-1] = self.slot_status(short=True)
+            self.slot_history[-1] = self.slot_status(short=True)
 
 
-    ##########################################################################
+    # --------------------------------------------------------------------------
     #
     # Free up an allocation
     #
@@ -1233,16 +1238,15 @@ class SchedulerTorus(Scheduler):
         # Location of where to start freeing
         offset = self.corner2offset(block, corner)
 
-        self._log.info("Freeing %d nodes starting at %d." % (num_nodes, offset))
+        self._log.info("Freeing %d nodes starting at %d.", num_nodes, offset)
 
         for peek in range(num_nodes):
             assert block[offset+peek][self.TORUS_BLOCK_STATUS] == BUSY, \
                 'Block %d not Free!' % block[offset+peek]
             block[offset+peek][self.TORUS_BLOCK_STATUS] = FREE
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Follow coordinates to get the last node
     #
@@ -1251,10 +1255,9 @@ class SchedulerTorus(Scheduler):
         for dim in self.lrms.torus_dimension_labels:
             ret[dim] = origin[dim] + shape[dim] -1
         return ret
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Return the number of nodes for the given block shape
     #
@@ -1265,10 +1268,9 @@ class SchedulerTorus(Scheduler):
             nodes *= shape[dim]
 
         return nodes
-    #
-    ##########################################################################
 
-    ##########################################################################
+
+    # --------------------------------------------------------------------------
     #
     # Return the offset into the node list from a corner
     #
@@ -1283,8 +1285,6 @@ class SchedulerTorus(Scheduler):
             offset += 1
 
         return offset
-    #
-    ##########################################################################
 
 
 # ==============================================================================
@@ -1296,11 +1296,11 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
+    def __init__(self, name, logger, scheduler):
 
-        self.name = name
+        self.name      = name
+        self._log      = logger
         self.scheduler = scheduler
-        self._log = logger
 
         self.launch_command = None
         self.configure()
@@ -1309,7 +1309,7 @@ class LaunchMethod(object):
         if self.launch_command is None:
             raise Exception("Launch command not found for LaunchMethod '%s'" % name)
 
-        logger.info("Discovered launch command: '%s'." % self.launch_command)
+        logger.info("Discovered launch command: '%s'.", self.launch_command)
 
     # --------------------------------------------------------------------------
     #
@@ -1338,7 +1338,7 @@ class LaunchMethod(object):
                 LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
                 LAUNCH_METHOD_SSH           : LaunchMethodSSH
             }[name]
-            return implementation(name, scheduler, logger)
+            return implementation(name, logger, scheduler)
         except KeyError:
             raise Exception("LaunchMethod '%s' unknown!" % name)
 
@@ -1381,7 +1381,7 @@ class LaunchMethod(object):
         def is_exe(fpath):
             return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-        fpath, fname = os.path.split(program)
+        fpath, _ = os.path.split(program)
         if fpath:
             if is_exe(program):
                 return program
@@ -1393,20 +1393,23 @@ class LaunchMethod(object):
         return None
 
 
-# ------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodFORK(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
         # "Regular" tasks
         self.launch_command = ''
+
 
     # --------------------------------------------------------------------------
     #
@@ -1421,14 +1424,17 @@ class LaunchMethodFORK(LaunchMethod):
         return command, launch_script_name
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodMPIRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1460,6 +1466,8 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
         return mpirun_command, launch_script_name
 
+    # --------------------------------------------------------------------------
+    #
     @classmethod
     def create_export_vars(cls):
         # Class method so that other LM's can also benefit from this.
@@ -1473,14 +1481,17 @@ class LaunchMethodMPIRUN(LaunchMethod):
         return export_vars
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodSSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1504,6 +1515,7 @@ class LaunchMethodSSH(LaunchMethod):
 
         self.launch_command = command
 
+
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
@@ -1524,20 +1536,24 @@ class LaunchMethodSSH(LaunchMethod):
         return task_command, ssh_cmdline
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodMPIEXEC(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
         # mpiexec (e.g. on SuperMUC)
         self.launch_command = self._which('mpiexec')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1559,20 +1575,24 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         return mpiexec_command, launch_script_name
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodAPRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
         # aprun: job launcher for Cray systems
         self.launch_command= self._which('aprun')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1589,17 +1609,26 @@ class LaunchMethodAPRUN(LaunchMethod):
         return aprun_command, launch_script_name
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodCCMRUN(LaunchMethod):
 
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, scheduler):
 
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
+
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # ccmrun: Cluster Compatibility Mode (CCM) job launcher for Cray systems
         self.launch_command= self._which('ccmrun')
 
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, opaque_slot):
 
@@ -1613,14 +1642,23 @@ class LaunchMethodCCMRUN(LaunchMethod):
         return ccmrun_command, launch_script_name
 
 
-#-------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
 #
 class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
     # TODO: This needs both mpirun and ccmrun
 
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, scheduler):
 
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
+        self.mpirun_command = self._which('mpirun')
+
+
+    # --------------------------------------------------------------------------
+    #
     def configure(self):
         # ccmrun: Cluster Compatibility Mode job launcher for Cray systems
         self.launch_command= self._which('ccmrun')
@@ -1629,6 +1667,9 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         if not self.mpirun_command:
             raise Exception("mpirun not found!")
 
+
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
 
@@ -1650,20 +1691,24 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         return mpirun_ccmrun_command, launch_script_name
 
 
-#-------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
 #
 class LaunchMethodRUNJOB(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
         # runjob: job launcher for IBM BG/Q systems, e.g. Joule
         self.launch_command= self._which('runjob')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1714,20 +1759,24 @@ class LaunchMethodRUNJOB(LaunchMethod):
         return runjob_command, launch_script_name
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = self._which('dplace')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1748,14 +1797,17 @@ class LaunchMethodDPLACE(LaunchMethod):
         return dplace_command, launch_script_name
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodMPIRUNRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1782,15 +1834,20 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         return mpirun_rsh_command, launch_script_name
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodMPIRUNDPLACE(LaunchMethod):
     # TODO: This needs both mpirun and dplace
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
+        self.mpirun_command = None
+
 
     # --------------------------------------------------------------------------
     #
@@ -1798,6 +1855,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = self._which('dplace')
         self.mpirun_command = self._which('mpirun')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1818,7 +1876,8 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         return mpirun_dplace_command, launch_script_name
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodIBRUN(LaunchMethod):
     # NOTE: Don't think that with IBRUN it is possible to have
@@ -1826,14 +1885,17 @@ class LaunchMethodIBRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
         # ibrun: wrapper for mpirun at TACC
         self.launch_command = self._which('ibrun')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1854,20 +1916,24 @@ class LaunchMethodIBRUN(LaunchMethod):
         return ibrun_command, launch_script_name
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodPOE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, scheduler, logger):
-        LaunchMethod.__init__(self, name, scheduler, logger)
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
         self.launch_command = self._which('poe')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1901,6 +1967,7 @@ class LaunchMethodPOE(LaunchMethod):
         return poe_command, launch_script_name
 
 
+
 # ==============================================================================
 #
 # Base class for LRMS implementations.
@@ -1911,13 +1978,13 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, requested_cores, logger):
+    def __init__(self, name, logger, requested_cores):
 
-        self.name = name
-        self._log = logger
+        self.name            = name
+        self._log            = logger
         self.requested_cores = requested_cores
 
-        self._log.info("Configuring LRMS %s." % self.name)
+        self._log.info("Configuring LRMS %s.", self.name)
 
         self.slot_list = []
         self.node_list = []
@@ -1925,13 +1992,14 @@ class LRMS(object):
 
         self.configure()
 
-        logger.info("Discovered execution environment: %s" % self.node_list)
+        logger.info("Discovered execution environment: %s", self.node_list)
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
         if cores_avail < int(requested_cores):
             raise Exception("Not enough cores available (%s) to satisfy allocation request (%s)." \
                             % (str(cores_avail), str(requested_cores)))
+
 
     # --------------------------------------------------------------------------
     #
@@ -1965,14 +2033,16 @@ class LRMS(object):
                 LRMS_NAME_SLURM       : SLURMLRMS,
                 LRMS_NAME_TORQUE      : TORQUELRMS
             }[name]
-            return implementation(name, requested_cores, logger)
+            return implementation(name, logger, requested_cores)
         except KeyError:
             raise Exception("LRMS type '%s' unknown!" % name)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
         raise NotImplementedError("Configure not implemented for LRMS type: %s." % self.name)
+
 
 
 # ------------------------------------------------------------------------------
@@ -1981,14 +2051,15 @@ class TORQUELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, requested_cores, logger):
-        LRMS.__init__(self, name, requested_cores, logger)
+    def __init__(self, name, logger, requested_cores):
+        LRMS.__init__(self, name, logger, requested_cores)
+
 
     # --------------------------------------------------------------------------
     #
     def configure(self):
 
-        self._log.info("Configured to run on system with %s." % self.name)
+        self._log.info("Configured to run on system with %s.", self.name)
 
         torque_nodefile = os.environ.get('PBS_NODEFILE')
         if torque_nodefile is None:
@@ -1998,7 +2069,7 @@ class TORQUELRMS(LRMS):
 
         # Parse PBS the nodefile
         torque_nodes = [line.strip() for line in open(torque_nodefile)]
-        self._log.info("Found Torque PBS_NODEFILE %s: %s" % (torque_nodefile, torque_nodes))
+        self._log.info("Found Torque PBS_NODEFILE %s: %s", torque_nodefile, torque_nodes)
 
         # Number of cpus involved in allocation
         val = os.environ.get('PBS_NCPUS')
@@ -2029,7 +2100,7 @@ class TORQUELRMS(LRMS):
 
         if torque_cores_per_node in [None, 1] :
             # lets see if SAGA has been forthcoming with some information
-            self._log.warning("fall back to $SAGA_PPN : %s" % os.environ.get ('SAGA_PPN', None))
+            self._log.warning("fall back to $SAGA_PPN : %s", os.environ.get ('SAGA_PPN', None))
             torque_cores_per_node = int(os.environ.get('SAGA_PPN', torque_cores_per_node))
 
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
@@ -2044,7 +2115,7 @@ class TORQUELRMS(LRMS):
 
         # only unique node names
         torque_node_list_length = len(torque_node_list)
-        self._log.debug("Node list: %s(%d)" % (torque_node_list, torque_node_list_length))
+        self._log.debug("Node list: %s(%d)", torque_node_list, torque_node_list_length)
 
         if torque_num_nodes and torque_cores_per_node:
             # Modern style Torque
@@ -2058,14 +2129,16 @@ class TORQUELRMS(LRMS):
         self.node_list = torque_node_list
 
 
-# ------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class PBSProLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, requested_cores, logger):
-        LRMS.__init__(self, name, requested_cores, logger)
+    def __init__(self, name, logger, requested_cores):
+
+        LRMS.__init__(self, name, logger, requested_cores)
+
 
     # --------------------------------------------------------------------------
     #
@@ -2121,6 +2194,7 @@ class PBSProLRMS(LRMS):
         self.cores_per_node = pbspro_num_ppn
         self.node_list = pbspro_vnodes
 
+
     # --------------------------------------------------------------------------
     #
     def _parse_pbspro_vnodes(self):
@@ -2151,17 +2225,17 @@ class PBSProLRMS(LRMS):
                     break
 
         # Get the RHS of the entry
-        input = vnodes_str.split('=',1)[1].strip()
-        self._log.debug("input: %s" % input)
+        rhs = vnodes_str.split('=',1)[1].strip()
+        self._log.debug("input: %s", rhs)
 
         nodes_list = []
         # Break up the individual node partitions into vnode slices
         while True:
-            idx = input.find(')+(')
+            idx = rhs.find(')+(')
 
-            node_str = input[1:idx]
+            node_str = rhs[1:idx]
             nodes_list.append(node_str)
-            input = input[idx+2:]
+            rhs = rhs[idx+2:]
 
             if idx < 0:
                 break
@@ -2171,21 +2245,21 @@ class PBSProLRMS(LRMS):
         # Split out the slices into vnode name and cpu count
         for node_str in nodes_list:
             slices = node_str.split('+')
-            for slice in slices:
-                vnode, cpus = slice.split(':')
+            for _slice in slices:
+                vnode, cpus = _slice.split(':')
                 cpus = int(cpus.split('=')[1])
-                self._log.debug('vnode: %s cpus: %s' % (vnode, cpus))
+                self._log.debug("vnode: %s cpus: %s", vnode, cpus)
                 vnodes_list.append(vnode)
                 cpus_list.append(cpus)
 
-        self._log.debug("vnodes: %s" % vnodes_list)
-        self._log.debug("cpus: %s" % cpus_list)
+        self._log.debug("vnodes: %s", vnodes_list)
+        self._log.debug("cpus: %s", cpus_list)
 
         cpus_list = list(set(cpus_list))
         min_cpus = int(min(cpus_list))
 
         if len(cpus_list) > 1:
-            self._log.debug("Detected vnodes of different sizes: %s, the minimal is: %d." % (cpus_list, min_cpus))
+            self._log.debug("Detected vnodes of different sizes: %s, the minimal is: %d.", cpus_list, min_cpus)
 
         node_list = []
         for vnode in vnodes_list:
@@ -2194,20 +2268,23 @@ class PBSProLRMS(LRMS):
 
         # only unique node names
         node_list = list(set(node_list))
-        self._log.debug("Node list: %s" % node_list)
+        self._log.debug("Node list: %s", node_list)
 
         # Return the list of node names
         return node_list
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class SLURMLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, requested_cores, logger):
-        LRMS.__init__(self, name, requested_cores, logger)
+    def __init__(self, name, logger, requested_cores):
+
+        LRMS.__init__(self, name, logger, requested_cores)
+
 
     # --------------------------------------------------------------------------
     #
@@ -2221,7 +2298,7 @@ class SLURMLRMS(LRMS):
 
         # Parse SLURM nodefile environment variable
         slurm_nodes = hostlist.expand_hostlist(slurm_nodelist)
-        self._log.info("Found SLURM_NODELIST %s. Expanded to: %s" % (slurm_nodelist, slurm_nodes))
+        self._log.info("Found SLURM_NODELIST %s. Expanded to: %s", slurm_nodelist, slurm_nodes)
 
         # $SLURM_NPROCS = Total number of cores allocated for the current job
         slurm_nprocs_str = os.environ.get('SLURM_NPROCS')
@@ -2252,12 +2329,12 @@ class SLURMLRMS(LRMS):
 
         # Verify that $SLURM_NPROCS <= $SLURM_NNODES * $SLURM_CPUS_ON_NODE
         if not slurm_nprocs <= slurm_nnodes * slurm_cpus_on_node:
-            self._log.warning("$SLURM_NPROCS(%d) <= $SLURM_NNODES(%d) * $SLURM_CPUS_ON_NODE(%d)" % \
+            self._log.warning("$SLURM_NPROCS(%d) <= $SLURM_NNODES(%d) * $SLURM_CPUS_ON_NODE(%d)",
                             (slurm_nprocs, slurm_nnodes, slurm_cpus_on_node))
 
         # Verify that $SLURM_NNODES == len($SLURM_NODELIST)
         if slurm_nnodes != len(slurm_nodes):
-            self._log.error("$SLURM_NNODES(%d) != len($SLURM_NODELIST)(%d)" % \
+            self._log.error("$SLURM_NNODES(%d) != len($SLURM_NODELIST)(%d)",
                            (slurm_nnodes, len(slurm_nodes)))
 
         # Report the physical number of cores or the total number of cores
@@ -2267,14 +2344,17 @@ class SLURMLRMS(LRMS):
         self.node_list = slurm_nodes
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class SGELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, requested_cores, logger):
-        LRMS.__init__(self, name, requested_cores, logger)
+    def __init__(self, name, logger, requested_cores):
+
+        LRMS.__init__(self, name, logger, requested_cores)
+
 
     # --------------------------------------------------------------------------
     #
@@ -2294,26 +2374,29 @@ class SGELRMS(LRMS):
         sge_node_list = [line.split()[0] for line in open(sge_hostfile)]
         # Keep only unique nodes
         sge_nodes = list(set(sge_node_list))
-        self._log.info("Found PE_HOSTFILE %s. Expanded to: %s" % (sge_hostfile, sge_nodes))
+        self._log.info("Found PE_HOSTFILE %s. Expanded to: %s", sge_hostfile, sge_nodes)
 
         # Parse SGE hostfile for cores
         sge_cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
         sge_core_counts = list(set(sge_cores_count_list))
         sge_cores_per_node = min(sge_core_counts)
-        self._log.info("Found unique core counts: %s Using: %d" % (sge_core_counts, sge_cores_per_node))
+        self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
 
         self.node_list = sge_nodes
         self.cores_per_node = sge_cores_per_node
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LSFLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, requested_cores, logger):
-        LRMS.__init__(self, name, requested_cores, logger)
+    def __init__(self, name, logger, requested_cores):
+
+        LRMS.__init__(self, name, logger, requested_cores)
+
 
     # --------------------------------------------------------------------------
     #
@@ -2343,7 +2426,7 @@ class LSFLRMS(LRMS):
         # (That results in "-n" / "-R" unique hosts)
         #
         lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
-        self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s" %
+        self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
                       (lsf_hostfile, lsf_nodes))
         lsf_node_list = list(set(lsf_nodes))
 
@@ -2352,14 +2435,15 @@ class LSFLRMS(LRMS):
         lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
         lsf_core_counts = list(set(lsf_cores_count_list))
         lsf_cores_per_node = min(lsf_core_counts)
-        self._log.info("Found unique core counts: %s Using: %d" %
+        self._log.info("Found unique core counts: %s Using: %d",
                       (lsf_core_counts, lsf_cores_per_node))
 
         self.node_list = lsf_node_list
         self.cores_per_node = lsf_cores_per_node
 
 
-# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class LoadLevelerLRMS(LRMS):
 
@@ -2490,8 +2574,15 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, requested_cores, logger):
-        LRMS.__init__(self, name, requested_cores, logger)
+    def __init__(self, name, logger, requested_cores):
+
+        LRMS.__init__(self, name, logger, requested_cores)
+
+        self.torus_block            = None
+        self.loadl_bg_block         = None
+        self.shape_table            = None
+        self.torus_dimension_labels = None
+
 
     # --------------------------------------------------------------------------
     #
@@ -2520,13 +2611,13 @@ class LoadLevelerLRMS(LRMS):
 
             # Construct the host list
             loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
-            self._log.info("Found LOADL_HOSTFILE %s. Expanded to: %s" %
+            self._log.info("Found LOADL_HOSTFILE %s. Expanded to: %s",
                           (loadl_hostfile, loadl_nodes))
             loadl_node_list = list(set(loadl_nodes))
 
             # Verify that $LLOAD_TOTAL_TASKS == len($LOADL_HOSTFILE)
             if loadl_total_tasks != len(loadl_nodes):
-                self._log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)" % \
+                self._log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)",
                                (loadl_total_tasks, len(loadl_nodes)))
 
             # Determine the number of cpus per node.  Assume: 
@@ -2536,13 +2627,15 @@ class LoadLevelerLRMS(LRMS):
         elif self.loadl_bg_block is not None:
             # Blue Gene specific.
 
-            loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
-            if loadl_bg_size_str is None:
-                msg = "$LOADL_BG_SIZE not set!"
-                self._log.error(msg)
-                raise Exception(msg)
-            else:
-                loadl_bg_size = int(loadl_bg_size_str)
+          # # FIXME: the setting below is unused?  
+          # #        So why are we raising an exception?
+          # loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
+          # if loadl_bg_size_str is None:
+          #     msg = "$LOADL_BG_SIZE not set!"
+          #     self._log.error(msg)
+          #     raise Exception(msg)
+          # else:
+          #     loadl_bg_size = int(loadl_bg_size_str)
 
             loadl_job_name = os.environ.get('LOADL_JOB_NAME')
             if loadl_job_name is None:
@@ -2574,7 +2667,7 @@ class LoadLevelerLRMS(LRMS):
             # Build nodes data structure to be handled by Torus Scheduler
             self.torus_block = self._bgq_shapeandboards2block(
                 loadl_bg_block_shape_str, loadl_bg_board_list_str)
-            self.loadl_node_list = [entry[SchedulerTorus.TORUS_BLOCK_NAME] for entry in self.torus_block]
+            loadl_node_list = [entry[SchedulerTorus.TORUS_BLOCK_NAME] for entry in self.torus_block]
 
             # Construct sub-block table
             self.shape_table = self._bgq_create_sub_block_shape_table(loadl_bg_block_shape_str)
@@ -2582,7 +2675,7 @@ class LoadLevelerLRMS(LRMS):
             # Determine the number of cpus per node
             loadl_cpus_per_node = self.BGQ_CORES_PER_NODE
 
-        self.node_list = self.loadl_node_list
+        self.node_list = loadl_node_list
         self.cores_per_node = loadl_cpus_per_node
 
 
@@ -2699,7 +2792,7 @@ class LoadLevelerLRMS(LRMS):
         nodes = []
         start_node = self.BGQ_BLOCK_STARTING_CORNERS[board]
 
-        self._log.debug('Shape: %s' % shape)
+        self._log.debug("Shape: %s", shape)
 
         index = 0
 
@@ -2722,7 +2815,7 @@ class LoadLevelerLRMS(LRMS):
     def _bgq_shapeandboards2block(self, block_shape_str, boards_str):
 
         board_dict_list = self._bgq_str2boards(boards_str)
-        self._log.debug('Board dict list:\n%s' % '\n'.join([str(x) for x in board_dict_list]))
+        self._log.debug("Board dict list:\n%s", '\n'.join([str(x) for x in board_dict_list]))
 
         # TODO: this assumes a single midplane block
         rack     = board_dict_list[0]['R']
@@ -2763,7 +2856,7 @@ class LoadLevelerLRMS(LRMS):
                 if num_nodes in self.BGQ_SUPPORTED_SUB_BLOCK_SIZES:
                     table[num_nodes] = copy.copy(sub_block_shape)
                 else:
-                    self._log.warning("Non supported sub-block size: %d." % num_nodes)
+                    self._log.warning("Non supported sub-block size: %d.", num_nodes)
 
                 # Done with iterating this dimension
                 if sub_block_shape[dim] >= block_shape[dim]:
@@ -2776,14 +2869,16 @@ class LoadLevelerLRMS(LRMS):
 
 
 
-# ------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class ForkLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, requested_cores, logger):
-        LRMS.__init__(self, name, requested_cores, logger)
+    def __init__(self, name, logger, requested_cores):
+
+        LRMS.__init__(self, name, logger, requested_cores)
+
 
     # --------------------------------------------------------------------------
     #
@@ -2795,15 +2890,175 @@ class ForkLRMS(LRMS):
         selected_cpus = max(detected_cpus, self.requested_cores)
         # FIXME: max -> min
 
-        self._log.info("Detected %d cores on localhost, using %d." % (detected_cpus, selected_cpus))
+        self._log.info("Detected %d cores on localhost, using %d.", detected_cpus, selected_cpus)
 
         self.node_list = ["localhost"]
         self.cores_per_node = selected_cpus
 
 
 
+# ==============================================================================
+#
+# Spawners
+#
+# ==============================================================================
+class Spawner (object):
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger):
+
+        self.name = name
+        self._log = logger
+
+
+    # --------------------------------------------------------------------------
+    #
+    # This class-method creates the appropriate sub-class for the Launch Method.
+    #
+    @classmethod
+    def create(cls, name, logger):
+
+        # Make sure that we are the base-class!
+        if cls != Spawner:
+            raise Exception("Spawner Factory only available to base class!")
+
+        try:
+            implementation = { SPAWNER_NAME_POPEN : SpawnerPopen,
+                               SPAWNER_NAME_PTY   : SpawnerPty  }[name]
+
+            return implementation(name, logger)
+
+        except KeyError:
+            raise Exception("Spawner '%s' unknown!" % name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def spawn (self, launcher, unit, env):
+        raise NotImplementedError("spawn() not implemented for Spawner '%s'." % self.name)
+
+
 # ------------------------------------------------------------------------------
 #
+class SpawnerPopen (Spawner):
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger):
+
+        Spawner.__init__(self, name, logger)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def spawn (self, launcher, cu, env):
+        
+        prof ('Spawner spawn', uid=cu['uid'])
+    
+        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
+        self._log.debug("Created launch_script: %s", launch_script_name)
+
+        with open (launch_script_name, "w") as launch_script :
+            launch_script.write('#!/bin/bash -l\n')
+            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
+    
+            # Before the Big Bang there was nothing
+            if cu['description']['pre_exec']:
+                pre_exec_string = ''
+                if isinstance(cu['description']['pre_exec'], list):
+                    for elem in cu['description']['pre_exec']:
+                        pre_exec_string += "%s\n" % elem
+                else :
+                    pre_exec_string += "%s\n" % cu['description']['pre_exec']
+                launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
+    
+            # Create string for environment variable setting
+            if  cu['description']['environment'] and    \
+                cu['description']['environment'].keys() :
+                env_string = 'export'
+                for key,val in cu['description']['environment'].iteritems ():
+                    env_string += ' %s=%s' % (key, val)
+                launch_script.write('# Environment variables\n%s\n' % env_string)
+    
+            # unit Arguments (if any)
+            task_args_string = ''
+            if  cu['description']['arguments'] :
+                for arg in cu['description']['arguments']:
+                    if  not arg:
+                        # ignore empty args
+                        continue
+    
+                    arg = arg.replace('"', '\\"')          # Escape all double quotes
+                    if arg[0] == arg[-1] == "'" :          # If a string is between outer single quotes,
+                        task_args_string += '%s ' % arg    # ... pass it as is.
+                    else:
+                        task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
+    
+            # The actual command line, constructed per launch-method
+            prof ('_Process construct command', uid=cu['uid'])
+            launch_command, cmdline = \
+                    launcher.construct_command(cu['description']['executable'],  
+                                               task_args_string,
+                                               cu['description']['cores'],
+                                               launch_script_name, 
+                                               cu['opaque_slot'])
+    
+            launch_script.write('# The command to run\n%s\n' % launch_command)
+    
+            # After the universe dies the infrared death, there will be nothing
+            if  cu['description']['post_exec']:
+                post_exec_string = ''
+                if isinstance(cu['description']['post_exec'], list):
+                    for elem in cu['description']['post_exec']:
+                        post_exec_string += "%s\n" % elem
+                else :
+                    post_exec_string += "%s\n" % cu['description']['post_exec']
+                launch_script.write('%s\n' % post_exec_string)
+    
+        # done writing to launch script, get it ready for execution.
+        st = os.stat(launch_script_name)
+        os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
+    
+        _stdout_file_h = open(cu['stdout_file'], "w")
+        _stderr_file_h = open(cu['stderr_file'], "w")
+    
+        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu['workdir'])
+        prof ('spawning pass to popen', uid=cu['uid'], tag='unit spawning')
+
+        proc = subprocess.Popen ( args               = cmdline,
+                                  bufsize            = 0,
+                                  executable         = None,
+                                  stdin              = None,
+                                  stdout             = _stdout_file_h,
+                                  stderr             = _stderr_file_h,
+                                  preexec_fn         = None,
+                                  close_fds          = True,
+                                  shell              = True,
+                                  # TODO: cwd        d oesn't always make sense if it runs remotely (still true?)
+                                  cwd                = cu['workdir'],
+                                  env                = env,
+                                  universal_newlines = False,
+                                  startupinfo        = None,
+                                  creationflags      = 0)
+    
+        prof ('spawning passed to popen', uid=cu['uid'], tag='unit spawning')
+
+        return proc
+
+
+# ------------------------------------------------------------------------------
+#
+class SpawnerPty (Spawner):
+    pass
+
+
+# ==============================================================================
+#
+# Worker Classes
+#
+# ==============================================================================
 class ExecWorker(threading.Thread):
     """An ExecWorker competes for the execution of tasks in a task queue
     and writes the results back to MongoDB.
@@ -2811,26 +3066,27 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, agent, exec_env, execution_queue, 
+    def __init__(self, name, logger, agent, exec_env, execution_queue, 
                  update_queue, stageout_queue, command_queue,
                  mongodb_url, mongodb_name, mongodb_auth,
                  pilot_id, session_id, workdir):
 
         """Le Constructeur creates a new ExecWorker instance.
         """
-        self._log = logger
-
         prof ('ExecWorker init')
 
         threading.Thread.__init__(self)
         self._terminate = threading.Event()
 
+        self.name              = name
+        self._log              = logger
         self._agent            = agent
         self._exec_env         = exec_env
         self._cu_environment   = exec_env.cu_environment
         self._workdir          = workdir
         self._pilot_id         = pilot_id
-        self._slot_history_old = None
+        self.slot_history      = None
+        self.slot_history_old  = None
 
         mongo_client   = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
@@ -2839,8 +3095,8 @@ class ExecWorker(threading.Thread):
             user, pwd = mongodb_auth.split(':', 1)
             self._mongo_db.authenticate(user, pwd)
 
-        self._p  = mongo_db["%s.p"  % session_id]
-        self._cu = mongo_db["%s.cu" % session_id]
+        self._p  = self._mongo_db["%s.p"  % session_id]
+        self._cu = self._mongo_db["%s.cu" % session_id]
 
         # Queued tasks by the Agent
         self._execution_queue = execution_queue
@@ -2857,9 +3113,8 @@ class ExecWorker(threading.Thread):
 
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
-            {"$set": {"slothistory" : self.exec_env.scheduler._slot_history,
-                      #"capability"  : 0,
-                      #"slots"       : self.exec_env.scheduler._slots}
+            {"$set": {"slothistory" : self.exec_env.scheduler.slot_history,
+                      "slots"       : self.exec_env.scheduler.slots
                      }
             })
 
@@ -2878,33 +3133,6 @@ class ExecWorker(threading.Thread):
 
         return free_cores
 
-    # --------------------------------------------------------------------------
-    #
-    def _slots2caps(self, slots):
-        """Convert slots structure into a capability structure.
-        """
-
-        all_caps_tuples = {}
-        for node in slots:
-            free_cores = node['cores'].count(FREE)
-            # (Free_cores, Continuous, Single_Node) = Count
-            cap_tuple = (free_cores, False, True)
-
-            if cap_tuple in all_caps_tuples:
-                all_caps_tuples[cap_tuple] += 1
-            else:
-                all_caps_tuples[cap_tuple] = 1
-
-        # Convert to please the gods of json and mongodb
-        all_caps_dict = []
-        for caps_tuple in all_caps_tuples:
-            free_cores, cont, single = cap_tuple
-            count = all_caps_tuples[cap_tuple]
-            cap_dict = {'free_cores': free_cores, 'continuous': cont,
-                        'single_node': single, 'count': count}
-            all_caps_dict.append(cap_dict)
-
-        return all_caps_dict
 
     # --------------------------------------------------------------------------
     #
@@ -2916,7 +3144,7 @@ class ExecWorker(threading.Thread):
     #
     def run(self):
 
-        self._log.info("started %s." % self)
+        self._log.info("started %s.", self)
 
         try:
             # report initial slot status
@@ -2982,16 +3210,16 @@ class ExecWorker(threading.Thread):
                                 raise Exception("Can't launch MPI tasks without MPI launcher.")
 
                             launcher = self.exec_env.mpi_launcher
-                            self._log.debug("Launching MPI unit with %s (%s)." % (
-                                    launcher.name, launcher.launch_command))
+                            self._log.debug("Launching MPI unit with %s (%s).", 
+                                    (launcher.name, launcher.launch_command))
 
                         else:
                             if not self.exec_env.task_launcher:
                                 raise Exception("Can't launch tasks without launcher.")
 
                             launcher = self.exec_env.task_launcher
-                            self._log.debug("Launching unit with %s (%s)." % (
-                                launcher.name, launcher.launch_command))
+                            self._log.debug("Launching unit with %s (%s).",
+                                    (launcher.name, launcher.launch_command))
 
                         assert (cu['opaque_slot']) # FIXME: no assert, buch chek
                         self._launch_task(cu, launcher)
@@ -3007,7 +3235,7 @@ class ExecWorker(threading.Thread):
                         cu['state']   = FAILED
                         cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
                         
-                        self._log.exception("Launching unit failed: '%s'." % e) 
+                        self._log.exception("Launching unit failed: '%s'.", e) 
                         
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if cu['opaque_slot']:
@@ -3017,8 +3245,8 @@ class ExecWorker(threading.Thread):
 
 
 
-        except Exception, ex:
-            msg = "Error in ExecWorker loop"
+        except Exception as e:
+            msg = "Error in ExecWorker loop (%s)" % e
             self._log.exception (msg)
             pilot_FAILED(self._p, self._pilot_id, self._log, msg)
             return
@@ -3095,7 +3323,7 @@ class ExecWorker(threading.Thread):
 
             # we have a valid return code -- unit is final
             action += 1
-            self._log.info("Unit %s has return code %s." % (cu['uid'], exit_code))
+            self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
 
             cu['exit_code'] = exit_code
             cu['finished']  = now
@@ -3136,44 +3364,32 @@ class ExecWorker(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def _update_tasks(self, cus):
-        """Updates the database entries for one or more tasks, including
-        unit state, log, etc.
-        """
+        # FIXME: needs to go, slot history should be kept in scheduler, and 
+        #        should only be dumped at shutdown.
 
         if  not isinstance(cus, list):
             cus = [cus]
-
-        now = timestamp()
-
-        # Update capabilities
-        #self._capability = self._slots2caps(self._slots)
-        #self._capability = self._slots2free(self.exec_env.scheduler._slots)
 
         # AM: FIXME: this at the moment pushes slot history whenever a unit
         # state is updated...  This needs only to be done on ExecWorker
         # shutdown.  Well, alas, there is currently no way for it to find out
         # when it is shut down... Some quick and  superficial measurements 
         # though show no negative impact on agent performance.
-        # AM: the capability publication cannot be delayed until shutdown
-        # though...
         # TODO: check that slot history is correctly recorded
-        if  (self._slot_history_old !=
-             self.exec_env.scheduler._slot_history) : # or \
-          # (self._capability_old
-          #  != self.exec_env.scheduler._capability):
+        if  (self.slot_history_old !=
+             self.exec_env.scheduler.slot_history) :
 
             self._p.update(
                 {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self.exec_env.scheduler._slot_history,
-                          #"slots"       : self._slots,
-                          #"capability"  : self.exec_env.scheduler._capability
+                {"$set": {"slothistory" : self.exec_env.scheduler.slot_history,
+                          "slots"       : self.exec_env.scheduler.slots
                          }
                 }
                 )
 
             prof ('ExecWorker pilot state pushed')
 
-            self._slot_history_old = self.exec_env.scheduler._slot_history[:]
+            self.slot_history_old = self.exec_env.scheduler.slot_history[:]
 
 
 # ------------------------------------------------------------------------------
@@ -3189,13 +3405,14 @@ class UpdateWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, agent, logger, session_id, 
+    def __init__(self, name, logger, agent, session_id, 
                  update_queue, mongodb_url, mongodb_name):
 
         threading.Thread.__init__(self)
 
-        self._agent         = agent
+        self.name           = name
         self._log           = logger
+        self._agent         = agent
         self._session_id    = session_id
         self._update_queue  = update_queue
         self._terminate     = threading.Event ()
@@ -3217,7 +3434,7 @@ class UpdateWorker(threading.Thread):
     #
     def run(self):
 
-        self._log.info("started %s." % self)
+        self._log.info("started %s.", self)
 
         while not self._terminate.isSet () :
 
@@ -3234,7 +3451,7 @@ class UpdateWorker(threading.Thread):
                 if  cinfo['bulk'] and age > BULK_COLLECTION_TIME :
 
                     res  = cinfo['bulk'].execute ()
-                    self._log.debug ('bulk update result: %s' % res)
+                    self._log.debug ("bulk update result: %s", res)
 
                     for uid in cinfo['uids'] :
                         prof ('state update pushed', uid=uid)
@@ -3302,7 +3519,7 @@ class UpdateWorker(threading.Thread):
                 prof ('state update bulked', uid=uid)
 
             except Exception as e :
-                self._log.exception ("state update failed")
+                self._log.exception ("state update failed (%s)", e)
 
                 # FIXME: should we fail the pilot at this point?  
                 # FIXME: Are the strategies to recover?
@@ -3316,10 +3533,11 @@ class StageinWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, agent, exec_env, execution_queue, stagein_queue, update_queue, workdir) :
+    def __init__(self, name, logger, agent, exec_env, execution_queue, stagein_queue, update_queue, workdir) :
 
         threading.Thread.__init__(self)
 
+        self.name             = name
         self._log             = logger
         self._agent           = agent
         self._exec_env        = exec_env
@@ -3342,15 +3560,15 @@ class StageinWorker(threading.Thread):
     #
     def run(self):
 
-        self._log.info("started %s." % self)
+        self._log.info("started %s.", self)
 
         while not self._terminate.isSet () :
-            try:
-                try:
-                    cu = self._stagein_queue.get_nowait()
 
-                except Queue.Empty:
-                    time.sleep(QUEUE_POLL_SLEEPTIME)
+            try:
+
+                cu = self._stagein_queue.get()
+
+                if  not cu :
                     continue
 
                 sandbox      = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
@@ -3360,7 +3578,7 @@ class StageinWorker(threading.Thread):
                     prof ('Agent input_staging queue', uid=cu['uid'], msg=directive)
 
                     # Perform input staging
-                    self._log.info('unit input staging directives %s for cu: %s to %s' %
+                    self._log.info("unit input staging directives %s for cu: %s to %s",
                                    (directive, cu['uid'], sandbox))
 
                     # Convert the source_url into a SAGA Url object
@@ -3386,7 +3604,7 @@ class StageinWorker(threading.Thread):
                     rec_makedir (os.path.dirname (abs_target))
 
                     try :
-                        self._log.info("Going to '%s' %s to %s" % (directive['action'], source, abs_target))
+                        self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
 
                         if   directive['action'] == LINK: os.symlink      (source, abs_target)
                         elif directive['action'] == COPY: shutil.copyfile (source, abs_target)
@@ -3412,10 +3630,12 @@ class StageinWorker(threading.Thread):
                                                  update = {
                                                      '$set' : {'Agent_Input_Directives.$.state' : DONE}
                                                  })
-                    except:
+                    except Exception as e :
+
                         # If we catch an exception, assume the staging failed
-                        log_message = "%s'ed %s to %s - failure" % (directive['action'], source, abs_target)
-                        self._log.error(log_message)
+                        log_message = "%s'ed %s to %s - failure (%s)" % \
+                                (directive['action'], source, abs_target, e)
+                        self._log.exception(log_message)
 
                         # If a staging directive fails, fail the CU also.
                         self._agent.update_unit_state (_id    = cu['_id'],
@@ -3463,12 +3683,13 @@ class StageoutWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, agent, logger, execution_queue, stageout_queue, update_queue, workdir) :
+    def __init__(self, name, logger, agent, execution_queue, stageout_queue, update_queue, workdir) :
 
         threading.Thread.__init__(self)
 
-        self._agent           = agent
+        self.name             = name
         self._log             = logger
+        self._agent           = agent
         self._execution_queue = execution_queue
         self._stageout_queue  = stageout_queue
         self._update_queue    = update_queue
@@ -3488,7 +3709,7 @@ class StageoutWorker(threading.Thread):
     #
     def run(self):
 
-        self._log.info("started %s." % self)
+        self._log.info("started %s.", self)
 
         staging_area = os.path.join (self._workdir, 'staging_area'),
 
@@ -3496,11 +3717,10 @@ class StageoutWorker(threading.Thread):
 
             cu = None
             try :
-                try:
-                    cu = self._stageout_queue.get_nowait()
 
-                except Queue.Empty:
-                    time.sleep(QUEUE_POLL_SLEEPTIME)
+                cu = self._stageout_queue.get()
+
+                if  not cu :
                     continue
 
                 sandbox = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
@@ -3534,8 +3754,8 @@ class StageoutWorker(threading.Thread):
 
                     # Perform output staging
 
-                    self._log.info('unit output staging directives %s for cu: %s to %s' % (
-                        directive, cu['uid'], sandbox))
+                    self._log.info("unit output staging directives %s for cu: %s to %s",
+                            (directive, cu['uid'], sandbox))
 
                     # Convert the target_url into a SAGA Url object
                     target_url = saga.Url(directive['target'])
@@ -3562,7 +3782,7 @@ class StageoutWorker(threading.Thread):
                     rec_makedir (os.path.dirname (target))
 
                     try :
-                        self._log.info("Going to '%s' %s to %s" % (directive['action'], abs_source, target))
+                        self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
 
                         if   directive['action'] == LINK: os.symlink      (abs_source, target)
                         elif directive['action'] == COPY: shutil.copyfile (abs_source, target)
@@ -3588,10 +3808,11 @@ class StageoutWorker(threading.Thread):
                                                  update = {
                                                      '$set' : {'Agent_Output_Directives.$.state': DONE}
                                                  })
-                    except:
+                    except Exception as e :
                         # If we catch an exception, assume the staging failed
-                        log_message = "%s'ed %s to %s - failure" % (directive['action'], abs_source, target)
-                        self._log.error(log_message)
+                        log_message = "%s'ed %s to %s - failure (%s)" % \
+                                (directive['action'], abs_source, target, e)
+                        self._log.exception(log_message)
 
                         # If a staging directive fails, fail the CU also.
                         self._agent.update_unit_state (_id    = cu['_id'],
@@ -3651,8 +3872,8 @@ class StageoutWorker(threading.Thread):
                 # make sure the CU is not touched anymore (see except below)
                 cu = None
 
-            except Exception, ex:
-                self._log.exception("Error in StageoutWorker loop")
+            except Exception as e:
+                self._log.exception("Error in StageoutWorker loop (%s)", e)
 
                 # check if we have any cu in operation.  If so, mark as final.
                 # This check relies on the pushes to the update queue to be the
@@ -3680,11 +3901,130 @@ class StageoutWorker(threading.Thread):
 
 # ------------------------------------------------------------------------------
 #
+class HeartbeatMonitor(threading.Thread):
+    """
+    The HeartbeatMonitor watches the command queue for heartbeat updates (and
+    other commands).  
+    """
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, agent, command_queue, p, pilot_id, starttime, runtime) :
+
+        threading.Thread.__init__(self)
+
+        self.name             = name
+        self._log             = logger
+        self._agent           = agent
+        self._command_queue   = command_queue
+        self._p               = p
+        self._pilot_id        = pilot_id
+        self._starttime       = starttime
+        self._runtime         = runtime
+        self._terminate       = threading.Event ()
+
+        # run worker thread
+        self.start ()
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+
+        self._terminate.set()
+        self._agent.stop()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info("started %s.", self)
+
+        while not self._terminate.isSet () :
+
+            try :
+                self._check_commands ()
+                self._check_state    ()
+                time.sleep (HEARTBEAT_INTERVAL)
+
+            except Exception as e :
+                self._log.exception ('error in heartbeat monitor (%s)', e)
+                self.stop ()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_commands (self) :
+
+        # Check if there's a command waiting
+        retdoc = self._p.find_and_modify(
+                    query  = {"_id"  : ObjectId(self._pilot_id)},
+                    update = {"$set" : {COMMAND_FIELD: []}}, # Wipe content of array
+                    fields = [COMMAND_FIELD, 'state']
+                    )
+
+        commands = list()
+        if retdoc:
+            commands = retdoc[COMMAND_FIELD]
+            state    = retdoc['state']
+
+
+        for command in commands:
+
+            prof ('Monitor get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
+
+            if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT :
+                self.stop()
+                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                sys.exit (1)
+
+            elif state == CANCELING :
+                self.stop()
+                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
+                sys.exit (1)
+
+            elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                self._log.info("Received Cancel Compute Unit command for: %s", command[COMMAND_ARG])
+                # Put it on the command queue of the ExecWorker
+                self._command_queue.put(command)
+
+            elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
+                self._log.info("Received KeepAlive command.")
+
+            else:
+                self._log.error("Received unknown command: %s with arg: %s.",
+                                (command[COMMAND_TYPE], command[COMMAND_ARG]))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_state (self) :
+
+        # Check the workers periodically. If they have died, we 
+        # exit as well. this can happen, e.g., if the worker 
+        # process has caught an exception
+        for worker in self._agent.worker_list :
+            if  not worker.is_alive() :
+                self.stop ()
+                msg = 'worker %s died' % str(worker)
+                pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+
+        # Make sure that we haven't exceeded the agent runtime. if 
+        # we have, terminate. 
+        if  time.time() >= self._starttime + (int(self._runtime) * 60):
+            self._log.info("Agent has reached runtime limit of %s seconds.", self._runtime*60)
+            self.stop ()
+            pilot_DONE(self._p, self._pilot_id)
+
+
+
+# ------------------------------------------------------------------------------
+#
 class Agent (object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, logger, lrms_name, requested_cores, 
+    def __init__(self, name, logger, lrms_name, requested_cores, 
             task_launch_method, mpi_launch_method, 
             scheduler_name, runtime, 
             mongodb_url, mongodb_name, mongodb_auth, 
@@ -3692,6 +4032,7 @@ class Agent (object):
 
         prof ('Agent init')
 
+        self.name                   = name
         self._log                   = logger
         self._debug_helper          = ru.DebugHelper()
         self._pilot_id              = pilot_id
@@ -3702,7 +4043,7 @@ class Agent (object):
         self._session_id            = session_id
         self._pilot_id              = pilot_id
 
-        self._worker_list           = list()
+        self.worker_list            = list()
 
         # we want to own all queues -- that simplifies startup and shutdown
         self._schedule_queue        = multiprocessing.Queue()
@@ -3723,49 +4064,50 @@ class Agent (object):
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
 
-        # Configure nodes and number of cores available
-        self.lrms = LRMS.create(
-                logger          = self._log, 
+        lrms = LRMS.create(
                 name            = lrms_name, 
+                logger          = self._log, 
                 requested_cores = requested_cores)
 
-        self.scheduler = Scheduler.create(
-                logger          = self._log, 
+        scheduler = Scheduler.create(
                 name            = scheduler_name, 
-                lrms            = self.lrms,
+                logger          = self._log, 
+                lrms            = lrms,
                 schedule_queue  = self._schedule_queue, 
                 execution_queue = self._execution_queue, 
                 update_queue    = self._update_queue)
-        self._worker_list.append (self.scheduler)
+        self.worker_list.append (scheduler)
 
-        self.task_launcher = LaunchMethod.create(
-                logger          = self._log, 
+        task_launcher = LaunchMethod.create(
                 name            = task_launch_method, 
-                scheduler       = self.scheduler)
-
-        self.mpi_launcher  = LaunchMethod.create(
                 logger          = self._log, 
+                scheduler       = scheduler)
+
+        mpi_launcher = LaunchMethod.create(
                 name            = mpi_launch_method,  
-                scheduler       = self.scheduler)
-
-        self.spawner = Spawner.create(
                 logger          = self._log, 
-                name            = SPAWNER_NAME_POPEN)
+                scheduler       = scheduler)
+
+        spawner = Spawner.create(
+                name            = SPAWNER_NAME_POPEN,
+                logger          = self._log)
         # FIXME: spawner may or may not be threaded...
         # FIXME: we may want one spawner per exec worker, so the exec worker may
         # want to own the spawner.  
 
         self._exec_env = ExecutionEnvironment(
+                name            = "ExecEnv"	,
                 logger          = self._log,
-                lrms            = self.lrms,
-                scheduler       = self.scheduler,
-                task_launcher   = self.task_launcher,
-                mpi_launcher    = self.mpi_launcher,
-                spawner         = self.spawner
+                lrms            = lrms,
+                scheduler       = scheduler,
+                task_launcher   = task_launcher,
+                mpi_launcher    = mpi_launcher,
+                spawner         = spawner
         )
 
         for n in range(N_EXEC_WORKER) :
             exec_worker = ExecWorker(
+                name            = "ExecWorker-%d" % n,
                 logger          = self._log,
                 agent           = self,
                 exec_env        = self._exec_env,
@@ -3780,11 +4122,12 @@ class Agent (object):
                 session_id      = self._session_id,
                 workdir         = self._workdir
             )
-            self._worker_list.append (exec_worker)
+            self.worker_list.append (exec_worker)
 
 
         for n in range(N_UPDATE_WORKER) :
             update_worker = UpdateWorker(
+                name            = "UpdateWorker-%d" % n,
                 agent           = self,
                 logger          = self._log,
                 session_id      = self._session_id,
@@ -3792,11 +4135,12 @@ class Agent (object):
                 mongodb_url     = mongodb_url,
                 mongodb_name    = mongodb_name
             )
-            self._worker_list.append (update_worker)
+            self.worker_list.append (update_worker)
 
 
         for n in range(N_STAGEIN_WORKER) :
             stagein_worker = StageinWorker(
+                name            = "StageinWorker-%d" % n,
                 logger          = self._log,
                 agent           = self,
                 exec_env        = self._exec_env,
@@ -3805,11 +4149,12 @@ class Agent (object):
                 update_queue    = self._update_queue,
                 workdir         = self._workdir
             )
-            self._worker_list.append (stagein_worker)
+            self.worker_list.append (stagein_worker)
 
 
         for n in range(N_STAGEOUT_WORKER) :
             stageout_worker = StageoutWorker(
+                name            = "StageoutWorker-%d" % n,
                 agent           = self,
                 logger          = self._log,
                 execution_queue = self._execution_queue,
@@ -3817,7 +4162,19 @@ class Agent (object):
                 update_queue    = self._update_queue,
                 workdir         = self._workdir
             )
-            self._worker_list.append (stageout_worker)
+            self.worker_list.append (stageout_worker)
+
+
+        hbmon = HeartbeatMonitor (
+                name            = "HeartbeatMonitor",
+                logger          = self._log, 
+                agent           = self, 
+                command_queue   = self._command_queue,
+                p               = self._p, 
+                starttime       = self._starttime,
+                runtime         = self._runtime,
+                pilot_id        = self._pilot_id)
+        self.worker_list.append (hbmon)
 
         prof ('Agent init done')
 
@@ -3836,8 +4193,11 @@ class Agent (object):
 
     # --------------------------------------------------------------------------
     #
-    def update_unit (self, _id, msg=None, query={}, update={}) :
+    def update_unit (self, _id, msg=None, query=None, update=None) :
             
+        if not query  : query  = dict()
+        if not update : update = dict()
+
         query_dict  = dict()
         update_dict = update
 
@@ -3851,8 +4211,6 @@ class Agent (object):
             if  not '$push' in update_dict :
                 update_dict['$push'] = dict()
 
-            now = timestamp()
-
             update_dict['$push']['log'] = {'message'   : msg, 
                                            'timestamp' : timestamp()}
 
@@ -3865,7 +4223,10 @@ class Agent (object):
 
     # --------------------------------------------------------------------------
     #
-    def update_unit_state (self, _id, state, msg=None, query={}, update={}) :
+    def update_unit_state (self, _id, state, msg=None, query=None, update=None) :
+
+        if not query  : query  = dict()
+        if not update : update = dict()
 
         now = timestamp ()
         update_dict = {
@@ -3898,11 +4259,11 @@ class Agent (object):
     #
     def run(self):
 
-        self._log.info("started %s." % self)
+        self._log.info("started %s.", self)
         prof ('Agent run()')
 
         # first order of business: set the start time and state of the pilot
-        self._log.info("Agent %s starting ..." % self._pilot_id)
+        self._log.info("Agent %s starting ...", self._pilot_id)
         now = timestamp()
         ret = self._p.update(
             {"_id": ObjectId(self._pilot_id)}, 
@@ -3911,38 +4272,20 @@ class Agent (object):
                       #       specific!
                       "nodes"          : self._exec_env.lrms.node_list,
                       "cores_per_node" : self._exec_env.lrms.cores_per_node,
-                      "started"        : now,
-                      "capability"     : 0},
+                      "started"        : now},
              "$push": {"statehistory": {"state"    : ACTIVE, 
                                         "timestamp": now}}
             })
         # TODO: Check for return value, update should be true!
-        self._log.info("Database updated: %s" % ret)
+        self._log.info("Database updated: %s", ret)
 
         prof ('Agent start loop')
 
-        heartbeat = 0.0
         while not self._terminate.isSet() :
 
             try:
 
-                # In each agent iteration, we perform three actions:
-                #
-                #  - check if all workers are still alive
-                #  - check if there are any commands pending
-                #  - check if any workload arrived.
-                #
-                # The emphasis in performance is on the third one, the unit
-                # ingest, so we want to do that as frequent as possible.  So we
-                # do the first two actions only every 'HEARTBEAT_INTERVAL'
-                # seconds.
-                now = time.time()
-                if  now - heartbeat > HEARTBEAT_INTERVAL :
-                    self._check_worker_state ()
-                    self._check_commands     ()
-                    heartbeat = now
-
-                # always check for new units
+                # check for new units
                 action = self._check_units ()
 
                 # if no units have been seen, then wait for juuuust a little...  
@@ -3951,28 +4294,29 @@ class Agent (object):
                 if  not action :
                     time.sleep(DB_POLL_SLEEPTIME)
 
-            except Exception, ex:
+            except Exception as e:
                 # exception in the main loop is fatal
                 self.stop()
                 pilot_FAILED(self._p, self._pilot_id, self._log, 
-                    "ERROR in agent main loop: %s. %s" % (str(ex), traceback.format_exc()))
+                    "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
                 sys.exit (1)
 
         # main loop terminated, so self._terminate was set
         # we need to signal shut down to all workers
-        for worker in self._worker_list :
+        for worker in self.worker_list :
             worker.stop ()
 
         # to make sure that threads are not stuck waiting on a queue, we send
         # a signal on each queue
-        self._schedule_queue.put  (COMMAND_CANCEL)
-        self._execution_queue.put (COMMAND_CANCEL)
-        self._update_queue.put    (COMMAND_CANCEL)
-        self._stagein_queue.put   (COMMAND_CANCEL)
-        self._stageout_queue.put  (COMMAND_CANCEL)
+        self._schedule_queue.put  (None)
+        self._execution_queue.put (None)
+        self._update_queue.put    (None)
+        self._stagein_queue.put   (None)
+        self._stageout_queue.put  (None)
 
         # and wait for them to actually finish
-        for worker in self._worker_list :
+        # FIXME: make sure this works when stop was initialized by heartbeat monitor
+        for worker in self.worker_list :
             worker.join ()
 
         # record cancelation state
@@ -3980,72 +4324,6 @@ class Agent (object):
                 "Terminated (_terminate set).")
 
         sys.exit (0)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _check_worker_state (self) :
-
-        # Check the workers periodically. If they have died, we 
-        # exit as well. this can happen, e.g., if the worker 
-        # process has caught an exception
-        for worker in self._worker_list :
-            if  not worker.is_alive() :
-                msg = 'worker %s died' % str(worker)
-                self.stop ()
-                pilot_FAILED(self._p, self._pilot_id, self._log, msg)
-
-        # Make sure that we haven't exceeded the agent runtime. if 
-        # we have, terminate. 
-        if  time.time() >= self._starttime + (int(self._runtime) * 60):
-            self._log.info("Agent has reached runtime limit of %s seconds." % self._runtime*60)
-            self.stop ()
-            pilot_DONE(self._p, self._pilot_id)
-            sys.exit (1)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _check_commands (self) :
-
-        # Check if there's a command waiting
-        retdoc = self._p.find_and_modify(
-                    query  = {"_id"  : ObjectId(self._pilot_id)},
-                    update = {"$set" : {COMMAND_FIELD: []}}, # Wipe content of array
-                    fields = [COMMAND_FIELD, 'state']
-                    )
-
-        commands = list()
-        if retdoc:
-            commands = retdoc[COMMAND_FIELD]
-            state    = retdoc['state']
-
-
-        for command in commands:
-
-            prof ('Agent get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
-
-            if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT :
-                self.stop()
-                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                sys.exit (1)
-
-            elif state == CANCELING :
-                self.stop()
-                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
-                sys.exit (1)
-
-            elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
-                self._log.info("Received Cancel Compute Unit command for: %s" % command[COMMAND_ARG])
-                # Put it on the command queue of the ExecWorker
-                self._command_queue.put(command)
-
-            elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
-                self._log.info("Received KeepAlive command.")
-
-            else:
-                self._log.error("Received unknown command: %s with arg: %s." %
-                                (command[COMMAND_TYPE], command[COMMAND_ARG]))
 
 
     # --------------------------------------------------------------------------
@@ -4097,9 +4375,8 @@ class Agent (object):
             except Exception as e :
                 # if any unit sorting step failed, the unit did
                 # not end up in a queue -- we set it to FAILED
-                self._log.exception ('oops')
                 msg = "could not sort unit (%s)" % e
-                prof ('error', msg=msg, tag="failed", uid=cu['uid'], logger=logger.exception)
+                prof ('error', msg=msg, tag="failed", uid=cu['uid'], logger=self._log.exception)
                 self.update_unit_state (_id    = cu['_id'],
                                         state  = FAILED, 
                                         msg    = msg)
@@ -4113,7 +4390,7 @@ class Agent (object):
         # have to update the state *before* running the next find -- so we
         # do it right here...  No idea how to avoid that roundtrip...
         if  cu_uids :
-            updated_ids = self._cu.update (
+            self._cu.update (
                     multi    = True, 
                     spec     = {"_id"   : {"$in"    : cu_uids}},
                     document = {"$set"  : {"state"  : ALLOCATING}, 
@@ -4130,169 +4407,13 @@ class Agent (object):
 
 # ==============================================================================
 #
-# Spawners
-#
-# ==============================================================================
-class Spawner (object):
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, name, logger):
-
-        self.name     = name
-        self._log      = logger
-
-
-    # --------------------------------------------------------------------------
-    #
-    # This class-method creates the appropriate sub-class for the Launch Method.
-    #
-    @classmethod
-    def create(cls, name, logger):
-
-        # Make sure that we are the base-class!
-        if cls != Spawner:
-            raise Exception("Spawner Factory only available to base class!")
-
-        try:
-            implementation = { SPAWNER_NAME_POPEN : SpawnerPopen,
-                               SPAWNER_NAME_PTY   : SpawnerPty  }[name]
-
-            return implementation(name, logger)
-
-        except KeyError:
-            raise Exception("Spawner '%s' unknown!" % name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def spawn (self, launcher, unit, env):
-        raise NotImplementedError("spawn() not implemented for Spawner '%s'." % self.name)
-
-
-# ------------------------------------------------------------------------------
-#
-class SpawnerPopen (Spawner):
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, name, logger):
-
-        Spawner.__init__(self, name, logger)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def spawn (self, launcher, cu, env):
-        
-        prof ('Spawner spawn', uid=cu['uid'])
-    
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
-        self._log.debug('Created launch_script: %s' % launch_script_name)
-
-        with open (launch_script_name, "w") as launch_script :
-            launch_script.write('#!/bin/bash -l\n')
-            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
-    
-            # Before the Big Bang there was nothing
-            if cu['description']['pre_exec']:
-                pre_exec_string = ''
-                if isinstance(cu['description']['pre_exec'], list):
-                    for elem in cu['description']['pre_exec']:
-                        pre_exec_string += "%s\n" % elem
-                else :
-                    pre_exec_string += "%s\n" % cu['description']['pre_exec']
-                launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
-    
-            # Create string for environment variable setting
-            if  cu['description']['environment'] and    \
-                cu['description']['environment'].keys() :
-                env_string = 'export'
-                for key,val in cu['description']['environment'].iteritems ():
-                    env_string += ' %s=%s' % (key, val)
-                launch_script.write('# Environment variables\n%s\n' % env_string)
-    
-            # unit Arguments (if any)
-            task_args_string = ''
-            if  cu['description']['arguments'] :
-                for arg in cu['description']['arguments']:
-                    if not arg:
-                         # ignore empty args
-                         continue
-    
-                    arg = arg.replace('"', '\\"')          # Escape all double quotes
-                    if arg[0] == arg[-1] == "'" :          # If a string is between outer single quotes,
-                        task_args_string += '%s ' % arg    # ... pass it as is.
-                    else:
-                        task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
-    
-            # The actual command line, constructed per launch-method
-            prof ('_Process construct command', uid=cu['uid'])
-            launch_command, cmdline = \
-                    launcher.construct_command(cu['description']['executable'],  
-                                               task_args_string,
-                                               cu['description']['cores'],
-                                               launch_script_name, 
-                                               cu['opaque_slot'])
-    
-            launch_script.write('# The command to run\n%s\n' % launch_command)
-    
-            # After the universe dies the infrared death, there will be nothing
-            if  cu['description']['post_exec']:
-                post_exec_string = ''
-                if isinstance(cu['description']['post_exec'], list):
-                    for elem in cu['description']['post_exec']:
-                        post_exec_string += "%s\n" % elem
-                else :
-                    post_exec_string += "%s\n" % cu['description']['post_exec']
-                launch_script.write('%s\n' % post_exec_string)
-    
-        # done writing to launch script, get it ready for execution.
-        st = os.stat(launch_script_name)
-        os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-    
-        self._stdout_file_h = open(cu['stdout_file'], "w")
-        self._stderr_file_h = open(cu['stderr_file'], "w")
-    
-        self._log.info("Launching unit %s via %s in %s" % (cu['uid'], cmdline, cu['workdir']))
-        prof ('spawning pass to popen', uid=cu['uid'], tag='unit spawning')
-
-        proc = subprocess.Popen ( args               = cmdline,
-                                  bufsize            = 0,
-                                  executable         = None,
-                                  stdin              = None,
-                                  stdout             = self._stdout_file_h,
-                                  stderr             = self._stderr_file_h,
-                                  preexec_fn         = None,
-                                  close_fds          = True,
-                                  shell              = True,
-                                  # TODO: cwd        d oesn't always make sense if it runs remotely (still true?)
-                                  cwd                = cu['workdir'],
-                                  env                = env,
-                                  universal_newlines = False,
-                                  startupinfo        = None,
-                                  creationflags      = 0)
-    
-        prof ('spawning passed to popen', uid=cu['uid'], tag='unit spawning')
-
-        return proc
-
-
-# ------------------------------------------------------------------------------
-#
-class SpawnerPty (Spawner):
-    pass
-
-
-# ==============================================================================
-#
 # Agent main code
 #
 # ==============================================================================
-def parse_commandline():
+def main () :
 
-    parser = optparse.OptionParser()
+    mongo_p = None
+    parser  = optparse.OptionParser()
 
     parser.add_option('-a', dest='mongodb_auth')
     parser.add_option('-c', dest='cores',       type='int')
@@ -4310,6 +4431,8 @@ def parse_commandline():
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
+    if args : parser.error ("Unused arguments '%s'" % args)
+
     if not options.cores                : parser.error("Missing number of cores (-c)")
     if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
     if not options.task_launch_method   : parser.error("Missing unit launch method (-j)")
@@ -4322,16 +4445,6 @@ def parse_commandline():
     if not options.runtime              : parser.error("Missing agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
-    return options
-
-
-# ------------------------------------------------------------------------------
-#
-if __name__ == "__main__":
-
-    mongo_p = None
-    options = parse_commandline()
-
     prof ('start', tag='bootstrapping', uid=options.pilot_id)
 
     # configure the agent logger
@@ -4343,13 +4456,14 @@ if __name__ == "__main__":
     handle.setFormatter(formatter)
     logger.addHandler(handle)
 
-    logger.info("Using SAGA version %s" % saga.version)
-    logger.info("Using RADICAL-Pilot multicore agent, version %s" % git_ident)
-  # logger.info("Using RADICAL-Pilot version %s" % rp.version)
+    logger.info("Using SAGA version %s", saga.version)
+    logger.info("Using RADICAL-Pilot multicore agent, version %s", git_ident)
+  # logger.info("Using RADICAL-Pilot version %s", rp.version)
 
 
     # --------------------------------------------------------------------------
-    def sigint_handler(signal, frame):
+    #
+    def sigint_handler(signum, frame):
         msg = 'Caught SIGINT. EXITING.'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit (2)
@@ -4357,7 +4471,8 @@ if __name__ == "__main__":
 
 
     # --------------------------------------------------------------------------
-    def sigalarm_handler(signal, frame):
+    #
+    def sigalarm_handler(signum, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit (3)
@@ -4365,10 +4480,9 @@ if __name__ == "__main__":
 
 
     try:
-        # --------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Establish database connection
         prof ('db setup')
-        host, port   = options.mongodb_url.split(':', 1)
         mongo_client = pymongo.MongoClient(options.mongodb_url)
         mongo_db     = mongo_client[options.database_name]
 
@@ -4379,10 +4493,11 @@ if __name__ == "__main__":
         mongo_p = mongo_db["%s.p" % options.session_id]
 
 
-        # --------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Launch the agent thread
         prof ('Agent create')
         agent = Agent(
+                name               = 'Agent',
                 logger             = logger,
                 lrms_name          = options.lrms,
                 requested_cores    = options.cores,
@@ -4402,18 +4517,25 @@ if __name__ == "__main__":
 
     except SystemExit:
         logger.error("Caught keyboard interrupt. EXITING")
-        sys.exit(6)
+        return (6)
 
-    except Exception as ex:
-        msg = "Error running agent: %s" % str(ex)
-        logger.exception(msg)
-        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit(6)
+    except Exception as e:
+        error_msg = "Error running agent: %s" % str(e)
+        logger.exception(error_msg)
+        pilot_FAILED(mongo_p, options.pilot_id, logger, error_msg)
+        sys.exit(7)
 
     finally :
         prof ('stop', msg='finally clause')
-        sys.exit(7)
+        sys.exit(8)
 
 
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    sys.exit (main())
+
+#
 # ------------------------------------------------------------------------------
 
