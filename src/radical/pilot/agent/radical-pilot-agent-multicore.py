@@ -78,6 +78,20 @@
          - pushes state update (collected into bulks if possible)
          - cleans CU workdir if CU is final and cleanup is requested
 
+     Agent 
+       |
+       +--------------------------------------------------------
+       |           |              |              |             |
+       |           |              |              |             | 
+       V           V              V              V             V
+     ExecWorker* StageinWorker* StageoutWorker* UpdateWorker* HeartbeatMonitor
+       |
+       +-------------------------------------------------
+       |     |               |                |         |
+       |     |               |                |         |
+       V     V               V                V         V
+     LRMS  MPILaunchMethod TaskLaunchMethod Scheduler Spawner
+
 
     NOTE: 
     -----
@@ -103,20 +117,6 @@
     - move util functions to rp.utils or r.utils, and pull the from there
     - split the agent into logical components (classes?), and install along with
       RP.
-
-      Agent 
-        |
-        +--------------------------------------------------------
-        |           |              |              |             |
-        |           |              |              |             | 
-        V           V              V              V             V
-      ExecWorker* StageinWorker* StageoutWorker* UpdateWorker* HeartbeatMonitor
-        |
-        +-------------------------------------------------
-        |     |               |                |         |
-        |     |               |                |         |
-        V     V               V                V         V
-      LRMS  MPILaunchMethod TaskLaunchMethod Scheduler Spawner
 
 """
 
