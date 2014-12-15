@@ -779,14 +779,10 @@ echo
 echo "# -------------------------------------------------------------------"
 echo "# CLEANUP: $CLEANUP"
 echo "#"
-contains $CLEANUP 'l' && echo "rm -r $SANDBOX/AGENT.*"
-contains $CLEANUP 'u' && echo "rm -r $SANDBOX/unit-*"
-contains $CLEANUP 'v' && echo "rm -r $VIRTENV/"
-contains $CLEANUP 'e' && echo "rm -r $SANDBOX/"
-# contains $CLEANUP 'l' && rm -r $SANDBOX/AGENT.*
-# contains $CLEANUP 'u' && rm -r $SANDBOX/unit-*
-# contains $CLEANUP 'v' && rm -r $VIRTENV/
-# contains $CLEANUP 'e' && rm -r $SANDBOX/
+contains $CLEANUP 'l' && rm -r "$SANDBOX/AGENT.*"
+contains $CLEANUP 'u' && rm -r "$SANDBOX/unit-*"
+contains $CLEANUP 'v' && rm -r "$VIRTENV/"
+contains $CLEANUP 'e' && rm -r "$SANDBOX/"
 
 profile_event 'cleanup done'
 echo "#"
