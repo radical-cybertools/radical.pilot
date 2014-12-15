@@ -4199,6 +4199,8 @@ class Agent (object):
         if not query  : query  = dict()
         if not update : update = dict()
 
+        # we alter update, so rather use a copy of the dict...
+
         now = timestamp ()
         update_dict = {
                 '$set' : {
@@ -4214,11 +4216,11 @@ class Agent (object):
 
         if '$set' in update :
             for key,val in update['$set'].iteritems() :
-                update['$set'][key] = val
+                update_dict['$set'][key] = val
 
         if '$push' in update :
             for key,val in update['$push'].iteritems() :
-                update['$push'][key] = val
+                update_dict['$push'][key] = val
 
         self.update_unit (_id    = _id, 
                           msg    = msg, 
