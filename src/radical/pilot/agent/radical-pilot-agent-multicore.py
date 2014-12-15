@@ -24,10 +24,11 @@
 
      - class Agent
        - represents the whole thing
-       - has a set of InputStagingWorkers  (threads or procs)
-       - has a set of OutputStagingWorkers (threads or procs)
-       - has a set of ExecWorkers          (threads or procs)
-       - has a set of UpdateWorkers        (threads or procs)
+       - has a set of StageinWorkers  (threads or procs)
+       - has a set of StageoutWorkers (threads or procs)
+       - has a set of ExecWorkers     (threads or procs)
+       - has a set of UpdateWorkers   (threads or procs)
+       - has a HeartbeatMonitor       (threads or procs)
        - has a inputstaging  queue
        - has a outputstaging queue
        - has a execution queue
@@ -38,14 +39,14 @@
          - pushes CUs into inputstaging queue or execution queue (based on
            obvious metric)
 
-     class InputeStagingWorker
+     class StageinWorker
        - competes for CU input staging requests from inputstaging queue
        - for each received CU 
          - performs staging
          - pushes CU into execution queue
          - pushes stage change notification request into update queue
 
-     class OutputeStagingWorker
+     class StageoutWorker
        - competes for CU output staging requests from outputstaging queue
        - for each received CU 
          - performs staging
@@ -54,11 +55,10 @@
      class ExecWorker
        - manages a partition of the allocated cores
          (partition size == max cu size)
-       - has one spawner (operating on that partition)
        - competes for CU execution reqeusts from execute queue
        - for each CU
-         - prepares execition command (LRMS, Launcher, ...)
-         - pushes command to spawner
+         - prepares execution command 
+         - pushes command to ExecutionEnvironment
          - pushes stage change notification request into update queue
 
      class Spawner
@@ -79,29 +79,44 @@
          - cleans CU workdir if CU is final and cleanup is requested
 
 
-    NOTE:
+    NOTE: 
     -----
-      - each CU will be passed to the different threads via queues.
-        cu state changes are pushed onto the update_queue.  As long as events in
-        the update queue remain ordered, no invalid state transitions of the CU
-        can occur.  TO ensure that, always *first* push state transition
-        requests onto the update queue, *then* move the CU to the next thread
-        (state)...
+      - Units are progressing through the different worker threads, where, in
+        general, the unit changes state when transitioning to the next thread.
+        The unit ownership thus *defines* the unit state (its owned by the
+        InputStagingWorker, it is in StagingInput state, etc), and the state
+        update notifications to the DB are merely informational (and can thus be
+        asynchron).  The updates need to be ordered though, to reflect valid and
+        correct state transition history.
 
 
     TODO:
     -----
 
-    - add option to scheduler to ignore node 0 (which hosts the agent process)
+    - add option to scheduler to ignore core 0 (which hosts the agent process)
     - add LRMS.partition (n) to return a set of partitioned LRMS for partial
       ExecWorkers
     - publish pilot slot history once on shutdown?  Or once in a while when
       idle?  Or push continuously?
-    - make updater a class where the methods accept simple update requests,
-      translate into query/update dicts, and push those onto the updater queue.
-      Also use that for pilot state updates.
     - Schedulers, LRMSs, LaunchMethods, etc need to be made threadsafe, for the
       case where more than one execution worker threads are running.
+    - move util functions to rp.utils or r.utils, and pull the from there
+    - split the agent into logical components (classes?), and install along with
+      RP.
+
+      Agent 
+        |
+        +--------------------------------------------------------
+        |           |              |              |             |
+        |           |              |              |             | 
+        V           V              V              V             V
+      ExecWorker* StageinWorker* StageoutWorker* UpdateWorker* HeartbeatMonitor
+        |
+        +-------------------------------------------------
+        |     |               |                |         |
+        |     |               |                |         |
+        V     V               V                V         V
+      LRMS  MPILaunchMethod TaskLaunchMethod Scheduler Spawner
 
 """
 
@@ -211,7 +226,7 @@ BUSY     = 'Busy'
 STAGING_AREA         = 'staging_area'
 
 # max number of cu out/err chars to push to db
-MAX_IO_LOGLENGTH     = 64*1024
+MAX_IO_LOGLENGTH     = 1*1024
 
 # max time period to collec db requests into bulks (seconds)
 BULK_COLLECTION_TIME = 1.0
@@ -302,18 +317,24 @@ profile_freqs = dict ()
 
 def prof (etype, uid="", msg="", tag="", logger=None) :
 
+    # record a timed event.  We record the thread ID, the uid of the affected
+    # object, a log message, event type, and a tag.  Whenever a tag changes (to
+    # a non-None value), the time since the last tag change is added.  This can
+    # be used to derive, for example, the duration which a uid spent in
+    # a certain state.  Time intervals between the same tags (but different
+    # uids) are recorded, too, and a frequency is derived (tagged events
+    # / second) (TODO)
+    #
+    # TODO: should this move to utils?  Or at least RP utils, so that we can
+    # also use it for the application side?
+
     if  logger :
         logger ("%s -- %s (%s): %s", etype, msg, uid, tag)
 
 
-    # whenever a tag changes (to a non-None value), the time since the last tag
-    # change is added
-    #
-    # times between the same tags (but different uids) are recorded, too, and
-    # a frequency is derived (tagged events / second)
-
     if not profile_agent :
         return
+
 
     logged = False
     tid    = threading.current_thread().name
@@ -362,7 +383,22 @@ def prof (etype, uid="", msg="", tag="", logger=None) :
     profile_handle.flush ()
 
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# 
+def tail (txt, maxlen=MAX_IO_LOGLENGTH) :
+
+    # shorten the given string to the last <n> characters, and prepend
+    # a notification.  This is used to keep logging information in mongodb
+    # manageable (the size of mongodb documents is limited).
+
+    if  len(txt) > maxlen :
+        return "[... CONTENT SHORTENED ...]\n%s" % txt[-maxlen:]
+    else :
+        return txt
+
+
+# ------------------------------------------------------------------------------
 #
 def get_rusage () :
 
@@ -380,9 +416,11 @@ def get_rusage () :
          % (rtime, utime, stime, rss)
 
 
-#-----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
 #
 def rec_makedir (target) :
+
+    # recursive makedir which ignores errors if dir already exists
 
     try :
         os.makedirs(target)
@@ -421,9 +459,9 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
              "$push"   : {"statehistory": {"state"     : FAILED, 
                                            "timestamp" : now}},
              "$set"    : {"state"       : FAILED,
-                          "stdout"      : out,
-                          "stderr"      : err,
-                          "logfile"     : log,
+                          "stdout"      : tail (out),
+                          "stderr"      : tail (err),
+                          "logfile"     : tail (log),
                           "finished"    : now}
             })
 
@@ -457,9 +495,9 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
          "$push"   : {"statehistory": {"state"     : CANCELED, 
                                        "timestamp" : now}},
          "$set"    : {"state"       : CANCELED,
-                      "stdout"      : out,
-                      "stderr"      : err,
-                      "logfile"     : log,
+                      "stdout"      : tail (out),
+                      "stderr"      : tail (err),
+                      "logfile"     : tail (log),
                       "finished"    : now}
         })
 
@@ -488,59 +526,11 @@ def pilot_DONE(mongo_p, pilot_uid):
          "$push"   : {"statehistory": {"state"    : DONE, 
                                        "timestamp": now}},
          "$set"    : {"state"       : DONE,
-                      "stdout"      : out,
-                      "stderr"      : err,
-                      "logfile"     : log,
+                      "stdout"      : tail (out),
+                      "stderr"      : tail (err),
+                      "logfile"     : tail (log),
                       "finished"    : now}
         })
-
-
-# ------------------------------------------------------------------------------
-#
-class ExecutionEnvironment(object):
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, name, logger, lrms, scheduler, task_launcher, mpi_launcher, spawner) :
-
-        self.name          = name
-        self._log          = logger
-        self.lrms          = lrms
-        self.scheduler     = scheduler
-        self.task_launcher = task_launcher
-        self.mpi_launcher  = mpi_launcher
-        self.spawner       = spawner
-
-        # Derive the environment for the cu's from our own environment
-        self.cu_environment = self._populate_cu_environment()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _populate_cu_environment(self):
-        """Derive the environment for the cu's from our own environment."""
-
-        # Get the environment of the agent
-        new_env = copy.deepcopy(os.environ)
-
-        #
-        # Mimic what virtualenv's "deactivate" would do
-        #
-        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
-        if old_path:
-            new_env['PATH'] = old_path
-
-        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
-        if old_home:
-            new_env['PYTHON_HOME'] = old_home
-
-        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
-        if old_ps:
-            new_env['PS1'] = old_ps
-
-        new_env.pop('VIRTUAL_ENV', None)
-
-        return new_env
 
 
 # ==============================================================================
@@ -559,7 +549,7 @@ class Scheduler(threading.Thread):
 
         self.name             = name
         self._log             = logger
-        self.lrms             = lrms
+        self._lrms            = lrms
         self._schedule_queue  = schedule_queue
         self._execution_queue = execution_queue
         self._update_queue    = update_queue
@@ -662,18 +652,6 @@ class Scheduler(threading.Thread):
                 
     # --------------------------------------------------------------------------
     #
-    def schedule(self, cus):
-
-        # FIXME: is that the right place to unroll the bulk?
-        if isinstance (cus, list) :
-            for cu in cus : 
-                self._schedule_queue.put (cu)
-        else :
-            self._schedule_queue.put (cus)
-
-
-    # --------------------------------------------------------------------------
-    #
     def unschedule(self, cus):
         # release (for whatever reason) all slots allocated to this CU
 
@@ -703,6 +681,9 @@ class Scheduler(threading.Thread):
             try :
 
                 request = self._schedule_queue.get()
+
+                if  not request :
+                    continue
 
                 # we either get a new scheduled CU, or get a trigger that cores were
                 # freed, and we can try to reschedule waiting CUs
@@ -750,11 +731,11 @@ class SchedulerContinuous(Scheduler):
     # --------------------------------------------------------------------------
     #
     def configure(self):
-        if not self.lrms.node_list:
-            raise Exception("LRMS %s didn't configure node_list." % self.lrms.name)
+        if not self._lrms.node_list:
+            raise Exception("LRMS %s didn't configure node_list." % self._lrms.name)
 
-        if not self.lrms.cores_per_node:
-            raise Exception("LRMS %s didn't configure cores_per_node." % self.lrms.name)
+        if not self._lrms.cores_per_node:
+            raise Exception("LRMS %s didn't configure cores_per_node." % self._lrms.name)
 
         # Slots represents the internal process management structure.
         # The structure is as follows:
@@ -766,12 +747,12 @@ class SchedulerContinuous(Scheduler):
         # We put it in a list because we care about (and make use of) the order.
         #
         self.slots = []
-        for node in self.lrms.node_list:
+        for node in self._lrms.node_list:
             self.slots.append({
                 'node': node,
                 # TODO: Maybe use the real core numbers in the case of 
                 # non-exclusive host reservations?
-                'cores': [FREE for _ in range(0, self.lrms.cores_per_node)]
+                'cores': [FREE for _ in range(0, self._lrms.cores_per_node)]
             })
 
         # keep a slot allocation history (short status), start with presumably
@@ -795,7 +776,7 @@ class SchedulerContinuous(Scheduler):
         # Transform it into an index in to the all_slots list
         all_slots_slot_index = self.slots.index(slot_entry)
 
-        return all_slots_slot_index * self.lrms.cores_per_node + int(first_slot_core)
+        return all_slots_slot_index * self._lrms.cores_per_node + int(first_slot_core)
 
     # --------------------------------------------------------------------------
     #
@@ -838,7 +819,7 @@ class SchedulerContinuous(Scheduler):
         # TODO: single_node should be enforced for e.g. non-message passing 
         #       tasks, but we don't have that info here.
         # NOTE AM: why should non-messaging tasks be confined to one node?
-        if cores_requested < self.lrms.cores_per_node:
+        if cores_requested < self._lrms.cores_per_node:
             single_node = True
         else:
             single_node = False
@@ -921,7 +902,7 @@ class SchedulerContinuous(Scheduler):
 
             if slot_cores_offset is not None:
                 self._log.info('Node %s satisfies %d cores at offset %d',
-                              (slot_node, cores_requested, slot_cores_offset))
+                              slot_node, cores_requested, slot_cores_offset)
                 return ['%s:%d' % (slot_node, core) for core in
                         range(slot_cores_offset, slot_cores_offset + cores_requested)]
 
@@ -934,7 +915,7 @@ class SchedulerContinuous(Scheduler):
     def _find_slots_multi_cont(self, cores_requested):
 
         # Convenience aliases
-        cores_per_node = self.lrms.cores_per_node
+        cores_per_node = self._lrms.cores_per_node
         all_slots = self.slots
 
         # Glue all slot core lists together
@@ -1066,10 +1047,10 @@ class SchedulerTorus(Scheduler):
     # --------------------------------------------------------------------------
     #
     def configure(self):
-        if not self.lrms.cores_per_node:
-            raise Exception("LRMS %s didn't configure cores_per_node." % self.lrms.name)
+        if not self._lrms.cores_per_node:
+            raise Exception("LRMS %s didn't configure cores_per_node." % self._lrms.name)
 
-        self._cores_per_node = self.lrms.cores_per_node
+        self._cores_per_node = self._lrms.cores_per_node
 
         # keep a slot allocation history (short status), start with presumably
         # empty state now
@@ -1088,23 +1069,23 @@ class SchedulerTorus(Scheduler):
         # TODO: Both short and long currently only deal with full-node status
         if short:
             slot_matrix = ""
-            for slot in self.lrms.torus_block:
+            for slot in self._lrms.torus_block:
                 slot_matrix += "|"
                 if slot[self.TORUS_BLOCK_STATUS] == FREE:
-                    slot_matrix += "-" * self.lrms.cores_per_node
+                    slot_matrix += "-" * self._lrms.cores_per_node
                 else:
-                    slot_matrix += "+" * self.lrms.cores_per_node
+                    slot_matrix += "+" * self._lrms.cores_per_node
             slot_matrix += "|"
             return {'timestamp': timestamp(), 
                     'slotstate': slot_matrix}
         else:
             slot_matrix = ""
-            for slot in self.lrms.torus_block:
+            for slot in self._lrms.torus_block:
                 slot_vector = ""
                 if slot[self.TORUS_BLOCK_STATUS] == FREE:
-                    slot_vector = " - " * self.lrms.cores_per_node
+                    slot_vector = " - " * self._lrms.cores_per_node
                 else:
-                    slot_vector = " X " * self.lrms.cores_per_node
+                    slot_vector = " X " * self._lrms.cores_per_node
                 slot_matrix += "%s: %s\n" % (slot[self.TORUS_BLOCK_NAME].ljust(24), slot_vector)
             return slot_matrix
 
@@ -1118,18 +1099,18 @@ class SchedulerTorus(Scheduler):
     #
     def allocate_slot(self, cores_requested):
 
-        block = self.lrms.torus_block
-        sub_block_shape_table = self.lrms.shape_table
+        block = self._lrms.torus_block
+        sub_block_shape_table = self._lrms.shape_table
 
         self._log.info("Trying to allocate %d core(s).", cores_requested)
 
-        if cores_requested % self.lrms.cores_per_node:
-            num_cores = int(math.ceil(cores_requested / float(self.lrms.cores_per_node))) \
-                        * self.lrms.cores_per_node
+        if cores_requested % self._lrms.cores_per_node:
+            num_cores = int(math.ceil(cores_requested / float(self._lrms.cores_per_node))) \
+                        * self._lrms.cores_per_node
             self._log.error('Core not multiple of %d, increasing to %d!',
-                           (self.lrms.cores_per_node, num_cores))
+                           self._lrms.cores_per_node, num_cores)
 
-        num_nodes = cores_requested / self.lrms.cores_per_node
+        num_nodes = cores_requested / self._lrms.cores_per_node
 
         offset = self._alloc_sub_block(block, num_nodes)
 
@@ -1144,8 +1125,8 @@ class SchedulerTorus(Scheduler):
         end = self.get_last_node(corner, sub_block_shape)
         self._log.debug('Allocating sub-block of %d node(s) with dimensions %s'
                        ' at offset %d with corner %s and end %s.',
-                       (num_nodes, self.lrms.shape2str(sub_block_shape), offset,
-                        self.lrms.loc2str(corner), self.lrms.loc2str(end)))
+                       (num_nodes, self._lrms.shape2str(sub_block_shape), offset,
+                        self._lrms.loc2str(corner), self._lrms.loc2str(end)))
 
         return corner, sub_block_shape
 
@@ -1177,7 +1158,7 @@ class SchedulerTorus(Scheduler):
                         break
                 except IndexError:
                     self._log.exception('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.', 
-                            (num_nodes, offset, peek))
+                            num_nodes, offset, peek)
 
             if not_free == True:
                 # No success at this offset
@@ -1213,7 +1194,7 @@ class SchedulerTorus(Scheduler):
     # --------------------------------------------------------------------------
     #
     def release_slot(self, (corner, shape)):
-        self._free_cores(self.lrms.torus_block, corner, shape)
+        self._free_cores(self._lrms.torus_block, corner, shape)
 
         # something changed - write history!
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
@@ -1252,7 +1233,7 @@ class SchedulerTorus(Scheduler):
     #
     def get_last_node(self, origin, shape):
         ret = {}
-        for dim in self.lrms.torus_dimension_labels:
+        for dim in self._lrms.torus_dimension_labels:
             ret[dim] = origin[dim] + shape[dim] -1
         return ret
 
@@ -1264,7 +1245,7 @@ class SchedulerTorus(Scheduler):
     def _shape2num_nodes(self, shape):
 
         nodes = 1
-        for dim in self.lrms.torus_dimension_labels:
+        for dim in self._lrms.torus_dimension_labels:
             nodes *= shape[dim]
 
         return nodes
@@ -1300,7 +1281,7 @@ class LaunchMethod(object):
 
         self.name      = name
         self._log      = logger
-        self.scheduler = scheduler
+        self._scheduler = scheduler
 
         self.launch_command = None
         self.configure()
@@ -1643,7 +1624,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
     # TODO: This needs both mpirun and ccmrun
@@ -1692,7 +1673,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class LaunchMethodRUNJOB(LaunchMethod):
 
@@ -1715,9 +1696,9 @@ class LaunchMethodRUNJOB(LaunchMethod):
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (corner, sub_block_shape)):
 
-        if task_numcores % self.scheduler.lrms.cores_per_node: 
+        if task_numcores % self._scheduler.lrms.cores_per_node: 
             msg = "Num cores (%d) is not a multiple of %d!" % (
-                task_numcores, self.scheduler.lrms.cores_per_node)
+                task_numcores, self._scheduler.lrms.cores_per_node)
             self._log.exception(msg)
             raise Exception(msg)
 
@@ -1727,17 +1708,17 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # Set the number of tasks/ranks per node
         # TODO: Currently hardcoded, this should be configurable,
         #       but I don't see how, this would be a leaky abstraction.
-        runjob_command += ' --ranks-per-node %d' % min(self.scheduler.lrms.cores_per_node, task_numcores)
+        runjob_command += ' --ranks-per-node %d' % min(self._scheduler.lrms.cores_per_node, task_numcores)
 
         # Run this subjob in the block communicated by LoadLeveler
-        runjob_command += ' --block %s' % self.scheduler.lrms.loadl_bg_block
+        runjob_command += ' --block %s' % self._scheduler.lrms.loadl_bg_block
 
-        corner_offset = self.scheduler.corner2offset(self.scheduler.lrms.torus_block, corner)
-        corner_node = self.scheduler.lrms.torus_block[corner_offset][self.scheduler.TORUS_BLOCK_NAME]
+        corner_offset = self._scheduler.corner2offset(self._scheduler.lrms.torus_block, corner)
+        corner_node = self._scheduler.lrms.torus_block[corner_offset][self._scheduler.TORUS_BLOCK_NAME]
         runjob_command += ' --corner %s' % corner_node
 
         # convert the shape
-        runjob_command += ' --shape %s' % self.scheduler.lrms.shape2str(sub_block_shape)
+        runjob_command += ' --shape %s' % self._scheduler.lrms.shape2str(sub_block_shape)
 
         # runjob needs the full path to the executable
         if os.path.basename(task_exec) == task_exec:
@@ -1788,7 +1769,7 @@ class LaunchMethodDPLACE(LaunchMethod):
         else:
             task_command = task_exec
 
-        dplace_offset = self.scheduler.slots2offset(task_slots)
+        dplace_offset = self._scheduler.slots2offset(task_slots)
 
         dplace_command = "%s -c %d-%d %s" % (
             self.launch_command, dplace_offset, 
@@ -1867,7 +1848,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         else:
             task_command = task_exec
 
-        dplace_offset = self.scheduler.slots2offset(task_slots)
+        dplace_offset = self._scheduler.slots2offset(task_slots)
 
         mpirun_dplace_command = "%s -np %d %s -c %d-%d %s" % \
             (self.mpirun_command, task_numcores, self.launch_command,
@@ -1907,7 +1888,7 @@ class LaunchMethodIBRUN(LaunchMethod):
         else:
             task_command = task_exec
 
-        ibrun_offset = self.scheduler.slots2offset(task_slots)
+        ibrun_offset = self._scheduler.slots2offset(task_slots)
 
         ibrun_command = "%s -n %s -o %d %s" % \
                         (self.launch_command, task_numcores, 
@@ -2330,12 +2311,12 @@ class SLURMLRMS(LRMS):
         # Verify that $SLURM_NPROCS <= $SLURM_NNODES * $SLURM_CPUS_ON_NODE
         if not slurm_nprocs <= slurm_nnodes * slurm_cpus_on_node:
             self._log.warning("$SLURM_NPROCS(%d) <= $SLURM_NNODES(%d) * $SLURM_CPUS_ON_NODE(%d)",
-                            (slurm_nprocs, slurm_nnodes, slurm_cpus_on_node))
+                            slurm_nprocs, slurm_nnodes, slurm_cpus_on_node)
 
         # Verify that $SLURM_NNODES == len($SLURM_NODELIST)
         if slurm_nnodes != len(slurm_nodes):
             self._log.error("$SLURM_NNODES(%d) != len($SLURM_NODELIST)(%d)",
-                           (slurm_nnodes, len(slurm_nodes)))
+                           slurm_nnodes, len(slurm_nodes))
 
         # Report the physical number of cores or the total number of cores
         # in case of a single partial node allocation.
@@ -2427,7 +2408,7 @@ class LSFLRMS(LRMS):
         #
         lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
         self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
-                      (lsf_hostfile, lsf_nodes))
+                      lsf_hostfile, lsf_nodes)
         lsf_node_list = list(set(lsf_nodes))
 
         # Grab the core (slot) count from the environment
@@ -2436,7 +2417,7 @@ class LSFLRMS(LRMS):
         lsf_core_counts = list(set(lsf_cores_count_list))
         lsf_cores_per_node = min(lsf_core_counts)
         self._log.info("Found unique core counts: %s Using: %d",
-                      (lsf_core_counts, lsf_cores_per_node))
+                      lsf_core_counts, lsf_cores_per_node)
 
         self.node_list = lsf_node_list
         self.cores_per_node = lsf_cores_per_node
@@ -2612,13 +2593,13 @@ class LoadLevelerLRMS(LRMS):
             # Construct the host list
             loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
             self._log.info("Found LOADL_HOSTFILE %s. Expanded to: %s",
-                          (loadl_hostfile, loadl_nodes))
+                          loadl_hostfile, loadl_nodes)
             loadl_node_list = list(set(loadl_nodes))
 
             # Verify that $LLOAD_TOTAL_TASKS == len($LOADL_HOSTFILE)
             if loadl_total_tasks != len(loadl_nodes):
                 self._log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)",
-                               (loadl_total_tasks, len(loadl_nodes)))
+                               loadl_total_tasks, len(loadl_nodes))
 
             # Determine the number of cpus per node.  Assume: 
             # cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
@@ -3066,13 +3047,13 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, agent, exec_env, execution_queue, 
-                 update_queue, stageout_queue, command_queue,
+    def __init__(self, name, logger, agent, lrms, scheduler, 
+                 task_launcher, mpi_launcher, spawner, 
+                 execution_queue, update_queue, 
+                 stageout_queue, command_queue,
                  mongodb_url, mongodb_name, mongodb_auth,
                  pilot_id, session_id, workdir):
 
-        """Le Constructeur creates a new ExecWorker instance.
-        """
         prof ('ExecWorker init')
 
         threading.Thread.__init__(self)
@@ -3081,13 +3062,27 @@ class ExecWorker(threading.Thread):
         self.name              = name
         self._log              = logger
         self._agent            = agent
-        self._exec_env         = exec_env
-        self._cu_environment   = exec_env.cu_environment
-        self._workdir          = workdir
+        self._lrms             = lrms
+        self._scheduler        = scheduler
+        self._task_launcher    = task_launcher
+        self._mpi_launcher     = mpi_launcher
+        self._spawner          = spawner
+        self._execution_queue  = execution_queue
+        self._update_queue     = update_queue
+        self._stageout_queue   = stageout_queue
+        self._command_queue    = command_queue
         self._pilot_id         = pilot_id
+        self._session_id       = session_id
+        self._workdir          = workdir
+
+        self._cu_environment   = self._populate_cu_environment()
+        self._running_cus      = []
+        self._cuids_to_cancel  = []
         self.slot_history      = None
         self.slot_history_old  = None
 
+
+        # FIXME: should this be here?  Should it use the UpdateWorker?
         mongo_client   = pymongo.MongoClient(mongodb_url)
         self._mongo_db = mongo_client[mongodb_name]
 
@@ -3095,31 +3090,45 @@ class ExecWorker(threading.Thread):
             user, pwd = mongodb_auth.split(':', 1)
             self._mongo_db.authenticate(user, pwd)
 
-        self._p  = self._mongo_db["%s.p"  % session_id]
-        self._cu = self._mongo_db["%s.cu" % session_id]
-
-        # Queued tasks by the Agent
-        self._execution_queue = execution_queue
-        self._update_queue    = update_queue
-        self._stageout_queue  = stageout_queue
-        self._command_queue   = command_queue
-
-        # Launched tasks by this ExecWorker
-        self.running_cus = []
-        self._cuids_to_cancel = []
-
-        # Container for scheduler, lrms and launch method.
-        self.exec_env = exec_env
-
+        self._p = self._mongo_db["%s.p"  % session_id]
         self._p.update(
             {"_id": ObjectId(self._pilot_id)},
-            {"$set": {"slothistory" : self.exec_env.scheduler.slot_history,
-                      "slots"       : self.exec_env.scheduler.slots
+            {"$set": {"slothistory" : self._scheduler.slot_history,
+                      "slots"       : self._scheduler.slots
                      }
             })
 
         # run worker thread
         self.start ()
+
+    # --------------------------------------------------------------------------
+    #
+    def _populate_cu_environment(self):
+        """Derive the environment for the cu's from our own environment."""
+
+        # Get the environment of the agent
+        new_env = copy.deepcopy(os.environ)
+
+        #
+        # Mimic what virtualenv's "deactivate" would do
+        #
+        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        if old_path:
+            new_env['PATH'] = old_path
+
+        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        if old_home:
+            new_env['PYTHON_HOME'] = old_home
+
+        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        if old_ps:
+            new_env['PS1'] = old_ps
+
+        new_env.pop('VIRTUAL_ENV', None)
+
+        return new_env
+
+
 
     # --------------------------------------------------------------------------
     #
@@ -3149,7 +3158,7 @@ class ExecWorker(threading.Thread):
         try:
             # report initial slot status
             # TODO: Where does this abstraction belong?
-            self._log.debug(self.exec_env.scheduler.slot_status())
+            self._log.debug(self._scheduler.slot_status())
 
             while not self._terminate.isSet () :
 
@@ -3158,11 +3167,13 @@ class ExecWorker(threading.Thread):
                 # See if there are commands for the worker!
                 try:
                     command = self._command_queue.get_nowait()
+
                     if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                         self._cuids_to_cancel.append(command[COMMAND_ARG])
                     else:
                         raise Exception("Command %s not applicable in this context." %
                                         command[COMMAND_TYPE])
+
                 except Queue.Empty:
                     # do nothing if we don't have any queued commands
                     pass
@@ -3172,7 +3183,15 @@ class ExecWorker(threading.Thread):
                     cu = self._execution_queue.get_nowait()
 
                 except Queue.Empty:
-                    # do nothing if we don't have any queued tasks
+
+                    # no new CUs -- so we take the opportunity to check on the
+                    # old ones.
+                    # FIXME: if this check is not happen often enough, the cores
+                    # will idle because completed units are not picked up.  In
+                    # that case, this check should move into its own thread.
+                    # *IDEALLY* though, the spawner would use notifications to
+                    # learn about unit completion, and would move those units
+                    # automatically forward to deallocation and output staging.
                     idle += self._check_running ()
 
                     if idle :
@@ -3185,45 +3204,38 @@ class ExecWorker(threading.Thread):
 
                     prof ('ExecWorker gets cu from queue', uid=cu['uid'], tag='preprocess')
 
-                    task_dir_name = "%s/unit-%s" % (self._workdir, cu['uid'])
-                    stdout = cu["description"].get ('stdout')
-                    stderr = cu["description"].get ('stderr')
-
-                    if  stdout : stdout_file = task_dir_name+'/'+stdout
-                    else       : stdout_file = task_dir_name+'/STDOUT'
-                    if  stderr : stderr_file = task_dir_name+'/'+stderr
-                    else       : stderr_file = task_dir_name+'/STDERR'
-
-                    cu['workdir']     = task_dir_name
-                    cu['stdout']      = ''
-                    cu['stderr']      = ''
-                    cu['stdout_file'] = stdout_file
-                    cu['stderr_file'] = stderr_file
-                    cu['state']       = ALLOCATING
-                    cu['opaque_clot'] = None
-
                     # FIXME: push ALLOCATING state update into updater queue
                     try :
 
                         if cu['description']['mpi']:
-                            if not self.exec_env.mpi_launcher:
+                            if not self._mpi_launcher:
                                 raise Exception("Can't launch MPI tasks without MPI launcher.")
-
-                            launcher = self.exec_env.mpi_launcher
-                            self._log.debug("Launching MPI unit with %s (%s).", 
-                                    (launcher.name, launcher.launch_command))
+                            launcher = self._mpi_launcher
 
                         else:
-                            if not self.exec_env.task_launcher:
+                            if not self._task_launcher:
                                 raise Exception("Can't launch tasks without launcher.")
+                            launcher = self._task_launcher
 
-                            launcher = self.exec_env.task_launcher
-                            self._log.debug("Launching unit with %s (%s).",
-                                    (launcher.name, launcher.launch_command))
+                        self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-                        assert (cu['opaque_slot']) # FIXME: no assert, buch chek
-                        self._launch_task(cu, launcher)
+                        assert (cu['opaque_slot']) # FIXME: no assert, but check
+                        prof ('ExecWorker unit launch', uid=cu['uid'])
 
+                        # Start a new subprocess to launch the unit
+                        # TODO: This is scheduler specific
+                        proc = self._spawner.spawn (cu       = cu,
+                                                    launcher = launcher,
+                                                    env      = self._cu_environment)
+
+                        prof ('ExecWorker unit launched', uid=cu['uid'], tag='task_launching')
+
+                        cu['started'] = timestamp()
+                        cu['state']   = EXECUTING
+                        cu['proc']    = proc
+
+                        # Add to the list of monitored tasks
+                        self._running_cus.append(cu)
 
                     except Exception as e :
                         # append the startup error to the units stderr.  This is
@@ -3239,52 +3251,16 @@ class ExecWorker(threading.Thread):
                         
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if cu['opaque_slot']:
-                            self.exec_env.scheduler.unschedule(cu)
+                            self._scheduler.unschedule(cu)
 
-                        self._update_tasks(cu)
 
+                    # Update slot history to mongodb
+                    self._update_tasks()
 
 
         except Exception as e:
-            msg = "Error in ExecWorker loop (%s)" % e
-            self._log.exception (msg)
-            pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+            self._log.exception ("Error in ExecWorker loop (%s)" % e)
             return
-
-    # --------------------------------------------------------------------------
-    #
-    def _launch_task(self, cu, launcher):
-
-        prof ('ExecWorker unit launch', uid=cu['uid'])
-
-        # create working directory in case it doesn't exist
-        rec_makedir (cu['workdir'])
-
-        # Start a new subprocess to launch the unit
-        # TODO: This is scheduler specific
-        proc = self.exec_env.spawner.spawn (cu       = cu,
-                                            launcher = launcher,
-                                            env      = self._cu_environment)
-
-        prof ('ExecWorker unit launched', uid=cu['uid'], tag='task_launching')
-
-        cu['started'] = timestamp()
-        cu['state']   = EXECUTING
-        cu['proc']    = proc
-
-        # Add to the list of monitored tasks
-        self.running_cus.append(cu)
-
-        # Update to mongodb
-        #
-        # AM: FIXME: this mongodb update is effectively a (or rather multiple)
-        # synchronous remote operation(s) in the exec worker main loop.  Even if
-        # spanning multiple exec workers, we would still share the mongodb
-        # channel, which would still need serialization.  This is rather
-        # inefficient.  We should consider to use a async communication scheme.
-        # For example, we could collect all messages for a second (but not
-        # longer) and send those updates in a bulk.
-        self._update_tasks(cu)
 
 
     # --------------------------------------------------------------------------
@@ -3294,7 +3270,7 @@ class ExecWorker(threading.Thread):
 
         action = 0
 
-        for cu in self.running_cus:
+        for cu in self._running_cus:
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
@@ -3309,6 +3285,7 @@ class ExecWorker(threading.Thread):
                     action += 1
                     cu['proc'].kill()
                     self._cuids_to_cancel.remove (cu['uid'])
+                    self._scheduler.unschedule(cu)
 
                     self._agent.update_unit_state (_id    = cu['_id'],
                                                    state  = CANCELED, 
@@ -3329,8 +3306,8 @@ class ExecWorker(threading.Thread):
             cu['finished']  = now
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            self.running_cus.remove(cu)
-            self.exec_env.scheduler.unschedule(cu)
+            self._running_cus.remove(cu)
+            self._scheduler.unschedule(cu)
 
 
           # # Make sure all stuff reached the spindles
@@ -3363,12 +3340,9 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _update_tasks(self, cus):
+    def _update_tasks(self):
         # FIXME: needs to go, slot history should be kept in scheduler, and 
         #        should only be dumped at shutdown.
-
-        if  not isinstance(cus, list):
-            cus = [cus]
 
         # AM: FIXME: this at the moment pushes slot history whenever a unit
         # state is updated...  This needs only to be done on ExecWorker
@@ -3377,19 +3351,16 @@ class ExecWorker(threading.Thread):
         # though show no negative impact on agent performance.
         # TODO: check that slot history is correctly recorded
         if  (self.slot_history_old !=
-             self.exec_env.scheduler.slot_history) :
+             self._scheduler.slot_history) :
 
             self._p.update(
                 {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self.exec_env.scheduler.slot_history,
-                          "slots"       : self.exec_env.scheduler.slots
+                {"$set": {"slothistory" : self._scheduler.slot_history,
+                          "slots"       : self._scheduler.slots
                          }
-                }
-                )
+                })
 
-            prof ('ExecWorker pilot state pushed')
-
-            self.slot_history_old = self.exec_env.scheduler.slot_history[:]
+            self.slot_history_old = self._scheduler.slot_history[:]
 
 
 # ------------------------------------------------------------------------------
@@ -3533,15 +3504,16 @@ class StageinWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, agent, exec_env, execution_queue, stagein_queue, update_queue, workdir) :
+    def __init__(self, name, logger, agent, execution_queue, schedule_queue, 
+                 stagein_queue, update_queue, workdir) :
 
         threading.Thread.__init__(self)
 
         self.name             = name
         self._log             = logger
         self._agent           = agent
-        self._exec_env        = exec_env
         self._execution_queue = execution_queue
+        self._schedule_queue  = schedule_queue
         self._stagein_queue   = stagein_queue
         self._update_queue    = update_queue
         self._workdir         = workdir
@@ -3579,7 +3551,7 @@ class StageinWorker(threading.Thread):
 
                     # Perform input staging
                     self._log.info("unit input staging directives %s for cu: %s to %s",
-                                   (directive, cu['uid'], sandbox))
+                                   directive, cu['uid'], sandbox)
 
                     # Convert the source_url into a SAGA Url object
                     source_url = saga.Url(directive['source'])
@@ -3656,7 +3628,7 @@ class StageinWorker(threading.Thread):
                 self._agent.update_unit_state (_id    = cu['_id'],
                                                state  = ALLOCATING, 
                                                msg    = 'agent input staging done')
-                self._exec_env.scheduler.schedule (cu)
+                self._schedule_queue.put (cu)
                 prof ('push', msg="towards allocation", uid=cu['uid'], tag='stagein')
 
 
@@ -3734,9 +3706,7 @@ class StageoutWorker(threading.Thread):
                         except UnicodeDecodeError :
                             txt = "unit stdout contains binary data -- use file staging directives"
 
-                        if  len(txt) > MAX_IO_LOGLENGTH :
-                            txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                        cu['stdout'] += txt
+                        cu['stdout'] += tail (txt)
 
                 if  os.path.isfile(cu['stderr_file']):
                     with open(cu['stderr_file'], 'r') as stderr_f:
@@ -3755,7 +3725,7 @@ class StageoutWorker(threading.Thread):
                     # Perform output staging
 
                     self._log.info("unit output staging directives %s for cu: %s to %s",
-                            (directive, cu['uid'], sandbox))
+                            directive, cu['uid'], sandbox)
 
                     # Convert the target_url into a SAGA Url object
                     target_url = saga.Url(directive['target'])
@@ -3993,7 +3963,7 @@ class HeartbeatMonitor(threading.Thread):
 
             else:
                 self._log.error("Received unknown command: %s with arg: %s.",
-                                (command[COMMAND_TYPE], command[COMMAND_ARG]))
+                                command[COMMAND_TYPE], command[COMMAND_ARG])
 
 
     # --------------------------------------------------------------------------
@@ -4064,53 +4034,47 @@ class Agent (object):
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
 
-        lrms = LRMS.create(
+        self._lrms = LRMS.create(
                 name            = lrms_name, 
                 logger          = self._log, 
                 requested_cores = requested_cores)
 
-        scheduler = Scheduler.create(
+        self._scheduler = Scheduler.create(
                 name            = scheduler_name, 
                 logger          = self._log, 
-                lrms            = lrms,
+                lrms            = self._lrms,
                 schedule_queue  = self._schedule_queue, 
                 execution_queue = self._execution_queue, 
                 update_queue    = self._update_queue)
-        self.worker_list.append (scheduler)
+        self.worker_list.append (self._scheduler)
 
-        task_launcher = LaunchMethod.create(
+        self._task_launcher = LaunchMethod.create(
                 name            = task_launch_method, 
                 logger          = self._log, 
-                scheduler       = scheduler)
+                scheduler       = self._scheduler)
 
-        mpi_launcher = LaunchMethod.create(
+        self._mpi_launcher = LaunchMethod.create(
                 name            = mpi_launch_method,  
                 logger          = self._log, 
-                scheduler       = scheduler)
+                scheduler       = self._scheduler)
 
-        spawner = Spawner.create(
+        self._spawner = Spawner.create(
                 name            = SPAWNER_NAME_POPEN,
                 logger          = self._log)
         # FIXME: spawner may or may not be threaded...
         # FIXME: we may want one spawner per exec worker, so the exec worker may
         # want to own the spawner.  
 
-        self._exec_env = ExecutionEnvironment(
-                name            = "ExecEnv"	,
-                logger          = self._log,
-                lrms            = lrms,
-                scheduler       = scheduler,
-                task_launcher   = task_launcher,
-                mpi_launcher    = mpi_launcher,
-                spawner         = spawner
-        )
-
         for n in range(N_EXEC_WORKER) :
             exec_worker = ExecWorker(
                 name            = "ExecWorker-%d" % n,
                 logger          = self._log,
                 agent           = self,
-                exec_env        = self._exec_env,
+                lrms            = self._lrms,
+                scheduler       = self._scheduler,
+                task_launcher   = self._task_launcher,
+                mpi_launcher    = self._mpi_launcher,
+                spawner         = self._spawner,
                 execution_queue = self._execution_queue,
                 update_queue    = self._update_queue,
                 stageout_queue  = self._stageout_queue,
@@ -4143,8 +4107,8 @@ class Agent (object):
                 name            = "StageinWorker-%d" % n,
                 logger          = self._log,
                 agent           = self,
-                exec_env        = self._exec_env,
                 execution_queue = self._execution_queue,
+                schedule_queue  = self._schedule_queue,
                 stagein_queue   = self._stagein_queue,
                 update_queue    = self._update_queue,
                 workdir         = self._workdir
@@ -4270,8 +4234,8 @@ class Agent (object):
             {"$set": {"state"          : ACTIVE,
                       # TODO: The two fields below are currently scheduler 
                       #       specific!
-                      "nodes"          : self._exec_env.lrms.node_list,
-                      "cores_per_node" : self._exec_env.lrms.cores_per_node,
+                      "nodes"          : self._lrms.node_list,
+                      "cores_per_node" : self._lrms.cores_per_node,
                       "started"        : now},
              "$push": {"statehistory": {"state"    : ACTIVE, 
                                         "timestamp": now}}
@@ -4343,6 +4307,7 @@ class Agent (object):
 
         cu_list = list (cu_cursor)
         cu_uids = [cu['_id'] for cu in cu_list]
+
         for cu in cu_list :
 
             try :
@@ -4351,9 +4316,18 @@ class Agent (object):
                 prof ('Agent get unit', uid=cu['uid'], tag='cu arriving', 
                       logger=self._log.info)
 
+                cud     = cu['description']
+                workdir = "%s/unit-%s" % (self._workdir, cu['uid'])
+
+                cu['workdir']     = workdir
+                cu['stdout']      = ''
+                cu['stderr']      = ''
+                cu['stdout_file'] = "%s/%s" % (workdir, cud.get ('stdout', 'STDOUT')) 
+                cu['stderr_file'] = "%s/%s" % (workdir, cud.get ('stderr', 'STDERR')) 
+                cu['opaque_clot'] = None
+
                 # create unit sandbox
-                sandbox = os.path.join (self._workdir, 'unit-%s' % cu['uid'])
-                rec_makedir (sandbox)
+                rec_makedir (workdir)
 
                 # and send to staging / execution, respectively
                 if  cu['Agent_Input_Directives'] :
@@ -4368,7 +4342,7 @@ class Agent (object):
                     self.update_unit_state (_id    = cu['_id'],
                                             state  = ALLOCATING, 
                                             msg    = 'unit needs no input staging')
-                    self._exec_env.scheduler.schedule (cu)
+                    self._schedule_queue.put (cu)
                     prof ('push', msg="towards allocation", uid=cu['uid'], tag='ingest')
 
 
