@@ -3377,7 +3377,7 @@ class ExecWorker(threading.Thread):
             else:
                 # The unit finished cleanly, see if we need to deal with
                 # output data.  We always move to stageout, even if there are no
-                # directives -- at the very least, we'll uplocad stdout/stderr
+                # directives -- at the very least, we'll upload stdout/stderr
 
                 self._agent.update_unit_state(_id    = cu['_id'],
                                               state  = STAGING_OUTPUT,
@@ -4365,13 +4365,16 @@ class Agent(object):
                 cu['stdout']      = ''
                 cu['stderr']      = ''
                 cu['opaque_clot'] = None
-                cu['stdout_file'] = "%s/%s" % (workdir, cud.get('stdout'))
-                cu['stderr_file'] = "%s/%s" % (workdir, cud.get('stderr'))
 
-                if cu['stdout_file'] == None:
-                    cu['stdout_file'] = "%s/%s" % (workdir, 'STDOUT')
-                if cu['stderr_file'] == None:
-                    cu['stderr_file'] = "%s/%s" % (workdir, 'STDERR')
+                stdout_file = cud.get('stdout')
+                if not stdout_file:
+                    stdout_file = 'STDOUT'
+                cu['stdout_file'] = os.path.join(workdir, stdout_file)
+
+                stderr_file = cud.get('stderr')
+                if not stderr_file:
+                    stderr_file = 'STDERR'
+                cu['stderr_file'] = os.path.join(workdir, stderr_file)
 
                 # create unit sandbox
                 rec_makedir(workdir)
