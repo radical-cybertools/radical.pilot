@@ -1575,8 +1575,11 @@ class LaunchMethodMPIEXEC(LaunchMethod):
     #
     def _configure(self):
         # mpiexec (e.g. on SuperMUC)
-        self.launch_command = self._which('mpiexec')
-
+        self.launch_command = self._find_executable([
+            'mpiexec',            # General case
+            'mpiexec-mpich-mp',   # Mac OSX MacPorts
+            'mpiexec-openmpi-mp'  # Mac OSX MacPorts
+        ])
 
     # --------------------------------------------------------------------------
     #
@@ -1596,7 +1599,6 @@ class LaunchMethodMPIEXEC(LaunchMethod):
             self.launch_command, task_numcores, hosts_string, task_command)
 
         return mpiexec_command, launch_script_name
-
 
 
 # ------------------------------------------------------------------------------
