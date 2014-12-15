@@ -260,7 +260,6 @@ OPTIONS:
    -g      Global shared virtualenv (create if missing)
    -h      Show this message.
    -i      The Python interpreter to use, e.g., python2.7.
-           (default is '/usr/bin/python')
    -j      Task launch method.
    -k      MPI launch method.
    -l      Type of Local Resource Management System.
