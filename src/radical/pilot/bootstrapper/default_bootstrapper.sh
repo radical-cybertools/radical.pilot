@@ -32,8 +32,8 @@ SANDBOX=`pwd`
 
 
 # seconds to wait for lock files 
-# 5 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=30
+# 10 min should be enough for anybody to create/update a virtenv...
+LOCK_TIMEOUT=600
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
@@ -298,6 +298,8 @@ EOF
 # create and update ops will be locked and thus protected against concurrent
 # bootstrapper invokations.  
 #
+# (private + location in pilot sandbox == old behavior)
+#
 # That locking will likely not scale nicely for larger numbers of concurrent
 # pilot, at least not for slow running updates (time for update of n pilots
 # needs to be smaller than lock timeout).  OTOH, concurrent pip updates should
@@ -360,6 +362,8 @@ setup_virtenv()
     #
     # Note though that some virtenv modes won't be able to cope with specific
     # tag or branch requests (RP_MODE_CHECK)
+    #
+    # FIXME: on stage, stage not only pilot, but sdist
     #
     if test "$PILOT_VERSION" = 'stage' \
          -o "$PILOT_VERSION" = 'release'

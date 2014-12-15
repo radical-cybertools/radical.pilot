@@ -540,6 +540,8 @@ def pilot_DONE(mongo_p, pilot_uid):
 # ==============================================================================
 class Scheduler(threading.Thread):
 
+    # FIXME: clarify what can be overloaded by Scheduler classes
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, lrms, schedule_queue, execution_queue, 
@@ -558,9 +560,10 @@ class Scheduler(threading.Thread):
         self._lock            = threading.RLock()
         self._wait_queue      = list()
 
-        self.configure()
+        self._configure()
 
         self.start ()
+
 
     # --------------------------------------------------------------------------
     #
@@ -587,26 +590,6 @@ class Scheduler(threading.Thread):
         except KeyError:
             raise Exception("Scheduler '%s' unknown!" % name)
 
-    # --------------------------------------------------------------------------
-    #
-    def configure(self):
-        raise NotImplementedError("configure() not implemented for Scheduler '%s'." % self.name)
-
-    # --------------------------------------------------------------------------
-    #
-    def slot_status(self, short=False):
-        raise NotImplementedError("slot_status() not implemented for Scheduler '%s'." % self.name)
-
-    # --------------------------------------------------------------------------
-    #
-    def allocate_slot(self, cores_requested):
-        raise NotImplementedError("allocate_slot() not implemented for Scheduler '%s'." % self.name)
-
-    # --------------------------------------------------------------------------
-    #
-    def release_slot(self, opaque_slot):
-        raise NotImplementedError("release_slot() not implemented for Scheduler '%s'." % self.name)
-
 
     # --------------------------------------------------------------------------
     #
@@ -616,11 +599,35 @@ class Scheduler(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _try_execution (self, cu) :
+    def _configure(self):
+        raise NotImplementedError("_configure() not implemented for Scheduler '%s'." % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def slot_status(self, short=False):
+        raise NotImplementedError("slot_status() not implemented for Scheduler '%s'." % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _allocate_slot(self, cores_requested):
+        raise NotImplementedError("_allocate_slot() not implemented for Scheduler '%s'." % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _release_slot(self, opaque_slot):
+        raise NotImplementedError("_release_slot() not implemented for Scheduler '%s'." % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _try_allocation (self, cu) :
 
         # schedule this unit, and receive an opaque handle that has meaning to
         # the LRMS, Scheduler and LaunchMethod.
-        cu['opaque_slot'] = self.allocate_slot(cu['description']['cores']) 
+        cu['opaque_slot'] = self._allocate_slot(cu['description']['cores']) 
         
         if  cu['opaque_slot'] :
             # got an allocation, go off and launch the process
@@ -634,6 +641,7 @@ class Scheduler(threading.Thread):
         else:
             # otherwise signal that CU remains unhandled
             return False
+
                 
     # --------------------------------------------------------------------------
     #
@@ -645,7 +653,7 @@ class Scheduler(threading.Thread):
         # fly
         for cu in self._wait_queue[:] :
 
-            if  self._try_execution (cu) :
+            if  self._try_allocation (cu) :
                 # yep, that worked - remove it from the qit queue
                 self._wait_queue.remove (cu)
 
@@ -662,7 +670,7 @@ class Scheduler(threading.Thread):
 
         for cu in cus :
             if  cu['opaque_slot'] :
-                self.release_slot (cu['opaque_slot'])
+                self._release_slot (cu['opaque_slot'])
                 slots_released = True
 
         # notify the scheduling thread of released slots
@@ -682,6 +690,7 @@ class Scheduler(threading.Thread):
 
                 request = self._schedule_queue.get()
 
+                # shutdown signal
                 if  not request :
                     continue
 
@@ -701,7 +710,7 @@ class Scheduler(threading.Thread):
                     # we got a new unit.  Either we can place it straight away and
                     # move it to execution, or we have to put it on the wait queue
                     cu = request
-                    if  not self._try_execution (cu) :
+                    if  not self._try_allocation (cu) :
                         # No resources available, put in wait queue
                         self._wait_queue.append (cu)
 
@@ -730,12 +739,12 @@ class SchedulerContinuous(Scheduler):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         if not self._lrms.node_list:
-            raise Exception("LRMS %s didn't configure node_list." % self._lrms.name)
+            raise Exception("LRMS %s didn't _configure node_list." % self._lrms.name)
 
         if not self._lrms.cores_per_node:
-            raise Exception("LRMS %s didn't configure cores_per_node." % self._lrms.name)
+            raise Exception("LRMS %s didn't _configure cores_per_node." % self._lrms.name)
 
         # Slots represents the internal process management structure.
         # The structure is as follows:
@@ -778,6 +787,7 @@ class SchedulerContinuous(Scheduler):
 
         return all_slots_slot_index * self._lrms.cores_per_node + int(first_slot_core)
 
+
     # --------------------------------------------------------------------------
     #
     def slot_status(self, short=False):
@@ -814,7 +824,7 @@ class SchedulerContinuous(Scheduler):
     #
     # (Temporary?) wrapper for acquire_slots
     #
-    def allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested):
 
         # TODO: single_node should be enforced for e.g. non-message passing 
         #       tasks, but we don't have that info here.
@@ -832,10 +842,12 @@ class SchedulerContinuous(Scheduler):
         return self._acquire_slots(cores_requested, single_node=single_node, 
                 continuous=continuous)
 
+
     # --------------------------------------------------------------------------
     #
-    def release_slot(self, (task_slots)):
+    def _release_slot(self, (task_slots)):
         self._change_slot_states(task_slots, FREE)
+
 
     # --------------------------------------------------------------------------
     #
@@ -907,6 +919,7 @@ class SchedulerContinuous(Scheduler):
                         range(slot_cores_offset, slot_cores_offset + cores_requested)]
 
         return None
+
 
     # --------------------------------------------------------------------------
     #
@@ -1046,9 +1059,9 @@ class SchedulerTorus(Scheduler):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         if not self._lrms.cores_per_node:
-            raise Exception("LRMS %s didn't configure cores_per_node." % self._lrms.name)
+            raise Exception("LRMS %s didn't _configure cores_per_node." % self._lrms.name)
 
         self._cores_per_node = self._lrms.cores_per_node
 
@@ -1097,7 +1110,7 @@ class SchedulerTorus(Scheduler):
     # Currently only implements full-node allocation, so core count must
     # be a multiple of cores_per_node.
     #
-    def allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested):
 
         block = self._lrms.torus_block
         sub_block_shape_table = self._lrms.shape_table
@@ -1129,6 +1142,7 @@ class SchedulerTorus(Scheduler):
                         self._lrms.loc2str(corner), self._lrms.loc2str(end)))
 
         return corner, sub_block_shape
+
 
     # --------------------------------------------------------------------------
     #
@@ -1193,7 +1207,7 @@ class SchedulerTorus(Scheduler):
 
     # --------------------------------------------------------------------------
     #
-    def release_slot(self, (corner, shape)):
+    def _release_slot(self, (corner, shape)):
         self._free_cores(self._lrms.torus_block, corner, shape)
 
         # something changed - write history!
@@ -1268,6 +1282,7 @@ class SchedulerTorus(Scheduler):
         return offset
 
 
+
 # ==============================================================================
 #
 # Launch Methods
@@ -1284,13 +1299,14 @@ class LaunchMethod(object):
         self._scheduler = scheduler
 
         self.launch_command = None
-        self.configure()
+        self._configure()
         # TODO: This doesn't make too much sense for LM's that use multiple 
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
             raise Exception("Launch command not found for LaunchMethod '%s'" % name)
 
         logger.info("Discovered launch command: '%s'.", self.launch_command)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1332,14 +1348,15 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
-        raise NotImplementedError("configure() not implemented for LaunchMethod: %s." % self.name)
+    def _configure(self):
+        raise NotImplementedError("_configure() not implemented for LaunchMethod: %s." % self.name)
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores, 
                           launch_script_name, opaque_slot):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1356,6 +1373,7 @@ class LaunchMethod(object):
                 return ret
 
         return None
+
 
     # --------------------------------------------------------------------------
     #
@@ -1394,7 +1412,7 @@ class LaunchMethodFORK(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # "Regular" tasks
         self.launch_command = ''
 
@@ -1426,13 +1444,14 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         self.launch_command = self._find_executable([
             'mpirun',            # General case
             'mpirun_rsh',        # Gordon @ SDSC
             'mpirun-mpich-mp',   # Mac OSX MacPorts
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
+
 
     # --------------------------------------------------------------------------
     #
@@ -1453,6 +1472,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
             self.launch_command, export_vars, task_numcores, hosts_string, task_command)
 
         return mpirun_command, launch_script_name
+
 
     # --------------------------------------------------------------------------
     #
@@ -1483,7 +1503,7 @@ class LaunchMethodSSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # Find ssh command
         command = self._which('ssh')
 
@@ -1538,7 +1558,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # mpiexec (e.g. on SuperMUC)
         self.launch_command = self._which('mpiexec')
 
@@ -1577,7 +1597,7 @@ class LaunchMethodAPRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # aprun: job launcher for Cray systems
         self.launch_command= self._which('aprun')
 
@@ -1611,9 +1631,10 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # ccmrun: Cluster Compatibility Mode (CCM) job launcher for Cray systems
         self.launch_command= self._which('ccmrun')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1647,7 +1668,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # ccmrun: Cluster Compatibility Mode job launcher for Cray systems
         self.launch_command= self._which('ccmrun')
 
@@ -1693,7 +1714,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # runjob: job launcher for IBM BG/Q systems, e.g. Joule
         self.launch_command= self._which('runjob')
 
@@ -1761,7 +1782,7 @@ class LaunchMethodDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = self._which('dplace')
 
@@ -1799,9 +1820,10 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # mpirun_rsh (e.g. on Gordon@ SDSC)
         self.launch_command = self._which('mpirun_rsh')
+
 
     # --------------------------------------------------------------------------
     #
@@ -1839,7 +1861,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = self._which('dplace')
         self.mpirun_command = self._which('mpirun')
@@ -1880,7 +1902,7 @@ class LaunchMethodIBRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # ibrun: wrapper for mpirun at TACC
         self.launch_command = self._which('ibrun')
 
@@ -1918,7 +1940,7 @@ class LaunchMethodPOE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
         self.launch_command = self._which('poe')
 
@@ -1978,7 +2000,7 @@ class LRMS(object):
         self.node_list = []
         self.cores_per_node = None
 
-        self.configure()
+        self._configure()
 
         logger.info("Discovered execution environment: %s", self.node_list)
 
@@ -2028,8 +2050,8 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
-        raise NotImplementedError("Configure not implemented for LRMS type: %s." % self.name)
+    def _configure(self):
+        raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
 
 
 
@@ -2045,7 +2067,7 @@ class TORQUELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
 
         self._log.info("Configured to run on system with %s.", self.name)
 
@@ -2130,7 +2152,7 @@ class PBSProLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
         # TODO: $NCPUS?!?! = 1 on archer
 
         pbspro_nodefile = os.environ.get('PBS_NODEFILE')
@@ -2276,7 +2298,7 @@ class SLURMLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
 
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
         if slurm_nodelist is None:
@@ -2346,7 +2368,7 @@ class SGELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
 
         sge_hostfile = os.environ.get('PE_HOSTFILE')
         if sge_hostfile is None:
@@ -2388,7 +2410,7 @@ class LSFLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
         if lsf_hostfile is None:
@@ -2574,7 +2596,7 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
 
         # Determine method for determining hosts,
         # either through hostfile or BG/Q environment.
@@ -2870,7 +2892,7 @@ class ForkLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def configure(self):
+    def _configure(self):
 
         self._log.info("Using fork on localhost.")
 
