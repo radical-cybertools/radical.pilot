@@ -4368,8 +4368,8 @@ class Agent (object):
                 cu['workdir']     = workdir
                 cu['stdout']      = ''
                 cu['stderr']      = ''
-                cu['stdout_file'] = "%s/%s" % (workdir, cud.get ('stdout', 'STDOUT')) 
-                cu['stderr_file'] = "%s/%s" % (workdir, cud.get ('stderr', 'STDERR')) 
+                cu['stdout_file'] = "%s/%s" % (workdir, cud.get('stdout_file', 'STDOUT'))
+                cu['stderr_file'] = "%s/%s" % (workdir, cud.get('stderr_file', 'STDERR'))
                 cu['opaque_clot'] = None
 
                 # create unit sandbox
