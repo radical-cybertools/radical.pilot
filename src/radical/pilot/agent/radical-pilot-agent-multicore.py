@@ -3417,7 +3417,7 @@ class UpdateWorker(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, agent, session_id, 
-                 update_queue, mongodb_url, mongodb_name):
+                 update_queue, mongodb_url, mongodb_name, mongodb_auth):
 
         threading.Thread.__init__(self)
 
@@ -3428,8 +3428,7 @@ class UpdateWorker(threading.Thread):
         self._update_queue  = update_queue
         self._terminate     = threading.Event ()
 
-        mongo_client        = pymongo.MongoClient(mongodb_url)
-        self._mongo_db      = mongo_client[mongodb_name]
+        self._mongo_db = get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
         self._cinfo         = dict()  # collection cache
 
         # run worker thread
@@ -4131,7 +4130,8 @@ class Agent (object):
                 session_id      = self._session_id,
                 update_queue    = self._update_queue,
                 mongodb_url     = mongodb_url,
-                mongodb_name    = mongodb_name
+                mongodb_name    = mongodb_name,
+                mongodb_auth    = mongodb_auth
             )
             self.worker_list.append (update_worker)
 
