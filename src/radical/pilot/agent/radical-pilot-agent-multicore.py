@@ -3066,7 +3066,7 @@ class SpawnerPopen (Spawner):
                                   preexec_fn         = None,
                                   close_fds          = True,
                                   shell              = True,
-                                  # TODO: cwd        d oesn't always make sense if it runs remotely (still true?)
+                                  # TODO: cwd doesn't always make sense if it runs remotely (still true?)
                                   cwd                = cu['workdir'],
                                   env                = env,
                                   universal_newlines = False,
