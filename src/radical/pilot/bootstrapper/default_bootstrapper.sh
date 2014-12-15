@@ -610,8 +610,8 @@ find_available_port()
 #
 preprocess()
 {
-    cmd="$@"
-    run_cmd  "Running pre-process command" "$@"
+    cmd=$@
+    run_cmd "Running pre-process command" "$cmd"
 
     if test $? -ne 0 
     then
