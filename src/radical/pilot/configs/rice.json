@@ -1,4 +1,3 @@
-
 {
     "davinci": {
         "description"                 : "The DAVinCI Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+DAVinCI).",
@@ -37,4 +36,3 @@
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
 }
-

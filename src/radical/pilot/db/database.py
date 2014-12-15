@@ -100,7 +100,7 @@ class Session():
         creation_time = datetime.datetime.utcnow()
 
         dbs = Session(db_url, db_name)
-        dbs._create(sid, creation_time)
+        dbs.create(sid, creation_time)
 
         connection_info = DBConnectionInfo(
             session_id=sid,
@@ -113,7 +113,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def _create(self, sid, creation_time):
+    def create(self, sid, creation_time):
         """ Creates a new session (private).
 
             A session is a distinct collection with three sub-collections
@@ -291,7 +291,8 @@ class Session():
     #
     def update_pilot_state(self, pilot_uid, started=None, finished=None,
                            submitted=None, state=None, sagajobid=None,
-                           sandbox=None, logs=None):
+                           pilot_sandbox=None, global_sandbox=None, 
+                           logs=None):
 
         """Updates the information of a pilot.
         """
@@ -299,30 +300,22 @@ class Session():
             raise Exception("No active session.")
 
         # construct the update query
-        set_query = dict()
+        set_query  = dict()
         push_query = dict()
 
-        if state is not None:
+        if state :
             set_query["state"] = state
             push_query["statehistory"] = [{'state': state, 'timestamp': datetime.datetime.utcnow()}]
 
-        if started is not None:
-            set_query["started"] = started
-
-        if finished is not None:
-            set_query["finished"] = finished
-
-        if submitted is not None:
-            set_query["submitted"] = submitted
-
-        if sagajobid is not None:
-            set_query["sagajobid"] = sagajobid
-
-        if sandbox is not None:
-            set_query["sandbox"] = sandbox
-
-        if logs is not None:
+        if logs  : 
             push_query["log"] = logs
+
+        if started        : set_query["started"]        = started 
+        if finished       : set_query["finished"]       = finished 
+        if submitted      : set_query["submitted"]      = submitted 
+        if sagajobid      : set_query["sagajobid"]      = sagajobid 
+        if pilot_sandbox  : set_query["sandbox"]        = pilot_sandbox 
+        if global_sandbox : set_query["global_sandbox"] = global_sandbox 
 
         # update pilot entry.
         self._p.update(
@@ -334,7 +327,7 @@ class Session():
     #--------------------------------------------------------------------------
     #
     def insert_pilot(self, pilot_uid, pilot_manager_uid, pilot_description,
-        sandbox):
+        pilot_sandbox, global_sandbox):
         """Adds a new pilot document to the database.
         """
         if self._s is None:
@@ -356,7 +349,8 @@ class Session():
             "nodes":          None,
             "cores_per_node": None,
             "sagajobid":      None,
-            "sandbox":        sandbox,
+            "sandbox":        pilot_sandbox,
+            "global_sandbox": global_sandbox,
             "state":          PENDING_LAUNCH,
             "statehistory":   [{"state": PENDING_LAUNCH, "timestamp": ts}],
             "log":            [],
@@ -548,12 +542,12 @@ class Session():
                               "state"   : {"$in"  : src_states} }) \
                     .update ({"$set"    : {"state": state},
                               "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
-                              "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+                              "$push"   : {"log"  : {"message": log, "timestamp": ts}}})
             else :
                 bulk.find   ({"_id"     : ObjectId(uid)}) \
                     .update ({"$set"    : {"state": state},
                               "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
-                              "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+                              "$push"   : {"log"  : {"message": log, "timestamp": ts}}})
 
         result = bulk.execute()
 

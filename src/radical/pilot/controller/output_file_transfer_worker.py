@@ -144,7 +144,7 @@ class OutputFileTransferWorker(threading.Thread):
                                 update={'$set': {'FTW_Output_Directives.$.state': EXECUTING},
                                         '$push': {'log': {
                                             'timestamp': datetime.datetime.utcnow(),
-                                            'logentry': 'Starting transfer of %s' % source}}
+                                            'message'  : 'Starting transfer of %s' % source}}
                                 }
                             )
 
@@ -182,7 +182,7 @@ class OutputFileTransferWorker(threading.Thread):
                                 update={'$set': {'FTW_Output_Directives.$.state': DONE},
                                         '$push': {'log': {
                                             'timestamp': datetime.datetime.utcnow(),
-                                            'logentry': log_msg}}
+                                            'message'  : log_msg}}
                                 }
                             )
 
@@ -195,7 +195,7 @@ class OutputFileTransferWorker(threading.Thread):
                             {'_id': ObjectId(compute_unit_id)},
                             {'$set': {'state': FAILED},
                              '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
-                             '$push': {'log': {'logentry': log_message, 'timestamp': ts}}
+                             '$push': {'log': {'message': log_message, 'timestamp': ts}}
                             }
                         )
                         logger.error(log_message)
@@ -228,7 +228,7 @@ class OutputFileTransferWorker(threading.Thread):
                                       {'$set': {'FTW_Output_Status': DONE},
                                        '$push': {'log': {
                                            'timestamp': datetime.datetime.utcnow(),
-                                           'logentry': 'All FTW output staging directives done - %d.' % self._worker_number}}
+                                           'message'  : 'All FTW output staging directives done - %d.' % self._worker_number}}
                                        }
                         )
 
@@ -240,7 +240,7 @@ class OutputFileTransferWorker(threading.Thread):
                                       {'$set': {'Agent_Output_Status': DONE},
                                        '$push': {'log': {
                                            'timestamp': datetime.datetime.utcnow(),
-                                           'logentry': 'All Agent Output Staging Directives done-%d.' % self._worker_number}}
+                                           'message'  : 'All Agent Output Staging Directives done-%d.' % self._worker_number}}
                                       }
                         )
 

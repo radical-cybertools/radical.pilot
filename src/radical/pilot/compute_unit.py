@@ -85,7 +85,7 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(unit_manager_obj, unit_description, local_state):
+    def create(unit_manager_obj, unit_description, local_state):
         """ PRIVATE: Create a new compute unit.
         """
         # create and return pilot object
@@ -327,7 +327,7 @@ class ComputeUnit(object):
 
         cu_json = self._worker.get_compute_unit_data(self.uid)
         for log in cu_json['log']:
-            logs.append(Logentry(logentry=log["logentry"], timestamp=log["timestamp"]))
+            logs.append(Logentry.from_dict (log))
 
         return logs
 

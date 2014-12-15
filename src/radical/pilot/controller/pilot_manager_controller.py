@@ -279,7 +279,8 @@ class PilotManagerController(threading.Thread):
                 #             pilot_uid=result["pilot_uid"],
                 #             state=result["state"],
                 #             sagajobid=result["saga_job_id"],
-                #             sandbox=result["sandbox"],
+                #             pilot_sandbox=result["sandbox"],
+                #             global_sandbox=result["global_sandbox"],
                 #             submitted=result["submitted"],
                 #             logs=result["logs"]
                 #         )
@@ -405,22 +406,22 @@ class PilotManagerController(threading.Thread):
         logger.debug ("saga.utils.PTYShell ('%s')" % url)
         shell = sup.PTYShell (url, self._session, logger, opts={})
 
-        if pilot.description.sandbox is not None:
+        if pilot.description.sandbox :
             workdir_raw = pilot.description.sandbox
-        elif 'default_remote_workdir' in resource_config and \
-            resource_config['default_remote_workdir'] is not None:
-            workdir_raw = resource_config['default_remote_workdir']
-        else:
-            workdir_raw = "$PWD"
-
-        ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
-        if  ret == 0 and 'WORKDIR:' in out :
-            workdir_expanded = out.split(":")[1].strip()
-            logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
         else :
-            error_msg = "Couldn't determine remote working directory."
-            logger.error(error_msg)
-            raise Exception(error_msg)
+            workdir_raw = resource_config.get ('default_remote_workdir', "$PWD")
+
+        if '$' in workdir_raw or '`' in workdir_raw :
+            ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
+            if  ret == 0 and 'WORKDIR:' in out :
+                workdir_expanded = out.split(":")[1].strip()
+                logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
+            else :
+                error_msg = "Couldn't determine remote working directory."
+                logger.error(error_msg)
+                raise Exception(error_msg)
+        else :
+            workdir_expanded = workdir_raw
 
         # At this point we have determined 'pwd'
         fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
@@ -433,7 +434,9 @@ class PilotManagerController(threading.Thread):
             pilot_uid=pilot_uid,
             pilot_manager_uid=self._pm_id,
             pilot_description=pilot.description,
-            sandbox=str(agent_dir_url))
+            pilot_sandbox=str(agent_dir_url), 
+            global_sandbox=str(fs.path)
+            )
 
         # Create a shared data store entry
         self._shared_data[pilot_uid] = {

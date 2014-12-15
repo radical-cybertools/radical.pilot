@@ -133,7 +133,8 @@ setup_args = {
                           'bin/radicalpilot-close-session',
                           'bin/radicalpilot-cleanup',
                           'bin/radicalpilot-stats',
-                          'bin/radicalpilot-stats.plot'
+                          'bin/radicalpilot-stats.plot',
+                          'src/radical/pilot/agent/radical-pilot-agent-multicore.py'
                          ],
     'package_data'     : {'': ['*.sh', '*.json', 'VERSION', 'VERSION.git']},
 

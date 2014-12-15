@@ -66,7 +66,7 @@ class ComputePilot (object):
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _create(pilot_manager_obj, pilot_description):
+    def create(pilot_manager_obj, pilot_description):
         """ PRIVATE: Create a new pilot.
         """
         # Create and return pilot object.
@@ -254,7 +254,7 @@ class ComputePilot (object):
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         for log in pilot_json['log']:
-            logs.append(Logentry(logentry=log["logentry"], timestamp=log["timestamp"]))
+            logs.append (Logentry.from_dict (log))
 
         return logs
 
@@ -292,7 +292,7 @@ class ComputePilot (object):
         if not self._uid:
             return None
 
-        raise NotImplemented("Not Implemented")
+        raise NotImplementedError("Not Implemented")
 
     # -------------------------------------------------------------------------
     #
@@ -304,7 +304,7 @@ class ComputePilot (object):
         if not self._uid:
             return None
 
-        raise NotImplemented("Not Implemented")
+        raise NotImplementedError("Not Implemented")
 
     # -------------------------------------------------------------------------
     #

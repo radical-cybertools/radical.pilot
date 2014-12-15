@@ -84,9 +84,9 @@ class InputFileTransferWorker(threading.Thread):
                 um_col = db["%s.cu" % self.db_connection_info.session_id]
                 logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
-            except Exception, ex:
-                logger.error("Connection error: %s. %s" % (str(ex), traceback.format_exc()))
-                raise ex
+            except Exception as e :
+                logger.exception("Connection error: %s" % e)
+                raise
 
             try :
                 while not self._stop.is_set():
@@ -142,9 +142,10 @@ class InputFileTransferWorker(threading.Thread):
                                 saga_dir = self._saga_dirs[remote_sandbox_key]
                                 saga_dir.make_dir (remote_sandbox, 
                                                    flags=saga.filesystem.CREATE_PARENTS)
-                            except Exception, ex:
-                                tb = traceback.format_exc()
-                                logger.info('Error: %s. %s' % (str(ex), tb))
+                            except Exception as e :
+                                logger.exception('Error: %s' % e)
+                                # FIXME: why is this exception ignored?  AM
+
 
                             logger.info("Processing input file transfers for ComputeUnit %s" % compute_unit_id)
                             # Loop over all transfer directives and execute them.
@@ -199,25 +200,26 @@ class InputFileTransferWorker(threading.Thread):
                                     update={'$set': {'FTW_Input_Directives.$.state': 'Done'},
                                             '$push': {'log': {
                                                 'timestamp': datetime.datetime.utcnow(), 
-                                                'logentry': log_msg}}
+                                                'message'  : log_msg}}
                                     }
                                 )
 
-                        except Exception, ex:
+                        except Exception as e :
                             # Update the CU's state 'FAILED'.
                             ts = datetime.datetime.utcnow()
-                            msg = {'timestamp': ts, 'logentry': "Input transfer failed: %s\n%s" % (str(ex), traceback.format_exc())}
+                            logentry = {'message'  : "Input transfer failed: %s" % e,
+                                        'timestamp': ts}
 
-                            logger.exception(log_messages)
                             um_col.update(
                                 {'_id':   ObjectId(compute_unit_id)},
                                 {'$set':  {'state': FAILED},
                                  '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
-                                 '$push': {'log': {
-                                    'timestamp': datetime.datetime.utcnow(), 
-                                    'logentry': log_msg}}
+                                 '$push': {'log': logentry}
                                 }
                             )
+
+                            logger.exception(str(logentry))
+
 
                     # Code below is only to be run by the "first" or only worker
                     if self._worker_number > 1:
@@ -246,7 +248,7 @@ class InputFileTransferWorker(threading.Thread):
                                           {'$set': {'FTW_Input_Status': DONE},
                                            '$push': {'log': { 
                                                 'timestamp': datetime.datetime.utcnow(), 
-                                                'logentry': 'All FTW Input Staging Directives done - %d.' % self._worker_number}}
+                                                'message'  : 'All FTW Input Staging Directives done - %d.' % self._worker_number}}
                                            }
                             )
 
@@ -259,7 +261,7 @@ class InputFileTransferWorker(threading.Thread):
                                            {'$set': {'Agent_Input_Status': DONE},
                                             '$push': {'log': {
                                                 'timestamp': datetime.datetime.utcnow(), 
-                                                'logentry': 'All Agent Input Staging Directives done - %d.' % self._worker_number}}
+                                                'message'  : 'All Agent Input Staging Directives done - %d.' % self._worker_number}}
                                            }
                             )
 

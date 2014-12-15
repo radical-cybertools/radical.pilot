@@ -59,28 +59,16 @@ if __name__ == "__main__":
 
     cud_list = []
 
-    for unit_count in range(0, 4):
+    for unit_count in range(0, 8):
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["source     ~/ve/bin/activate"]
+        mpi_test_task.pre_exec      = ["source ~/ve/bin/activate"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
-
-        cud_list.append(mpi_test_task)
-
-
-    for unit_count in range(0, 4):
-
-        mpi_test_task = rp.ComputeUnitDescription()
-
-        mpi_test_task.executable    = "/bin/sh"
-        mpi_test_task.arguments     = ["-c", "'echo mpi rank $PMI_RANK/$PMI_SIZE'"]
-        mpi_test_task.mpi           = True
-        mpi_test_task.cores         = 4
+        mpi_test_task.cores         = 2
 
         cud_list.append(mpi_test_task)
 
@@ -118,10 +106,8 @@ if __name__ == "__main__":
         print "    stderr: '%s'" % unit.stderr
         
         assert (unit.state == rp.DONE)
-        assert ('mpi rank 0/4' in unit.stdout)
-        assert ('mpi rank 1/4' in unit.stdout)
-        assert ('mpi rank 2/4' in unit.stdout)
-        assert ('mpi rank 3/4' in unit.stdout)
+        assert ('mpi rank 0/2' in unit.stdout)
+        assert ('mpi rank 1/2' in unit.stdout)
 
     session.close()
 

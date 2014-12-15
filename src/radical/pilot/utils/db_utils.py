@@ -135,7 +135,8 @@ def get_session_slothist (db, sid, cache=None) :
     for pilot_doc in docs['pilot'] :
 
         # slot configuration was only recently (v0.18) added to the RP agent...
-        if  not 'slots' in pilot_doc :
+        print pilot_doc.keys()
+        if  not 'slothistory' in pilot_doc :
             return None
 
         pid      = str(pilot_doc['_id'])
