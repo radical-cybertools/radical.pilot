@@ -640,12 +640,11 @@ echo "# -------------------------------------------------------------------"
 # parse command line arguments
 # free letters: b h o
 while getopts "a:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
-    PRE_PROCESS=
     case $OPTION in
         a)  AUTH=$OPTARG  ;;
         c)  CORES=$OPTARG  ;;
         d)  DEBUG=$OPTARG  ;;
-        e)  preprocess $OPTARG  ;;
+        e)  preprocess "$OPTARG"  ;;
         f)  FORWARD_TUNNEL_ENDPOINT=$OPTARG  ;;
         g)  VIRTENV=$OPTARG  ;;
         i)  PYTHON=$OPTARG  ;;

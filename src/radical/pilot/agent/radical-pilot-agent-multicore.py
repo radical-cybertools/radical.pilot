@@ -391,6 +391,9 @@ def tail (txt, maxlen=MAX_IO_LOGLENGTH) :
     # shorten the given string to the last <n> characters, and prepend
     # a notification.  This is used to keep logging information in mongodb
     # manageable (the size of mongodb documents is limited).
+    
+    if  not txt :
+        return txt
 
     if  len(txt) > maxlen :
         return "[... CONTENT SHORTENED ...]\n%s" % txt[-maxlen:]
