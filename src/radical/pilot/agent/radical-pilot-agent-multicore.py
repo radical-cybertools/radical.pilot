@@ -3272,6 +3272,10 @@ class ExecWorker(threading.Thread):
                         cu['state']   = EXECUTING
                         cu['proc']    = proc
 
+                        self._agent.update_unit_state (_id    = cu['_id'],
+                                                       state  = EXECUTING, 
+                                                       msg    = "unit execution start")
+
                         # Add to the list of monitored tasks
                         self._running_cus.append(cu)
 
@@ -3284,13 +3288,16 @@ class ExecWorker(threading.Thread):
                                         % (str(e), traceback.format_exc())
                         cu['state']   = FAILED
                         cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
-                        
-                        self._log.exception("Launching unit failed: '%s'.", e) 
-                        
+
                         # Free the Slots, Flee the Flots, Ree the Frots!
                         if cu['opaque_slot']:
                             self._scheduler.unschedule(cu)
 
+                        self._agent.update_unit_state (_id    = cu['_id'],
+                                                       state  = FAILED, 
+                                                       msg    = "unit execution failed",
+                                                       logger = self._log.exception)
+                        
 
                     # Update slot history to mongodb
                     self._update_tasks()
