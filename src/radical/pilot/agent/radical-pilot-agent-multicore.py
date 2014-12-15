@@ -1320,8 +1320,15 @@ class LaunchMethod(object):
                 LAUNCH_METHOD_SSH           : LaunchMethodSSH
             }[name]
             return implementation(name, logger, scheduler)
+
         except KeyError:
-            raise Exception("LaunchMethod '%s' unknown!" % name)
+            logger.exception ("LaunchMethod '%s' unknown!" % name)
+
+        except Exception as e :
+            logger.exception ("LaunchMethod cannot be used: %s!" % e)
+
+        return None
+
 
     # --------------------------------------------------------------------------
     #
@@ -3255,7 +3262,7 @@ class ExecWorker(threading.Thread):
 
 
                     # Update slot history to mongodb
-                    self._update_tasks()
+                    self.	_update_tasks()
 
 
         except Exception as e:
