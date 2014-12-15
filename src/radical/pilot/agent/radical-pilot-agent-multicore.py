@@ -41,14 +41,14 @@
 
      class StageinWorker
        - competes for CU input staging requests from inputstaging queue
-       - for each received CU 
+       - for each received CU
          - performs staging
          - pushes CU into execution queue
          - pushes stage change notification request into update queue
 
      class StageoutWorker
        - competes for CU output staging requests from outputstaging queue
-       - for each received CU 
+       - for each received CU
          - performs staging
          - pushes stage change notification request into update queue
 
@@ -57,7 +57,7 @@
          (partition size == max cu size)
        - competes for CU execution reqeusts from execute queue
        - for each CU
-         - prepares execution command 
+         - prepares execution command
          - pushes command to ExecutionEnvironment
          - pushes stage change notification request into update queue
 
@@ -78,11 +78,11 @@
          - pushes state update (collected into bulks if possible)
          - cleans CU workdir if CU is final and cleanup is requested
 
-     Agent 
+     Agent
        |
        +--------------------------------------------------------
        |           |              |              |             |
-       |           |              |              |             | 
+       |           |              |              |             |
        V           V              V              V             V
      ExecWorker* StageinWorker* StageoutWorker* UpdateWorker* HeartbeatMonitor
        |
@@ -93,7 +93,7 @@
      LRMS  MPILaunchMethod TaskLaunchMethod Scheduler Spawner
 
 
-    NOTE: 
+    NOTE:
     -----
       - Units are progressing through the different worker threads, where, in
         general, the unit changes state when transitioning to the next thread.
@@ -140,7 +140,7 @@ import logging
 import datetime
 import hostlist
 import traceback
-import threading 
+import threading
 import subprocess
 import multiprocessing
 
@@ -210,7 +210,7 @@ COMMAND_CANCEL              = "Cancel"
 COPY     = 'Copy'     # local cp
 LINK     = 'Link'     # local ln -s
 MOVE     = 'Move'     # local mv
-TRANSFER = 'Transfer' # saga remote transfer 
+TRANSFER = 'Transfer' # saga remote transfer
                       # TODO: This might just be a special case of copy
 
 # tri-state for unit spawn retval
@@ -232,7 +232,7 @@ MAX_IO_LOGLENGTH     = 1*1024
 BULK_COLLECTION_TIME = 1.0
 
 # time to sleep between queue polls (seconds)
-QUEUE_POLL_SLEEPTIME = 0.1 
+QUEUE_POLL_SLEEPTIME = 0.1
 
 # time to sleep between database polls (seconds)
 DB_POLL_SLEEPTIME    = 0.5
@@ -277,21 +277,21 @@ STAGING_OUTPUT              = 'StagingOutput'
 #
 # time stamp for profiling etc.
 #
-def timestamp () :
+def timestamp():
     # human readable absolute UTC timestamp for log entries in database
-    return datetime.datetime.utcnow ()
+    return datetime.datetime.utcnow()
 
-def timestamp_epoch () :
+def timestamp_epoch():
     # absolute timestamp as seconds since epoch
     return float(time.time())
 
 # absolute timestamp in seconds since epocj pointing at start of
 # bootstrapper (or 'now' as fallback)
-timestamp_zero = float(os.environ.get ('TIME_ZERO', time.time()))
+timestamp_zero = float(os.environ.get('TIME_ZERO', time.time()))
 
 print "timestamp zero: %s" % timestamp_zero
 
-def timestamp_now () :
+def timestamp_now():
     # relative timestamp seconds since TIME_ZERO (start)
     return float(time.time()) - timestamp_zero
 
@@ -305,17 +305,17 @@ def timestamp_now () :
 if 'RADICAL_PILOT_PROFILE' in os.environ:
     profile_agent  = True
     profile_handle = open('AGENT.prof', 'a')
-else :
+else:
     profile_agent  = False
     profile_handle = sys.stdout
 
 
 # ------------------------------------------------------------------------------
 #
-profile_tags  = dict ()
-profile_freqs = dict ()
+profile_tags  = dict()
+profile_freqs = dict()
 
-def prof (etype, uid="", msg="", tag="", logger=None) :
+def prof(etype, uid="", msg="", tag="", logger=None):
 
     # record a timed event.  We record the thread ID, the uid of the affected
     # object, a log message, event type, and a tag.  Whenever a tag changes (to
@@ -328,11 +328,11 @@ def prof (etype, uid="", msg="", tag="", logger=None) :
     # TODO: should this move to utils?  Or at least RP utils, so that we can
     # also use it for the application side?
 
-    if  logger :
-        logger ("%s -- %s (%s): %s", etype, msg, uid, tag)
+    if logger:
+        logger("%s -- %s (%s): %s", etype, msg, uid, tag)
 
 
-    if not profile_agent :
+    if not profile_agent:
         return
 
 
@@ -340,77 +340,77 @@ def prof (etype, uid="", msg="", tag="", logger=None) :
     tid    = threading.current_thread().name
     now    = timestamp_now()
 
-    if uid and tag :
+    if uid and tag:
 
-        if not uid in profile_tags :
-            profile_tags[uid] = { 'tag'  : "",
-                                  'time' : 0.0 }
+        if not uid in profile_tags:
+            profile_tags[uid] = {'tag'  : "",
+                                 'time' : 0.0 }
 
         old_tag = profile_tags[uid]['tag']
 
-        if tag != old_tag :
+        if tag != old_tag:
 
             tagged_time = now - profile_tags[uid]['time']
 
             profile_tags[uid]['tag' ] = tag
             profile_tags[uid]['time'] = timestamp_now()
 
-            profile_handle.write ("> %12.4f : %-20s : %12.4f : %-15s : %-24s : %-40s : %s\n" \
-                               % (tagged_time, tag, now, tid, uid, etype, msg))
+            profile_handle.write("> %12.4f : %-20s : %12.4f : %-17s : %-24s : %-40s : %s\n" \
+                                 % (tagged_time, tag, now, tid, uid, etype, msg))
             logged = True
 
 
-            if not tag in profile_freqs :
-                profile_freqs[tag] = {'last'  : now, 
+            if not tag in profile_freqs:
+                profile_freqs[tag] = {'last'  : now,
                                       'diffs' : list()}
-            else :
+            else:
                 diff = now - profile_freqs[tag]['last']
-                profile_freqs[tag]['diffs'].append (diff)
+                profile_freqs[tag]['diffs'].append(diff)
                 profile_freqs[tag]['last' ] = now
 
-                freq = sum(profile_freqs[tag]['diffs']) / len (profile_freqs[tag]['diffs'])
+                freq = sum(profile_freqs[tag]['diffs']) / len(profile_freqs[tag]['diffs'])
 
-                profile_handle.write ("> %12s : %-20.4f : %12s : %-15s : %-24s : %-40s : %s\n" \
-                                   % ('frequency', freq, '', '', '', '', ''))
+                profile_handle.write("> %12s : %-20.4f : %12s : %-17s : %-24s : %-40s : %s\n" \
+                                     % ('frequency', freq, '', '', '', '', ''))
 
 
 
-    if not logged :
-        profile_handle.write ("  %12s : %-20s : %12.4f : %-15s : %-24s : %-40s : %s\n" \
-                           % (' ' , ' ', now, tid, uid, etype, msg))
+    if not logged:
+        profile_handle.write("  %12s : %-20s : %12.4f : %-17s : %-24s : %-40s : %s\n" \
+                             % (' ' , ' ', now, tid, uid, etype, msg))
 
     # FIXME: disable flush on production runs
-    profile_handle.flush ()
+    profile_handle.flush()
 
 
 
 # ------------------------------------------------------------------------------
-# 
-def tail (txt, maxlen=MAX_IO_LOGLENGTH) :
+#
+def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 
     # shorten the given string to the last <n> characters, and prepend
     # a notification.  This is used to keep logging information in mongodb
-    # manageable (the size of mongodb documents is limited).
-    
-    if  not txt :
+    # manageable(the size of mongodb documents is limited).
+
+    if not txt:
         return txt
 
-    if  len(txt) > maxlen :
+    if len(txt) > maxlen:
         return "[... CONTENT SHORTENED ...]\n%s" % txt[-maxlen:]
-    else :
+    else:
         return txt
 
 
 # ------------------------------------------------------------------------------
 #
-def get_rusage () :
+def get_rusage():
 
     import resource
 
-    self_usage  = resource.getrusage (resource.RUSAGE_SELF)
-    child_usage = resource.getrusage (resource.RUSAGE_CHILDREN)
+    self_usage  = resource.getrusage(resource.RUSAGE_SELF)
+    child_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
 
-    rtime = time.time () - timestamp_zero
+    rtime = time.time() - timestamp_zero
     utime = self_usage.ru_utime  + child_usage.ru_utime
     stime = self_usage.ru_stime  + child_usage.ru_stime
     rss   = self_usage.ru_maxrss + child_usage.ru_maxrss
@@ -421,11 +421,11 @@ def get_rusage () :
 
 # ----------------------------------------------------------------------------------
 #
-def rec_makedir (target) :
+def rec_makedir(target):
 
     # recursive makedir which ignores errors if dir already exists
 
-    try :
+    try:
         os.makedirs(target)
     except OSError as e:
         # ignore failure on existing directory
@@ -437,15 +437,15 @@ def rec_makedir (target) :
 
 # ------------------------------------------------------------------------------
 #
-def get_mongodb (mongodb_url, mongodb_name, mongodb_auth) :
+def get_mongodb(mongodb_url, mongodb_name, mongodb_auth):
 
     mongo_client = pymongo.MongoClient(mongodb_url)
     mongo_db     = mongo_client[mongodb_name]
 
     # do auth on username *and* password (ignore empty split results)
-    auth_elems = filter (None, mongodb_auth.split (':', 1))
-    if  len (auth_elems) == 2 :
-        mongo_db.authenticate (auth_elems[0], auth_elems[1])
+    auth_elems = filter(None, mongodb_auth.split(':', 1))
+    if len(auth_elems) == 2:
+        mongo_db.authenticate(auth_elems[0], auth_elems[1])
 
     return mongo_db
 
@@ -454,37 +454,37 @@ def get_mongodb (mongodb_url, mongodb_name, mongodb_auth) :
 #
 def pilot_FAILED(mongo_p, pilot_uid, logger, message):
 
-    logger.error(message)      
+    logger.error(message)
 
     now = timestamp()
     out = None
     err = None
     log = None
 
-    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    try    : out = open('./AGENT.STDOUT', 'r').read()
     except : pass
-    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    try    : err = open('./AGENT.STDERR', 'r').read()
     except : pass
-    try    : log = open ('./AGENT.LOG',    'r').read ()
+    try    : log = open('./AGENT.LOG',    'r').read()
     except : pass
 
     msg = [{"message": message,      "timestamp": now},
            {"message": get_rusage(), "timestamp": now}]
 
-    if  mongo_p :
-        mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+    if mongo_p:
+        mongo_p.update({"_id": ObjectId(pilot_uid)},
             {"$pushAll": {"log"         : msg},
-             "$push"   : {"statehistory": {"state"     : FAILED, 
+             "$push"   : {"statehistory": {"state"     : FAILED,
                                            "timestamp" : now}},
              "$set"    : {"state"       : FAILED,
-                          "stdout"      : tail (out),
-                          "stderr"      : tail (err),
-                          "logfile"     : tail (log),
+                          "stdout"      : tail(out),
+                          "stderr"      : tail(err),
+                          "logfile"     : tail(log),
                           "finished"    : now}
             })
 
-    else :
-        logger.error ("cannot log error state in database!")
+    else:
+        logger.error("cannot log error state in database!")
 
 
 # ------------------------------------------------------------------------------
@@ -498,24 +498,24 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     err = None
     log = None
 
-    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    try    : out = open('./AGENT.STDOUT', 'r').read()
     except : pass
-    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    try    : err = open('./AGENT.STDERR', 'r').read()
     except : pass
-    try    : log = open ('./AGENT.LOG',    'r').read ()
+    try    : log = open('./AGENT.LOG',    'r').read()
     except : pass
 
     msg = [{"message": message,      "timestamp": now},
            {"message": get_rusage(), "timestamp": now}]
 
-    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+    mongo_p.update({"_id": ObjectId(pilot_uid)},
         {"$pushAll": {"log"         : msg},
-         "$push"   : {"statehistory": {"state"     : CANCELED, 
+         "$push"   : {"statehistory": {"state"     : CANCELED,
                                        "timestamp" : now}},
          "$set"    : {"state"       : CANCELED,
-                      "stdout"      : tail (out),
-                      "stderr"      : tail (err),
-                      "logfile"     : tail (log),
+                      "stdout"      : tail(out),
+                      "stderr"      : tail(err),
+                      "logfile"     : tail(log),
                       "finished"    : now}
         })
 
@@ -529,24 +529,24 @@ def pilot_DONE(mongo_p, pilot_uid):
     err = None
     log = None
 
-    try    : out = open ('./AGENT.STDOUT', 'r').read ()
+    try    : out = open('./AGENT.STDOUT', 'r').read()
     except : pass
-    try    : err = open ('./AGENT.STDERR', 'r').read ()
+    try    : err = open('./AGENT.STDERR', 'r').read()
     except : pass
-    try    : log = open ('./AGENT.LOG',    'r').read ()
+    try    : log = open('./AGENT.LOG',    'r').read()
     except : pass
 
-    msg = [{"message": "pilot done", "timestamp": now}, 
+    msg = [{"message": "pilot done", "timestamp": now},
            {"message": get_rusage(), "timestamp": now}]
 
-    mongo_p.update({"_id": ObjectId(pilot_uid)}, 
+    mongo_p.update({"_id": ObjectId(pilot_uid)},
         {"$pushAll": {"log"         : msg},
-         "$push"   : {"statehistory": {"state"    : DONE, 
+         "$push"   : {"statehistory": {"state"    : DONE,
                                        "timestamp": now}},
          "$set"    : {"state"       : DONE,
-                      "stdout"      : tail (out),
-                      "stderr"      : tail (err),
-                      "logfile"     : tail (log),
+                      "stdout"      : tail(out),
+                      "stderr"      : tail(err),
+                      "logfile"     : tail(log),
                       "finished"    : now}
         })
 
@@ -562,7 +562,7 @@ class Scheduler(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, lrms, schedule_queue, execution_queue, 
+    def __init__(self, name, logger, lrms, schedule_queue, execution_queue,
                  update_queue):
 
         threading.Thread.__init__(self)
@@ -580,7 +580,7 @@ class Scheduler(threading.Thread):
 
         self._configure()
 
-        self.start ()
+        self.start()
 
 
     # --------------------------------------------------------------------------
@@ -588,7 +588,7 @@ class Scheduler(threading.Thread):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, logger, name, lrms, schedule_queue, execution_queue, 
+    def create(cls, logger, name, lrms, schedule_queue, execution_queue,
                update_queue):
 
         # Make sure that we are the base-class!
@@ -602,7 +602,7 @@ class Scheduler(threading.Thread):
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            return implementation(name, logger, lrms, schedule_queue, 
+            return implementation(name, logger, lrms, schedule_queue,
                                   execution_queue, update_queue)
 
         except KeyError:
@@ -641,17 +641,17 @@ class Scheduler(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation (self, cu) :
+    def _try_allocation(self, cu):
 
         # schedule this unit, and receive an opaque handle that has meaning to
         # the LRMS, Scheduler and LaunchMethod.
-        cu['opaque_slot'] = self._allocate_slot(cu['description']['cores']) 
-        
-        if  cu['opaque_slot'] :
+        cu['opaque_slot'] = self._allocate_slot(cu['description']['cores'])
+
+        if cu['opaque_slot']:
             # got an allocation, go off and launch the process
             # FIXME: state update toward EXECUTING (or is that done in
             # launcher?)
-            prof ('push', msg="towards execution", uid=cu['uid'])
+            prof('push', msg="towards execution", uid=cu['uid'])
             self._execution_queue.put(cu)
             return True
 
@@ -660,22 +660,22 @@ class Scheduler(threading.Thread):
             # otherwise signal that CU remains unhandled
             return False
 
-                
+
     # --------------------------------------------------------------------------
     #
-    def _reschedule (self) :
+    def _reschedule(self):
 
-        prof ("try reschedule")
+        prof("try reschedule")
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
         # fly
-        for cu in self._wait_queue[:] :
+        for cu in self._wait_queue[:]:
 
-            if  self._try_allocation (cu) :
+            if self._try_allocation(cu):
                 # yep, that worked - remove it from the qit queue
-                self._wait_queue.remove (cu)
+                self._wait_queue.remove(cu)
 
-                
+
     # --------------------------------------------------------------------------
     #
     def unschedule(self, cus):
@@ -683,17 +683,17 @@ class Scheduler(threading.Thread):
 
         slots_released = False
 
-        if  not isinstance (cus, list) :
+        if not isinstance(cus, list):
             cus = [cus]
 
-        for cu in cus :
-            if  cu['opaque_slot'] :
-                self._release_slot (cu['opaque_slot'])
+        for cu in cus:
+            if cu['opaque_slot']:
+                self._release_slot(cu['opaque_slot'])
                 slots_released = True
 
         # notify the scheduling thread of released slots
-        if  slots_released :
-            self._schedule_queue.put (COMMAND_RESCHEDULE)
+        if slots_released:
+            self._schedule_queue.put(COMMAND_RESCHEDULE)
 
 
     # --------------------------------------------------------------------------
@@ -702,39 +702,39 @@ class Scheduler(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        while not self._terminate.isSet () :
+        while not self._terminate.isSet():
 
-            try :
+            try:
 
                 request = self._schedule_queue.get()
 
                 # shutdown signal
-                if  not request :
+                if not request:
                     continue
 
                 # we either get a new scheduled CU, or get a trigger that cores were
                 # freed, and we can try to reschedule waiting CUs
-                if  isinstance (request, basestring) :
+                if isinstance(request, basestring):
 
                     command = request
-                    if  command == COMMAND_RESCHEDULE :
-                        self._reschedule ()
+                    if command == COMMAND_RESCHEDULE:
+                        self._reschedule()
 
-                    else :
-                        self._log.error ("Unknown scheduler command: %s (ignored)", command)
+                    else:
+                        self._log.error("Unknown scheduler command: %s (ignored)", command)
 
-                else :
+                else:
 
                     # we got a new unit.  Either we can place it straight away and
                     # move it to execution, or we have to put it on the wait queue
                     cu = request
-                    if  not self._try_allocation (cu) :
+                    if not self._try_allocation(cu):
                         # No resources available, put in wait queue
-                        self._wait_queue.append (cu)
+                        self._wait_queue.append(cu)
 
 
-            except Exception as e :
-                self._log.exception ('Error in scheduler loop: %s', e)
+            except Exception as e:
+                self._log.exception('Error in scheduler loop: %s', e)
                 raise
 
 
@@ -744,14 +744,14 @@ class SchedulerContinuous(Scheduler):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, lrms, scheduler_queue, 
+    def __init__(self, name, logger, lrms, scheduler_queue,
                  execution_queue, update_queue):
 
         self.slots            = None
         self.slot_history     = None
         self.slot_history_old = None
 
-        Scheduler.__init__(self, name, logger, lrms, scheduler_queue, 
+        Scheduler.__init__(self, name, logger, lrms, scheduler_queue,
                 execution_queue, update_queue)
 
 
@@ -777,7 +777,7 @@ class SchedulerContinuous(Scheduler):
         for node in self._lrms.node_list:
             self.slots.append({
                 'node': node,
-                # TODO: Maybe use the real core numbers in the case of 
+                # TODO: Maybe use the real core numbers in the case of
                 # non-exclusive host reservations?
                 'cores': [FREE for _ in range(0, self._lrms.cores_per_node)]
             })
@@ -822,10 +822,10 @@ class SchedulerContinuous(Scheduler):
                     else:
                         slot_matrix += "+"
             slot_matrix += "|"
-            return {'timestamp' : timestamp(), 
+            return {'timestamp' : timestamp(),
                     'slotstate' : slot_matrix}
 
-        else :
+        else:
             slot_matrix = ""
             for slot in self.slots:
                 slot_vector  = ""
@@ -844,7 +844,7 @@ class SchedulerContinuous(Scheduler):
     #
     def _allocate_slot(self, cores_requested):
 
-        # TODO: single_node should be enforced for e.g. non-message passing 
+        # TODO: single_node should be enforced for e.g. non-message passing
         #       tasks, but we don't have that info here.
         # NOTE AM: why should non-messaging tasks be confined to one node?
         if cores_requested < self._lrms.cores_per_node:
@@ -857,7 +857,7 @@ class SchedulerContinuous(Scheduler):
         continuous = True
 
         # TODO: Now we rely on "None", maybe throw an exception?
-        return self._acquire_slots(cores_requested, single_node=single_node, 
+        return self._acquire_slots(cores_requested, single_node=single_node,
                 continuous=continuous)
 
 
@@ -967,7 +967,7 @@ class SchedulerContinuous(Scheduler):
         self._log.debug("first_slot_core_offset: %s", first_slot_core_offset)
 
         # Note: We subtract one here, because counting starts at zero;
-        #       Imagine a zero offset and a count of 1, the only core used 
+        #       Imagine a zero offset and a count of 1, the only core used
         #       would be core 0.
         #       TODO: Verify this claim :-)
         all_slots_last_core_offset = (first_slot_index * cores_per_node) +\
@@ -1032,7 +1032,7 @@ class SchedulerContinuous(Scheduler):
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
         # ensue.  We thus limit the slot history size to 4MB, to keep sufficient
         # space for the actual operational data
-        if len(str(self.slot_history)) < 4 * 1024 * 1024 :
+        if len(str(self.slot_history)) < 4 * 1024 * 1024:
             self.slot_history.append(self.slot_status (short=True))
         else:
             # just replace the last entry with the current one.
@@ -1063,7 +1063,7 @@ class SchedulerTorus(Scheduler):
 
 
     # --------------------------------------------------------------------------
-    def __init__(self, name, logger, lrms, scheduler_queue, 
+    def __init__(self, name, logger, lrms, scheduler_queue,
                  execution_queue, update_queue):
 
         self.slots            = None
@@ -1071,7 +1071,7 @@ class SchedulerTorus(Scheduler):
         self.slot_history_old = None
         self._cores_per_node  = None
 
-        Scheduler.__init__(self, name, logger, lrms, scheduler_queue, 
+        Scheduler.__init__(self, name, logger, lrms, scheduler_queue,
                 execution_queue, update_queue)
 
 
@@ -1107,7 +1107,7 @@ class SchedulerTorus(Scheduler):
                 else:
                     slot_matrix += "+" * self._lrms.cores_per_node
             slot_matrix += "|"
-            return {'timestamp': timestamp(), 
+            return {'timestamp': timestamp(),
                     'slotstate': slot_matrix}
         else:
             slot_matrix = ""
@@ -1189,7 +1189,7 @@ class SchedulerTorus(Scheduler):
                         not_free = True
                         break
                 except IndexError:
-                    self._log.exception('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.', 
+                    self._log.exception('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.',
                             num_nodes, offset, peek)
 
             if not_free == True:
@@ -1232,7 +1232,7 @@ class SchedulerTorus(Scheduler):
         # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
         # ensue.  We thus limit the slot history size to 4MB, to keep sufficient
         # space for the actual operational data
-        if len(str(self.slot_history)) < 4 * 1024 * 1024 :
+        if len(str(self.slot_history)) < 4 * 1024 * 1024:
             self.slot_history.append(self.slot_status(short=True))
         else:
             # just replace the last entry with the current one.
@@ -1318,7 +1318,7 @@ class LaunchMethod(object):
 
         self.launch_command = None
         self._configure()
-        # TODO: This doesn't make too much sense for LM's that use multiple 
+        # TODO: This doesn't make too much sense for LM's that use multiple
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
             raise Exception("Launch command not found for LaunchMethod '%s'" % name)
@@ -1356,10 +1356,10 @@ class LaunchMethod(object):
             return implementation(name, logger, scheduler)
 
         except KeyError:
-            logger.exception ("LaunchMethod '%s' unknown!" % name)
+            logger.exception("LaunchMethod '%s' unknown!" % name)
 
-        except Exception as e :
-            logger.exception ("LaunchMethod cannot be used: %s!" % e)
+        except Exception as e:
+            logger.exception("LaunchMethod cannot be used: %s!" % e)
 
         return None
 
@@ -1371,7 +1371,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores, 
+    def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, opaque_slot):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
 
@@ -1397,7 +1397,7 @@ class LaunchMethod(object):
     #
     def _which(self, program):
         """Finds the location of an executable.
-        Taken from: 
+        Taken from:
         http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
         """
         # ----------------------------------------------------------------------
@@ -1527,7 +1527,7 @@ class LaunchMethodSSH(LaunchMethod):
 
         if command is not None:
 
-            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into 
+            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into
             # the path.  We try to detect that and then use different arguments.
             if os.path.islink(command):
 
@@ -1744,7 +1744,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (corner, sub_block_shape)):
 
-        if task_numcores % self._scheduler.lrms.cores_per_node: 
+        if task_numcores % self._scheduler.lrms.cores_per_node:
             msg = "Num cores (%d) is not a multiple of %d!" % (
                 task_numcores, self._scheduler.lrms.cores_per_node)
             self._log.exception(msg)
@@ -1820,7 +1820,7 @@ class LaunchMethodDPLACE(LaunchMethod):
         dplace_offset = self._scheduler.slots2offset(task_slots)
 
         dplace_command = "%s -c %d-%d %s" % (
-            self.launch_command, dplace_offset, 
+            self.launch_command, dplace_offset,
             dplace_offset+task_numcores-1, task_command)
 
         return dplace_command, launch_script_name
@@ -1940,7 +1940,7 @@ class LaunchMethodIBRUN(LaunchMethod):
         ibrun_offset = self._scheduler.slots2offset(task_slots)
 
         ibrun_command = "%s -n %s -o %d %s" % \
-                        (self.launch_command, task_numcores, 
+                        (self.launch_command, task_numcores,
                          ibrun_offset, task_command)
 
         return ibrun_command, launch_script_name
@@ -2042,7 +2042,7 @@ class LRMS(object):
 
         # TODO: We might not have reserved the whole node.
 
-        # TODO: Given that the Agent can determine the real core count, in 
+        # TODO: Given that the Agent can determine the real core count, in
         #       principle we could just ignore the config and use as many as we
         #       have to our availability (taken into account that we might not
         #       have the full node reserved of course)
@@ -2128,7 +2128,7 @@ class TORQUELRMS(LRMS):
             torque_cores_per_node = None
             self._log.warning(msg)
 
-        if torque_cores_per_node in [None, 1] :
+        if torque_cores_per_node in [None, 1]:
             # lets see if SAGA has been forthcoming with some information
             self._log.warning("fall back to $SAGA_PPN : %s", os.environ.get ('SAGA_PPN', None))
             torque_cores_per_node = int(os.environ.get('SAGA_PPN', torque_cores_per_node))
@@ -2396,7 +2396,7 @@ class SGELRMS(LRMS):
             self._log.error(msg)
             raise Exception(msg)
 
-        # SGE core configuration might be different than what multiprocessing 
+        # SGE core configuration might be different than what multiprocessing
         # announces
         # Alternative: "qconf -sq all.q|awk '/^slots *[0-9]+$/{print $2}'"
 
@@ -2650,14 +2650,14 @@ class LoadLevelerLRMS(LRMS):
                 self._log.error("$LLOAD_TOTAL_TASKS(%d) != len($LOADL_HOSTFILE)(%d)",
                                loadl_total_tasks, len(loadl_nodes))
 
-            # Determine the number of cpus per node.  Assume: 
+            # Determine the number of cpus per node.  Assume:
             # cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
             loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
 
         elif self.loadl_bg_block is not None:
             # Blue Gene specific.
 
-          # # FIXME: the setting below is unused?  
+          # # FIXME: the setting below is unused?
           # #        So why are we raising an exception?
           # loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
           # if loadl_bg_size_str is None:
@@ -2932,7 +2932,7 @@ class ForkLRMS(LRMS):
 # Spawners
 #
 # ==============================================================================
-class Spawner (object):
+class Spawner(object):
 
     # --------------------------------------------------------------------------
     #
@@ -2954,8 +2954,8 @@ class Spawner (object):
             raise Exception("Spawner Factory only available to base class!")
 
         try:
-            implementation = { SPAWNER_NAME_POPEN : SpawnerPopen,
-                               SPAWNER_NAME_PTY   : SpawnerPty  }[name]
+            implementation = {SPAWNER_NAME_POPEN : SpawnerPopen,
+                              SPAWNER_NAME_PTY   : SpawnerPty  }[name]
 
             return implementation(name, logger)
 
@@ -2965,13 +2965,13 @@ class Spawner (object):
 
     # --------------------------------------------------------------------------
     #
-    def spawn (self, launcher, unit, env):
+    def spawn(self, launcher, unit, env):
         raise NotImplementedError("spawn() not implemented for Spawner '%s'." % self.name)
 
 
 # ------------------------------------------------------------------------------
 #
-class SpawnerPopen (Spawner):
+class SpawnerPopen(Spawner):
 
 
     # --------------------------------------------------------------------------
@@ -2983,104 +2983,103 @@ class SpawnerPopen (Spawner):
 
     # --------------------------------------------------------------------------
     #
-    def spawn (self, launcher, cu, env):
-        
-        prof ('Spawner spawn', uid=cu['uid'])
-    
+    def spawn(self, launcher, cu, env):
+
+        prof('Spawner spawn', uid=cu['uid'])
+
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
         self._log.debug("Created launch_script: %s", launch_script_name)
 
-        with open (launch_script_name, "w") as launch_script :
+        with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/bash -l\n')
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
-    
+
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
                 pre_exec_string = ''
                 if isinstance(cu['description']['pre_exec'], list):
                     for elem in cu['description']['pre_exec']:
                         pre_exec_string += "%s\n" % elem
-                else :
+                else:
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
-    
+
             # Create string for environment variable setting
-            if  cu['description']['environment'] and    \
-                cu['description']['environment'].keys() :
+            if cu['description']['environment'] and    \
+                cu['description']['environment'].keys():
                 env_string = 'export'
-                for key,val in cu['description']['environment'].iteritems ():
+                for key,val in cu['description']['environment'].iteritems():
                     env_string += ' %s=%s' % (key, val)
                 launch_script.write('# Environment variables\n%s\n' % env_string)
-    
+
             # unit Arguments (if any)
             task_args_string = ''
-            if  cu['description']['arguments'] :
+            if cu['description']['arguments']:
                 for arg in cu['description']['arguments']:
-                    if  not arg:
+                    if not arg:
                         # ignore empty args
                         continue
-    
+
                     arg = arg.replace('"', '\\"')          # Escape all double quotes
                     if arg[0] == arg[-1] == "'" :          # If a string is between outer single quotes,
                         task_args_string += '%s ' % arg    # ... pass it as is.
                     else:
                         task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
-    
+
             # The actual command line, constructed per launch-method
-            prof ('_Process construct command', uid=cu['uid'])
+            prof('_Process construct command', uid=cu['uid'])
             launch_command, cmdline = \
-                    launcher.construct_command(cu['description']['executable'],  
+                    launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
-                                               launch_script_name, 
+                                               launch_script_name,
                                                cu['opaque_slot'])
-    
+
             launch_script.write('# The command to run\n%s\n' % launch_command)
-    
+
             # After the universe dies the infrared death, there will be nothing
-            if  cu['description']['post_exec']:
+            if cu['description']['post_exec']:
                 post_exec_string = ''
                 if isinstance(cu['description']['post_exec'], list):
                     for elem in cu['description']['post_exec']:
                         post_exec_string += "%s\n" % elem
-                else :
+                else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write('%s\n' % post_exec_string)
-    
+
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-    
+
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
-    
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu['workdir'])
-        prof ('spawning pass to popen', uid=cu['uid'], tag='unit spawning')
 
-        proc = subprocess.Popen ( args               = cmdline,
-                                  bufsize            = 0,
-                                  executable         = None,
-                                  stdin              = None,
-                                  stdout             = _stdout_file_h,
-                                  stderr             = _stderr_file_h,
-                                  preexec_fn         = None,
-                                  close_fds          = True,
-                                  shell              = True,
-                                  # TODO: cwd doesn't always make sense if it runs remotely (still true?)
-                                  cwd                = cu['workdir'],
-                                  env                = env,
-                                  universal_newlines = False,
-                                  startupinfo        = None,
-                                  creationflags      = 0)
-    
-        prof ('spawning passed to popen', uid=cu['uid'], tag='unit spawning')
+        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu['workdir'])
+        prof('spawning pass to popen', uid=cu['uid'], tag='unit spawning')
+
+        proc = subprocess.Popen(args               = cmdline,
+                                bufsize            = 0,
+                                executable         = None,
+                                stdin              = None,
+                                stdout             = _stdout_file_h,
+                                stderr             = _stderr_file_h,
+                                preexec_fn         = None,
+                                close_fds          = True,
+                                shell              = True,
+                                cwd                = cu['workdir'],
+                                env                = env,
+                                universal_newlines = False,
+                                startupinfo        = None,
+                                creationflags      = 0)
+
+        prof('spawning passed to popen', uid=cu['uid'], tag='unit spawning')
 
         return proc
 
 
 # ------------------------------------------------------------------------------
 #
-class SpawnerPty (Spawner):
+class SpawnerPty(Spawner):
     pass
 
 
@@ -3096,14 +3095,14 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, agent, lrms, scheduler, 
-                 task_launcher, mpi_launcher, spawner, 
-                 execution_queue, update_queue, 
+    def __init__(self, name, logger, agent, lrms, scheduler,
+                 task_launcher, mpi_launcher, spawner,
+                 execution_queue, update_queue,
                  stageout_queue, command_queue,
                  mongodb_url, mongodb_name, mongodb_auth,
                  pilot_id, session_id, workdir):
 
-        prof ('ExecWorker init')
+        prof('ExecWorker init')
 
         threading.Thread.__init__(self)
         self._terminate = threading.Event()
@@ -3132,7 +3131,7 @@ class ExecWorker(threading.Thread):
 
 
         # FIXME: should this be here?  Should it use the UpdateWorker?
-        mongo_db = get_mongodb (mongodb_url, mongodb_name, mongodb_auth)
+        mongo_db = get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
         self.mongo_p = mongo_db["%s.p"  % session_id]
         self.mongo_p.update(
             {"_id": ObjectId(self._pilot_id)},
@@ -3142,7 +3141,7 @@ class ExecWorker(threading.Thread):
             })
 
         # run worker thread
-        self.start ()
+        self.start()
 
     # --------------------------------------------------------------------------
     #
@@ -3203,7 +3202,7 @@ class ExecWorker(threading.Thread):
             # TODO: Where does this abstraction belong?
             self._log.debug(self._scheduler.slot_status())
 
-            while not self._terminate.isSet () :
+            while not self._terminate.isSet():
 
                 idle = True
 
@@ -3221,7 +3220,7 @@ class ExecWorker(threading.Thread):
                     # do nothing if we don't have any queued commands
                     pass
 
-                
+
                 try:
                     cu = self._execution_queue.get_nowait()
 
@@ -3235,20 +3234,20 @@ class ExecWorker(threading.Thread):
                     # *IDEALLY* though, the spawner would use notifications to
                     # learn about unit completion, and would move those units
                     # automatically forward to deallocation and output staging.
-                    idle += self._check_running ()
+                    idle += self._check_running()
 
-                    if idle :
-                        time.sleep (QUEUE_POLL_SLEEPTIME)
+                    if idle:
+                        time.sleep(QUEUE_POLL_SLEEPTIME)
                     continue
-                    
+
 
                 # any work to do?
-                if  cu :
+                if cu:
 
-                    prof ('ExecWorker gets cu from queue', uid=cu['uid'], tag='preprocess')
+                    prof('ExecWorker gets cu from queue', uid=cu['uid'], tag='preprocess')
 
                     # FIXME: push ALLOCATING state update into updater queue
-                    try :
+                    try:
 
                         if cu['description']['mpi']:
                             if not self._mpi_launcher:
@@ -3262,29 +3261,29 @@ class ExecWorker(threading.Thread):
 
                         self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-                        assert (cu['opaque_slot']) # FIXME: no assert, but check
-                        prof ('ExecWorker unit launch', uid=cu['uid'])
+                        assert(cu['opaque_slot']) # FIXME: no assert, but check
+                        prof('ExecWorker unit launch', uid=cu['uid'])
 
                         # Start a new subprocess to launch the unit
                         # TODO: This is scheduler specific
-                        proc = self._spawner.spawn (cu       = cu,
-                                                    launcher = launcher,
-                                                    env      = self._cu_environment)
+                        proc = self._spawner.spawn(cu       = cu,
+                                                   launcher = launcher,
+                                                   env      = self._cu_environment)
 
-                        prof ('ExecWorker unit launched', uid=cu['uid'], tag='task_launching')
+                        prof('ExecWorker unit launched', uid=cu['uid'], tag='task_launching')
 
                         cu['started'] = timestamp()
                         cu['state']   = EXECUTING
                         cu['proc']    = proc
 
-                        self._agent.update_unit_state (_id    = cu['_id'],
-                                                       state  = EXECUTING, 
-                                                       msg    = "unit execution start")
+                        self._agent.update_unit_state(_id    = cu['_id'],
+                                                      state  = EXECUTING,
+                                                      msg    = "unit execution start")
 
                         # Add to the list of monitored tasks
                         self._running_cus.append(cu)
 
-                    except Exception as e :
+                    except Exception as e:
                         # append the startup error to the units stderr.  This is
                         # not completely correct (as this text is not produced
                         # by the unit), but it seems the most intuitive way to
@@ -3298,23 +3297,23 @@ class ExecWorker(threading.Thread):
                         if cu['opaque_slot']:
                             self._scheduler.unschedule(cu)
 
-                        self._agent.update_unit_state (_id    = cu['_id'],
-                                                       state  = FAILED, 
-                                                       msg    = "unit execution failed",
-                                                       logger = self._log.exception)
-                        
+                        self._agent.update_unit_state(_id    = cu['_id'],
+                                                      state  = FAILED,
+                                                      msg    = "unit execution failed",
+                                                      logger = self._log.exception)
+
 
                     # Update slot history to mongodb
                     self._update_tasks()
 
 
         except Exception as e:
-            self._log.exception ("Error in ExecWorker loop (%s)" % e)
+            self._log.exception("Error in ExecWorker loop (%s)" % e)
             return
 
 
     # --------------------------------------------------------------------------
-    # Iterate over all running tasks, check their status, and decide on the 
+    # Iterate over all running tasks, check their status, and decide on the
     # next step.  Also check for a requested cancellation for the tasks.
     def _check_running(self):
 
@@ -3329,18 +3328,18 @@ class ExecWorker(threading.Thread):
             if exit_code is None:
                 # Process is still running
 
-                if  cu['uid'] in self._cuids_to_cancel :
+                if cu['uid'] in self._cuids_to_cancel:
 
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
-                    self._cuids_to_cancel.remove (cu['uid'])
+                    self._cuids_to_cancel.remove(cu['uid'])
                     self._scheduler.unschedule(cu)
 
-                    self._agent.update_unit_state (_id    = cu['_id'],
-                                                   state  = CANCELED, 
-                                                   msg    = "unit execution canceled")
-                    prof ('final', msg="execution canceled", uid=cu['uid'], tag='execution')
+                    self._agent.update_unit_state(_id    = cu['_id'],
+                                                  state  = CANCELED,
+                                                  msg    = "unit execution canceled")
+                    prof('final', msg="execution canceled", uid=cu['uid'], tag='execution')
                     # NOTE: this is final, cu will not be touched anymore
                     cu = None
 
@@ -3368,40 +3367,39 @@ class ExecWorker(threading.Thread):
             if exit_code != 0:
 
                 # The unit failed, no need to deal with its output data.
-                self._agent.update_unit_state (_id    = cu['_id'],
-                                               state  = FAILED, 
-                                               msg    = "unit execution failed")
-                prof ('final', msg="execution failed", uid=cu['uid'], tag='execution')
+                self._agent.update_unit_state(_id    = cu['_id'],
+                                              state  = FAILED,
+                                              msg    = "unit execution failed")
+                prof('final', msg="execution failed", uid=cu['uid'], tag='execution')
                 # NOTE: this is final, cu will not be touched anymore
                 cu = None
 
             else:
-                # The unit finished cleanly, see if we need to deal with 
+                # The unit finished cleanly, see if we need to deal with
                 # output data.  We always move to stageout, even if there are no
                 # directives -- at the very least, we'll uplocad stdout/stderr
 
-                self._agent.update_unit_state (_id    = cu['_id'],
-                                               state  = STAGING_OUTPUT, 
-                                               msg    = "unit execution completed")
-                self._stageout_queue.put (cu)
-                prof ('push', msg="toward stageout", uid=cu['uid'], tag='execution')
+                self._agent.update_unit_state(_id    = cu['_id'],
+                                              state  = STAGING_OUTPUT,
+                                              msg    = "unit execution completed")
+                self._stageout_queue.put(cu)
+                prof('push', msg="toward stageout", uid=cu['uid'], tag='execution')
 
         return action
 
     # --------------------------------------------------------------------------
     #
     def _update_tasks(self):
-        # FIXME: needs to go, slot history should be kept in scheduler, and 
+        # FIXME: needs to go, slot history should be kept in scheduler, and
         #        should only be dumped at shutdown.
 
         # AM: FIXME: this at the moment pushes slot history whenever a unit
         # state is updated...  This needs only to be done on ExecWorker
         # shutdown.  Well, alas, there is currently no way for it to find out
-        # when it is shut down... Some quick and  superficial measurements 
+        # when it is shut down... Some quick and  superficial measurements
         # though show no negative impact on agent performance.
         # TODO: check that slot history is correctly recorded
-        if  (self.slot_history_old !=
-             self._scheduler.slot_history) :
+        if (self.slot_history_old != self._scheduler.slot_history):
 
             self.mongo_p.update(
                 {"_id": ObjectId(self._pilot_id)},
@@ -3426,7 +3424,7 @@ class UpdateWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, agent, session_id, 
+    def __init__(self, name, logger, agent, session_id,
                  update_queue, mongodb_url, mongodb_name, mongodb_auth):
 
         threading.Thread.__init__(self)
@@ -3436,140 +3434,13 @@ class UpdateWorker(threading.Thread):
         self._agent         = agent
         self._session_id    = session_id
         self._update_queue  = update_queue
-        self._terminate     = threading.Event ()
+        self._terminate     = threading.Event()
 
-        self._mongo_db = get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
+        self._mongo_db      = get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
         self._cinfo         = dict()  # collection cache
 
         # run worker thread
-        self.start ()
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-        self._terminate.set ()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def run(self):
-
-        self._log.info("started %s.", self)
-
-        while not self._terminate.isSet () :
-
-            # ------------------------------------------------------------------
-            def timed_bulk_execute (cinfo) :
-
-                # returns number of bulks pushed (0 or 1)
-                if  not cinfo['bulk'] :
-                    return 0
-
-                now = time.time ()
-                age = now - cinfo['last']
-
-                if  cinfo['bulk'] and age > BULK_COLLECTION_TIME :
-
-                    res  = cinfo['bulk'].execute ()
-                    self._log.debug ("bulk update result: %s", res)
-
-                    for uid in cinfo['uids'] :
-                        prof ('state update pushed', uid=uid)
-
-                    prof ('state update bulk pushed (%d)' % len(cinfo['uids']))
-
-                    cinfo['last'] = now
-                    cinfo['bulk'] = None
-                    cinfo['uids'] = list()
-                    return 1
-
-                else :
-                    return 0
-            # ------------------------------------------------------------------
-
-            try :
-
-                try:
-                    update_request = self._update_queue.get_nowait()
-
-                except Queue.Empty:
-
-                    # no new requests: push any pending bulks
-                    action = 0
-                    for cname in self._cinfo :
-                        action += timed_bulk_execute (self._cinfo[cname])
-
-                    if  not action :
-                        time.sleep(QUEUE_POLL_SLEEPTIME)
-
-                    continue
-
-
-                # got a new request.  Add to bulk (create as needed), 
-                # and push bulk if time is up.
-                uid         = update_request.get ('uid')
-                cbase       = update_request.get ('cbase', '.cu')
-                query_dict  = update_request.get ('query',  dict())
-                update_dict = update_request.get ('update', dict())
-
-                prof ('state update pulled', uid=uid)
-
-
-                cname = self._session_id + cbase
-
-                if not cname in self._cinfo :
-                    coll =  self._mongo_db[cname]
-                    self._cinfo[cname] = {
-                            'coll' : coll,
-                            'bulk' : None,
-                            'last' : time.time(),  # time of last push
-                            'uids' : list()
-                            }
-
-                cinfo = self._cinfo[cname]
-
-                if  not cinfo['bulk'] : 
-                    cinfo['bulk'] = coll.initialize_ordered_bulk_op ()
-
-                cinfo['uids'].append (uid)
-                cinfo['bulk'].find   (query_dict) \
-                             .update (update_dict)
-                
-                timed_bulk_execute (cinfo)
-                prof ('state update bulked', uid=uid)
-
-            except Exception as e :
-                self._log.exception ("state update failed (%s)", e)
-
-                # FIXME: should we fail the pilot at this point?  
-                # FIXME: Are the strategies to recover?
-
-
-# ------------------------------------------------------------------------------
-#
-class StageinWorker(threading.Thread):
-    """An StageinWorker performs the agent side staging directives.
-    """
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, name, logger, agent, execution_queue, schedule_queue, 
-                 stagein_queue, update_queue, workdir) :
-
-        threading.Thread.__init__(self)
-
-        self.name             = name
-        self._log             = logger
-        self._agent           = agent
-        self._execution_queue = execution_queue
-        self._schedule_queue  = schedule_queue
-        self._stagein_queue   = stagein_queue
-        self._update_queue    = update_queue
-        self._workdir         = workdir
-        self._terminate       = threading.Event ()
-
-        # run worker thread
-        self.start ()
+        self.start()
 
     # --------------------------------------------------------------------------
     #
@@ -3583,20 +3454,145 @@ class StageinWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        while not self._terminate.isSet () :
+        while not self._terminate.isSet():
+
+            # ------------------------------------------------------------------
+            def timed_bulk_execute(cinfo):
+
+                # returns number of bulks pushed (0 or 1)
+                if not cinfo['bulk']:
+                    return 0
+
+                now = time.time()
+                age = now - cinfo['last']
+
+                if cinfo['bulk'] and age > BULK_COLLECTION_TIME:
+
+                    res  = cinfo['bulk'].execute()
+                    self._log.debug("bulk update result: %s", res)
+
+                    for uid in cinfo['uids']:
+                        prof('state update pushed', uid=uid)
+
+                    prof('state update bulk pushed (%d)' % len(cinfo['uids']))
+
+                    cinfo['last'] = now
+                    cinfo['bulk'] = None
+                    cinfo['uids'] = list()
+                    return 1
+
+                else:
+                    return 0
+            # ------------------------------------------------------------------
+
+            try:
+
+                try:
+                    update_request = self._update_queue.get_nowait()
+
+                except Queue.Empty:
+
+                    # no new requests: push any pending bulks
+                    action = 0
+                    for cname in self._cinfo:
+                        action += timed_bulk_execute(self._cinfo[cname])
+
+                    if not action:
+                        time.sleep(QUEUE_POLL_SLEEPTIME)
+
+                    continue
+
+                # got a new request.  Add to bulk (create as needed),
+                # and push bulk if time is up.
+                uid         = update_request.get('uid')
+                cbase       = update_request.get('cbase', '.cu')
+                query_dict  = update_request.get('query',  dict())
+                update_dict = update_request.get('update', dict())
+
+                prof('state update pulled', uid=uid)
+
+                cname = self._session_id + cbase
+
+                if not cname in self._cinfo:
+                    coll =  self._mongo_db[cname]
+                    self._cinfo[cname] = {
+                            'coll' : coll,
+                            'bulk' : None,
+                            'last' : time.time(),  # time of last push
+                            'uids' : list()
+                            }
+
+                cinfo = self._cinfo[cname]
+
+                if not cinfo['bulk']:
+                    cinfo['bulk'] = coll.initialize_ordered_bulk_op()
+
+                cinfo['uids'].append(uid)
+                cinfo['bulk'].find  (query_dict) \
+                             .update(update_dict)
+
+                timed_bulk_execute(cinfo)
+                prof('state update bulked', uid=uid)
+
+            except Exception as e:
+                self._log.exception("state update failed (%s)", e)
+
+                # FIXME: should we fail the pilot at this point?
+                # FIXME: Are the strategies to recover?
+
+
+# ------------------------------------------------------------------------------
+#
+class StageinWorker(threading.Thread):
+    """An StageinWorker performs the agent side staging directives.
+    """
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, agent, execution_queue, schedule_queue,
+                 stagein_queue, update_queue, workdir):
+
+        threading.Thread.__init__(self)
+
+        self.name             = name
+        self._log             = logger
+        self._agent           = agent
+        self._execution_queue = execution_queue
+        self._schedule_queue  = schedule_queue
+        self._stagein_queue   = stagein_queue
+        self._update_queue    = update_queue
+        self._workdir         = workdir
+        self._terminate       = threading.Event()
+
+        # run worker thread
+        self.start()
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+        self._terminate.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info("started %s.", self)
+
+        while not self._terminate.isSet():
 
             try:
 
                 cu = self._stagein_queue.get()
 
-                if  not cu :
+                if not cu:
                     continue
 
-                sandbox      = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
-                staging_area = os.path.join (self._workdir, 'staging_area'),
+                sandbox      = os.path.join(self._workdir, 'unit-%s' % cu['uid']),
+                staging_area = os.path.join(self._workdir, 'staging_area'),
 
                 for directive in cu['Agent_Input_Directives']:
-                    prof ('Agent input_staging queue', uid=cu['uid'], msg=directive)
+                    prof('Agent input_staging queue', uid=cu['uid'], msg=directive)
 
                     # Perform input staging
                     self._log.info("unit input staging directives %s for cu: %s to %s",
@@ -3615,43 +3611,43 @@ class StageinWorker(threading.Thread):
                         self._log.info('Operating from absolute path')
                         source = source_url.path
 
-                    # Get the target from the directive and convert it to the location 
+                    # Get the target from the directive and convert it to the location
                     # in the sandbox
                     target = directive['target']
                     abs_target = os.path.join(sandbox, target)
 
                     # Create output directory in case it doesn't exist yet
                     #
-                    rec_makedir (os.path.dirname (abs_target))
+                    rec_makedir(os.path.dirname(abs_target))
 
-                    try :
+                    try:
                         self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
 
-                        if   directive['action'] == LINK: os.symlink      (source, abs_target)
-                        elif directive['action'] == COPY: shutil.copyfile (source, abs_target)
-                        elif directive['action'] == MOVE: shutil.move     (source, abs_target)
+                        if   directive['action'] == LINK: os.symlink     (source, abs_target)
+                        elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
+                        elif directive['action'] == MOVE: shutil.move    (source, abs_target)
                         else:
                             # FIXME: implement TRANSFER mode
-                            raise NotImplementedError ('Action %s not supported' % directive['action'])
+                            raise NotImplementedError('Action %s not supported' % directive['action'])
 
                         log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
                         self._log.info(log_message)
 
-                        # If all went fine, update the state of this 
+                        # If all went fine, update the state of this
                         # StagingDirective to DONE
                         # FIXME: is this update below really *needed*?
-                        self._agent.update_unit (_id    = cu['_id'],
-                                                 msg    = log_message, 
-                                                 query  = {
-                                                     'Agent_Input_Status'            : EXECUTING,
-                                                     'Agent_Input_Directives.state'  : PENDING,
-                                                     'Agent_Input_Directives.source' : directive['source'],
-                                                     'Agent_Input_Directives.target' : directive['target']
-                                                 },
-                                                 update = {
-                                                     '$set' : {'Agent_Input_Directives.$.state' : DONE}
-                                                 })
-                    except Exception as e :
+                        self._agent.update_unit(_id    = cu['_id'],
+                                                msg    = log_message,
+                                                query  = {
+                                                    'Agent_Input_Status'            : EXECUTING,
+                                                    'Agent_Input_Directives.state'  : PENDING,
+                                                    'Agent_Input_Directives.source' : directive['source'],
+                                                    'Agent_Input_Directives.target' : directive['target']
+                                                },
+                                                update = {
+                                                    '$set' : {'Agent_Input_Directives.$.state' : DONE}
+                                                })
+                    except Exception as e:
 
                         # If we catch an exception, assume the staging failed
                         log_message = "%s'ed %s to %s - failure (%s)" % \
@@ -3659,42 +3655,42 @@ class StageinWorker(threading.Thread):
                         self._log.exception(log_message)
 
                         # If a staging directive fails, fail the CU also.
-                        self._agent.update_unit_state (_id    = cu['_id'],
-                                                       state  = FAILED, 
-                                                       msg    = log_message, 
-                                                       query  = {
-                                                           'Agent_Input_Status'             : EXECUTING,
-                                                           'Agent_Input_Directives.state'   : PENDING,
-                                                           'Agent_Input_Directives.source'  : directive['source'],
-                                                           'Agent_Input_Directives.target'  : directive['target']
-                                                       },
-                                                       update = {
-                                                           '$set' : {'Agent_Input_Directives.$.state'  : FAILED,
-                                                                     'Agent_Input_Status'              : FAILED}
-                                                       })
+                        self._agent.update_unit_state(_id    = cu['_id'],
+                                                      state  = FAILED,
+                                                      msg    = log_message,
+                                                      query  = {
+                                                          'Agent_Input_Status'             : EXECUTING,
+                                                          'Agent_Input_Directives.state'   : PENDING,
+                                                          'Agent_Input_Directives.source'  : directive['source'],
+                                                          'Agent_Input_Directives.target'  : directive['target']
+                                                      },
+                                                      update = {
+                                                          '$set' : {'Agent_Input_Directives.$.state'  : FAILED,
+                                                                    'Agent_Input_Status'              : FAILED}
+                                                      })
 
                 # cu staging is all done, unit can go to execution
-                self._agent.update_unit_state (_id    = cu['_id'],
-                                               state  = ALLOCATING, 
-                                               msg    = 'agent input staging done')
-                self._schedule_queue.put (cu)
-                prof ('push', msg="towards allocation", uid=cu['uid'], tag='stagein')
+                self._agent.update_unit_state(_id    = cu['_id'],
+                                              state  = ALLOCATING,
+                                              msg    = 'agent input staging done')
+                self._schedule_queue.put(cu)
+                prof('push', msg="towards allocation", uid=cu['uid'], tag='stagein')
 
 
-            except Exception as e :
-                self._log.exception ('worker died')
-                sys.exit (1)
+            except Exception as e:
+                self._log.exception('worker died')
+                sys.exit(1)
 
 
 # ------------------------------------------------------------------------------
 #
 class StageoutWorker(threading.Thread):
     """
-    An StageoutWorker performs the agent side staging directives.  
+    An StageoutWorker performs the agent side staging directives.
 
     It competes for units on the stageout queue, and handles all relevant
     staging directives.  It also takes care of uploading stdout/stderr (which
-    can also be considered staging, really).  
+    can also be considered staging, really).
 
     Upon completion, the units are moved into the respective final state.
 
@@ -3704,7 +3700,7 @@ class StageoutWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, agent, execution_queue, stageout_queue, update_queue, workdir) :
+    def __init__(self, name, logger, agent, execution_queue, stageout_queue, update_queue, workdir):
 
         threading.Thread.__init__(self)
 
@@ -3715,10 +3711,10 @@ class StageoutWorker(threading.Thread):
         self._stageout_queue  = stageout_queue
         self._update_queue    = update_queue
         self._workdir         = workdir
-        self._terminate       = threading.Event ()
+        self._terminate       = threading.Event()
 
         # run worker thread
-        self.start ()
+        self.start()
 
     # --------------------------------------------------------------------------
     #
@@ -3732,39 +3728,39 @@ class StageoutWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        staging_area = os.path.join (self._workdir, 'staging_area'),
+        staging_area = os.path.join(self._workdir, 'staging_area'),
 
-        while not self._terminate.isSet () :
+        while not self._terminate.isSet():
 
             cu = None
-            try :
+            try:
 
                 cu = self._stageout_queue.get()
 
-                if  not cu :
+                if not cu:
                     continue
 
-                sandbox = os.path.join (self._workdir, 'unit-%s' % cu['uid']),
+                sandbox = os.path.join(self._workdir, 'unit-%s' % cu['uid']),
 
                 ## parked from unit state checker: unit postprocessing
 
-                if  os.path.isfile(cu['stdout_file']):
+                if os.path.isfile(cu['stdout_file']):
                     with open(cu['stdout_file'], 'r') as stdout_f:
-                        try :
+                        try:
                             txt = unicode(stdout_f.read(), "utf-8")
-                        except UnicodeDecodeError :
+                        except UnicodeDecodeError:
                             txt = "unit stdout contains binary data -- use file staging directives"
 
-                        cu['stdout'] += tail (txt)
+                        cu['stdout'] += tail(txt)
 
-                if  os.path.isfile(cu['stderr_file']):
+                if os.path.isfile(cu['stderr_file']):
                     with open(cu['stderr_file'], 'r') as stderr_f:
-                        try :
+                        try:
                             txt = unicode(stderr_f.read(), "utf-8")
-                        except UnicodeDecodeError :
+                        except UnicodeDecodeError:
                             txt = "unit stderr contains binary data -- use file staging directives"
 
-                        if  len(txt) > MAX_IO_LOGLENGTH :
+                        if len(txt) > MAX_IO_LOGLENGTH:
                             txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
                         cu['stderr'] += txt
 
@@ -3782,7 +3778,7 @@ class StageoutWorker(threading.Thread):
                     # Handle special 'staging' scheme
                     if target_url.scheme == 'staging':
                         self._log.info('Operating from staging')
-                        # Remove the leading slash to get a relative path from 
+                        # Remove the leading slash to get a relative path from
                         # the staging area
                         rel2staging = target_url.path.split('/',1)[1]
                         target = os.path.join(staging_area, rel2staging)
@@ -3791,100 +3787,100 @@ class StageoutWorker(threading.Thread):
                         # FIXME: will this work for TRANSFER mode?
                         target = target_url.path
 
-                    # Get the source from the directive and convert it to the location 
+                    # Get the source from the directive and convert it to the location
                     # in the sandbox
                     source = str(directive['source'])
                     abs_source = os.path.join(sandbox, source)
 
                     # Create output directory in case it doesn't exist yet
                     # FIXME: will this work for TRANSFER mode?
-                    rec_makedir (os.path.dirname (target))
+                    rec_makedir(os.path.dirname(target))
 
-                    try :
+                    try:
                         self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
 
-                        if   directive['action'] == LINK: os.symlink      (abs_source, target)
-                        elif directive['action'] == COPY: shutil.copyfile (abs_source, target)
-                        elif directive['action'] == MOVE: shutil.move     (abs_source, target)
+                        if   directive['action'] == LINK: os.symlink     (abs_source, target)
+                        elif directive['action'] == COPY: shutil.copyfile(abs_source, target)
+                        elif directive['action'] == MOVE: shutil.move    (abs_source, target)
                         else:
                             # FIXME: implement TRANSFER mode
-                            raise NotImplementedError ('Action %s not supported' % directive['action'])
+                            raise NotImplementedError('Action %s not supported' % directive['action'])
 
-                        log_message = "%s'ed %s to %s - success" % (directive['action'], abs_source, target)
+                        log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
                         self._log.info(log_message)
 
-                        # If all went fine, update the state of this 
+                        # If all went fine, update the state of this
                         # StagingDirective to DONE
                         # FIXME: is this update below really *needed*?
-                        self._agent.update_unit (_id    = cu['_id'], 
-                                                 msg    = log_message,
-                                                 query  = {
-                                                     'Agent_Output_Status'           : EXECUTING,
-                                                     'Agent_Output_Directives.state' : PENDING,
-                                                     'Agent_Output_Directives.source': directive['source'],
-                                                     'Agent_Output_Directives.target': directive['target']
-                                                 },
-                                                 update = {
-                                                     '$set' : {'Agent_Output_Directives.$.state': DONE}
-                                                 })
-                    except Exception as e :
+                        self._agent.update_unit(_id    = cu['_id'],
+                                                msg    = log_message,
+                                                query  = {
+                                                    'Agent_Output_Status'           : EXECUTING,
+                                                    'Agent_Output_Directives.state' : PENDING,
+                                                    'Agent_Output_Directives.source': directive['source'],
+                                                    'Agent_Output_Directives.target': directive['target']
+                                                },
+                                                update = {
+                                                    '$set' : {'Agent_Output_Directives.$.state': DONE}
+                                                })
+                    except Exception as e:
                         # If we catch an exception, assume the staging failed
                         log_message = "%s'ed %s to %s - failure (%s)" % \
                                 (directive['action'], abs_source, target, e)
                         self._log.exception(log_message)
 
                         # If a staging directive fails, fail the CU also.
-                        self._agent.update_unit_state (_id    = cu['_id'],
-                                                       state  = FAILED, 
-                                                       msg    = log_message, 
-                                                       query  = {
-                                                           'Agent_Output_Status'            : EXECUTING,
-                                                           'Agent_Output_Directives.state'  : PENDING,
-                                                           'Agent_Output_Directives.source' : directive['source'],
-                                                           'Agent_Output_Directives.target' : directive['target']
-                                                       },
-                                                       update = {
-                                                           '$set' : {'Agent_Output_Directives.$.state' : FAILED,
-                                                                     'Agent_Output_Status'             : FAILED}
-                                                       })
+                        self._agent.update_unit_state(_id    = cu['_id'],
+                                                      state  = FAILED,
+                                                      msg    = log_message,
+                                                      query  = {
+                                                          'Agent_Output_Status'            : EXECUTING,
+                                                          'Agent_Output_Directives.state'  : PENDING,
+                                                          'Agent_Output_Directives.source' : directive['source'],
+                                                          'Agent_Output_Directives.target' : directive['target']
+                                                      },
+                                                      update = {
+                                                          '$set' : {'Agent_Output_Directives.$.state' : FAILED,
+                                                                    'Agent_Output_Status'             : FAILED}
+                                                      })
 
 
-                # local staging is done. Now check if there are Directives that 
+                # local staging is done. Now check if there are Directives that
                 # need to be performed by the FTW.
                 # Obviously these are not executed here (by the Agent),
                 # but we need this code to set the state so that the FTW
                 # gets notified that it can start its work.
-                if cu['FTW_Output_Directives'] :
+                if cu['FTW_Output_Directives']:
 
-                    prof ('ExecWorker unit needs FTW_O ', uid=cu['uid'])
-                    self._agent.update (unit   = cu, 
-                                        msg    = 'FTW output staging needed', 
-                                        update = {
-                                            '$set' : {
-                                                'FTW_Output_Status' : PENDING
-                                            }
-                                        })
+                    prof('ExecWorker unit needs FTW_O ', uid=cu['uid'])
+                    self._agent.update(unit   = cu,
+                                       msg    = 'FTW output staging needed',
+                                       update = {
+                                           '$set' : {
+                                               'FTW_Output_Status' : PENDING
+                                           }
+                                       })
                     # NOTE: this is final for the agent scope -- further state
                     # transitions are done by the FTW.
                     cu = None
 
-                else :
+                else:
                     # no FTW staging is needed, local staging is done -- we can
                     # move the unit into final state.
-                    prof ('final', msg="stageout done", uid=cu['uid'], tag='stageout')
-                    self._agent.update_unit_state (_id    = cu['_id'],
-                                                   state  = DONE, 
-                                                   msg    = 'output staging completed', 
-                                                   update = {
-                                                       '$set' : {
-                                                           'stdout'    : cu['stdout'], 
-                                                           'stderr'    : cu['stderr'],
-                                                           'exit_code' : cu['exit_code'],
-                                                           'started'   : cu['started'],
-                                                           'finished'  : cu['finished'],
-                                                           'slots'     : cu['opaque_slot'],
-                                                       }
-                                                   })
+                    prof('final', msg="stageout done", uid=cu['uid'], tag='stageout')
+                    self._agent.update_unit_state(_id    = cu['_id'],
+                                                  state  = DONE,
+                                                  msg    = 'output staging completed',
+                                                  update = {
+                                                      '$set' : {
+                                                          'stdout'    : cu['stdout'],
+                                                          'stderr'    : cu['stderr'],
+                                                          'exit_code' : cu['exit_code'],
+                                                          'started'   : cu['started'],
+                                                          'finished'  : cu['finished'],
+                                                          'slots'     : cu['opaque_slot'],
+                                                      }
+                                                  })
                     # NOTE: this is final, the cu is not touched anymore
                     cu = None
 
@@ -3898,14 +3894,14 @@ class StageoutWorker(threading.Thread):
                 # This check relies on the pushes to the update queue to be the
                 # *last* actions of the loop above -- otherwise we may get
                 # invalid state transitions...
-                if  cu :
-                    prof ('final', msg="stageout failed", uid=cu['uid'], tag='stageout')
-                    self._agent.update_unit_state (_id    = cu['_id'],
-                                                  state  = FAILED, 
-                                                  msg    = 'output staging failed', 
+                if cu:
+                    prof('final', msg="stageout failed", uid=cu['uid'], tag='stageout')
+                    self._agent.update_unit_state(_id    = cu['_id'],
+                                                  state  = FAILED,
+                                                  msg    = 'output staging failed',
                                                   update = {
                                                       '$set' : {
-                                                          'stdout'    : cu['stdout'], 
+                                                          'stdout'    : cu['stdout'],
                                                           'stderr'    : cu['stderr'],
                                                           'exit_code' : cu['exit_code'],
                                                           'started'   : cu['started'],
@@ -3923,12 +3919,12 @@ class StageoutWorker(threading.Thread):
 class HeartbeatMonitor(threading.Thread):
     """
     The HeartbeatMonitor watches the command queue for heartbeat updates (and
-    other commands).  
+    other commands).
     """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, agent, command_queue, p, pilot_id, starttime, runtime) :
+    def __init__(self, name, logger, agent, command_queue, p, pilot_id, starttime, runtime):
 
         threading.Thread.__init__(self)
 
@@ -3940,10 +3936,10 @@ class HeartbeatMonitor(threading.Thread):
         self._pilot_id        = pilot_id
         self._starttime       = starttime
         self._runtime         = runtime
-        self._terminate       = threading.Event ()
+        self._terminate       = threading.Event()
 
         # run worker thread
-        self.start ()
+        self.start()
 
     # --------------------------------------------------------------------------
     #
@@ -3959,21 +3955,21 @@ class HeartbeatMonitor(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        while not self._terminate.isSet () :
+        while not self._terminate.isSet():
 
-            try :
-                self._check_commands ()
-                self._check_state    ()
-                time.sleep (HEARTBEAT_INTERVAL)
+            try:
+                self._check_commands()
+                self._check_state   ()
+                time.sleep(HEARTBEAT_INTERVAL)
 
-            except Exception as e :
-                self._log.exception ('error in heartbeat monitor (%s)', e)
-                self.stop ()
+            except Exception as e:
+                self._log.exception('error in heartbeat monitor (%s)', e)
+                self.stop()
 
 
     # --------------------------------------------------------------------------
     #
-    def _check_commands (self) :
+    def _check_commands(self):
 
         # Check if there's a command waiting
         retdoc = self._p.find_and_modify(
@@ -3990,17 +3986,17 @@ class HeartbeatMonitor(threading.Thread):
 
         for command in commands:
 
-            prof ('Monitor get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
+            prof('Monitor get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
 
-            if  command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT :
+            if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                 self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                sys.exit (1)
+                sys.exit(1)
 
-            elif state == CANCELING :
+            elif state == CANCELING:
                 self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
-                sys.exit (1)
+                sys.exit(1)
 
             elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                 self._log.info("Received Cancel Compute Unit command for: %s", command[COMMAND_ARG])
@@ -4017,39 +4013,39 @@ class HeartbeatMonitor(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _check_state (self) :
+    def _check_state(self):
 
-        # Check the workers periodically. If they have died, we 
-        # exit as well. this can happen, e.g., if the worker 
+        # Check the workers periodically. If they have died, we
+        # exit as well. this can happen, e.g., if the worker
         # process has caught an exception
-        for worker in self._agent.worker_list :
-            if  not worker.is_alive() :
-                self.stop ()
+        for worker in self._agent.worker_list:
+            if not worker.is_alive():
+                self.stop()
                 msg = 'worker %s died' % str(worker)
                 pilot_FAILED(self._p, self._pilot_id, self._log, msg)
 
-        # Make sure that we haven't exceeded the agent runtime. if 
-        # we have, terminate. 
-        if  time.time() >= self._starttime + (int(self._runtime) * 60):
+        # Make sure that we haven't exceeded the agent runtime. if
+        # we have, terminate.
+        if time.time() >= self._starttime + (int(self._runtime) * 60):
             self._log.info("Agent has reached runtime limit of %s seconds.", self._runtime*60)
-            self.stop ()
+            self.stop()
             pilot_DONE(self._p, self._pilot_id)
 
 
 
 # ------------------------------------------------------------------------------
 #
-class Agent (object):
+class Agent(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, lrms_name, requested_cores, 
-            task_launch_method, mpi_launch_method, 
-            scheduler_name, runtime, 
-            mongodb_url, mongodb_name, mongodb_auth, 
+    def __init__(self, name, logger, lrms_name, requested_cores,
+            task_launch_method, mpi_launch_method,
+            scheduler_name, runtime,
+            mongodb_url, mongodb_name, mongodb_auth,
             pilot_id, session_id):
 
-        prof ('Agent init')
+        prof('Agent init')
 
         self.name                   = name
         self._log                   = logger
@@ -4072,33 +4068,33 @@ class Agent (object):
         self._stageout_queue        = multiprocessing.Queue()
         self._command_queue         = multiprocessing.Queue()
 
-        mongo_db = get_mongodb (mongodb_url, mongodb_name, mongodb_auth)
+        mongo_db = get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
 
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
 
         self._lrms = LRMS.create(
-                name            = lrms_name, 
-                logger          = self._log, 
+                name            = lrms_name,
+                logger          = self._log,
                 requested_cores = requested_cores)
 
         self._scheduler = Scheduler.create(
-                name            = scheduler_name, 
-                logger          = self._log, 
+                name            = scheduler_name,
+                logger          = self._log,
                 lrms            = self._lrms,
-                schedule_queue  = self._schedule_queue, 
-                execution_queue = self._execution_queue, 
+                schedule_queue  = self._schedule_queue,
+                execution_queue = self._execution_queue,
                 update_queue    = self._update_queue)
-        self.worker_list.append (self._scheduler)
+        self.worker_list.append(self._scheduler)
 
         self._task_launcher = LaunchMethod.create(
-                name            = task_launch_method, 
-                logger          = self._log, 
+                name            = task_launch_method,
+                logger          = self._log,
                 scheduler       = self._scheduler)
 
         self._mpi_launcher = LaunchMethod.create(
-                name            = mpi_launch_method,  
-                logger          = self._log, 
+                name            = mpi_launch_method,
+                logger          = self._log,
                 scheduler       = self._scheduler)
 
         self._spawner = Spawner.create(
@@ -4106,9 +4102,9 @@ class Agent (object):
                 logger          = self._log)
         # FIXME: spawner may or may not be threaded...
         # FIXME: we may want one spawner per exec worker, so the exec worker may
-        # want to own the spawner.  
+        # want to own the spawner.
 
-        for n in range(N_EXEC_WORKER) :
+        for n in range(N_EXEC_WORKER):
             exec_worker = ExecWorker(
                 name            = "ExecWorker-%d" % n,
                 logger          = self._log,
@@ -4129,10 +4125,10 @@ class Agent (object):
                 session_id      = self._session_id,
                 workdir         = self._workdir
             )
-            self.worker_list.append (exec_worker)
+            self.worker_list.append(exec_worker)
 
 
-        for n in range(N_UPDATE_WORKER) :
+        for n in range(N_UPDATE_WORKER):
             update_worker = UpdateWorker(
                 name            = "UpdateWorker-%d" % n,
                 agent           = self,
@@ -4143,10 +4139,10 @@ class Agent (object):
                 mongodb_name    = mongodb_name,
                 mongodb_auth    = mongodb_auth
             )
-            self.worker_list.append (update_worker)
+            self.worker_list.append(update_worker)
 
 
-        for n in range(N_STAGEIN_WORKER) :
+        for n in range(N_STAGEIN_WORKER):
             stagein_worker = StageinWorker(
                 name            = "StageinWorker-%d" % n,
                 logger          = self._log,
@@ -4157,10 +4153,10 @@ class Agent (object):
                 update_queue    = self._update_queue,
                 workdir         = self._workdir
             )
-            self.worker_list.append (stagein_worker)
+            self.worker_list.append(stagein_worker)
 
 
-        for n in range(N_STAGEOUT_WORKER) :
+        for n in range(N_STAGEOUT_WORKER):
             stageout_worker = StageoutWorker(
                 name            = "StageoutWorker-%d" % n,
                 agent           = self,
@@ -4170,21 +4166,21 @@ class Agent (object):
                 update_queue    = self._update_queue,
                 workdir         = self._workdir
             )
-            self.worker_list.append (stageout_worker)
+            self.worker_list.append(stageout_worker)
 
 
-        hbmon = HeartbeatMonitor (
+        hbmon = HeartbeatMonitor(
                 name            = "HeartbeatMonitor",
-                logger          = self._log, 
-                agent           = self, 
+                logger          = self._log,
+                agent           = self,
                 command_queue   = self._command_queue,
-                p               = self._p, 
+                p               = self._p,
                 starttime       = self._starttime,
                 runtime         = self._runtime,
                 pilot_id        = self._pilot_id)
-        self.worker_list.append (hbmon)
+        self.worker_list.append(hbmon)
 
-        prof ('Agent init done')
+        prof('Agent init done')
 
 
     # --------------------------------------------------------------------------
@@ -4195,14 +4191,14 @@ class Agent (object):
         main loop finishes (see run())
         """
 
-        prof ('Agent stop()')
+        prof('Agent stop()')
         self._terminate.set()
 
 
     # --------------------------------------------------------------------------
     #
-    def update_unit (self, _id, msg=None, query=None, update=None) :
-            
+    def update_unit(self, _id, msg=None, query=None, update=None):
+
         if not query  : query  = dict()
         if not update : update = dict()
 
@@ -4211,58 +4207,58 @@ class Agent (object):
 
         query_dict['_id'] = _id
 
-        for key,val in query.iteritems() :
+        for key,val in query.iteritems():
             query_dict[key] = val
 
 
-        if  msg :
-            if  not '$push' in update_dict :
+        if msg:
+            if not '$push' in update_dict:
                 update_dict['$push'] = dict()
 
-            update_dict['$push']['log'] = {'message'   : msg, 
+            update_dict['$push']['log'] = {'message'   : msg,
                                            'timestamp' : timestamp()}
 
 
-        self._update_queue.put ({'uid'    : str(_id),
-                                 'cbase'  : '.cu', 
-                                 'query'  : query_dict,
-                                 'update' : update_dict})
+        self._update_queue.put({'uid'    : str(_id),
+                                'cbase'  : '.cu',
+                                'query'  : query_dict,
+                                'update' : update_dict})
 
 
     # --------------------------------------------------------------------------
     #
-    def update_unit_state (self, _id, state, msg=None, query=None, update=None) :
+    def update_unit_state(self, _id, state, msg=None, query=None, update=None):
 
         if not query  : query  = dict()
         if not update : update = dict()
 
         # we alter update, so rather use a copy of the dict...
 
-        now = timestamp ()
+        now = timestamp()
         update_dict = {
                 '$set' : {
                     'state' : state
                 },
                 '$push': {
                     'statehistory' : {
-                        'state'     : state, 
+                        'state'     : state,
                         'timestamp' : now
                     }
                 }
             }
 
-        if '$set' in update :
-            for key,val in update['$set'].iteritems() :
+        if '$set' in update:
+            for key,val in update['$set'].iteritems():
                 update_dict['$set'][key] = val
 
-        if '$push' in update :
-            for key,val in update['$push'].iteritems() :
+        if '$push' in update:
+            for key,val in update['$push'].iteritems():
                 update_dict['$push'][key] = val
 
-        self.update_unit (_id    = _id, 
-                          msg    = msg, 
-                          query  = query, 
-                          update = update_dict)
+        self.update_unit(_id    = _id,
+                         msg    = msg,
+                         query  = query,
+                         update = update_dict)
 
 
     # --------------------------------------------------------------------------
@@ -4270,97 +4266,97 @@ class Agent (object):
     def run(self):
 
         self._log.info("started %s.", self)
-        prof ('Agent run()')
+        prof('Agent run()')
 
         # first order of business: set the start time and state of the pilot
         self._log.info("Agent %s starting ...", self._pilot_id)
         now = timestamp()
         ret = self._p.update(
-            {"_id": ObjectId(self._pilot_id)}, 
+            {"_id": ObjectId(self._pilot_id)},
             {"$set": {"state"          : ACTIVE,
-                      # TODO: The two fields below are currently scheduler 
+                      # TODO: The two fields below are currently scheduler
                       #       specific!
                       "nodes"          : self._lrms.node_list,
                       "cores_per_node" : self._lrms.cores_per_node,
                       "started"        : now},
-             "$push": {"statehistory": {"state"    : ACTIVE, 
+             "$push": {"statehistory": {"state"    : ACTIVE,
                                         "timestamp": now}}
             })
         # TODO: Check for return value, update should be true!
         self._log.info("Database updated: %s", ret)
 
-        prof ('Agent start loop')
+        prof('Agent start loop')
 
-        while not self._terminate.isSet() :
+        while not self._terminate.isSet():
 
             try:
 
                 # check for new units
-                action = self._check_units ()
+                action = self._check_units()
 
-                # if no units have been seen, then wait for juuuust a little...  
+                # if no units have been seen, then wait for juuuust a little...
                 # FIXME: use some mongodb notification mechanism to avoid busy
                 # polling.  Tailed cursors or whatever...
-                if  not action :
+                if not action:
                     time.sleep(DB_POLL_SLEEPTIME)
 
             except Exception as e:
                 # exception in the main loop is fatal
                 self.stop()
-                pilot_FAILED(self._p, self._pilot_id, self._log, 
+                pilot_FAILED(self._p, self._pilot_id, self._log,
                     "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
-                sys.exit (1)
+                sys.exit(1)
 
         # main loop terminated, so self._terminate was set
         # we need to signal shut down to all workers
-        for worker in self.worker_list :
-            worker.stop ()
+        for worker in self.worker_list:
+            worker.stop()
 
         # to make sure that threads are not stuck waiting on a queue, we send
         # a signal on each queue
-        self._schedule_queue.put  (None)
-        self._execution_queue.put (None)
-        self._update_queue.put    (None)
-        self._stagein_queue.put   (None)
-        self._stageout_queue.put  (None)
+        self._schedule_queue.put (None)
+        self._execution_queue.put(None)
+        self._update_queue.put   (None)
+        self._stagein_queue.put  (None)
+        self._stageout_queue.put (None)
 
         # and wait for them to actually finish
         # FIXME: make sure this works when stop was initialized by heartbeat monitor
-        for worker in self.worker_list :
-            worker.join ()
+        for worker in self.worker_list:
+            worker.join()
 
         # record cancelation state
         pilot_CANCELED(self._p, self._pilot_id, self._log,
                 "Terminated (_terminate set).")
 
-        sys.exit (0)
+        sys.exit(0)
 
 
     # --------------------------------------------------------------------------
     #
-    def _check_units (self) :
+    def _check_units(self):
 
         # Check if there are compute units waiting for execution,
         # and log that we pulled it.
-        cu_cursor = self._cu.find (multi = True, 
-                                   spec  = {"pilot" : self._pilot_id,
-                                            "state" : PENDING_EXECUTION})
+        cu_cursor = self._cu.find(multi = True,
+                                  spec  = {"pilot" : self._pilot_id,
+                                           "state" : PENDING_EXECUTION})
 
-        if cu_cursor.count() :
-            prof ('Agent get units', msg="number of units: %d" % cu_cursor.count(),
-                  logger=self._log.info)
+        if cu_cursor.count():
+            prof('Agent get units', msg="number of units: %d" % cu_cursor.count(),
+                 logger=self._log.info)
 
 
-        cu_list = list (cu_cursor)
+        cu_list = list(cu_cursor)
         cu_uids = [cu['_id'] for cu in cu_list]
 
-        for cu in cu_list :
+        for cu in cu_list:
 
-            try :
+            try:
                 cu['uid'] = str(cu['_id'])
 
-                prof ('Agent get unit', uid=cu['uid'], tag='cu arriving', 
-                      logger=self._log.info)
+                prof('Agent get unit', uid=cu['uid'], tag='cu arriving',
+                     logger=self._log.info)
 
                 cud     = cu['description']
                 workdir = "%s/unit-%s" % (self._workdir, cu['uid'])
@@ -4372,39 +4368,39 @@ class Agent (object):
                 cu['stdout_file'] = "%s/%s" % (workdir, cud.get('stdout'))
                 cu['stderr_file'] = "%s/%s" % (workdir, cud.get('stderr'))
 
-                if  cu['stdout_file'] == None :
+                if cu['stdout_file'] == None:
                     cu['stdout_file'] = "%s/%s" % (workdir, 'STDOUT')
-                if  cu['stderr_file'] == None :
+                if cu['stderr_file'] == None:
                     cu['stderr_file'] = "%s/%s" % (workdir, 'STDERR')
 
                 # create unit sandbox
-                rec_makedir (workdir)
+                rec_makedir(workdir)
 
                 # and send to staging / execution, respectively
-                if  cu['Agent_Input_Directives'] :
+                if cu['Agent_Input_Directives']:
 
-                    self.update_unit_state (_id    = cu['_id'],
-                                            state  = STAGING_INPUT, 
-                                            msg    = 'unit needs input staging')
-                    self._stagein_queue.put (cu)
-                    prof ('push', msg="towards stagein", uid=cu['uid'], tag='ingest')
+                    self.update_unit_state(_id    = cu['_id'],
+                                           state  = STAGING_INPUT,
+                                           msg    = 'unit needs input staging')
+                    self._stagein_queue.put(cu)
+                    prof('push', msg="towards stagein", uid=cu['uid'], tag='ingest')
 
-                else :
-                    self.update_unit_state (_id    = cu['_id'],
-                                            state  = ALLOCATING, 
-                                            msg    = 'unit needs no input staging')
-                    self._schedule_queue.put (cu)
-                    prof ('push', msg="towards allocation", uid=cu['uid'], tag='ingest')
+                else:
+                    self.update_unit_state(_id    = cu['_id'],
+                                           state  = ALLOCATING,
+                                           msg    = 'unit needs no input staging')
+                    self._schedule_queue.put(cu)
+                    prof('push', msg="towards allocation", uid=cu['uid'], tag='ingest')
 
 
-            except Exception as e :
+            except Exception as e:
                 # if any unit sorting step failed, the unit did
                 # not end up in a queue -- we set it to FAILED
                 msg = "could not sort unit (%s)" % e
-                prof ('error', msg=msg, tag="failed", uid=cu['uid'], logger=self._log.exception)
-                self.update_unit_state (_id    = cu['_id'],
-                                        state  = FAILED, 
-                                        msg    = msg)
+                prof('error', msg=msg, tag="failed", uid=cu['uid'], logger=self._log.exception)
+                self.update_unit_state(_id    = cu['_id'],
+                                       state  = FAILED,
+                                       msg    = msg)
                 # NOTE: this is final, the unit will not be touched
                 # anymore.
                 cu = None
@@ -4414,14 +4410,14 @@ class Agent (object):
         # 'find' above.  To avoid finding the same units over and over again, we
         # have to update the state *before* running the next find -- so we
         # do it right here...  No idea how to avoid that roundtrip...
-        if  cu_uids :
-            self._cu.update (
-                    multi    = True, 
+        if cu_uids:
+            self._cu.update(
+                    multi    = True,
                     spec     = {"_id"   : {"$in"    : cu_uids}},
-                    document = {"$set"  : {"state"  : ALLOCATING}, 
-                                "$push" : {"statehistory" : 
+                    document = {"$set"  : {"state"  : ALLOCATING},
+                                "$push" : {"statehistory":
                                     {
-                                        "state"     : ALLOCATING, 
+                                        "state"     : ALLOCATING,
                                         "timestamp" : timestamp()
                                     }
                                }})
@@ -4435,7 +4431,7 @@ class Agent (object):
 # Agent main code
 #
 # ==============================================================================
-def main () :
+def main():
 
     mongo_p = None
     parser  = optparse.OptionParser()
@@ -4456,7 +4452,7 @@ def main () :
     # parse the whole shebang
     (options, args) = parser.parse_args()
 
-    if args : parser.error ("Unused arguments '%s'" % args)
+    if args : parser.error("Unused arguments '%s'" % args)
 
     if not options.cores                : parser.error("Missing number of cores (-c)")
     if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
@@ -4470,12 +4466,12 @@ def main () :
     if not options.runtime              : parser.error("Missing agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
-    prof ('start', tag='bootstrapping', uid=options.pilot_id)
+    prof('start', tag='bootstrapping', uid=options.pilot_id)
 
     # configure the agent logger
-    logger    = logging.getLogger   ('radical.pilot.agent')
-    handle    = logging.FileHandler ("AGENT.LOG")
-    formatter = logging.Formatter   ('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger    = logging.getLogger  ('radical.pilot.agent')
+    handle    = logging.FileHandler("AGENT.LOG")
+    formatter = logging.Formatter  ('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     logger.setLevel(options.debug_level)
     handle.setFormatter(formatter)
@@ -4491,7 +4487,7 @@ def main () :
     def sigint_handler(signum, frame):
         msg = 'Caught SIGINT. EXITING.'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (2)
+        sys.exit(2)
     signal.signal(signal.SIGINT, sigint_handler)
 
 
@@ -4500,22 +4496,22 @@ def main () :
     def sigalarm_handler(signum, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        sys.exit (3)
+        sys.exit(3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
 
     try:
         # ----------------------------------------------------------------------
         # Establish database connection
-        prof ('db setup')
-        mongo_db = get_mongodb (options.mongodb_url, options.mongodb_name,
-                                options.mongodb_auth)
+        prof('db setup')
+        mongo_db = get_mongodb(options.mongodb_url, options.mongodb_name,
+                               options.mongodb_auth)
         mongo_p  = mongo_db["%s.p" % options.session_id]
 
 
         # ----------------------------------------------------------------------
         # Launch the agent thread
-        prof ('Agent create')
+        prof('Agent create')
         agent = Agent(
                 name               = 'Agent',
                 logger             = logger,
@@ -4533,11 +4529,11 @@ def main () :
         )
 
         agent.run()
-        prof ('Agent done')
+        prof('Agent done')
 
     except SystemExit:
         logger.error("Caught keyboard interrupt. EXITING")
-        return (6)
+        return(6)
 
     except Exception as e:
         error_msg = "Error running agent: %s" % str(e)
@@ -4545,8 +4541,8 @@ def main () :
         pilot_FAILED(mongo_p, options.pilot_id, logger, error_msg)
         sys.exit(7)
 
-    finally :
-        prof ('stop', msg='finally clause')
+    finally:
+        prof('stop', msg='finally clause')
         sys.exit(8)
 
 
@@ -4554,7 +4550,7 @@ def main () :
 #
 if __name__ == "__main__":
 
-    sys.exit (main())
+    sys.exit(main())
 
 #
 # ------------------------------------------------------------------------------
