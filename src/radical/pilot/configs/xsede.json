@@ -19,7 +19,8 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
         "agent_scheduler"             : "CONTINUOUS",
-        "python_interpreter"          : "/opt/apps/python/epd/7.3.2/bin/python",
+        "virtenv"                     : "%(global_sandbox)s/virtenv_stampede",
+        "virtenv_mode"                : "create",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
                                          "module load cluster",
@@ -30,8 +31,7 @@
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"]
     },
 
     "lonestar": {
