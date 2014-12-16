@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export RADICAL_PILOT_DBURL=mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/
+export RADICAL_PILOT_DBURL=mongodb://user:pass@ec2-184-72-89-141.compute-1.amazonaws.com:27017/
 export RADICAL_PILOT_VERBOSE=DEBUG
 export RADICAL_PILOT_BENCHMARK=
 

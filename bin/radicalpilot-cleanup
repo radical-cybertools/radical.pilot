@@ -9,8 +9,8 @@ import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
 
-_DEFAULT_DBURL = 'mongodb://localhost:27017/radicalpilot/'
-_DEFAULT_DBURL = 'mongodb://ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://user:password@localhost:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://user:password@ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
 
 if  'RADICAL_PILOT_DBURL' in os.environ :
     _DEFAULT_DBURL = os.environ['RADICAL_PILOT_DBURL']
@@ -30,7 +30,7 @@ def usage (msg=None, noexit=False) :
 
     print """
       usage   : %s -m <mode> [-d dburl] [-s session]
-      example : %s -m close   -d mongodb://localhost/radicalpilot -s 536afe101d41c83696ea0135
+      example : %s -m close   -d mongodb://user:password@localhost/radicalpilot -s 536afe101d41c83696ea0135
 
       modes (-m) :
 
