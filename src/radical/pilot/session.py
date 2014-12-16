@@ -251,7 +251,7 @@ class Session (saga.Session, Object):
               or doesn't exist. 
         """
 
-        logger.error("session %s closing" % (str(self._uid)))
+        logger.debug("session %s closing" % (str(self._uid)))
 
         uid = self._uid
 
@@ -276,19 +276,19 @@ class Session (saga.Session, Object):
             terminate = True
 
         for pmgr in self._pilot_manager_objects:
-            logger.error("session %s closes   pmgr   %s" % (str(self._uid), pmgr._uid))
+            logger.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr._uid))
             pmgr.close (terminate=terminate)
-            logger.error("session %s closed   pmgr   %s" % (str(self._uid), pmgr._uid))
+            logger.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr._uid))
 
         for umgr in self._unit_manager_objects:
-            logger.error("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
+            logger.debug("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
             umgr.close()
-            logger.error("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
+            logger.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
 
         if  cleanup :
             self._destroy_db_entry()
 
-        logger.error("session %s closed" % (str(self._uid)))
+        logger.debug("session %s closed" % (str(self._uid)))
 
 
     #---------------------------------------------------------------------------

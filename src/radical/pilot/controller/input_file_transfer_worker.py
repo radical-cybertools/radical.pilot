@@ -58,10 +58,10 @@ class InputFileTransferWorker(threading.Thread):
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
-        logger.error("itransfer %s stopping" % (self.name))
+        logger.debug("itransfer %s stopping" % (self.name))
         self._stop.set()
         self.join()
-        logger.error("itransfer %s stopped" % (self.name))
+        logger.debug("itransfer %s stopped" % (self.name))
       # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
       #             (self.name, self.ident, self.unit_manager_id))
 
@@ -286,12 +286,12 @@ class InputFileTransferWorker(threading.Thread):
 
             except Exception as e :
 
-                logger.error("transfer worker error: %s\n %s" % (str(e), traceback.format_exc()))
+                logger.exception("transfer worker error: %s" % e)
                 self._session.close (cleanup=False)
-                raise e
+                raise
 
         except SystemExit as e :
-            logger.error("input file transfer thread caught system exit -- forcing application shutdown")
+            logger.debug("input file transfer thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
             

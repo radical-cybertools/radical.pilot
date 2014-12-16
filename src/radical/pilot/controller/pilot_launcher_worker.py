@@ -67,10 +67,10 @@ class PilotLauncherWorker(threading.Thread):
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
-        logger.error("launcher %s stopping" % (self.name))
+        logger.debug("launcher %s stopping" % (self.name))
         self._stop.set()
         self.join()
-        logger.error("launcher %s stopped" % (self.name))
+        logger.debug("launcher %s stopped" % (self.name))
       # logger.debug("Launcher thread (ID: %s[%s]) for PilotManager %s stopped." %
       #             (self.name, self.ident, self.pilot_manager_id))
 
@@ -172,7 +172,7 @@ class PilotLauncherWorker(threading.Thread):
                     self.missing_pilots[pilot_id] += 1
 
                     if  self.missing_pilots[pilot_id] >= JOB_CHECK_MAX_MISSES :
-                        logger.error ('giving up after 10 attempts')
+                        logger.debug ('giving up after 10 attempts')
                         pilot_failed = True
                         log_message  = "Could not reconnect to pilot %s "\
                                        "multiple times - giving up" % pilot_id
@@ -207,8 +207,8 @@ class PilotLauncherWorker(threading.Thread):
                          }
                      }
                 )
-                logger.error (log_message)
-                logger.error ('pilot %s declared dead' % pilot_id)
+                logger.debug (log_message)
+                logger.warn  ('pilot %s declared dead' % pilot_id)
 
 
             elif pilot_done :
@@ -236,8 +236,8 @@ class PilotLauncherWorker(threading.Thread):
                          }
                      }
                 )
-                logger.error (log_message)
-                logger.error ('pilot %s declared dead' % pilot_id)
+                logger.debug (log_message)
+                logger.warn  ('pilot %s declared dead' % pilot_id)
 
             else :
                 if self.missing_pilots[pilot_id] :
@@ -266,9 +266,8 @@ class PilotLauncherWorker(threading.Thread):
                 pilot_col = db["%s.p" % self.db_connection_info.session_id]
                 logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
-            except Exception, ex:
-                tb = traceback.format_exc()
-                logger.error("Connection error: %s. %s" % (str(ex), tb))
+            except Exception as e :
+                logger.exception ("Connection error: %s" % e)
                 return
 
             last_job_check = time.time()
@@ -646,7 +645,7 @@ class PilotLauncherWorker(threading.Thread):
                             )
 
 
-                    except Exception, ex:
+                    except Exception as e:
                         # Update the Pilot's state 'FAILED'.
                         out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                         ts = datetime.datetime.utcnow()
@@ -655,8 +654,7 @@ class PilotLauncherWorker(threading.Thread):
                         # log messages containing an '#'.  This shows up here.
                         # Until we find a clean workaround, make log shorter and
                         # rely on saga logging to reveal the problem.
-                      # msg = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
-                        msg = "Pilot launching failed!"
+                        msg = "Pilot launching failed! (%s)" % e
                         logentries.append (Logentry (msg))
 
                         log_dicts    = list()

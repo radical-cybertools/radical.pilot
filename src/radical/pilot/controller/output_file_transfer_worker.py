@@ -54,10 +54,10 @@ class OutputFileTransferWorker(threading.Thread):
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
-        logger.error("otransfer %s stopping" % (self.name))
+        logger.debug("otransfer %s stopping" % (self.name))
         self._stop.set()
         self.join()
-        logger.error("otransfer %s stopped" % (self.name))
+        logger.debug("otransfer %s stopped" % (self.name))
       # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
       #             (self.name, self.ident, self.unit_manager_id))
 
@@ -77,8 +77,8 @@ class OutputFileTransferWorker(threading.Thread):
                 um_col = db["%s.cu" % self.db_connection_info.session_id]
                 logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
-            except Exception, ex:
-                logger.error("Connection error: %s. %s" % (str(ex), traceback.format_exc()))
+            except Exception as e:
+                logger.exception("Connection error: %s" % e)
                 return
 
             while not self._stop.is_set():
@@ -186,10 +186,10 @@ class OutputFileTransferWorker(threading.Thread):
                                 }
                             )
 
-                    except Exception, ex:
+                    except Exception as e :
                         # Update the CU's state to 'FAILED'.
                         ts = datetime.datetime.utcnow()
-                        log_message = "Output transfer failed: %s\n%s" % (str(ex), traceback.format_exc())
+                        log_message = "Output transfer failed: %s" % e
                         # TODO: not only mark the CU as failed, but also the specific Directive
                         um_col.update(
                             {'_id': ObjectId(compute_unit_id)},
@@ -198,7 +198,7 @@ class OutputFileTransferWorker(threading.Thread):
                              '$push': {'log': {'message': log_message, 'timestamp': ts}}
                             }
                         )
-                        logger.error(log_message)
+                        logger.exception (log_message)
 
 
                 # Code below is only to be run by the "first" or only worker

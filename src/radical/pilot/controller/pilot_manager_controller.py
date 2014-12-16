@@ -170,10 +170,9 @@ class PilotManagerController(threading.Thread):
             else :
                 return data[0]
 
-        except KeyError, ke:
-            msg = "Unknown Pilot ID %s" % ke
-            logger.error(msg)
-            raise Exception(msg)
+        except KeyError as e:
+            logger.exception ("Unknown Pilot ID %s : %s" % (pilot_id, e))
+            raise
 
     # ------------------------------------------------------------------------
     #
@@ -181,10 +180,10 @@ class PilotManagerController(threading.Thread):
         """cancel the launcher threads
         """
         for worker in self._pilot_launcher_worker_pool:
-            logger.error("pworker %s stops   launcher %s" % (self.name, worker.name))
+            logger.debug("pworker %s stops   launcher %s" % (self.name, worker.name))
             worker.stop ()
             worker.join ()
-            logger.error("pworker %s stopped launcher %s" % (self.name, worker.name))
+            logger.debug("pworker %s stopped launcher %s" % (self.name, worker.name))
 
 
     # ------------------------------------------------------------------------
@@ -192,10 +191,10 @@ class PilotManagerController(threading.Thread):
     def stop(self):
         """stop() signals the process to finish up and terminate.
         """
-        logger.error("pworker %s stopping" % (self.name))
+        logger.debug("pworker %s stopping" % (self.name))
         self._stop.set()
         self.join()
-        logger.error("pworker %s stopped" % (self.name))
+        logger.debug("pworker %s stopped" % (self.name))
 
       # logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s stopped." %
       #             (self.name, self.ident, self._pm_id))
@@ -224,8 +223,8 @@ class PilotManagerController(threading.Thread):
                         cb (self._shared_data[pilot_id]['facade_object'](), new_state)
                 else :
                     logger.error("Couldn't call callback (no pilot instance)")
-            except Exception, ex:
-                logger.error("Couldn't call callback function %s" % str(ex))
+            except Exception as e:
+                logger.exception("Couldn't call callback function %s" % e)
                 raise
 
         # If we have any manager-level callbacks registered, we
@@ -239,9 +238,9 @@ class PilotManagerController(threading.Thread):
                         cb(self._shared_data[pilot_id]['facade_object'](), new_state)
                 else :
                     logger.error("Couldn't call manager callback (no pilot instance)")
-            except Exception, ex:
-                logger.error(
-                    "Couldn't call callback function %s" % str(ex))
+            except Exception as e:
+                logger.exception(
+                    "Couldn't call callback function %s" % e)
                 raise
 
         # if we meet a final state, we record the object's callback history for
@@ -372,9 +371,9 @@ class PilotManagerController(threading.Thread):
         finally :
             # shut down the autonomous pilot launcher worker(s)
             for worker in self._pilot_launcher_worker_pool:
-                logger.error("pworker %s stops   launcher %s" % (self.name, worker.name))
+                logger.debug("pworker %s stops   launcher %s" % (self.name, worker.name))
                 worker.stop ()
-                logger.error("pworker %s stopped launcher %s" % (self.name, worker.name))
+                logger.debug("pworker %s stopped launcher %s" % (self.name, worker.name))
 
             
 
@@ -529,11 +528,11 @@ class PilotManagerController(threading.Thread):
                         logger.debug (pprint.pformat (self._shared_worker_data))
 
                 else :
-                    logger.error ("delay to actively cancel pilot %s: state %s" % (pilot_id, old_state))
+                    logger.debug ("delay to actively cancel pilot %s: state %s" % (pilot_id, old_state))
                     delayed_cancel.append (pilot_id)
 
             else :
-                logger.error ("can't actively cancel pilot %s: unknown pilot" % pilot_id)
+                logger.warn  ("can't actively cancel pilot %s: unknown pilot" % pilot_id)
                 logger.debug (pprint.pformat (self._shared_data))
 
         # now tend to all delayed cancellation requests (ie. active pilots) --

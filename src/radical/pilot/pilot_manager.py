@@ -141,7 +141,7 @@ class PilotManager(Object):
 
         """
 
-        logger.error("pmgr    %s closing" % (str(self._uid)))
+        logger.debug("pmgr    %s closing" % (str(self._uid)))
 
         # Spit out a warning in case the object was already closed.
         if not self._uid:
@@ -153,9 +153,9 @@ class PilotManager(Object):
         # ongoing state checks...
         if self._worker is not None:
             # Stop the worker process
-            logger.error("pmgr    %s cancel   worker %s" % (str(self._uid), self._worker.name))
+            logger.debug("pmgr    %s cancel   worker %s" % (str(self._uid), self._worker.name))
             self._worker.cancel_launcher()
-            logger.error("pmgr    %s canceled worker %s" % (str(self._uid), self._worker.name))
+            logger.debug("pmgr    %s canceled worker %s" % (str(self._uid), self._worker.name))
 
 
 
@@ -164,7 +164,7 @@ class PilotManager(Object):
             # cancel all pilots, make sure they are gone, and close the pilot
             # managers.
             for pilot in self.get_pilots () :
-                logger.error("pmgr    %s cancels  pilot  %s" % (str(self._uid), pilot._uid))
+                logger.debug("pmgr    %s cancels  pilot  %s" % (str(self._uid), pilot._uid))
             self.cancel_pilots ()
 
           # FIXME:
@@ -194,25 +194,25 @@ class PilotManager(Object):
             while wait_for_cancel :
                 wait_for_cancel = False
                 for pilot in all_pilots :
-                    logger.error("pmgr    %s wait for pilot  %s (%s)" % (str(self._uid), pilot._uid, pilot.state))
+                    logger.debug("pmgr    %s wait for pilot  %s (%s)" % (str(self._uid), pilot._uid, pilot.state))
                     if  pilot.state not in [DONE, FAILED, CANCELED, CANCELING] :
                         time.sleep (1)
                         wait_for_cancel = True
                         break
             for pilot in self.get_pilots () :
-                logger.error("pmgr    %s canceled pilot  %s" % (str(self._uid), pilot._uid))
+                logger.debug("pmgr    %s canceled pilot  %s" % (str(self._uid), pilot._uid))
 
 
-        logger.error("pmgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
+        logger.debug("pmgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
         self._worker.stop()
         self._worker.join()
-        logger.error("pmgr    %s stopped  worker %s" % (str(self._uid), self._worker.name))
+        logger.debug("pmgr    %s stopped  worker %s" % (str(self._uid), self._worker.name))
 
         # Remove worker from registry
         self._session._process_registry.remove(self._uid)
 
 
-        logger.error("pmgr    %s closed" % (str(self._uid)))
+        logger.debug("pmgr    %s closed" % (str(self._uid)))
         self._uid = None
 
     #--------------------------------------------------------------------------
