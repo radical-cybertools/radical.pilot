@@ -146,7 +146,6 @@ import multiprocessing
 
 import radical.utils as ru
 
-from bson.objectid import ObjectId
 from operator      import mul
 
 
@@ -473,7 +472,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
            {"message": get_rusage(), "timestamp": now}]
 
     if mongo_p:
-        mongo_p.update({"_id": ObjectId(pilot_uid)},
+        mongo_p.update({"_id": pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : FAILED,
                                            "timestamp" : now}},
@@ -509,7 +508,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     msg = [{"message": message,      "timestamp": now},
            {"message": get_rusage(), "timestamp": now}]
 
-    mongo_p.update({"_id": ObjectId(pilot_uid)},
+    mongo_p.update({"_id": pilot_uid},
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state"     : CANCELED,
                                        "timestamp" : now}},
@@ -540,7 +539,7 @@ def pilot_DONE(mongo_p, pilot_uid):
     msg = [{"message": "pilot done", "timestamp": now},
            {"message": get_rusage(), "timestamp": now}]
 
-    mongo_p.update({"_id": ObjectId(pilot_uid)},
+    mongo_p.update({"_id": pilot_uid},
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state"    : DONE,
                                        "timestamp": now}},
@@ -3133,7 +3132,7 @@ class ExecWorker(threading.Thread):
 
       # self.mongo_p = mongo_db["%s.p"  % session_id]
       # self.mongo_p.update(
-      #     {"_id": ObjectId(self._pilot_id)},
+      #     {"_id": self._pilot_id},
       #     {"$set": {"slothistory" : self._scheduler.slot_history,
       #               "slots"       : self._scheduler.slots
       #              }
@@ -3452,7 +3451,7 @@ class WatchWorker(threading.Thread):
   #     if (self.slot_history_old != self._scheduler.slot_history):
   #
   #         self.mongo_p.update(
-  #             {"_id": ObjectId(self._pilot_id)},
+  #             {"_id": self._pilot_id},
   #             {"$set": {"slothistory" : self._scheduler.slot_history,
   #                       "slots"       : self._scheduler.slots
   #                      }
@@ -3521,14 +3520,13 @@ class UpdateWorker(threading.Thread):
                     res  = cinfo['bulk'].execute()
                     self._log.debug("bulk update result: %s", res)
 
+                    prof('state update bulk pushed (%d)' % len(cinfo['uids'].keys))
                     for uid in cinfo['uids']:
-                        prof('state update pushed', uid=uid)
-
-                    prof('state update bulk pushed (%d)' % len(cinfo['uids']))
+                        prof('state update pushed (%s)' % cinfo['uids'][uid], uid=uid)
 
                     cinfo['last'] = now
                     cinfo['bulk'] = None
-                    cinfo['uids'] = list()
+                    cinfo['uids'] = dict()
                     return 1
 
                 else:
@@ -3555,9 +3553,10 @@ class UpdateWorker(threading.Thread):
                 # got a new request.  Add to bulk (create as needed),
                 # and push bulk if time is up.
                 uid         = update_request.get('uid')
+                state       = update_request.get('state', None)
                 cbase       = update_request.get('cbase', '.cu')
-                query_dict  = update_request.get('query',  dict())
-                update_dict = update_request.get('update', dict())
+                query_dict  = update_request.get('query', dict())
+                update_dict = update_request.get('update',dict())
 
                 prof('state update pulled', uid=uid)
 
@@ -3569,15 +3568,15 @@ class UpdateWorker(threading.Thread):
                             'coll' : coll,
                             'bulk' : None,
                             'last' : time.time(),  # time of last push
-                            'uids' : list()
+                            'uids' : dict()
                             }
 
                 cinfo = self._cinfo[cname]
 
                 if not cinfo['bulk']:
-                    cinfo['bulk'] = coll.initialize_ordered_bulk_op()
+                    cinfo['bulk']  = coll.initialize_ordered_bulk_op()
 
-                cinfo['uids'].append(uid)
+                cinfo['uids'][uid] = state
                 cinfo['bulk'].find  (query_dict) \
                              .update(update_dict)
 
@@ -4024,7 +4023,7 @@ class HeartbeatMonitor(threading.Thread):
 
         # Check if there's a command waiting
         retdoc = self._p.find_and_modify(
-                    query  = {"_id"  : ObjectId(self._pilot_id)},
+                    query  = {"_id"  : self._pilot_id},
                     update = {"$set" : {COMMAND_FIELD: []}}, # Wipe content of array
                     fields = [COMMAND_FIELD, 'state']
                     )
@@ -4260,7 +4259,7 @@ class Agent(object):
 
     # --------------------------------------------------------------------------
     #
-    def update_unit(self, _id, msg=None, query=None, update=None):
+    def update_unit(self, _id, state=None, msg=None, query=None, update=None):
 
         if not query  : query  = dict()
         if not update : update = dict()
@@ -4283,6 +4282,7 @@ class Agent(object):
 
 
         self._update_queue.put({'uid'    : str(_id),
+                                'state'  : state,
                                 'cbase'  : '.cu',
                                 'query'  : query_dict,
                                 'update' : update_dict})
@@ -4290,10 +4290,14 @@ class Agent(object):
 
     # --------------------------------------------------------------------------
     #
-    def update_unit_state(self, _id, state, msg=None, query=None, update=None):
+    def update_unit_state(self, _id, state, msg=None, query=None, update=None,
+            logger=None):
 
         if not query  : query  = dict()
         if not update : update = dict()
+
+        if  logger and msg:
+            logger("unit '%s' state change (%s)" % (_id, msg))
 
         # we alter update, so rather use a copy of the dict...
 
@@ -4319,6 +4323,7 @@ class Agent(object):
                 update_dict['$push'][key] = val
 
         self.update_unit(_id    = _id,
+                         state  = state,
                          msg    = msg,
                          query  = query,
                          update = update_dict)
@@ -4335,7 +4340,7 @@ class Agent(object):
         self._log.info("Agent %s starting ...", self._pilot_id)
         now = timestamp()
         ret = self._p.update(
-            {"_id": ObjectId(self._pilot_id)},
+            {"_id": self._pilot_id},
             {"$set": {"state"          : ACTIVE,
                       # TODO: The two fields below are currently scheduler
                       #       specific!
@@ -4413,13 +4418,37 @@ class Agent(object):
         cu_list = list(cu_cursor)
         cu_uids = [cu['_id'] for cu in cu_list]
 
+        ##################################################################
+        # FIXME: this is an experiment which WILL screw your application #
+        # semantics and performance!                                     #
+        ##################################################################
+        cu_list_copy = cu_list[:]
+        cu_list      = list()
+        cu_idx       = 1
+        multiplier   = 100
+        for cu in cu_list_copy :
+            mult_idx = 1
+            for idx in range(multiplier) :
+                cu_clone        = dict(cu)
+                cu_clone['_id'] = '%05d.%05d' % (cu_idx, mult_idx)
+                mult_idx += 1
+                cu_list.append (cu_clone)
+            cu_idx += 1
+
+
+
+        ##################################################################
+
         for cu in cu_list:
 
             try:
+                # FIXME: re-enable this when the experiment above is disabled!
                 cu['uid'] = str(cu['_id'])
 
                 prof('Agent get unit', uid=cu['uid'], tag='cu arriving',
                      logger=self._log.info)
+
+                prof('Agent get unit ingest', uid=cu['uid'])
 
                 cud     = cu['description']
                 workdir = "%s/unit-%s" % (self._workdir, cu['uid'])
@@ -4439,8 +4468,11 @@ class Agent(object):
                     stderr_file = 'STDERR'
                 cu['stderr_file'] = os.path.join(workdir, stderr_file)
 
+
+                prof('Agent get unit meta', uid=cu['uid'])
                 # create unit sandbox
                 rec_makedir(workdir)
+                prof('Agent get unit mkdir', uid=cu['uid'])
 
                 # and send to staging / execution, respectively
                 if cu['Agent_Input_Directives']:
@@ -4457,6 +4489,8 @@ class Agent(object):
                                            msg    = 'unit needs no input staging')
                     self._schedule_queue.put(cu)
                     prof('push', msg="towards allocation", uid=cu['uid'], tag='ingest')
+
+                prof('Agent get unit pushed', uid=cu['uid'])
 
 
             except Exception as e:

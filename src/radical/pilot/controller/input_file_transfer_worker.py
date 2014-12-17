@@ -13,7 +13,6 @@ import datetime
 import traceback
 import threading
 
-from bson.objectid import ObjectId
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
 from radical.pilot.staging_directives import CREATE_PARENTS
@@ -152,7 +151,7 @@ class InputFileTransferWorker(threading.Thread):
                             for sd in input_staging:
 
                                 state_doc = um_col.find_one(
-                                    {"_id": ObjectId(compute_unit_id)},
+                                    {"_id": compute_unit_id},
                                     fields=["state"]
                                 )
                                 if state_doc['state'] == CANCELED:
@@ -191,7 +190,7 @@ class InputFileTransferWorker(threading.Thread):
 
                                 # If all went fine, update the state of this StagingDirective to Done
                                 um_col.find_and_modify(
-                                    query={"_id" : ObjectId(compute_unit_id),
+                                    query={"_id" : compute_unit_id,
                                            'FTW_Input_Status': EXECUTING,
                                            'FTW_Input_Directives.state': PENDING,
                                            'FTW_Input_Directives.source': sd['source'],
@@ -211,7 +210,7 @@ class InputFileTransferWorker(threading.Thread):
                                         'timestamp': ts}
 
                             um_col.update(
-                                {'_id':   ObjectId(compute_unit_id)},
+                                {'_id':   compute_unit_id},
                                 {'$set':  {'state': FAILED},
                                  '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
                                  '$push': {'log': logentry}
@@ -244,7 +243,7 @@ class InputFileTransferWorker(threading.Thread):
                         if cu['FTW_Input_Status'] == EXECUTING and \
                                 not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['FTW_Input_Directives']):
                             # All Input Directives for this FTW are done, mark the CU accordingly
-                            um_col.update({"_id": ObjectId(cu["_id"])},
+                            um_col.update({"_id": cu["_id"]},
                                           {'$set': {'FTW_Input_Status': DONE},
                                            '$push': {'log': { 
                                                 'timestamp': datetime.datetime.utcnow(), 
@@ -257,7 +256,7 @@ class InputFileTransferWorker(threading.Thread):
                         if cu['Agent_Input_Status'] == EXECUTING and \
                                 not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['Agent_Input_Directives']):
                             # All Input Directives for this Agent are done, mark the CU accordingly
-                            um_col.update({"_id": ObjectId(cu["_id"])},
+                            um_col.update({"_id": cu["_id"]},
                                            {'$set': {'Agent_Input_Status': DONE},
                                             '$push': {'log': {
                                                 'timestamp': datetime.datetime.utcnow(), 

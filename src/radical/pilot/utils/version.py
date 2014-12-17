@@ -15,4 +15,6 @@ import os
 
 version        = open(os.path.dirname (os.path.abspath (__file__)) + "/../VERSION",     'r').read().strip()
 version_detail = open(os.path.dirname (os.path.abspath (__file__)) + "/../VERSION.git", 'r').read().strip()
+sdist          = open(os.path.dirname (os.path.abspath (__file__)) + "/../SDIST",       'r').read().strip()
+sdist_path     = "%s/../%s" % (os.path.dirname (os.path.abspath (__file__)), sdist)
 

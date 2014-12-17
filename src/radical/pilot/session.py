@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os 
+import bson
 import glob
 import copy
 import saga
@@ -26,9 +27,6 @@ from radical.pilot.exceptions      import PilotException
 
 from radical.pilot.db              import Session as dbSession
 from radical.pilot.db              import DBException
-
-from bson.objectid                 import ObjectId
-
 
 
 # ------------------------------------------------------------------------------
@@ -198,7 +196,7 @@ class Session (saga.Session, Object):
         ##########################
         if session_uid is None:
             try:
-                self._uid = str(ObjectId())
+                self._uid = ru.generate_id ('session.', mode=ru.ID_UNIQUE)
                 self._last_reconnect = None
 
                 self._dbs, self._created, self._connection_info = \
