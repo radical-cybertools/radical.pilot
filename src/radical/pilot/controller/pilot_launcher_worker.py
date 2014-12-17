@@ -535,6 +535,10 @@ class PilotLauncherWorker(threading.Thread):
                                                 #  u : unit work dirs
                                                 #  v : virtualenv
                                                 #  e : everything (== pilot sandbox)
+                                                #
+                            # we never cleanup virtenvs which are not private
+                            if virtenv_mode is not 'private' :
+                                cleanup = cleanup.replace ('v', '')
 
 
                         # set mandatory args
