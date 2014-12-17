@@ -14,10 +14,11 @@ import datetime
 import traceback
 import threading
 
+from bson.objectid import ObjectId
+
 from radical.pilot.states import *
 
 from radical.pilot.utils.version import version as VERSION
-from radical.pilot.utils.version import sdist_path, sdist
 from radical.pilot.utils.logger  import logger
 from radical.pilot.context       import Context
 from radical.pilot.logentry      import Logentry
@@ -490,18 +491,6 @@ class PilotLauncherWorker(threading.Thread):
                             logentries.append (Logentry (msg, logger=logger.info))
 
                             # --------------------------------------------------
-                            # Copy the rp sdist 
-                            #
-                            sdist_url = saga.Url("file://localhost/%s" % sdist_path)
-                            msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
-                            logentries.append(Logentry (msg, logger=logger.debug))
-
-                            sdist_file = saga.filesystem.File(sdist_url)
-                            sdist_file.copy("%s/%s" % (str(pilot_sandbox), sdist))
-                            sdist_file.close()
-
-
-                            # --------------------------------------------------
                             # Copy the agent script
                             #
                             agent_url = saga.Url("file://localhost/%s" % agent_path)
@@ -555,7 +544,6 @@ class PilotLauncherWorker(threading.Thread):
                         # set mandatory args
                         bootstrap_args  = ""
                         bootstrap_args += " -a '%s'" % database_auth
-                        bootstrap_args += " -b '%s'" % sdist[:-7] # without '.tgz'
                         bootstrap_args += " -c '%s'" % number_cores
                         bootstrap_args += " -d '%s'" % debug_level
                         bootstrap_args += " -g '%s'" % virtenv
@@ -639,7 +627,7 @@ class PilotLauncherWorker(threading.Thread):
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
                         ts = datetime.datetime.utcnow()
                         ret = pilot_col.update(
-                            {"_id"  : pilot_id,
+                            {"_id"  : ObjectId(pilot_id),
                              "state": 'Launching'},
                             {"$set" : {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
@@ -654,7 +642,7 @@ class PilotLauncherWorker(threading.Thread):
                             # jobid then
                             # FIXME: make sure of the agent state!
                             ret = pilot_col.update(
-                                {"_id"  : pilot_id},
+                                {"_id"  : ObjectId(pilot_id)},
                                 {"$set" : {"saga_job_id": saga_job_id},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                                  "$pushAll": {"log": log_dicts}}
@@ -680,7 +668,7 @@ class PilotLauncherWorker(threading.Thread):
                             log_messages.append (le.message)
 
                         pilot_col.update(
-                            {"_id"  : pilot_id,
+                            {"_id"  : ObjectId(pilot_id),
                              "state": {"$ne" : FAILED}},
                             {"$set" : {
                                 "state"   : FAILED,

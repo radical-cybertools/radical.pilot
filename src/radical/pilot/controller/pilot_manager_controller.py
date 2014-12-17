@@ -18,7 +18,7 @@ import threading
 import weakref
 from multiprocessing import Pool
 
-import radical.utils as ru
+from radical.utils import which
 
 from radical.pilot.states       import *
 from radical.pilot.utils.logger import logger
@@ -384,7 +384,7 @@ class PilotManagerController(threading.Thread):
         """
 
         # create a new UID for the pilot
-        pilot_uid = ru.generate_id ('pilot.')
+        pilot_uid = bson.ObjectId()
 
         # switch endpoint type
         filesystem_endpoint = resource_config['filesystem_endpoint']
@@ -426,7 +426,7 @@ class PilotManagerController(threading.Thread):
         fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
 
         # This is the base URL / 'sandbox' for the pilot!
-        agent_dir_url = saga.Url("%s/%s-%s/" % (str(fs), self._session.uid, pilot_uid))
+        agent_dir_url = saga.Url("%s/pilot-%s/" % (str(fs), str(pilot_uid)))
 
         # Create a database entry for the new pilot.
         pilot_uid, pilot_json = self._db.insert_pilot(

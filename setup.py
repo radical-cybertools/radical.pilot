@@ -71,16 +71,10 @@ def get_version (mod_root):
         path = "%s/%s" % (src_root, mod_root)
         print 'creating %s/VERSION' % path
 
-        sdist_name = "radical.pilot-%s.tar.gz" % version
-        if 'sdist' not in sys.argv :
-            os.system ("python setup.py sdist")
-            os.system ("cp 'dist/%s' 'src/radical/pilot/%s'" % (sdist_name, sdist_name))
-
-        with open (path + "/SDIST",       "w") as f : f.write (sdist_name     + "\n")
         with open (path + "/VERSION",     "w") as f : f.write (version        + "\n")
         with open (path + "/VERSION.git", "w") as f : f.write (version_detail + "\n")
 
-        return version, version_detail, sdist_name
+        return version, version_detail
 
     except Exception as e :
         raise RuntimeError ("Could not extract/set version: %s" % e)
@@ -88,7 +82,7 @@ def get_version (mod_root):
 
 #-----------------------------------------------------------------------------
 # get version info -- this will create VERSION and srcroot/VERSION
-version, version_detail, sdist_name = get_version (mod_root)
+version, version_detail = get_version (mod_root)
 
 
 #-----------------------------------------------------------------------------
@@ -142,7 +136,7 @@ setup_args = {
                           'bin/radicalpilot-stats.plot',
                           'src/radical/pilot/agent/radical-pilot-agent-multicore.py'
                          ],
-    'package_data'     : {'': ['*.sh', '*.json', 'VERSION', 'VERSION.git', 'SDIST', sdist_name]},
+    'package_data'     : {'': ['*.sh', '*.json', 'VERSION', 'VERSION.git']},
 
     'install_requires' : ['setuptools',
                           'saga-python',

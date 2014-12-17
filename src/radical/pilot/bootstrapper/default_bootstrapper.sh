@@ -16,7 +16,6 @@ CORES=
 DBNAME=
 DBURL=
 DEBUG=
-SDIST=
 VIRTENV=
 VIRTENV_MODE=
 LRMS=
@@ -254,7 +253,6 @@ This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
    -a      The name of project / allocation to charge.
-   -b      name of sdist tarball for rp staging.
    -c      Number of requested cores.
    -d      Specify debug level.
    -e      List of commands to run before bootstrapping.
@@ -366,13 +364,8 @@ setup_virtenv()
     #
     # FIXME: on stage, stage not only pilot, but sdist
     #
-    if test "$PILOT_VERSION" = 'stage'
-    then
-        tar zxvf "$SDIST".tar.gz
-        RP_INSTALL_SOURCE="$SDIST/"
-        RP_INSTALL_EASY=FALSE
-        RP_MODE_CHECK=FALSE
-    elif test "$PILOT_VERSION" = 'release'
+    if test "$PILOT_VERSION" = 'stage' \
+         -o "$PILOT_VERSION" = 'release'
     then
         RP_INSTALL_SOURCE='radical.pilot'
         RP_INSTALL_EASY=TRUE
@@ -406,7 +399,7 @@ setup_virtenv()
         echo "do not create virtenv $virtenv"
         if test "$RP_MODE_CHECK" = "TRUE"
         then
-            echo "WARNING: the requested pilot version '$PILOT_VERSION' may not be available!"
+            echo "WARNING: the requested pilot version '$PILOT_VERSION' make not be available!"
         fi
     fi
 
@@ -421,7 +414,7 @@ setup_virtenv()
     # update virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_update" = "TRUE"
     then
-        virtenv_update
+        virtenv_update "$virtenv"
         if ! test "$?" = 0
         then
            echo "Error on virtenv update -- abort"
@@ -432,12 +425,9 @@ setup_virtenv()
         echo "do not update virtenv $virtenv"
         if test "$RP_MODE_CHECK" = "TRUE"
         then
-            echo "WARNING: the requested pilot version '$PILOT_VERSION' may not be available!"
+            echo "WARNING: the requested pilot version '$PILOT_VERSION' make not be available!"
         fi
     fi
-
-    # we always install RP
-    rp_install
 
     unlock "$pid" "$virtenv"
 }
@@ -516,6 +506,25 @@ virtenv_create()
     run_cmd "install apache-libcloud" \
             "easy_install --upgrade apache-libcloud" \
          || echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
+
+    
+    echo "Using RADICAL-Pilot installation source '$RP_INSTALL_SOURCE'"
+
+    if test "$RP_INSTALL_EASY" = 'TRUE'
+    then
+        run_cmd "install radical.pilot via pip/easy_install" \
+                "pip install  $RP_INSTALL_SOURCE" \
+                "easy_install $RP_INSTALL_SOURCE"
+    else
+        run_cmd "install radical.pilot via pip" \
+                "pip install  $RP_INSTALL_SOURCE"
+    fi
+    if test $? -ne 0 
+    then
+        echo "Couldn't install radical.pilot! Lets see how far we get ..."
+    fi
+
+    profile_event 'virtenv_create done'
 }
 
 
@@ -527,24 +536,12 @@ virtenv_update()
 {
     profile_event 'virtenv_update start'
 
-    profile_event 'virtenv_update done'
-}
-
-
-# ------------------------------------------------------------------------------
-#
-# install rp - this assumes that the virtenv has been activated
-#
-rp_install()
-{
-    profile_event 'rp_install start'
-
     # we first uninstall radical pilot, so that any request for a specific
     # version can be honored even if the version is lower than what is
     # installed.  Failure to do so will only result in a warning though.
     echo "uninstalling RADICAL-Pilot"
     run_cmd "uninstall radical.pilot via pip" \
-            "yes | head -n 1 | pip uninstall radical.pilot || true" \
+            "yes | head -n 1 | pip uninstall radical.pilot" \
          || echo "Couldn't uninstall radical.pilot! Lets see how far we get ..."
 
     echo "Using RADICAL-Pilot update source '$RP_INSTALL_SOURCE'"
@@ -560,9 +557,10 @@ rp_install()
     fi
     if test $? -ne 0 
     then
-        echo "Couldn't install radical.pilot! Lets see how far we get ..."
+        echo "Couldn't upgrade radical.pilot! Lets see how far we get ..."
     fi
-    profile_event 'rp_install done'
+
+    profile_event 'virtenv_update done'
 }
 
 
@@ -640,10 +638,9 @@ echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
 # free letters: b h o
-while getopts "a:b:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
+while getopts "a:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
         a)  AUTH=$OPTARG  ;;
-        b)  SDIST=$OPTARG  ;;
         c)  CORES=$OPTARG  ;;
         d)  DEBUG=$OPTARG  ;;
         e)  preprocess "$OPTARG"  ;;

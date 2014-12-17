@@ -40,6 +40,5 @@ from staging_directives import COPY, LINK, MOVE, TRANSFER, SKIP_FAILED, CREATE_P
 
 # ------------------------------------------------------------------------------
 #
-from utils.version             import version, version_detail, sdist, sdist_path
+from utils.version             import version, version_detail
 from utils.logger              import logger
-
