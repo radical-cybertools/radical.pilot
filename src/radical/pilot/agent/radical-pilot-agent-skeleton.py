@@ -30,8 +30,6 @@ import threading
 import subprocess
 import multiprocessing
 
-from bson.objectid import ObjectId
-
 #--------------------------------------------------------------------------
 # Configure the logger
 LOGGER = logging.getLogger('radical.pilot.agent')
@@ -52,7 +50,7 @@ def pilot_FAILED(mongodb_handle, pilot_uid, message):
     LOGGER.error(message)      
     ts = datetime.datetime.utcnow()
 
-    pilot_collection.update({"_id": ObjectId(pilot_uid)}, 
+    pilot_collection.update({"_id": pilot_uid}, 
         {"$push": {"log" : message,
                    "statehistory": {"state": 'Failed', "timestamp": ts}},
          "$set":  {"state": 'Failed',
@@ -70,7 +68,7 @@ def pilot_CANCELED(mongodb_handle, pilot_uid, message):
     LOGGER.warning(message)
     ts = datetime.datetime.utcnow()
 
-    pilot_collection.update({"_id": ObjectId(pilot_uid)}, 
+    pilot_collection.update({"_id": pilot_uid}, 
         {"$push": {"log" : message,
                    "statehistory": {"state": 'Canceled', "timestamp": ts}},
          "$set":  {"state": 'Canceled',
@@ -87,7 +85,7 @@ def pilot_DONE(mongodb_handle, pilot_uid, message):
     LOGGER.info(message)
     ts = datetime.datetime.utcnow()
 
-    pilot_collection.update({"_id": ObjectId(pilot_uid)}, 
+    pilot_collection.update({"_id": pilot_uid}, 
         {"$push": {"log" : message,
                    "statehistory": {"state": 'Done', "timestamp": ts}},
          "$set": {"state": 'Done',
@@ -140,7 +138,7 @@ class Agent(threading.Thread):
         # ---------------------------------
         # Update the pilot's database entry
         self.pilot_collection.update(
-            {"_id": ObjectId(self._pilot_id)}, 
+            {"_id": self._pilot_id}, 
             {"$set": {"state"          : "Running",
                       "nodes"          : "SKEL-AGENT-None",
                       "cores_per_node" : "SKEL-AGENT-None",
@@ -168,7 +166,7 @@ class Agent(threading.Thread):
                     break
 
                 # Check if there's a command waiting.
-                cursor = self.pilot_collection.find({"_id": ObjectId(self._pilot_id)})
+                cursor = self.pilot_collection.find({"_id": self._pilot_id})
                 command = cursor[0]['command']
                 if command is not None:
                     if command.lower() == "cancel":

@@ -13,7 +13,6 @@ import datetime
 import traceback
 import threading
 
-from bson.objectid import ObjectId
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
 from radical.pilot.staging_directives import CREATE_PARENTS
@@ -120,7 +119,7 @@ class OutputFileTransferWorker(threading.Thread):
 
                             # Check if there was a cancel request
                             state_doc = um_col.find_one(
-                                {"_id": ObjectId(compute_unit_id)},
+                                {"_id": compute_unit_id},
                                 fields=["state"]
                             )
                             if state_doc['state'] == CANCELED:
@@ -135,7 +134,7 @@ class OutputFileTransferWorker(threading.Thread):
 
                             # Mark the beginning of transfer this StagingDirective
                             um_col.find_and_modify(
-                                query={"_id" : ObjectId(compute_unit_id),
+                                query={"_id" : compute_unit_id,
                                        'FTW_Output_Status': EXECUTING,
                                        'FTW_Output_Directives.state': PENDING,
                                        'FTW_Output_Directives.source': sd['source'],
@@ -173,7 +172,7 @@ class OutputFileTransferWorker(threading.Thread):
 
                             # If all went fine, update the state of this StagingDirective to Done
                             um_col.find_and_modify(
-                                query={"_id" : ObjectId(compute_unit_id),
+                                query={"_id" : compute_unit_id,
                                        'FTW_Output_Status': EXECUTING,
                                        'FTW_Output_Directives.state': EXECUTING,
                                        'FTW_Output_Directives.source': sd['source'],
@@ -192,7 +191,7 @@ class OutputFileTransferWorker(threading.Thread):
                         log_message = "Output transfer failed: %s" % e
                         # TODO: not only mark the CU as failed, but also the specific Directive
                         um_col.update(
-                            {'_id': ObjectId(compute_unit_id)},
+                            {'_id': compute_unit_id},
                             {'$set': {'state': FAILED},
                              '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
                              '$push': {'log': {'message': log_message, 'timestamp': ts}}
@@ -224,7 +223,7 @@ class OutputFileTransferWorker(threading.Thread):
                     if cu['FTW_Output_Status'] == EXECUTING and \
                             not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['FTW_Output_Directives']):
                         # All Output Directives for this FTW are done, mark the CU accordingly
-                        um_col.update({"_id": ObjectId(cu["_id"])},
+                        um_col.update({"_id": cu["_id"]},
                                       {'$set': {'FTW_Output_Status': DONE},
                                        '$push': {'log': {
                                            'timestamp': datetime.datetime.utcnow(),
@@ -236,7 +235,7 @@ class OutputFileTransferWorker(threading.Thread):
                     if cu['Agent_Output_Status'] == EXECUTING and \
                             not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['Agent_Output_Directives']):
                         # All Output Directives for this Agent are done, mark the CU accordingly
-                        um_col.update({"_id": ObjectId(cu["_id"])},
+                        um_col.update({"_id": cu["_id"]},
                                       {'$set': {'Agent_Output_Status': DONE},
                                        '$push': {'log': {
                                            'timestamp': datetime.datetime.utcnow(),

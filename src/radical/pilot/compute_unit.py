@@ -23,7 +23,6 @@ from radical.pilot.states import *
 from radical.pilot.logentry import *
 from radical.pilot.exceptions import *
 
-from bson import ObjectId
 from radical.pilot.db.database import COMMAND_CANCEL_COMPUTE_UNIT
 
 from radical.pilot.staging_directives import expand_staging_directive
@@ -113,7 +112,7 @@ class ComputeUnit(object):
         computeunit._description = ud_copy
         computeunit._manager     = unit_manager_obj
         computeunit._worker      = unit_manager_obj._worker
-        computeunit._uid         = str(ObjectId())
+        computeunit._uid         = ru.generate_id('unit.')
         computeunit._name        = unit_description['name']
         computeunit._local_state = local_state
 

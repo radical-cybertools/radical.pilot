@@ -14,8 +14,6 @@ import datetime
 import traceback
 import threading
 
-from bson.objectid import ObjectId
-
 from radical.pilot.states import *
 
 from radical.pilot.utils.version import version as VERSION
@@ -641,7 +639,7 @@ class PilotLauncherWorker(threading.Thread):
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
                         ts = datetime.datetime.utcnow()
                         ret = pilot_col.update(
-                            {"_id"  : ObjectId(pilot_id),
+                            {"_id"  : pilot_id,
                              "state": 'Launching'},
                             {"$set" : {"state": PENDING_ACTIVE,
                                       "saga_job_id": saga_job_id},
@@ -656,7 +654,7 @@ class PilotLauncherWorker(threading.Thread):
                             # jobid then
                             # FIXME: make sure of the agent state!
                             ret = pilot_col.update(
-                                {"_id"  : ObjectId(pilot_id)},
+                                {"_id"  : pilot_id},
                                 {"$set" : {"saga_job_id": saga_job_id},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                                  "$pushAll": {"log": log_dicts}}
@@ -682,7 +680,7 @@ class PilotLauncherWorker(threading.Thread):
                             log_messages.append (le.message)
 
                         pilot_col.update(
-                            {"_id"  : ObjectId(pilot_id),
+                            {"_id"  : pilot_id,
                              "state": {"$ne" : FAILED}},
                             {"$set" : {
                                 "state"   : FAILED,
