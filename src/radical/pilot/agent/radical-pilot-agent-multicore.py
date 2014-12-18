@@ -145,8 +145,9 @@ import subprocess
 import multiprocessing
 
 import radical.utils as ru
+import radical.pilot as rp
 
-from operator      import mul
+from operator import mul
 
 
 # this needs git attribute 'ident' set for this file
@@ -154,13 +155,54 @@ git_ident = "$Id$"
 
 
 # ------------------------------------------------------------------------------
+#
+# DEBUGGING CONSTANTS -- only change when you know what you are doing.  It is
+# almost guaranteed that any changes will make the agent non-functional (if
+# functionality is definied as executing a set of given CUs).
+
+# Number of worker threads
+N_STAGEIN_WORKER            = 1
+N_EXEC_WORKER               = 1
+N_WATCH_WORKER              = 1
+N_STAGEOUT_WORKER           = 1
+N_UPDATE_WORKER             = 1
+
+# component IDs
+INGEST                      = 'INGEST'
+STAGEIN                     = 'STAGEIN'
+SCHEDULE                    = 'SCHEDULE'
+EXECUTION                   = 'EXECUTION'
+WATCHING                    = 'WATCHING'
+STAGEOUT                    = 'STAGEOUT'
+UPDATE                      = 'UPDATE'
+
+# factor by which the number of units are increased at a certain step.  Value of
+# '1' will leave the units unchanged.  Any blowup will leave on unit as the
+# original, and will then create clones with an changed unit ID (see blowup()).
+BLOWUP_FACTOR_ON_INGEST     = 1
+BLOWUP_FACTOR_ON_STAGEIN    = 1
+BLOWUP_FACTOR_ON_SCHEDULE   = 1
+BLOWUP_FACTOR_ON_EXECUTION  = 10
+BLOWUP_FACTOR_ON_WATCHING   = 1
+BLOWUP_FACTOR_ON_STAGEOUT   = 1
+BLOWUP_FACTOR_ON_UPDATE     = 1
+
+# flag to drop all blown-up units at some point in the pipeline.  The units
+# with the original IDs will again be left untouched, but all other units are
+# silently discarded.
+DROP_ON_INGEST              = True
+DROP_ON_STAGEIN             = True
+DROP_ON_SCHEDULE            = True
+DROP_ON_EXECUTION           = True
+DROP_ON_WATCHING            = False
+DROP_ON_STAGEOUT            = True
+DROP_ON_UPDATE              = True
+# 
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # CONSTANTS
 #
-N_STAGEIN_WORKER            = 3
-N_EXEC_WORKER               = 3
-N_WATCH_WORKER              = 3
-N_STAGEOUT_WORKER           = 3
-N_UPDATE_WORKER             = 3
 
 # 'enum' for unit launch method types
 LAUNCH_METHOD_APRUN         = 'APRUN'
@@ -240,38 +282,6 @@ DB_POLL_SLEEPTIME    = 0.5
 # time between checks of internal state and commands from mothership (seconds)
 HEARTBEAT_INTERVAL   = 10
 
-
-# ------------------------------------------------------------------------------
-#
-# state enums (copied from radical/pilot/states.py
-#
-# Common States
-NEW                         = 'New'
-PENDING                     = 'Pending'
-DONE                        = 'Done'
-CANCELING                   = 'Canceling'
-CANCELED                    = 'Canceled'
-FAILED                      = 'Failed'
-
-# ComputePilot States
-PENDING_LAUNCH              = 'PendingLaunch'
-LAUNCHING                   = 'Launching'
-PENDING_ACTIVE              = 'PendingActive'
-ACTIVE                      = 'Active'
-
-# ComputeUnit States
-PENDING_EXECUTION           = 'PendingExecution'
-SCHEDULING                  = 'Scheduling'
-ALLOCATING                  = 'Allocating'
-EXECUTING                   = 'Executing'
-
-# These last 4 are not really states, as there are distributed entities enacting
-# on them.  They should probably just go, and be turned into logging events.
-
-PENDING_INPUT_STAGING       = 'PendingInputStaging'
-STAGING_INPUT               = 'StagingInput'
-PENDING_OUTPUT_STAGING      = 'PendingOutputStaging'
-STAGING_OUTPUT              = 'StagingOutput'
 
 # ------------------------------------------------------------------------------
 #
@@ -403,6 +413,57 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 
 # ------------------------------------------------------------------------------
 #
+def blowup(cus, component):
+    # for each cu in cu_list, add 'factor' clones just like it, just with
+    # a different ID (<id>.clone_001)
+
+    if not isinstance (cus, list) :
+        cus = [cus]
+
+    if not profile_agent:
+        return cus
+
+    factor = {INGEST     : BLOWUP_FACTOR_ON_INGEST     ,
+              STAGEIN    : BLOWUP_FACTOR_ON_STAGEIN    ,
+              SCHEDULE   : BLOWUP_FACTOR_ON_SCHEDULE   ,
+              EXECUTION  : BLOWUP_FACTOR_ON_EXECUTION  ,
+              WATCHING   : BLOWUP_FACTOR_ON_WATCHING   ,
+              STAGEOUT   : BLOWUP_FACTOR_ON_STAGEOUT   ,
+              UPDATE     : BLOWUP_FACTOR_ON_UPDATE     }.get (component, 1)
+
+    drop   = {INGEST     : DROP_ON_INGEST     ,
+              STAGEIN    : DROP_ON_STAGEIN    ,
+              SCHEDULE   : DROP_ON_SCHEDULE   ,
+              EXECUTION  : DROP_ON_EXECUTION  ,
+              WATCHING   : DROP_ON_WATCHING   ,
+              STAGEOUT   : DROP_ON_STAGEOUT   ,
+              UPDATE     : DROP_ON_UPDATE     }.get (component, False)
+
+    ret = list()
+
+    for cu in cus :
+
+        if drop :
+            if '.clone_' in cu['_id'] :
+                prof ('drop', uid=cu['_id'])
+                continue
+        
+        ret.append (cu)
+
+        factor -= 1
+        if factor :
+            for idx in range(factor) :
+                cu_clone        = copy.deepcopy (dict(cu))
+                cu_clone['_id'] = '%s.clone_%05d' % (str(cu['_id']), idx+1)
+                idx            += 1
+                ret.append (cu_clone)
+                prof('delayed unit ingest (%s)' % component, uid=cu_clone['_id'])
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
+#
 def get_rusage():
 
     import resource
@@ -474,9 +535,9 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     if mongo_p:
         mongo_p.update({"_id": pilot_uid},
             {"$pushAll": {"log"         : msg},
-             "$push"   : {"statehistory": {"state"     : FAILED,
+             "$push"   : {"statehistory": {"state"     : rp.FAILED,
                                            "timestamp" : now}},
-             "$set"    : {"state"       : FAILED,
+             "$set"    : {"state"       : rp.FAILED,
                           "stdout"      : tail(out),
                           "stderr"      : tail(err),
                           "logfile"     : tail(log),
@@ -510,9 +571,9 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
 
     mongo_p.update({"_id": pilot_uid},
         {"$pushAll": {"log"         : msg},
-         "$push"   : {"statehistory": {"state"     : CANCELED,
+         "$push"   : {"statehistory": {"state"     : rp.CANCELED,
                                        "timestamp" : now}},
-         "$set"    : {"state"       : CANCELED,
+         "$set"    : {"state"       : rp.CANCELED,
                       "stdout"      : tail(out),
                       "stderr"      : tail(err),
                       "logfile"     : tail(log),
@@ -541,9 +602,9 @@ def pilot_DONE(mongo_p, pilot_uid):
 
     mongo_p.update({"_id": pilot_uid},
         {"$pushAll": {"log"         : msg},
-         "$push"   : {"statehistory": {"state"    : DONE,
+         "$push"   : {"statehistory": {"state"    : rp.DONE,
                                        "timestamp": now}},
-         "$set"    : {"state"       : DONE,
+         "$set"    : {"state"       : rp.DONE,
                       "stdout"      : tail(out),
                       "stderr"      : tail(err),
                       "logfile"     : tail(log),
@@ -655,8 +716,10 @@ class Scheduler(threading.Thread):
                 # got an allocation, go off and launch the process
                 # FIXME: state update toward EXECUTING (or is that done in
                 # launcher?)
-                prof('push', msg="towards execution", uid=cu['uid'])
-                self._execution_queue.put(cu)
+                cu_list = blowup (cu, EXECUTION) 
+                for _cu in cu_list :
+                    prof('push', msg="towards execution", uid=_cu['_id'])
+                    self._execution_queue.put(_cu)
                 return True
 
 
@@ -2993,7 +3056,7 @@ class SpawnerPopen(Spawner):
     #
     def spawn(self, launcher, cu, env):
 
-        prof('Spawner spawn', uid=cu['uid'])
+        prof('Spawner spawn', uid=cu['_id'])
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
         self._log.debug("Created launch_script: %s", launch_script_name)
@@ -3035,7 +3098,7 @@ class SpawnerPopen(Spawner):
                         task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
             # The actual command line, constructed per launch-method
-            prof('_Process construct command', uid=cu['uid'])
+            prof('_Process construct command', uid=cu['_id'])
             launch_command, cmdline = \
                     launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
@@ -3062,8 +3125,8 @@ class SpawnerPopen(Spawner):
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
 
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu['workdir'])
-        prof('spawning pass to popen', uid=cu['uid'], tag='unit spawning')
+        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
+        prof('spawning pass to popen', uid=cu['_id'], tag='unit spawning')
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,
@@ -3080,7 +3143,7 @@ class SpawnerPopen(Spawner):
                                 startupinfo        = None,
                                 creationflags      = 0)
 
-        prof('spawning passed to popen', uid=cu['uid'], tag='unit spawning')
+        prof('spawning passed to popen', uid=cu['_id'], tag='unit spawning')
 
         return proc
 
@@ -3191,7 +3254,7 @@ class ExecWorker(threading.Thread):
                 try:
                     prof('ExecWorker pull cu from queue')
                     cu = self._execution_queue.get()
-                    prof('ExecWorker got  cu from queue', uid=cu['uid'], tag='preprocess')
+                    prof('ExecWorker got  cu from queue', uid=cu['_id'], tag='preprocess')
 
                 except Queue.Empty:
 
@@ -3200,7 +3263,6 @@ class ExecWorker(threading.Thread):
 
 
                 try:
-                
 
                     if cu['description']['mpi']:
                         if not self._mpi_launcher:
@@ -3215,7 +3277,7 @@ class ExecWorker(threading.Thread):
                     self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
                     assert(cu['opaque_slot']) # FIXME: no assert, but check
-                    prof('ExecWorker unit launch', uid=cu['uid'])
+                    prof('ExecWorker unit launch', uid=cu['_id'])
 
                     # Start a new subprocess to launch the unit
                     # TODO: This is scheduler specific
@@ -3224,15 +3286,18 @@ class ExecWorker(threading.Thread):
                                                env      = self._cu_environment)
 
                     cu['started'] = timestamp()
-                    cu['state']   = EXECUTING
+                    cu['state']   = rp.EXECUTING
                     cu['proc']    = proc
 
                     # register for state update and watching
-                    self._agent.update_unit_state(_id    = cu['_id'],
-                                                  state  = EXECUTING,
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.EXECUTING,
                                                   msg    = "unit execution start")
-                    prof('push', msg="toward watching", uid=cu['uid'], tag='task_launching')
-                    self._watch_queue.put(cu)
+
+                    cu_list = blowup (cu, WATCHING) 
+                    for _cu in cu_list :
+                        prof('push', msg="toward watching", uid=_cu['_id'], tag='task_launching')
+                        self._watch_queue.put(_cu)
 
 
                 except Exception as e:
@@ -3242,15 +3307,15 @@ class ExecWorker(threading.Thread):
                     # communicate that error to the application/user.
                     cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
                                     % (str(e), traceback.format_exc())
-                    cu['state']   = FAILED
+                    cu['state']   = rp.FAILED
                     cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
 
                     # Free the Slots, Flee the Flots, Ree the Frots!
                     if cu['opaque_slot']:
                         self._scheduler.unschedule(cu)
 
-                    self._agent.update_unit_state(_id    = cu['_id'],
-                                                  state  = FAILED,
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.FAILED,
                                                   msg    = "unit execution failed",
                                                   logger = self._log.exception)
 
@@ -3350,7 +3415,7 @@ class WatchWorker(threading.Thread):
 
                 # add all cus we found to the watchlist
                 for cu in cus :
-                    prof('WatchWorker got  cu from queue', uid=cu['uid'], tag='watching')
+                    prof('WatchWorker got  cu from queue', uid=cu['_id'], tag='watching')
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -3382,7 +3447,7 @@ class WatchWorker(threading.Thread):
             if exit_code is None:
                 # Process is still running
 
-                if cu['uid'] in self._cus_to_cancel:
+                if cu['_id'] in self._cus_to_cancel:
 
                     # FIXME: there is a race condition between the state poll
                     # above and the kill command below.  We probably should pull
@@ -3391,20 +3456,20 @@ class WatchWorker(threading.Thread):
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
-                    self._cus_to_cancel.remove(cu['uid'])
+                    self._cus_to_cancel.remove(cu['_id'])
                     self._scheduler.unschedule(cu)
 
-                    self._agent.update_unit_state(_id    = cu['_id'],
-                                                  state  = CANCELED,
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.CANCELED,
                                                   msg    = "unit execution canceled")
-                    prof('final', msg="execution canceled", uid=cu['uid'], tag='watching')
+                    prof('final', msg="execution canceled", uid=cu['_id'], tag='watching')
                     # NOTE: this is final, cu will not be touched anymore
                     cu = None
 
             else : 
                 # we have a valid return code -- unit is final
                 action += 1
-                self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
+                self._log.info("Unit %s has return code %s.", cu['_id'], exit_code)
 
                 cu['exit_code'] = exit_code
                 cu['finished']  = now
@@ -3416,10 +3481,10 @@ class WatchWorker(threading.Thread):
                 if exit_code != 0:
 
                     # The unit failed, no need to deal with its output data.
-                    self._agent.update_unit_state(_id    = cu['_id'],
-                                                  state  = FAILED,
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.FAILED,
                                                   msg    = "unit execution failed")
-                    prof('final', msg="execution failed", uid=cu['uid'], tag='watching')
+                    prof('final', msg="execution failed", uid=cu['_id'], tag='watching')
                     # NOTE: this is final, cu will not be touched anymore
                     cu = None
 
@@ -3428,11 +3493,13 @@ class WatchWorker(threading.Thread):
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
 
-                    prof('push', msg="toward stageout", uid=cu['uid'], tag='watching')
-                    self._agent.update_unit_state(_id    = cu['_id'],
-                                                  state  = STAGING_OUTPUT,
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.STAGING_OUTPUT,
                                                   msg    = "unit execution completed")
-                    self._stageout_queue.put(cu)
+                    cu_list = blowup (cu, STAGEOUT) 
+                    for _cu in cu_list :
+                        prof('push', msg="toward stageout", uid=_cu['_id'], tag='watching')
+                        self._stageout_queue.put(_cu)
 
         return action
 
@@ -3520,7 +3587,7 @@ class UpdateWorker(threading.Thread):
                     res  = cinfo['bulk'].execute()
                     self._log.debug("bulk update result: %s", res)
 
-                    prof('state update bulk pushed (%d)' % len(cinfo['uids'].keys))
+                    prof('state update bulk pushed (%d)' % len(cinfo['uids'].keys ()))
                     for uid in cinfo['uids']:
                         prof('state update pushed (%s)' % cinfo['uids'][uid], uid=uid)
 
@@ -3550,6 +3617,7 @@ class UpdateWorker(threading.Thread):
 
                     continue
 
+
                 # got a new request.  Add to bulk (create as needed),
                 # and push bulk if time is up.
                 uid         = update_request.get('uid')
@@ -3558,7 +3626,7 @@ class UpdateWorker(threading.Thread):
                 query_dict  = update_request.get('query', dict())
                 update_dict = update_request.get('update',dict())
 
-                prof('state update pulled', uid=uid)
+                prof('state update pulled (%s)' % state, uid=uid)
 
                 cname = self._session_id + cbase
 
@@ -3637,15 +3705,15 @@ class StageinWorker(threading.Thread):
                 if not cu:
                     continue
 
-                sandbox      = os.path.join(self._workdir, 'unit-%s' % cu['uid']),
+                sandbox      = os.path.join(self._workdir, 'unit-%s' % cu['_id']),
                 staging_area = os.path.join(self._workdir, 'staging_area'),
 
                 for directive in cu['Agent_Input_Directives']:
-                    prof('Agent input_staging queue', uid=cu['uid'], msg=directive)
+                    prof('Agent input_staging queue', uid=cu['_id'], msg=directive)
 
                     # Perform input staging
                     self._log.info("unit input staging directives %s for cu: %s to %s",
-                                   directive, cu['uid'], sandbox)
+                                   directive, cu['_id'], sandbox)
 
                     # Convert the source_url into a SAGA Url object
                     source_url = saga.Url(directive['source'])
@@ -3685,16 +3753,16 @@ class StageinWorker(threading.Thread):
                         # If all went fine, update the state of this
                         # StagingDirective to DONE
                         # FIXME: is this update below really *needed*?
-                        self._agent.update_unit(_id    = cu['_id'],
+                        self._agent.update_unit(uid    = cu['_id'],
                                                 msg    = log_message,
                                                 query  = {
-                                                    'Agent_Input_Status'            : EXECUTING,
-                                                    'Agent_Input_Directives.state'  : PENDING,
+                                                    'Agent_Input_Status'            : rp.EXECUTING,
+                                                    'Agent_Input_Directives.state'  : rp.PENDING,
                                                     'Agent_Input_Directives.source' : directive['source'],
                                                     'Agent_Input_Directives.target' : directive['target']
                                                 },
                                                 update = {
-                                                    '$set' : {'Agent_Input_Directives.$.state' : DONE}
+                                                    '$set' : {'Agent_Input_Directives.$.state' : rp.DONE}
                                                 })
                     except Exception as e:
 
@@ -3704,26 +3772,28 @@ class StageinWorker(threading.Thread):
                         self._log.exception(log_message)
 
                         # If a staging directive fails, fail the CU also.
-                        self._agent.update_unit_state(_id    = cu['_id'],
-                                                      state  = FAILED,
+                        self._agent.update_unit_state(uid    = cu['_id'],
+                                                      state  = rp.FAILED,
                                                       msg    = log_message,
                                                       query  = {
-                                                          'Agent_Input_Status'             : EXECUTING,
-                                                          'Agent_Input_Directives.state'   : PENDING,
+                                                          'Agent_Input_Status'             : rp.EXECUTING,
+                                                          'Agent_Input_Directives.state'   : rp.PENDING,
                                                           'Agent_Input_Directives.source'  : directive['source'],
                                                           'Agent_Input_Directives.target'  : directive['target']
                                                       },
                                                       update = {
-                                                          '$set' : {'Agent_Input_Directives.$.state'  : FAILED,
-                                                                    'Agent_Input_Status'              : FAILED}
+                                                          '$set' : {'Agent_Input_Directives.$.state'  : rp.FAILED,
+                                                                    'Agent_Input_Status'              : rp.FAILED}
                                                       })
 
                 # cu staging is all done, unit can go to execution
-                self._agent.update_unit_state(_id    = cu['_id'],
-                                              state  = ALLOCATING,
+                self._agent.update_unit_state(uid    = cu['_id'],
+                                              state  = rp.ALLOCATING,
                                               msg    = 'agent input staging done')
-                self._schedule_queue.put(cu)
-                prof('push', msg="towards allocation", uid=cu['uid'], tag='stagein')
+                cu_list = blowup (cu, SCHEDULE) 
+                for _cu in cu_list :
+                    prof('push', msg="towards allocation", uid=_cu['_id'], tag='stagein')
+                    self._schedule_queue.put(_cu)
 
 
             except Exception as e:
@@ -3789,7 +3859,7 @@ class StageoutWorker(threading.Thread):
                 if not cu:
                     continue
 
-                sandbox = os.path.join(self._workdir, 'unit-%s' % cu['uid']),
+                sandbox = os.path.join(self._workdir, 'unit-%s' % cu['_id']),
 
                 ## parked from unit state checker: unit postprocessing
 
@@ -3819,7 +3889,7 @@ class StageoutWorker(threading.Thread):
                     # Perform output staging
 
                     self._log.info("unit output staging directives %s for cu: %s to %s",
-                            directive, cu['uid'], sandbox)
+                            directive, cu['_id'], sandbox)
 
                     # Convert the target_url into a SAGA Url object
                     target_url = saga.Url(directive['target'])
@@ -3861,16 +3931,16 @@ class StageoutWorker(threading.Thread):
                         # If all went fine, update the state of this
                         # StagingDirective to DONE
                         # FIXME: is this update below really *needed*?
-                        self._agent.update_unit(_id    = cu['_id'],
+                        self._agent.update_unit(uid    = cu['_id'],
                                                 msg    = log_message,
                                                 query  = {
-                                                    'Agent_Output_Status'           : EXECUTING,
-                                                    'Agent_Output_Directives.state' : PENDING,
+                                                    'Agent_Output_Status'           : rp.EXECUTING,
+                                                    'Agent_Output_Directives.state' : rp.PENDING,
                                                     'Agent_Output_Directives.source': directive['source'],
                                                     'Agent_Output_Directives.target': directive['target']
                                                 },
                                                 update = {
-                                                    '$set' : {'Agent_Output_Directives.$.state': DONE}
+                                                    '$set' : {'Agent_Output_Directives.$.state': rp.DONE}
                                                 })
                     except Exception as e:
                         # If we catch an exception, assume the staging failed
@@ -3879,18 +3949,18 @@ class StageoutWorker(threading.Thread):
                         self._log.exception(log_message)
 
                         # If a staging directive fails, fail the CU also.
-                        self._agent.update_unit_state(_id    = cu['_id'],
-                                                      state  = FAILED,
+                        self._agent.update_unit_state(uid    = cu['_id'],
+                                                      state  = rp.FAILED,
                                                       msg    = log_message,
                                                       query  = {
-                                                          'Agent_Output_Status'            : EXECUTING,
-                                                          'Agent_Output_Directives.state'  : PENDING,
+                                                          'Agent_Output_Status'            : rp.EXECUTING,
+                                                          'Agent_Output_Directives.state'  : rp.PENDING,
                                                           'Agent_Output_Directives.source' : directive['source'],
                                                           'Agent_Output_Directives.target' : directive['target']
                                                       },
                                                       update = {
-                                                          '$set' : {'Agent_Output_Directives.$.state' : FAILED,
-                                                                    'Agent_Output_Status'             : FAILED}
+                                                          '$set' : {'Agent_Output_Directives.$.state' : rp.FAILED,
+                                                                    'Agent_Output_Status'             : rp.FAILED}
                                                       })
 
 
@@ -3901,12 +3971,12 @@ class StageoutWorker(threading.Thread):
                 # gets notified that it can start its work.
                 if cu['FTW_Output_Directives']:
 
-                    prof('ExecWorker unit needs FTW_O ', uid=cu['uid'])
+                    prof('ExecWorker unit needs FTW_O ', uid=cu['_id'])
                     self._agent.update(unit   = cu,
                                        msg    = 'FTW output staging needed',
                                        update = {
                                            '$set' : {
-                                               'FTW_Output_Status' : PENDING
+                                               'FTW_Output_Status' : rp.PENDING
                                            }
                                        })
                     # NOTE: this is final for the agent scope -- further state
@@ -3916,9 +3986,9 @@ class StageoutWorker(threading.Thread):
                 else:
                     # no FTW staging is needed, local staging is done -- we can
                     # move the unit into final state.
-                    prof('final', msg="stageout done", uid=cu['uid'], tag='stageout')
-                    self._agent.update_unit_state(_id    = cu['_id'],
-                                                  state  = DONE,
+                    prof('final', msg="stageout done", uid=cu['_id'], tag='stageout')
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.DONE,
                                                   msg    = 'output staging completed',
                                                   update = {
                                                       '$set' : {
@@ -3944,9 +4014,9 @@ class StageoutWorker(threading.Thread):
                 # *last* actions of the loop above -- otherwise we may get
                 # invalid state transitions...
                 if cu:
-                    prof('final', msg="stageout failed", uid=cu['uid'], tag='stageout')
-                    self._agent.update_unit_state(_id    = cu['_id'],
-                                                  state  = FAILED,
+                    prof('final', msg="stageout failed", uid=cu['_id'], tag='stageout')
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.FAILED,
                                                   msg    = 'output staging failed',
                                                   update = {
                                                       '$set' : {
@@ -4043,7 +4113,7 @@ class HeartbeatMonitor(threading.Thread):
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
                 sys.exit(1)
 
-            elif state == CANCELING:
+            elif state == rp.CANCELING:
                 self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
                 sys.exit(1)
@@ -4259,7 +4329,7 @@ class Agent(object):
 
     # --------------------------------------------------------------------------
     #
-    def update_unit(self, _id, state=None, msg=None, query=None, update=None):
+    def update_unit(self, uid, state=None, msg=None, query=None, update=None):
 
         if not query  : query  = dict()
         if not update : update = dict()
@@ -4267,7 +4337,7 @@ class Agent(object):
         query_dict  = dict()
         update_dict = update
 
-        query_dict['_id'] = _id
+        query_dict['_id'] = uid
 
         for key,val in query.iteritems():
             query_dict[key] = val
@@ -4280,24 +4350,26 @@ class Agent(object):
             update_dict['$push']['log'] = {'message'   : msg,
                                            'timestamp' : timestamp()}
 
-
-        self._update_queue.put({'uid'    : str(_id),
-                                'state'  : state,
-                                'cbase'  : '.cu',
-                                'query'  : query_dict,
-                                'update' : update_dict})
+        query_list = blowup (query_dict, UPDATE) 
+        for query_dict in query_list :
+            prof('push', msg="towards update (%s)" % state, uid=query_dict['_id'])
+            self._update_queue.put({'uid'    : query_dict['_id'],
+                                    'state'  : state,
+                                    'cbase'  : '.cu',
+                                    'query'  : query_dict,
+                                    'update' : update_dict})
 
 
     # --------------------------------------------------------------------------
     #
-    def update_unit_state(self, _id, state, msg=None, query=None, update=None,
+    def update_unit_state(self, uid, state, msg=None, query=None, update=None,
             logger=None):
 
         if not query  : query  = dict()
         if not update : update = dict()
 
         if  logger and msg:
-            logger("unit '%s' state change (%s)" % (_id, msg))
+            logger("unit '%s' state change (%s)" % (uid, msg))
 
         # we alter update, so rather use a copy of the dict...
 
@@ -4322,7 +4394,7 @@ class Agent(object):
             for key,val in update['$push'].iteritems():
                 update_dict['$push'][key] = val
 
-        self.update_unit(_id    = _id,
+        self.update_unit(uid    = uid,
                          state  = state,
                          msg    = msg,
                          query  = query,
@@ -4341,13 +4413,13 @@ class Agent(object):
         now = timestamp()
         ret = self._p.update(
             {"_id": self._pilot_id},
-            {"$set": {"state"          : ACTIVE,
+            {"$set": {"state"          : rp.ACTIVE,
                       # TODO: The two fields below are currently scheduler
                       #       specific!
                       "nodes"          : self._lrms.node_list,
                       "cores_per_node" : self._lrms.cores_per_node,
                       "started"        : now},
-             "$push": {"statehistory": {"state"    : ACTIVE,
+             "$push": {"statehistory": {"state"    : rp.ACTIVE,
                                         "timestamp": now}}
             })
         # TODO: Check for return value, update should be true!
@@ -4408,7 +4480,7 @@ class Agent(object):
         # and log that we pulled it.
         cu_cursor = self._cu.find(multi = True,
                                   spec  = {"pilot" : self._pilot_id,
-                                           "state" : PENDING_EXECUTION})
+                                           "state" : rp.PENDING_EXECUTION})
 
         if cu_cursor.count():
             prof('Agent get units', msg="number of units: %d" % cu_cursor.count(),
@@ -4416,42 +4488,21 @@ class Agent(object):
 
 
         cu_list = list(cu_cursor)
-        cu_uids = [cu['_id'] for cu in cu_list]
-
-        ##################################################################
-        # FIXME: this is an experiment which WILL screw your application #
-        # semantics and performance!                                     #
-        ##################################################################
-        cu_list_copy = cu_list[:]
-        cu_list      = list()
-        cu_idx       = 1
-        multiplier   = 100
-        for cu in cu_list_copy :
-            mult_idx = 1
-            for idx in range(multiplier) :
-                cu_clone        = dict(cu)
-                cu_clone['_id'] = '%05d.%05d' % (cu_idx, mult_idx)
-                mult_idx += 1
-                cu_list.append (cu_clone)
-            cu_idx += 1
-
-
+        cu_list = blowup (cu_list, INGEST)
+        cu_uids = [_cu['_id'] for _cu in cu_list]
 
         ##################################################################
 
         for cu in cu_list:
 
             try:
-                # FIXME: re-enable this when the experiment above is disabled!
-                cu['uid'] = str(cu['_id'])
-
-                prof('Agent get unit', uid=cu['uid'], tag='cu arriving',
+                prof('Agent get unit', uid=cu['_id'], tag='cu arriving',
                      logger=self._log.info)
 
-                prof('Agent get unit ingest', uid=cu['uid'])
+                prof('Agent get unit ingest', uid=cu['_id'])
 
                 cud     = cu['description']
-                workdir = "%s/unit-%s" % (self._workdir, cu['uid'])
+                workdir = "%s/unit-%s" % (self._workdir, cu['_id'])
 
                 cu['workdir']     = workdir
                 cu['stdout']      = ''
@@ -4469,37 +4520,41 @@ class Agent(object):
                 cu['stderr_file'] = os.path.join(workdir, stderr_file)
 
 
-                prof('Agent get unit meta', uid=cu['uid'])
+                prof('Agent get unit meta', uid=cu['_id'])
                 # create unit sandbox
                 rec_makedir(workdir)
-                prof('Agent get unit mkdir', uid=cu['uid'])
+                prof('Agent get unit mkdir', uid=cu['_id'])
 
                 # and send to staging / execution, respectively
                 if cu['Agent_Input_Directives']:
 
-                    self.update_unit_state(_id    = cu['_id'],
-                                           state  = STAGING_INPUT,
+                    self.update_unit_state(uid    = cu['_id'],
+                                           state  = rp.STAGING_INPUT,
                                            msg    = 'unit needs input staging')
-                    self._stagein_queue.put(cu)
-                    prof('push', msg="towards stagein", uid=cu['uid'], tag='ingest')
+                    cu_list = blowup (cu, STAGEIN) 
+                    for _cu in cu_list :
+                        self._stagein_queue.put(_cu)
+                        prof('push', msg="towards stagein", uid=_cu['_id'], tag='ingest')
 
                 else:
-                    self.update_unit_state(_id    = cu['_id'],
-                                           state  = ALLOCATING,
+                    self.update_unit_state(uid    = cu['_id'],
+                                           state  = rp.ALLOCATING,
                                            msg    = 'unit needs no input staging')
-                    self._schedule_queue.put(cu)
-                    prof('push', msg="towards allocation", uid=cu['uid'], tag='ingest')
+                    cu_list = blowup (cu, SCHEDULE) 
+                    for _cu in cu_list :
+                        self._schedule_queue.put(_cu)
+                        prof('push', msg="towards allocation", uid=_cu['_id'], tag='ingest')
 
-                prof('Agent get unit pushed', uid=cu['uid'])
+                prof('Agent get unit pushed', uid=cu['_id'])
 
 
             except Exception as e:
                 # if any unit sorting step failed, the unit did
                 # not end up in a queue -- we set it to FAILED
                 msg = "could not sort unit (%s)" % e
-                prof('error', msg=msg, tag="failed", uid=cu['uid'], logger=self._log.exception)
-                self.update_unit_state(_id    = cu['_id'],
-                                       state  = FAILED,
+                prof('error', msg=msg, tag="failed", uid=cu['_id'], logger=self._log.exception)
+                self.update_unit_state(uid    = cu['_id'],
+                                       state  = rp.FAILED,
                                        msg    = msg)
                 # NOTE: this is final, the unit will not be touched
                 # anymore.
@@ -4514,10 +4569,10 @@ class Agent(object):
             self._cu.update(
                     multi    = True,
                     spec     = {"_id"   : {"$in"    : cu_uids}},
-                    document = {"$set"  : {"state"  : ALLOCATING},
+                    document = {"$set"  : {"state"  : rp.ALLOCATING},
                                 "$push" : {"statehistory":
                                     {
-                                        "state"     : ALLOCATING,
+                                        "state"     : rp.ALLOCATING,
                                         "timestamp" : timestamp()
                                     }
                                }})
