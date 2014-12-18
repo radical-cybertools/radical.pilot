@@ -739,7 +739,6 @@ class Scheduler(threading.Thread):
                     self._execution_queue.put(_cu)
                 return True
 
-
             else:
                 # otherwise signal that CU remains unhandled
                 return False
@@ -1244,8 +1243,8 @@ class SchedulerTorus(Scheduler):
         end = self.get_last_node(corner, sub_block_shape)
         self._log.debug('Allocating sub-block of %d node(s) with dimensions %s'
                        ' at offset %d with corner %s and end %s.',
-                       (num_nodes, self._lrms.shape2str(sub_block_shape), offset,
-                        self._lrms.loc2str(corner), self._lrms.loc2str(end)))
+                        num_nodes, self._lrms.shape2str(sub_block_shape), offset,
+                        self._lrms.loc2str(corner), self._lrms.loc2str(end))
 
         return corner, sub_block_shape
 
@@ -1832,9 +1831,9 @@ class LaunchMethodRUNJOB(LaunchMethod):
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (corner, sub_block_shape)):
 
-        if task_numcores % self._scheduler.lrms.cores_per_node:
+        if task_numcores % self._scheduler._lrms.cores_per_node:
             msg = "Num cores (%d) is not a multiple of %d!" % (
-                task_numcores, self._scheduler.lrms.cores_per_node)
+                task_numcores, self._scheduler._lrms.cores_per_node)
             self._log.exception(msg)
             raise Exception(msg)
 
@@ -1844,17 +1843,17 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # Set the number of tasks/ranks per node
         # TODO: Currently hardcoded, this should be configurable,
         #       but I don't see how, this would be a leaky abstraction.
-        runjob_command += ' --ranks-per-node %d' % min(self._scheduler.lrms.cores_per_node, task_numcores)
+        runjob_command += ' --ranks-per-node %d' % min(self._scheduler._lrms.cores_per_node, task_numcores)
 
         # Run this subjob in the block communicated by LoadLeveler
-        runjob_command += ' --block %s' % self._scheduler.lrms.loadl_bg_block
+        runjob_command += ' --block %s' % self._scheduler._lrms.loadl_bg_block
 
-        corner_offset = self._scheduler.corner2offset(self._scheduler.lrms.torus_block, corner)
-        corner_node = self._scheduler.lrms.torus_block[corner_offset][self._scheduler.TORUS_BLOCK_NAME]
+        corner_offset = self._scheduler.corner2offset(self._scheduler._lrms.torus_block, corner)
+        corner_node = self._scheduler._lrms.torus_block[corner_offset][self._scheduler.TORUS_BLOCK_NAME]
         runjob_command += ' --corner %s' % corner_node
 
         # convert the shape
-        runjob_command += ' --shape %s' % self._scheduler.lrms.shape2str(sub_block_shape)
+        runjob_command += ' --shape %s' % self._scheduler._lrms.shape2str(sub_block_shape)
 
         # runjob needs the full path to the executable
         if os.path.basename(task_exec) == task_exec:
@@ -1869,6 +1868,10 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
         # And finally add the executable and the arguments
         # usage: runjob <runjob flags> --exe /bin/hostname --args "-f"
+        # TODO: transform to:
+        #       runjob <runjob flags> : /bin/hostname -f
+        #       or
+        #       runjob <runjob flags> --exe /bin/hostname --args -f --args -v
         runjob_command += ' --exe %s' % task_exec
         if task_args:
             runjob_command += ' --args %s' % task_args
@@ -2170,6 +2173,7 @@ class TORQUELRMS(LRMS):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, requested_cores):
+
         LRMS.__init__(self, name, logger, requested_cores)
 
 
@@ -2694,13 +2698,12 @@ class LoadLevelerLRMS(LRMS):
     #
     def __init__(self, name, logger, requested_cores):
 
-        LRMS.__init__(self, name, logger, requested_cores)
-
         self.torus_block            = None
         self.loadl_bg_block         = None
         self.shape_table            = None
         self.torus_dimension_labels = None
 
+        LRMS.__init__(self, name, logger, requested_cores)
 
     # --------------------------------------------------------------------------
     #
@@ -3005,8 +3008,7 @@ class ForkLRMS(LRMS):
         self._log.info("Using fork on localhost.")
 
         detected_cpus = multiprocessing.cpu_count()
-        selected_cpus = max(detected_cpus, self.requested_cores)
-        # FIXME: max -> min
+        selected_cpus = min(detected_cpus, self.requested_cores)
 
         self._log.info("Detected %d cores on localhost, using %d.", detected_cpus, selected_cpus)
 

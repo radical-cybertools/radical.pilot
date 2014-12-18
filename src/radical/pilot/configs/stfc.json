@@ -12,17 +12,19 @@
         "agent_scheduler"             : "TORUS",
         "task_launch_method"          : "RUNJOB",
         "mpi_launch_method"           : "RUNJOB",
-        "global_virtenv"              : "$HOME/pilot_ve_20141205",
+        "virtenv"                     : "%(global_sandbox)s/virtenv_joule",
+        "virtenv_mode"                : "create",
         "pre_bootstrap"               : [
             "source /etc/profile.d/modules.sh",
             "export MODULEPATH=/gpfs/packages/Modules/modulefiles/production:/gpfs/packages/Modules/modulefiles/packages:/gpfs/packages/Modules/modulefiles/other",
-            "module list",
-            "module avail",
-            "module load python/2.7.5"
+            "export LD_LIBRARY_PATH=/bgsys/tools/Python-2.7/lib64",
+            "export PATH=/bgsys/tools/Python-2.7/bin:$PATH",
+            "module load ibmmpi",
+            "export http_proxy=http://wwwcache.dl.ac.uk:8080",
+            "export https_proxy=$http_proxy",
+            "export ftp_proxy=$http_proxy"
         ],
         "agent_mongodb_endpoint"      : "mongodb://172.31.63.241:12346",
-        "valid_roots"                 : ["/gpfs/home"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py",
-        "bootstrapper"                : "default_bootstrapper.sh"
+        "valid_roots"                 : ["/gpfs/home"]
     }
 }

@@ -318,20 +318,10 @@ class PilotLauncherWorker(threading.Thread):
                         session_uid   = self.db_connection_info.session_id
                         database_url  = self.db_connection_info.dburl
                         database_name = self.db_connection_info.dbname
-
-                        db_url = saga.Url (database_url)
-
-                        # set default host, port and dbname
-                        if not db_url.port  : db_url.port   = 27017
-                        if not db_url.host  : db_url.host   = 'localhost'
-                        if not database_name: database_name = 'radicalpilot'
-
-                        database_auth     = self.db_connection_info.dbauth
-                        database_hostport = "%s:%d" % (db_url.host, db_url.port)
-
+                        database_auth = self.db_connection_info.dbauth
 
                         # ------------------------------------------------------
-                        # pilot desxcription and resorce configuration
+                        # pilot description and resource configuration
                         number_cores   = compute_pilot['description']['cores']
                         runtime        = compute_pilot['description']['runtime']
                         queue          = compute_pilot['description']['queue']
@@ -351,7 +341,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # get parameters from cfg, set defaults where needed
-                        agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', db_url)
+                        agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
                         agent_scheduler         = resource_cfg.get ('agent_scheduler')
                         default_queue           = resource_cfg.get ('default_queue')
                         forward_tunnel_endpoint = resource_cfg.get ('forward_tunnel_endpoint')
@@ -367,13 +357,22 @@ class PilotLauncherWorker(threading.Thread):
                         virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
 
-                        # deprecated
-                        global_virtenv          = resource_cfg.get ('global_virtenv')
-                        if  global_virtenv :
-                            logger.warn ("'global_virtenv' keyword is deprecated -- use 'virtenv' and 'virtenv_mode'")
-                            virtenv      = global_virtenv
-                            virtenv_mode = 'create'
+                        # set default scheme, host, port and dbname if not set
+                        db_url = saga.Url(agent_mongodb_endpoint)
+                        if not db_url.scheme: db_url.scheme = 'mongodb'
+                        if not db_url.host  : db_url.host   = 'localhost'
+                        if not db_url.port  : db_url.port   = 27017
+                        if not database_name: database_name = 'radicalpilot'
 
+                        # Create a host:port string for use by the bootstrapper.
+                        database_hostport = "%s:%d" % (db_url.host, db_url.port)
+
+                        # deprecated
+                        global_virtenv = resource_cfg.get('global_virtenv')
+                        if global_virtenv:
+                            logger.warn ("'global_virtenv' keyword is deprecated -- use 'virtenv' and 'virtenv_mode'")
+                            virtenv = global_virtenv
+                            virtenv_mode = 'use'
 
                         # expand variables in virtenv string
                         virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path, 
@@ -481,6 +480,7 @@ class PilotLauncherWorker(threading.Thread):
                                 agent_path = os.path.abspath("%s/../agent/%s" % (mod_dir, agent_name))
 
                             else :
+                                # FIX: agent_name not set in this case!
                                 if  agent_source.startswith ('/') :
                                     agent_path = agent_source
                                 else :
@@ -598,7 +598,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         jd.executable            = "/bin/bash"
                         jd.arguments             = ["-l pilot_bootstrapper.sh", bootstrap_args]
-                        jd.spmd_variation        = spmd_variation
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
                         jd.output                = "AGENT.STDOUT"
@@ -607,6 +606,10 @@ class PilotLauncherWorker(threading.Thread):
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
+
+                        # Set the SPMD variation only if required
+                        if spmd_variation:
+                            jd.spmd_variation = spmd_variation
 
                         if 'RADICAL_PILOT_PROFILE' in os.environ :
                             jd.environment = {'RADICAL_PILOT_PROFILE' : 'TRUE'}
