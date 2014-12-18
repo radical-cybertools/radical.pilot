@@ -369,12 +369,11 @@ class PilotLauncherWorker(threading.Thread):
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
 
                         # deprecated
-                        global_virtenv          = resource_cfg.get ('global_virtenv')
-                        if  global_virtenv :
+                        global_virtenv = resource_cfg.get('global_virtenv')
+                        if global_virtenv:
                             logger.warn ("'global_virtenv' keyword is deprecated -- use 'virtenv' and 'virtenv_mode'")
-                            virtenv      = global_virtenv
-                            virtenv_mode = 'create'
-
+                            virtenv = global_virtenv
+                            virtenv_mode = 'use'
 
                         # expand variables in virtenv string
                         virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path, 
