@@ -660,7 +660,6 @@ class Scheduler(threading.Thread):
                 self._execution_queue.put(cu)
                 return True
 
-
             else:
                 # otherwise signal that CU remains unhandled
                 return False
@@ -1164,7 +1163,7 @@ class SchedulerTorus(Scheduler):
 
         end = self.get_last_node(corner, sub_block_shape)
         self._log.debug('Allocating sub-block of %d node(s) with dimensions %s'
-                       ' at offset %d with corner %s and end %s.',
+                       ' at offset %d with corner %s and end %s.' %
                        (num_nodes, self._lrms.shape2str(sub_block_shape), offset,
                         self._lrms.loc2str(corner), self._lrms.loc2str(end)))
 
