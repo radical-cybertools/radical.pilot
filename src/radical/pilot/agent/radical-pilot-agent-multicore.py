@@ -1629,6 +1629,8 @@ class LaunchMethodAPRUN(LaunchMethod):
         # aprun: job launcher for Cray systems
         self.launch_command= self._which('aprun')
 
+        # TODO: ensure that only one concurrent aprun per node is executed!
+
 
     # --------------------------------------------------------------------------
     #
