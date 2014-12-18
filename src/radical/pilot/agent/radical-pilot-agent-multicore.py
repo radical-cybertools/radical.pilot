@@ -1781,6 +1781,10 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
         # And finally add the executable and the arguments
         # usage: runjob <runjob flags> --exe /bin/hostname --args "-f"
+        # TODO: transform to:
+        #       runjob <runjob flags> : /bin/hostname -f
+        #       or
+        #       runjob <runjob flags> --exe /bin/hostname --args -f --args -v
         runjob_command += ' --exe %s' % task_exec
         if task_args:
             runjob_command += ' --args %s' % task_args
