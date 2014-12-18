@@ -1780,9 +1780,6 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
         # runjob needs the full path to the executable
         if os.path.basename(task_exec) == task_exec:
-            if not self._which(task_exec):
-                raise Exception("Can't find executable '%s' in path." % task_exec)
-
             # Use `which` with back-ticks as the executable,
             # will be expanded in the shell script.
             task_exec = '`which %s`' % task_exec
