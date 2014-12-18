@@ -1795,9 +1795,9 @@ class LaunchMethodRUNJOB(LaunchMethod):
         #       runjob <runjob flags> : /bin/hostname -f
         #       or
         #       runjob <runjob flags> --exe /bin/hostname --args -f --args -v
-        runjob_command += ' --exe %s' % task_exec
+        runjob_command += ' : %s' % task_exec
         if task_args:
-            runjob_command += ' --args %s' % task_args
+            runjob_command += ' %s' % task_args
 
         return runjob_command, launch_script_name
 
