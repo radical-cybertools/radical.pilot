@@ -1163,9 +1163,9 @@ class SchedulerTorus(Scheduler):
 
         end = self.get_last_node(corner, sub_block_shape)
         self._log.debug('Allocating sub-block of %d node(s) with dimensions %s'
-                       ' at offset %d with corner %s and end %s.' %
-                       (num_nodes, self._lrms.shape2str(sub_block_shape), offset,
-                        self._lrms.loc2str(corner), self._lrms.loc2str(end)))
+                       ' at offset %d with corner %s and end %s.',
+                        num_nodes, self._lrms.shape2str(sub_block_shape), offset,
+                        self._lrms.loc2str(corner), self._lrms.loc2str(end))
 
         return corner, sub_block_shape
 
@@ -2096,6 +2096,7 @@ class TORQUELRMS(LRMS):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, requested_cores):
+
         LRMS.__init__(self, name, logger, requested_cores)
 
 
@@ -2620,6 +2621,11 @@ class LoadLevelerLRMS(LRMS):
     #
     def __init__(self, name, logger, requested_cores):
 
+        self.torus_block            = None
+        self.loadl_bg_block         = None
+        self.shape_table            = None
+        self.torus_dimension_labels = None
+
         LRMS.__init__(self, name, logger, requested_cores)
 
     # --------------------------------------------------------------------------
@@ -2925,8 +2931,7 @@ class ForkLRMS(LRMS):
         self._log.info("Using fork on localhost.")
 
         detected_cpus = multiprocessing.cpu_count()
-        selected_cpus = max(detected_cpus, self.requested_cores)
-        # FIXME: max -> min
+        selected_cpus = min(detected_cpus, self.requested_cores)
 
         self._log.info("Detected %d cores on localhost, using %d.", detected_cpus, selected_cpus)
 
