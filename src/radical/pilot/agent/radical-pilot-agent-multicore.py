@@ -157,10 +157,11 @@ git_ident = "$Id$"
 # ------------------------------------------------------------------------------
 # CONSTANTS
 #
-N_EXEC_WORKER               = 1
-N_UPDATE_WORKER             = 1
-N_STAGEIN_WORKER            = 1
-N_STAGEOUT_WORKER           = 1
+N_STAGEIN_WORKER            = 3
+N_EXEC_WORKER               = 3
+N_WATCH_WORKER              = 3
+N_STAGEOUT_WORKER           = 3
+N_UPDATE_WORKER             = 3
 
 # 'enum' for unit launch method types
 LAUNCH_METHOD_APRUN         = 'APRUN'
@@ -643,22 +644,26 @@ class Scheduler(threading.Thread):
     #
     def _try_allocation(self, cu):
 
-        # schedule this unit, and receive an opaque handle that has meaning to
-        # the LRMS, Scheduler and LaunchMethod.
-        cu['opaque_slot'] = self._allocate_slot(cu['description']['cores'])
+        # needs to be locked as we try to acquire slots, but slots are freed 
+        # in a different thread...
+        with self._lock :
 
-        if cu['opaque_slot']:
-            # got an allocation, go off and launch the process
-            # FIXME: state update toward EXECUTING (or is that done in
-            # launcher?)
-            prof('push', msg="towards execution", uid=cu['uid'])
-            self._execution_queue.put(cu)
-            return True
+            # schedule this unit, and receive an opaque handle that has meaning to
+            # the LRMS, Scheduler and LaunchMethod.
+            cu['opaque_slot'] = self._allocate_slot(cu['description']['cores'])
+
+            if cu['opaque_slot']:
+                # got an allocation, go off and launch the process
+                # FIXME: state update toward EXECUTING (or is that done in
+                # launcher?)
+                prof('push', msg="towards execution", uid=cu['uid'])
+                self._execution_queue.put(cu)
+                return True
 
 
-        else:
-            # otherwise signal that CU remains unhandled
-            return False
+            else:
+                # otherwise signal that CU remains unhandled
+                return False
 
 
     # --------------------------------------------------------------------------
@@ -681,19 +686,23 @@ class Scheduler(threading.Thread):
     def unschedule(self, cus):
         # release (for whatever reason) all slots allocated to this CU
 
-        slots_released = False
+        # needs to be locked as we try to release slots, but slots are acquired
+        # in a different thread....
+        with self._lock :
 
-        if not isinstance(cus, list):
-            cus = [cus]
+            slots_released = False
 
-        for cu in cus:
-            if cu['opaque_slot']:
-                self._release_slot(cu['opaque_slot'])
-                slots_released = True
+            if not isinstance(cus, list):
+                cus = [cus]
 
-        # notify the scheduling thread of released slots
-        if slots_released:
-            self._schedule_queue.put(COMMAND_RESCHEDULE)
+            for cu in cus:
+                if cu['opaque_slot']:
+                    self._release_slot(cu['opaque_slot'])
+                    slots_released = True
+
+            # notify the scheduling thread of released slots
+            if slots_released:
+                self._schedule_queue.put(COMMAND_RESCHEDULE)
 
 
     # --------------------------------------------------------------------------
@@ -3101,10 +3110,8 @@ class ExecWorker(threading.Thread):
     #
     def __init__(self, name, logger, agent, lrms, scheduler,
                  task_launcher, mpi_launcher, spawner,
-                 execution_queue, update_queue,
-                 stageout_queue, command_queue,
-                 mongodb_url, mongodb_name, mongodb_auth,
-                 pilot_id, session_id, workdir):
+                 execution_queue, watch_queue, update_queue,
+                 pilot_id, session_id):
 
         prof('ExecWorker init')
 
@@ -3120,29 +3127,21 @@ class ExecWorker(threading.Thread):
         self._mpi_launcher     = mpi_launcher
         self._spawner          = spawner
         self._execution_queue  = execution_queue
+        self._watch_queue      = watch_queue
         self._update_queue     = update_queue
-        self._stageout_queue   = stageout_queue
-        self._command_queue    = command_queue
         self._pilot_id         = pilot_id
         self._session_id       = session_id
-        self._workdir          = workdir
 
         self._cu_environment   = self._populate_cu_environment()
-        self._running_cus      = []
-        self._cuids_to_cancel  = []
-        self.slot_history      = None
-        self.slot_history_old  = None
 
 
-        # FIXME: should this be here?  Should it use the UpdateWorker?
-        mongo_db = get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
-        self.mongo_p = mongo_db["%s.p"  % session_id]
-        self.mongo_p.update(
-            {"_id": ObjectId(self._pilot_id)},
-            {"$set": {"slothistory" : self._scheduler.slot_history,
-                      "slots"       : self._scheduler.slots
-                     }
-            })
+      # self.mongo_p = mongo_db["%s.p"  % session_id]
+      # self.mongo_p.update(
+      #     {"_id": ObjectId(self._pilot_id)},
+      #     {"$set": {"slothistory" : self._scheduler.slot_history,
+      #               "slots"       : self._scheduler.slots
+      #              }
+      #     })
 
         # run worker thread
         self.start()
@@ -3175,20 +3174,6 @@ class ExecWorker(threading.Thread):
         return new_env
 
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _slots2free(self, slots):
-        """Convert slots structure into a free core count
-        """
-
-        free_cores = 0
-        for node in slots:
-            free_cores += node['cores'].count(FREE)
-
-        return free_cores
-
-
     # --------------------------------------------------------------------------
     #
     def stop(self):
@@ -3208,14 +3193,139 @@ class ExecWorker(threading.Thread):
 
             while not self._terminate.isSet():
 
-                idle = True
+                try:
+                    prof('ExecWorker pull cu from queue')
+                    cu = self._execution_queue.get()
+                    prof('ExecWorker got  cu from queue', uid=cu['uid'], tag='preprocess')
 
-                # See if there are commands for the worker!
+                except Queue.Empty:
+
+                    # nothing to do, no new CU to execute...
+                    continue
+
+
+                try:
+                
+
+                    if cu['description']['mpi']:
+                        if not self._mpi_launcher:
+                            raise Exception("Can't launch MPI tasks without MPI launcher.")
+                        launcher = self._mpi_launcher
+
+                    else:
+                        if not self._task_launcher:
+                            raise Exception("Can't launch tasks without launcher.")
+                        launcher = self._task_launcher
+
+                    self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+
+                    assert(cu['opaque_slot']) # FIXME: no assert, but check
+                    prof('ExecWorker unit launch', uid=cu['uid'])
+
+                    # Start a new subprocess to launch the unit
+                    # TODO: This is scheduler specific
+                    proc = self._spawner.spawn(cu       = cu,
+                                               launcher = launcher,
+                                               env      = self._cu_environment)
+
+                    cu['started'] = timestamp()
+                    cu['state']   = EXECUTING
+                    cu['proc']    = proc
+
+                    # register for state update and watching
+                    self._agent.update_unit_state(_id    = cu['_id'],
+                                                  state  = EXECUTING,
+                                                  msg    = "unit execution start")
+                    prof('push', msg="toward watching", uid=cu['uid'], tag='task_launching')
+                    self._watch_queue.put(cu)
+
+
+                except Exception as e:
+                    # append the startup error to the units stderr.  This is
+                    # not completely correct (as this text is not produced
+                    # by the unit), but it seems the most intuitive way to
+                    # communicate that error to the application/user.
+                    cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
+                                    % (str(e), traceback.format_exc())
+                    cu['state']   = FAILED
+                    cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
+
+                    # Free the Slots, Flee the Flots, Ree the Frots!
+                    if cu['opaque_slot']:
+                        self._scheduler.unschedule(cu)
+
+                    self._agent.update_unit_state(_id    = cu['_id'],
+                                                  state  = FAILED,
+                                                  msg    = "unit execution failed",
+                                                  logger = self._log.exception)
+
+
+        except Exception as e:
+            self._log.exception("Error in ExecWorker loop (%s)" % e)
+            return
+
+
+# ------------------------------------------------------------------------------
+#
+class WatchWorker(threading.Thread):
+    """A WatchWorker watches spawned CUs, and pushes those units toward
+    stageout.  It also informs the scheduler about finishing units.
+    """
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, agent, scheduler,
+                 update_queue, watch_queue,
+                 stageout_queue, command_queue,
+                 pilot_id, session_id):
+
+        prof('WatchWorker init')
+
+        threading.Thread.__init__(self)
+        self._terminate = threading.Event()
+
+        self.name              = name
+        self._log              = logger
+        self._agent            = agent
+        self._scheduler        = scheduler
+        self._watch_queue      = watch_queue
+        self._stageout_queue   = stageout_queue
+        self._update_queue     = update_queue
+        self._command_queue    = command_queue
+        self._pilot_id         = pilot_id
+        self._session_id       = session_id
+
+        self._cus_to_watch     = list()
+        self._cus_to_cancel    = list()
+
+        # run worker thread
+        self.start()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+        self._terminate.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info("started %s.", self)
+
+        try:
+
+            while not self._terminate.isSet():
+
+                cus = list()
+
+                # See if there are cancel requests, or new units to watch
                 try:
                     command = self._command_queue.get_nowait()
 
                     if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
-                        self._cuids_to_cancel.append(command[COMMAND_ARG])
+                        self._cus_to_cancel.append(command[COMMAND_ARG])
                     else:
                         raise Exception("Command %s not applicable in this context." %
                                         command[COMMAND_TYPE])
@@ -3226,93 +3336,38 @@ class ExecWorker(threading.Thread):
 
 
                 try:
-                    cu = self._execution_queue.get_nowait()
+
+                    # we don't want to only wait for one CU -- then we would
+                    # pull CU state too frequently.  OTOH, we also don't want to
+                    # learn about CUs until all slots are filled, because then
+                    # we may not be able to catch finishing CUs in time -- so
+                    # there is a fine balance here.  Balance means 100 (FIXME).
+                  # prof('WatchWorker pull cu from queue')
+                    MAX_QUEUE_BULKSIZE = 100
+                    while len(cus) < MAX_QUEUE_BULKSIZE :
+                        cus.append (self._watch_queue.get_nowait())
 
                 except Queue.Empty:
 
-                    # no new CUs -- so we take the opportunity to check on the
-                    # old ones.
-                    # FIXME: if this check is not happen often enough, the cores
-                    # will idle because completed units are not picked up.  In
-                    # that case, this check should move into its own thread.
-                    # *IDEALLY* though, the spawner would use notifications to
-                    # learn about unit completion, and would move those units
-                    # automatically forward to deallocation and output staging.
-                    idle += self._check_running()
-
-                    if idle:
-                        time.sleep(QUEUE_POLL_SLEEPTIME)
-                    continue
+                    # nothing found -- no problem, see if any CUs finshed
+                    pass
 
 
-                # any work to do?
-                if cu:
+                # add all cus we found to the watchlist
+                for cu in cus :
+                    prof('WatchWorker got  cu from queue', uid=cu['uid'], tag='watching')
+                    self._cus_to_watch.append (cu)
 
-                    prof('ExecWorker gets cu from queue', uid=cu['uid'], tag='preprocess')
+                # check on the known cus.
+                action = self._check_running()
 
-                    # FIXME: push ALLOCATING state update into updater queue
-                    try:
-
-                        if cu['description']['mpi']:
-                            if not self._mpi_launcher:
-                                raise Exception("Can't launch MPI tasks without MPI launcher.")
-                            launcher = self._mpi_launcher
-
-                        else:
-                            if not self._task_launcher:
-                                raise Exception("Can't launch tasks without launcher.")
-                            launcher = self._task_launcher
-
-                        self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
-
-                        assert(cu['opaque_slot']) # FIXME: no assert, but check
-                        prof('ExecWorker unit launch', uid=cu['uid'])
-
-                        # Start a new subprocess to launch the unit
-                        # TODO: This is scheduler specific
-                        proc = self._spawner.spawn(cu       = cu,
-                                                   launcher = launcher,
-                                                   env      = self._cu_environment)
-
-                        prof('ExecWorker unit launched', uid=cu['uid'], tag='task_launching')
-
-                        cu['started'] = timestamp()
-                        cu['state']   = EXECUTING
-                        cu['proc']    = proc
-
-                        self._agent.update_unit_state(_id    = cu['_id'],
-                                                      state  = EXECUTING,
-                                                      msg    = "unit execution start")
-
-                        # Add to the list of monitored tasks
-                        self._running_cus.append(cu)
-
-                    except Exception as e:
-                        # append the startup error to the units stderr.  This is
-                        # not completely correct (as this text is not produced
-                        # by the unit), but it seems the most intuitive way to
-                        # communicate that error to the application/user.
-                        cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
-                                        % (str(e), traceback.format_exc())
-                        cu['state']   = FAILED
-                        cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
-
-                        # Free the Slots, Flee the Flots, Ree the Frots!
-                        if cu['opaque_slot']:
-                            self._scheduler.unschedule(cu)
-
-                        self._agent.update_unit_state(_id    = cu['_id'],
-                                                      state  = FAILED,
-                                                      msg    = "unit execution failed",
-                                                      logger = self._log.exception)
-
-
-                    # Update slot history to mongodb
-                    self._update_tasks()
+                if not action and not cus :
+                    # nothing happend at all!  Zzz for a bit.
+                    time.sleep(QUEUE_POLL_SLEEPTIME)
 
 
         except Exception as e:
-            self._log.exception("Error in ExecWorker loop (%s)" % e)
+            self._log.exception("Error in WatchWorker loop (%s)" % e)
             return
 
 
@@ -3323,7 +3378,7 @@ class ExecWorker(threading.Thread):
 
         action = 0
 
-        for cu in self._running_cus:
+        for cu in self._cus_to_watch:
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
@@ -3332,87 +3387,82 @@ class ExecWorker(threading.Thread):
             if exit_code is None:
                 # Process is still running
 
-                if cu['uid'] in self._cuids_to_cancel:
+                if cu['uid'] in self._cus_to_cancel:
+
+                    # FIXME: there is a race condition between the state poll
+                    # above and the kill command below.  We probably should pull
+                    # state after kill again?
 
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
-                    self._cuids_to_cancel.remove(cu['uid'])
+                    self._cus_to_cancel.remove(cu['uid'])
                     self._scheduler.unschedule(cu)
 
                     self._agent.update_unit_state(_id    = cu['_id'],
                                                   state  = CANCELED,
                                                   msg    = "unit execution canceled")
-                    prof('final', msg="execution canceled", uid=cu['uid'], tag='execution')
+                    prof('final', msg="execution canceled", uid=cu['uid'], tag='watching')
                     # NOTE: this is final, cu will not be touched anymore
                     cu = None
 
-                # Nothing to do here (anymore), carry on
-                continue
+            else : 
+                # we have a valid return code -- unit is final
+                action += 1
+                self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
 
+                cu['exit_code'] = exit_code
+                cu['finished']  = now
 
-            # we have a valid return code -- unit is final
-            action += 1
-            self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
+                # Free the Slots, Flee the Flots, Ree the Frots!
+                self._scheduler.unschedule(cu)
+                self._cus_to_watch.remove(cu)
 
-            cu['exit_code'] = exit_code
-            cu['finished']  = now
+                if exit_code != 0:
 
-            # Free the Slots, Flee the Flots, Ree the Frots!
-            self._running_cus.remove(cu)
-            self._scheduler.unschedule(cu)
+                    # The unit failed, no need to deal with its output data.
+                    self._agent.update_unit_state(_id    = cu['_id'],
+                                                  state  = FAILED,
+                                                  msg    = "unit execution failed")
+                    prof('final', msg="execution failed", uid=cu['uid'], tag='watching')
+                    # NOTE: this is final, cu will not be touched anymore
+                    cu = None
 
+                else:
+                    # The unit finished cleanly, see if we need to deal with
+                    # output data.  We always move to stageout, even if there are no
+                    # directives -- at the very least, we'll upload stdout/stderr
 
-          # # Make sure all stuff reached the spindles
-          # # FIXME: do we still need this?  Will only apply to specific
-          # # spawn methods?
-          # cu['proc'].close_and_flush_filehandles()
-
-            if exit_code != 0:
-
-                # The unit failed, no need to deal with its output data.
-                self._agent.update_unit_state(_id    = cu['_id'],
-                                              state  = FAILED,
-                                              msg    = "unit execution failed")
-                prof('final', msg="execution failed", uid=cu['uid'], tag='execution')
-                # NOTE: this is final, cu will not be touched anymore
-                cu = None
-
-            else:
-                # The unit finished cleanly, see if we need to deal with
-                # output data.  We always move to stageout, even if there are no
-                # directives -- at the very least, we'll upload stdout/stderr
-
-                self._agent.update_unit_state(_id    = cu['_id'],
-                                              state  = STAGING_OUTPUT,
-                                              msg    = "unit execution completed")
-                self._stageout_queue.put(cu)
-                prof('push', msg="toward stageout", uid=cu['uid'], tag='execution')
+                    prof('push', msg="toward stageout", uid=cu['uid'], tag='watching')
+                    self._agent.update_unit_state(_id    = cu['_id'],
+                                                  state  = STAGING_OUTPUT,
+                                                  msg    = "unit execution completed")
+                    self._stageout_queue.put(cu)
 
         return action
 
-    # --------------------------------------------------------------------------
-    #
-    def _update_tasks(self):
-        # FIXME: needs to go, slot history should be kept in scheduler, and
-        #        should only be dumped at shutdown.
-
-        # AM: FIXME: this at the moment pushes slot history whenever a unit
-        # state is updated...  This needs only to be done on ExecWorker
-        # shutdown.  Well, alas, there is currently no way for it to find out
-        # when it is shut down... Some quick and  superficial measurements
-        # though show no negative impact on agent performance.
-        # TODO: check that slot history is correctly recorded
-        if (self.slot_history_old != self._scheduler.slot_history):
-
-            self.mongo_p.update(
-                {"_id": ObjectId(self._pilot_id)},
-                {"$set": {"slothistory" : self._scheduler.slot_history,
-                          "slots"       : self._scheduler.slots
-                         }
-                })
-
-            self.slot_history_old = self._scheduler.slot_history[:]
+  # # --------------------------------------------------------------------------
+  # #
+  # def _update_tasks(self):
+  #     # FIXME: needs to go, slot history should be kept in scheduler, and
+  #     #        should only be dumped at shutdown.
+  #
+  #     # AM: FIXME: this at the moment pushes slot history whenever a unit
+  #     # state is updated...  This needs only to be done on ExecWorker
+  #     # shutdown.  Well, alas, there is currently no way for it to find out
+  #     # when it is shut down... Some quick and  superficial measurements
+  #     # though show no negative impact on agent performance.
+  #     # TODO: check that slot history is correctly recorded
+  #     if (self.slot_history_old != self._scheduler.slot_history):
+  #
+  #         self.mongo_p.update(
+  #             {"_id": ObjectId(self._pilot_id)},
+  #             {"$set": {"slothistory" : self._scheduler.slot_history,
+  #                       "slots"       : self._scheduler.slots
+  #                      }
+  #             })
+  #
+  #         self.slot_history_old = self._scheduler.slot_history[:]
 
 
 # ------------------------------------------------------------------------------
@@ -3536,7 +3586,7 @@ class UpdateWorker(threading.Thread):
                              .update(update_dict)
 
                 timed_bulk_execute(cinfo)
-                prof('state update bulked', uid=uid)
+              # prof('state update bulked', uid=uid)
 
             except Exception as e:
                 self._log.exception("state update failed (%s)", e)
@@ -3962,6 +4012,7 @@ class HeartbeatMonitor(threading.Thread):
         while not self._terminate.isSet():
 
             try:
+                prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
                 self._check_commands()
                 self._check_state   ()
                 time.sleep(HEARTBEAT_INTERVAL)
@@ -4066,10 +4117,11 @@ class Agent(object):
 
         # we want to own all queues -- that simplifies startup and shutdown
         self._schedule_queue        = multiprocessing.Queue()
-        self._execution_queue       = multiprocessing.Queue()
-        self._update_queue          = multiprocessing.Queue()
         self._stagein_queue         = multiprocessing.Queue()
+        self._execution_queue       = multiprocessing.Queue()
+        self._watch_queue           = multiprocessing.Queue()
         self._stageout_queue        = multiprocessing.Queue()
+        self._update_queue          = multiprocessing.Queue()
         self._command_queue         = multiprocessing.Queue()
 
         mongo_db = get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
@@ -4108,44 +4160,6 @@ class Agent(object):
         # FIXME: we may want one spawner per exec worker, so the exec worker may
         # want to own the spawner.
 
-        for n in range(N_EXEC_WORKER):
-            exec_worker = ExecWorker(
-                name            = "ExecWorker-%d" % n,
-                logger          = self._log,
-                agent           = self,
-                lrms            = self._lrms,
-                scheduler       = self._scheduler,
-                task_launcher   = self._task_launcher,
-                mpi_launcher    = self._mpi_launcher,
-                spawner         = self._spawner,
-                execution_queue = self._execution_queue,
-                update_queue    = self._update_queue,
-                stageout_queue  = self._stageout_queue,
-                command_queue   = self._command_queue,
-                mongodb_url     = mongodb_url,
-                mongodb_name    = mongodb_name,
-                mongodb_auth    = mongodb_auth,
-                pilot_id        = self._pilot_id,
-                session_id      = self._session_id,
-                workdir         = self._workdir
-            )
-            self.worker_list.append(exec_worker)
-
-
-        for n in range(N_UPDATE_WORKER):
-            update_worker = UpdateWorker(
-                name            = "UpdateWorker-%d" % n,
-                agent           = self,
-                logger          = self._log,
-                session_id      = self._session_id,
-                update_queue    = self._update_queue,
-                mongodb_url     = mongodb_url,
-                mongodb_name    = mongodb_name,
-                mongodb_auth    = mongodb_auth
-            )
-            self.worker_list.append(update_worker)
-
-
         for n in range(N_STAGEIN_WORKER):
             stagein_worker = StageinWorker(
                 name            = "StageinWorker-%d" % n,
@@ -4160,6 +4174,41 @@ class Agent(object):
             self.worker_list.append(stagein_worker)
 
 
+        for n in range(N_EXEC_WORKER):
+            exec_worker = ExecWorker(
+                name            = "ExecWorker-%d" % n,
+                logger          = self._log,
+                agent           = self,
+                lrms            = self._lrms,
+                scheduler       = self._scheduler,
+                task_launcher   = self._task_launcher,
+                mpi_launcher    = self._mpi_launcher,
+                spawner         = self._spawner,
+                execution_queue = self._execution_queue,
+                watch_queue     = self._watch_queue,
+                update_queue    = self._update_queue,
+                pilot_id        = self._pilot_id,
+                session_id      = self._session_id
+            )
+            self.worker_list.append(exec_worker)
+
+
+        for n in range(N_WATCH_WORKER):
+            watch_worker = WatchWorker(
+                name            = "WatchWorker-%d" % n,
+                logger          = self._log,
+                agent           = self,
+                scheduler       = self._scheduler,
+                watch_queue     = self._watch_queue,
+                stageout_queue  = self._stageout_queue,
+                update_queue    = self._update_queue,
+                command_queue   = self._command_queue,
+                pilot_id        = self._pilot_id,
+                session_id      = self._session_id,
+            )
+            self.worker_list.append(watch_worker)
+
+
         for n in range(N_STAGEOUT_WORKER):
             stageout_worker = StageoutWorker(
                 name            = "StageoutWorker-%d" % n,
@@ -4171,6 +4220,20 @@ class Agent(object):
                 workdir         = self._workdir
             )
             self.worker_list.append(stageout_worker)
+
+
+        for n in range(N_UPDATE_WORKER):
+            update_worker = UpdateWorker(
+                name            = "UpdateWorker-%d" % n,
+                agent           = self,
+                logger          = self._log,
+                session_id      = self._session_id,
+                update_queue    = self._update_queue,
+                mongodb_url     = mongodb_url,
+                mongodb_name    = mongodb_name,
+                mongodb_auth    = mongodb_auth
+            )
+            self.worker_list.append(update_worker)
 
 
         hbmon = HeartbeatMonitor(

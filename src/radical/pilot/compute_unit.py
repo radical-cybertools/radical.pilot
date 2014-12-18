@@ -15,6 +15,8 @@ import os
 import copy
 import time
 
+import radical.utils as ru
+
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.states import *
