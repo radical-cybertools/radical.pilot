@@ -2620,12 +2620,6 @@ class LoadLevelerLRMS(LRMS):
 
         LRMS.__init__(self, name, logger, requested_cores)
 
-        self.torus_block            = None
-        self.loadl_bg_block         = None
-        self.shape_table            = None
-        self.torus_dimension_labels = None
-
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
