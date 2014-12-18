@@ -2094,6 +2094,7 @@ class TORQUELRMS(LRMS):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, requested_cores):
+
         LRMS.__init__(self, name, logger, requested_cores)
 
 
@@ -2618,6 +2619,11 @@ class LoadLevelerLRMS(LRMS):
     #
     def __init__(self, name, logger, requested_cores):
 
+        self.torus_block            = None
+        self.loadl_bg_block         = None
+        self.shape_table            = None
+        self.torus_dimension_labels = None
+
         LRMS.__init__(self, name, logger, requested_cores)
 
     # --------------------------------------------------------------------------
@@ -2923,8 +2929,7 @@ class ForkLRMS(LRMS):
         self._log.info("Using fork on localhost.")
 
         detected_cpus = multiprocessing.cpu_count()
-        selected_cpus = max(detected_cpus, self.requested_cores)
-        # FIXME: max -> min
+        selected_cpus = min(detected_cpus, self.requested_cores)
 
         self._log.info("Detected %d cores on localhost, using %d.", detected_cpus, selected_cpus)
 
