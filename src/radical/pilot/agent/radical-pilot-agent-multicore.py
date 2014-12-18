@@ -1752,9 +1752,9 @@ class LaunchMethodRUNJOB(LaunchMethod):
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (corner, sub_block_shape)):
 
-        if task_numcores % self._scheduler.lrms.cores_per_node:
+        if task_numcores % self._scheduler._lrms.cores_per_node:
             msg = "Num cores (%d) is not a multiple of %d!" % (
-                task_numcores, self._scheduler.lrms.cores_per_node)
+                task_numcores, self._scheduler._lrms.cores_per_node)
             self._log.exception(msg)
             raise Exception(msg)
 
@@ -1764,17 +1764,17 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # Set the number of tasks/ranks per node
         # TODO: Currently hardcoded, this should be configurable,
         #       but I don't see how, this would be a leaky abstraction.
-        runjob_command += ' --ranks-per-node %d' % min(self._scheduler.lrms.cores_per_node, task_numcores)
+        runjob_command += ' --ranks-per-node %d' % min(self._scheduler._lrms.cores_per_node, task_numcores)
 
         # Run this subjob in the block communicated by LoadLeveler
-        runjob_command += ' --block %s' % self._scheduler.lrms.loadl_bg_block
+        runjob_command += ' --block %s' % self._scheduler._lrms.loadl_bg_block
 
-        corner_offset = self._scheduler.corner2offset(self._scheduler.lrms.torus_block, corner)
-        corner_node = self._scheduler.lrms.torus_block[corner_offset][self._scheduler.TORUS_BLOCK_NAME]
+        corner_offset = self._scheduler.corner2offset(self._scheduler._lrms.torus_block, corner)
+        corner_node = self._scheduler._lrms.torus_block[corner_offset][self._scheduler.TORUS_BLOCK_NAME]
         runjob_command += ' --corner %s' % corner_node
 
         # convert the shape
-        runjob_command += ' --shape %s' % self._scheduler.lrms.shape2str(sub_block_shape)
+        runjob_command += ' --shape %s' % self._scheduler._lrms.shape2str(sub_block_shape)
 
         # runjob needs the full path to the executable
         if os.path.basename(task_exec) == task_exec:
