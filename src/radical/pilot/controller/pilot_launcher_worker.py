@@ -481,6 +481,7 @@ class PilotLauncherWorker(threading.Thread):
                                 agent_path = os.path.abspath("%s/../agent/%s" % (mod_dir, agent_name))
 
                             else :
+                                # FIX: agent_name not set in this case!
                                 if  agent_source.startswith ('/') :
                                     agent_path = agent_source
                                 else :
