@@ -3255,8 +3255,7 @@ class ExecWorker(threading.Thread):
 
                     self._agent.update_unit_state(_id    = cu['_id'],
                                                   state  = FAILED,
-                                                  msg    = "unit execution failed",
-                                                  logger = self._log.exception)
+                                                  msg    = "unit execution failed")
 
 
         except Exception as e:
