@@ -3038,12 +3038,17 @@ class SpawnerPopen(Spawner):
 
             # The actual command line, constructed per launch-method
             prof('_Process construct command', uid=cu['uid'])
-            launch_command, cmdline = \
+            try:
+                launch_command, cmdline = \
                     launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
                                                launch_script_name,
                                                cu['opaque_slot'])
+            except Exception as e:
+                msg = "Error in spawner (%s)" % e
+                self._log.exception(msg)
+                raise Exception(msg)
 
             launch_script.write('# The command to run\n%s\n' % launch_command)
 
