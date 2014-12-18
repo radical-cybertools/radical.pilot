@@ -160,43 +160,70 @@ git_ident = "$Id$"
 # almost guaranteed that any changes will make the agent non-functional (if
 # functionality is definied as executing a set of given CUs).
 
-# Number of worker threads
-N_STAGEIN_WORKER            = 1
-N_EXEC_WORKER               = 1
-N_WATCH_WORKER              = 1
-N_STAGEOUT_WORKER           = 1
-N_UPDATE_WORKER             = 1
-
 # component IDs
-INGEST                      = 'INGEST'
-STAGEIN                     = 'STAGEIN'
-SCHEDULE                    = 'SCHEDULE'
-EXECUTION                   = 'EXECUTION'
-WATCHING                    = 'WATCHING'
-STAGEOUT                    = 'STAGEOUT'
-UPDATE                      = 'UPDATE'
+
+INGEST            = 'INGEST'
+STAGEIN           = 'STAGEIN'
+SCHEDULE          = 'SCHEDULE'
+EXEC              = 'EXEC'
+WATCH             = 'WATCH'
+STAGEOUT          = 'STAGEOUT'
+UPDATE            = 'UPDATE'
+
+# Number of worker threads
+NUMBER_OF_WORKERS = {
+        INGEST   : 1,
+        STAGEIN  : 1,
+        SCHEDULE : 1,
+        EXEC     : 1,
+        WATCH    : 1,
+        STAGEOUT : 1,
+        UPDATE   : 1
+}
 
 # factor by which the number of units are increased at a certain step.  Value of
 # '1' will leave the units unchanged.  Any blowup will leave on unit as the
 # original, and will then create clones with an changed unit ID (see blowup()).
-BLOWUP_FACTOR_ON_INGEST     = 1
-BLOWUP_FACTOR_ON_STAGEIN    = 1
-BLOWUP_FACTOR_ON_SCHEDULE   = 1
-BLOWUP_FACTOR_ON_EXECUTION  = 10
-BLOWUP_FACTOR_ON_WATCHING   = 1
-BLOWUP_FACTOR_ON_STAGEOUT   = 1
-BLOWUP_FACTOR_ON_UPDATE     = 1
+BLOWUP_FACTOR = {
+        INGEST    :   1,
+        STAGEIN   :   1,
+        SCHEDULE  :   1,
+        EXEC      : 100,
+        WATCH     :   1,
+        STAGEOUT  :   1,
+        UPDATE    :   1
+}
 
 # flag to drop all blown-up units at some point in the pipeline.  The units
 # with the original IDs will again be left untouched, but all other units are
 # silently discarded.
-DROP_ON_INGEST              = True
-DROP_ON_STAGEIN             = True
-DROP_ON_SCHEDULE            = True
-DROP_ON_EXECUTION           = True
-DROP_ON_WATCHING            = False
-DROP_ON_STAGEOUT            = True
-DROP_ON_UPDATE              = True
+DROP_CLONES = {
+        INGEST    : True,
+        STAGEIN   : True,
+        SCHEDULE  : True,
+        EXEC      : True,
+        WATCH     : False,
+        STAGEOUT  : True,
+        UPDATE    : True
+}
+
+try : 
+    # the above dicts can be overloaded via a config (which allows to experiment
+    # without new installation / deployment)
+    sys.stdout.write ("agent config merge\n")
+    cfg_file = "%s/.radical/pilot/configs/agent.json" % os.environ['HOME']
+    cfg      = ru.read_json_str (cfg_file)
+
+    ru.dict_merge (NUMBER_OF_WORKERS, cfg.get ('NUMBER_OF_WORKERS', {}), policy='overwrite')
+    ru.dict_merge (BLOWUP_FACTOR,     cfg.get ('BLOWUP_FACTOR',     {}), policy='overwrite')
+    ru.dict_merge (DROP_CLONES,       cfg.get ('DROP_CLONES',       {}), policy='overwrite')
+
+    sys.stdout.write ("agent config merged\n")
+
+except Exception as e:
+    sys.stderr.write ("agent config not merged: %s\n" % e)
+    # ignore missing / faulty agent confs
+    pass
 # 
 # ------------------------------------------------------------------------------
 
@@ -423,21 +450,8 @@ def blowup(cus, component):
     if not profile_agent:
         return cus
 
-    factor = {INGEST     : BLOWUP_FACTOR_ON_INGEST     ,
-              STAGEIN    : BLOWUP_FACTOR_ON_STAGEIN    ,
-              SCHEDULE   : BLOWUP_FACTOR_ON_SCHEDULE   ,
-              EXECUTION  : BLOWUP_FACTOR_ON_EXECUTION  ,
-              WATCHING   : BLOWUP_FACTOR_ON_WATCHING   ,
-              STAGEOUT   : BLOWUP_FACTOR_ON_STAGEOUT   ,
-              UPDATE     : BLOWUP_FACTOR_ON_UPDATE     }.get (component, 1)
-
-    drop   = {INGEST     : DROP_ON_INGEST     ,
-              STAGEIN    : DROP_ON_STAGEIN    ,
-              SCHEDULE   : DROP_ON_SCHEDULE   ,
-              EXECUTION  : DROP_ON_EXECUTION  ,
-              WATCHING   : DROP_ON_WATCHING   ,
-              STAGEOUT   : DROP_ON_STAGEOUT   ,
-              UPDATE     : DROP_ON_UPDATE     }.get (component, False)
+    factor = BLOWUP_FACTOR.get (component, 1)
+    drop   = DROP_CLONES  .get (component, False)
 
     ret = list()
 
@@ -448,8 +462,6 @@ def blowup(cus, component):
                 prof ('drop', uid=cu['_id'])
                 continue
         
-        ret.append (cu)
-
         factor -= 1
         if factor :
             for idx in range(factor) :
@@ -458,6 +470,11 @@ def blowup(cus, component):
                 idx            += 1
                 ret.append (cu_clone)
                 prof('delayed unit ingest (%s)' % component, uid=cu_clone['_id'])
+
+        # append the original unit last, to  increase the likelyhood that
+        # application state only advances once all clone states have also
+        # advanced (they'll get pushed onto queues earlier)
+        ret.append (cu)
 
     return ret
 
@@ -716,7 +733,7 @@ class Scheduler(threading.Thread):
                 # got an allocation, go off and launch the process
                 # FIXME: state update toward EXECUTING (or is that done in
                 # launcher?)
-                cu_list = blowup (cu, EXECUTION) 
+                cu_list = blowup (cu, EXEC) 
                 for _cu in cu_list :
                     prof('push', msg="towards execution", uid=_cu['_id'])
                     self._execution_queue.put(_cu)
@@ -3254,6 +3271,10 @@ class ExecWorker(threading.Thread):
                 try:
                     prof('ExecWorker pull cu from queue')
                     cu = self._execution_queue.get()
+
+                    if not cu :
+                        continue
+
                     prof('ExecWorker got  cu from queue', uid=cu['_id'], tag='preprocess')
 
                 except Queue.Empty:
@@ -3294,7 +3315,7 @@ class ExecWorker(threading.Thread):
                                                   state  = rp.EXECUTING,
                                                   msg    = "unit execution start")
 
-                    cu_list = blowup (cu, WATCHING) 
+                    cu_list = blowup (cu, WATCH) 
                     for _cu in cu_list :
                         prof('push', msg="toward watching", uid=_cu['_id'], tag='task_launching')
                         self._watch_queue.put(_cu)
@@ -4225,7 +4246,7 @@ class Agent(object):
         # FIXME: we may want one spawner per exec worker, so the exec worker may
         # want to own the spawner.
 
-        for n in range(N_STAGEIN_WORKER):
+        for n in range(NUMBER_OF_WORKERS[STAGEIN]):
             stagein_worker = StageinWorker(
                 name            = "StageinWorker-%d" % n,
                 logger          = self._log,
@@ -4239,7 +4260,7 @@ class Agent(object):
             self.worker_list.append(stagein_worker)
 
 
-        for n in range(N_EXEC_WORKER):
+        for n in range(NUMBER_OF_WORKERS[EXEC]):
             exec_worker = ExecWorker(
                 name            = "ExecWorker-%d" % n,
                 logger          = self._log,
@@ -4258,7 +4279,7 @@ class Agent(object):
             self.worker_list.append(exec_worker)
 
 
-        for n in range(N_WATCH_WORKER):
+        for n in range(NUMBER_OF_WORKERS[WATCH]):
             watch_worker = WatchWorker(
                 name            = "WatchWorker-%d" % n,
                 logger          = self._log,
@@ -4274,7 +4295,7 @@ class Agent(object):
             self.worker_list.append(watch_worker)
 
 
-        for n in range(N_STAGEOUT_WORKER):
+        for n in range(NUMBER_OF_WORKERS[STAGEOUT]):
             stageout_worker = StageoutWorker(
                 name            = "StageoutWorker-%d" % n,
                 agent           = self,
@@ -4287,7 +4308,7 @@ class Agent(object):
             self.worker_list.append(stageout_worker)
 
 
-        for n in range(N_UPDATE_WORKER):
+        for n in range(NUMBER_OF_WORKERS[UPDATE]):
             update_worker = UpdateWorker(
                 name            = "UpdateWorker-%d" % n,
                 agent           = self,

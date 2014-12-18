@@ -162,31 +162,39 @@ class Session (saga.Session, Object):
         config_files  = glob.glob(default_cfgs)
 
         for config_file in config_files:
-            rcs = ResourceConfig.from_file(config_file)
 
-            if  rcs :
-                for rc in rcs:
-                    logger.info("Loaded resource configurations for %s" % rc)
-                    self._resource_configs[rc] = rcs[rc].as_dict() 
+            try :
+                rcs = ResourceConfig.from_file(config_file)
+            except Exception as e :
+                logger.error ("skip config file %s: %s" % (config_file, e))
+                continue
+
+            for rc in rcs:
+                logger.info("Loaded resource configurations for %s" % rc)
+                self._resource_configs[rc] = rcs[rc].as_dict() 
 
         user_cfgs     = "%s/.radical/pilot/configs/*.json" % os.environ.get ('HOME')
         config_files  = glob.glob(user_cfgs)
 
         for config_file in config_files:
-            rcs = ResourceConfig.from_file(config_file)
 
-            if  rcs :
-                for rc in rcs:
-                    logger.info("Loaded resource configurations for %s" % rc)
+            try :
+                rcs = ResourceConfig.from_file(config_file)
+            except Exception as e :
+                logger.error ("skip config file %s: %s" % (config_file, e))
+                continue
 
-                    if  rc in self._resource_configs :
-                        # config exists -- merge user config into it
-                        ru.dict_merge (self._resource_configs[rc],
-                                       rcs[rc].as_dict(),
-                                       policy='overwrite')
-                    else :
-                        # new config -- add as is
-                        self._resource_configs[rc] = rcs[rc].as_dict() 
+            for rc in rcs:
+                logger.info("Loaded resource configurations for %s" % rc)
+
+                if  rc in self._resource_configs :
+                    # config exists -- merge user config into it
+                    ru.dict_merge (self._resource_configs[rc],
+                                   rcs[rc].as_dict(),
+                                   policy='overwrite')
+                else :
+                    # new config -- add as is
+                    self._resource_configs[rc] = rcs[rc].as_dict() 
 
         default_aliases = "%s/configs/aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
@@ -516,12 +524,12 @@ class Session (saga.Session, Object):
         """
         if  isinstance (resource_config, basestring) :
 
+            # let exceptions fall through
             rcs = ResourceConfig.from_file(resource_config)
 
-            if  rcs :
-                for rc in rcs:
-                    logger.info("Loaded resource configurations for %s" % rc)
-                    self._resource_configs[rc] = rcs[rc].as_dict() 
+            for rc in rcs:
+                logger.info("Loaded resource configurations for %s" % rc)
+                self._resource_configs[rc] = rcs[rc].as_dict() 
 
         else :
             self._resource_configs [resource_config.name] = resource_config.as_dict()

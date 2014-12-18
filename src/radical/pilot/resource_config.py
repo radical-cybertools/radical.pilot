@@ -156,7 +156,8 @@ class ResourceConfig(attributes.Attributes):
               rcf_name = rcf_name[0:-5]
 
           if  'aliases' in rcf_dict:
-              return None
+              # return empty list
+              return []
 
           for res_name, cfg in rcf_dict.iteritems():
 
