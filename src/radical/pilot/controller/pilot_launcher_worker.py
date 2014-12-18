@@ -582,7 +582,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         jd.executable            = "/bin/bash"
                         jd.arguments             = ["-l pilot_bootstrapper.sh", bootstrap_args]
-                        jd.spmd_variation        = spmd_variation
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
                         jd.output                = "AGENT.STDOUT"
@@ -591,6 +590,10 @@ class PilotLauncherWorker(threading.Thread):
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
+
+                        # Set the SPMD variation only if required
+                        if spmd_variation:
+                            jd.spmd_variation = spmd_variation
 
                         if 'RADICAL_PILOT_PROFILE' in os.environ :
                             jd.environment = {'RADICAL_PILOT_PROFILE' : 'TRUE'}
