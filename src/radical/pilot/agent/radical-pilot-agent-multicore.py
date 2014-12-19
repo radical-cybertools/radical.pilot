@@ -1795,7 +1795,6 @@ class LaunchMethodRUNJOB(LaunchMethod):
         return runjob_command, launch_script_name
 
 
-
 # ------------------------------------------------------------------------------
 #
 class LaunchMethodDPLACE(LaunchMethod):
@@ -2360,7 +2359,7 @@ class SLURMLRMS(LRMS):
         slurm_cpus_on_node_str = os.environ.get('SLURM_CPUS_ON_NODE')
         if slurm_cpus_on_node_str is None:
             msg = "$SLURM_CPUS_ON_NODE not set!"
-            self._log.exception(msg)
+            self._log.error(msg)
             raise Exception(msg)
         else:
             slurm_cpus_on_node = int(slurm_cpus_on_node_str)
