@@ -17,7 +17,9 @@
         "pre_bootstrap"               : [
             "source /etc/profile.d/modules.sh",
             "export MODULEPATH=/gpfs/packages/Modules/modulefiles/production:/gpfs/packages/Modules/modulefiles/packages:/gpfs/packages/Modules/modulefiles/other",
-            "module load python/2.7.5",
+            "export LD_LIBRARY_PATH=/bgsys/tools/Python-2.7/lib64",
+            "export PATH=/bgsys/tools/Python-2.7/bin:$PATH",
+            #"module load python/2.7.5",
             "module load ibmmpi",
             "export http_proxy=http://wwwcache.dl.ac.uk:8080",
             "export https_proxy=$http_proxy",
