@@ -1787,11 +1787,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
             #       as the pre-execs of the CU aren't run yet!!
 
         # And finally add the executable and the arguments
-        # usage: runjob <runjob flags> --exe /bin/hostname --args "-f"
-        # TODO: transform to:
-        #       runjob <runjob flags> : /bin/hostname -f
-        #       or
-        #       runjob <runjob flags> --exe /bin/hostname --args -f --args -v
+        # usage: runjob <runjob flags> : /bin/hostname -f
         runjob_command += ' : %s' % task_exec
         if task_args:
             runjob_command += ' %s' % task_args
