@@ -1629,6 +1629,8 @@ class LaunchMethodAPRUN(LaunchMethod):
         # aprun: job launcher for Cray systems
         self.launch_command= self._which('aprun')
 
+        # TODO: ensure that only one concurrent aprun per node is executed!
+
 
     # --------------------------------------------------------------------------
     #
@@ -1778,9 +1780,6 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
         # runjob needs the full path to the executable
         if os.path.basename(task_exec) == task_exec:
-            if not self._which(task_exec):
-                raise Exception("Can't find executable '%s' in path." % task_exec)
-
             # Use `which` with back-ticks as the executable,
             # will be expanded in the shell script.
             task_exec = '`which %s`' % task_exec
@@ -1788,17 +1787,12 @@ class LaunchMethodRUNJOB(LaunchMethod):
             #       as the pre-execs of the CU aren't run yet!!
 
         # And finally add the executable and the arguments
-        # usage: runjob <runjob flags> --exe /bin/hostname --args "-f"
-        # TODO: transform to:
-        #       runjob <runjob flags> : /bin/hostname -f
-        #       or
-        #       runjob <runjob flags> --exe /bin/hostname --args -f --args -v
-        runjob_command += ' --exe %s' % task_exec
+        # usage: runjob <runjob flags> : /bin/hostname -f
+        runjob_command += ' : %s' % task_exec
         if task_args:
-            runjob_command += ' --args %s' % task_args
+            runjob_command += ' %s' % task_args
 
         return runjob_command, launch_script_name
-
 
 
 # ------------------------------------------------------------------------------
@@ -2365,7 +2359,7 @@ class SLURMLRMS(LRMS):
         slurm_cpus_on_node_str = os.environ.get('SLURM_CPUS_ON_NODE')
         if slurm_cpus_on_node_str is None:
             msg = "$SLURM_CPUS_ON_NODE not set!"
-            self._log.exception(msg)
+            self._log.error(msg)
             raise Exception(msg)
         else:
             slurm_cpus_on_node = int(slurm_cpus_on_node_str)
@@ -3039,12 +3033,17 @@ class SpawnerPopen(Spawner):
 
             # The actual command line, constructed per launch-method
             prof('_Process construct command', uid=cu['uid'])
-            launch_command, cmdline = \
+            try:
+                launch_command, cmdline = \
                     launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
                                                launch_script_name,
                                                cu['opaque_slot'])
+            except Exception as e:
+                msg = "Error in spawner (%s)" % e
+                self._log.exception(msg)
+                raise Exception(msg)
 
             launch_script.write('# The command to run\n%s\n' % launch_command)
 
