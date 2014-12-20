@@ -117,6 +117,7 @@
     - move util functions to rp.utils or r.utils, and pull the from there
     - split the agent into logical components (classes?), and install along with
       RP.
+    - add state asserts after `queue.get ()`
 
 """
 
@@ -206,24 +207,6 @@ DROP_CLONES = {
         STAGEOUT  : True,
         UPDATE    : True
 }
-
-try : 
-    # the above dicts can be overloaded via a config (which allows to experiment
-    # without new installation / deployment)
-    sys.stdout.write ("agent config merge\n")
-    cfg_file = "%s/.radical/pilot/configs/agent.json" % os.environ['HOME']
-    cfg      = ru.read_json_str (cfg_file)
-
-    ru.dict_merge (NUMBER_OF_WORKERS, cfg.get ('NUMBER_OF_WORKERS', {}), policy='overwrite')
-    ru.dict_merge (BLOWUP_FACTOR,     cfg.get ('BLOWUP_FACTOR',     {}), policy='overwrite')
-    ru.dict_merge (DROP_CLONES,       cfg.get ('DROP_CLONES',       {}), policy='overwrite')
-
-    sys.stdout.write ("agent config merged\n")
-
-except Exception as e:
-    sys.stderr.write ("agent config not merged: %s\n" % e)
-    # ignore missing / faulty agent confs
-    pass
 # 
 # ------------------------------------------------------------------------------
 
@@ -1633,6 +1616,9 @@ class LaunchMethodSSH(LaunchMethod):
     #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_name, (task_slots)):
+
+        if not launch_script_name :
+            raise ValueError ("LaunchMethodSSH.construct_command needs launch_script_name!")
 
         # Get the host of the first entry in the acquired slot
         host = task_slots[0].split(':')[0]
@@ -3170,7 +3156,153 @@ class SpawnerPopen(Spawner):
 # ------------------------------------------------------------------------------
 #
 class SpawnerPty(Spawner):
-    pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger):
+
+        Spawner.__init__(self, name, logger)
+
+        # get some threads going -- those will do all the work.
+        import saga.utils.pty_shell as sups
+        self.launcher_shell = sups.PTYShell ("fork://localhost/",
+                                             logger=self._log)
+        self.monitor_shell  = sups.PTYShell ("fork://localhost/",
+                                             logger=self._log)
+
+        # FIXME: choose a better, unique workdir
+        self.workdir = "/tmp/radical-pilot-spawner"
+        ret, out, _  = self.launcher_shell.run_sync \
+                           ("/bin/sh %s/radical-pilot-spawner.sh %s" \
+                           % (self.workdir, self.workdir))
+
+        if  ret != 0 :
+            raise RuntimeError ("failed to run launcher bootstrap: (%s)(%s)", ret, out)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _cu_to_cmd (self, cu, launcher, environment) :
+
+        # ----------------------------------------------------------------------
+        def quote_args (args) :
+
+            ret = list()
+            for arg in args :
+
+                # if string is between outer single quotes,
+                #    pass it as is.
+                # if string is between outer double quotes,
+                #    pass it as is.
+                # otherwise (if string is not quoted)
+                #    escape all double quotes
+
+                if  arg[0] == arg[-1]  == "'" :
+                    ret.append (arg)
+                elif arg[0] == arg[-1] == '"' :
+                    ret.append (arg)
+                else :
+                    arg = arg.replace ('"', '\\"')
+                    ret.append ('"%s"' % arg)
+
+            return  ret
+        # ----------------------------------------------------------------------
+
+        exe  = ""
+        arg  = ""
+        env  = ""
+        cwd  = ""
+        pre  = ""
+        post = ""
+        io   = ""
+        cmd  = ""
+
+        if  cu['workdir'] :
+            cwd = "mkdir -p %s && cd %s && " % (cu['workdir'], cu['workdir'])
+
+        if  cu['environment'] :
+            for e in cu['environment'] :
+                env += "export %s=%s\n"  %  (e, cu['environment'][e])
+
+        for e in environment :
+            env += "export %s=%s\n"  %  (e, environment[e])
+
+        if  cu['executable'] : exe  = cu['executable']
+        if  cu['arguments']  : arg  = ' ' .join (quote_args (cu['arguments']))
+        if  cu['pre_exec']   : pre  = '\n'.join (quote_args (cu['pre_exec' ]))
+        if  cu['post_exec']  : post = '\n'.join (quote_args (cu['post_exec']))
+        if  cu['stdin']      : io  += "<%s "  % cu['stdin']
+        if  cu['stdout']     : io  += "1>%s " % cu['stdout']
+        if  cu['stderr']     : io  += "2>%s " % cu['stderr']
+
+        cmd, _ = launcher.construct_command(cu['description']['executable'], arg,
+                                            cu['description']['cores'], None,
+                                            cu['opaque_slot'])
+
+        script  = "%s\n"            %  cwd
+        script += "%s\n"            %  env
+        script += "%s\n"            %  pre
+        script += "(%s %s %s) %s\n" % (cmd, exe, arg, io)
+        script += "%s\n"            %  post
+
+      # self._log.debug ("execution script:\n%s\n" % script)
+
+        return script
+
+
+    # --------------------------------------------------------------------------
+    #
+    def spawn(self, launcher, cu, env):
+
+        prof('Spawner spawn', uid=cu['_id'])
+
+        # we got an allocation: go off and launch the process.  we get
+        # a multiline command, so use the wrapper's BULK/LRUN mode.
+        cmd       = self._cu_to_cmd (cu, launcher, env)
+        run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
+
+      # if  self.lrms.target_is_macos :
+      #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
+
+        ret, out, _ = self.launcher_shell.run_sync (run_cmd)
+
+        if  ret != 0 :
+            self._log.error ("failed to run unit '%s': (%s)(%s)" \
+                            % (run_cmd, ret, out))
+            return FAIL
+
+        lines = filter (None, out.split ("\n"))
+
+      # self._log.debug (lines)
+
+        if  len (lines) < 2 :
+            raise RuntimeError ("Failed to run unit (%s)", lines)
+
+        if  lines[-2] != "OK" :
+            self._log.error ("Failed to run unit (%s)" % lines)
+            return FAIL
+
+        # FIXME: verify format of returned pid (\d+)!
+        cu['pid']     = lines[-1].strip ()
+        cu['started'] = timestamp()
+
+      # self._log.debug ("started unit %s" % pid)
+
+        # before we return, we need to clean the
+        # 'BULK COMPLETED message from lrun
+        ret, out = self.launcher_shell.find_prompt ()
+        if  ret != 0 :
+            self._log.error ("failed to run unit '%s': (%s)(%s)" \
+                          % (run_cmd, ret, out))
+            return FAIL
+
+        prof('spawning passed to pty', uid=cu['_id'], tag='unit spawning')
+
+        return cu['pid']
+      # return proc # FIXME whats that?? :P
+
+
 
 
 # ==============================================================================
@@ -4242,7 +4374,7 @@ class Agent(object):
                 scheduler       = self._scheduler)
 
         self._spawner = Spawner.create(
-                name            = SPAWNER_NAME_POPEN,
+                name            = SPAWNER_NAME_PTY,
                 logger          = self._log)
         # FIXME: spawner may or may not be threaded...
         # FIXME: we may want one spawner per exec worker, so the exec worker may
@@ -4676,6 +4808,21 @@ def main():
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
+
+
+    # --------------------------------------------------------------------------
+    # load the local agent config, and overload the config dicts
+    try : 
+        logger.info ("load agent config")
+        cfg_file = "%s/.radical/pilot/configs/agent.json" % os.environ['HOME']
+        cfg      = ru.read_json_str (cfg_file)
+    
+        ru.dict_merge (NUMBER_OF_WORKERS, cfg.get ('NUMBER_OF_WORKERS', {}), policy='overwrite')
+        ru.dict_merge (BLOWUP_FACTOR,     cfg.get ('BLOWUP_FACTOR',     {}), policy='overwrite')
+        ru.dict_merge (DROP_CLONES,       cfg.get ('DROP_CLONES',       {}), policy='overwrite')
+    
+    except Exception as e:
+        logger.error ("agent config not merged: %s", e)
 
 
     try:
