@@ -2,7 +2,6 @@
 
 import os
 import sys
-import bson
 import pprint
 import datetime
 import pymongo
@@ -41,7 +40,7 @@ def usage (msg=None, noexit=False) :
         list     : list   matching sessions
         purge    : remove matching sessions
         export   : export matching sessions, then purge them.
-                   Exported sessions are stored in .bson files in PWD.
+                   Exported sessions are stored in .json files in PWD.
 
       options :
         -a <age> : apply mode to all sessions older than <age>
@@ -148,21 +147,21 @@ def export_sessions (dbclient, dbname, age, session) :
 
         docs = sessions[sid]
 
-        print "export session %s.*.bson" % sid
-        with open ('%s.bson' % sid, 'w') as f : 
-            f.write (bson.BSON.encode ({'sessions': [docs['session']]}))
+        print "export session %s.*.json" % sid
+        with open ('%s.json' % sid, 'w') as f : 
+            f.write (pprint.pformat ({'sessions': [docs['session']]}))
 
-        with open ('%s.p.bson' % sid, 'w') as f : 
-            f.write (bson.BSON.encode ({'pilots' : docs['pilot']}))
+        with open ('%s.p.json' % sid, 'w') as f : 
+            f.write (pprint.pformat ({'pilots' : docs['pilot']}))
 
-        with open ('%s.pm.bson' % sid, 'w') as f : 
-            f.write (bson.BSON.encode ({'pilot_managers' : docs['pmgr']}))
+        with open ('%s.pm.json' % sid, 'w') as f : 
+            f.write (pprint.pformat ({'pilot_managers' : docs['pmgr']}))
 
-        with open ('%s.cu.bson' % sid, 'w') as f : 
-            f.write (bson.BSON.encode ({'units' : docs['unit']}))
+        with open ('%s.cu.json' % sid, 'w') as f : 
+            f.write (pprint.pformat ({'units' : docs['unit']}))
 
-        with open ('%s.um.bson' % sid, 'w') as f : 
-            f.write (bson.BSON.encode ({'unit_managers' : docs['umgr']}))
+        with open ('%s.um.json' % sid, 'w') as f : 
+            f.write (pprint.pformat ({'unit_managers' : docs['umgr']}))
 
         print 'purge  session %s' % sid
         database.drop_collection ("%s"    % sid)
