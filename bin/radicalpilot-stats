@@ -121,7 +121,7 @@ def usage (msg=None, noexit=False) :
         
         -d      : database URL
         -s      : session id
-        -c      : session cache file (also needs -s)
+        -c      : cachedir where <sid>.json caches are kept (also needs -s)
         -f      : filter for listings
         -t      : terminal type for plotting (pdf and/or png, default is both)
 
@@ -149,22 +149,22 @@ def usage (msg=None, noexit=False) :
 
 # ------------------------------------------------------------------------------
 #
-def dump_session (db, dbname, session, cache) :
+def dump_session (db, dbname, session, cachedir) :
 
     print "session : %s" % session
-    handle_session (db, 'dump', dbname, session, cache, None)
+    handle_session (db, 'dump', dbname, session, cachedir, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def tree_session (db, dbname, session, cache) :
+def tree_session (db, dbname, session, cachedir) :
 
-    handle_session (db, 'tree', dbname, session, cache, None)
+    handle_session (db, 'tree', dbname, session, cachedir, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (db, session, cache, filters) :
+def list_sessions (db, session, cachedir, filters) :
 
     if  session :
         print "invalid session parameter on 'list'"
@@ -183,7 +183,7 @@ def list_sessions (db, session, cache, filters) :
 
             for sid in sids :
 
-                docs     = rpu.get_session_docs (db, sid)
+                docs     = rpu.get_session_docs (db, sid, cachedir=cachedir)
                 n_pilots = 0
 
                 for doc in docs['pilot'] :
@@ -209,9 +209,9 @@ def list_sessions (db, session, cache, filters) :
 
 
 # ------------------------------------------------------------------------------
-def sort_session (db, session, cache) :
+def sort_session (db, session, cachedir) :
 
-    docs = rpu.get_session_docs (db, session, cache)
+    docs = rpu.get_session_docs (db, session, cachedir=cachedir)
 
     print "pilot managers :" 
     for doc in docs['pmgr'] :
@@ -231,10 +231,10 @@ def sort_session (db, session, cache) :
 
 
 # ------------------------------------------------------------------------------
-def hist_session (db, session, cache) :
+def hist_session (db, session, cachedir) :
 
-    events    = rpu.get_session_events   (db, session, cache)
-    slothists = rpu.get_session_slothist (db, session, cache)
+    events    = rpu.get_session_events   (db, session, cachedir=cachedir)
+    slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
 
     if  not events :
         print "no events found for session %s" % session
@@ -344,11 +344,11 @@ def get_stats (docs, events, slothist) :
 
     
 # ------------------------------------------------------------------------------
-def stat_session (db, session, cache) :
+def stat_session (db, session, cachedir) :
 
-    docs      = rpu.get_session_docs     (db, session, cache)
-    events    = rpu.get_session_events   (db, session, cache)
-    slothists = rpu.get_session_slothist (db, session, cache)
+    docs      = rpu.get_session_docs     (db, session, cachedir=cachedir)
+    events    = rpu.get_session_events   (db, session, cachedir=cachedir)
+    slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
 
     stats     = get_stats (docs, events, slothists)
 
@@ -374,14 +374,14 @@ def stat_session (db, session, cache) :
 
 
 # ------------------------------------------------------------------------------
-def plot_session (db, session, cache, term) :
+def plot_session (db, session, cachedir, term) :
     """
     plot results :P
     """
 
-    docs      = rpu.get_session_docs     (db, session, cache)
-    events    = rpu.get_session_events   (db, session, cache)
-    slothists = rpu.get_session_slothist (db, session, cache)
+    docs      = rpu.get_session_docs     (db, session, cachedir=cachedir)
+    events    = rpu.get_session_events   (db, session, cachedir=cachedir)
+    slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
 
     if  not events :
         print "no events found for session %s" % session
@@ -791,12 +791,12 @@ def plot_session (db, session, cache, term) :
 
 
 # ------------------------------------------------------------------------------
-def handle_session (db, mode, dbname, session, cache, pname) :
+def handle_session (db, mode, dbname, session, cachedir, pname) :
     """
     For the given db, traverse collections
     """
 
-    # FIXME: cache is not used
+    # FIXME: cache(dir) is not used
 
     print " +-- db   %s" % dbname
 
@@ -907,7 +907,7 @@ if __name__ == '__main__' :
     parser.add_option('-s', '--session',   dest='session')
     parser.add_option('-d', '--dburl',     dest='url')
     parser.add_option('-m', '--mode',      dest='mode')
-    parser.add_option('-c', '--cache',     dest='cache')
+    parser.add_option('-c', '--cachedir',  dest='cachedir')
     parser.add_option('-f', '--filter',    dest='filters')
     parser.add_option('-t', '--terminal',  dest='term')
     parser.add_option('-h', '--help',      dest='help', action="store_true")
@@ -938,12 +938,12 @@ if __name__ == '__main__' :
         options.url = default_dburl
 
 
-    mode    = options.mode 
-    url     = options.url
-    session = options.session
-    cache   = options.cache
-    filters = options.filters
-    term    = options.term
+    mode     = options.mode 
+    url      = options.url
+    session  = options.session
+    filters  = options.filters
+    term     = options.term
+    cachedir = options.cachedir
 
     if  not term :
         term = "pdf,png"
@@ -952,12 +952,17 @@ if __name__ == '__main__' :
     if  not url.path or '/' == url.path :
         url.path = 'radicalpilot'
 
-    print  url
+    if  not cachedir :
+        cachedir = os.path.pwd ()
 
-    mongo, db, dbname, cname, pname = ru.mongodb_connect (str(url), default_dburl)
+    if  not os.path.isdir (cachedir) :
+        usage ("%s is no valid cachedir" % cachedir)
 
     print "modes   : %s" % mode
     print "db url  : %s" % url
+    print "cachedir: %s" % cachedir
+    mongo, db, dbname, cname, pname = ru.mongodb_connect (str(url), default_dburl)
+
 
     if  not session and mode != 'list' :
         session = rpu.get_last_session  (db)
@@ -965,21 +970,19 @@ if __name__ == '__main__' :
     else :
         print "session : %s" % session
 
-    if  not session and cache :
-        print "ignore cache '%s' -- no session ID specified" % cache
 
     for m in mode.split (',') :
 
         if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'list' : list_sessions (db, session, cache, filters)
-        elif m == 'tree' : tree_session  (db, dbname, session, cache) 
-        elif m == 'dump' : dump_session  (db, dbname, session, cache)
-        elif m == 'sort' : sort_session  (db, session, cache)
-        elif m == 'hist' : hist_session  (db, session, cache)
-        elif m == 'stat' : stat_session  (db, session, cache)
-        elif m == 'plot' : plot_session  (db, session, cache, term)
+        if   m == 'list' : list_sessions (db, session, cachedir, filters)
+        elif m == 'tree' : tree_session  (db, dbname, session, cachedir) 
+        elif m == 'dump' : dump_session  (db, dbname, session, cachedir)
+        elif m == 'sort' : sort_session  (db, session, cachedir)
+        elif m == 'hist' : hist_session  (db, session, cachedir)
+        elif m == 'stat' : stat_session  (db, session, cachedir)
+        elif m == 'plot' : plot_session  (db, session, cachedir, term)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 

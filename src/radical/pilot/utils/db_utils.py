@@ -1,5 +1,6 @@
 
 import os
+import sys
 import time
 import datetime
 import pymongo
@@ -57,24 +58,25 @@ def get_last_session (db) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs (db, sid, cache=None) :
+def get_session_docs (db, sid, cache=None, cachedir=None) :
 
     # session docs may have been cached in /tmp/rp_cache_<uid>/<sid>.json -- in that
     # case we pull it from there instead of the database, which will be much
     # quicker.  Also, we do cache any retrieved docs to that place, for later
-    # use.
+    # use.  An optional cachdir parameter changes that default location for
+    # lookup and storage.
+    if  not cachedir :
+        cachedir = _CACHE_BASEDIR
+
     if  not cache :
-        cache = "%s/%s.json" % (_CACHE_BASEDIR, sid)
-    else :
-        if  not os.path.isfile (cache) :
-            print "cache '%s' does not exist" % cache
-            return None
+        cache = "%s/%s.json" % (cachedir, sid)
 
     try :
-        return ru.read_json (cache)
+        if  os.path.isfile (cache) :
+            return ru.read_json (cache)
     except Exception as e :
-        # we can continue without cache, no problem
-        pass
+        # continue w/o cache
+        sys.stderr.write ("warning: cannot read session cache at %s (%s)\n" % (cache, e))
 
 
     # cache not used or not found -- go to db
@@ -119,7 +121,7 @@ def get_session_docs (db, sid, cache=None) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_slothist (db, sid, cache=None) :
+def get_session_slothist (db, sid, cache=None, cachedir=None) :
     """
     For all pilots in the session, get the slot lists and slot histories. and
     return as list of tuples like:
@@ -128,7 +130,7 @@ def get_session_slothist (db, sid, cache=None) :
       tuple (string  , list (tuple (string  , int    ) ), list (tuple (string   , datetime ) ) )
     """
 
-    docs = get_session_docs (db, sid, cache)
+    docs = get_session_docs (db, sid, cache, cachedir)
 
     ret = list()
 
@@ -156,7 +158,7 @@ def get_session_slothist (db, sid, cache=None) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_events (db, sid, cache=None) :
+def get_session_events (db, sid, cache=None, cachedir=None) :
     """
     For all entities in the session, create simple event tuples, and return
     them as a list
@@ -166,7 +168,7 @@ def get_session_events (db, sid, cache=None) :
       
     """
 
-    docs = get_session_docs (db, sid, cache)
+    docs = get_session_docs (db, sid, cache, cachedir)
 
     ret = list()
 
