@@ -63,7 +63,7 @@ if __name__ == "__main__":
         pdesc.resource  = "stfc.joule"
         pdesc.runtime   = 5 # minutes
         pdesc.cores     = 16
-        pdesc.queue     = "prod"
+        pdesc.queue     = "interactive"
 
         pdescs.append (pdesc)
 
