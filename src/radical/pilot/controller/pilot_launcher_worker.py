@@ -533,12 +533,17 @@ class PilotLauncherWorker(threading.Thread):
 
                         # massage some values
                         debug_level = os.environ.get ('RADICAL_PILOT_AGENT_VERBOSE', logger.level)
-                        debug_level = { 'CRITICAL' : 1,
-                                        'ERROR'    : 2,
-                                        'WARNING'  : 3,
-                                        'WARN'     : 3,
-                                        'INFO'     : 4,
-                                        'DEBUG'    : 5}.get (debug_level, int(debug_level))
+                        try:
+                            debug_level = int(debug_level)
+                        except ValueError:
+                            debug_level = {
+                                'CRITICAL' : 1,
+                                'ERROR'    : 2,
+                                'WARNING'  : 3,
+                                'WARN'     : 3,
+                                'INFO'     : 4,
+                                'DEBUG'    : 5
+                            }.get(debug_level, 0)
 
                         if not queue :
                             queue = default_queue
