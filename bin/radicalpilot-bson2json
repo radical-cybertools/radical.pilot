@@ -23,14 +23,14 @@ def usage (msg=None, noexit=False) :
       example    : %s 5490ba7174df926284f8ef48 -
 
       arguments  :
-        -<sir>   : session id
-        -<output>: output file (default: <sid>.json)
+        <sid>    : session id
+        <output> : output file (default: <sid>.json)
 
       The tool will look for <sid>.*.bson files in the current pwd, and convert
       them to json, to write them to <sid>.json (default) or ot another output
       location (file or stdout [-]).
       
-""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+""" % (sys.argv[0], sys.argv[0])
 
     if  msg :
         sys.exit (1)
