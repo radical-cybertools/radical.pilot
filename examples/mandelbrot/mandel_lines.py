@@ -1,25 +1,23 @@
-
 __author__    = "George Chantzialexiou"
-__copyright__ = "Copyright 2012-2013, The SAGA Project"
+__copyright__ = "Copyright 2012-2013, The RADICAL Group"
 __license__   = "MIT"
-
 
 """ A Simple Mandelbrot Fractal Generator.
 
-    We use this example to explore the distributed capabilites of
+    We use this example to explore the distributed capabilities of
     the Pilot Job and Filesystem APIs. The mandelbrot module
     calculates  partial mandelbrot set fractal and writes it to a 
-    PNG image file. To determine which part of the fracat we create
+    PNG image file. To determine which part of the fractal we create
     we use the iterations variable.
 
     It requires the Python Image Library (PIL) which can be easily
-    installed with 'easy_install PIL'. 
+    installed with 'pip install Pillow'.
 
-    This programm is required by the mandelbrot_pilot.py programm
-    which creates the mandelbrot fractal using the capabilites of
+    This program is required by the mandelbrot_pilot.py program
+    which creates the mandelbrot fractal using the capabilities of
     Pilot Job API. 
 
-    on the command line::
+    On the command line:
 
         python mandelbrot.py imgX imgY xBeg xEnd yBeg yEnd cores iterations
 
@@ -30,12 +28,7 @@ __license__   = "MIT"
         yBeg, yEnd: the y-axis portion of the (sub-)image to calculate
         cores : the number of the system's cores
         iterations: the part of the image we create. Can vary from 1 to cores.
-
 """
-
-__author__    = "Ole Christian Weidner"
-__copyright__ = "Copyright 2012, Ole Christian Weidner"
-__license__   = "MIT"
 
 import sys
 from PIL import Image
@@ -57,9 +50,6 @@ def makemandel(mandelx, mandely, xbeg, xend, ybeg, yend, cores, iterations):
     ybeg2 = int(((yend*(iterations-1))/cores))
     yend2 = int(((yend*(iterations))/cores))
 
-
-    
-    
     for y in range(ybeg2, yend2):
         cy = y * (yb - ya) / (mandely - 1)  +  ya
         for x in range(xbeg, xend):
@@ -74,7 +64,6 @@ def makemandel(mandelx, mandely, xbeg, xend, ybeg, yend, cores, iterations):
             b = i % 16 * 16
             image.putpixel((x-xbeg, y-ybeg), b * 65536 + g * 256 + r)
  
-   
     image.save('mandel_%d.gif' % iterations , "GIF")
     
     return image
@@ -93,8 +82,6 @@ if __name__ == "__main__":
     yEnd = int(sys.argv[6])
     cores = int(sys.argv[7])
     iterations = int(sys.argv[8])
-   
 
-    
     makemandel(imgX, imgY, xBeg, xEnd, yBeg, yEnd, cores, iterations)
     sys.exit(0)
