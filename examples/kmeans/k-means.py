@@ -91,11 +91,11 @@ def main():
 
         # This describes the requirements and the parameters
         pdesc = radical.pilot.ComputePilotDescription()
-        #pdesc.resource = "localhost"
-        pdesc.resource = "xsede.stampede"
+        pdesc.resource = "localhost"
+        #pdesc.resource = "xsede.stampede"
+        #pdesc.project = "TG-MCB090174"
         pdesc.runtime = 10 # minutes
         pdesc.cores = 4
-        pdesc.project = "TG-MCB090174"
 
         print "Submitting Compute Pilot to PilotManager"
         pilot = pmgr.submit_pilots(pdesc)
