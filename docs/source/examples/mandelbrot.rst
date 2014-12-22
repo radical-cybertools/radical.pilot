@@ -7,19 +7,17 @@ Mandelbrot set
 Requirements
 ------------
 
-In order to make this example work, we need first to activate your virtualenv::
-
-    source $HOME/myenv/bin/activate
-
-And install the PIL module::
+This Mandelbrot example needs the PIL library for both the "application side" and the "CU side".
+For the application side you need to install the Pillow module in the same virtual environment as you have installed RADICAL-Pilot into:
 
     pip install Pillow
 
-The simplest usage of a pilot-job system is to submit multiple identical tasks (a ‘Bag of Tasks’) collectively, i.e. as one big job! Such usage arises for example to perform either a parameter sweep job or a set of ensemble simulation.
+The examples are constructed in such a way that PIL is dynamically installed in the CU environment; more on that later.
 
-We will create an example which submits N jobs using RADICAL-Pilot. The jobs are all identical, except that they each record their number in their output. This type of run is very useful if you are running many jobs using the same executable (but perhaps with different input files). Rather than submit each job individually to the queuing system and then wait for every job to become active and complete, you submit just one container job (called a Pilot) that reserves the number of cores needed to run all of your jobs. When this pilot becomes active, your tasks (which are named ‘Compute Units’ or ‘CUs’) are pulled by RADICAL-Pilot from the MongoDB server and executed.
+Obtaining the code
+------------------
 
-Download the mandelbrot via command line::
+Download the mandelbrot example via command line:
 
     curl --insecure -Os https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/mandelbrot/mandelbrot_pilot_cores.py
     curl --insecure -Os https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/mandelbrot/mandel_lines.py
@@ -27,11 +25,19 @@ Download the mandelbrot via command line::
 Customizing the example
 -----------------------
 
-Open the file mandelbrot_pilot_cores.py with your favorite editor. There is a critical sections that must be filled in by the user: Line 157 of this file says, “BEGIN REQUIRED CU SETUP.” This section defines the actual tasks to be executed by the pilot.
+Open the file mandelbrot_pilot_cores.py with your favorite editor.
+There is a critical section that must be filled in by the user.
+About halfway of this file it says, "BEGIN REQUIRED CU SETUP."
+This section defines the actual tasks to be executed by the pilot.
 
-Let’s discuss the above example. We define our executable as “python” , which is the python module. Next, we need to provide the arguments. In this case,
-mandel_lines.py is the executable that creates parts of the mandelbrot fractal. The other arguments are the variables that the mandel_lines.py program needs in order to be executed. .These arguments are  environment variables, so we will need to provide a value for it, as is done on the next line: 
-{"mandelx": "%d" % imgX, "mandely": "%d" % imgY, "xBeg": "%d" % xBeg, "xEnd": "%d" % xEnd,  "yBeg": "%d" % yBeg,   "yEnd": "%d" % yEnd, "cores": "%d" % pdesc.cores, "iter": "%d" % i }. Note that this block of code is in a python for loop, therefore,e.g. i corresponds to what iteration we are on. This is  a parallel code, the python uses as many cores as we define, ( now we defined cores=4) to create smaller parts of the fractal simultaneously. 
+Let's discuss the above example.
+We define our executable as "python".
+Next, we need to provide the arguments.
+In this case, mandel_lines.py is the python script that creates parts of the mandelbrot fractal.
+The other arguments are the variables that the mandel_lines.py program needs in order to be executed.
+Note that this block of code is in a python for loop, therefore, e.g. "i" corresponds to what iteration we are on.
+This is  a parallel code, the python uses as many cores as we define,
+(now we defined cores=4) to create smaller parts of the fractal simultaneously.
 
 
 More About the Algorithm
