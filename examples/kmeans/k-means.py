@@ -1,25 +1,14 @@
-_author__    = "George Chantzialexiou"
-__copyright__ = "Copyright  2012-2013, The Pilot Project"
+__author__    = "George Chantzialexiou"
+__copyright__ = "Copyright  2014, The RADICAL Group"
 __license__   = "MIT"
 
-import os, sys,  radical.pilot, math  # , multiprocessing
-from random import randint
+import os, sys,  radical.pilot, math
 import time
 
 
-
 """
-    This is a simple impementation of k-means algorithm
-    using the Radical-Pilot API.
-
-
+    This is a simple implementation of k-means algorithm using the RADICAl-Pilot API.
 """
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to http://docs.mongodb.org.
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
 
 #------------------------------------------------------------------------------
 #
@@ -35,6 +24,7 @@ def pilot_state_cb(pilot, state):
     elif state == radical.pilot.states.ACTIVE:
         print "Compute Pilot '%s' became active!" % (pilot.uid)
 
+
 #------------------------------------------------------------------------------
 #
 def unit_state_change_cb(unit, state):
@@ -48,6 +38,7 @@ def unit_state_change_cb(unit, state):
     elif state == radical.pilot.states.DONE:
         print "Compute Unit '%s' finished with output:" % (unit.uid)
         print unit.stdout
+
 
 #------------------------------------------------------------------------------
 #
@@ -66,6 +57,8 @@ def quickselect(x, k):
         return quickselect(right, k - delta)
     else:
         return pivot
+
+
 #-------------------------------------------------------------------------
 #
 def get_distance(dataPointX, dataPointY, centroidX, centroidY):
@@ -77,20 +70,15 @@ def get_distance(dataPointX, dataPointY, centroidX, centroidY):
 
 def main():
     try:
-    	start_time = time.time()   
+        start_time = time.time()
         #----------FUNCTIONS OF RADICAL PILOT -------------------#
         # here we create a new radical session
-        #DBURL = "mongodb://localhost:27017"
-        try:
-            session = radical.pilot.Session(database_url = DBURL)
-        except Exception, e:
-            print "An error with mongodb has occured: %s" % (str(e))
-            return (-1)
+        session = radical.pilot.Session()
 
         # don't forget to change the localhost label
-        #c = radical.pilot.Context('ssh')
+        c = radical.pilot.Context('ssh')
         #c.user_id = 'userid'
-        #session.add_context(c)
+        session.add_context(c)
         
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         print "Initiliazing Pilot Manager..."
@@ -101,17 +89,16 @@ def main():
         # change their state
         pmgr.register_callback(pilot_state_cb)
 
-        # this describes the requirements and the paramers
+        # This describes the requirements and the parameters
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource =   "localhost"   #"sierra.futuregrid.org"
-        pdesc.runtime = 10 # minutes 
-        pdesc.cores =  4 # multiprocessing.cpu_count() # we use all the cores we have
-        #pdesc.cleanup = True  # delete all the files that are created automatically when the job is done
+        #pdesc.resource = "localhost"
+        pdesc.resource = "xsede.stampede"
+        pdesc.runtime = 10 # minutes
+        pdesc.cores = 4
+        pdesc.project = "TG-MCB090174"
 
         print "Submitting Compute Pilot to PilotManager"
         pilot = pmgr.submit_pilots(pdesc)
-
-        umgr = radical.pilot.UnitManager(session=session, scheduler = radical.pilot.SCHED_DIRECT_SUBMISSION)
 
         # Combine all the units
         print "Initiliazing Unit Manager"
@@ -164,7 +151,7 @@ def main():
         
         #------------ PUT THE CENTROIDS IN A FILE -------------------#
         centroid_to_string = ','.join(map(str,centroid))
-        centroid_file = open('centroidss.txt', 'w')
+        centroid_file = open('centroids.txt', 'w')
         centroid_file.write(centroid_to_string)
         centroid_file.close()       
         #------------END OF PUTTING CENTROIDS IN A FILE CENTROIDS.DATA ------#
@@ -173,7 +160,7 @@ def main():
         #-----------VARIABLE DEFINITIONS -------------------------------#
         p =   pdesc.cores  # NUMBER OF CORES OF THE SYSTEM I USE
         convergence = False   # We have no convergence yet
-        m = 0 # nubmer of iterations
+        m = 0 # number of iterations
         maxIt = 20 # the maximum number of iteration
         part_length = len(x)/p  # this is the length of the part that each unit is going to control
         #----------END OF VARIABLE DEFINITIONS--------------------------#
@@ -197,13 +184,10 @@ def main():
             mylist = []
             for i in range(1,p+1):
                 cudesc = radical.pilot.ComputeUnitDescription()    
-                cudesc.environment = {"cu": "%d" % i, "k": "%d" % k}
                 cudesc.executable  = "python"
-                cudesc.arguments = ['clustering_the_elements.py','$cu','$k']    
-                cudesc.input_data = ['clustering_the_elements.py', 'cu_%d.data' % i,'centroidss.txt']
-                cudesc.output_data = []
-                file_string = 'centroid_cu_%d.data' % i
-                cudesc.output_data.append(file_string)
+                cudesc.arguments = ['clustering_the_elements.py', i, k]
+                cudesc.input_staging = ['clustering_the_elements.py', 'cu_%d.data' % i,'centroids.txt']
+                cudesc.output_staging = 'centroid_cu_%d.data' % i
                 mylist.append(cudesc)
                 
             print 'Submitting the CU to the Unit Manager...'
@@ -216,20 +200,20 @@ def main():
             #--------------------END OF PHASE A - NOW WE HAVE THE CLUSTERS CALCULATED IN THE CU FILES --------------------------#
 
 
-            #------------------FINDING THE AVG_ELEMENTS WHICH ARE CANDIATE CENTROIDS -----------------------#
+            #------------------FINDING THE AVG_ELEMENTS WHICH ARE CANDIDATE CENTROIDS -----------------------#
 
             sum_of_all_centroids = []
             for i in range(0,2*k):
-            	sum_of_all_centroids.append(0)
+                sum_of_all_centroids.append(0)
             
             for i in range(1,p+1):
                 read_file = open("centroid_cu_%d.data" % i, "r")
                 read_as_string_array = read_file.readline().split(',')
                 read_as_float_array = map(float, read_as_string_array)
                 for j in range(0,k):
-	                sum_of_all_centroids[2*j] += read_as_float_array[2*j]
-	            	sum_of_all_centroids[(2*j)+1] += read_as_float_array[(2*j)+1]
-            	read_file.close()
+                    sum_of_all_centroids[2*j] += read_as_float_array[2*j]
+                    sum_of_all_centroids[(2*j)+1] += read_as_float_array[(2*j)+1]
+                read_file.close()
 
             for i in range(0,k):
                 if (sum_of_all_centroids[(2*i)+1] != 0):
@@ -238,7 +222,7 @@ def main():
                     sum_of_all_centroids[i] = -1   #there are no centroids in this cluster
 
             # writing the elements to a file
-            input_file = open('centroidss.txt','w')
+            input_file = open('centroids.txt','w')
             input_string = ','.join(map(str,sum_of_all_centroids[0:p])) 
             input_file.write(input_string)
             input_file.close()
@@ -246,17 +230,13 @@ def main():
 
             #------------------END THE AVG_ELEMENTS WHICH ARE CANDIATE CENTROIDS  -----------------------#
             mylist = []
-            cudesc.output_data = []
-            
+
             for i in range(1,p+1):
                 cudesc = radical.pilot.ComputeUnitDescription()    
-                cudesc.environment = {"cu": "%d" % i, "k": "%d" % k}
                 cudesc.executable  = "python"
-                cudesc.arguments = ['finding_the_new_centroids.py','$cu','$k']    
-                cudesc.input_data = ['finding_the_new_centroids.py', 'cu_%d.data' % i,'centroidss.txt']
-                cudesc.output_data = []
-                file_string = 'centroid_cu_%d.data' % i
-                cudesc.output_data.append(file_string)
+                cudesc.arguments = ['finding_the_new_centroids.py', i, k]
+                cudesc.input_staging = ['finding_the_new_centroids.py', 'cu_%d.data' % i,'centroids.txt']
+                cudesc.output_staging = 'centroid_cu_%d.data' % i
                 mylist.append(cudesc)
                 
             print 'Submitting the CU to the Unit Manager...'
@@ -268,20 +248,20 @@ def main():
 
             
             #-------FINDING THE NEW CENTROIDS- THESE ARE THE ELEMENTS WHO ARE CLOSER TO THE AVG_ELEMENTS-----#
-            	# sum_of_all_centroids have the avg_elemnt
+                # sum_of_all_centroids have the avg_elemnt
             new_centroids = []
             a = sys.maxint
             for i in range(0,k):
                 new_centroids.append(a)
             
             for i in range(1,p+1):
-            	read_file = open("centroid_cu_%d.data" % i, "r")
-            	read_as_string_array = read_file.readline().split(',')
-            	read_as_float_array = map(float,read_as_string_array)
-            	for j in range(0,k):
-            		if get_distance(new_centroids[j],0,sum_of_all_centroids[j],0) > get_distance(read_as_float_array[j],0,sum_of_all_centroids[j],0):
-            			new_centroids[j] = read_as_float_array[j]
-            	read_file.close()
+                read_file = open("centroid_cu_%d.data" % i, "r")
+                read_as_string_array = read_file.readline().split(',')
+                read_as_float_array = map(float,read_as_string_array)
+                for j in range(0,k):
+                    if get_distance(new_centroids[j],0,sum_of_all_centroids[j],0) > get_distance(read_as_float_array[j],0,sum_of_all_centroids[j],0):
+                        new_centroids[j] = read_as_float_array[j]
+                read_file.close()
 
 
             #-----END OF FINDING THE NEW CENTROIDS- THESE ARE THE ELEMENTS WHO ARE CLOSER TO THE AVG_ELEMENT---#
@@ -310,7 +290,7 @@ def main():
                         x.append(centroid[l])
                 centroid =new_centroids
                 input_string = ','.join(map(str,new_centroids))
-                input_file = open('centroidss.txt', 'w')
+                input_file = open('centroids.txt', 'w')
                 input_file.write(input_string)
                 input_file.close()
             

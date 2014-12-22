@@ -1,5 +1,8 @@
-import sys, random 
+__author__    = "George Chantzialexiou"
+__copyright__ = "Copyright 2014, The RADICAL Group"
+__license__   = "MIT"
 
+import sys, random
 
 args = sys.argv[1:]
 if len(args) < 1:

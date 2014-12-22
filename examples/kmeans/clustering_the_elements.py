@@ -1,19 +1,15 @@
 __author__    = "George Chantzialexiou"
-__copyright__ = "Copyright 2012-2013, The Pilot Program"
+__copyright__ = "Copyright 2014, The RADICAL Group"
 __license__   = "MIT"
 
-
 import os, sys, math
-from random import randint
 
-
-
+#------------------------------------------------------------------------------
+#
 def get_distance(dataPointX, dataPointY, centroidX, centroidY):
     
     # Calculate Euclidean distance.
     return math.sqrt(math.pow((centroidY - dataPointY), 2) + math.pow((centroidX - dataPointX), 2))
-#------------------------------------------------------------------------------
-#
 
 ################################################################################
 ##
@@ -26,7 +22,7 @@ if __name__ == "__main__":
         
     #----------------------READING THE CENTROIDS FILE-------------------------------#
         centroid = []
-        data = open("centroidss.txt", "r")
+        data = open("centroids.txt", "r")
         read_as_string_array = data.readline().split(',')
         centroid = map(float, read_as_string_array)
         data.close()
