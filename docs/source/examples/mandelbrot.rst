@@ -8,7 +8,7 @@ Requirements
 ------------
 
 This Mandelbrot example needs the PIL library for both the "application side" and the "CU side".
-For the application side you need to install the Pillow module in the same virtual environment as you have installed RADICAL-Pilot into:
+For the application side you need to install the Pillow module in the same virtual environment as you have installed RADICAL-Pilot into::
 
     pip install Pillow
 
@@ -17,7 +17,7 @@ The examples are constructed in such a way that PIL is dynamically installed in 
 Obtaining the code
 ------------------
 
-Download the mandelbrot example via command line:
+Download the mandelbrot example via command line::
 
     curl --insecure -Os https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/mandelbrot/mandelbrot_pilot_cores.py
     curl --insecure -Os https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/mandelbrot/mandel_lines.py
@@ -49,7 +49,7 @@ This algorithm takes the takes the parameters of the Mandelbrot fractal and deco
 Run the example
 ---------------
 
-Save the file and executed:
+Save the file and executed::
 
     python mandelbrot_pilot_cores.py 1024 1024 0 1024 0 1024
 
