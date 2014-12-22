@@ -37,13 +37,13 @@ where 3 is the number of clusters the user wants to create.
 More About the Algorithm
 ------------------------
 
-This algorithm creates the clusters of the elements found in the dataset4.in
+This application creates the clusters of the elements found in the dataset4.in
 file. You can create your own file or create a new dataset file using the
 following generator::
 
-curl --insecure -Os https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/kmeans/creating_dataset.py
+    curl --insecure -Os https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/kmeans/creating_dataset.py
 
-run via command line::
+Run via command line::
 
         python creating_dataset.py <number_of_elements>
 
