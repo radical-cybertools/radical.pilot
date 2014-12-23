@@ -101,7 +101,7 @@ lock()
 
     set -C
     until echo $pid 2>/dev/null >$lockfile
-    do       
+    do
         owner=`cat $lockfile 2>/dev/null`
         count=$((count+1))
 
@@ -648,7 +648,7 @@ while getopts "a:b:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
         d)  DEBUG=$OPTARG  ;;
         e)  preprocess "$OPTARG"  ;;
         f)  FORWARD_TUNNEL_ENDPOINT=$OPTARG  ;;
-        g)  VIRTENV=$OPTARG  ;;
+        g)  VIRTENV=$(eval echo $OPTARG)  ;;
         i)  PYTHON=$OPTARG  ;;
         j)  TASK_LAUNCH_METHOD=$OPTARG  ;;
         k)  MPI_LAUNCH_METHOD=$OPTARG  ;;
