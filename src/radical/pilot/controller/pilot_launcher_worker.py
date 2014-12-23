@@ -32,8 +32,8 @@ JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
 
 DEFAULT_AGENT_TYPE    = 'multicore'
 DEFAULT_AGENT_VERSION = 'stage@local'
-DEFAULT_VIRTENV       = '%(pilot_sandbox)s/virtenv'
-DEFAULT_VIRTENV_MODE  = 'private'
+DEFAULT_VIRTENV       = '%(global_sandbox)s/virtenv'
+DEFAULT_VIRTENV_MODE  = 'update'
 
 # ----------------------------------------------------------------------------
 #
