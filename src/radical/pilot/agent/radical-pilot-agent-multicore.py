@@ -3173,8 +3173,8 @@ class SpawnerPty(Spawner):
         # FIXME: choose a better, unique workdir
         self.workdir = "/tmp/radical-pilot-spawner"
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/radical-pilot-spawner.sh %s" \
-                           % (self.workdir, self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self.workdir))
 
         if  ret != 0 :
             raise RuntimeError ("failed to run launcher bootstrap: (%s)(%s)", ret, out)
@@ -3217,26 +3217,30 @@ class SpawnerPty(Spawner):
         io   = ""
         cmd  = ""
 
+        descr = cu['description']
+
         if  cu['workdir'] :
             cwd = "mkdir -p %s && cd %s && " % (cu['workdir'], cu['workdir'])
 
-        if  cu['environment'] :
-            for e in cu['environment'] :
-                env += "export %s=%s\n"  %  (e, cu['environment'][e])
+        if  descr['environment'] :
+            for e in descr['environment'] :
+                env += "export %s=%s\n"  %  (e, descr['environment'][e])
 
-        for e in environment :
-            env += "export %s=%s\n"  %  (e, environment[e])
+      # # FIXME: this is not exactly correct in this context, needs togo before
+      # #        job shell startup...
+      # for e in environment :
+      #     env += "export %s=%s\n"  %  (e, environment[e])
 
-        if  cu['executable'] : exe  = cu['executable']
-        if  cu['arguments']  : arg  = ' ' .join (quote_args (cu['arguments']))
-        if  cu['pre_exec']   : pre  = '\n'.join (quote_args (cu['pre_exec' ]))
-        if  cu['post_exec']  : post = '\n'.join (quote_args (cu['post_exec']))
-        if  cu['stdin']      : io  += "<%s "  % cu['stdin']
-        if  cu['stdout']     : io  += "1>%s " % cu['stdout']
-        if  cu['stderr']     : io  += "2>%s " % cu['stderr']
+        if  descr['executable'] : exe  = descr['executable']
+        if  descr['arguments']  : arg  = ' ' .join (quote_args (descr['arguments']))
+        if  descr['pre_exec']   : pre  = '\n'.join (quote_args (descr['pre_exec' ]))
+        if  descr['post_exec']  : post = '\n'.join (quote_args (descr['post_exec']))
+      # if  descr['stdin']      : io  += "<%s "  % descr['stdin']
+        if  descr['stdout']     : io  += "1>%s " % descr['stdout']
+        if  descr['stderr']     : io  += "2>%s " % descr['stderr']
 
-        cmd, _ = launcher.construct_command(cu['description']['executable'], arg,
-                                            cu['description']['cores'], None,
+        cmd, _ = launcher.construct_command(descr['executable'], arg,
+                                            descr['cores'], None,
                                             cu['opaque_slot'])
 
         script  = "%s\n"            %  cwd
@@ -3264,7 +3268,10 @@ class SpawnerPty(Spawner):
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
+        self._log.error ('------------------ test 1')
+
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
+        self._log.error ('------------------ test 2')
 
         if  ret != 0 :
             self._log.error ("failed to run unit '%s': (%s)(%s)" \
@@ -3273,7 +3280,8 @@ class SpawnerPty(Spawner):
 
         lines = filter (None, out.split ("\n"))
 
-      # self._log.debug (lines)
+        self._log.debug (lines)
+        self._log.error ('------------------ test 3')
 
         if  len (lines) < 2 :
             raise RuntimeError ("Failed to run unit (%s)", lines)

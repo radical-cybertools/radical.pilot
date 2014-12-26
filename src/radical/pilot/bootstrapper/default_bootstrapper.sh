@@ -99,9 +99,16 @@ lock()
     lockfile="$entry.lock"
     count=0
 
-    set -C
-    until echo $pid 2>/dev/null >$lockfile
-    do       
+    err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1` 
+    until ! test "$err" = "ok"
+    do
+        if contains "$err" 'no such file or directory'
+        then
+            # there is something wrong with the lockfile path...
+            echo "can't create lockfile at '$lockfile' - invalid directory?"
+            exit 1
+        fi
+
         owner=`cat $lockfile 2>/dev/null`
         count=$((count+1))
 
@@ -119,6 +126,9 @@ lock()
             # need to wait longer for lock release
             sleep 1
         fi
+
+        # retry
+        err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1` 
     done
 
     # one way or the other, we got the lock finally.  Reset noclobber option and
@@ -579,7 +589,7 @@ find_available_port()
     for port in $(eval echo {$RANGE}); do
 
         # Try to make connection
-        (bash -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
+        (/bin/bash -c "(>/dev/tcp/$host/$port)" 2>/dev/null) &
         # Wait for 1 second
         read -t1
         # Kill child
