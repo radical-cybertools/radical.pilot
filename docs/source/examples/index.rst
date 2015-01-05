@@ -14,4 +14,6 @@ Examples & Best Practice
    multiple_commands.rst
    multicore.rst
    async.rst
+   mandelbrot.rst
+   kmeans.rst
 .. condor_grids.rst
