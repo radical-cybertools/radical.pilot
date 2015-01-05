@@ -245,7 +245,7 @@ SCHEDULER_NAME_TORUS        = "TORUS"
 
 # 'enum' for pilot's unit spawner types
 SPAWNER_NAME_POPEN          = "POPEN"
-SPAWNER_NAME_PTY            = "PTY"
+SPAWNER_NAME_SHELL          = "SHELL"
 
 # defines for pilot commands
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
@@ -617,6 +617,7 @@ def pilot_DONE(mongo_p, pilot_uid):
 # Schedulers
 #
 # ==============================================================================
+#
 class Scheduler(threading.Thread):
 
     # FIXME: clarify what can be overloaded by Scheduler classes
@@ -808,7 +809,7 @@ class Scheduler(threading.Thread):
                 raise
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class SchedulerContinuous(Scheduler):
 
@@ -1109,14 +1110,14 @@ class SchedulerContinuous(Scheduler):
             self.slot_history[-1] = self.slot_status(short=True)
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class SchedulerScattered(Scheduler):
     # FIXME: implement
     pass
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class SchedulerTorus(Scheduler):
 
@@ -1129,7 +1130,7 @@ class SchedulerTorus(Scheduler):
     TORUS_BLOCK_INDEX  = 0
     TORUS_BLOCK_COOR   = 1
     TORUS_BLOCK_NAME   = 2
-    TORUS_BLOCK_STATUS = 3
+    TORUS_BLOCK_STATUS = 3 
 
 
     # --------------------------------------------------------------------------
@@ -1376,6 +1377,7 @@ class SchedulerTorus(Scheduler):
 # Launch Methods
 #
 # ==============================================================================
+#
 class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
@@ -1487,7 +1489,7 @@ class LaunchMethod(object):
         return None
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodFORK(LaunchMethod):
 
@@ -1519,7 +1521,7 @@ class LaunchMethodFORK(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodMPIRUN(LaunchMethod):
 
@@ -1578,7 +1580,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodSSH(LaunchMethod):
 
@@ -1636,7 +1638,7 @@ class LaunchMethodSSH(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodMPIEXEC(LaunchMethod):
 
@@ -1677,7 +1679,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         return mpiexec_command, launch_script_name
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodAPRUN(LaunchMethod):
 
@@ -1713,7 +1715,7 @@ class LaunchMethodAPRUN(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodCCMRUN(LaunchMethod):
 
@@ -1747,7 +1749,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
     # TODO: This needs both mpirun and ccmrun
@@ -1796,7 +1798,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodRUNJOB(LaunchMethod):
 
@@ -1860,7 +1862,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
         return runjob_command, launch_script_name
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodDPLACE(LaunchMethod):
 
@@ -1898,7 +1900,7 @@ class LaunchMethodDPLACE(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodMPIRUNRSH(LaunchMethod):
 
@@ -1936,7 +1938,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodMPIRUNDPLACE(LaunchMethod):
     # TODO: This needs both mpirun and dplace
@@ -1978,7 +1980,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodIBRUN(LaunchMethod):
     # NOTE: Don't think that with IBRUN it is possible to have
@@ -2018,7 +2020,7 @@ class LaunchMethodIBRUN(LaunchMethod):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LaunchMethodPOE(LaunchMethod):
 
@@ -2146,7 +2148,7 @@ class LRMS(object):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class TORQUELRMS(LRMS):
 
@@ -2231,7 +2233,7 @@ class TORQUELRMS(LRMS):
         self.node_list = torque_node_list
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class PBSProLRMS(LRMS):
 
@@ -2377,7 +2379,7 @@ class PBSProLRMS(LRMS):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class SLURMLRMS(LRMS):
 
@@ -2447,7 +2449,7 @@ class SLURMLRMS(LRMS):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class SGELRMS(LRMS):
 
@@ -2489,7 +2491,7 @@ class SGELRMS(LRMS):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LSFLRMS(LRMS):
 
@@ -2545,7 +2547,7 @@ class LSFLRMS(LRMS):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class LoadLevelerLRMS(LRMS):
 
@@ -2970,7 +2972,7 @@ class LoadLevelerLRMS(LRMS):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class ForkLRMS(LRMS):
 
@@ -2999,17 +3001,47 @@ class ForkLRMS(LRMS):
 
 # ==============================================================================
 #
-# Spawners
+# Worker Classes
 #
 # ==============================================================================
-class Spawner(object):
+#
+class ExecWorker(threading.Thread):
+    """
+    Manage the creation of CU processes, and watch them until they are completed
+    (one way or the other).  The spawner thus moves the unit from
+    PendingExecution to Executing, and then to a final state (or PendingStageOut
+    of course).
+    """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger):
+    def __init__(self, name, logger, agent, lrms, scheduler,
+                 task_launcher, mpi_launcher,
+                 execution_queue, update_queue, stageout_queue,
+                 pilot_id, session_id):
 
-        self.name = name
-        self._log = logger
+        prof('ExecWorker init')
+
+        threading.Thread.__init__(self)
+        self._terminate = threading.Event()
+
+        self.name              = name
+        self._log              = logger
+        self._agent            = agent
+        self._lrms             = lrms
+        self._scheduler        = scheduler
+        self._task_launcher    = task_launcher
+        self._mpi_launcher     = mpi_launcher
+        self._stageout_queue   = stageout_queue
+        self._update_queue     = update_queue
+        self._pilot_id         = pilot_id
+        self._session_id       = session_id
+
+        self._cu_environment   = self._populate_cu_environment()
+
+        self.configure ()
+
+        self.start ()
 
 
     # --------------------------------------------------------------------------
@@ -3017,45 +3049,210 @@ class Spawner(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, logger):
+    def create(cls, name, spawner, logger, agent, lrms, scheduler,
+               task_launcher, mpi_launcher,
+               execution_queue, update_queue, stageout_queue,
+               pilot_id, session_id):
 
         # Make sure that we are the base-class!
-        if cls != Spawner:
-            raise Exception("Spawner Factory only available to base class!")
+        if cls != ExecWorker:
+            raise Exception("ExecWorker Factory only available to base class!")
 
         try:
-            implementation = {SPAWNER_NAME_POPEN : SpawnerPopen,
-                              SPAWNER_NAME_PTY   : SpawnerPty  }[name]
+            implementation = {
+                SPAWNER_NAME_POPEN : ExecWorker_POPEN,
+                SPAWNER_NAME_SHELL : ExecWorker_SHELL
+            }[spawner]
 
-            return implementation(name, logger)
+            return implementation(name, logger, agent, lrms, scheduler,
+                                  task_launcher, mpi_launcher,
+                                  execution_queue, update_queue, stageout_queue,
+                                  pilot_id, session_id)
 
         except KeyError:
-            raise Exception("Spawner '%s' unknown!" % name)
+            raise Exception("ExecWorker '%s' unknown!" % name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __del__ (self):
+        self.close ()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+        self._terminate.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def configure(self):
+        # hook for initialization
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def close(self):
+        # hook for shutdown
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _populate_cu_environment(self):
+        """Derive the environment for the cu's from our own environment."""
+
+        # Get the environment of the agent
+        new_env = copy.deepcopy(os.environ)
+
+        #
+        # Mimic what virtualenv's "deactivate" would do
+        #
+        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        if old_path:
+            new_env['PATH'] = old_path
+
+        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        if old_home:
+            new_env['PYTHON_HOME'] = old_home
+
+        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        if old_ps:
+            new_env['PS1'] = old_ps
+
+        new_env.pop('VIRTUAL_ENV', None)
+
+        return new_env
 
 
     # --------------------------------------------------------------------------
     #
     def spawn(self, launcher, unit, env):
-        raise NotImplementedError("spawn() not implemented for Spawner '%s'." % self.name)
-
-
-# ------------------------------------------------------------------------------
-#
-class SpawnerPopen(Spawner):
+        raise NotImplementedError("spawn() not implemented for ExecWorker '%s'." % self.name)
 
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger):
+    def run(self):
 
-        Spawner.__init__(self, name, logger)
+        self._log.info("started %s.", self)
+
+        try:
+            # report initial slot status
+            # TODO: Where does this abstraction belong?  Scheduler!
+            self._log.debug(self._scheduler.slot_status())
+
+            while not self._terminate.isSet():
+
+                prof('ExecWorker pull cu from queue')
+                cu = self._execution_queue.get()
+
+                if not cu :
+                    # 'None' is the wakeup signal
+                    continue
+
+                prof('ExecWorker got  cu from queue', uid=cu['_id'], tag='preprocess')
+
+
+                try:
+
+                    if cu['description']['mpi']:
+                        launcher = self._mpi_launcher
+                    else :
+                        launcher = self._task_launcher
+
+                    if not launcher:
+                        self._agent.update_unit_state(
+                                uid    = cu['_id'],
+                                state  = rp.FAILED,
+                                msg    = "no launcher (mpi=%s)" % cu['description']['mpi'],
+                                logger = self._log.error)
+
+                    self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+
+                    assert(cu['opaque_slot']) # FIXME: no assert, but check
+                    prof('ExecWorker unit launch', uid=cu['_id'])
+
+                    # Start a new subprocess to launch the unit
+                    # TODO: This is scheduler specific
+                    self._spawn(cu       = cu,
+                                launcher = launcher,
+                                env      = self._cu_environment)
+
+
+                except Exception as e:
+                    # append the startup error to the units stderr.  This is
+                    # not completely correct (as this text is not produced
+                    # by the unit), but it seems the most intuitive way to
+                    # communicate that error to the application/user.
+                    cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
+                                    % (str(e), traceback.format_exc())
+                    cu['state']   = rp.FAILED
+                    cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
+
+                    # Free the Slots, Flee the Flots, Ree the Frots!
+                    if cu['opaque_slot']:
+                        self._scheduler.unschedule(cu)
+
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.FAILED,
+                                                  msg    = "unit execution failed",
+                                                  logger = self._log.exception)
+
+
+        except Exception as e:
+            self._log.exception("Error in ExecWorker loop (%s)" % e)
+            return
+
+
+
+# ==============================================================================
+#
+class ExecWorker_POPEN (ExecWorker) :
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, agent, lrms, scheduler,
+                 task_launcher, mpi_launcher, spawner,
+                 execution_queue, watch_queue, update_queue,
+                 pilot_id, session_id):
+
+        prof('ExecWorker init')
+
+        self._cus_to_watch  = list()
+        self._cus_to_cancel = list()
+        self._watch_queue   = Queue.Queue ()
+
+        ExecWorker.__init__ (self, name, logger, agent, lrms, scheduler,
+                 task_launcher, mpi_launcher, spawner,
+                 execution_queue, watch_queue, update_queue,
+                 pilot_id, session_id)
+
+
+        # run watcher thread
+        self._watcher = threading.Thread(target =  self._watcher, 
+                                         args   = [self._watch_queue, 
+                                                   self._update_queue, 
+                                                   self._stageout_queue])
+        self._watcher.start ()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def close(self):
+
+        # shut down the watcher thread
+        self._terminate.set()
+        self._watcher.join()
 
 
     # --------------------------------------------------------------------------
     #
     def spawn(self, launcher, cu, env):
 
-        prof('Spawner spawn', uid=cu['_id'])
+        prof('ExecWorker spawn', uid=cu['_id'])
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
         self._log.debug("Created launch_script: %s", launch_script_name)
@@ -3149,390 +3346,26 @@ class SpawnerPopen(Spawner):
 
         prof('spawning passed to popen', uid=cu['_id'], tag='unit spawning')
 
-        return proc
-
-
-# ------------------------------------------------------------------------------
-#
-class SpawnerPty(Spawner):
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, name, logger):
-
-        Spawner.__init__(self, name, logger)
-
-        # get some threads going -- those will do all the work.
-        import saga.utils.pty_shell as sups
-        self.launcher_shell = sups.PTYShell ("fork://localhost/",
-                                             logger=self._log)
-        self.monitor_shell  = sups.PTYShell ("fork://localhost/",
-                                             logger=self._log)
-
-        # FIXME: choose a better, unique workdir
-        self.workdir = "/tmp/radical-pilot-spawner"
-        ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
-
-        if  ret != 0 :
-            raise RuntimeError ("failed to run launcher bootstrap: (%s)(%s)", ret, out)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _cu_to_cmd (self, cu, launcher, environment) :
-
-        # ----------------------------------------------------------------------
-        def quote_args (args) :
-
-            ret = list()
-            for arg in args :
-
-                # if string is between outer single quotes,
-                #    pass it as is.
-                # if string is between outer double quotes,
-                #    pass it as is.
-                # otherwise (if string is not quoted)
-                #    escape all double quotes
-
-                if  arg[0] == arg[-1]  == "'" :
-                    ret.append (arg)
-                elif arg[0] == arg[-1] == '"' :
-                    ret.append (arg)
-                else :
-                    arg = arg.replace ('"', '\\"')
-                    ret.append ('"%s"' % arg)
-
-            return  ret
-        # ----------------------------------------------------------------------
-
-        exe  = ""
-        arg  = ""
-        env  = ""
-        cwd  = ""
-        pre  = ""
-        post = ""
-        io   = ""
-        cmd  = ""
-
-        descr = cu['description']
-
-        if  cu['workdir'] :
-            cwd = "mkdir -p %s && cd %s && " % (cu['workdir'], cu['workdir'])
-
-        if  descr['environment'] :
-            for e in descr['environment'] :
-                env += "export %s=%s\n"  %  (e, descr['environment'][e])
-
-      # # FIXME: this is not exactly correct in this context, needs togo before
-      # #        job shell startup...
-      # for e in environment :
-      #     env += "export %s=%s\n"  %  (e, environment[e])
-
-        if  descr['executable'] : exe  = descr['executable']
-        if  descr['arguments']  : arg  = ' ' .join (quote_args (descr['arguments']))
-        if  descr['pre_exec']   : pre  = '\n'.join (quote_args (descr['pre_exec' ]))
-        if  descr['post_exec']  : post = '\n'.join (quote_args (descr['post_exec']))
-      # if  descr['stdin']      : io  += "<%s "  % descr['stdin']
-        if  descr['stdout']     : io  += "1>%s " % descr['stdout']
-        if  descr['stderr']     : io  += "2>%s " % descr['stderr']
-
-        cmd, _ = launcher.construct_command(descr['executable'], arg,
-                                            descr['cores'], None,
-                                            cu['opaque_slot'])
-
-        script  = "%s\n"            %  cwd
-        script += "%s\n"            %  env
-        script += "%s\n"            %  pre
-        script += "(%s %s %s) %s\n" % (cmd, exe, arg, io)
-        script += "%s\n"            %  post
-
-      # self._log.debug ("execution script:\n%s\n" % script)
-
-        return script
-
-
-    # --------------------------------------------------------------------------
-    #
-    def spawn(self, launcher, cu, env):
-
-        prof('Spawner spawn', uid=cu['_id'])
-
-        # we got an allocation: go off and launch the process.  we get
-        # a multiline command, so use the wrapper's BULK/LRUN mode.
-        cmd       = self._cu_to_cmd (cu, launcher, env)
-        run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
-
-      # if  self.lrms.target_is_macos :
-      #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
-
-        self._log.error ('------------------ test 1')
-
-        ret, out, _ = self.launcher_shell.run_sync (run_cmd)
-        self._log.error ('------------------ test 2')
-
-        if  ret != 0 :
-            self._log.error ("failed to run unit '%s': (%s)(%s)" \
-                            % (run_cmd, ret, out))
-            return FAIL
-
-        lines = filter (None, out.split ("\n"))
-
-        self._log.debug (lines)
-        self._log.error ('------------------ test 3')
-
-        if  len (lines) < 2 :
-            raise RuntimeError ("Failed to run unit (%s)", lines)
-
-        if  lines[-2] != "OK" :
-            self._log.error ("Failed to run unit (%s)" % lines)
-            return FAIL
-
-        # FIXME: verify format of returned pid (\d+)!
-        cu['pid']     = lines[-1].strip ()
         cu['started'] = timestamp()
+        cu['state']   = rp.EXECUTING
+        cu['proc']    = proc
 
-      # self._log.debug ("started unit %s" % pid)
+        # register for state update and watching
+        self._agent.update_unit_state(uid    = cu['_id'],
+                                      state  = rp.EXECUTING,
+                                      msg    = "unit execution start")
 
-        # before we return, we need to clean the
-        # 'BULK COMPLETED message from lrun
-        ret, out = self.launcher_shell.find_prompt ()
-        if  ret != 0 :
-            self._log.error ("failed to run unit '%s': (%s)(%s)" \
-                          % (run_cmd, ret, out))
-            return FAIL
-
-        prof('spawning passed to pty', uid=cu['_id'], tag='unit spawning')
-
-        return cu['pid']
-      # return proc # FIXME whats that?? :P
+        cu_list = blowup (cu, WATCH) 
+        for _cu in cu_list :
+            prof('push', msg="toward watching", uid=_cu['_id'], tag='task_launching')
+            self._watch_queue.put(_cu)
 
 
-
-
-# ==============================================================================
-#
-# Worker Classes
-#
-# ==============================================================================
-class ExecWorker(threading.Thread):
-    """An ExecWorker competes for the execution of tasks in a task queue
-    and writes the results back to MongoDB.
-    """
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, name, logger, agent, lrms, scheduler,
-                 task_launcher, mpi_launcher, spawner,
-                 execution_queue, watch_queue, update_queue,
-                 pilot_id, session_id):
-
-        prof('ExecWorker init')
-
-        threading.Thread.__init__(self)
-        self._terminate = threading.Event()
-
-        self.name              = name
-        self._log              = logger
-        self._agent            = agent
-        self._lrms             = lrms
-        self._scheduler        = scheduler
-        self._task_launcher    = task_launcher
-        self._mpi_launcher     = mpi_launcher
-        self._spawner          = spawner
-        self._execution_queue  = execution_queue
-        self._watch_queue      = watch_queue
-        self._update_queue     = update_queue
-        self._pilot_id         = pilot_id
-        self._session_id       = session_id
-
-        self._cu_environment   = self._populate_cu_environment()
-
-
-      # self.mongo_p = mongo_db["%s.p"  % session_id]
-      # self.mongo_p.update(
-      #     {"_id": self._pilot_id},
-      #     {"$set": {"slothistory" : self._scheduler.slot_history,
-      #               "slots"       : self._scheduler.slots
-      #              }
-      #     })
-
-        # run worker thread
-        self.start()
-
-    # --------------------------------------------------------------------------
-    #
-    def _populate_cu_environment(self):
-        """Derive the environment for the cu's from our own environment."""
-
-        # Get the environment of the agent
-        new_env = copy.deepcopy(os.environ)
-
-        #
-        # Mimic what virtualenv's "deactivate" would do
-        #
-        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
-        if old_path:
-            new_env['PATH'] = old_path
-
-        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
-        if old_home:
-            new_env['PYTHON_HOME'] = old_home
-
-        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
-        if old_ps:
-            new_env['PS1'] = old_ps
-
-        new_env.pop('VIRTUAL_ENV', None)
-
-        return new_env
 
 
     # --------------------------------------------------------------------------
     #
-    def stop(self):
-        self._terminate.set()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def run(self):
-
-        self._log.info("started %s.", self)
-
-        try:
-            # report initial slot status
-            # TODO: Where does this abstraction belong?
-            self._log.debug(self._scheduler.slot_status())
-
-            while not self._terminate.isSet():
-
-                try:
-                    prof('ExecWorker pull cu from queue')
-                    cu = self._execution_queue.get()
-
-                    if not cu :
-                        continue
-
-                    prof('ExecWorker got  cu from queue', uid=cu['_id'], tag='preprocess')
-
-                except Queue.Empty:
-
-                    # nothing to do, no new CU to execute...
-                    continue
-
-
-                try:
-
-                    if cu['description']['mpi']:
-                        if not self._mpi_launcher:
-                            raise Exception("Can't launch MPI tasks without MPI launcher.")
-                        launcher = self._mpi_launcher
-
-                    else:
-                        if not self._task_launcher:
-                            raise Exception("Can't launch tasks without launcher.")
-                        launcher = self._task_launcher
-
-                    self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
-
-                    assert(cu['opaque_slot']) # FIXME: no assert, but check
-                    prof('ExecWorker unit launch', uid=cu['_id'])
-
-                    # Start a new subprocess to launch the unit
-                    # TODO: This is scheduler specific
-                    proc = self._spawner.spawn(cu       = cu,
-                                               launcher = launcher,
-                                               env      = self._cu_environment)
-
-                    cu['started'] = timestamp()
-                    cu['state']   = rp.EXECUTING
-                    cu['proc']    = proc
-
-                    # register for state update and watching
-                    self._agent.update_unit_state(uid    = cu['_id'],
-                                                  state  = rp.EXECUTING,
-                                                  msg    = "unit execution start")
-
-                    cu_list = blowup (cu, WATCH) 
-                    for _cu in cu_list :
-                        prof('push', msg="toward watching", uid=_cu['_id'], tag='task_launching')
-                        self._watch_queue.put(_cu)
-
-
-                except Exception as e:
-                    # append the startup error to the units stderr.  This is
-                    # not completely correct (as this text is not produced
-                    # by the unit), but it seems the most intuitive way to
-                    # communicate that error to the application/user.
-                    cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
-                                    % (str(e), traceback.format_exc())
-                    cu['state']   = rp.FAILED
-                    cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
-
-                    # Free the Slots, Flee the Flots, Ree the Frots!
-                    if cu['opaque_slot']:
-                        self._scheduler.unschedule(cu)
-
-                    self._agent.update_unit_state(uid    = cu['_id'],
-                                                  state  = rp.FAILED,
-                                                  msg    = "unit execution failed",
-                                                  logger = self._log.exception)
-
-
-        except Exception as e:
-            self._log.exception("Error in ExecWorker loop (%s)" % e)
-            return
-
-
-# ------------------------------------------------------------------------------
-#
-class WatchWorker(threading.Thread):
-    """A WatchWorker watches spawned CUs, and pushes those units toward
-    stageout.  It also informs the scheduler about finishing units.
-    """
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, name, logger, agent, scheduler,
-                 update_queue, watch_queue,
-                 stageout_queue, command_queue,
-                 pilot_id, session_id):
-
-        prof('WatchWorker init')
-
-        threading.Thread.__init__(self)
-        self._terminate = threading.Event()
-
-        self.name              = name
-        self._log              = logger
-        self._agent            = agent
-        self._scheduler        = scheduler
-        self._watch_queue      = watch_queue
-        self._stageout_queue   = stageout_queue
-        self._update_queue     = update_queue
-        self._command_queue    = command_queue
-        self._pilot_id         = pilot_id
-        self._session_id       = session_id
-
-        self._cus_to_watch     = list()
-        self._cus_to_cancel    = list()
-
-        # run worker thread
-        self.start()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-        self._terminate.set()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def run(self):
+    def watcher(self):
 
         self._log.info("started %s.", self)
 
@@ -3689,7 +3522,181 @@ class WatchWorker(threading.Thread):
   #         self.slot_history_old = self._scheduler.slot_history[:]
 
 
-# ------------------------------------------------------------------------------
+
+
+
+      # self.mongo_p = mongo_db["%s.p"  % session_id]
+      # self.mongo_p.update(
+      #     {"_id": self._pilot_id},
+      #     {"$set": {"slothistory" : self._scheduler.slot_history,
+      #               "slots"       : self._scheduler.slots
+      #              }
+      #     })
+
+        # run worker thread
+
+
+# ==============================================================================
+#
+class ExecWorker_SHELL(ExecWorker):
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger):
+
+        ExecWorker.__init__(self, name, logger)
+
+        # get some threads going -- those will do all the work.
+        import saga.utils.pty_shell as sups
+        self.launcher_shell = sups.PTYShell ("fork://localhost/",
+                                             logger=self._log)
+        self.monitor_shell  = sups.PTYShell ("fork://localhost/",
+                                             logger=self._log)
+
+        # FIXME: choose a better, unique workdir
+        self.workdir = "/tmp/radical-pilot-spawner"
+        ret, out, _  = self.launcher_shell.run_sync \
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self.workdir))
+
+        if  ret != 0 :
+            raise RuntimeError ("failed to run launcher bootstrap: (%s)(%s)", ret, out)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _cu_to_cmd (self, cu, launcher, environment) :
+
+        # ----------------------------------------------------------------------
+        def quote_args (args) :
+
+            ret = list()
+            for arg in args :
+
+                # if string is between outer single quotes,
+                #    pass it as is.
+                # if string is between outer double quotes,
+                #    pass it as is.
+                # otherwise (if string is not quoted)
+                #    escape all double quotes
+
+                if  arg[0] == arg[-1]  == "'" :
+                    ret.append (arg)
+                elif arg[0] == arg[-1] == '"' :
+                    ret.append (arg)
+                else :
+                    arg = arg.replace ('"', '\\"')
+                    ret.append ('"%s"' % arg)
+
+            return  ret
+        # ----------------------------------------------------------------------
+
+        exe  = ""
+        arg  = ""
+        env  = ""
+        cwd  = ""
+        pre  = ""
+        post = ""
+        io   = ""
+        cmd  = ""
+
+        descr = cu['description']
+
+        if  cu['workdir'] :
+            cwd = "mkdir -p %s && cd %s && " % (cu['workdir'], cu['workdir'])
+
+        if  descr['environment'] :
+            for e in descr['environment'] :
+                env += "export %s=%s\n"  %  (e, descr['environment'][e])
+
+      # # FIXME: this is not exactly correct in this context, needs togo before
+      # #        job shell startup...
+      # for e in environment :
+      #     env += "export %s=%s\n"  %  (e, environment[e])
+
+        if  descr['executable'] : exe  = descr['executable']
+        if  descr['arguments']  : arg  = ' ' .join (quote_args (descr['arguments']))
+        if  descr['pre_exec']   : pre  = '\n'.join (quote_args (descr['pre_exec' ]))
+        if  descr['post_exec']  : post = '\n'.join (quote_args (descr['post_exec']))
+      # if  descr['stdin']      : io  += "<%s "  % descr['stdin']
+        if  descr['stdout']     : io  += "1>%s " % descr['stdout']
+        if  descr['stderr']     : io  += "2>%s " % descr['stderr']
+
+        cmd, _ = launcher.construct_command(descr['executable'], arg,
+                                            descr['cores'], None,
+                                            cu['opaque_slot'])
+
+        script  = "%s\n"            %  cwd
+        script += "%s\n"            %  env
+        script += "%s\n"            %  pre
+        script += "(%s %s %s) %s\n" % (cmd, exe, arg, io)
+        script += "%s\n"            %  post
+
+      # self._log.debug ("execution script:\n%s\n" % script)
+
+        return script
+
+
+    # --------------------------------------------------------------------------
+    #
+    def spawn(self, launcher, cu, env):
+
+        prof('ExecWorker spawn', uid=cu['_id'])
+
+        # we got an allocation: go off and launch the process.  we get
+        # a multiline command, so use the wrapper's BULK/LRUN mode.
+        cmd       = self._cu_to_cmd (cu, launcher, env)
+        run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
+
+      # if  self.lrms.target_is_macos :
+      #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
+
+        self._log.error ('------------------ test 1')
+
+        ret, out, _ = self.launcher_shell.run_sync (run_cmd)
+        self._log.error ('------------------ test 2')
+
+        if  ret != 0 :
+            self._log.error ("failed to run unit '%s': (%s)(%s)" \
+                            % (run_cmd, ret, out))
+            return FAIL
+
+        lines = filter (None, out.split ("\n"))
+
+        self._log.debug (lines)
+        self._log.error ('------------------ test 3')
+
+        if  len (lines) < 2 :
+            raise RuntimeError ("Failed to run unit (%s)", lines)
+
+        if  lines[-2] != "OK" :
+            self._log.error ("Failed to run unit (%s)" % lines)
+            return FAIL
+
+        # FIXME: verify format of returned pid (\d+)!
+        cu['pid']     = lines[-1].strip ()
+        cu['started'] = timestamp()
+
+      # self._log.debug ("started unit %s" % pid)
+
+        # before we return, we need to clean the
+        # 'BULK COMPLETED message from lrun
+        ret, out = self.launcher_shell.find_prompt ()
+        if  ret != 0 :
+            self._log.error ("failed to run unit '%s': (%s)(%s)" \
+                          % (run_cmd, ret, out))
+            return FAIL
+
+        prof('spawning passed to pty', uid=cu['_id'], tag='unit spawning')
+
+        return cu['pid']
+      # return proc # FIXME whats that?? :P
+
+
+
+
+# ==============================================================================
 #
 class UpdateWorker(threading.Thread):
     """
@@ -3815,12 +3822,11 @@ class UpdateWorker(threading.Thread):
 
             except Exception as e:
                 self._log.exception("state update failed (%s)", e)
-
                 # FIXME: should we fail the pilot at this point?
                 # FIXME: Are the strategies to recover?
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class StageinWorker(threading.Thread):
     """An StageinWorker performs the agent side staging directives.
@@ -3963,7 +3969,7 @@ class StageinWorker(threading.Thread):
                 sys.exit(1)
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class StageoutWorker(threading.Thread):
     """
@@ -4195,7 +4201,7 @@ class StageoutWorker(threading.Thread):
                 raise
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class HeartbeatMonitor(threading.Thread):
     """
@@ -4315,7 +4321,7 @@ class HeartbeatMonitor(threading.Thread):
 
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 class Agent(object):
 
@@ -4380,13 +4386,6 @@ class Agent(object):
                 logger          = self._log,
                 scheduler       = self._scheduler)
 
-        self._spawner = Spawner.create(
-                name            = SPAWNER_NAME_PTY,
-                logger          = self._log)
-        # FIXME: spawner may or may not be threaded...
-        # FIXME: we may want one spawner per exec worker, so the exec worker may
-        # want to own the spawner.
-
         for n in range(NUMBER_OF_WORKERS[STAGEIN]):
             stagein_worker = StageinWorker(
                 name            = "StageinWorker-%d" % n,
@@ -4402,15 +4401,15 @@ class Agent(object):
 
 
         for n in range(NUMBER_OF_WORKERS[EXEC]):
-            exec_worker = ExecWorker(
+            exec_worker = ExecWorker.create(
                 name            = "ExecWorker-%d" % n,
+                spawner         = SPAWNER_NAME_POPEN,
                 logger          = self._log,
                 agent           = self,
                 lrms            = self._lrms,
                 scheduler       = self._scheduler,
                 task_launcher   = self._task_launcher,
                 mpi_launcher    = self._mpi_launcher,
-                spawner         = self._spawner,
                 execution_queue = self._execution_queue,
                 watch_queue     = self._watch_queue,
                 update_queue    = self._update_queue,
