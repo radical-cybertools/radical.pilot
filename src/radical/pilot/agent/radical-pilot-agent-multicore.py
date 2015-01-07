@@ -3016,7 +3016,7 @@ class ExecWorker(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, agent, lrms, scheduler,
-                 task_launcher, mpi_launcher,
+                 task_launcher, mpi_launcher, command_queue,
                  execution_queue, update_queue, stageout_queue,
                  pilot_id, session_id):
 
@@ -3032,6 +3032,8 @@ class ExecWorker(threading.Thread):
         self._scheduler        = scheduler
         self._task_launcher    = task_launcher
         self._mpi_launcher     = mpi_launcher
+        self._command_queue    = command_queue
+        self._execution_queue  = execution_queue
         self._stageout_queue   = stageout_queue
         self._update_queue     = update_queue
         self._pilot_id         = pilot_id
@@ -3050,7 +3052,7 @@ class ExecWorker(threading.Thread):
     #
     @classmethod
     def create(cls, name, spawner, logger, agent, lrms, scheduler,
-               task_launcher, mpi_launcher,
+               task_launcher, mpi_launcher, command_queue, 
                execution_queue, update_queue, stageout_queue,
                pilot_id, session_id):
 
@@ -3065,7 +3067,7 @@ class ExecWorker(threading.Thread):
             }[spawner]
 
             return implementation(name, logger, agent, lrms, scheduler,
-                                  task_launcher, mpi_launcher,
+                                  task_launcher, mpi_launcher, command_queue, 
                                   execution_queue, update_queue, stageout_queue,
                                   pilot_id, session_id)
 
@@ -3129,7 +3131,7 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, unit, env):
+    def spawn(self, launcher, cu, env):
         raise NotImplementedError("spawn() not implemented for ExecWorker '%s'." % self.name)
 
 
@@ -3177,9 +3179,9 @@ class ExecWorker(threading.Thread):
 
                     # Start a new subprocess to launch the unit
                     # TODO: This is scheduler specific
-                    self._spawn(cu       = cu,
-                                launcher = launcher,
-                                env      = self._cu_environment)
+                    self.spawn(launcher = launcher,
+                               cu       = cu,
+                               env      = self._cu_environment)
 
 
                 except Exception as e:
@@ -3215,8 +3217,8 @@ class ExecWorker_POPEN (ExecWorker) :
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, agent, lrms, scheduler,
-                 task_launcher, mpi_launcher, spawner,
-                 execution_queue, watch_queue, update_queue,
+                 task_launcher, mpi_launcher, spawner, command_queue, 
+                 execution_queue, update_queue,
                  pilot_id, session_id):
 
         prof('ExecWorker init')
@@ -3226,16 +3228,13 @@ class ExecWorker_POPEN (ExecWorker) :
         self._watch_queue   = Queue.Queue ()
 
         ExecWorker.__init__ (self, name, logger, agent, lrms, scheduler,
-                 task_launcher, mpi_launcher, spawner,
-                 execution_queue, watch_queue, update_queue,
+                 task_launcher, mpi_launcher, spawner, command_queue, 
+                 execution_queue, update_queue,
                  pilot_id, session_id)
 
 
         # run watcher thread
-        self._watcher = threading.Thread(target =  self._watcher, 
-                                         args   = [self._watch_queue, 
-                                                   self._update_queue, 
-                                                   self._stageout_queue])
+        self._watcher = threading.Thread(target = self._watch)
         self._watcher.start ()
 
 
@@ -3365,7 +3364,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
     # --------------------------------------------------------------------------
     #
-    def watcher(self):
+    def _watch(self):
 
         self._log.info("started %s.", self)
 
@@ -3397,7 +3396,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # prof('WatchWorker pull cu from queue')
+                  # prof('ExecWorker popen watcher pull cu from queue')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -3410,7 +3409,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
                 # add all cus we found to the watchlist
                 for cu in cus :
-                    prof('WatchWorker got  cu from queue', uid=cu['_id'], tag='watching')
+                    prof('ExecWorker popen watcher got  cu from queue', uid=cu['_id'], tag='watching')
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -3422,7 +3421,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
 
         except Exception as e:
-            self._log.exception("Error in WatchWorker loop (%s)" % e)
+            self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             return
 
 
@@ -3543,9 +3542,10 @@ class ExecWorker_SHELL(ExecWorker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger):
-
-        ExecWorker.__init__(self, name, logger)
+    def __init__(self, name, logger, agent, lrms, scheduler,
+                 task_launcher, mpi_launcher, spawner, command_queue, 
+                 execution_queue, update_queue,
+                 pilot_id, session_id):
 
         # get some threads going -- those will do all the work.
         import saga.utils.pty_shell as sups
@@ -3562,6 +3562,11 @@ class ExecWorker_SHELL(ExecWorker):
 
         if  ret != 0 :
             raise RuntimeError ("failed to run launcher bootstrap: (%s)(%s)", ret, out)
+
+        ExecWorker.__init__ (self, name, logger, agent, lrms, scheduler,
+                 task_launcher, mpi_launcher, spawner, command_queue, 
+                 execution_queue, update_queue,
+                 pilot_id, session_id)
 
 
     # --------------------------------------------------------------------------
@@ -3610,10 +3615,10 @@ class ExecWorker_SHELL(ExecWorker):
             for e in descr['environment'] :
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
 
-      # # FIXME: this is not exactly correct in this context, needs togo before
-      # #        job shell startup...
-      # for e in environment :
-      #     env += "export %s=%s\n"  %  (e, environment[e])
+        # FIXME: this is not exactly correct in this context, needs togo before
+        #        job shell startup...
+        for e in environment :
+            env += "export %s=%s\n"  %  (e, environment[e])
 
         if  descr['executable'] : exe  = descr['executable']
         if  descr['arguments']  : arg  = ' ' .join (quote_args (descr['arguments']))
@@ -4352,7 +4357,6 @@ class Agent(object):
         self._schedule_queue        = multiprocessing.Queue()
         self._stagein_queue         = multiprocessing.Queue()
         self._execution_queue       = multiprocessing.Queue()
-        self._watch_queue           = multiprocessing.Queue()
         self._stageout_queue        = multiprocessing.Queue()
         self._update_queue          = multiprocessing.Queue()
         self._command_queue         = multiprocessing.Queue()
@@ -4410,29 +4414,14 @@ class Agent(object):
                 scheduler       = self._scheduler,
                 task_launcher   = self._task_launcher,
                 mpi_launcher    = self._mpi_launcher,
+                command_queue   = self._command_queue,
                 execution_queue = self._execution_queue,
-                watch_queue     = self._watch_queue,
+                stageout_queue  = self._stageout_queue,
                 update_queue    = self._update_queue,
                 pilot_id        = self._pilot_id,
                 session_id      = self._session_id
             )
             self.worker_list.append(exec_worker)
-
-
-        for n in range(NUMBER_OF_WORKERS[WATCH]):
-            watch_worker = WatchWorker(
-                name            = "WatchWorker-%d" % n,
-                logger          = self._log,
-                agent           = self,
-                scheduler       = self._scheduler,
-                watch_queue     = self._watch_queue,
-                stageout_queue  = self._stageout_queue,
-                update_queue    = self._update_queue,
-                command_queue   = self._command_queue,
-                pilot_id        = self._pilot_id,
-                session_id      = self._session_id,
-            )
-            self.worker_list.append(watch_worker)
 
 
         for n in range(NUMBER_OF_WORKERS[STAGEOUT]):
@@ -4801,7 +4790,7 @@ def main():
     # --------------------------------------------------------------------------
     #
     def sigint_handler(signum, frame):
-        msg = 'Caught SIGINT. EXITING.'
+        msg = 'Caught SIGINT. EXITING. (%s: %s)' % (signum, frame)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(2)
     signal.signal(signal.SIGINT, sigint_handler)
@@ -4810,7 +4799,8 @@ def main():
     # --------------------------------------------------------------------------
     #
     def sigalarm_handler(signum, frame):
-        msg = 'Caught SIGALRM (Walltime limit reached?). EXITING'
+        msg = 'Caught SIGALRM (Walltime limit reached?). EXITING (%s: %s)' \
+            % (signum, frame)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
         sys.exit(3)
     signal.signal(signal.SIGALRM, sigalarm_handler)

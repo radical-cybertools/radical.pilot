@@ -144,8 +144,7 @@ setup_args = {
                          ],
     'package_data'     : {'': ['*.sh', '*.json', 'VERSION', 'VERSION.git', 'SDIST', sdist_name]},
 
-    'install_requires' : ['setuptools',
-                          'saga-python',
+    'install_requires' : ['saga-python',
                           'radical.utils',
                           'pymongo>=2.5',
                           'python-hostlist'],

@@ -562,11 +562,11 @@ rp_install()
     if test "$RP_INSTALL_EASY" = 'TRUE'
     then
         run_cmd "update radical.pilot via pip/easy_install" \
-                "pip install  --upgrade $RP_INSTALL_SOURCE" \
-                "easy_install --upgrade $RP_INSTALL_SOURCE"
+                "pip install  $RP_INSTALL_SOURCE" \
+                "easy_install $RP_INSTALL_SOURCE"
     else
         run_cmd "update radical.pilot via pip" \
-                "pip install  --upgrade $RP_INSTALL_SOURCE"
+                "pip install  $RP_INSTALL_SOURCE"
     fi
     if test $? -ne 0 
     then
