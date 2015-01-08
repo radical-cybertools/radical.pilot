@@ -20,6 +20,10 @@ def pilot_state_cb (pilot, state) :
     if  state == rp.FAILED :
         sys.exit (1)
 
+    if state in [rp.DONE, rp.FAILED, rp.CANCELED] :
+        for cb in pilot.callback_history :
+            print cb
+
 
 #------------------------------------------------------------------------------
 #
@@ -32,6 +36,10 @@ def unit_state_cb (unit, state) :
     if  state == rp.FAILED :
         print "stderr: %s" % unit.stderr
         sys.exit (1)
+
+    if state in [rp.DONE, rp.FAILED, rp.CANCELED] :
+        for cb in unit.callback_history :
+            print cb
 
 
 #------------------------------------------------------------------------------
