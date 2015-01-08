@@ -773,7 +773,7 @@ class Scheduler(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        while not self._terminate.isSet():
+        while not self._terminate.is_set():
 
             try:
 
@@ -3039,8 +3039,6 @@ class ExecWorker(threading.Thread):
         self._pilot_id         = pilot_id
         self._session_id       = session_id
 
-        self._cu_environment   = self._populate_cu_environment()
-
         self.configure ()
 
         self.start ()
@@ -3103,35 +3101,7 @@ class ExecWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _populate_cu_environment(self):
-        """Derive the environment for the cu's from our own environment."""
-
-        # Get the environment of the agent
-        new_env = copy.deepcopy(os.environ)
-
-        #
-        # Mimic what virtualenv's "deactivate" would do
-        #
-        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
-        if old_path:
-            new_env['PATH'] = old_path
-
-        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
-        if old_home:
-            new_env['PYTHON_HOME'] = old_home
-
-        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
-        if old_ps:
-            new_env['PS1'] = old_ps
-
-        new_env.pop('VIRTUAL_ENV', None)
-
-        return new_env
-
-
-    # --------------------------------------------------------------------------
-    #
-    def spawn(self, launcher, cu, env):
+    def spawn(self, launcher, cu):
         raise NotImplementedError("spawn() not implemented for ExecWorker '%s'." % self.name)
 
 
@@ -3146,7 +3116,7 @@ class ExecWorker(threading.Thread):
             # TODO: Where does this abstraction belong?  Scheduler!
             self._log.debug(self._scheduler.slot_status())
 
-            while not self._terminate.isSet():
+            while not self._terminate.is_set():
 
                 prof('ExecWorker pull cu from queue')
                 cu = self._execution_queue.get()
@@ -3179,9 +3149,7 @@ class ExecWorker(threading.Thread):
 
                     # Start a new subprocess to launch the unit
                     # TODO: This is scheduler specific
-                    self.spawn(launcher = launcher,
-                               cu       = cu,
-                               env      = self._cu_environment)
+                    self.spawn(launcher = launcher, cu = cu)
 
 
                 except Exception as e:
@@ -3223,9 +3191,11 @@ class ExecWorker_POPEN (ExecWorker) :
 
         prof('ExecWorker init')
 
-        self._cus_to_watch  = list()
-        self._cus_to_cancel = list()
-        self._watch_queue   = Queue.Queue ()
+        self._cus_to_watch   = list()
+        self._cus_to_cancel  = list()
+        self._watch_queue    = Queue.Queue ()
+        self._cu_environment = self._populate_cu_environment()
+
 
         ExecWorker.__init__ (self, name, logger, agent, lrms, scheduler,
                  task_launcher, mpi_launcher, spawner, command_queue, 
@@ -3249,7 +3219,35 @@ class ExecWorker_POPEN (ExecWorker) :
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, cu, env):
+    def _populate_cu_environment(self):
+        """Derive the environment for the cu's from our own environment."""
+
+        # Get the environment of the agent
+        new_env = copy.deepcopy(os.environ)
+
+        #
+        # Mimic what virtualenv's "deactivate" would do
+        #
+        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        if old_path:
+            new_env['PATH'] = old_path
+
+        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        if old_home:
+            new_env['PYTHON_HOME'] = old_home
+
+        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        if old_ps:
+            new_env['PS1'] = old_ps
+
+        new_env.pop('VIRTUAL_ENV', None)
+
+        return new_env
+
+
+    # --------------------------------------------------------------------------
+    #
+    def spawn(self, launcher, cu):
 
         prof('ExecWorker spawn', uid=cu['_id'])
 
@@ -3338,7 +3336,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                 close_fds          = True,
                                 shell              = True,
                                 cwd                = cu['workdir'],
-                                env                = env,
+                                env                = self._cu_environment,
                                 universal_newlines = False,
                                 startupinfo        = None,
                                 creationflags      = 0)
@@ -3360,8 +3358,6 @@ class ExecWorker_POPEN (ExecWorker) :
             self._watch_queue.put(_cu)
 
 
-
-
     # --------------------------------------------------------------------------
     #
     def _watch(self):
@@ -3370,7 +3366,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
         try:
 
-            while not self._terminate.isSet():
+            while not self._terminate.is_set():
 
                 cus = list()
 
@@ -3547,31 +3543,57 @@ class ExecWorker_SHELL(ExecWorker):
                  execution_queue, update_queue,
                  pilot_id, session_id):
 
-        # get some threads going -- those will do all the work.
-        import saga.utils.pty_shell as sups
-        self.launcher_shell = sups.PTYShell ("fork://localhost/",
-                                             logger=self._log)
-        self.monitor_shell  = sups.PTYShell ("fork://localhost/",
-                                             logger=self._log)
-
-        # FIXME: choose a better, unique workdir
-        self.workdir = "/tmp/radical-pilot-spawner"
-        ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
-
-        if  ret != 0 :
-            raise RuntimeError ("failed to run launcher bootstrap: (%s)(%s)", ret, out)
-
         ExecWorker.__init__ (self, name, logger, agent, lrms, scheduler,
                  task_launcher, mpi_launcher, spawner, command_queue, 
                  execution_queue, update_queue,
                  pilot_id, session_id)
 
+        # Mimic what virtualenv's "deactivate" would do
+        self._deactivate = "# deactivate pilot virtualenv\n"
+
+        old_path = os.environ.get('_OLD_VIRTUAL_PATH',       None)
+        old_home = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
+        old_ps1  = os.environ.get('_OLD_VIRTUAL_PS1',        None)
+
+        if old_path: self._deactivate += 'export PATH="%s"\n'        % old_path 
+        if old_home: self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home 
+        if old_ps1:  self._deactivate += 'export PS1="%s"\n'         % old_ps1
+
+        self._deactivate += 'unset VIRTUAL_ENV\n\n'
+
+        self._registry      = dict()
+        self._registry_lock = threading.RLock()
+
+
+        # get some threads going -- those will do all the work.
+        import saga.utils.pty_shell as sups
+        self.launcher_shell = sups.PTYShell ("fork://localhost/")
+        self.monitor_shell  = sups.PTYShell ("fork://localhost/")
+
+        # FIXME: choose a better, unique workdir
+        self.workdir = "/tmp/radical-pilot-spawner"
+
+
+        ret, out, _  = self.launcher_shell.run_sync \
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self.workdir))
+        if  ret != 0 :
+            raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
+
+        ret, out, _  = self.monitor_shell.run_sync \
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self.workdir))
+        if  ret != 0 :
+            raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
+
+        # run watcher thread
+        self._watcher = threading.Thread(target = self._watch)
+        self._watcher.start ()
+
 
     # --------------------------------------------------------------------------
     #
-    def _cu_to_cmd (self, cu, launcher, environment) :
+    def _cu_to_cmd (self, cu, launcher) :
 
         # ----------------------------------------------------------------------
         def quote_args (args) :
@@ -3597,9 +3619,8 @@ class ExecWorker_SHELL(ExecWorker):
             return  ret
         # ----------------------------------------------------------------------
 
-        exe  = ""
-        arg  = ""
-        env  = ""
+        args = ""
+        env  = self._deactivate
         cwd  = ""
         pre  = ""
         post = ""
@@ -3609,34 +3630,49 @@ class ExecWorker_SHELL(ExecWorker):
         descr = cu['description']
 
         if  cu['workdir'] :
-            cwd = "mkdir -p %s && cd %s && " % (cu['workdir'], cu['workdir'])
+            cwd += "# CU workdir\n"
+            cwd += "mkdir -p %s\n" % cu['workdir']
+            cwd += "cd       %s\n" % cu['workdir']
+            cwd += "\n"
 
         if  descr['environment'] :
+            env += "# CU environment\n"
             for e in descr['environment'] :
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
+            env += "\n"
 
-        # FIXME: this is not exactly correct in this context, needs togo before
-        #        job shell startup...
-        for e in environment :
-            env += "export %s=%s\n"  %  (e, environment[e])
+        if  descr['pre_exec'] : 
+            pre += "# CU pre-exec\n"
+            pre += '\n'.join (quote_args (descr['pre_exec' ]))
+            pre += "\n\n"
 
-        if  descr['executable'] : exe  = descr['executable']
-        if  descr['arguments']  : arg  = ' ' .join (quote_args (descr['arguments']))
-        if  descr['pre_exec']   : pre  = '\n'.join (quote_args (descr['pre_exec' ]))
-        if  descr['post_exec']  : post = '\n'.join (quote_args (descr['post_exec']))
-      # if  descr['stdin']      : io  += "<%s "  % descr['stdin']
-        if  descr['stdout']     : io  += "1>%s " % descr['stdout']
-        if  descr['stderr']     : io  += "2>%s " % descr['stderr']
+        if  descr['post_exec'] : 
+            post += "# CU post-exec\n"
+            post += '\n'.join (quote_args (descr['post_exec' ]))
+            post += "\n\n"
 
-        cmd, _ = launcher.construct_command(descr['executable'], arg,
-                                            descr['cores'], None,
-                                            cu['opaque_slot'])
+        if  descr['arguments']  : 
+            args  = ' ' .join (quote_args (descr['arguments']))
 
-        script  = "%s\n"            %  cwd
-        script += "%s\n"            %  env
-        script += "%s\n"            %  pre
-        script += "(%s %s %s) %s\n" % (cmd, exe, arg, io)
-        script += "%s\n"            %  post
+        cmd, _  = launcher.construct_command(descr['executable'], args,
+                                             descr['cores'], None,
+                                             cu['opaque_slot'])
+
+      # if  descr['stdin']  : io  += "<%s "  % descr['stdin']
+      # else                : io  += "<%s "  % '/dev/null'
+        if  descr['stdout'] : io  += "1>%s " % descr['stdout']
+        else                : io  += "1>%s " %       'STDOUT'
+        if  descr['stderr'] : io  += "2>%s " % descr['stderr']
+        else                : io  += "2>%s " %       'STDERR'
+
+        script  = "# ------------------------------------------------------\n"
+        script += "%s"        %  cwd
+        script += "%s"        %  env
+        script += "%s"        %  pre
+        script += "# CU execution\n"
+        script += "%s %s\n\n" % (cmd, io)
+        script += "%s"        %  post
+        script += "# ------------------------------------------------------\n\n"
 
       # self._log.debug ("execution script:\n%s\n" % script)
 
@@ -3645,14 +3681,17 @@ class ExecWorker_SHELL(ExecWorker):
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, cu, env):
+    def spawn(self, launcher, cu):
 
-        prof('ExecWorker spawn', uid=cu['_id'])
+        uid = cu['_id']
+
+        prof('ExecWorker spawn', uid=uid)
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
-        cmd       = self._cu_to_cmd (cu, launcher, env)
+        cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
+
 
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
@@ -3680,10 +3719,9 @@ class ExecWorker_SHELL(ExecWorker):
             return FAIL
 
         # FIXME: verify format of returned pid (\d+)!
-        cu['pid']     = lines[-1].strip ()
+        pid           = lines[-1].strip ()
+        cu['pid']     = pid
         cu['started'] = timestamp()
-
-      # self._log.debug ("started unit %s" % pid)
 
         # before we return, we need to clean the
         # 'BULK COMPLETED message from lrun
@@ -3691,12 +3729,110 @@ class ExecWorker_SHELL(ExecWorker):
         if  ret != 0 :
             self._log.error ("failed to run unit '%s': (%s)(%s)" \
                           % (run_cmd, ret, out))
+            with self._registry_lock :
+                del(self._registry[uid])
             return FAIL
 
-        prof('spawning passed to pty', uid=cu['_id'], tag='unit spawning')
+        prof('spawning passed to pty', uid=uid, tag='unit spawning')
 
-        return cu['pid']
-      # return proc # FIXME whats that?? :P
+        # FIXME: this is too late, there is already a race with the monitoring
+        # thread for this CU execution.  We need to communicate the PIDs/CUs via
+        # a queue again!
+        with self._registry_lock :
+            self._registry[pid] = cu
+
+        self._agent.update_unit_state(uid    = cu['_id'],
+                                      state  = rp.EXECUTING,
+                                      msg    = "unit execution started")
+        # FIXME: add profiling
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _watch (self) :
+
+        MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
+
+        try:
+
+            self.monitor_shell.run_async ("MONITOR")
+
+            while not self._terminate.is_set () :
+
+                _, out = self.monitor_shell.find (['\n'], timeout=MONITOR_READ_TIMEOUT)
+
+                line = out.strip ()
+
+                if  not line :
+                    # just a read timeout, i.e. an opportiunity to check for
+                    if  self._terminate.is_set() :
+                        self._log.debug ("stop monitoring")
+                        return
+
+                    if not self.monitor_shell.alive () :
+                        self._log.warn ("monitoring channel died")
+                        return
+
+                    # all is well...
+                    continue
+
+
+                elif line == 'EXIT' or line == "Killed" :
+                    self._log.error ("monitoring channel failed (%s)" % line)
+                    self._terminate.set()
+                    return
+
+                elif not ':' in line :
+                    self._log.warn ("monitoring channel noise: %s" % line)
+
+                else :
+                    pid, state, data = line.split (':', 2)
+
+                    with self._registry_lock :
+
+                        if not pid in self._registry :
+                            self._log.error ("monitoring event for invalid pid: %s" % line)
+                            continue
+
+                        cu = self._registry[pid]
+                        del (self._registry[pid])
+                    # release lock
+
+                    rp_state = {'DONE'     : rp.DONE, 
+                                'FAILED'   : rp.FAILED, 
+                                'CANCELED' : rp.CANCELED}.get (state, rp.UNKNOWN)
+
+                    # record timestamp, exit code
+                    cu['finished']  = timestamp()
+
+                    if data : cu['exit_code'] = int(data)
+                    else    : cu['exit_code'] = None
+
+                    if rp_state in [rp.FAILED, rp.CANCELED] :
+                        # final state - no further state transition needed
+                        self._agent.update_unit_state(uid    = cu['_id'],
+                                                      state  = rp_state, 
+                                                      msg    = "unit execution finished")
+
+                    elif rp_state in [rp.DONE] :
+                        # advance the unit state
+                        self._agent.update_unit_state(uid    = cu['_id'],
+                                                      state  = rp.STAGING_OUTPUT,
+                                                      msg    = "unit execution completed")
+                        cu_list = blowup (cu, STAGEOUT) 
+                        for _cu in cu_list :
+                            prof('push', msg="toward stageout", uid=_cu['_id'], tag='watching')
+                            self._stageout_queue.put(_cu)
+
+                    else :
+                        self._log.debug ("ignore shell level state transition (%s)", line)
+
+
+        except Exception as e:
+
+            self._log.error ("Exception in job monitoring thread: %s" % e)
+            self._terminate.set()
+
 
 
 
@@ -3744,7 +3880,7 @@ class UpdateWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        while not self._terminate.isSet():
+        while not self._terminate.is_set():
 
             # ------------------------------------------------------------------
             def timed_bulk_execute(cinfo):
@@ -3869,7 +4005,7 @@ class StageinWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        while not self._terminate.isSet():
+        while not self._terminate.is_set():
 
             try:
 
@@ -4022,7 +4158,7 @@ class StageoutWorker(threading.Thread):
 
         staging_area = os.path.join(self._workdir, 'staging_area'),
 
-        while not self._terminate.isSet():
+        while not self._terminate.is_set():
 
             cu = None
             try:
@@ -4247,7 +4383,7 @@ class HeartbeatMonitor(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        while not self._terminate.isSet():
+        while not self._terminate.is_set():
 
             try:
                 prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
@@ -4407,7 +4543,7 @@ class Agent(object):
         for n in range(NUMBER_OF_WORKERS[EXEC]):
             exec_worker = ExecWorker.create(
                 name            = "ExecWorker-%d" % n,
-                spawner         = SPAWNER_NAME_POPEN,
+                spawner         = SPAWNER_NAME_SHELL,
                 logger          = self._log,
                 agent           = self,
                 lrms            = self._lrms,
@@ -4577,7 +4713,7 @@ class Agent(object):
 
         prof('Agent start loop')
 
-        while not self._terminate.isSet():
+        while not self._terminate.is_set():
 
             try:
 

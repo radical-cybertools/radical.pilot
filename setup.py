@@ -72,7 +72,8 @@ def get_version (mod_root):
         print 'creating %s/VERSION' % path
 
         sdist_name = "radical.pilot-%s.tar.gz" % version
-        if 'sdist' not in sys.argv :
+        if '--record'  in sys.argv or 'bdist_egg' in sys.argv :   
+           # pip install stage 2      easy_install stage 1
             os.system ("python setup.py sdist")
             os.system ("cp 'dist/%s' 'src/radical/pilot/%s'" % (sdist_name, sdist_name))
 
