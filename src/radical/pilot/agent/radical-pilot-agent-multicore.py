@@ -4181,6 +4181,7 @@ class StageoutWorker(threading.Thread):
 
                         cu['stdout'] += tail(txt)
 
+
                 if os.path.isfile(cu['stderr_file']):
                     with open(cu['stderr_file'], 'r') as stderr_f:
                         try:
@@ -4188,9 +4189,7 @@ class StageoutWorker(threading.Thread):
                         except UnicodeDecodeError:
                             txt = "unit stderr contains binary data -- use file staging directives"
 
-                        if len(txt) > MAX_IO_LOGLENGTH:
-                            txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                        cu['stderr'] += txt
+                        cu['stderr'] += tail(txt)
 
 
                 for directive in cu['Agent_Output_Directives']:
