@@ -120,6 +120,22 @@ MAX_IO_LOGLENGTH            = 64*1024 # max number of unit out/err chars to push
 def timestamp () :
     return datetime.datetime.utcnow()
 
+# ------------------------------------------------------------------------------
+#
+def tail(txt, maxlen=MAX_IO_LOGLENGTH):
+
+    # shorten the given string to the last <n> characters, and prepend
+    # a notification.  This is used to keep logging information in mongodb
+    # manageable(the size of mongodb documents is limited).
+
+    if not txt:
+        return txt
+
+    if len(txt) > maxlen:
+        return "[... CONTENT SHORTENED ...]\n%s" % txt[-maxlen:]
+    else:
+        return txt
+
 
 #---------------------------------------------------------------------------
 #
@@ -165,9 +181,9 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": FAILED, "timestamp": ts}},
          "$set"    : {"state"       : FAILED,
-                      "stdout"      : out,
-                      "stderr"      : err,
-                      "logfile"     : log,
+                      "stdout"      : tail(out),
+                      "stderr"      : tail(err),
+                      "logfile"     : tail(log),
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -198,9 +214,9 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": CANCELED, "timestamp": ts}},
          "$set"    : {"state"       : CANCELED,
-                      "stdout"      : out,
-                      "stderr"      : err,
-                      "logfile"     : log,
+                      "stdout"      : tail(out),
+                      "stderr"      : tail(err),
+                      "logfile"     : tail(log),
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -230,9 +246,9 @@ def pilot_DONE(mongo_p, pilot_uid):
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state": DONE, "timestamp": ts}},
          "$set"    : {"state"       : DONE,
-                      "stdout"      : out,
-                      "stderr"      : err,
-                      "logfile"     : log,
+                      "stdout"      : tail(out),
+                      "stderr"      : tail(err),
+                      "logfile"     : tail(log),
                       "capability"  : 0,
                       "finished"    : ts}
         })
@@ -1513,9 +1529,7 @@ class ExecWorker(multiprocessing.Process):
                     except UnicodeDecodeError :
                         txt = "unit stdout contains binary data -- use file staging directives"
 
-                    if  len(txt) > MAX_IO_LOGLENGTH :
-                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stdout += txt
+                    task.stdout += tail(txt)
 
             if  os.path.isfile(task.stderr_file):
                 with open(task.stderr_file, 'r') as stderr_f:
@@ -1524,9 +1538,7 @@ class ExecWorker(multiprocessing.Process):
                     except UnicodeDecodeError :
                         txt = "unit stderr contains binary data -- use file staging directives"
 
-                    if  len(txt) > MAX_IO_LOGLENGTH :
-                        txt = "[... CONTENT SHORTENED ...]\n%s" % txt[-MAX_IO_LOGLENGTH:]
-                    task.stderr += txt
+                    task.stderr += tail(txt)
 
             task.exit_code = ret_code
 
