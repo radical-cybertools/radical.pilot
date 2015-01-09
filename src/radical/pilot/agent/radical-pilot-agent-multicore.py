@@ -397,7 +397,7 @@ def prof(etype, uid="", msg="", tag="", logger=None):
     if not logged:
         profile_handle.write("  %12s : %-20s : %12.4f : %-17s : %-24s : %-40s : %s\n" \
                              % (' ' , ' ', now, tid, uid, etype, msg))
-
+  
     # FIXME: disable flush on production runs
     profile_handle.flush()
 
@@ -3766,6 +3766,7 @@ class ExecWorker_SHELL(ExecWorker):
                 _, out = self.monitor_shell.find (['\n'], timeout=MONITOR_READ_TIMEOUT)
 
                 line = out.strip ()
+                self._log.debug ('monitor line: %s' % line)
 
                 if  not line :
 
@@ -3781,58 +3782,78 @@ class ExecWorker_SHELL(ExecWorker):
                         return
 
                     # ... and to handle cached events.
-                    for pid, state, data in self._cached_events[:] :  # shallow copy
-                        if self._handle_event (pid, state, data) :
-                            self._cached_events.remove ([pid, state, data])
+                    if self._cached_events :
+
+                        self._log.info ("monitoring channel checks cache (%d)", len(self._cached_events))
+
+                        cache_copy          = self._cached_events[:]
+                        self._cached_events = list()
+                        events_to_handle    = list()
+
+                        with self._registry_lock :
+
+                            for pid, state, data in cache_copy :
+                                cu = self._registry.get (pid, None)
+
+                                if cu : events_to_handle.append ([cu, pid, state, data])
+                                else  : self._cached_events.append ([pid, state, data])
+
+                        # FIXME: measure if using many locks in the loop below
+                        # is really better than doing all ops in the locked loop
+                        # above
+                        for cu, pid, state, data in events_to_handle :
+                            self._handle_event (cu, pid, state, data)
 
                     # all is well...
+                    self._log.info ("monitoring channel finish idle loop")
                     continue
 
 
                 elif line == 'EXIT' or line == "Killed" :
-                    self._log.error ("monitoring channel failed (%s)" % line)
+                    self._log.error ("monitoring channel failed (%s)", line)
                     self._terminate.set()
                     return
 
                 elif not ':' in line :
-                    self._log.warn ("monitoring channel noise: %s" % line)
+                    self._log.warn ("monitoring channel noise: %s", line)
 
                 else :
                     pid, state, data = line.split (':', 2)
 
-                    if not self._handle_event (pid, state, data) :
-                        self._log.warn ("monitoring event for invalid pid: %s" % line)
-                        self._cached_events.append ([pid, state, data])
+                    self._log.info ("monitoring channel event: %s", line)
+                    cu = None
+
+                    with self._registry_lock :
+                        cu = self._registry.get (pid, None)
+                        
+                    if cu : self._handle_event (cu, pid, state, data)
+                    else  : self._cached_events.append ([pid, state, data])
 
 
         except Exception as e:
 
-            self._log.error ("Exception in job monitoring thread: %s" % e)
+            self._log.error ("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_event (self, pid, state, data) :
+    def _handle_event (self, cu, pid, state, data) :
 
-        # FIXME: too many lock operations, as handle_event is very fine
-        # granular.  This probably should be 'handle_events' or something...
-
-        with self._registry_lock :
-
-            if not pid in self._registry :
-                self._cached_events.append ([pid, state, data])
-                return False
-
-            cu = self._registry[pid]
-            del (self._registry[pid])
-        # release lock
+        # got an explicit event to handle
+        self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['_id'], pid, state, data)
 
         rp_state = {'DONE'     : rp.DONE, 
                     'FAILED'   : rp.FAILED, 
                     'CANCELED' : rp.CANCELED}.get (state, rp.UNKNOWN)
 
-        # record timestamp, exit code
+        if rp_state not in [rp.DONE, rp.FAILED, rp.CANCELED] :
+            # non-final state
+            self._log.debug ("ignore shell level state transition (%s:%s:%s)", 
+                             pid, state, data)
+            return
+
+        # record timestamp, exit code on final states
         cu['finished'] = timestamp()
 
         if data : cu['exit_code'] = int(data)
@@ -3857,11 +3878,10 @@ class ExecWorker_SHELL(ExecWorker):
                 prof('push', msg="toward stageout", uid=_cu['_id'], tag='watching')
                 self._stageout_queue.put(_cu)
 
-        else :
-            self._log.debug ("ignore shell level state transition (%s:%s:%s)", 
-                             pid, state, data)
-
-        return True
+        # we don't need the cu in the registry anymore
+        with self._registry_lock :
+            if pid in self._registry :  # why wouldn't it be in there though?
+                del(self._registry[pid])
 
 
 # ==============================================================================
