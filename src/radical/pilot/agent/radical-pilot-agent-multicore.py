@@ -2990,7 +2990,13 @@ class ForkLRMS(LRMS):
         self._log.info("Using fork on localhost.")
 
         detected_cpus = multiprocessing.cpu_count()
-        selected_cpus = min(detected_cpus, self.requested_cores)
+
+        if profile_agent :
+            # when we profile the agent, we fake any number of CUs...
+            selected_cpus = self.requested_cores
+        else :
+            selected_cpus = max(detected_cpus, self.requested_cores)
+
 
         self._log.info("Detected %d cores on localhost, using %d.", detected_cpus, selected_cpus)
 
@@ -3696,10 +3702,7 @@ class ExecWorker_SHELL(ExecWorker):
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
-        self._log.error ('------------------ test 1')
-
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
-        self._log.error ('------------------ test 2')
 
         if  ret != 0 :
             self._log.error ("failed to run unit '%s': (%s)(%s)" \
@@ -3709,14 +3712,12 @@ class ExecWorker_SHELL(ExecWorker):
         lines = filter (None, out.split ("\n"))
 
         self._log.debug (lines)
-        self._log.error ('------------------ test 3')
 
         if  len (lines) < 2 :
             raise RuntimeError ("Failed to run unit (%s)", lines)
 
         if  lines[-2] != "OK" :
-            self._log.error ("Failed to run unit (%s)" % lines)
-            return FAIL
+            raise RuntimeError ("Failed to run unit (%s)" % lines)
 
         # FIXME: verify format of returned pid (\d+)!
         pid           = lines[-1].strip ()
@@ -3727,11 +3728,10 @@ class ExecWorker_SHELL(ExecWorker):
         # 'BULK COMPLETED message from lrun
         ret, out = self.launcher_shell.find_prompt ()
         if  ret != 0 :
-            self._log.error ("failed to run unit '%s': (%s)(%s)" \
-                          % (run_cmd, ret, out))
             with self._registry_lock :
                 del(self._registry[uid])
-            return FAIL
+            raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
+                             % (run_cmd, ret, out))
 
         prof('spawning passed to pty', uid=uid, tag='unit spawning')
 
@@ -3810,12 +3810,14 @@ class ExecWorker_SHELL(ExecWorker):
 
                     if rp_state in [rp.FAILED, rp.CANCELED] :
                         # final state - no further state transition needed
+                        self._scheduler.unschedule(cu)
                         self._agent.update_unit_state(uid    = cu['_id'],
                                                       state  = rp_state, 
                                                       msg    = "unit execution finished")
 
                     elif rp_state in [rp.DONE] :
                         # advance the unit state
+                        self._scheduler.unschedule(cu)
                         self._agent.update_unit_state(uid    = cu['_id'],
                                                       state  = rp.STAGING_OUTPUT,
                                                       msg    = "unit execution completed")
