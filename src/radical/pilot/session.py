@@ -203,7 +203,7 @@ class Session (saga.Session, Object):
                 self._dbs, self._created, self._connection_info = \
                         dbSession.new(sid=self._uid,
                                       db_url=self._database_url,
-                                      db_name=database_name)
+                                      db_name=self._database_name)
 
                 logger.info("New Session created%s." % str(self))
 
@@ -222,7 +222,7 @@ class Session (saga.Session, Object):
                 self._dbs, session_info, self._connection_info = \
                         dbSession.reconnect(sid=self._uid, 
                                             db_url=self._database_url,
-                                            db_name=database_name)
+                                            db_name=self._database_name)
 
                 self._created          = session_info["created"]
                 self._last_reconnect   = session_info["last_reconnect"]
