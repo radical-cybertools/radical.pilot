@@ -17,8 +17,8 @@ from radical.pilot.states import *
 from radical.pilot.utils.logger import logger
 from radical.pilot.staging_directives import CREATE_PARENTS
 
-# BULK_LIMIT defines the max. number of transfer requests to pull from DB.
-BULK_LIMIT=1
+BULK_LIMIT = 1    # max. number of transfer requests to pull from DB.
+IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
 
 # ----------------------------------------------------------------------------
 #
@@ -94,17 +94,16 @@ class OutputFileTransferWorker(threading.Thread):
                             "$push": {"statehistory": {"state": STAGING_OUTPUT, "timestamp": ts}}},
                     limit=BULK_LIMIT
                 )
+                # FIXME: AM: find_and_modify is not bulkable!
                 state = STAGING_OUTPUT
 
                 #logger.info("OFTW after finding pending cus")
                 if compute_unit is None:
                     #logger.info("OFTW no cus, sleep")
                     # Sleep a bit if no new units are available.
-                    time.sleep(0.1)
+                    time.sleep(IDLE_TIME)
                 else:
                     logger.info("OFTW cu found, progressing ...")
-                    # AM: The code below seems wrong when BULK_LIMIT != 1 -- the
-                    # compute_unit will be a list then I assume.
                     try:
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) wit SAGA.
@@ -266,4 +265,4 @@ class OutputFileTransferWorker(threading.Thread):
             logger.exception("output file transfer thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
-            
+

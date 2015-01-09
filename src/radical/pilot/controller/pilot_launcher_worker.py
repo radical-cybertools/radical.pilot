@@ -23,7 +23,7 @@ from radical.pilot.context       import Context
 from radical.pilot.logentry      import Logentry
 
 
-IDLE_TIMER           = 0.1 # seconds to sleep if notthing to do
+IDLE_TIMER           =  1  # seconds to sleep if notthing to do
 JOB_CHECK_INTERVAL   = 60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
                            # declaring it dead
@@ -442,7 +442,7 @@ class PilotLauncherWorker(threading.Thread):
                         # A pilot_agent_version which does not adhere to the
                         # above syntax is ignored, and the fallback stage@local
                         # is used.
-                        
+
                         if not '@' in agent_version :
                             logger.warn ("invalid pilot_agent_version '%s', using default '%s'" \
                                       % (agent_version, DEFAULT_AGENT_VERSION))

@@ -17,8 +17,8 @@ from radical.pilot.states import *
 from radical.pilot.utils.logger import logger
 from radical.pilot.staging_directives import CREATE_PARENTS
 
-# BULK_LIMIT defines the max. number of transfer requests to pull from DB.
-BULK_LIMIT=1
+BULK_LIMIT = 1    # max. number of transfer requests to pull from DB.
+IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
 
 # ----------------------------------------------------------------------------
 #
@@ -102,14 +102,14 @@ class InputFileTransferWorker(threading.Thread):
                                 "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}},
                         limit=BULK_LIMIT # TODO: bulklimit is probably not the best way to ensure there is just one
                     )
+                    # FIXME: AM: find_and_modify is not bulkable!
                     state = STAGING_INPUT
 
                     if compute_unit is None:
                         # Sleep a bit if no new units are available.
-                        time.sleep(0.1) # TODO: Probably need better sleep logic as we also have the logic on the end now
+                        time.sleep(IDLE_TIME) 
+
                     else:
-                        # AM: The code below seems wrong when BULK_LIMIT != 1 -- the
-                        # compute_unit will be a list then I assume.
                         try:
                             log_messages = []
 
@@ -293,6 +293,6 @@ class InputFileTransferWorker(threading.Thread):
             logger.debug("input file transfer thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
-            
+
 
 

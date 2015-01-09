@@ -507,7 +507,7 @@ class Session():
                        document = {"$set" : set_dict, 
                                    "$push": push_dict}, 
                        multi    = True)
-        
+
 
     #--------------------------------------------------------------------------
     #

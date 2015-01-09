@@ -27,6 +27,9 @@ from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
 
 from radical.pilot.db.database import COMMAND_CANCEL_PILOT
 
+IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
+
+
 # ----------------------------------------------------------------------------
 #
 class PilotManagerController(threading.Thread):
@@ -295,6 +298,7 @@ class PilotManagerController(threading.Thread):
                 # some point, i.e., state pulling should be conditional
                 # or triggered by a tailable MongoDB cursor, etc.
                 pilot_list = self._db.get_pilots(pilot_manager_id=self._pm_id)
+                action = False
 
                 for pilot in pilot_list:
                     pilot_id = str(pilot["_id"])
@@ -327,15 +331,19 @@ class PilotManagerController(threading.Thread):
                             # do not tr igger a state cb!
                             no_cb = True
 
-                    if (new_state != old_state) and not no_cb :
-                        # On a state change, we fire zee callbacks.
-                        logger.info("ComputePilot '%s' state changed from '%s' to '%s'." % (pilot_id, old_state, new_state))
+                    if new_state != old_state :
+                        action = True
 
-                        # The state of the pilot has changed, We call all
-                        # pilot-level callbacks to propagate this.  This also
-                        # includes communication to the unit scheduler which
-                        # may, or may not, cancel the pilot's units.
-                        self.call_callbacks(pilot_id, new_state)
+                        if not no_cb :
+                            # On a state change, we fire zee callbacks.
+                            logger.info("ComputePilot '%s' state changed from '%s' to '%s'." \
+                                            % (pilot_id, old_state, new_state))
+
+                            # The state of the pilot has changed, We call all
+                            # pilot-level callbacks to propagate this.  This also
+                            # includes communication to the unit scheduler which
+                            # may, or may not, cancel the pilot's units.
+                            self.call_callbacks(pilot_id, new_state)
 
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
                     # set the state of the compute unit accordingly (but only
@@ -360,8 +368,8 @@ class PilotManagerController(threading.Thread):
                     self._initialized.set()
 
                 # sleep a little if this cycle was idle
-                if  not len(pilot_list) :
-                    time.sleep(1)
+                if  not action :
+                    time.sleep(IDLE_TIME)
 
         except SystemExit as e :
             logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
@@ -375,7 +383,7 @@ class PilotManagerController(threading.Thread):
                 worker.stop ()
                 logger.debug("pworker %s stopped launcher %s" % (self.name, worker.name))
 
-            
+
 
     # ------------------------------------------------------------------------
     #
@@ -510,7 +518,7 @@ class PilotManagerController(threading.Thread):
 
                 elif old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE] :
                     if pilot_id in self._shared_worker_data['job_ids'] :
-                        
+
                         try :
                             job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
                             self._shared_data[pilot_id]["data"]["state"] = CANCELING

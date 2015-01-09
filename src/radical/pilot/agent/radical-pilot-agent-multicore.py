@@ -342,8 +342,7 @@ def prof(etype, uid="", msg="", tag="", logger=None):
     # a non-None value), the time since the last tag change is added.  This can
     # be used to derive, for example, the duration which a uid spent in
     # a certain state.  Time intervals between the same tags (but different
-    # uids) are recorded, too, and a frequency is derived (tagged events
-    # / second) (TODO)
+    # uids) are recorded, too.
     #
     # TODO: should this move to utils?  Or at least RP utils, so that we can
     # also use it for the application side?
@@ -388,10 +387,10 @@ def prof(etype, uid="", msg="", tag="", logger=None):
                 profile_freqs[tag]['diffs'].append(diff)
                 profile_freqs[tag]['last' ] = now
 
-                freq = sum(profile_freqs[tag]['diffs']) / len(profile_freqs[tag]['diffs'])
-
-                profile_handle.write("> %12s : %-20.4f : %12s : %-17s : %-24s : %-40s : %s\n" \
-                                     % ('frequency', freq, '', '', '', '', ''))
+              # freq = sum(profile_freqs[tag]['diffs']) / len(profile_freqs[tag]['diffs'])
+              #
+              # profile_handle.write("> %12s : %-20.4f : %12s : %-17s : %-24s : %-40s : %s\n" \
+              #                      % ('frequency', freq, '', '', '', '', ''))
 
 
 
@@ -3567,9 +3566,14 @@ class ExecWorker_SHELL(ExecWorker):
 
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
+        # the registry keeps track of units to watch, indexed by their shell
+        # spawner process ID.  As the registry is shared between the spawner and
+        # watcher thread, we use a lock while accessing it.
         self._registry      = dict()
         self._registry_lock = threading.RLock()
 
+        self._cached_events = list() # keep monitoring events for pid's which
+                                     # are not yet known
 
         # get some threads going -- those will do all the work.
         import saga.utils.pty_shell as sups
@@ -3764,14 +3768,22 @@ class ExecWorker_SHELL(ExecWorker):
                 line = out.strip ()
 
                 if  not line :
+
                     # just a read timeout, i.e. an opportiunity to check for
+                    # termination signals...
                     if  self._terminate.is_set() :
                         self._log.debug ("stop monitoring")
                         return
 
+                    # ... and for health issues ...
                     if not self.monitor_shell.alive () :
                         self._log.warn ("monitoring channel died")
                         return
+
+                    # ... and to handle cached events.
+                    for pid, state, data in self._cached_events[:] :  # shallow copy
+                        if self._handle_event (pid, state, data) :
+                            self._cached_events.remove ([pid, state, data])
 
                     # all is well...
                     continue
@@ -3788,46 +3800,9 @@ class ExecWorker_SHELL(ExecWorker):
                 else :
                     pid, state, data = line.split (':', 2)
 
-                    with self._registry_lock :
-
-                        if not pid in self._registry :
-                            self._log.error ("monitoring event for invalid pid: %s" % line)
-                            continue
-
-                        cu = self._registry[pid]
-                        del (self._registry[pid])
-                    # release lock
-
-                    rp_state = {'DONE'     : rp.DONE, 
-                                'FAILED'   : rp.FAILED, 
-                                'CANCELED' : rp.CANCELED}.get (state, rp.UNKNOWN)
-
-                    # record timestamp, exit code
-                    cu['finished']  = timestamp()
-
-                    if data : cu['exit_code'] = int(data)
-                    else    : cu['exit_code'] = None
-
-                    if rp_state in [rp.FAILED, rp.CANCELED] :
-                        # final state - no further state transition needed
-                        self._scheduler.unschedule(cu)
-                        self._agent.update_unit_state(uid    = cu['_id'],
-                                                      state  = rp_state, 
-                                                      msg    = "unit execution finished")
-
-                    elif rp_state in [rp.DONE] :
-                        # advance the unit state
-                        self._scheduler.unschedule(cu)
-                        self._agent.update_unit_state(uid    = cu['_id'],
-                                                      state  = rp.STAGING_OUTPUT,
-                                                      msg    = "unit execution completed")
-                        cu_list = blowup (cu, STAGEOUT) 
-                        for _cu in cu_list :
-                            prof('push', msg="toward stageout", uid=_cu['_id'], tag='watching')
-                            self._stageout_queue.put(_cu)
-
-                    else :
-                        self._log.debug ("ignore shell level state transition (%s)", line)
+                    if not self._handle_event (pid, state, data) :
+                        self._log.warn ("monitoring event for invalid pid: %s" % line)
+                        self._cached_events.append ([pid, state, data])
 
 
         except Exception as e:
@@ -3836,7 +3811,57 @@ class ExecWorker_SHELL(ExecWorker):
             self._terminate.set()
 
 
+    # --------------------------------------------------------------------------
+    #
+    def _handle_event (self, pid, state, data) :
 
+        # FIXME: too many lock operations, as handle_event is very fine
+        # granular.  This probably should be 'handle_events' or something...
+
+        with self._registry_lock :
+
+            if not pid in self._registry :
+                self._cached_events.append ([pid, state, data])
+                return False
+
+            cu = self._registry[pid]
+            del (self._registry[pid])
+        # release lock
+
+        rp_state = {'DONE'     : rp.DONE, 
+                    'FAILED'   : rp.FAILED, 
+                    'CANCELED' : rp.CANCELED}.get (state, rp.UNKNOWN)
+
+        # record timestamp, exit code
+        cu['finished'] = timestamp()
+
+        if data : cu['exit_code'] = int(data)
+        else    : cu['exit_code'] = None
+
+        if rp_state in [rp.FAILED, rp.CANCELED] :
+            # final state - no further state transition needed
+            self._scheduler.unschedule(cu)
+            self._agent.update_unit_state(uid   = cu['_id'],
+                                          state = rp_state, 
+                                          msg   = "unit execution finished")
+
+        elif rp_state in [rp.DONE] :
+            # advance the unit state
+            self._scheduler.unschedule(cu)
+            self._agent.update_unit_state(uid   = cu['_id'],
+                                          state = rp.STAGING_OUTPUT,
+                                          msg   = "unit execution completed")
+
+            cu_list = blowup (cu, STAGEOUT) 
+            for _cu in cu_list :
+                prof('push', msg="toward stageout", uid=_cu['_id'], tag='watching')
+                self._stageout_queue.put(_cu)
+
+        else :
+            self._log.debug ("ignore shell level state transition (%s:%s:%s)", 
+                             pid, state, data)
+
+        return True
 
 
 # ==============================================================================

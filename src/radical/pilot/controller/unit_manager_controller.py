@@ -26,6 +26,8 @@ from radical.pilot.controller.output_file_transfer_worker import OutputFileTrans
 
 from radical.pilot.staging_directives import TRANSFER, LINK, COPY, MOVE
 
+IDLE_TIME = 1.0  # seconds to sleep between activities
+
 # ----------------------------------------------------------------------------
 #
 class UnitManagerController(threading.Thread):
@@ -173,7 +175,7 @@ class UnitManagerController(threading.Thread):
         self._callback_histories[unit_id].append (
                 {'timestamp' : datetime.datetime.utcnow(), 
                  'state'     : new_state})
-    
+
         for [cb, cb_data] in self._shared_data[unit_id]['callbacks']:
             try:
 
@@ -271,6 +273,7 @@ class UnitManagerController(threading.Thread):
                 # some point, i.e., state pulling should be conditional
                 # or triggered by a tailable MongoDB cursor, etc.
                 unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
+                action    = False
 
                 for unit in unit_list:
                     unit_id = str(unit["_id"])
@@ -300,13 +303,15 @@ class UnitManagerController(threading.Thread):
                         # unit-level callbacks to propagate this.
                         self.call_unit_state_callbacks(unit_id, new_state)
 
+                        action = True
+
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
                     self._initialized.set()
 
                 # sleep a little if this cycle was idle
-                if  not len(unit_list) :
-                    time.sleep(0.1)
+                if  not action :
+                    time.sleep(IDLE_TIME)
 
 
         except SystemExit as e :
@@ -326,7 +331,7 @@ class UnitManagerController(threading.Thread):
                 logger.debug("uworker %s stops   otransfer %s" % (self.name, worker.name))
                 worker.stop ()
                 logger.debug("uworker %s stopped otransfer %s" % (self.name, worker.name))
-            
+
 
     # ------------------------------------------------------------------------
     #
