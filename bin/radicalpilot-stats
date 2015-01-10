@@ -272,10 +272,10 @@ def get_stats (docs, events, slothist) :
     n_units               = 0
     n_pilots              = 0
     unit_state_durations  = dict()
-    pilot_utilization     = dict()
+    pilot_stats           = dict()
     units                 = dict()
 
-    pilot_utilization['pilots'] = dict()
+    pilot_stats['pilots'] = dict()
 
     for cu in docs['unit'] :
         units[str(cu['_id'])] = cu
@@ -284,12 +284,12 @@ def get_stats (docs, events, slothist) :
 
         n_pilots   += 1
         pid         = str(doc['_id'])
-        pilot_util  = dict()
+        pilot_info  = dict()
 
-        pilot_util['resource']     = doc['description']['resource']
-        pilot_util['n_units']      = 0
-        pilot_util['unit_states']  = dict()
-        pilot_util['pilot_states'] = list()
+        pilot_info['resource']     = doc['description']['resource']
+        pilot_info['n_units']      = 0
+        pilot_info['unit_states']  = dict()
+        pilot_info['pilot_states'] = list()
 
         # we assume that states are time-ordered
         state = doc['statehistory'][0]['state']
@@ -297,7 +297,7 @@ def get_stats (docs, events, slothist) :
         for t in doc['statehistory'][1:] :
             ts = t['timestamp']
             s  = t['state']
-            pilot_util['pilot_states'].append ({'state'    : state, 
+            pilot_info['pilot_states'].append ({'state'    : state, 
                                                 'duration' : ru.time_diff(start, ts)})
             state = s
             start = ts
@@ -305,7 +305,7 @@ def get_stats (docs, events, slothist) :
         for cu in doc['unit_ids'] :
             uid                    = str(cu)
             n_units               += 1
-            pilot_util['n_units'] += 1
+            pilot_info['n_units'] += 1
 
             if  not uid in units :
                 print 'unknonwn unit %s' % uid
@@ -319,30 +319,40 @@ def get_stats (docs, events, slothist) :
                 ts = t['timestamp']
                 s  = t['state']
 
-                if not state in pilot_util['unit_states'] :
-                    pilot_util['unit_states'][state]        = dict()
-                    pilot_util['unit_states'][state]['dur'] = list()
+                if not state in pilot_info['unit_states'] :
+                    pilot_info['unit_states'][state]        = dict()
+                    pilot_info['unit_states'][state]['dur'] = list()
 
-                pilot_util['unit_states'][state]['dur'].append (ru.time_diff(start, ts))
+                pilot_info['unit_states'][state]['dur'].append (ru.time_diff(start, ts))
                 state = s
                 start = ts
 
-        for s in pilot_util['unit_states'] :
+        pilot_runtime = (doc['finished'] - doc['started']) * len (slothist[pid]['slots'])
+        pilot_busy = 0.0
+        for slot in slothist[pid]['slot_infos'] :
+            for slot_used in slothist[pid]['slot_infos'][slot] :
+                pilot_busy += slot_used[1] - slot_used[0]
+
+        pilot_info['started']     = doc['started']
+        pilot_info['finished']    = doc['finished']
+        pilot_info['cpu_burned']  = pilot_runtime
+        pilot_info['cpu_used']    = pilot_busy
+        pilot_info['utilization'] = pilot_busy * 100 / pilot_runtime
+
+        for s in pilot_info['unit_states'] :
             import numpy
-            array = numpy.array (pilot_util['unit_states'][s]['dur'])
-            pilot_util['unit_states'][s]['num' ] = len        (array)
-            pilot_util['unit_states'][s]['mean'] = numpy.mean (array)
-            pilot_util['unit_states'][s]['std' ] = numpy.std  (array)
-            pilot_util['unit_states'][s]['dur' ] = list()
+            array = numpy.array (pilot_info['unit_states'][s]['dur'])
+            pilot_info['unit_states'][s]['num' ] = len        (array)
+            pilot_info['unit_states'][s]['mean'] = numpy.mean (array)
+            pilot_info['unit_states'][s]['std' ] = numpy.std  (array)
+            pilot_info['unit_states'][s]['dur' ] = list()
 
 
-        pilot_utilization['pilots'][pid] = pilot_util
+        pilot_stats['pilots'][pid] = pilot_info
 
-    pilot_utilization['n_pilots'] = n_pilots
+    pilot_stats['n_pilots'] = n_pilots
 
-    return pilot_utilization
-
-
+    return pilot_stats
 
     
 # ------------------------------------------------------------------------------
@@ -357,6 +367,7 @@ def stat_session (db, session, cache) :
     print "Session Statistics"
     print "------------------"
     print ""
+    print "  session: %s" % session_name
     print "  pilots : %s" % stats['n_pilots']
 
     for pid in stats['pilots'] :
@@ -364,11 +375,12 @@ def stat_session (db, session, cache) :
         pilot = stats['pilots'][pid]
 
         print "  pilot [%s] [%s]" % (pid, pilot['resource'])
+        print "      utilization : %.1f %%" % pilot['utilization']
         print "      pilot states:"
         for ps in pilot['pilot_states'] :
             print "        state %-18s : %10.1fs" % (ps['state'], ps['duration'])
-        print "      units : %d" % pilot['n_units']
-        print "      unit states:"
+        print "      units       : %d" % pilot['n_units']
+        print "      unit states :"
         for us  in pilot['unit_states'] :
             data = pilot['unit_states'][us]
             print "        state %-18s : %10.1fs  +/- %8.1fs" % (us, data['mean'], data['std'])
@@ -384,6 +396,9 @@ def plot_session (db, session, cache, term) :
     docs      = rpu.get_session_docs     (db, session, cache)
     events    = rpu.get_session_events   (db, session, cache)
     slothists = rpu.get_session_slothist (db, session, cache)
+
+    session_name = docs['session']['name']
+
 
     if  not events :
         print "no events found for session %s" % session
@@ -516,48 +531,30 @@ def plot_session (db, session, cache, term) :
 
         with open ("/tmp/rp.%s.pilot.slots.%s.dat" % (session, pid), "w") as dat :
 
-            if  not 'slothistory' in pilot :
-                slots.append (0)
+            slothist = slothists[pid]
+            slotnum  = len(slothist['slots'])
+            maxslots = max(slotnum,maxslots)
 
+            slots.append (slotnum)
 
-            else :
+            slot_idx = 0
+            for slot in slothist['slots'] :
 
-                slotidxs = list()
-                slotstr  = pilot['slothistory'][0]['slotstate']
-                slotnum  = slotstr.count ('-') + slotstr.count ('+')
+                slot_idx += 1
+                used = False
 
-                nodesize = max (nodesize, pilot['cores_per_node'])
-                maxslots = max (maxslots, slotnum)
-                slots.append (slotnum)
+                for entry in slothist['slot_infos'][slot] :
 
-                for idx in range (0, len(slotstr)) :
-                    if  slotstr[idx] in ['-', '+'] :
-                        slotidxs.append (idx)
+                    busy_start = ru.time_diff (start, entry[0])
+                    busy_stop  = ru.time_diff (start, entry[1])
 
-                for number,slotidx in enumerate(slotidxs) :
-
-                    used = False
-                    for entry in pilot['slothistory'][1:] :
-
-                        seconds   = ru.time_diff (start, entry['timestamp'])
-                        maxtime   = max (maxtime, seconds)
-                        slotstate = entry['slotstate'][slotidx]
-
-                        if  slotstate == '-' : 
-                            if  used :
-                                dat.write ("%10.2f  %6d\n" % (seconds, number+1))
-                                dat.write ("\n")
-                                used = False
-
-                        elif  slotstate == '+' : 
-                            dat.write ("%10.2f  %6d\n" % (seconds, number+1))
-                            used = True
-
-                        else :
-                            print "oops?  invalid slotstate '%s'" % slotstate
-
+                    dat.write ("%10.2f  %6d\n" % (busy_start, slot_idx))
+                    dat.write ("%10.2f  %6d\n" % (busy_stop,  slot_idx))
                     dat.write ("\n")
-                delete_me.append (dat.name)
+
+                dat.write ("\n")
+
+            delete_me.append (dat.name)
 
     pilotnum = len(pids)
 
@@ -595,6 +592,9 @@ def plot_session (db, session, cache, term) :
         slotsscale = maxslots+(nodesize/2)
         queuescale = maxqueue+(nodesize/2)
 
+    slotsscale = int(max(slotsscale, maxslots*1.1))
+    queuescale = int(max(queuescale, maxqueue*1.1))
+
     terms = " ".join (term.split (','))
 
                                          
@@ -615,7 +615,7 @@ def plot_session (db, session, cache, term) :
     cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n============="
     if plotname :
         cmd +=    "\\n[%s]" % plotname
-    cmd +=        "\\nPilot and Unit Event Traces\"'  "
+    cmd +=        "\\nPilot and Unit Event Traces\\nSession %s\"' " % session_name
     cmd +=        " -e  pilot_num=%d "       % len(pids)
     cmd +=        " -e  'pilot_name_list=\""
     for idx,pid in enumerate(pids) :

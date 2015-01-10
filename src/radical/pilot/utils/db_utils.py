@@ -5,6 +5,7 @@ import datetime
 import pymongo
 
 import radical.utils as ru
+from   radical.pilot.states import *
 
 
 _CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid ()
@@ -130,28 +131,57 @@ def get_session_slothist (db, sid, cache=None) :
 
     docs = get_session_docs (db, sid, cache)
 
-    ret = list()
+    ret = dict()
 
     for pilot_doc in docs['pilot'] :
 
-        # slot configuration was only recently (v0.18) added to the RP agent...
-        print pilot_doc.keys()
-        if  not 'slothistory' in pilot_doc :
-            return None
+        pilot_id   = pilot_doc['_id'] 
+        slot_names = list()
+        slot_infos = dict()
 
-        pid      = str(pilot_doc['_id'])
-        slots    =     pilot_doc['slots']
-        slothist =     pilot_doc['slothistory']
+        nodes   = pilot_doc['nodes']
+        n_cores = pilot_doc['cores_per_node']
 
-        slotinfo = list()
-        for hostinfo in slots :
-            hostname = hostinfo['node'] 
-            slotnum  = len (hostinfo['cores'])
-            slotinfo.append ([hostname, slotnum])
+        for node in nodes :
+            for core in range(n_cores):
+                slot_name = "%s:%s" % (node, core)
+                slot_names.append (slot_name)
+                slot_infos[slot_name] = list()
 
-        ret.append ({'pilot_id' : pid, 
-                     'slotinfo' : slotinfo, 
-                     'slothist' : slothist})
+        for unit_doc in docs['unit'] :
+            if unit_doc['pilot'] == pilot_doc['_id'] :
+
+                started  = None
+                finished = None
+                for event in sorted (unit_doc['statehistory'], 
+                                     key=lambda x: x['timestamp']) :
+                    if started :
+                        finished = event['timestamp']
+                        break
+                    if event['state'] == EXECUTING :
+                        started = event['timestamp']
+
+                if not started or not finished :
+                    print "no start/finish for cu %s - ignored" % unit_doc['_id']
+                    continue
+
+                for slot_id in unit_doc['slots'] :
+                    if slot_id not in slot_infos :
+                        print "slot %s for pilot %s unknown - ignored" % (slot_id, pilot_id)
+                        continue
+                    
+                    slot_infos[slot_id].append ([started, finished])
+
+        for slot_id in slot_infos :
+            slot_infos[slot_id].sort(key=lambda x: float(x[0]))
+
+        slot_names.sort (key=lambda x: slot_infos[x][0][0])
+
+        ret[pilot_id] = dict()
+        ret[pilot_id]['started']    = pilot_doc['started']
+        ret[pilot_id]['finished']   = pilot_doc['finished']
+        ret[pilot_id]['slots']      = slot_names
+        ret[pilot_id]['slot_infos'] = slot_infos
 
     return ret
 

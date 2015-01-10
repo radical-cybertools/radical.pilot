@@ -3209,7 +3209,8 @@ class ExecWorker_POPEN (ExecWorker) :
 
 
         # run watcher thread
-        self._watcher = threading.Thread(target = self._watch)
+        self._watcher = threading.Thread(target = self._watch, 
+                                         name   = "%s-watcher" % self.name)
         self._watcher.start ()
 
 
@@ -3581,7 +3582,7 @@ class ExecWorker_SHELL(ExecWorker):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # FIXME: choose a better, unique workdir
-        self.workdir = "/tmp/radical-pilot-spawner"
+        self.workdir = "/tmp/radical-pilot-spawner-%s-%s" % (session_id, self.name)
 
 
         ret, out, _  = self.launcher_shell.run_sync \
@@ -3597,7 +3598,8 @@ class ExecWorker_SHELL(ExecWorker):
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
         # run watcher thread
-        self._watcher = threading.Thread(target = self._watch)
+        self._watcher = threading.Thread(target = self._watch, 
+                                         name   = "%s-watcher" % self.name)
         self._watcher.start ()
 
 
@@ -3756,6 +3758,7 @@ class ExecWorker_SHELL(ExecWorker):
     def _watch (self) :
 
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
+        static_cnt           = 0
 
         try:
 
@@ -3782,9 +3785,21 @@ class ExecWorker_SHELL(ExecWorker):
                         return
 
                     # ... and to handle cached events.
-                    if self._cached_events :
+                    if not self._cached_events :
+                        static_cnt += 1
 
+                    else :
                         self._log.info ("monitoring channel checks cache (%d)", len(self._cached_events))
+                        static_cnt += 1
+
+                        if static_cnt == 10 :
+                            # 10 times cache to check, dump it for debugging
+                            print "cache state"
+                            import pprint
+                            pprint.pprint (self._cached_events)
+                            pprint.pprint (self._registry)
+                            static_cnt = 0
+
 
                         cache_copy          = self._cached_events[:]
                         self._cached_events = list()
@@ -3819,6 +3834,11 @@ class ExecWorker_SHELL(ExecWorker):
 
                 else :
                     pid, state, data = line.split (':', 2)
+
+                    # we are not interested in non-final state information, at
+                    # the moment
+                    if state in ['RUNNING'] :
+                        continue
 
                     self._log.info ("monitoring channel event: %s", line)
                     cu = None
@@ -4892,22 +4912,6 @@ class Agent(object):
                 # anymore.
                 cu = None
 
-
-        # Unfortunately, 'find_and_modify' is not bulkable, so we have to use
-        # 'find' above.  To avoid finding the same units over and over again, we
-        # have to update the state *before* running the next find -- so we
-        # do it right here...  No idea how to avoid that roundtrip...
-        if cu_uids:
-            self._cu.update(
-                    multi    = True,
-                    spec     = {"_id"   : {"$in"    : cu_uids}},
-                    document = {"$set"  : {"state"  : rp.ALLOCATING},
-                                "$push" : {"statehistory":
-                                    {
-                                        "state"     : rp.ALLOCATING,
-                                        "timestamp" : timestamp()
-                                    }
-                               }})
 
         # indicate that we did some work (if we did...)
         return len(cu_uids)

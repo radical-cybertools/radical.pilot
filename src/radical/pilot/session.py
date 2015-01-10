@@ -79,7 +79,7 @@ class Session (saga.Session, Object):
     **Example**::
 
         s1 = radical.pilot.Session(database_url=DBURL)
-        s2 = radical.pilot.Session(database_url=DBURL, session_uid=s1.uid)
+        s2 = radical.pilot.Session(database_url=DBURL, uid=s1.uid)
 
         # s1 and s2 are pointing to the same session
         assert s1.uid == s2.uid
@@ -87,11 +87,12 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
-    def __init__ (self, database_url=None, database_name="radicalpilot", session_uid=None):
+    def __init__ (self, database_url=None, database_name="radicalpilot",
+                  uid=None, name=None):
         """Creates a new or reconnects to an exising session.
 
-        If called without a session_uid, a new Session instance is created and 
-        stored in the database. If session_uid is set, an existing session is 
+        If called without a uid, a new Session instance is created and 
+        stored in the database. If uid is set, an existing session is 
         retrieved from the database. 
 
         **Arguments:**
@@ -102,8 +103,10 @@ class Session (saga.Session, Object):
             * **database_name** (`string`): An alternative database name 
               (default: 'radicalpilot').
 
-            * **session_uid** (`string`): If session_uid is set, we try 
+            * **uid** (`string`): If uid is set, we try 
               re-connect to an existing session instead of creating a new one.
+
+            * **name** (`string`): An optional human readable name.
 
         **Returns:**
             * A new Session instance.
@@ -199,18 +202,25 @@ class Session (saga.Session, Object):
         default_aliases = "%s/configs/aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
+        if name :
+            self._name = name
+        else :
+            self._name = ru.generate_id ('session.')
+          # self._name = ru.generate_id ('session.', mode=ru.ID_USERCOUNT)
+
         ##########################
         ## CREATE A NEW SESSION ##
         ##########################
-        if session_uid is None:
+        if uid is None:
             try:
                 self._uid = ru.generate_id ('session.', mode=ru.ID_UNIQUE)
                 self._last_reconnect = None
 
                 self._dbs, self._created, self._connection_info = \
-                        dbSession.new(sid=self._uid,
-                                      db_url=self._database_url,
-                                      db_name=database_name)
+                        dbSession.new(sid     = self._uid,
+                                      name    = self._name,
+                                      db_url  = self._database_url,
+                                      db_name = database_name)
 
                 logger.info("New Session created%s." % str(self))
 
@@ -223,7 +233,7 @@ class Session (saga.Session, Object):
         ######################################
         else:
             try:
-                self._uid = session_uid
+                self._uid = uid
 
                 # otherwise, we reconnect to an existing session
                 self._dbs, session_info, self._connection_info = \
@@ -318,6 +328,12 @@ class Session (saga.Session, Object):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def name(self):
+        return self._name
 
     #---------------------------------------------------------------------------
     #
