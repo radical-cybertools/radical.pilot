@@ -738,8 +738,9 @@ class Scheduler(threading.Thread):
         for cu in self._wait_queue[:]:
 
             if self._try_allocation(cu):
-                # yep, that worked - remove it from the qit queue
+                # yep, that worked - remove it from the wait queue
                 self._wait_queue.remove(cu)
+                prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
 
     # --------------------------------------------------------------------------
@@ -795,12 +796,15 @@ class Scheduler(threading.Thread):
 
                 else:
 
+
                     # we got a new unit.  Either we can place it straight away and
                     # move it to execution, or we have to put it on the wait queue
                     cu = request
+                    prof('schedule', msg="unit received", uid=cu['_id'])
                     if not self._try_allocation(cu):
                         # No resources available, put in wait queue
                         self._wait_queue.append(cu)
+                        prof('queue', msg="allocation failed", uid=cu['_id'])
 
 
             except Exception as e:
@@ -3209,8 +3213,9 @@ class ExecWorker_POPEN (ExecWorker) :
 
 
         # run watcher thread
+        watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
         self._watcher = threading.Thread(target = self._watch, 
-                                         name   = "%s-watcher" % self.name)
+                                         name   = watcher_name)
         self._watcher.start ()
 
 
@@ -4843,8 +4848,25 @@ class Agent(object):
         cu_list = blowup (cu_list, INGEST)
         cu_uids = [_cu['_id'] for _cu in cu_list]
 
-        ##################################################################
 
+        # Unfortunately, 'find_and_modify' is not bulkable, so we have to use
+        # 'find' above.  To avoid finding the same units over and over again, we
+        # have to update the state *before* running the next find -- so we
+        # do it right here...  No idea how to avoid that roundtrip...
+        if cu_uids:
+            self._cu.update(
+                    multi    = True,
+                    spec     = {"_id"   : {"$in"    : cu_uids}},
+                    document = {"$set"  : {"state"  : rp.ALLOCATING},
+                                "$push" : {"statehistory":
+                                    {
+                                        "state"     : rp.ALLOCATING,
+                                        "timestamp" : timestamp()
+                                    }
+                               }})
+
+        # now we really own the CUs, and can start working on them (ie. push
+        # them into the pipeline)
         for cu in cu_list:
 
             try:

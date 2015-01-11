@@ -287,6 +287,7 @@ def get_stats (docs, events, slothist) :
         pilot_info  = dict()
 
         pilot_info['resource']     = doc['description']['resource']
+        pilot_info['cores']        = doc['description']['cores']
         pilot_info['n_units']      = 0
         pilot_info['unit_states']  = dict()
         pilot_info['pilot_states'] = list()
@@ -364,6 +365,8 @@ def stat_session (db, session, cache) :
 
     stats     = get_stats (docs, events, slothists)
 
+    session_name = docs['session']['name']
+
     print "Session Statistics"
     print "------------------"
     print ""
@@ -374,7 +377,8 @@ def stat_session (db, session, cache) :
 
         pilot = stats['pilots'][pid]
 
-        print "  pilot [%s] [%s]" % (pid, pilot['resource'])
+        print "  pilot [%s] [%s]"           % (pid, pilot['resource'])
+        print "      cores       : %d"      % pilot['cores']
         print "      utilization : %.1f %%" % pilot['utilization']
         print "      pilot states:"
         for ps in pilot['pilot_states'] :
@@ -611,7 +615,8 @@ def plot_session (db, session, cache, term) :
     cmd +=        "\"'"
     cmd +=        " -e  nodesize=%d "       % nodesize
     cmd +=        " -e 'session=\"%s\"' "   % session
-    cmd +=        " -e  'terms=\"%s\"' "    % terms
+    cmd +=        " -e 'sname=\"%s\"' "     % session_name
+    cmd +=        " -e 'terms=\"%s\"' "     % terms
     cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n============="
     if plotname :
         cmd +=    "\\n[%s]" % plotname
@@ -627,7 +632,7 @@ def plot_session (db, session, cache, term) :
     cmd +=        "\"'"
     cmd +=        "     %s "                        % plotfile
 
-    print cmd
+  # print cmd
     print "\nplotting..."
     os.system (cmd) 
 

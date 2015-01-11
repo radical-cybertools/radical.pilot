@@ -202,12 +202,6 @@ class Session (saga.Session, Object):
         default_aliases = "%s/configs/aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
-        if name :
-            self._name = name
-        else :
-            self._name = ru.generate_id ('session.')
-          # self._name = ru.generate_id ('session.', mode=ru.ID_USERCOUNT)
-
         ##########################
         ## CREATE A NEW SESSION ##
         ##########################
@@ -215,6 +209,14 @@ class Session (saga.Session, Object):
             try:
                 self._uid = ru.generate_id ('session.', mode=ru.ID_UNIQUE)
                 self._last_reconnect = None
+
+                if name :
+                    self._name = name
+                else :
+                    self._name = self._uid
+                  # self._name = ru.generate_id ('session.')
+                  # self._name = ru.generate_id ('session.', mode=ru.ID_USERCOUNT)
+
 
                 self._dbs, self._created, self._connection_info = \
                         dbSession.new(sid     = self._uid,

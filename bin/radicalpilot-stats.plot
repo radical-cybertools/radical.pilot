@@ -168,8 +168,8 @@ do for [term_i=1:words(terms)] {
         linewidth  term_lw
       
     # --------------------------------------------------------------------------------------------------
-    set output './'.session.'.'.term 
-    print      './'.session.'.'.term
+    set output './'.sname.'.'.term 
+    print      './'.sname.'.'.term
 
     set title  ''
 
