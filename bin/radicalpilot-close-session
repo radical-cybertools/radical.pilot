@@ -39,8 +39,7 @@ def usage (msg=None, noexit=False) :
         help     : show this message
         list     : list   matching sessions
         purge    : remove matching sessions
-        export   : export matching sessions, then purge them.
-                   Exported sessions are stored in .json files in PWD.
+        export   : export matching sessions to .json files
 
       options :
         -a <age> : apply mode to all sessions older than <age>
@@ -135,7 +134,6 @@ def purge_sessions (dbclient, dbname, age, session) :
         print 'purged session %s' % sid
 
 
-
 # ------------------------------------------------------------------------------
 #
 def export_sessions (dbclient, dbname, age, session) :
@@ -163,12 +161,6 @@ def export_sessions (dbclient, dbname, age, session) :
         with open ('%s.um.json' % sid, 'w') as f : 
             f.write (pprint.pformat ({'unit_managers' : docs['umgr']}))
 
-        print 'purge  session %s' % sid
-        database.drop_collection ("%s"    % sid)
-        database.drop_collection ("%s.p"  % sid)
-        database.drop_collection ("%s.pm" % sid)
-        database.drop_collection ("%s.cu" % sid)
-        database.drop_collection ("%s.um" % sid)
 
 # ------------------------------------------------------------------------------
 # 
