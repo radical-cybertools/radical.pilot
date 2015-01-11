@@ -270,13 +270,26 @@ def get_stats (docs, events, slothist) :
     n_units               = 0
     n_pilots              = 0
     unit_state_durations  = dict()
-    pilot_utilization     = dict()
+    session_stats         = dict()
     units                 = dict()
 
-    pilot_utilization['pilots'] = dict()
+    session_stats['session'] = dict()
+    session_stats['pilots']  = dict()
+
+    execution_start = None
+    execution_stop  = None
 
     for cu in docs['unit'] :
         units[str(cu['_id'])] = cu
+
+        if execution_start : execution_start = min(execution_start, cu['started'])
+        else               : execution_start = cu['started']
+
+        if execution_stop  : execution_stop  = max(execution_stop , cu['finished'])
+        else               : execution_stop  = cu['finished']
+
+    session_stats['session']['execution_time'] = execution_stop - execution_start
+
 
     for doc in docs['pilot'] :
 
@@ -334,11 +347,9 @@ def get_stats (docs, events, slothist) :
             pilot_util['unit_states'][s]['dur' ] = list()
 
 
-        pilot_utilization['pilots'][pid] = pilot_util
+        session_stats['pilots'][pid] = pilot_util
 
-    pilot_utilization['n_pilots'] = n_pilots
-
-    return pilot_utilization
+    return session_stats
 
 
 
@@ -355,7 +366,8 @@ def stat_session (db, session, cachedir) :
     print "Session Statistics"
     print "------------------"
     print ""
-    print "  pilots : %s" % stats['n_pilots']
+    print "  ex-time: %s s" % stats['session']['execution_time']
+    print "  pilots : %s"   % len(stats['pilots'])
 
     for pid in stats['pilots'] :
 
