@@ -439,19 +439,27 @@ def blowup(cus, component):
 
     for cu in cus :
 
+        uid = cu['_id']
+
         if drop :
-            if '.clone_' in cu['_id'] :
-                prof ('drop', uid=cu['_id'])
+            if '.clone_' in uid :
+                prof ('drop', uid=uid)
                 continue
         
         factor -= 1
         if factor :
             for idx in range(factor) :
-                cu_clone        = copy.deepcopy (dict(cu))
-                cu_clone['_id'] = '%s.clone_%05d' % (str(cu['_id']), idx+1)
-                idx            += 1
+
+                cu_clone = copy.deepcopy (dict(cu))
+                clone_id = '%s.clone_%05d' % (str(cu['_id']), idx+1)
+
+                for key in cu_clone :
+                    if isinstance (cu_clone[key], basestring) :
+                        cu_clone[key] = cu_clone[key].replace (uid, clone_id)
+
+                idx += 1
                 ret.append (cu_clone)
-                prof('delayed unit ingest (%s)' % component, uid=cu_clone['_id'])
+                prof('cloned unit ingest (%s)' % component, uid=clone_id)
 
         # append the original unit last, to  increase the likelyhood that
         # application state only advances once all clone states have also
@@ -716,6 +724,7 @@ class Scheduler(threading.Thread):
                 # got an allocation, go off and launch the process
                 # FIXME: state update toward EXECUTING (or is that done in
                 # launcher?)
+                prof('schedule', msg="allocated", uid=cu['_id'])
                 cu_list = blowup (cu, EXEC) 
                 for _cu in cu_list :
                     prof('push', msg="towards execution", uid=_cu['_id'])
@@ -821,9 +830,7 @@ class SchedulerContinuous(Scheduler):
     def __init__(self, name, logger, lrms, scheduler_queue,
                  execution_queue, update_queue):
 
-        self.slots            = None
-        self.slot_history     = None
-        self.slot_history_old = None
+        self.slots = None
 
         Scheduler.__init__(self, name, logger, lrms, scheduler_queue,
                 execution_queue, update_queue)
@@ -855,11 +862,6 @@ class SchedulerContinuous(Scheduler):
                 # non-exclusive host reservations?
                 'cores': [FREE for _ in range(0, self._lrms.cores_per_node)]
             })
-
-        # keep a slot allocation history (short status), start with presumably
-        # empty state now
-        self.slot_history     = [self.slot_status(short=True)]
-        self.slot_history_old = None
 
 
     # --------------------------------------------------------------------------
@@ -1102,15 +1104,6 @@ class SchedulerContinuous(Scheduler):
             # Change the state of the slot
             slot_entry['cores'][int(slot_core)] = new_state
 
-        # something changed - write history!
-        # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
-        # ensue.  We thus limit the slot history size to 4MB, to keep sufficient
-        # space for the actual operational data
-        if len(str(self.slot_history)) < 4 * 1024 * 1024:
-            self.slot_history.append(self.slot_status (short=True))
-        else:
-            # just replace the last entry with the current one.
-            self.slot_history[-1] = self.slot_status(short=True)
 
 
 # ==============================================================================
@@ -1141,8 +1134,6 @@ class SchedulerTorus(Scheduler):
                  execution_queue, update_queue):
 
         self.slots            = None
-        self.slot_history     = None
-        self.slot_history_old = None
         self._cores_per_node  = None
 
         Scheduler.__init__(self, name, logger, lrms, scheduler_queue,
@@ -1156,11 +1147,6 @@ class SchedulerTorus(Scheduler):
             raise Exception("LRMS %s didn't _configure cores_per_node." % self._lrms.name)
 
         self._cores_per_node = self._lrms.cores_per_node
-
-        # keep a slot allocation history (short status), start with presumably
-        # empty state now
-        self.slot_history     = [self.slot_status(short=True)]
-        self.slot_history_old = None
 
         # TODO: get rid of field below
         self.slots = 'bogus'
@@ -1301,16 +1287,6 @@ class SchedulerTorus(Scheduler):
     #
     def _release_slot(self, (corner, shape)):
         self._free_cores(self._lrms.torus_block, corner, shape)
-
-        # something changed - write history!
-        # AM: mongodb entries MUST NOT grow larger than 16MB, or chaos will
-        # ensue.  We thus limit the slot history size to 4MB, to keep sufficient
-        # space for the actual operational data
-        if len(str(self.slot_history)) < 4 * 1024 * 1024:
-            self.slot_history.append(self.slot_status(short=True))
-        else:
-            # just replace the last entry with the current one.
-            self.slot_history[-1] = self.slot_status(short=True)
 
 
     # --------------------------------------------------------------------------
@@ -3504,43 +3480,6 @@ class ExecWorker_POPEN (ExecWorker) :
 
         return action
 
-  # # --------------------------------------------------------------------------
-  # #
-  # def _update_tasks(self):
-  #     # FIXME: needs to go, slot history should be kept in scheduler, and
-  #     #        should only be dumped at shutdown.
-  #
-  #     # AM: FIXME: this at the moment pushes slot history whenever a unit
-  #     # state is updated...  This needs only to be done on ExecWorker
-  #     # shutdown.  Well, alas, there is currently no way for it to find out
-  #     # when it is shut down... Some quick and  superficial measurements
-  #     # though show no negative impact on agent performance.
-  #     # TODO: check that slot history is correctly recorded
-  #     if (self.slot_history_old != self._scheduler.slot_history):
-  #
-  #         self.mongo_p.update(
-  #             {"_id": self._pilot_id},
-  #             {"$set": {"slothistory" : self._scheduler.slot_history,
-  #                       "slots"       : self._scheduler.slots
-  #                      }
-  #             })
-  #
-  #         self.slot_history_old = self._scheduler.slot_history[:]
-
-
-
-
-
-      # self.mongo_p = mongo_db["%s.p"  % session_id]
-      # self.mongo_p.update(
-      #     {"_id": self._pilot_id},
-      #     {"$set": {"slothistory" : self._scheduler.slot_history,
-      #               "slots"       : self._scheduler.slots
-      #              }
-      #     })
-
-        # run worker thread
-
 
 # ==============================================================================
 #
@@ -3603,8 +3542,9 @@ class ExecWorker_SHELL(ExecWorker):
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
         # run watcher thread
+        watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
         self._watcher = threading.Thread(target = self._watch, 
-                                         name   = "%s-watcher" % self.name)
+                                         name   = watcher_name)
         self._watcher.start ()
 
 
@@ -4173,7 +4113,7 @@ class StageinWorker(threading.Thread):
                                               msg    = 'agent input staging done')
                 cu_list = blowup (cu, SCHEDULE) 
                 for _cu in cu_list :
-                    prof('push', msg="towards allocation", uid=_cu['_id'], tag='stagein')
+                    prof('push', msg="towards scheduling", uid=_cu['_id'], tag='stagein')
                     self._schedule_queue.put(_cu)
 
 
@@ -4907,8 +4847,8 @@ class Agent(object):
                                            msg    = 'unit needs input staging')
                     cu_list = blowup (cu, STAGEIN) 
                     for _cu in cu_list :
-                        self._stagein_queue.put(_cu)
                         prof('push', msg="towards stagein", uid=_cu['_id'], tag='ingest')
+                        self._stagein_queue.put(_cu)
 
                 else:
                     self.update_unit_state(uid    = cu['_id'],
@@ -4916,15 +4856,13 @@ class Agent(object):
                                            msg    = 'unit needs no input staging')
                     cu_list = blowup (cu, SCHEDULE) 
                     for _cu in cu_list :
+                        prof('push', msg="towards scheduling", uid=_cu['_id'], tag='ingest')
                         self._schedule_queue.put(_cu)
-                        prof('push', msg="towards allocation", uid=_cu['_id'], tag='ingest')
-
-                prof('Agent get unit pushed', uid=cu['_id'])
 
 
             except Exception as e:
-                # if any unit sorting step failed, the unit did
-                # not end up in a queue -- we set it to FAILED
+                # if any unit sorting step failed, the unit did not end up in
+                # a queue (its always the last step).  We set it to FAILED
                 msg = "could not sort unit (%s)" % e
                 prof('error', msg=msg, tag="failed", uid=cu['_id'], logger=self._log.exception)
                 self.update_unit_state(uid    = cu['_id'],
