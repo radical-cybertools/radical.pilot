@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import bson
+import pprint
+import datetime
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+# ------------------------------------------------------------------------------
+#
+def usage (msg=None, noexit=False) :
+
+    if  msg :
+        print "\n      Error: %s" % msg
+
+    print """
+      usage      : %s [<sid>] [<output>]
+      example    : %s 5490ba7174df926284f8ef48 -
+
+      arguments  :
+        <sid>    : session id
+        <output> : output file (default: <sid>.json)
+
+      The tool will look for <sid>.*.json files in the current pwd, and convert
+      them to json, to write them to <sid>.json (default) or ot another output
+      location (file or stdout [-]).
+      
+""" % (sys.argv[0], sys.argv[0])
+
+    if  msg :
+        sys.exit (1)
+
+    if  not noexit :
+        sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__' :
+
+
+    sid    = None
+    fn_out = None
+
+    if len(sys.argv) <= 1 : usage ("insufficient arguments -- need session ID")
+    if len(sys.argv) >  1 : sid    = sys.argv[1]
+    if len(sys.argv) >  2 : fn_out = sys.argv[2]
+    if len(sys.argv) >  3 : usage ("incorrect number of arguments")
+
+    f_in_s  = open ("%s.json"    % sid, 'r')
+    f_in_p  = open ("%s.p.json"  % sid, 'r')
+    f_in_pm = open ("%s.pm.json" % sid, 'r')
+    f_in_um = open ("%s.um.json" % sid, 'r')
+    f_in_cu = open ("%s.cu.json" % sid, 'r')
+
+    jstr_s  = f_in_s .read ()
+    jstr_p  = f_in_p .read ()
+    jstr_pm = f_in_pm.read ()
+    jstr_um = f_in_um.read ()
+    jstr_cu = f_in_cu.read ()
+    
+    json_s  = eval (jstr_s )
+    json_p  = eval (jstr_p )
+    json_pm = eval (jstr_pm)
+    json_um = eval (jstr_um)
+    json_cu = eval (jstr_cu)
+
+    json_data = dict()
+    json_data['session'] = json_s ['sessions'][0]
+    json_data['pilot']   = json_p ['pilots']
+    json_data['pmgr']    = json_pm['pilot_managers']
+    json_data['umgr']    = json_um['unit_managers']
+    json_data['unit']    = json_cu['units']
+
+    f_in_s .close ()
+    f_in_p .close ()
+    f_in_pm.close ()
+    f_in_um.close ()
+    f_in_cu.close ()
+
+    os.system ('mv %s.json     %s.json.bak   ' % (sid, sid))
+    os.system ('mv %s.p.json   %s.p.json.bak ' % (sid, sid))
+    os.system ('mv %s.pm.json  %s.pm.json.bak' % (sid, sid))
+    os.system ('mv %s.um.json  %s.um.json.bak' % (sid, sid))
+    os.system ('mv %s.cu.json  %s.cu.json.bak' % (sid, sid))
+
+    if not fn_out :
+        fn_out = "%s.json" % sid
+
+    if fn_out == '-' :
+        pprint.pprint (json_data)
+    else :
+        ru.write_json (json_data, fn_out)
+
+
+
+# ------------------------------------------------------------------------------
+
