@@ -172,8 +172,8 @@ def get_session_frames (db, sids, cachedir=None) :
                 'sid'          : sid,
                 'pid'          : pid, 
                 'n_units'      : len(pilot['unit_ids']), 
-                'started'      : ru.time_diff (session_start, pilot['started']), 
-                'finished'     : ru.time_diff (session_start, pilot['finished']),
+                'started'      : pilot['started']  - session_start,
+                'finished'     : pilot['finished'] - session_start,
                 'resource'     : pilot['description']['resource'],
                 'cores'        : pilot['description']['cores'],
                 'runtime'      : pilot['description']['runtime'],
@@ -190,7 +190,7 @@ def get_session_frames (db, sids, cachedir=None) :
 
             for entry in pilot['statehistory'] :
                 state = entry['state']
-                timer = ru.time_diff (session_start, entry['timestamp'])
+                timer = entry['timestamp'] - session_start
                 pilot_dict[state] = timer
                 last_pilot_event = max(last_pilot_event, timer)
 
@@ -209,8 +209,8 @@ def get_session_frames (db, sids, cachedir=None) :
                 'sid'                  : sid, 
                 'pid'                  : pid, 
                 'uid'                  : uid, 
-                'started'              : unit['started'],
-                'finished'             : unit['finished'],
+                'started'              : unit['started']  - session_start,
+                'finished'             : unit['finished'] - session_start,
                 NEW                    : None, 
                 UNSCHEDULED            : None, 
                 PENDING        : None, 
@@ -228,7 +228,7 @@ def get_session_frames (db, sids, cachedir=None) :
 
             for entry in unit['statehistory'] :
                 state = entry['state']
-                timer = ru.time_diff (session_start, entry['timestamp'])
+                timer = entry['timestamp'] - session_start
                 pilot_dict[state] = timer
 
             unit_dicts.append (unit_dict)
