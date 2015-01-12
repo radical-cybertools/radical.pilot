@@ -134,7 +134,8 @@ setup_args = {
                           'bin/radicalpilot-close-session',
                           'bin/radicalpilot-cleanup',
                           'bin/radicalpilot-stats',
-                          'bin/radicalpilot-stats.plot'
+                          'bin/radicalpilot-stats.plot',
+                          'bin/radicalpilot-json-combine'
                          ],
     'package_data'     : {'': ['*.sh', '*.json', 'VERSION', 'VERSION.git']},
 
