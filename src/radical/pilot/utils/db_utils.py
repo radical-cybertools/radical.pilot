@@ -129,10 +129,19 @@ def get_session_frames (db, sids, cachedir=None) :
     # use like this: 
     #
     # session_frame, pilot_frame, unit_frame = rpu.get_session_frames (db, session, cachedir)
+    # pandas.set_option('display.width', 1000)
     # print session_frame
     # print pilot_frame
     # print unit_frame
+    #
+    # u_min = unit_frame.ix[unit_frame['started'].idxmin()]['started']
+    # u_max = unit_frame.ix[unit_frame['finished'].idxmax()]['finished']
+    # print u_min
+    # print u_max
+    # print u_max - u_min
 
+
+    import numpy
 
     if not isinstance (sids, list) :
         sids = [sids]
@@ -177,15 +186,15 @@ def get_session_frames (db, sids, cachedir=None) :
                 'resource'     : pilot['description']['resource'],
                 'cores'        : pilot['description']['cores'],
                 'runtime'      : pilot['description']['runtime'],
-                NEW            : None, 
-                PENDING        : None, 
-                PENDING_LAUNCH : None, 
-                LAUNCHING      : None, 
-                PENDING_ACTIVE : None, 
-                ACTIVE         : None, 
-                DONE           : None, 
-                FAILED         : None, 
-                CANCELED       : None
+                NEW            : numpy.nan, 
+                PENDING        : numpy.nan, 
+                PENDING_LAUNCH : numpy.nan, 
+                LAUNCHING      : numpy.nan, 
+                PENDING_ACTIVE : numpy.nan, 
+                ACTIVE         : numpy.nan, 
+                DONE           : numpy.nan, 
+                FAILED         : numpy.nan, 
+                CANCELED       : numpy.nan
                 }
 
             for entry in pilot['statehistory'] :
@@ -211,25 +220,25 @@ def get_session_frames (db, sids, cachedir=None) :
                 'uid'                  : uid, 
                 'started'              : unit['started']  - session_start,
                 'finished'             : unit['finished'] - session_start,
-                NEW                    : None, 
-                UNSCHEDULED            : None, 
-                PENDING        : None, 
-                PENDING_INPUT_STAGING  : None, 
-                STAGING_INPUT          : None, 
-                PENDING_EXECUTION      : None, 
-                SCHEDULING             : None, 
-                EXECUTING              : None, 
-                PENDING_OUTPUT_STAGING : None, 
-                STAGING_OUTPUT         : None, 
-                DONE                   : None, 
-                FAILED                 : None, 
-                CANCELED               : None
+                NEW                    : numpy.nan, 
+                UNSCHEDULED            : numpy.nan, 
+                PENDING                : numpy.nan, 
+                PENDING_INPUT_STAGING  : numpy.nan, 
+                STAGING_INPUT          : numpy.nan, 
+                PENDING_EXECUTION      : numpy.nan, 
+                SCHEDULING             : numpy.nan, 
+                EXECUTING              : numpy.nan, 
+                PENDING_OUTPUT_STAGING : numpy.nan, 
+                STAGING_OUTPUT         : numpy.nan, 
+                DONE                   : numpy.nan, 
+                FAILED                 : numpy.nan, 
+                CANCELED               : numpy.nan
                 }
 
             for entry in unit['statehistory'] :
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
-                pilot_dict[state] = timer
+                unit_dict[state] = timer
 
             unit_dicts.append (unit_dict)
             uidx += 1

@@ -357,17 +357,6 @@ def get_stats (docs, events, slothist) :
 # ------------------------------------------------------------------------------
 def stat_session (db, session, cachedir) :
 
-    session_frame, pilot_frame, unit_frame = rpu.get_session_frames (db, session, cachedir)
-    # print session_frame
-    # print pilot_frame
-    # print unit_frame
-
-    u_min = unit_frame.ix[unit_frame['started'].idxmin()]['started']
-    u_max = unit_frame.ix[unit_frame['finished'].idxmax()]['finished']
-    print u_min
-    print u_max
-    print u_max - u_min
-
     docs      = rpu.get_session_docs     (db, session, cachedir=cachedir)
     events    = rpu.get_session_events   (db, session, cachedir=cachedir)
     slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
