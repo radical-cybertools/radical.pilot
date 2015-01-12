@@ -83,19 +83,28 @@ if __name__ == '__main__' :
     f_in_um.close ()
     f_in_cu.close ()
 
-    os.system ('mv %s.json     %s.json.bak   ' % (sid, sid))
-    os.system ('mv %s.p.json   %s.p.json.bak ' % (sid, sid))
-    os.system ('mv %s.pm.json  %s.pm.json.bak' % (sid, sid))
-    os.system ('mv %s.um.json  %s.um.json.bak' % (sid, sid))
-    os.system ('mv %s.cu.json  %s.cu.json.bak' % (sid, sid))
+    os.system ('mv %s.json    %s.json.bak   ' % (sid, sid))
+    os.system ('mv %s.p.json  %s.p.json.bak ' % (sid, sid))
+    os.system ('mv %s.pm.json %s.pm.json.bak' % (sid, sid))
+    os.system ('mv %s.um.json %s.um.json.bak' % (sid, sid))
+    os.system ('mv %s.cu.json %s.cu.json.bak' % (sid, sid))
 
-    if not fn_out :
-        fn_out = "%s.json" % sid
+    try :
+        if not fn_out :
+            fn_out = "%s.json" % sid
 
-    if fn_out == '-' :
-        pprint.pprint (json_data)
-    else :
-        ru.write_json (json_data, fn_out)
+        if fn_out == '-' :
+            pprint.pprint (json_data)
+        else :
+            ru.write_json (json_data, fn_out)
+    except Exception :
+        # restore old files
+        os.system ('mv %s.json.bak    %s.json   ' % (sid, sid))
+        os.system ('mv %s.p.json.bak  %s.p.json ' % (sid, sid))
+        os.system ('mv %s.pm.json.bak %s.pm.json' % (sid, sid))
+        os.system ('mv %s.um.json.bak %s.um.json' % (sid, sid))
+        os.system ('mv %s.cu.json.bak %s.cu.json' % (sid, sid))
+        raise
 
 
 

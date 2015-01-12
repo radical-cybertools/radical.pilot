@@ -6,6 +6,7 @@ import datetime
 import pymongo
 
 import radical.utils as ru
+from   radical.pilot.states import *
 
 
 _CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid ()
@@ -120,7 +121,136 @@ def get_session_docs (db, sid, cache=None, cachedir=None) :
     return json_data
 
 
+
 # ------------------------------------------------------------------------------
+#
+def get_session_frames (db, sids, cachedir=None) :
+
+    # use like this: 
+    #
+    # session_frame, pilot_frame, unit_frame = rpu.get_session_frames (db, session, cachedir)
+    # print session_frame
+    # print pilot_frame
+    # print unit_frame
+
+
+    if not isinstance (sids, list) :
+        sids = [sids]
+
+    sidx = 0
+    pidx = 0
+    uidx = 0
+
+    session_dicts = list()
+    pilot_dicts   = list()
+    unit_dicts    = list()
+
+    for sid in sids :
+
+        print "fetching session data %s" % sid
+        docs = get_session_docs (db, sid, cachedir=cachedir)
+
+        print "framing  session %s" % sid
+        session       = docs['session']
+        session_start = session['created']
+        session_dict  = {
+            'id'        : sidx,
+            'sid'       : sid,
+            'started'   : session['created'],
+            'finished'  : None, 
+            'n_pilots'  : len(docs['pilot']),
+            'n_units'   : 0
+            }
+
+        last_pilot_event = 0
+        for pilot in docs['pilot'] :
+            pid = pilot['_id']
+            print "framing  pilot %s" % pid
+
+            pilot_dict = {
+                'id'           : pidx,
+                'sid'          : sid,
+                'pid'          : pid, 
+                'n_units'      : len(pilot['unit_ids']), 
+                'started'      : ru.time_diff (session_start, pilot['started']), 
+                'finished'     : ru.time_diff (session_start, pilot['finished']),
+                'resource'     : pilot['description']['resource'],
+                'cores'        : pilot['description']['cores'],
+                'runtime'      : pilot['description']['runtime'],
+                NEW            : None, 
+                PENDING        : None, 
+                PENDING_LAUNCH : None, 
+                LAUNCHING      : None, 
+                PENDING_ACTIVE : None, 
+                ACTIVE         : None, 
+                DONE           : None, 
+                FAILED         : None, 
+                CANCELED       : None
+                }
+
+            for entry in pilot['statehistory'] :
+                state = entry['state']
+                timer = ru.time_diff (session_start, entry['timestamp'])
+                pilot_dict[state] = timer
+                last_pilot_event = max(last_pilot_event, timer)
+
+
+            pilot_dicts.append (pilot_dict)
+            pidx += 1
+
+
+        print "framing  units " 
+        for unit in docs['unit'] :
+            uid = unit['_id']
+            print '.',
+
+            unit_dict = {
+                'id'                   : uidx, 
+                'sid'                  : sid, 
+                'pid'                  : pid, 
+                'uid'                  : uid, 
+                'started'              : unit['started'],
+                'finished'             : unit['finished'],
+                NEW                    : None, 
+                UNSCHEDULED            : None, 
+                PENDING        : None, 
+                PENDING_INPUT_STAGING  : None, 
+                STAGING_INPUT          : None, 
+                PENDING_EXECUTION      : None, 
+                SCHEDULING             : None, 
+                EXECUTING              : None, 
+                PENDING_OUTPUT_STAGING : None, 
+                STAGING_OUTPUT         : None, 
+                DONE                   : None, 
+                FAILED                 : None, 
+                CANCELED               : None
+                }
+
+            for entry in unit['statehistory'] :
+                state = entry['state']
+                timer = ru.time_diff (session_start, entry['timestamp'])
+                pilot_dict[state] = timer
+
+            unit_dicts.append (unit_dict)
+            uidx += 1
+        
+        print
+
+        session_dict['finished'] = last_pilot_event
+        session_dicts.append (session_dict)
+        sidx += 1
+
+    import pandas 
+    session_frame = pandas.DataFrame (session_dicts)
+    pilot_frame   = pandas.DataFrame (pilot_dicts)
+    unit_frame    = pandas.DataFrame (unit_dicts)
+
+
+    return session_frame, pilot_frame, unit_frame
+
+
+# ------------------------------------------------------------------------------
+#
 def get_session_slothist (db, sid, cache=None, cachedir=None) :
     """
     For all pilots in the session, get the slot lists and slot histories. and
