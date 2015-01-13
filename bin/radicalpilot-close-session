@@ -145,21 +145,8 @@ def export_sessions (dbclient, dbname, age, session) :
 
         docs = sessions[sid]
 
-        print "export session %s.*.json" % sid
-        with open ('%s.json' % sid, 'w') as f : 
-            f.write (pprint.pformat ({'sessions': [docs['session']]}))
-
-        with open ('%s.p.json' % sid, 'w') as f : 
-            f.write (pprint.pformat ({'pilots' : docs['pilot']}))
-
-        with open ('%s.pm.json' % sid, 'w') as f : 
-            f.write (pprint.pformat ({'pilot_managers' : docs['pmgr']}))
-
-        with open ('%s.cu.json' % sid, 'w') as f : 
-            f.write (pprint.pformat ({'units' : docs['unit']}))
-
-        with open ('%s.um.json' % sid, 'w') as f : 
-            f.write (pprint.pformat ({'unit_managers' : docs['umgr']}))
+        print "export session %s.json" % sid
+        ru.write_json (docs, "%s.json" % sid)
 
 
 # ------------------------------------------------------------------------------

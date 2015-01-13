@@ -201,7 +201,7 @@ def get_session_frames (db, sids, cachedir=None) :
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
                 pilot_dict[state] = timer
-                last_pilot_event = max(last_pilot_event, timer)
+                last_pilot_event  = max(last_pilot_event, timer)
 
 
             pilot_dicts.append (pilot_dict)
