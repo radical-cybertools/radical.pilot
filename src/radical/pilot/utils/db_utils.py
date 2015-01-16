@@ -146,10 +146,6 @@ def get_session_frames (db, sids, cachedir=None) :
     if not isinstance (sids, list) :
         sids = [sids]
 
-    sidx = 0
-    pidx = 0
-    uidx = 0
-
     session_dicts = list()
     pilot_dicts   = list()
     unit_dicts    = list()
@@ -163,7 +159,6 @@ def get_session_frames (db, sids, cachedir=None) :
         session       = docs['session']
         session_start = session['created']
         session_dict  = {
-            'id'        : sidx,
             'sid'       : sid,
             'started'   : session['created'],
             'finished'  : None, 
@@ -177,7 +172,6 @@ def get_session_frames (db, sids, cachedir=None) :
             print "framing  pilot %s" % pid
 
             pilot_dict = {
-                'id'           : pidx,
                 'sid'          : sid,
                 'pid'          : pid, 
                 'n_units'      : len(pilot['unit_ids']), 
@@ -205,7 +199,6 @@ def get_session_frames (db, sids, cachedir=None) :
 
 
             pilot_dicts.append (pilot_dict)
-            pidx += 1
 
 
         print "framing  units " 
@@ -214,7 +207,6 @@ def get_session_frames (db, sids, cachedir=None) :
             print '.',
 
             unit_dict = {
-                'id'                   : uidx, 
                 'sid'                  : sid, 
                 'pid'                  : pid, 
                 'uid'                  : uid, 
@@ -241,13 +233,11 @@ def get_session_frames (db, sids, cachedir=None) :
                 unit_dict[state] = timer
 
             unit_dicts.append (unit_dict)
-            uidx += 1
         
         print
 
         session_dict['finished'] = last_pilot_event
         session_dicts.append (session_dict)
-        sidx += 1
 
     import pandas 
     session_frame = pandas.DataFrame (session_dicts)
