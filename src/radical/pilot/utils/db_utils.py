@@ -171,15 +171,23 @@ def get_session_frames (db, sids, cachedir=None) :
             pid = pilot['_id']
             #print "framing  pilot %s" % pid
 
+            description = pilot.get ('description', dict())
+            started     = pilot.get ('started')
+            finished    = pilot.get ('finished')
+
+            if started  : started  -= session_start
+            if finished : finished -= session_start
+
+
             pilot_dict = {
                 'sid'          : sid,
                 'pid'          : pid, 
-                'n_units'      : len(pilot['unit_ids']), 
-                'started'      : pilot['started']  - session_start,
-                'finished'     : pilot['finished'] - session_start,
-                'resource'     : pilot['description']['resource'],
-                'cores'        : pilot['description']['cores'],
-                'runtime'      : pilot['description']['runtime'],
+                'n_units'      : len(pilot.get ('unit_ids', list())), 
+                'started'      : started,
+                'finished'     : finished,
+                'resource'     : description.get ('resource'),
+                'cores'        : description.get ('cores'),
+                'runtime'      : description.get ('runtime'),
                 NEW            : numpy.nan, 
                 PENDING        : numpy.nan, 
                 PENDING_LAUNCH : numpy.nan, 
