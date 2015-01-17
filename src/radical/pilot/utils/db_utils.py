@@ -234,7 +234,7 @@ def get_session_frames (db, sids, cachedir=None) :
 
             unit_dicts.append (unit_dict)
         
-        print
+        #print
 
         session_dict['finished'] = last_pilot_event
         session_dicts.append (session_dict)
