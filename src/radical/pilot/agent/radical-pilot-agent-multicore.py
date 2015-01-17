@@ -3903,13 +3903,13 @@ class StageoutWorker(threading.Thread):
                 if cu['FTW_Output_Directives']:
 
                     prof('ExecWorker unit needs FTW_O ', uid=cu['uid'])
-                    self._agent.update(unit   = cu,
-                                       msg    = 'FTW output staging needed',
-                                       update = {
-                                           '$set' : {
-                                               'FTW_Output_Status' : PENDING
-                                           }
-                                       })
+                    self._agent.update_unit(
+                        _id = cu['_id'],
+                        msg = 'FTW output staging needed',
+                        update = {
+                            '$set': {'FTW_Output_Status' : PENDING}
+                        }
+                    )
                     # NOTE: this is final for the agent scope -- further state
                     # transitions are done by the FTW.
                     cu = None
