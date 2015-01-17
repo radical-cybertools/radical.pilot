@@ -152,10 +152,10 @@ def get_session_frames (db, sids, cachedir=None) :
 
     for sid in sids :
 
-        print "fetching session data %s" % sid
+        #print "fetching session data %s" % sid
         docs = get_session_docs (db, sid, cachedir=cachedir)
 
-        print "framing  session %s" % sid
+        #print "framing  session %s" % sid
         session       = docs['session']
         session_start = session['created']
         session_dict  = {
@@ -169,7 +169,7 @@ def get_session_frames (db, sids, cachedir=None) :
         last_pilot_event = 0
         for pilot in docs['pilot'] :
             pid = pilot['_id']
-            print "framing  pilot %s" % pid
+            #print "framing  pilot %s" % pid
 
             pilot_dict = {
                 'sid'          : sid,
@@ -201,10 +201,10 @@ def get_session_frames (db, sids, cachedir=None) :
             pilot_dicts.append (pilot_dict)
 
 
-        print "framing  units " 
+        #print "framing  units " 
         for unit in docs['unit'] :
             uid = unit['_id']
-            print '.',
+            #print '.',
 
             unit_dict = {
                 'sid'                  : sid, 
