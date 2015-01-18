@@ -5,409 +5,349 @@
 List of Pre-Configured Resources
 ================================
 
-futuregrid.sierra
------------------
+FUTUREGRID
+==========
+
+SIERRA
+******
 
 The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).
 
-Default values for ComputePilotDescription attributes:
+* **Resource label**      : ``futuregrid.sierra``
+* **Raw config**          : :download:`futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+* **Default values** for ComputePilotDescription attributes:
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+ * ``queue         : batch``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-Available schemas: ``ssh``
+* **Available schemas**   : ``ssh``
 
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-futuregrid.alamo
-----------------
+ALAMO
+*****
 
 The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).
 
-Default values for ComputePilotDescription attributes:
+* **Resource label**      : ``futuregrid.alamo``
+* **Raw config**          : :download:`futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+* **Default values** for ComputePilotDescription attributes:
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               short
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+ * ``queue         : short``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-Available schemas: ``ssh``
+* **Available schemas**   : ``ssh``
 
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-futuregrid.hotel
-----------------
+HOTEL
+*****
 
 The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).
 
-.. note::  Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.
+* **Resource label**      : ``futuregrid.hotel``
+* **Raw config**          : :download:`futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+* **Note**            : Due to a broken MPI installation, 'hotel' is currently not usable as agents won't start up / run properly.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : batch``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh``
 
-Available schemas: ``ssh``
-
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
-
-futuregrid.india
-----------------
+INDIA
+*****
 
 The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).
 
-Default values for ComputePilotDescription attributes:
+* **Resource label**      : ``futuregrid.india``
+* **Raw config**          : :download:`futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+* **Default values** for ComputePilotDescription attributes:
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+ * ``queue         : batch``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-Available schemas: ``ssh``
+* **Available schemas**   : ``ssh``
 
-:download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
+RADICAL
+=======
 
-radical.tutorial
-----------------
+TUTORIAL
+********
 
 Our private tutorial VM on EC2
 
-Default values for ComputePilotDescription attributes:
+* **Resource label**      : ``radical.tutorial``
+* **Raw config**          : :download:`radical.json <../../src/radical/pilot/configs/radical.json>`
+* **Default values** for ComputePilotDescription attributes:
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+ * ``queue         : batch``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-Available schemas: ``ssh, local``
+* **Available schemas**   : ``ssh, local``
 
-:download:`Raw Configuration file: radical.json <../../src/radical/pilot/configs/radical.json>`
+RICE
+====
 
-rice.davinci
-------------
+DAVINCI
+*******
 
 The DAVinCI Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+DAVinCI).
 
-.. note::  DAVinCI compute nodes have 12 or 16 processor cores per node.
+* **Resource label**      : ``rice.davinci``
+* **Raw config**          : :download:`rice.json <../../src/radical/pilot/configs/rice.json>`
+* **Note**            : DAVinCI compute nodes have 12 or 16 processor cores per node.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : parallel``
+ * ``sandbox       : $SHARED_SCRATCH/$USER``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               parallel
-``sandbox``             $SHARED_SCRATCH/$USER
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh``
 
-Available schemas: ``ssh``
-
-:download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
-
-rice.biou
----------
+BIOU
+****
 
 The Blue BioU Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+Blue+BioU).
 
-.. note::  Blue BioU compute nodes have 32 processor cores per node.
+* **Resource label**      : ``rice.biou``
+* **Raw config**          : :download:`rice.json <../../src/radical/pilot/configs/rice.json>`
+* **Note**            : Blue BioU compute nodes have 32 processor cores per node.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : serial``
+ * ``sandbox       : $SHARED_SCRATCH/$USER``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               serial
-``sandbox``             $SHARED_SCRATCH/$USER
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh``
 
-Available schemas: ``ssh``
+LOCAL
+=====
 
-:download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
-
-local.localhost
----------------
+LOCALHOST
+*********
 
 Your local machine.
 
-.. note::  To use the ssh schema, make sure that ssh access to localhost is enabled.
+* **Resource label**      : ``local.localhost``
+* **Raw config**          : :download:`local.json <../../src/radical/pilot/configs/local.json>`
+* **Note**            : To use the ssh schema, make sure that ssh access to localhost is enabled.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : None``
+ * ``sandbox       : $HOME``
+ * ``access_schema : local``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME
-``access_schema``       local
-================== ============================
+* **Available schemas**   : ``local, ssh``
 
-Available schemas: ``local, ssh``
+NCAR
+====
 
-:download:`Raw Configuration file: local.json <../../src/radical/pilot/configs/local.json>`
-
-ncar.yellowstone
-----------------
+YELLOWSTONE
+***********
 
 The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).
 
-.. note::  We only support one concurrent CU per node currently.
+* **Resource label**      : ``ncar.yellowstone``
+* **Raw config**          : :download:`ncar.json <../../src/radical/pilot/configs/ncar.json>`
+* **Note**            : We only support one concurrent CU per node currently.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : premium``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               premium
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh``
 
-Available schemas: ``ssh``
+DAS4
+====
 
-:download:`Raw Configuration file: ncar.json <../../src/radical/pilot/configs/ncar.json>`
-
-das4.fs2
---------
+FS2
+***
 
 The Distributed ASCI Supercomputer 4 (http://www.cs.vu.nl/das4/).
 
-Default values for ComputePilotDescription attributes:
+* **Resource label**      : ``das4.fs2``
+* **Raw config**          : :download:`das4.json <../../src/radical/pilot/configs/das4.json>`
+* **Default values** for ComputePilotDescription attributes:
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               all.q
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+ * ``queue         : all.q``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-Available schemas: ``ssh``
+* **Available schemas**   : ``ssh``
 
-:download:`Raw Configuration file: das4.json <../../src/radical/pilot/configs/das4.json>`
+IU
+==
 
-iu.bigred2
-----------
+BIGRED2
+*******
 
 Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).
 
-Default values for ComputePilotDescription attributes:
+* **Resource label**      : ``iu.bigred2``
+* **Raw config**          : :download:`iu.json <../../src/radical/pilot/configs/iu.json>`
+* **Default values** for ComputePilotDescription attributes:
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+ * ``queue         : None``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-Available schemas: ``ssh, gsissh``
+* **Available schemas**   : ``ssh, gsissh``
 
-:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
-
-iu.quarry
----------
+QUARRY
+******
 
 The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).
 
-Default values for ComputePilotDescription attributes:
+* **Resource label**      : ``iu.quarry``
+* **Raw config**          : :download:`iu.json <../../src/radical/pilot/configs/iu.json>`
+* **Default values** for ComputePilotDescription attributes:
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               None
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+ * ``queue         : None``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-Available schemas: ``ssh, gsissh``
+* **Available schemas**   : ``ssh, gsissh``
 
-:download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
+EPSRC
+=====
 
-epsrc.archer
-------------
+ARCHER
+******
 
 The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
 
-.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Resource label**      : ``epsrc.archer``
+* **Raw config**          : :download:`epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
+* **Note**            : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : standard``
+ * ``sandbox       : /work/`id -gn`/`id -gn`/$USER``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               standard
-``sandbox``             /work/`id -gn`/`id -gn`/$USER
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh``
 
-Available schemas: ``ssh``
+NERSC
+=====
 
-:download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
-
-nersc.hopper
-------------
+HOPPER
+******
 
 The Nersc Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)
 
-.. note::  In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Resource label**      : ``nersc.hopper``
+* **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
+* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : debug``
+ * ``sandbox       : /scratch/scratchdirs/$USER``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               debug
-``sandbox``             /scratch/scratchdirs/$USER
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh``
 
-Available schemas: ``ssh``
+LRZ
+===
 
-:download:`Raw Configuration file: nersc.json <../../src/radical/pilot/configs/nersc.json>`
-
-lrz.supermuc
-------------
+SUPERMUC
+********
 
 The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).
 
-.. note::  Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.
+* **Resource label**      : ``lrz.supermuc``
+* **Raw config**          : :download:`lrz.json <../../src/radical/pilot/configs/lrz.json>`
+* **Note**            : Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : test``
+ * ``sandbox       : $HOME``
+ * ``access_schema : gsissh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               test
-``sandbox``             $HOME
-``access_schema``       gsissh
-================== ============================
+* **Available schemas**   : ``gsissh, ssh``
 
-Available schemas: ``gsissh, ssh``
+XSEDE
+=====
 
-:download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
-
-xsede.lonestar
---------------
+LONESTAR
+********
 
 The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).
 
-.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Resource label**      : ``xsede.lonestar``
+* **Raw config**          : :download:`xsede.json <../../src/radical/pilot/configs/xsede.json>`
+* **Note**            : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : normal``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               normal
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh, gsissh``
 
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
-
-xsede.stampede
---------------
+STAMPEDE
+********
 
 The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
 
-.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Resource label**      : ``xsede.stampede``
+* **Raw config**          : :download:`xsede.json <../../src/radical/pilot/configs/xsede.json>`
+* **Note**            : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : normal``
+ * ``sandbox       : $WORK``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               normal
-``sandbox``             $WORK
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh, gsissh``
 
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
-
-xsede.gordon
-------------
+GORDON
+******
 
 The XSEDE 'Gordon' cluster at SDSC (http://www.sdsc.edu/us/resources/gordon/).
 
-.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Resource label**      : ``xsede.gordon``
+* **Raw config**          : :download:`xsede.json <../../src/radical/pilot/configs/xsede.json>`
+* **Note**            : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : normal``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               normal
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh, gsissh``
 
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
-
-xsede.trestles
---------------
+TRESTLES
+********
 
 The XSEDE 'Trestles' cluster at SDSC (http://www.sdsc.edu/us/resources/trestles/).
 
-.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Resource label**      : ``xsede.trestles``
+* **Raw config**          : :download:`xsede.json <../../src/radical/pilot/configs/xsede.json>`
+* **Note**            : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : normal``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               normal
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
+* **Available schemas**   : ``ssh, gsissh``
 
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
-
-xsede.blacklight
-----------------
+BLACKLIGHT
+**********
 
 The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).
 
-.. note::  Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Resource label**      : ``xsede.blacklight``
+* **Raw config**          : :download:`xsede.json <../../src/radical/pilot/configs/xsede.json>`
+* **Note**            : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Default values** for ComputePilotDescription attributes:
 
-Default values for ComputePilotDescription attributes:
+ * ``queue         : batch``
+ * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
 
-================== ============================
-Parameter               Value
-================== ============================
-``queue``               batch
-``sandbox``             $HOME
-``access_schema``       ssh
-================== ============================
-
-Available schemas: ``ssh, gsissh``
-
-:download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
+* **Available schemas**   : ``ssh, gsissh``
 
