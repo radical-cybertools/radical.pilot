@@ -75,7 +75,8 @@ List of Pre-Configured Resources
              continue
 
 
-        for resource_key, resource_config in json_data.iteritems():
+        for hostname, resource_config in json_data.iteritems():
+            resource_key = "%s.%s" % (config[:-5], hostname)
             print "   * %s" % resource_key
             try:
                 default_queue = resource_config["default_queue"]

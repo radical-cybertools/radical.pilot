@@ -5,8 +5,8 @@
 List of Pre-Configured Resources
 ================================
 
-sierra
-------
+futuregrid.sierra
+-----------------
 
 The FutureGrid 'sierra' cluster (https://futuregrid.github.io/manual/hardware.html).
 
@@ -24,8 +24,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
-alamo
------
+futuregrid.alamo
+----------------
 
 The FutureGrid 'alamo' cluster (https://futuregrid.github.io/manual/hardware.html).
 
@@ -43,8 +43,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
-hotel
------
+futuregrid.hotel
+----------------
 
 The FutureGrid 'hotel' cluster (https://futuregrid.github.io/manual/hardware.html).
 
@@ -64,8 +64,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
-india
------
+futuregrid.india
+----------------
 
 The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).
 
@@ -83,8 +83,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: futuregrid.json <../../src/radical/pilot/configs/futuregrid.json>`
 
-tutorial
---------
+radical.tutorial
+----------------
 
 Our private tutorial VM on EC2
 
@@ -102,8 +102,8 @@ Available schemas: ``ssh, local``
 
 :download:`Raw Configuration file: radical.json <../../src/radical/pilot/configs/radical.json>`
 
-davinci
--------
+rice.davinci
+------------
 
 The DAVinCI Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+DAVinCI).
 
@@ -123,8 +123,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
 
-biou
-----
+rice.biou
+---------
 
 The Blue BioU Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+Blue+BioU).
 
@@ -144,8 +144,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: rice.json <../../src/radical/pilot/configs/rice.json>`
 
-localhost
----------
+local.localhost
+---------------
 
 Your local machine.
 
@@ -165,8 +165,8 @@ Available schemas: ``local, ssh``
 
 :download:`Raw Configuration file: local.json <../../src/radical/pilot/configs/local.json>`
 
-yellowstone
------------
+ncar.yellowstone
+----------------
 
 The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).
 
@@ -186,8 +186,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: ncar.json <../../src/radical/pilot/configs/ncar.json>`
 
-fs2
----
+das4.fs2
+--------
 
 The Distributed ASCI Supercomputer 4 (http://www.cs.vu.nl/das4/).
 
@@ -205,8 +205,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: das4.json <../../src/radical/pilot/configs/das4.json>`
 
-bigred2
--------
+iu.bigred2
+----------
 
 Indiana University's HPC cluster (https://kb.iu.edu/d/bcqt).
 
@@ -224,8 +224,8 @@ Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
 
-quarry
-------
+iu.quarry
+---------
 
 The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).
 
@@ -243,8 +243,8 @@ Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: iu.json <../../src/radical/pilot/configs/iu.json>`
 
-archer
-------
+epsrc.archer
+------------
 
 The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
 
@@ -264,8 +264,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: epsrc.json <../../src/radical/pilot/configs/epsrc.json>`
 
-hopper
-------
+nersc.hopper
+------------
 
 The Nersc Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)
 
@@ -285,8 +285,8 @@ Available schemas: ``ssh``
 
 :download:`Raw Configuration file: nersc.json <../../src/radical/pilot/configs/nersc.json>`
 
-supermuc
---------
+lrz.supermuc
+------------
 
 The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).
 
@@ -306,8 +306,8 @@ Available schemas: ``gsissh, ssh``
 
 :download:`Raw Configuration file: lrz.json <../../src/radical/pilot/configs/lrz.json>`
 
-lonestar
---------
+xsede.lonestar
+--------------
 
 The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).
 
@@ -327,8 +327,8 @@ Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
-stampede
---------
+xsede.stampede
+--------------
 
 The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
 
@@ -348,8 +348,8 @@ Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
-gordon
-------
+xsede.gordon
+------------
 
 The XSEDE 'Gordon' cluster at SDSC (http://www.sdsc.edu/us/resources/gordon/).
 
@@ -369,8 +369,8 @@ Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
-trestles
---------
+xsede.trestles
+--------------
 
 The XSEDE 'Trestles' cluster at SDSC (http://www.sdsc.edu/us/resources/trestles/).
 
@@ -390,8 +390,8 @@ Available schemas: ``ssh, gsissh``
 
 :download:`Raw Configuration file: xsede.json <../../src/radical/pilot/configs/xsede.json>`
 
-blacklight
-----------
+xsede.blacklight
+----------------
 
 The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).
 
