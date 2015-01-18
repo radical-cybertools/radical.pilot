@@ -141,8 +141,6 @@ def get_session_frames (db, sids, cachedir=None) :
     # print u_max - u_min
 
 
-    import numpy
-
     if not isinstance (sids, list) :
         sids = [sids]
 
@@ -152,10 +150,8 @@ def get_session_frames (db, sids, cachedir=None) :
 
     for sid in sids :
 
-        #print "fetching session data %s" % sid
         docs = get_session_docs (db, sid, cachedir=cachedir)
 
-        #print "framing  session %s" % sid
         session       = docs['session']
         session_start = session['created']
         session_dict  = {
@@ -168,16 +164,14 @@ def get_session_frames (db, sids, cachedir=None) :
 
         last_pilot_event = 0
         for pilot in docs['pilot'] :
-            pid = pilot['_id']
-            #print "framing  pilot %s" % pid
 
+            pid         = pilot['_id']
             description = pilot.get ('description', dict())
             started     = pilot.get ('started')
             finished    = pilot.get ('finished')
 
             if started  : started  -= session_start
             if finished : finished -= session_start
-
 
             pilot_dict = {
                 'sid'          : sid,
@@ -188,62 +182,65 @@ def get_session_frames (db, sids, cachedir=None) :
                 'resource'     : description.get ('resource'),
                 'cores'        : description.get ('cores'),
                 'runtime'      : description.get ('runtime'),
-                NEW            : numpy.nan, 
-                PENDING        : numpy.nan, 
-                PENDING_LAUNCH : numpy.nan, 
-                LAUNCHING      : numpy.nan, 
-                PENDING_ACTIVE : numpy.nan, 
-                ACTIVE         : numpy.nan, 
-                DONE           : numpy.nan, 
-                FAILED         : numpy.nan, 
-                CANCELED       : numpy.nan
-                }
+                NEW            : None, 
+                PENDING        : None, 
+                PENDING_LAUNCH : None, 
+                LAUNCHING      : None, 
+                PENDING_ACTIVE : None, 
+                ACTIVE         : None, 
+                DONE           : None, 
+                FAILED         : None, 
+                CANCELED       : None
+            }
 
-            for entry in pilot['statehistory'] :
+            for entry in pilot.get('statehistory', list()):
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
                 pilot_dict[state] = timer
                 last_pilot_event  = max(last_pilot_event, timer)
 
-
             pilot_dicts.append (pilot_dict)
 
 
-        #print "framing  units " 
-        for unit in docs['unit'] :
-            uid = unit['_id']
-            #print '.',
+        for unit in docs['unit']:
+
+            uid         = unit['_id']
+            started     = unit.get ('started')
+            finished    = unit.get ('finished')
+            description = unit.get ('description', dict())
+
+            if started  : started  -= session_start
+            if finished : finished -= session_start
 
             unit_dict = {
                 'sid'                  : sid, 
                 'pid'                  : pid, 
                 'uid'                  : uid, 
-                'started'              : unit['started']  - session_start,
-                'finished'             : unit['finished'] - session_start,
-                NEW                    : numpy.nan, 
-                UNSCHEDULED            : numpy.nan, 
-                PENDING                : numpy.nan, 
-                PENDING_INPUT_STAGING  : numpy.nan, 
-                STAGING_INPUT          : numpy.nan, 
-                PENDING_EXECUTION      : numpy.nan, 
-                SCHEDULING             : numpy.nan, 
-                EXECUTING              : numpy.nan, 
-                PENDING_OUTPUT_STAGING : numpy.nan, 
-                STAGING_OUTPUT         : numpy.nan, 
-                DONE                   : numpy.nan, 
-                FAILED                 : numpy.nan, 
-                CANCELED               : numpy.nan
-                }
+                'started'              : started,
+                'finished'             : finished,
+                'cores'                : description.get ('cores'),
+                NEW                    : None, 
+                UNSCHEDULED            : None, 
+                PENDING                : None, 
+                PENDING_INPUT_STAGING  : None, 
+                STAGING_INPUT          : None, 
+                PENDING_EXECUTION      : None, 
+                SCHEDULING             : None, 
+                EXECUTING              : None, 
+                PENDING_OUTPUT_STAGING : None, 
+                STAGING_OUTPUT         : None, 
+                DONE                   : None, 
+                FAILED                 : None, 
+                CANCELED               : None
+            }
 
-            for entry in unit['statehistory'] :
+            for entry in unit.get('statehistory', list()):
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
                 unit_dict[state] = timer
 
             unit_dicts.append (unit_dict)
         
-        #print
-
         session_dict['finished'] = last_pilot_event
         session_dicts.append (session_dict)
 
