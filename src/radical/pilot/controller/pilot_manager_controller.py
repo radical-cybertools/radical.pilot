@@ -392,7 +392,7 @@ class PilotManagerController(threading.Thread):
         """
 
         # create a new UID for the pilot
-        pilot_uid = ru.generate_id ('pilot.')
+        pilot_uid = ru.generate_id ('pilot')
 
         # switch endpoint type
         filesystem_endpoint = resource_config['filesystem_endpoint']

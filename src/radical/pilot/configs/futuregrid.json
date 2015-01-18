@@ -16,8 +16,10 @@
         "python_interpreter"          : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi/1.4.3-gnu"],
         "valid_roots"                 : ["/N"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
-
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py",
+        "pilot_agent_version"         : "stage@local",
+        "virtenv"                     : "%(global_sandbox)s/ve/",
+        "virtenv_mode"                : "update"
     },
     "bravo": {
         "description"                 : "FutureGrid Hewlett-Packard ProLiant compute cluster (https://futuregrid.github.io/manual/hardware.html).",

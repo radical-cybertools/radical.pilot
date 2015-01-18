@@ -150,6 +150,41 @@ import radical.pilot as rp
 
 from operator import mul
 
+# ------------------------------------------------------------------------------
+#
+# http://stackoverflow.com/questions/9539052/python-dynamically-changing-base-classes-at-runtime-how-to
+#
+# Depending on agent architecture (which is specific to the resource type it
+# runs on) can switch between different component types: using threaded (when
+# running on the same node), multiprocessing (also for running on the same node,
+# but avoiding python's threading problems, for the prices of slower queues),
+# and remote processes (for running components on different nodes, using zeromq
+# queues for communication).
+#
+# We do some trickery to keep the actual components independent from the actual
+# schema:
+#
+#   - we wrap the different queue types into a rpu.Queue object
+#   - we change the base class of the component dynamically to the respective type
+#
+# This requires components to adhere to the following restrictions:
+#
+#   - *only* communicate over queues -- no shared data with other components or
+#     component instances.  Note that this also holds for example for the
+#     scheduler!
+#   - no shared data between the component class and it's run() method.  That
+#     includes no sharing of queues.
+#   - components inherit from base_component, and the constructor needs to
+#     register all required component-internal and -external queues with that
+#     base class -- the run() method can then transparently retrieve them from
+#     there.
+#
+
+AGENT_THREADED = 'threading'
+AGENT_MPROC    = 'multiprocess'
+
+AGENT_MODE     = AGENT_THREADED
+
 
 # this needs git attribute 'ident' set for this file
 git_ident = "$Id$"
@@ -189,7 +224,7 @@ BLOWUP_FACTOR = {
         INGEST    :   1,
         STAGEIN   :   1,
         SCHEDULE  :   1,
-        EXEC      : 100,
+        EXEC      :   1,
         WATCH     :   1,
         STAGEOUT  :   1,
         UPDATE    :   1
@@ -203,7 +238,7 @@ DROP_CLONES = {
         STAGEIN   : True,
         SCHEDULE  : True,
         EXEC      : True,
-        WATCH     : False,
+        WATCH     : True,
         STAGEOUT  : True,
         UPDATE    : True
 }
@@ -324,7 +359,7 @@ def timestamp_now():
 #
 if 'RADICAL_PILOT_PROFILE' in os.environ:
     profile_agent  = True
-    profile_handle = open('AGENT.prof', 'a')
+    profile_handle = open('agent.prof', 'a')
 else:
     profile_agent  = False
     profile_handle = sys.stdout
@@ -356,8 +391,10 @@ def prof(etype, uid="", msg="", tag="", logger=None):
 
 
     logged = False
-    tid    = threading.current_thread().name
     now    = timestamp_now()
+
+    if   AGENT_MODE == AGENT_THREADED : tid = threading.current_thread().name
+    elif AGENT_MODE == AGENT_MPROC    : tid = os.getpid ()
 
     if uid and tag:
 
@@ -529,11 +566,11 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     err = None
     log = None
 
-    try    : out = open('./AGENT.STDOUT', 'r').read()
+    try    : out = open('./agent.out', 'r').read()
     except : pass
-    try    : err = open('./AGENT.STDERR', 'r').read()
+    try    : err = open('./agent.err', 'r').read()
     except : pass
-    try    : log = open('./AGENT.LOG',    'r').read()
+    try    : log = open('./agent.log',    'r').read()
     except : pass
 
     msg = [{"message": message,      "timestamp": now},
@@ -566,11 +603,11 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     err = None
     log = None
 
-    try    : out = open('./AGENT.STDOUT', 'r').read()
+    try    : out = open('./agent.out', 'r').read()
     except : pass
-    try    : err = open('./AGENT.STDERR', 'r').read()
+    try    : err = open('./agent.err', 'r').read()
     except : pass
-    try    : log = open('./AGENT.LOG',    'r').read()
+    try    : log = open('./agent.log',    'r').read()
     except : pass
 
     msg = [{"message": message,      "timestamp": now},
@@ -597,11 +634,11 @@ def pilot_DONE(mongo_p, pilot_uid):
     err = None
     log = None
 
-    try    : out = open('./AGENT.STDOUT', 'r').read()
+    try    : out = open('./agent.out', 'r').read()
     except : pass
-    try    : err = open('./AGENT.STDERR', 'r').read()
+    try    : err = open('./agent.err', 'r').read()
     except : pass
-    try    : log = open('./AGENT.LOG',    'r').read()
+    try    : log = open('./agent.log',    'r').read()
     except : pass
 
     msg = [{"message": "pilot done", "timestamp": now},
@@ -1423,7 +1460,7 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, opaque_slot):
+                          launch_script_hop, opaque_slot):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
 
 
@@ -1489,14 +1526,14 @@ class LaunchMethodFORK(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, opaque_slot):
+                          launch_script_hop, opaque_slot):
 
         if task_args:
             command = " ".join([task_exec, task_args])
         else:
             command = task_exec
 
-        return command, launch_script_name
+        return command, None
 
 
 
@@ -1525,7 +1562,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1540,7 +1577,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
         mpirun_command = "%s %s -np %s -host %s %s" % (
             self.launch_command, export_vars, task_numcores, hosts_string, task_command)
 
-        return mpirun_command, launch_script_name
+        return mpirun_command, None
 
 
     # --------------------------------------------------------------------------
@@ -1596,10 +1633,10 @@ class LaunchMethodSSH(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
-        if not launch_script_name :
-            raise ValueError ("LaunchMethodSSH.construct_command needs launch_script_name!")
+        if not launch_script_hop :
+            raise ValueError ("LaunchMethodSSH.construct_command needs launch_script_hop!")
 
         # Get the host of the first entry in the acquired slot
         host = task_slots[0].split(':')[0]
@@ -1610,10 +1647,10 @@ class LaunchMethodSSH(LaunchMethod):
             task_command = task_exec
 
         # Command line to execute launch script via ssh on host
-        ssh_cmdline = "%s %s %s" % (self.launch_command, host, launch_script_name)
+        ssh_hop_cmd = "%s %s %s" % (self.launch_command, host, launch_script_hop)
 
         # Special case, return a tuple that overrides the default command line.
-        return task_command, ssh_cmdline
+        return task_command, ssh_hop_cmd
 
 
 
@@ -1641,7 +1678,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
         # Construct the hosts_string
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
@@ -1655,7 +1692,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         mpiexec_command = "%s -n %s -host %s %s" % (
             self.launch_command, task_numcores, hosts_string, task_command)
 
-        return mpiexec_command, launch_script_name
+        return mpiexec_command, None
 
 
 # ==============================================================================
@@ -1681,7 +1718,7 @@ class LaunchMethodAPRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, opaque_slot):
+                          launch_script_hop, opaque_slot):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1690,7 +1727,7 @@ class LaunchMethodAPRUN(LaunchMethod):
 
         aprun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
 
-        return aprun_command, launch_script_name
+        return aprun_command, None
 
 
 
@@ -1715,7 +1752,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, opaque_slot):
+                          launch_script_hop, opaque_slot):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1724,7 +1761,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
         ccmrun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
 
-        return ccmrun_command, launch_script_name
+        return ccmrun_command, None
 
 
 
@@ -1756,7 +1793,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1773,7 +1810,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
             self.launch_command, self.mpirun_command, export_vars,
             task_numcores, hosts_string, task_command)
 
-        return mpirun_ccmrun_command, launch_script_name
+        return mpirun_ccmrun_command, None
 
 
 
@@ -1798,7 +1835,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (corner, sub_block_shape)):
+                          launch_script_hop, (corner, sub_block_shape)):
 
         if task_numcores % self._scheduler._lrms.cores_per_node:
             msg = "Num cores (%d) is not a multiple of %d!" % (
@@ -1838,7 +1875,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
         if task_args:
             runjob_command += ' %s' % task_args
 
-        return runjob_command, launch_script_name
+        return runjob_command, None
 
 
 # ==============================================================================
@@ -1862,7 +1899,7 @@ class LaunchMethodDPLACE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1875,7 +1912,7 @@ class LaunchMethodDPLACE(LaunchMethod):
             self.launch_command, dplace_offset,
             dplace_offset+task_numcores-1, task_command)
 
-        return dplace_command, launch_script_name
+        return dplace_command, None
 
 
 
@@ -1900,7 +1937,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1913,7 +1950,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         mpirun_rsh_command = "%s -export -np %s %s %s" % (
             self.launch_command, task_numcores, hosts_string, task_command)
 
-        return mpirun_rsh_command, launch_script_name
+        return mpirun_rsh_command, None
 
 
 
@@ -1942,7 +1979,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1955,7 +1992,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
             (self.mpirun_command, task_numcores, self.launch_command,
              dplace_offset, dplace_offset+task_numcores-1, task_command)
 
-        return mpirun_dplace_command, launch_script_name
+        return mpirun_dplace_command, None
 
 
 
@@ -1982,7 +2019,7 @@ class LaunchMethodIBRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1995,7 +2032,7 @@ class LaunchMethodIBRUN(LaunchMethod):
                         (self.launch_command, task_numcores,
                          ibrun_offset, task_command)
 
-        return ibrun_command, launch_script_name
+        return ibrun_command, None
 
 
 
@@ -2020,7 +2057,7 @@ class LaunchMethodPOE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_name, (task_slots)):
+                          launch_script_hop, (task_slots)):
 
         # Count slots per host in provided slots description.
         hosts = {}
@@ -2046,7 +2083,7 @@ class LaunchMethodPOE(LaunchMethod):
         poe_command = 'LSB_MCPU_HOSTS="%s" %s %s' % (
             hosts_string, self.launch_command, task_command)
 
-        return poe_command, launch_script_name
+        return poe_command, None
 
 
 
@@ -3277,15 +3314,20 @@ class ExecWorker_POPEN (ExecWorker) :
                     else:
                         task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
+            launch_script_hop = "/usr/bin/env RP_SPAWNER_HOP=TRUE %s" % launch_script_name
+
             # The actual command line, constructed per launch-method
             prof('_Process construct command', uid=cu['_id'])
             try:
-                launch_command, cmdline = \
+                launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
-                                               launch_script_name,
+                                               launch_script_hop,
                                                cu['opaque_slot'])
+                if hop_cmd : cmdline = hop_cmd
+                else       : cmdline = launch_script_name
+
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
                 self._log.exception(msg)
@@ -3526,7 +3568,8 @@ class ExecWorker_SHELL(ExecWorker):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # FIXME: choose a better, unique workdir
-        self.workdir = "/tmp/radical-pilot-spawner-%s-%s" % (session_id, self.name)
+        self.workdir = "%s/agent.spawner.%s" % (os.getcwd(), self.name)
+      # self.workdir = "/tmp/radical-pilot-spawner-%s-%s" % (session_id, self.name)
 
 
         ret, out, _  = self.launcher_shell.run_sync \
@@ -3611,10 +3654,6 @@ class ExecWorker_SHELL(ExecWorker):
         if  descr['arguments']  : 
             args  = ' ' .join (quote_args (descr['arguments']))
 
-        cmd, _  = launcher.construct_command(descr['executable'], args,
-                                             descr['cores'], None,
-                                             cu['opaque_slot'])
-
       # if  descr['stdin']  : io  += "<%s "  % descr['stdin']
       # else                : io  += "<%s "  % '/dev/null'
         if  descr['stdout'] : io  += "1>%s " % descr['stdout']
@@ -3622,7 +3661,28 @@ class ExecWorker_SHELL(ExecWorker):
         if  descr['stderr'] : io  += "2>%s " % descr['stderr']
         else                : io  += "2>%s " %       'STDERR'
 
-        script  = "# ------------------------------------------------------\n"
+        cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
+                                                   descr['cores'], 
+                                                   '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
+                                                   cu['opaque_slot'])
+
+
+        script = ""
+        if hop_cmd :
+            # the script will itself contain a remote callout which calls again
+            # the script for the invokation of the real workload (cmd) -- we
+            # thus introduce a guard for the first execution.  The hop_cmd MUST
+            # set RP_SPAWNER_HOP to some value for the startup to work
+
+            script += "# ------------------------------------------------------\n"
+            script += '# perform one hop for the actual command launch\n'
+            script += 'if test -z "$RP_SPAWNER_HOP"\n'
+            script += 'then\n'
+            script += '    %s\n' % hop_cmd
+            script += '    exit\n'
+            script += 'fi\n\n'
+
+        script += "# ------------------------------------------------------\n"
         script += "%s"        %  cwd
         script += "%s"        %  env
         script += "%s"        %  pre
@@ -4921,7 +4981,7 @@ def main():
 
     # configure the agent logger
     logger    = logging.getLogger  ('radical.pilot.agent')
-    handle    = logging.FileHandler("AGENT.LOG")
+    handle    = logging.FileHandler("agent.log")
     formatter = logging.Formatter  ('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     logger.setLevel(options.debug_level)

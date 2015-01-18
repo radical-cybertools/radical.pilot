@@ -68,7 +68,7 @@ profile_event()
         NOW=$((TIMESTAMP-TIME_ZERO))
         printf '  %12s : %-20s : %12.4f : %-17s : %-24s : %-40s : \n' \
                   ' '    ' '     "$NOW"   ' '     'Bootstrap' "$@"    \
-        >> AGENT.prof
+        >> agent.prof
     fi
 }
 
@@ -791,7 +791,7 @@ echo
 echo "# -------------------------------------------------------------------"
 echo "# CLEANUP: $CLEANUP"
 echo "#"
-contains $CLEANUP 'l' && rm -r "$SANDBOX/AGENT.*"
+contains $CLEANUP 'l' && rm -r "$SANDBOX/agent.*"
 contains $CLEANUP 'u' && rm -r "$SANDBOX/unit-*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/"
 contains $CLEANUP 'e' && rm -r "$SANDBOX/"

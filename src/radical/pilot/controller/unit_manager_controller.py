@@ -533,10 +533,10 @@ class UnitManagerController(threading.Thread):
                               'state':    PENDING
                     }
 
-                    if action == LINK or action == COPY or action == MOVE:
+                    if action in [LINK, COPY, MOVE]:
                         unit.Agent_Input_Directives.append(new_sd)
                         unit.Agent_Input_Status = PENDING
-                    elif action == TRANSFER:
+                    elif action in [TRANSFER]:
                         if source.scheme and source.scheme != 'file':
                             # If there is a scheme and it is different than "file",
                             # assume a remote pull from the agent

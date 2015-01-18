@@ -95,21 +95,21 @@ class PilotLauncherWorker(threading.Thread):
             MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
 
             try :
-                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.STDOUT'))
+                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.out'))
                 out   = f_out.read()[-MAX_IO_LOGLENGTH:]
                 f_out.close ()
             except :
                 pass
 
             try :
-                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.STDERR'))
+                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.err'))
                 err   = f_err.read()[-MAX_IO_LOGLENGTH:]
                 f_err.close ()
             except :
                 pass
 
             try :
-                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'AGENT.LOG'))
+                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.log'))
                 log   = f_log.read()[-MAX_IO_LOGLENGTH:]
                 f_log.close ()
             except :
@@ -600,8 +600,8 @@ class PilotLauncherWorker(threading.Thread):
                         jd.arguments             = ["-l pilot_bootstrapper.sh", bootstrap_args]
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
-                        jd.output                = "AGENT.STDOUT"
-                        jd.error                 = "AGENT.STDERR"
+                        jd.output                = "agent.out"
+                        jd.error                 = "agent.err"
                         jd.total_cpu_count       = number_cores
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory

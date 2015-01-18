@@ -509,7 +509,7 @@ class UnitManager(object):
                     logger.warn ("unschedule unit %s, lost pilot %s" % (unit.uid, pid))
                     continue
 
-                unit.sandbox = schedule['pilots'][pid]['sandbox'] + "/unit-" + str(unit.uid)
+                unit.sandbox = schedule['pilots'][pid]['sandbox'] + "/" + str(unit.uid)
 
                 ud = unit.description
 

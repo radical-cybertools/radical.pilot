@@ -207,15 +207,15 @@ class Session (saga.Session, Object):
         ##########################
         if uid is None:
             try:
-                self._uid = ru.generate_id ('session.', mode=ru.ID_UNIQUE)
-                self._last_reconnect = None
+                self._connected  = None
 
                 if name :
                     self._name = name
+                    self._uid  = name
+                  # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
                 else :
+                    self._uid  = ru.generate_id ('rp.session.', mode=ru.ID_PRIVATE)
                     self._name = self._uid
-                  # self._name = ru.generate_id ('session.')
-                  # self._name = ru.generate_id ('session.', mode=ru.ID_USERCOUNT)
 
 
                 self._dbs, self._created, self._connection_info = \
@@ -243,8 +243,8 @@ class Session (saga.Session, Object):
                                             db_url=self._database_url,
                                             db_name=database_name)
 
-                self._created          = session_info["created"]
-                self._last_reconnect   = session_info["last_reconnect"]
+                self._created   = session_info["created"]
+                self._connected = session_info["connected"]
 
                 logger.info("Reconnected to existing Session %s." % str(self))
 
@@ -315,12 +315,12 @@ class Session (saga.Session, Object):
         """Returns a Python dictionary representation of the object.
         """
         object_dict = {
-            "uid": self._uid,
-            "created": self._created,
-            "last_reconnect": self._last_reconnect,
-            "database_name": self._connection_info.dbname,
-            "database_auth": self._connection_info.dbauth,
-            "database_url" : self._connection_info.dburl
+            "uid"           : self._uid,
+            "created"       : self._created,
+            "connected"     : self._connected ,
+            "database_name" : self._connection_info.dbname,
+            "database_auth" : self._connection_info.dbauth,
+            "database_url"  : self._connection_info.dburl
         }
         return object_dict
 
@@ -349,12 +349,12 @@ class Session (saga.Session, Object):
     #---------------------------------------------------------------------------
     #
     @property
-    def last_reconnect(self):
+    def connected (self):
         """Returns the most recent UTC date and time the session was
         reconnected to.
         """
         self._assert_obj_is_valid()
-        return self._last_reconnect
+        return self._connected 
 
 
     #---------------------------------------------------------------------------

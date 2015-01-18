@@ -138,14 +138,20 @@ class Session():
         self._session_id = sid
 
         self._s = self._db["%s" % sid]
-        self._s.insert( 
-            {
-                "_id"              : sid,
-                "name"             : name,
-                "created"          : creation_time,
-                "last_reconnect"   : None
-            }
-        )
+
+        print "========================================="
+        try :
+            ret = self._s.remove({"_id" : sid})
+            print "session purge: %s" % ret
+        except Exception :
+            print "session did not yet exist"
+            pass
+        print "========================================="
+
+        self._s.insert({"_id"       : sid,
+                        "name"      : name,
+                        "created"   : creation_time,
+                        "connected" : creation_time})
 
         # Create the collection shortcut:
         self._w  = self._db["%s.cu" % sid]
@@ -187,7 +193,7 @@ class Session():
         cursor = self._s.find({"_id": sid})
 
         self._s.update({"_id"  : sid},
-                       {"$set" : {"last_reconnect" : datetime.datetime.utcnow()}}
+                       {"$set" : {"connected" : datetime.datetime.utcnow()}}
         )
 
         cursor = self._s.find({"_id": sid})
@@ -823,7 +829,6 @@ class Session():
                 "finished":      None,
                 "exec_locs":     None,
                 "exit_code":     None,
-                #"workdir":       "unit-"+unit.uid,
                 "sandbox":       None,
                 "stdout":        None,
                 "stderr":        None,

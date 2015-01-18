@@ -1,5 +1,6 @@
 
 import os
+import sys
 import time
 import datetime
 import pymongo
@@ -135,9 +136,10 @@ def get_session_slothist (db, sid, cache=None) :
 
     for pilot_doc in docs['pilot'] :
 
-        pilot_id   = pilot_doc['_id'] 
-        slot_names = list()
-        slot_infos = dict()
+        pilot_id     = pilot_doc['_id'] 
+        slot_names   = list()
+        slot_infos   = dict()
+        slot_started = dict()
 
         nodes   = pilot_doc['nodes']
         n_cores = pilot_doc['cores_per_node']
@@ -146,7 +148,8 @@ def get_session_slothist (db, sid, cache=None) :
             for core in range(n_cores):
                 slot_name = "%s:%s" % (node, core)
                 slot_names.append (slot_name)
-                slot_infos[slot_name] = list()
+                slot_infos  [slot_name] = list()
+                slot_started[slot_name] = sys.maxint
 
         for unit_doc in docs['unit'] :
             if unit_doc['pilot'] == pilot_doc['_id'] :
@@ -170,12 +173,16 @@ def get_session_slothist (db, sid, cache=None) :
                         print "slot %s for pilot %s unknown - ignored" % (slot_id, pilot_id)
                         continue
                     
-                    slot_infos[slot_id].append ([started, finished])
+                    slot_infos[slot_id].append([started, finished])
+                    slot_started[slot_id] = min(started, slot_started[slot_id])
 
         for slot_id in slot_infos :
             slot_infos[slot_id].sort(key=lambda x: float(x[0]))
 
-        slot_names.sort (key=lambda x: slot_infos[x][0][0])
+        # we use the startup time to sort the slot names, as that gives a nicer
+        # representation when plotting.  That sorting should probably move to
+        # the plotting tools though... (FIXME)
+        slot_names.sort (key=lambda x: slot_started[x])
 
         ret[pilot_id] = dict()
         ret[pilot_id]['started']    = pilot_doc['started']
@@ -206,8 +213,8 @@ def get_session_events (db, sid, cache=None) :
         odoc  = dict()
         otype = 'session'
         oid   = str(doc['_id'])
-        ret.append (['state', otype, oid, None, doc['created'],        'created',        odoc])
-        ret.append (['state', otype, oid, None, doc['last_reconnect'], 'last_reconnect', odoc])
+        ret.append (['state', otype, oid, None, doc['created'],   'created',   odoc])
+        ret.append (['state', otype, oid, None, doc['connected'], 'connected', odoc])
 
     for doc in docs['pilot'] :
         odoc  = dict()
