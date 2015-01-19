@@ -157,10 +157,10 @@ git_ident = "$Id$"
 # ------------------------------------------------------------------------------
 # CONSTANTS
 #
-N_STAGEIN_WORKER            = 3
-N_EXEC_WORKER               = 3
-N_WATCH_WORKER              = 3
-N_STAGEOUT_WORKER           = 3
+N_STAGEIN_WORKER            = 1
+N_EXEC_WORKER               = 1
+N_WATCH_WORKER              = 1
+N_STAGEOUT_WORKER           = 1
 N_UPDATE_WORKER             = 1
 
 # 'enum' for unit launch method types
