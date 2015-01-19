@@ -161,7 +161,7 @@ N_STAGEIN_WORKER            = 3
 N_EXEC_WORKER               = 3
 N_WATCH_WORKER              = 3
 N_STAGEOUT_WORKER           = 3
-N_UPDATE_WORKER             = 3
+N_UPDATE_WORKER             = 1
 
 # 'enum' for unit launch method types
 LAUNCH_METHOD_APRUN         = 'APRUN'
