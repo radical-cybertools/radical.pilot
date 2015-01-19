@@ -3190,20 +3190,16 @@ class ExecWorker(threading.Thread):
 
             while not self._terminate.isSet():
 
+                prof('ExecWorker pull cu from queue')
                 try:
-                    prof('ExecWorker pull cu from queue')
                     cu = self._execution_queue.get()
-                    prof('ExecWorker got  cu from queue', uid=cu['uid'], tag='preprocess')
-
                 except Queue.Empty:
-
                     # nothing to do, no new CU to execute...
                     continue
-
+                prof('ExecWorker got cu from queue', uid=cu['uid'], tag='preprocess')
 
                 try:
                 
-
                     if cu['description']['mpi']:
                         if not self._mpi_launcher:
                             raise Exception("Can't launch MPI tasks without MPI launcher.")
