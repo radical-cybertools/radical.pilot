@@ -961,7 +961,7 @@ if __name__ == '__main__' :
         url.path = 'radicalpilot'
 
     if  not cachedir :
-        cachedir = os.path.pwd ()
+        cachedir = os.getcwd ()
 
     if  not os.path.isdir (cachedir) :
         usage ("%s is no valid cachedir" % cachedir)

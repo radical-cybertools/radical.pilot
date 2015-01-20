@@ -248,6 +248,11 @@ DROP_CLONES = {
 # ------------------------------------------------------------------------------
 # CONSTANTS
 #
+N_STAGEIN_WORKER            = 1
+N_EXEC_WORKER               = 1
+N_WATCH_WORKER              = 1
+N_STAGEOUT_WORKER           = 1
+N_UPDATE_WORKER             = 1
 
 # 'enum' for unit launch method types
 LAUNCH_METHOD_APRUN         = 'APRUN'
@@ -4351,14 +4356,14 @@ class StageoutWorker(threading.Thread):
                 # gets notified that it can start its work.
                 if cu['FTW_Output_Directives']:
 
-                    prof('ExecWorker unit needs FTW_O ', uid=cu['_id'])
-                    self._agent.update(unit   = cu,
-                                       msg    = 'FTW output staging needed',
-                                       update = {
-                                           '$set' : {
-                                               'FTW_Output_Status' : rp.PENDING
-                                           }
-                                       })
+                    prof('ExecWorker unit needs FTW_O ', uid=cu['uid'])
+                    self._agent.update_unit(
+                        _id    = cu['_id'],
+                        msg    = 'FTW output staging needed',
+                        update = {
+                            '$set': {'FTW_Output_Status' : rp.PENDING}
+                        }
+                    )
                     # NOTE: this is final for the agent scope -- further state
                     # transitions are done by the FTW.
                     cu = None

@@ -205,6 +205,24 @@ class ComputePilot (object):
     # -------------------------------------------------------------------------
     #
     @property
+    def callback_history(self):
+        """Returns the complete callback history of the pilot.
+        """
+        if not self._uid:
+            return None
+
+        callbacks = []
+
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
+        if 'callbackhostory' in pilot_json :
+            for callback in pilot_json['callbackhistory']:
+                callbacks.append(State(state=callback["state"], timestamp=callback["timestamp"]))
+
+        return callbacks
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def stdout(self):
         """Returns the stdout of the pilot.
         """

@@ -303,6 +303,24 @@ class ComputeUnit(object):
     # -------------------------------------------------------------------------
     #
     @property
+    def callback_history(self):
+        """Returns the complete callback history of the ComputeUnit.
+        """
+        if not self._uid:
+            return None
+
+        callbacks = []
+
+        cu_json = self._worker.get_compute_unit_data(self.uid)
+        if 'callbackhostory' in cu_json :
+            for callback in cu_json['callbackhistory']:
+                callbacks.append(State(state=callback["state"], timestamp=callback["timestamp"]))
+
+        return callbacks
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def exit_code(self):
         """Returns the exit code of the ComputeUnit.
 

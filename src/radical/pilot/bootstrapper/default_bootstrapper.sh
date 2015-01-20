@@ -303,6 +303,7 @@ EOF
 #   'update'  : update if it exists, otherwise create, then use
 #   'create'  : use    if it exists, otherwise create, then use
 #   'use'     : use    if it exists, otherwise error,  then exit
+#   'recreate': delete if it exists, otherwise create, then use
 #
 # create and update ops will be locked and thus protected against concurrent
 # bootstrapper invokations.
@@ -356,6 +357,12 @@ setup_virtenv()
             exit 1
         fi
         virtenv_create=FALSE
+        virtenv_update=FALSE
+
+    elif test "$virtenv_mode" = "recreate"
+    then
+        test -d "$virtenv" && rm -r "$virtenv"
+        virtenv_create=TRUE
         virtenv_update=FALSE
 
     fi
