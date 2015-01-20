@@ -30,8 +30,8 @@ JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
 
 DEFAULT_AGENT_TYPE    = 'multicore'
 DEFAULT_AGENT_VERSION = 'stage@local'
-DEFAULT_VIRTENV       = '%(pilot_sandbox)s/virtenv'
-DEFAULT_VIRTENV_MODE  = 'private'
+DEFAULT_VIRTENV       = '%(global_sandbox)s/virtenv'
+DEFAULT_VIRTENV_MODE  = 'update'
 
 # ----------------------------------------------------------------------------
 #
@@ -357,6 +357,17 @@ class PilotLauncherWorker(threading.Thread):
                         virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
 
+                        # expand variables in virtenv string
+                        virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path,
+                                             'global_sandbox': saga.Url(global_sandbox).path }
+
+                        # Check for deprecated global_virtenv
+                        global_virtenv = resource_cfg.get('global_virtenv')
+                        if global_virtenv:
+                            logger.warn ("'global_virtenv' keyword is deprecated -- use 'virtenv' and 'virtenv_mode'")
+                            virtenv = global_virtenv
+                            virtenv_mode = 'use'
+
                         # set default scheme, host, port and dbname if not set
                         db_url = saga.Url(agent_mongodb_endpoint)
                         if not db_url.scheme: db_url.scheme = 'mongodb'
@@ -366,17 +377,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         # Create a host:port string for use by the bootstrapper.
                         database_hostport = "%s:%d" % (db_url.host, db_url.port)
-
-                        # deprecated
-                        global_virtenv = resource_cfg.get('global_virtenv')
-                        if global_virtenv:
-                            logger.warn ("'global_virtenv' keyword is deprecated -- use 'virtenv' and 'virtenv_mode'")
-                            virtenv = global_virtenv
-                            virtenv_mode = 'use'
-
-                        # expand variables in virtenv string
-                        virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path, 
-                                             'global_sandbox': saga.Url(global_sandbox).path }  
 
                         # ------------------------------------------------------
                         # Copy the bootstrap shell script.  This also creates
@@ -531,12 +531,17 @@ class PilotLauncherWorker(threading.Thread):
 
                         # massage some values
                         debug_level = os.environ.get ('RADICAL_PILOT_AGENT_VERBOSE', logger.level)
-                        debug_level = { 'CRITICAL' : 1,
-                                        'ERROR'    : 2,
-                                        'WARNING'  : 3,
-                                        'WARN'     : 3,
-                                        'INFO'     : 4,
-                                        'DEBUG'    : 5}.get (debug_level, int(debug_level))
+                        try:
+                            debug_level = int(debug_level)
+                        except ValueError:
+                            debug_level = {
+                                'CRITICAL' : 1,
+                                'ERROR'    : 2,
+                                'WARNING'  : 3,
+                                'WARN'     : 3,
+                                'INFO'     : 4,
+                                'DEBUG'    : 5
+                            }.get(debug_level, 0)
 
                         if not queue :
                             queue = default_queue

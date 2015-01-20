@@ -99,16 +99,19 @@ lock()
     lockfile="$entry.lock"
     count=0
 
-    err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1` 
-    until ! test "$err" = "ok"
-    do
-        if contains "$err" 'no such file or directory'
-        then
-            # there is something wrong with the lockfile path...
-            echo "can't create lockfile at '$lockfile' - invalid directory?"
-            exit 1
-        fi
+  # err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1` 
+  # until ! test "$err" = "ok"
+  # do
+  #     if contains "$err" 'no such file or directory'
+  #     then
+  #         # there is something wrong with the lockfile path...
+  #         echo "can't create lockfile at '$lockfile' - invalid directory?"
+  #         exit 1
+  #     fi
 
+    set -C
+    until echo $pid 2>/dev/null >$lockfile
+    do
         owner=`cat $lockfile 2>/dev/null`
         count=$((count+1))
 
@@ -658,7 +661,7 @@ while getopts "a:b:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
         d)  DEBUG=$OPTARG  ;;
         e)  preprocess "$OPTARG"  ;;
         f)  FORWARD_TUNNEL_ENDPOINT=$OPTARG  ;;
-        g)  VIRTENV=$OPTARG  ;;
+        g)  VIRTENV=$(eval echo $OPTARG)  ;;
         i)  PYTHON=$OPTARG  ;;
         j)  TASK_LAUNCH_METHOD=$OPTARG  ;;
         k)  MPI_LAUNCH_METHOD=$OPTARG  ;;

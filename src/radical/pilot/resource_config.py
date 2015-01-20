@@ -212,15 +212,9 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(DESCRIPTION,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(NOTES,                   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
-        self._attributes_register_deprecated (GLOBAL_VIRTENV, VIRTENV)
-
-
-
-
     # -------------------------------------------------------------------------
     #
     def __str__(self):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
-

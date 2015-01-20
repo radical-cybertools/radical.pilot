@@ -85,7 +85,7 @@ if __name__ == "__main__":
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "local.localhost"
     pdesc.runtime  = 5 # minutes
-    pdesc.cores    = 1
+    pdesc.cores    = 8
     pdesc.cleanup  = True
 
     # Launch the pilot.
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     #    /bin/cat $INPUT1 $INPUT2
     #
     cuds = []
-    for unit_count in range(0, 20):
+    for unit_count in range(0, 14):
         cud = rp.ComputeUnitDescription()
         cud.name          = "unit_%03d" % unit_count
         cud.executable    = "/bin/sleep"
@@ -150,7 +150,7 @@ if __name__ == "__main__":
             % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
     # Close automatically cancels the pilot(s).
-    session.close (terminate=True)
+    session.close (terminate=True, delete=False)
 
     # delete the test data files
     os.system ('rm file1.dat')

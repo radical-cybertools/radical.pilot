@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import bson
+import pprint
+import datetime
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+# ------------------------------------------------------------------------------
+#
+def usage (msg=None, noexit=False) :
+
+    if  msg :
+        print "\n      Error: %s" % msg
+
+    print """
+      usage      : %s [<sid>] [<output>]
+      example    : %s 5490ba7174df926284f8ef48 -
+
+      arguments  :
+        <sid>    : session id
+        <output> : output file (default: <sid>.json)
+
+      The tool will look for <sid>.*.bson files in the current pwd, and convert
+      them to json, to write them to <sid>.json (default) or ot another output
+      location (file or stdout [-]).
+      
+""" % (sys.argv[0], sys.argv[0])
+
+    if  msg :
+        sys.exit (1)
+
+    if  not noexit :
+        sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__' :
+
+
+    sid    = None
+    fn_out = None
+
+    if len(sys.argv) <= 1 : usage ("insufficient arguments -- need session ID")
+    if len(sys.argv) >  1 : sid    = sys.argv[1]
+    if len(sys.argv) >  2 : fn_out = sys.argv[2]
+    if len(sys.argv) >  3 : usage ("incorrect number of arguments")
+
+    if not fn_out :
+        fn_out = "%s.json" % sid
+
+    f_in_s  = open ("%s.bson"    % sid, 'r')
+    f_in_p  = open ("%s.p.bson"  % sid, 'r')
+    f_in_pm = open ("%s.pm.bson" % sid, 'r')
+    f_in_um = open ("%s.um.bson" % sid, 'r')
+    f_in_cu = open ("%s.cu.bson" % sid, 'r')
+
+    bstr_s  = f_in_s .read ()
+    bstr_p  = f_in_p .read ()
+    bstr_pm = f_in_pm.read ()
+    bstr_um = f_in_um.read ()
+    bstr_cu = f_in_cu.read ()
+    
+    bson_s  = bson.BSON (bstr_s )
+    bson_p  = bson.BSON (bstr_p )
+    bson_pm = bson.BSON (bstr_pm)
+    bson_um = bson.BSON (bstr_um)
+    bson_cu = bson.BSON (bstr_cu)
+
+    json_s  = bson_s .decode ()
+    json_p  = bson_p .decode ()
+    json_pm = bson_pm.decode ()
+    json_um = bson_um.decode ()
+    json_cu = bson_cu.decode ()
+
+    json_data = dict()
+    json_data['session'] = json_s ['sessions'][0]
+    json_data['pilot']   = json_p ['pilots']
+    json_data['pmgr']    = json_pm['pilot_managers']
+    json_data['umgr']    = json_um['unit_managers']
+    json_data['unit']    = json_cu['units']
+
+    if fn_out == '-' :
+        pprint.pprint (json_data)
+    else :
+        ru.write_json (json_data, fn_out)
+
+
+
+# ------------------------------------------------------------------------------
+
