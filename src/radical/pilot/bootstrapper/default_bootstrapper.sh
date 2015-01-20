@@ -32,7 +32,7 @@ TASK_LAUNCH_METHOD=
 SANDBOX=`pwd`
 
 
-# seconds to wait for lock files 
+# seconds to wait for lock files
 # 10 min should be enough for anybody to create/update a virtenv...
 LOCK_TIMEOUT=600
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
@@ -42,8 +42,8 @@ VIRTENV_IS_ACTIVATED=FALSE
 
 # --------------------------------------------------------------------
 #
-# it is suprisingly difficult to get seconds since epoch in POSIX -- 
-# 'date +%s' is a GNU extension...  Anyway, awk to the rescue! 
+# it is suprisingly difficult to get seconds since epoch in POSIX --
+# 'date +%s' is a GNU extension...  Anyway, awk to the rescue!
 #
 timestamp () {
   TIMESTAMP=`\awk 'BEGIN{srand(); print srand()}'`
@@ -77,8 +77,8 @@ profile_event 'bootstrap start'
 
 # ------------------------------------------------------------------------------
 #
-# some virtenv operations need to be protected against pilots starting up 
-# concurrently.
+# some virtenv operations need to be protected against pilots starting up
+# concurrently, so we lock the virtualenv directory during creation and update.
 #
 # I/O redirect under noclobber is atomic in POSIX
 #
@@ -99,19 +99,16 @@ lock()
     lockfile="$entry.lock"
     count=0
 
-  # err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1` 
-  # until ! test "$err" = "ok"
-  # do
-  #     if contains "$err" 'no such file or directory'
-  #     then
-  #         # there is something wrong with the lockfile path...
-  #         echo "can't create lockfile at '$lockfile' - invalid directory?"
-  #         exit 1
-  #     fi
-
-    set -C
-    until echo $pid 2>/dev/null >$lockfile
+    err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1`
+    until ! test "$err" = "ok"
     do
+        if contains "$err" 'no such file or directory'
+        then
+            # there is something wrong with the lockfile path...
+            echo "can't create lockfile at '$lockfile' - invalid directory?"
+            exit 1
+        fi
+
         owner=`cat $lockfile 2>/dev/null`
         count=$((count+1))
 
@@ -131,12 +128,10 @@ lock()
         fi
 
         # retry
-        err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1` 
+        err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1`
     done
 
-    # one way or the other, we got the lock finally.  Reset noclobber option and
-    # return
-    set +C
+    # one way or the other, we got the lock finally.
 }
 
 
@@ -148,7 +143,7 @@ lock()
 #
 unlock()
 {
-    pid="$1"      # ID of pilot/bootstrapper which has the lock 
+    pid="$1"      # ID of pilot/bootstrapper which has the lock
     entry="$2"    # locked entry
 
     # clean $entry (normalize path, remove trailing slash, etc
@@ -172,7 +167,7 @@ unlock()
 
     rm $lockfile
 }
-    
+
 
 # ------------------------------------------------------------------------------
 # contains(string, substring)
@@ -180,7 +175,7 @@ unlock()
 # Returns 0 if the specified string contains the specified substring,
 # otherwise returns 1.
 #
-contains() 
+contains()
 {
     string="$1"
     substring="$2"
@@ -310,7 +305,7 @@ EOF
 #   'use'     : use    if it exists, otherwise error,  then exit
 #
 # create and update ops will be locked and thus protected against concurrent
-# bootstrapper invokations.  
+# bootstrapper invokations.
 #
 # (private + location in pilot sandbox == old behavior)
 #
@@ -319,7 +314,7 @@ EOF
 # needs to be smaller than lock timeout).  OTOH, concurrent pip updates should
 # not have a negative impact on the virtenv in the first place, AFAIU -- lock on
 # create is more important, and should be less critical
-# 
+#
 setup_virtenv()
 {
     pid="$1"
@@ -341,7 +336,7 @@ setup_virtenv()
         fi
         virtenv_create=TRUE
         virtenv_update=FALSE
-    
+
     elif test "$virtenv_mode" = "update"
     then
         test -d "$virtenv" || virtenv_create=TRUE
@@ -430,7 +425,7 @@ setup_virtenv()
         VIRTENV_IS_ACTIVATED=TRUE
     fi
 
-    
+
     # update virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_update" = "TRUE"
     then
@@ -471,13 +466,13 @@ virtenv_create()
 
     VIRTENV="$1"
 
-    # create a fresh virtualenv. we use an older 1.9.x version of 
+    # create a fresh virtualenv. we use an older 1.9.x version of
     # virtualenv as this seems to work more reliable than newer versions.
     # If we can't download, we try to move on with the system virtualenv.
     run_cmd "Download virtualenv tgz" \
             "curl -k -O '$VIRTENV_TGZ_URL'"
 
-    if ! test "$?" = 0 
+    if ! test "$?" = 0
     then
         echo "WARNING: Couldn't download virtualenv via curl! Using system version."
         BOOTSTRAP_CMD="virtualenv $VIRTENV"
@@ -486,19 +481,19 @@ virtenv_create()
         run_cmd "unpacking virtualenv tgz" \
                 "tar xvfz '$VIRTENV_TGZ'"
 
-        if test $? -ne 0 
+        if test $? -ne 0
         then
             echo "Couldn't unpack virtualenv!"
             return 1
         fi
-        
+
         BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $VIRTENV"
     fi
 
 
     run_cmd "Create virtualenv" \
             "$BOOTSTRAP_CMD"
-    if test $? -ne 0 
+    if test $? -ne 0
     then
         echo "Couldn't create virtualenv"
         return 1
@@ -507,22 +502,22 @@ virtenv_create()
     # activate the virtualenv
     source $VIRTENV/bin/activate
     VIRTENV_IS_ACTIVATED=TRUE
-    
+
 
   # run_cmd "Downgrade pip to 1.2.1" \
   #         "easy_install pip==1.2.1" \
   #      || echo "Couldn't downgrade pip! Using default version (if it exists)"
 
-    
+
     run_cmd "update setuptools" \
             "pip install --upgrade setuptools" \
          || echo "Couldn't update setuptools -- using default version"
-    
+
     run_cmd "update pip" \
             "pip install --upgrade pip" \
          || echo "Couldn't update pip -- using default version"
 
-    
+
     # On india/fg 'pip install saga-python' does not work as pip fails to
     # install apache-libcloud (missing bz2 compression).  We thus install that
     # dependency via easy_install.
@@ -571,7 +566,7 @@ rp_install()
         run_cmd "update radical.pilot via pip" \
                 "pip install  $RP_INSTALL_SOURCE"
     fi
-    if test $? -ne 0 
+    if test $? -ne 0
     then
         echo "Couldn't install radical.pilot! Lets see how far we get ..."
     fi
@@ -619,7 +614,7 @@ find_available_port()
 #
 # run a preprocess command -- and exit if it happens to fail
 #
-# preprocess commands are executed right in arg parser loop because -e can be 
+# preprocess commands are executed right in arg parser loop because -e can be
 # passed multiple times
 #
 preprocess()
@@ -627,17 +622,17 @@ preprocess()
     cmd=$@
     run_cmd "Running pre-process command" "$cmd"
 
-    if test $? -ne 0 
+    if test $? -ne 0
     then
         echo "#ABORT"
         exit 1
     fi
 }
 
-    
+
 # ------------------------------------------------------------------------------
 #
-# MAIN 
+# MAIN
 #
 
 # Report where we are, as this is not always what you expect ;-)
