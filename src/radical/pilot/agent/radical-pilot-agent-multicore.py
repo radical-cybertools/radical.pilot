@@ -4624,7 +4624,7 @@ class Agent(object):
         for n in range(NUMBER_OF_WORKERS[EXEC]):
             exec_worker = ExecWorker.create(
                 name            = "ExecWorker-%d" % n,
-                spawner         = SPAWNER_NAME_SHELL,
+                spawner         = SPAWNER_NAME_POPEN,
                 logger          = self._log,
                 agent           = self,
                 lrms            = self._lrms,
