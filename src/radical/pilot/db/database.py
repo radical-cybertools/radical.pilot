@@ -138,16 +138,6 @@ class Session():
         self._session_id = sid
 
         self._s = self._db["%s" % sid]
-
-        print "========================================="
-        try :
-            ret = self._s.remove({"_id" : sid})
-            print "session purge: %s" % ret
-        except Exception :
-            print "session did not yet exist"
-            pass
-        print "========================================="
-
         self._s.insert({"_id"       : sid,
                         "name"      : name,
                         "created"   : creation_time,
