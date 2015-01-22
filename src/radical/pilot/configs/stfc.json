@@ -10,6 +10,7 @@
         "default_queue"               : "prod",
         "lrms"                        : "LOADL",
         "agent_scheduler"             : "TORUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "RUNJOB",
         "mpi_launch_method"           : "RUNJOB",
         "virtenv"                     : "%(global_sandbox)s/virtenv_joule",
