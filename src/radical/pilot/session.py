@@ -214,7 +214,7 @@ class Session (saga.Session, Object):
                     self._uid  = name
                   # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
                 else :
-                    self._uid  = ru.generate_id ('rp.session.', mode=ru.ID_PRIVATE)
+                    self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
                     self._name = self._uid
 
 
