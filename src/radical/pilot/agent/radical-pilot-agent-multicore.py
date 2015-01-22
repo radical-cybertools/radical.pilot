@@ -5034,7 +5034,7 @@ def main():
         ru.dict_merge (DROP_CLONES,       cfg.get ('DROP_CLONES',       {}), policy='overwrite')
     
     except Exception as e:
-        logger.error ("agent config not merged: %s", e)
+        logger.info ("agent config not merged: %s", e)
 
 
     try:
