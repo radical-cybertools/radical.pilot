@@ -797,7 +797,7 @@ echo "# -------------------------------------------------------------------"
 echo "# CLEANUP: $CLEANUP"
 echo "#"
 contains $CLEANUP 'l' && rm -r "$SANDBOX/agent.*"
-contains $CLEANUP 'u' && rm -r "$SANDBOX/unit-*"
+contains $CLEANUP 'u' && rm -r "$SANDBOX/unit.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/"
 contains $CLEANUP 'e' && rm -r "$SANDBOX/"
 

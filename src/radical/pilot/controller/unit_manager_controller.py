@@ -197,6 +197,10 @@ class UnitManagerController(threading.Thread):
             self._manager_callbacks[UNIT_STATE] = list()
 
         for [cb, cb_data] in self._manager_callbacks[UNIT_STATE]:
+            if not self._shared_data[unit_id]['facade_object'] :
+                logger.warning ('skip cb for incomple unit (%s: %s)' % (unit_id, new_state))
+                break
+
             try:
                 if  cb_data :
                     cb(self._shared_data[unit_id]['facade_object'], new_state, cb_data)

@@ -3572,9 +3572,7 @@ class ExecWorker_SHELL(ExecWorker):
         self.launcher_shell = sups.PTYShell ("fork://localhost/")
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
-        # FIXME: choose a better, unique workdir
-        self.workdir = "%s/agent.spawner.%s" % (os.getcwd(), self.name)
-      # self.workdir = "/tmp/radical-pilot-spawner-%s-%s" % (session_id, self.name)
+        self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
 
 
         ret, out, _  = self.launcher_shell.run_sync \
@@ -3779,7 +3777,7 @@ class ExecWorker_SHELL(ExecWorker):
                 _, out = self.monitor_shell.find (['\n'], timeout=MONITOR_READ_TIMEOUT)
 
                 line = out.strip ()
-                self._log.debug ('monitor line: %s' % line)
+              # self._log.debug ('monitor line: %s' % line)
 
                 if  not line :
 
@@ -3830,7 +3828,7 @@ class ExecWorker_SHELL(ExecWorker):
                             self._handle_event (cu, pid, state, data)
 
                     # all is well...
-                    self._log.info ("monitoring channel finish idle loop")
+                  # self._log.info ("monitoring channel finish idle loop")
                     continue
 
 
@@ -4091,7 +4089,7 @@ class StageinWorker(threading.Thread):
                 if not cu:
                     continue
 
-                sandbox      = os.path.join(self._workdir, 'unit-%s' % cu['_id']),
+                sandbox      = os.path.join(self._workdir, '%s' % cu['_id']),
                 staging_area = os.path.join(self._workdir, 'staging_area'),
 
                 for directive in cu['Agent_Input_Directives']:
@@ -4245,7 +4243,7 @@ class StageoutWorker(threading.Thread):
                 if not cu:
                     continue
 
-                sandbox = os.path.join(self._workdir, 'unit-%s' % cu['_id']),
+                sandbox = os.path.join(self._workdir, '%s' % cu['_id']),
 
                 ## parked from unit state checker: unit postprocessing
 
@@ -4356,14 +4354,21 @@ class StageoutWorker(threading.Thread):
                 # gets notified that it can start its work.
                 if cu['FTW_Output_Directives']:
 
-                    prof('ExecWorker unit needs FTW_O ', uid=cu['uid'])
+                    prof('ExecWorker unit needs FTW_O ', uid=cu['_id'])
                     self._agent.update_unit(
-                        _id    = cu['_id'],
+                        uid    = cu['_id'],
                         msg    = 'FTW output staging needed',
                         update = {
-                            '$set': {'FTW_Output_Status' : rp.PENDING}
-                        }
-                    )
+                            '$set': {
+                                'FTW_Output_Status' : rp.PENDING,
+                                'stdout'            : cu['stdout'],
+                                'stderr'            : cu['stderr'],
+                                'exit_code'         : cu['exit_code'],
+                                'started'           : cu['started'],
+                                'finished'          : cu['finished'],
+                                'slots'             : cu['opaque_slot'],
+                            }
+                        })
                     # NOTE: this is final for the agent scope -- further state
                     # transitions are done by the FTW.
                     cu = None
@@ -4881,7 +4886,7 @@ class Agent(object):
                 prof('Agent get unit ingest', uid=cu['_id'])
 
                 cud     = cu['description']
-                workdir = "%s/unit-%s" % (self._workdir, cu['_id'])
+                workdir = "%s/%s" % (self._workdir, cu['_id'])
 
                 cu['workdir']     = workdir
                 cu['stdout']      = ''
