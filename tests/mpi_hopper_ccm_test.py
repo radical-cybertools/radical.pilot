@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
         mpi_test_task.pre_exec      = [
             "module load python",
-            "source /global/project/projectdirs/m2178/shared_ccm_cu_ve_20141204/bin/activate",
+            ". /global/project/projectdirs/m2178/shared_ccm_cu_ve_20141204/bin/activate",
         ]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"

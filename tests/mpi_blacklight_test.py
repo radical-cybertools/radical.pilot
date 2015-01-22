@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
 
-        mpi_test_task.pre_exec      = ["source /usr/share/modules/init/bash",
+        mpi_test_task.pre_exec      = [". /usr/share/modules/init/bash",
                                        "export MPI_DSM_VERBOSE=",
                                        "module load python"
                                       ]
