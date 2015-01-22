@@ -20,6 +20,7 @@
         "task_launch_method"          : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "mpi_launch_method"           : "MPIEXEC",
+        "agent_spawner"               : "SHELL",
         "virtenv"                     : "/tmp/ve_test",
         "virtenv_mode"                : "recreate"
     }

@@ -21,6 +21,7 @@ VIRTENV=
 VIRTENV_MODE=
 LRMS=
 MPI_LAUNCH_METHOD=
+SPAWNER=
 PILOT_ID=
 PILOT_VERSION=
 PILOT_TYPE=
@@ -252,7 +253,7 @@ usage()
 
     if ! test -z "$msg"
     then
-        printf "\n\tERROR: $msg\n\n"
+        printf "\n\tERROR: $msg\n\n" >> /dev/stderr
     fi
 
     cat << EOF >> /dev/stderr
@@ -275,6 +276,7 @@ OPTIONS:
    -l      Type of Local Resource Management System.
    -m      Address and port of the coordination service host (MongoDB).
    -n      The name of the database.
+   -o      The agent job spawning mechanism.
    -p      The unique identifier (uid) of the pilot.
    -q      The scheduler to be used by the agent.
    -s      The unique identifier (uid) of the session.
@@ -655,7 +657,7 @@ echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
 # free letters: b h o
-while getopts "a:b:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
+while getopts "a:b:c:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
         a)  AUTH=$OPTARG  ;;
         b)  SDIST=$OPTARG  ;;
@@ -670,6 +672,7 @@ while getopts "a:b:c:d:e:f:g:hi:j:k:l:m:n:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
         l)  LRMS=$OPTARG  ;;
         m)  DBURL=$OPTARG   ;;
         n)  DBNAME=$OPTARG  ;;
+        o)  SPAWNER=$OPTARG  ;;
         p)  PILOT_ID=$OPTARG  ;;
         q)  SCHEDULER=$OPTARG  ;;
         r)  RUNTIME=$OPTARG  ;;
@@ -692,6 +695,7 @@ if test -z "$DBNAME"             ; then  usage "missing DBNAME            ";  fi
 if test -z "$DBURL"              ; then  usage "missing DBURL             ";  fi
 if test -z "$LRMS"               ; then  usage "missing LRMS              ";  fi
 if test -z "$MPI_LAUNCH_METHOD"  ; then  usage "missing MPI_LAUNCH_METHOD ";  fi
+if test -z "$SPAWNER"            ; then  usage "missing SPAWNER           ";  fi
 if test -z "$PILOT_ID"           ; then  usage "missing PILOT_ID          ";  fi
 if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
 if test -z "$SCHEDULER"          ; then  usage "missing SCHEDULER         ";  fi
@@ -767,6 +771,7 @@ AGENT_CMD="python $PILOT_SCRIPT \
     -l $LRMS \
     -m $DBURL \
     -n $DBNAME \
+    -o $SPAWNER \
     -p $PILOT_ID \
     -q $SCHEDULER \
     -s $SESSIONID \

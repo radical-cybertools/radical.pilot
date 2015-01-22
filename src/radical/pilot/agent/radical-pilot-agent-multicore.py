@@ -4550,7 +4550,7 @@ class Agent(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, lrms_name, requested_cores,
-            task_launch_method, mpi_launch_method,
+            task_launch_method, mpi_launch_method, spawner,
             scheduler_name, runtime,
             mongodb_url, mongodb_name, mongodb_auth,
             pilot_id, session_id):
@@ -4624,7 +4624,7 @@ class Agent(object):
         for n in range(NUMBER_OF_WORKERS[EXEC]):
             exec_worker = ExecWorker.create(
                 name            = "ExecWorker-%d" % n,
-                spawner         = SPAWNER_NAME_POPEN,
+                spawner         = spawner,
                 logger          = self._log,
                 agent           = self,
                 lrms            = self._lrms,
@@ -4965,6 +4965,7 @@ def main():
     parser.add_option('-l', dest='lrms')
     parser.add_option('-m', dest='mongodb_url')
     parser.add_option('-n', dest='mongodb_name')
+    parser.add_option('-o', dest='spawner')
     parser.add_option('-p', dest='pilot_id')
     parser.add_option('-q', dest='agent_scheduler')
     parser.add_option('-r', dest='runtime',     type='int')
@@ -4982,6 +4983,7 @@ def main():
     if not options.lrms                 : parser.error("Missing LRMS (-l)")
     if not options.mongodb_url          : parser.error("Missing MongoDB URL (-m)")
     if not options.mongodb_name         : parser.error("Missing database name (-n)")
+    if not options.spawner              : parser.error("Missing agent spawner (-o)")
     if not options.pilot_id             : parser.error("Missing pilot id (-p)")
     if not options.agent_scheduler      : parser.error("Missing agent scheduler (-q)")
     if not options.runtime              : parser.error("Missing agent runtime (-r)")
@@ -5056,6 +5058,7 @@ def main():
                 requested_cores    = options.cores,
                 task_launch_method = options.task_launch_method,
                 mpi_launch_method  = options.mpi_launch_method,
+                spawner            = options.spawner,
                 scheduler_name     = options.agent_scheduler,
                 runtime            = options.runtime,
                 mongodb_url        = options.mongodb_url,
