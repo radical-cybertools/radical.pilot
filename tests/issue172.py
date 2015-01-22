@@ -104,7 +104,7 @@ if __name__ == "__main__":
         cud = rp.ComputeUnitDescription()
         cud.pre_exec        = ["module load openmpi/1.4.3-intel python",
                                "virtualenv ./mpive",
-                               "source     ./mpive/bin/activate",
+                               ". ./mpive/bin/activate",
                                "pip install mpi4py"]
         cud.executable      = "python"
         cud.input_staging   = ["mpi4py_env.py"]

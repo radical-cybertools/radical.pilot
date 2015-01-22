@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
         mpi_test_task.pre_exec = ["module load python",
-                                  "source /fs4/e290/e290/marksant/cuve/bin/activate",
+                                  ". /fs4/e290/e290/marksant/cuve/bin/activate",
                                   "module swap PrgEnv-cray PrgEnv-gnu"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"

@@ -64,7 +64,7 @@ if __name__ == "__main__":
         mpi_test_task = rp.ComputeUnitDescription()
 
         mpi_test_task.pre_exec      = [
-            "source ~marksant/cu-ve-20141211/bin/activate",
+            ". ~marksant/cu-ve-20141211/bin/activate",
         ]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"

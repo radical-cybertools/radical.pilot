@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
         mpi_test_task.pre_exec      = ["module load openmpi/gcc",
                                        "virtualenv ./mpive",
-                                       "source     ./mpive/bin/activate",
+                                       ". ./mpive/bin/activate",
                                        "pip install mpi4py"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"

@@ -64,7 +64,7 @@ if __name__ == "__main__":
         mpi_test_task = rp.ComputeUnitDescription()
 
         mpi_test_task.pre_exec      = ["module load intel mvapich2_ib python",
-                                       "source ~marksant/cuve/bin/activate"]
+                                       ". ~marksant/cuve/bin/activate"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "~marksant/cuve/bin/python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
