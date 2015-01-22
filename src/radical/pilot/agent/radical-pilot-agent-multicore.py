@@ -3646,12 +3646,12 @@ class ExecWorker_SHELL(ExecWorker):
 
         if  descr['pre_exec'] : 
             pre += "# CU pre-exec\n"
-            pre += '\n'.join (quote_args (descr['pre_exec' ]))
+            pre += '\n'.join(descr['pre_exec' ])
             pre += "\n\n"
 
         if  descr['post_exec'] : 
             post += "# CU post-exec\n"
-            post += '\n'.join (quote_args (descr['post_exec' ]))
+            post += '\n'.join(descr['post_exec' ])
             post += "\n\n"
 
         if  descr['arguments']  : 
