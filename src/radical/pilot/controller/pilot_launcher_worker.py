@@ -29,6 +29,7 @@ JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
                            # declaring it dead
 
 DEFAULT_AGENT_TYPE    = 'multicore'
+DEFAULT_AGENT_SPAWNER = 'SHELL'
 DEFAULT_AGENT_VERSION = 'stage@local'
 DEFAULT_VIRTENV       = '%(global_sandbox)s/virtenv'
 DEFAULT_VIRTENV_MODE  = 'update'
@@ -342,6 +343,7 @@ class PilotLauncherWorker(threading.Thread):
                         # ------------------------------------------------------
                         # get parameters from cfg, set defaults where needed
                         agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
+                        agent_spawner           = resource_cfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
                         agent_scheduler         = resource_cfg.get ('agent_scheduler')
                         default_queue           = resource_cfg.get ('default_queue')
                         forward_tunnel_endpoint = resource_cfg.get ('forward_tunnel_endpoint')
@@ -524,6 +526,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # sanity checks
+                        if not agent_spawner      : raise RuntimeError("missing agent spawner")
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
                         if not lrms               : raise RuntimeError("missing LRMS")
                         if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
@@ -569,6 +572,7 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -l '%s'" % lrms
                         bootstrap_args += " -m '%s'" % database_hostport
                         bootstrap_args += " -n '%s'" % database_name
+                        bootstrap_args += " -o '%s'" % agent_spawner
                         bootstrap_args += " -p '%s'" % pilot_id
                         bootstrap_args += " -q '%s'" % agent_scheduler
                         bootstrap_args += " -r '%s'" % runtime
