@@ -630,7 +630,7 @@ class PilotLauncherWorker(threading.Thread):
                                  "$pushAll": {"log": log_messages}}
                             )
 
-                    except Exception, ex:
+                    except Exception as ex:
                         # Update the Pilot's state 'FAILED'.
                         out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                         ts = datetime.datetime.utcnow()
@@ -640,11 +640,11 @@ class PilotLauncherWorker(threading.Thread):
                         # Until we find a clean workaround, make log shorter and
                         # rely on saga logging to reveal the problem.
                       # log_msg = "Pilot launching failed: %s\n%s" % (str(ex), traceback.format_exc())
-                        log_msg = "Pilot launching failed!"
+                        log_msg = "Pilot launching failed: %s" % str(ex)
+                        err += "\n\nException: %s" % str(ex)
                         log_messages.append({
                             "logentry": log_msg, 
                             "timestamp": ts})
-
                         pilot_col.update(
                             {"_id"  : ObjectId(pilot_id),
                              "state": {"$ne" : FAILED}},
