@@ -359,31 +359,63 @@ def get_stats (docs, events, slothist) :
 # ------------------------------------------------------------------------------
 def stat_session (db, session, cachedir) :
 
-    docs      = rpu.get_session_docs     (db, session, cachedir=cachedir)
-    events    = rpu.get_session_events   (db, session, cachedir=cachedir)
-    slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
+    docs       = rpu.get_session_docs     (db, session, cachedir=cachedir)
+    events     = rpu.get_session_events   (db, session, cachedir=cachedir)
+    slothists  = rpu.get_session_slothist (db, session, cachedir=cachedir)
 
-    stats     = get_stats (docs, events, slothists)
+    stats      = get_stats (docs, events, slothists)
+
+    t_x_start  = None   # first unit started executing
+    t_y_start  = None   # last  unit started executing
+    t_x_stop   = None   # last unit finished executing
+    unit_cores = dict() # sum of core counts from all units per pilot
+
+    for unit in docs['unit'] :
+        if not t_x_start : t_x_start =     unit['started']
+        else             : t_x_start = min(unit['started'],  t_x_start)
+        if not t_y_start : t_y_start =     unit['started']
+        else             : t_y_start = max(unit['started'],  t_y_start)
+        if not t_x_stop  : t_x_stop  =     unit['finished']
+        else             : t_x_stop  = max(unit['finished'], t_x_stop )
+
+        pid = unit.get ('pilot', 'None')
+        if not pid in unit_cores : unit_cores[pid]  = unit['description'].get ('cores', 1)
+        else                     : unit_cores[pid] += unit['description'].get ('cores', 1)
+
+    t_0  = docs['session']['created']  # session started (absolute time)
+    t_h  = t_x_start - t_0             # session start 'til first execution
+    t_x  = t_x_stop  - t_x_start       # first start 'til last stop  of unit execution
+    t_xy = t_y_start - t_x_start       # first start 'til last start of unit execution
 
     session_name = docs['session']['name']
 
     print "Session Statistics"
     print "------------------"
     print ""
-    print "  session: %s" % session_name
-    print "  pilots : %s" % stats['n_pilots']
+    print "  session: %s"    % session_name
+    print "  pilots : %s"    % stats['n_pilots']
+    print "  t_0    : %12.1fs" % t_0
+    print "  t_h    : %12.1fs" % t_h
+    print "  t_x    : %12.1fs" % t_x
+    print "  t_xy   : %12.1fs" % t_xy
 
     for pid in stats['pilots'] :
 
         pilot = stats['pilots'][pid]
 
-        print "  pilot [%s] [%s]"           % (pid, pilot['resource'])
-        print "      cores       : %d"      % pilot['cores']
-        print "      utilization : %.1f %%" % pilot['utilization']
+        print "  pilot [%s] [%s]"       % (pid, pilot['resource'])
+        print "      cores       : %6d" % pilot['cores']
+        print "      units       : %6d" % pilot['n_units']
+        print "      units*cores : %6s" % unit_cores.get (pid, '-')
+
+        if unit_cores.get (pid, 0) <= pilot['cores'] :
+            urate = pilot['n_units'] / t_xy
+            print "      unit-rate   : %8.1f/sec" % urate
+
+        print "      utilization : %8.1f%%" % pilot['utilization']
         print "      pilot states:"
         for ps in pilot['pilot_states'] :
             print "        state %-18s : %10.1fs" % (ps['state'], ps['duration'])
-        print "      units       : %d" % pilot['n_units']
         print "      unit states :"
         for us  in pilot['unit_states'] :
             data = pilot['unit_states'][us]
