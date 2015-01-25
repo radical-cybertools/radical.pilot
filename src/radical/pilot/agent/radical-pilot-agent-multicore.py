@@ -691,8 +691,6 @@ class Scheduler(threading.Thread):
 
         self._configure()
 
-        self.start()
-
 
     # --------------------------------------------------------------------------
     #
@@ -713,8 +711,11 @@ class Scheduler(threading.Thread):
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            return implementation(name, logger, lrms, schedule_queue,
+            impl = implementation(name, logger, lrms, schedule_queue,
                                   execution_queue, update_queue)
+
+            impl.start()
+            return impl
 
         except KeyError:
             raise Exception("Scheduler '%s' unknown!" % name)
@@ -3032,7 +3033,8 @@ class ForkLRMS(LRMS):
 #
 # ==============================================================================
 #
-class ExecWorker(threading.Thread):
+# class ExecWorker(threading.Thread):
+class ExecWorker(multiprocessing.Process):
     """
     Manage the creation of CU processes, and watch them until they are completed
     (one way or the other).  The spawner thus moves the unit from
@@ -3049,8 +3051,8 @@ class ExecWorker(threading.Thread):
 
         prof('ExecWorker init')
 
-        threading.Thread.__init__(self)
-        self._terminate = threading.Event()
+        multiprocessing.Process.__init__(self)
+        self._terminate = multiprocessing.Event()
 
         self.name              = name
         self._log              = logger
@@ -3067,8 +3069,6 @@ class ExecWorker(threading.Thread):
         self._session_id       = session_id
 
         self.configure ()
-
-        self.start ()
 
 
     # --------------------------------------------------------------------------
@@ -3091,10 +3091,12 @@ class ExecWorker(threading.Thread):
                 SPAWNER_NAME_SHELL : ExecWorker_SHELL
             }[spawner]
 
-            return implementation(name, logger, agent, lrms, scheduler,
+            impl = implementation(name, logger, agent, lrms, scheduler,
                                   task_launcher, mpi_launcher, command_queue, 
                                   execution_queue, update_queue, stageout_queue,
                                   pilot_id, session_id)
+            impl.start ()
+            return impl
 
         except KeyError:
             raise Exception("ExecWorker '%s' unknown!" % name)
@@ -3130,6 +3132,76 @@ class ExecWorker(threading.Thread):
     #
     def spawn(self, launcher, cu):
         raise NotImplementedError("spawn() not implemented for ExecWorker '%s'." % self.name)
+
+
+
+# ==============================================================================
+#
+class ExecWorker_POPEN (ExecWorker) :
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, agent, lrms, scheduler,
+                 task_launcher, mpi_launcher, spawner, command_queue, 
+                 execution_queue, update_queue,
+                 pilot_id, session_id):
+
+        prof('ExecWorker init')
+
+        self._cus_to_watch   = list()
+        self._cus_to_cancel  = list()
+        self._watch_queue    = Queue.Queue ()
+        self._cu_environment = self._populate_cu_environment()
+
+
+        ExecWorker.__init__ (self, name, logger, agent, lrms, scheduler,
+                 task_launcher, mpi_launcher, spawner, command_queue, 
+                 execution_queue, update_queue,
+                 pilot_id, session_id)
+
+
+        # run watcher thread
+        watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
+        self._watcher = threading.Thread(target = self._watch, 
+                                         name   = watcher_name)
+        self._watcher.start ()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def close(self):
+
+        # shut down the watcher thread
+        self._terminate.set()
+        self._watcher.join()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _populate_cu_environment(self):
+        """Derive the environment for the cu's from our own environment."""
+
+        # Get the environment of the agent
+        new_env = copy.deepcopy(os.environ)
+
+        #
+        # Mimic what virtualenv's "deactivate" would do
+        #
+        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        if old_path:
+            new_env['PATH'] = old_path
+
+        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        if old_home:
+            new_env['PYTHON_HOME'] = old_home
+
+        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        if old_ps:
+            new_env['PS1'] = old_ps
+
+        new_env.pop('VIRTUAL_ENV', None)
+
+        return new_env
 
 
     # --------------------------------------------------------------------------
@@ -3202,77 +3274,6 @@ class ExecWorker(threading.Thread):
         except Exception as e:
             self._log.exception("Error in ExecWorker loop (%s)" % e)
             return
-
-
-
-# ==============================================================================
-#
-class ExecWorker_POPEN (ExecWorker) :
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, name, logger, agent, lrms, scheduler,
-                 task_launcher, mpi_launcher, spawner, command_queue, 
-                 execution_queue, update_queue,
-                 pilot_id, session_id):
-
-        prof('ExecWorker init')
-
-        self._cus_to_watch   = list()
-        self._cus_to_cancel  = list()
-        self._watch_queue    = Queue.Queue ()
-        self._cu_environment = self._populate_cu_environment()
-
-
-        ExecWorker.__init__ (self, name, logger, agent, lrms, scheduler,
-                 task_launcher, mpi_launcher, spawner, command_queue, 
-                 execution_queue, update_queue,
-                 pilot_id, session_id)
-
-
-        # run watcher thread
-        watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
-        self._watcher = threading.Thread(target = self._watch, 
-                                         name   = watcher_name)
-        self._watcher.start ()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def close(self):
-
-        # shut down the watcher thread
-        self._terminate.set()
-        self._watcher.join()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _populate_cu_environment(self):
-        """Derive the environment for the cu's from our own environment."""
-
-        # Get the environment of the agent
-        new_env = copy.deepcopy(os.environ)
-
-        #
-        # Mimic what virtualenv's "deactivate" would do
-        #
-        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
-        if old_path:
-            new_env['PATH'] = old_path
-
-        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
-        if old_home:
-            new_env['PYTHON_HOME'] = old_home
-
-        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
-        if old_ps:
-            new_env['PS1'] = old_ps
-
-        new_env.pop('VIRTUAL_ENV', None)
-
-        return new_env
-
 
     # --------------------------------------------------------------------------
     #
@@ -3545,6 +3546,13 @@ class ExecWorker_SHELL(ExecWorker):
                  execution_queue, update_queue,
                  pilot_id, session_id)
 
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        self._log.info("started %s.", self)
+
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
 
@@ -3593,6 +3601,72 @@ class ExecWorker_SHELL(ExecWorker):
                                          name   = watcher_name)
         self._watcher.start ()
 
+
+
+        try:
+            # report initial slot status
+            # TODO: Where does this abstraction belong?  Scheduler!
+            self._log.debug(self._scheduler.slot_status())
+
+            while not self._terminate.is_set():
+
+                prof('ExecWorker pull cu from queue')
+                cu = self._execution_queue.get()
+
+                if not cu :
+                    # 'None' is the wakeup signal
+                    continue
+
+                prof('ExecWorker got  cu from queue', uid=cu['_id'], tag='preprocess')
+
+
+                try:
+
+                    if cu['description']['mpi']:
+                        launcher = self._mpi_launcher
+                    else :
+                        launcher = self._task_launcher
+
+                    if not launcher:
+                        self._agent.update_unit_state(
+                                uid    = cu['_id'],
+                                state  = rp.FAILED,
+                                msg    = "no launcher (mpi=%s)" % cu['description']['mpi'],
+                                logger = self._log.error)
+
+                    self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+
+                    assert(cu['opaque_slot']) # FIXME: no assert, but check
+                    prof('ExecWorker unit launch', uid=cu['_id'])
+
+                    # Start a new subprocess to launch the unit
+                    # TODO: This is scheduler specific
+                    self.spawn(launcher = launcher, cu = cu)
+
+
+                except Exception as e:
+                    # append the startup error to the units stderr.  This is
+                    # not completely correct (as this text is not produced
+                    # by the unit), but it seems the most intuitive way to
+                    # communicate that error to the application/user.
+                    cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
+                                    % (str(e), traceback.format_exc())
+                    cu['state']   = rp.FAILED
+                    cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
+
+                    # Free the Slots, Flee the Flots, Ree the Frots!
+                    if cu['opaque_slot']:
+                        self._scheduler.unschedule(cu)
+
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.FAILED,
+                                                  msg    = "unit execution failed",
+                                                  logger = self._log.exception)
+
+
+        except Exception as e:
+            self._log.exception("Error in ExecWorker loop (%s)" % e)
+            return
 
     # --------------------------------------------------------------------------
     #

@@ -254,6 +254,12 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
+    def __del__ (self) :
+        self.close ()
+
+
+    #---------------------------------------------------------------------------
+    #
     def close(self, cleanup=True, terminate=True, delete=None):
         """Closes the session.
 
