@@ -150,6 +150,7 @@ import radical.pilot as rp
 
 from operator import mul
 
+
 # ------------------------------------------------------------------------------
 #
 # http://stackoverflow.com/questions/9539052/python-dynamically-changing-base-classes-at-runtime-how-to
@@ -180,10 +181,20 @@ from operator import mul
 #     there.
 #
 
-AGENT_THREADED = 'threading'
-AGENT_MPROC    = 'multiprocess'
+AGENT_THREADS   = 'threading'
+AGENT_PROCESSES = 'multiprocessing'
 
-AGENT_MODE     = AGENT_THREADED
+AGENT_MODE      = AGENT_PROCESSES
+
+if AGENT_MODE == AGENT_THREADS :
+    COMPONENT_MODE = threading
+    COMPONENT_TYPE = threading.Thread
+    QUEUE_TYPE     = multiprocessing.Queue
+elif AGENT_MODE == AGENT_PROCESSES :
+    COMPONENT_MODE = multiprocessing
+    COMPONENT_TYPE = multiprocessing.Process
+    QUEUE_TYPE     = multiprocessing.Queue
+    
 
 
 # this needs git attribute 'ident' set for this file
@@ -398,8 +409,8 @@ def prof(etype, uid="", msg="", tag="", logger=None):
     logged = False
     now    = timestamp_now()
 
-    if   AGENT_MODE == AGENT_THREADED : tid = threading.current_thread().name
-    elif AGENT_MODE == AGENT_MPROC    : tid = os.getpid ()
+    if   AGENT_MODE == AGENT_THREADS   : tid = threading.current_thread().name
+    elif AGENT_MODE == AGENT_PROCESSES : tid = os.getpid ()
 
     if uid and tag:
 
@@ -3033,8 +3044,7 @@ class ForkLRMS(LRMS):
 #
 # ==============================================================================
 #
-# class ExecWorker(threading.Thread):
-class ExecWorker(multiprocessing.Process):
+class ExecWorker(COMPONENT_TYPE):
     """
     Manage the creation of CU processes, and watch them until they are completed
     (one way or the other).  The spawner thus moves the unit from
@@ -3051,8 +3061,8 @@ class ExecWorker(multiprocessing.Process):
 
         prof('ExecWorker init')
 
-        multiprocessing.Process.__init__(self)
-        self._terminate = multiprocessing.Event()
+        COMPONENT_TYPE.__init__(self)
+        self._terminate = COMPONENT_MODE.Event()
 
         self.name              = name
         self._log              = logger
@@ -3150,7 +3160,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
         self._cus_to_watch   = list()
         self._cus_to_cancel  = list()
-        self._watch_queue    = Queue.Queue ()
+        self._watch_queue    = QUEUE_TYPE ()
         self._cu_environment = self._populate_cu_environment()
 
 
@@ -4645,12 +4655,12 @@ class Agent(object):
         self.worker_list            = list()
 
         # we want to own all queues -- that simplifies startup and shutdown
-        self._schedule_queue        = multiprocessing.Queue()
-        self._stagein_queue         = multiprocessing.Queue()
-        self._execution_queue       = multiprocessing.Queue()
-        self._stageout_queue        = multiprocessing.Queue()
-        self._update_queue          = multiprocessing.Queue()
-        self._command_queue         = multiprocessing.Queue()
+        self._schedule_queue        = QUEUE_TYPE()
+        self._stagein_queue         = QUEUE_TYPE()
+        self._execution_queue       = QUEUE_TYPE()
+        self._stageout_queue        = QUEUE_TYPE()
+        self._update_queue          = QUEUE_TYPE()
+        self._command_queue         = QUEUE_TYPE()
 
         mongo_db = get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
 
