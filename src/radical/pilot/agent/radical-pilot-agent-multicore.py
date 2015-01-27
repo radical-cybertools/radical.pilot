@@ -2827,7 +2827,7 @@ class LoadLevelerLRMS(LRMS):
                     loadl_bg_block_shape_str, loadl_bg_board_list_str,
                     loadl_bg_block_size, loadl_bg_midplane_list_str)
             except Exception as e:
-                msg = "Couldn't construct block."
+                msg = "Couldn't construct block: %s" % e.message
                 self._log.error(msg)
                 raise Exception(msg)
             self._log.debug("Torus block constructed:")
