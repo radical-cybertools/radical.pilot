@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
         mpi_test_task.pre_exec      = [". ~/ve/bin/activate"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
-        mpi_test_task.executable    = "python"
+        mpi_test_task.executable    = "~/ve/bin/python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
         mpi_test_task.cores         = 2
