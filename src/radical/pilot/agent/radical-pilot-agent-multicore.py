@@ -3013,7 +3013,10 @@ class LoadLevelerLRMS(LRMS):
                     break
 
                 # Increase the length in this dimension for the next iteration.
-                sub_block_shape[dim] += 1
+                if sub_block_shape[dim] == 1:
+                    sub_block_shape[dim] = 2
+                elif sub_block_shape[dim] == 2:
+                    sub_block_shape[dim] = 4
 
         return table
 
