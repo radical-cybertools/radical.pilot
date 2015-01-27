@@ -2986,7 +2986,16 @@ class LoadLevelerLRMS(LRMS):
     def _bgq_create_sub_block_shape_table(self, shape_str):
 
         # Convert the shape string into dict structure
-        block_shape = self._bgq_str2shape(shape_str)
+        #
+        # For < 512 nodes: the dimensions within a midplane (AxBxCxDxE)
+        # For >= 512 nodes: the dimensions between the midplanes (AxBxCxD)
+        #
+        if len(shape_str.split('x')) == 5:
+            block_shape = self._bgq_str2shape(shape_str)
+        elif len(shape_str.split('x')) == 4:
+            block_shape = self._bgq_str2shape('4x4x4x4x2')
+        else:
+            raise Exception('Invalid shape string: %s' % shape_str)
 
         # Dict to store the results
         table = {}
