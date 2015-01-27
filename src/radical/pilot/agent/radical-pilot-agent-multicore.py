@@ -2859,6 +2859,32 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
+    # Convert the midplane string as given by llq into a midplane structure
+    #
+    # E.g. 'R04-M0,R04-M1' =>
+    # [{'R': 4, 'M': 0}, {'R': 4, 'M': 1}]
+    #
+    #
+    def _bgq_str2midplanes(self, midplane_str):
+
+        midplanes = midplane_str.split(',')
+
+        midplane_dict_list = []
+        for midplane in midplanes:
+            elements = midplane.split('-')
+
+            midplane_dict = {}
+            # Take the first two labels
+            for l, e in zip(self.BGQ_BOARD_LABELS[:2], elements):
+                midplane_dict[l] = int(e.split(l)[1])
+
+            midplane_dict_list.append(midplane_dict)
+
+        return midplane_dict_list
+
+
+    # --------------------------------------------------------------------------
+    #
     # Convert the string as given by llq into a block shape structure:
     #
     # E.g. '1x2x3x4x5' => {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
