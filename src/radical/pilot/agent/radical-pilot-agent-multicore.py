@@ -3006,13 +3006,14 @@ class LoadLevelerLRMS(LRMS):
     #
     # Format: [(index, location, nodename, status), (i, c, n, s), ...]
     #
+    # TODO: This function and _bgq_nodename_by_loc should be changed so that we
+    #       only walk the torus once?
+    #
     def _bgq_get_block(self, rack, midplane, board, shape):
-
-        nodes = []
-        start_node = self.BGQ_BLOCK_STARTING_CORNERS[board]
 
         self._log.debug("Shape: %s", shape)
 
+        nodes = []
         index = 0
 
         for a in range(shape['A']):
@@ -3020,10 +3021,11 @@ class LoadLevelerLRMS(LRMS):
                 for c in range(shape['C']):
                     for d in range(shape['D']):
                         for e in range(shape['E']):
-                            location = {'A': a, 'B': b, 'C': c, 'D': d, 'E':e}
-                            nodename = self._bgq_nodename_by_loc(rack, midplane, board, start_node, location)
+                            location = {'A': a, 'B': b, 'C': c, 'D': d, 'E': e}
+                            nodename = self._bgq_nodename_by_loc(rack, midplane, board, location)
                             nodes.append([index, location, nodename, FREE])
                             index += 1
+
         return nodes
 
 
@@ -3031,26 +3033,72 @@ class LoadLevelerLRMS(LRMS):
     #
     # Use block shape and board list to construct block structure
     #
-    def _bgq_shapeandboards2block(self, block_shape_str, boards_str):
-
-        board_dict_list = self._bgq_str2boards(boards_str)
-        self._log.debug("Board dict list:\n%s", '\n'.join([str(x) for x in board_dict_list]))
-
-        # TODO: this assumes a single midplane block
-        rack     = board_dict_list[0]['R']
-        midplane = board_dict_list[0]['M']
-
-        board_list = [entry['N'] for entry in board_dict_list]
-        start_board = min(board_list)
+    # The 5 dimensions are denoted by the letters A, B, C, D, and E, T for the core (0-15).
+    # The latest dimension E is always 2, and is contained entirely within a midplane.
+    # For any compute block, compute nodes (as well midplanes for large blocks) are combined in 4 dimensions,
+    # only 4 dimensions need to be considered.
+    #
+    #  128 nodes: BG Shape Allocated: 2x2x4x4x2
+    #  256 nodes: BG Shape Allocated: 4x2x4x4x2
+    #  512 nodes: BG Shape Allocated: 1x1x1x1
+    #  1024 nodes: BG Shape Allocated: 1x1x1x2
+    #
+    def _bgq_construct_block(self, block_shape_str, boards_str,
+                            block_size, midplane_list_str):
 
         block_shape = self._bgq_str2shape(block_shape_str)
 
-        return self._bgq_get_block(rack, midplane, start_board, block_shape)
+        # TODO: Could check this, but currently _shape2num is part of the other class
+        #if self._shape2num_nodes(block_shape) != block_size:
+        #    self._log.error("Block Size doesn't match Block Shape")
+
+        # If the block is equal to or greater than a Midplane,
+        # then there is no board list provided.
+        # But because at that size, we have only full midplanes,
+        # we can construct it.
+
+        if block_size >= 1024:
+            raise NotImplemented("Currently multiple midplanes are not yet supported.")
+
+        elif block_size == 512:
+            # Full midplane
+
+            # BG Size: 1024, BG Shape: 1x1x1x2, BG Midplane List: R04-M0,R04-M1
+            midplane_dict_list = self._bgq_str2midplanes(midplane_list_str)
+
+            # Start of at the "lowest" available rack/midplane/board
+            # TODO: No other explanation than that this seems to be the convention?
+            rack = midplane_dict_list[0]['R'] # Assume they are all equal
+            midplane = min([entry['M'] for entry in midplane_dict_list])
+            board = 0
+
+            block_shape = self._bgq_str2shape('4x4x4x4x2') # Full midplane
+
+        else:
+            # Within single midplane, < 512 nodes
+
+            board_dict_list = self._bgq_str2boards(boards_str)
+            self._log.debug("Board dict list:\n%s", '\n'.join([str(x) for x in board_dict_list]))
+
+            rack     = board_dict_list[0]['R']
+            midplane = board_dict_list[0]['M']
+
+            # Start of at the "lowest" available board.
+            # TODO: No other explanation than that this seems to be the convention?
+            board = min([entry['N'] for entry in board_dict_list])
+
+        block = self._bgq_get_block(rack, midplane, board, block_shape)
+
+        return block
 
 
     # --------------------------------------------------------------------------
     #
     # Construction of sub-block shapes based on overall block allocation.
+    #
+    # Depending on the size of the total allocated block, the maximum size
+    # of a subblock can be 512 nodes.
+    #
     #
     def _bgq_create_sub_block_shape_table(self, shape_str):
 
