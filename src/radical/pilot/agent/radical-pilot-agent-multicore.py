@@ -2990,6 +2990,20 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
+    # Multiply two shapes
+    #
+    def _multiply_shapes(self, shape1, shape2):
+
+        result = {}
+
+        for dim in self.BGQ_DIMENSION_LABELS:
+            result = shape1[dim] + shape2[dim]
+
+        return result
+
+
+    # --------------------------------------------------------------------------
+    #
     # Convert location dict into a tuple string
     # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '(1,4,1,2,4)'
     #
