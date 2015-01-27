@@ -184,7 +184,7 @@ from operator import mul
 AGENT_THREADS   = 'threading'
 AGENT_PROCESSES = 'multiprocessing'
 
-AGENT_MODE      = AGENT_PROCESSES
+AGENT_MODE      = AGENT_THREADS
 
 if AGENT_MODE == AGENT_THREADS :
     COMPONENT_MODE = threading
