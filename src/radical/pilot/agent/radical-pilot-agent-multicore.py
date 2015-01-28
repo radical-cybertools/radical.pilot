@@ -3000,7 +3000,17 @@ class LoadLevelerLRMS(LRMS):
         result = {}
 
         for dim in self.BGQ_DIMENSION_LABELS:
-            result = shape1[dim] + shape2[dim]
+            try:
+                val1 = shape1[dim]
+            except KeyError:
+                val1 = 1
+
+            try:
+                val2 = shape2[dim]
+            except KeyError:
+                val2 = 1
+
+            result[dim] = val1 * val2
 
         return result
 
