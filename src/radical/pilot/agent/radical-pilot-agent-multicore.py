@@ -2879,10 +2879,7 @@ class LoadLevelerLRMS(LRMS):
         first = True
         node = self.BGQ_BLOCK_STARTING_CORNERS[board]
 
-        rack = midplanes[0]['R']
-        midplane = midplanes[0]['M']
-
-        # TODO: Does the order of waling matter?
+        # TODO: Does the order of walking matter?
         #       It might because of the starting blocks ...
         for dim in self.BGQ_DIMENSION_LABELS: # [::-1]:
             max_length = location[dim]
@@ -2914,6 +2911,11 @@ class LoadLevelerLRMS(LRMS):
                 cur_length += 1
 
             self._log.debug("Wrapping inside dim loop dim:%s" % (dim))
+
+        # TODO: This will work for midplane expansion in one dimension only
+        midplane_idx = max(location.values()) / 4
+        rack = midplanes[midplane_idx]['R']
+        midplane = midplanes[midplane_idx]['M']
 
         nodename = 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
         self._log.debug("from location %s constructed node name: %s, left at board: %d" % (self.loc2str(location), nodename, board))
