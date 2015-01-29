@@ -1616,7 +1616,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
         candidate_vars = [
             'LD_LIBRARY_PATH',
             'PATH',
-            'PYTHONPATH'
+            'PYTHONPATH',
             'PYTHON_DIR',
             ]
         export_vars = ' '.join(['-x ' + var for var in candidate_vars if var in os.environ])
