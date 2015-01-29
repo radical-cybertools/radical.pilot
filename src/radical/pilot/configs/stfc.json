@@ -16,6 +16,7 @@
         "virtenv"                     : "%(global_sandbox)s/virtenv_joule",
         "virtenv_mode"                : "create",
         "pre_bootstrap"               : [
+            "llq -l $LOADL_JOB_NAME",
             "source /etc/profile.d/modules.sh",
             "export MODULEPATH=/gpfs/packages/Modules/modulefiles/production:/gpfs/packages/Modules/modulefiles/packages:/gpfs/packages/Modules/modulefiles/other",
             #"export LD_LIBRARY_PATH=/bgsys/tools/Python-2.7/lib64",
