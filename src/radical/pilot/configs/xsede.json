@@ -17,7 +17,7 @@
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
         "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "IBRUN",
+        "mpi_launch_method"           : "MPIRUN_RSH",
         "agent_scheduler"             : "CONTINUOUS",
         "virtenv"                     : "%(global_sandbox)s/virtenv_stampede",
         "virtenv_mode"                : "create",
