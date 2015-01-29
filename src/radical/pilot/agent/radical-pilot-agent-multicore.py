@@ -2719,6 +2719,12 @@ class LoadLevelerLRMS(LRMS):
         15: {'A': 11, 'B':  7, 'C': 14, 'D': 13},
         }
 
+    # --------------------------------------------------------------------------
+    #
+    # Shape of whole BG/Q Midplane
+    #
+    BGQ_MIDPLANE_SHAPE = {'A': 4, 'B': 4, 'C': 4, 'D': 4, 'E': 2} # '4x4x4x4x2'
+
 
     # --------------------------------------------------------------------------
     #
@@ -2832,7 +2838,7 @@ class LoadLevelerLRMS(LRMS):
                     loadl_bg_block_shape_str, loadl_bg_board_list_str,
                     loadl_bg_block_size, loadl_bg_midplane_list_str)
             except Exception as e:
-                msg = "Couldn't construct block."
+                msg = "Couldn't construct block: %s" % e.message
                 self._log.error(msg)
                 raise Exception(msg)
             self._log.debug("Torus block constructed:")
@@ -2877,14 +2883,14 @@ class LoadLevelerLRMS(LRMS):
     #
     # Walk the block and return the node name for the given location
     #
-    def _bgq_nodename_by_loc(self, rack, midplane, board, location):
+    def _bgq_nodename_by_loc(self, midplanes, board, location):
 
-        self._log.debug("Starting nodebyname - r%d, m%d, b%d" % (rack, midplane, board))
+        self._log.debug("Starting nodebyname - midplanes:%s, board:%d" % (midplanes, board))
 
         first = True
         node = self.BGQ_BLOCK_STARTING_CORNERS[board]
 
-        # TODO: Does the order of waling matter?
+        # TODO: Does the order of walking matter?
         #       It might because of the starting blocks ...
         for dim in self.BGQ_DIMENSION_LABELS: # [::-1]:
             max_length = location[dim]
@@ -2916,6 +2922,11 @@ class LoadLevelerLRMS(LRMS):
                 cur_length += 1
 
             self._log.debug("Wrapping inside dim loop dim:%s" % (dim))
+
+        # TODO: This will work for midplane expansion in one dimension only
+        midplane_idx = max(location.values()) / 4
+        rack = midplanes[midplane_idx]['R']
+        midplane = midplanes[midplane_idx]['M']
 
         nodename = 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
         self._log.debug("from location %s constructed node name: %s, left at board: %d" % (self.loc2str(location), nodename, board))
@@ -2995,6 +3006,30 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
+    # Multiply two shapes
+    #
+    def _multiply_shapes(self, shape1, shape2):
+
+        result = {}
+
+        for dim in self.BGQ_DIMENSION_LABELS:
+            try:
+                val1 = shape1[dim]
+            except KeyError:
+                val1 = 1
+
+            try:
+                val2 = shape2[dim]
+            except KeyError:
+                val2 = 1
+
+            result[dim] = val1 * val2
+
+        return result
+
+
+    # --------------------------------------------------------------------------
+    #
     # Convert location dict into a tuple string
     # E.g. {'A': 1, 'C': 4, 'B': 1, 'E': 2, 'D': 4} => '(1,4,1,2,4)'
     #
@@ -3032,7 +3067,7 @@ class LoadLevelerLRMS(LRMS):
     # TODO: This function and _bgq_nodename_by_loc should be changed so that we
     #       only walk the torus once?
     #
-    def _bgq_get_block(self, rack, midplane, board, shape):
+    def _bgq_get_block(self, midplanes, board, shape):
 
         self._log.debug("Shape: %s", shape)
 
@@ -3045,7 +3080,7 @@ class LoadLevelerLRMS(LRMS):
                     for d in range(shape['D']):
                         for e in range(shape['E']):
                             location = {'A': a, 'B': b, 'C': c, 'D': d, 'E': e}
-                            nodename = self._bgq_nodename_by_loc(rack, midplane, board, location)
+                            nodename = self._bgq_nodename_by_loc(midplanes, board, location)
                             nodes.append([index, location, nodename, FREE])
                             index += 1
 
@@ -3069,10 +3104,10 @@ class LoadLevelerLRMS(LRMS):
     def _bgq_construct_block(self, block_shape_str, boards_str,
                             block_size, midplane_list_str):
 
-        block_shape = self._bgq_str2shape(block_shape_str)
+        llq_shape = self._bgq_str2shape(block_shape_str)
 
         # TODO: Could check this, but currently _shape2num is part of the other class
-        #if self._shape2num_nodes(block_shape) != block_size:
+        #if self._shape2num_nodes(llq_shape) != block_size:
         #    self._log.error("Block Size doesn't match Block Shape")
 
         # If the block is equal to or greater than a Midplane,
@@ -3081,21 +3116,35 @@ class LoadLevelerLRMS(LRMS):
         # we can construct it.
 
         if block_size >= 1024:
-            raise NotImplemented("Currently multiple midplanes are not yet supported.")
+            #raise NotImplementedError("Currently multiple midplanes are not yet supported.")
+
+            # BG Size: 1024, BG Shape: 1x1x1x2, BG Midplane List: R04-M0,R04-M1
+            midplanes = self._bgq_str2midplanes(midplane_list_str)
+
+            # Start of at the "lowest" available rack/midplane/board
+            # TODO: No other explanation than that this seems to be the convention?
+            # TODO: Can we safely assume that they are sorted?
+            #rack = midplane_dict_list[0]['R']
+            #midplane = midplane_dict_list[0]['M']
+            board = 0
+
+            # block_shape = llq_shape * BGQ_MIDPLANE_SHAPE
+            block_shape = self._multiply_shapes(self.BGQ_MIDPLANE_SHAPE, llq_shape)
+            self._log.debug("Resulting shape after multiply: %s" % block_shape)
 
         elif block_size == 512:
             # Full midplane
 
             # BG Size: 1024, BG Shape: 1x1x1x2, BG Midplane List: R04-M0,R04-M1
-            midplane_dict_list = self._bgq_str2midplanes(midplane_list_str)
+            midplanes = self._bgq_str2midplanes(midplane_list_str)
 
             # Start of at the "lowest" available rack/midplane/board
             # TODO: No other explanation than that this seems to be the convention?
-            rack = midplane_dict_list[0]['R'] # Assume they are all equal
-            midplane = min([entry['M'] for entry in midplane_dict_list])
+            #rack = midplane_dict_list[0]['R'] # Assume they are all equal
+            #midplane = min([entry['M'] for entry in midplane_dict_list])
             board = 0
 
-            block_shape = self._bgq_str2shape('4x4x4x4x2') # Full midplane
+            block_shape = self.BGQ_MIDPLANE_SHAPE
 
         else:
             # Within single midplane, < 512 nodes
@@ -3103,14 +3152,21 @@ class LoadLevelerLRMS(LRMS):
             board_dict_list = self._bgq_str2boards(boards_str)
             self._log.debug("Board dict list:\n%s", '\n'.join([str(x) for x in board_dict_list]))
 
-            rack     = board_dict_list[0]['R']
-            midplane = board_dict_list[0]['M']
+            midplanes = [{'R': board_dict_list[0]['R'],
+                          'M': board_dict_list[0]['M']}]
 
             # Start of at the "lowest" available board.
             # TODO: No other explanation than that this seems to be the convention?
             board = min([entry['N'] for entry in board_dict_list])
 
-        block = self._bgq_get_block(rack, midplane, board, block_shape)
+            block_shape = llq_shape
+
+        # From here its all equal (assuming our walker does the walk and not just the talk!)
+        block = self._bgq_get_block(midplanes, board, block_shape)
+
+        # TODO: Check returned block:
+        #       - Length
+        #       - No duplicates
 
         return block
 
@@ -3133,7 +3189,7 @@ class LoadLevelerLRMS(LRMS):
         if len(shape_str.split('x')) == 5:
             block_shape = self._bgq_str2shape(shape_str)
         elif len(shape_str.split('x')) == 4:
-            block_shape = self._bgq_str2shape('4x4x4x4x2')
+            block_shape = self.BGQ_MIDPLANE_SHAPE
         else:
             raise Exception('Invalid shape string: %s' % shape_str)
 
@@ -4340,7 +4396,7 @@ class StageinWorker(threading.Thread):
                     continue
 
                 sandbox      = os.path.join(self._workdir, '%s' % cu['_id'])
-                staging_area = os.path.join(self._workdir, 'staging_area')
+                staging_area = os.path.join(self._workdir, STAGING_AREA)
 
                 for directive in cu['Agent_Input_Directives']:
                     prof('Agent input_staging queue', uid=cu['_id'], msg=directive)
