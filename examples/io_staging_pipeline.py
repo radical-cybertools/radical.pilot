@@ -1,9 +1,47 @@
 import os
+import sys
 import radical.pilot
 
 INPUT_FILE = 'input_file.txt'
 INTERMEDIATE_FILE = 'intermediate_file.txt'
 OUTPUT_FILE = 'output_file.txt'
+
+#------------------------------------------------------------------------------
+#
+def pilot_state_cb (pilot, state) :
+    """ this callback is invoked on all pilot state changes """
+
+    if not pilot :
+        return
+
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if  state == radical.pilot.FAILED :
+        sys.exit (1)
+
+
+#------------------------------------------------------------------------------
+#
+def unit_state_cb (unit, state) :
+    """ this callback is invoked on all unit state changes """
+
+    print "[Callback]: unit %s on %s : %s." % (unit.uid, unit.pilot_id, state)
+
+    if not unit :
+        return
+
+    if state in [radical.pilot.FAILED, radical.pilot.DONE, radical.pilot.CANCELED] :
+
+        print "* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s" \
+                 % (unit.uid, 
+                    unit.execution_locations, 
+                    unit.state, 
+                    unit.exit_code, 
+                    unit.start_time, 
+                    unit.stop_time, 
+                    unit.stdout,
+                    unit.stderr)
+
 
 #------------------------------------------------------------------------------
 #
@@ -22,11 +60,12 @@ if __name__ == "__main__":
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = radical.pilot.PilotManager(session)
+        pmgr.register_callback(pilot_state_cb)
 
         # Define a C-core on stamped that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "local.localhost"
+        pdesc.resource = "home.test"
         pdesc.runtime = 15 # M minutes
         pdesc.cores = 2 # C cores
 
@@ -38,6 +77,7 @@ if __name__ == "__main__":
         umgr = radical.pilot.UnitManager(
             session=session,
             scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+        umgr.register_callback(unit_state_cb, radical.pilot.UNIT_STATE)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)

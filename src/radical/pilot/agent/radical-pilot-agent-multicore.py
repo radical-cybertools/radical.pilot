@@ -184,7 +184,7 @@ from operator import mul
 AGENT_THREADS   = 'threading'
 AGENT_PROCESSES = 'multiprocessing'
 
-AGENT_MODE      = AGENT_PROCESSES
+AGENT_MODE      = AGENT_THREADS
 
 if AGENT_MODE == AGENT_THREADS :
     COMPONENT_MODE = threading
@@ -795,6 +795,8 @@ class Scheduler(threading.Thread):
     def _reschedule(self):
 
         prof("try reschedule")
+        prof('reschedule')
+        prof(self.slot_status (short=True))
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
         # fly
@@ -805,6 +807,9 @@ class Scheduler(threading.Thread):
                 self._wait_queue.remove(cu)
                 prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
+        prof(self.slot_status (short=True))
+        prof('reschedule done')
+
 
     # --------------------------------------------------------------------------
     #
@@ -814,6 +819,9 @@ class Scheduler(threading.Thread):
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
         with self._lock :
+
+            prof('unschedule')
+            prof(self.slot_status (short=True))
 
             slots_released = False
 
@@ -828,6 +836,9 @@ class Scheduler(threading.Thread):
             # notify the scheduling thread of released slots
             if slots_released:
                 self._schedule_queue.put(COMMAND_RESCHEDULE)
+
+            prof(self.slot_status (short=True))
+            prof('unschedule done - reschedule')
 
 
     # --------------------------------------------------------------------------
@@ -4328,8 +4339,8 @@ class StageinWorker(threading.Thread):
                 if not cu:
                     continue
 
-                sandbox      = os.path.join(self._workdir, '%s' % cu['_id']),
-                staging_area = os.path.join(self._workdir, 'staging_area'),
+                sandbox      = os.path.join(self._workdir, '%s' % cu['_id'])
+                staging_area = os.path.join(self._workdir, 'staging_area')
 
                 for directive in cu['Agent_Input_Directives']:
                     prof('Agent input_staging queue', uid=cu['_id'], msg=directive)
@@ -4470,7 +4481,7 @@ class StageoutWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        staging_area = os.path.join(self._workdir, 'staging_area'),
+        staging_area = os.path.join(self._workdir, 'staging_area')
 
         while not self._terminate.is_set():
 
@@ -4482,7 +4493,7 @@ class StageoutWorker(threading.Thread):
                 if not cu:
                     continue
 
-                sandbox = os.path.join(self._workdir, '%s' % cu['_id']),
+                sandbox = os.path.join(self._workdir, '%s' % cu['_id'])
 
                 ## parked from unit state checker: unit postprocessing
 
@@ -5084,25 +5095,23 @@ class Agent(object):
 
         # Check if there are compute units waiting for execution,
         # and log that we pulled it.
-        cu_cursor = self._cu.find(multi = True,
-                                  spec  = {"pilot" : self._pilot_id,
-                                           "state" : rp.PENDING_EXECUTION})
-
-        if cu_cursor.count():
-            prof('Agent get units', msg="number of units: %d" % cu_cursor.count(),
-                 logger=self._log.info)
-
-
-        cu_list = list(cu_cursor)
-        cu_list = blowup (cu_list, INGEST)
-        cu_uids = [_cu['_id'] for _cu in cu_list]
-
-
+        #
         # Unfortunately, 'find_and_modify' is not bulkable, so we have to use
         # 'find' above.  To avoid finding the same units over and over again, we
         # have to update the state *before* running the next find -- so we
         # do it right here...  No idea how to avoid that roundtrip...
-        if cu_uids:
+        # This also blocks us from using multiple ingest threads, or from doing
+        # late binding by unit pull...
+        cu_cursor  = self._cu.find(multi = True,
+                                   spec  = {"pilot" : self._pilot_id,
+                                            "state" : rp.PENDING_EXECUTION})
+
+        if cu_cursor.count():
+
+            cu_list = list(cu_cursor)
+            cu_list = blowup (cu_list, INGEST)
+            cu_uids = [_cu['_id'] for _cu in cu_list]
+
             self._cu.update(
                     multi    = True,
                     spec     = {"_id"   : {"$in"    : cu_uids}},
@@ -5113,9 +5122,40 @@ class Agent(object):
                                         "timestamp" : timestamp()
                                     }
                                }})
+        else :
+            # if we did not find any units which can be executed immediately, we
+            # chack if we have any units for which to do stage-in
+            cu_cursor = self._cu.find(multi = True,
+                                      spec  = {"pilot" : self._pilot_id,
+                                               'Agent_Input_Status': rp.PENDING})
+            if cu_cursor.count():
+
+                cu_list = list(cu_cursor)
+                cu_list = blowup (cu_list, INGEST)
+                cu_uids = [_cu['_id'] for _cu in cu_list]
+
+                self._cu.update(
+                        multi    = True,
+                        spec     = {"_id"   : {"$in"    : cu_uids}},
+                        document = {"$set"  : {"state"  : rp.STAGING_INPUT,
+                                               "Agent_Input_Status": rp.EXECUTING},
+                                    "$push" : {"statehistory":
+                                        {
+                                            "state"     : rp.STAGING_INPUT,
+                                            "timestamp" : timestamp()
+                                        }
+                                   }})
+            else :
+                # no units whatsoever...
+                return 0
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
+        if cu_cursor.count():
+            prof('Agent get units', msg="number of units: %d" % cu_cursor.count(),
+                 logger=self._log.info)
+
+
         for cu in cu_list:
 
             try:
