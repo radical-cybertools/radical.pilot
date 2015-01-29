@@ -1,37 +1,9 @@
 {
-    "quarry": {
-        "description"                 : "The Quarry Linux cluster at Indiana University (https://kb.iu.edu/d/avkx).",
-        "notes"                       : "None",
-        "schemas"                     : ["ssh", "gsissh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "pbs+ssh://quarry.uits.indiana.edu/",
-            "filesystem_endpoint"     : "sftp://quarry.uits.indiana.edu/"
-        },
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "pbs+ssh://quarry.uits.indiana.edu/",
-            "filesystem_endpoint"     : "sftp://quarry.uits.indiana.edu/"
-        },
-        "lrms"                        : "TORQUE",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
-        "agent_scheduler"             : "CONTINUOUS",
-        "pre_bootstrap"               : ["module purge", "module load python/2.7.3", "module load openmpi/gnu/1.6.3"],
-        "valid_roots"                 : ["/N"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
-    },
-
     "bigred2": {
         "description"                 : "Indiana University's Cray XE6/XK7 cluster (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
-        "schemas"                     : ["ssh", "gsissh"],
+        "schemas"                     : ["ssh"],
         "ssh"                         :
-        {
-            "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.iu.edu/",
-            "filesystem_endpoint"     : "sftp://bigred2.uits.iu.edu/"
-        },
-        "gsissh"                      :
         {
             "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.iu.edu/",
             "filesystem_endpoint"     : "sftp://bigred2.uits.iu.edu/"
@@ -40,8 +12,9 @@
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "agent_scheduler"             : "CONTINUOUS",
-        "pre_bootstrap"               : ["module load python"],
-        "global_virtenv"              : "/N/u/marksant/BigRed2/shared_pilot_ve_20141114",
+        "pre_bootstrap"               : ["module load python/2.7.8"],
+        "virtenv"                     : "%(global_sandbox)s/virtenv_br2",
+        "virtenv_mode"                : "create",
         "valid_roots"                 : ["/N"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py"
     }
