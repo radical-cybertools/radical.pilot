@@ -547,13 +547,13 @@ class Session():
                 bulk.find   ({"_id"     : ObjectId(uid), 
                               "state"   : {"$in"  : src_states} }) \
                     .update ({"$set"    : {"state": state},
-                              "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
-                              "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+                              "$push"   : {"statehistory": {"state"   : state, "timestamp": ts},
+                                           "log"         : {"logentry": log,   "timestamp": ts}}})
             else :
                 bulk.find   ({"_id"     : ObjectId(uid)}) \
                     .update ({"$set"    : {"state": state},
-                              "$push"   : {"statehistory": {"state": state, "timestamp": ts}},
-                              "$push"   : {"log"  : {"logentry": log, "timestamp": ts}}})
+                              "$push"   : {"statehistory": {"state"   : state, "timestamp": ts},
+                                           "log"         : {"logentry": log,   "timestamp": ts}}})
 
         result = bulk.execute()
 
