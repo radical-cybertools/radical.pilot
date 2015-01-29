@@ -4384,8 +4384,8 @@ class StageinWorker(threading.Thread):
                 if not cu:
                     continue
 
-                sandbox      = os.path.join(self._workdir, '%s' % cu['_id']),
-                staging_area = os.path.join(self._workdir, 'staging_area'),
+                sandbox      = os.path.join(self._workdir, '%s' % cu['_id'])
+                staging_area = os.path.join(self._workdir, STAGING_AREA)
 
                 for directive in cu['Agent_Input_Directives']:
                     prof('Agent input_staging queue', uid=cu['_id'], msg=directive)
@@ -4526,7 +4526,7 @@ class StageoutWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        staging_area = os.path.join(self._workdir, 'staging_area'),
+        staging_area = os.path.join(self._workdir, STAGING_AREA)
 
         while not self._terminate.is_set():
 
@@ -4538,7 +4538,7 @@ class StageoutWorker(threading.Thread):
                 if not cu:
                     continue
 
-                sandbox = os.path.join(self._workdir, '%s' % cu['_id']),
+                sandbox = os.path.join(self._workdir, '%s' % cu['_id'])
 
                 ## parked from unit state checker: unit postprocessing
 
