@@ -1424,6 +1424,14 @@ class SchedulerTorus(Scheduler):
 #
 class LaunchMethod(object):
 
+    # List of environment variables that designated Launch Methods should export
+    EXPORT_ENV_VARIABLES = [
+        'LD_LIBRARY_PATH',
+        'PATH',
+        'PYTHONPATH',
+        'PYTHON_DIR',
+    ]
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, logger, scheduler):
@@ -1440,7 +1448,6 @@ class LaunchMethod(object):
             raise Exception("Launch command not found for LaunchMethod '%s'" % name)
 
         logger.info("Discovered launch command: '%s'.", self.launch_command)
-
 
     # --------------------------------------------------------------------------
     #
@@ -1600,28 +1607,12 @@ class LaunchMethodMPIRUN(LaunchMethod):
         # Construct the hosts_string
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
 
-        export_vars = LaunchMethodMPIRUN.create_export_vars()
+        export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         mpirun_command = "%s %s -np %s -host %s %s" % (
             self.launch_command, export_vars, task_numcores, hosts_string, task_command)
 
         return mpirun_command, None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def create_export_vars(cls):
-        # Class method so that other LM's can also benefit from this.
-        candidate_vars = [
-            'LD_LIBRARY_PATH',
-            'PATH',
-            'PYTHONPATH',
-            'PYTHON_DIR',
-            ]
-        export_vars = ' '.join(['-x ' + var for var in candidate_vars if var in os.environ])
-        return export_vars
-
 
 
 # ==============================================================================
@@ -1832,7 +1823,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
 
-        export_vars = LaunchMethodMPIRUN.create_export_vars()
+        export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         mpirun_ccmrun_command = "%s %s %s -np %d -host %s %s" % (
             self.launch_command, self.mpirun_command, export_vars,
@@ -1975,11 +1966,12 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         # Construct the hosts_string ('h1 h2 .. hN')
         hosts_string = " ".join([slot.split(':')[0] for slot in task_slots])
 
-        mpirun_rsh_command = "%s -export -np %s %s %s" % (
-            self.launch_command, task_numcores, hosts_string, task_command)
+        export_vars = ' '.join([var+"=$"+var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+
+        mpirun_rsh_command = "%s -np %s %s %s %s" % (
+            self.launch_command, task_numcores, hosts_string, export_vars, task_command)
 
         return mpirun_rsh_command, None
-
 
 
 # ==============================================================================
