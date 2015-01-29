@@ -4537,7 +4537,7 @@ class StageoutWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        staging_area = os.path.join(self._workdir, 'staging_area')
+        staging_area = os.path.join(self._workdir, STAGING_AREA)
 
         while not self._terminate.is_set():
 
