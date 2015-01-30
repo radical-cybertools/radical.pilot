@@ -152,7 +152,6 @@ unlock()
 
     lockfile="$entry.lock"
 
-
     if ! test -f $lockfile
     then
         echo "ERROR: cannot unlock $entry for $pid: missing lock $lockfile"
@@ -589,6 +588,11 @@ rp_install()
 find_available_port()
 {
     RANGE="23000..23100"
+    # TODO: Now that we have corrected the logic of checking on the localhost,
+    #       instead of the remote host, we need to improve the checking.
+    #       For now just return a fixed value.
+    return 23000
+
     echo ""
     echo "################################################################################"
     echo "## Searching for available TCP port for tunnel in range $RANGE."
