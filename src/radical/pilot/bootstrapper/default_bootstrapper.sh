@@ -730,10 +730,12 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
         exit 1
     fi
     DBPORT=$AVAILABLE_PORT
-    BIND_ADDRESS=127.0.0.1
 
     # Set up tunnel
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$DBURL $FORWARD_TUNNEL_ENDPOINT &
+    # TODO: Extract port and host
+    FORWARD_TUNNEL_ENDPOINT_PORT=22
+    FORWARD_TUNNEL_ENDPOINT_HOST=$FORWARD_TUNNEL_ENDPOINT
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$DBURL -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
@@ -826,4 +828,3 @@ echo "# -------------------------------------------------------------------"
 
 # ... and exit
 exit $AGENT_EXITCODE
-
