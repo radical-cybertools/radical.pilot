@@ -345,6 +345,7 @@ class PilotLauncherWorker(threading.Thread):
                         agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
                         agent_spawner           = resource_cfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
                         agent_scheduler         = resource_cfg.get ('agent_scheduler')
+                        tunnel_bind_device      = resource_cfg.get ('tunnel_bind_device')
                         default_queue           = resource_cfg.get ('default_queue')
                         forward_tunnel_endpoint = resource_cfg.get ('forward_tunnel_endpoint')
                         js_endpoint             = resource_cfg.get ('job_manager_endpoint')
@@ -580,6 +581,8 @@ class PilotLauncherWorker(threading.Thread):
                         # set optional args
                         if database_auth:
                             bootstrap_args += " -a '%s'" % database_auth
+                        if tunnel_bind_device:
+                            bootstrap_args += " -D '%s'" % tunnel_bind_device
                         if pre_bootstrap:
                             bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
                         if forward_tunnel_endpoint:

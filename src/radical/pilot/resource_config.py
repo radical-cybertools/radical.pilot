@@ -27,6 +27,7 @@ TASK_LAUNCH_METHOD          = 'task_launch_method'
 MPI_LAUNCH_METHOD           = 'mpi_launch_method'
 AGENT_SCHEDULER             = 'agent_scheduler'
 FORWARD_TUNNEL_ENDPOINT     = 'forward_tunnel_endpoint'
+TUNNEL_BIND_DEVICE          = "tunnel_bind_device"
 AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 DEFAULT_REMOTE_WORKDIR      = 'default_remote_workdir'
 DESCRIPTION                 = 'description'
@@ -34,7 +35,7 @@ NOTES                       = 'notes'
 SCHEMAS                     = 'schemas'
 
 
-VALID_KEYS = [JOB_MANAGER_ENDPOINT, FILESYSTEM_ENDPOINT, SCHEMAS,
+VALID_KEYS = [JOB_MANAGER_ENDPOINT, FILESYSTEM_ENDPOINT, SCHEMAS, TUNNEL_BIND_DEVICE,
               DEFAULT_QUEUE, SPMD_VARIATION, PYTHON_INTERPRETER, PRE_BOOTSTRAP, 
               VALID_ROOTS, BOOTSTRAPPER, PILOT_AGENT, PILOT_AGENT_WORKER,
               VIRTENV, VIRTENV_MODE, LRMS, TASK_LAUNCH_METHOD, AGENT_SCHEDULER,
@@ -207,6 +208,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(TASK_LAUNCH_METHOD,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(MPI_LAUNCH_METHOD,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(FORWARD_TUNNEL_ENDPOINT, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(TUNNEL_BIND_DEVICE,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_MONGODB_ENDPOINT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_REMOTE_WORKDIR,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DESCRIPTION,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
