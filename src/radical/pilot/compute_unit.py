@@ -112,7 +112,7 @@ class ComputeUnit(object):
         computeunit._description = ud_copy
         computeunit._manager     = unit_manager_obj
         computeunit._worker      = unit_manager_obj._worker
-        computeunit._uid         = ru.generate_id('unit')
+        computeunit._uid         = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
         computeunit._name        = unit_description['name']
         computeunit._local_state = local_state
 
