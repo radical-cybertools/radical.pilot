@@ -559,7 +559,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set mandatory args
                         bootstrap_args  = ""
-                        bootstrap_args += " -a '%s'" % database_auth
                         bootstrap_args += " -b '%s'" % sdist[:-7] # without '.tgz'
                         bootstrap_args += " -c '%s'" % number_cores
                         bootstrap_args += " -d '%s'" % debug_level
@@ -579,11 +578,16 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -v '%s'" % agent_version
 
                         # set optional args
-                        if cleanup                 : bootstrap_args += " -x '%s'" % cleanup
-                        if forward_tunnel_endpoint : bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
-                        if pre_bootstrap           : bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
-                        if python_interpreter      : bootstrap_args += " -i '%s'" % python_interpreter
-
+                        if database_auth:
+                            bootstrap_args += " -a '%s'" % database_auth
+                        if pre_bootstrap:
+                            bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
+                        if forward_tunnel_endpoint:
+                            bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
+                        if python_interpreter:
+                            bootstrap_args += " -i '%s'" % python_interpreter
+                        if cleanup:
+                            bootstrap_args += " -x '%s'" % cleanup
 
                         # ------------------------------------------------------
                         # now that the script is in place and we know where it is,

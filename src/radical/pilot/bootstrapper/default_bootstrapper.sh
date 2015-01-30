@@ -688,7 +688,6 @@ done
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$AUTH"               ; then  usage "missing AUTH              ";  fi
 if test -z "$CORES"              ; then  usage "missing CORES             ";  fi
 if test -z "$DEBUG"              ; then  usage "missing DEBUG             ";  fi
 if test -z "$DBNAME"             ; then  usage "missing DBNAME            ";  fi
@@ -763,19 +762,23 @@ else
 fi
 
 AGENT_CMD="python $PILOT_SCRIPT \
-    -a $AUTH \
-    -c $CORES \
-    -d $DEBUG \
-    -j $TASK_LAUNCH_METHOD \
-    -k $MPI_LAUNCH_METHOD \
-    -l $LRMS \
-    -m $DBURL \
-    -n $DBNAME \
-    -o $SPAWNER \
-    -p $PILOT_ID \
-    -q $SCHEDULER \
-    -s $SESSIONID \
-    -r $RUNTIME "
+-c $CORES \
+-d $DEBUG \
+-j $TASK_LAUNCH_METHOD \
+-k $MPI_LAUNCH_METHOD \
+-l $LRMS \
+-m $DBURL \
+-n $DBNAME \
+-o $SPAWNER \
+-p $PILOT_ID \
+-q $SCHEDULER \
+-s $SESSIONID \
+-r $RUNTIME"
+
+if ! test -z "$AUTH"
+then
+    AGENT_CMD="$AGENT_CMD -a $AUTH"
+fi
 
 echo
 echo "# -------------------------------------------------------------------"

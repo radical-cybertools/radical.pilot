@@ -78,7 +78,10 @@ class Session():
         self._db     = db
         self._dburl  = str(url)
         self._dbname = dbname
-        self._dbauth = "%s:%s" % (url.username, url.password)
+        if url.username and url.password:
+            self._dbauth = "%s:%s" % (url.username, url.password)
+        else:
+            self._dbauth = None
 
         self._session_id = None
 
