@@ -520,6 +520,7 @@ class PilotLauncherWorker(threading.Thread):
                             # otherwise, we let the bootstrapper know what
                             # version to use
                             agent_version = agent_source
+                            agent_name = agent_source
 
 
                         # ------------------------------------------------------
