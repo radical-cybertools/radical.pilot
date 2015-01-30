@@ -281,6 +281,7 @@ LAUNCH_METHOD_RUNJOB        = 'RUNJOB'
 LAUNCH_METHOD_SSH           = 'SSH'
 
 # 'enum' for local resource manager types
+LRMS_NAME_CCM               = 'CCM'
 LRMS_NAME_FORK              = 'FORK'
 LRMS_NAME_LOADLEVELER       = 'LOADL'
 LRMS_NAME_LSF               = 'LSF'
@@ -2164,6 +2165,7 @@ class LRMS(object):
 
         try:
             implementation = {
+                LRMS_NAME_CCM         : CCMLRMS,
                 LRMS_NAME_FORK        : ForkLRMS,
                 LRMS_NAME_LOADLEVELER : LoadLevelerLRMS,
                 LRMS_NAME_LSF         : LSFLRMS,
@@ -2182,6 +2184,49 @@ class LRMS(object):
     def _configure(self):
         raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
 
+
+# ==============================================================================
+#
+class CCMLRMS(LRMS):
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, requested_cores):
+
+        LRMS.__init__(self, name, logger, requested_cores)
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
+
+        self._log.info("Configured to run on system with %s.", self.name)
+
+        CCM_NODEFILE_DIR = os.path.expanduser('~/.crayccm')
+
+        ccm_nodefile_list = os.listdir(CCM_NODEFILE_DIR)
+        ccm_nodefile_name = max(ccm_nodefile_list, key=lambda x:
+                              os.stat(os.path.join(CCM_NODEFILE_DIR, x)).st_mtime)
+        ccm_nodefile = os.path.join(CCM_NODEFILE_DIR, ccm_nodefile_name)
+
+        hostname = os.uname()[1]
+        if not hostname in open(ccm_nodefile).read():
+            raise Exception("Using the most recent CCM nodefile (%s),"
+                            " but I (%s) am not in it!" % (ccm_nodefile, hostname))
+
+        # Parse the CCM nodefile
+        ccm_nodes = [line.strip() for line in open(ccm_nodefile)]
+        self._log.info("Found CCM nodefile: %s.", ccm_nodefile)
+
+        # Get the number of raw entries
+        ccm_nodes_length = len(ccm_nodes)
+
+        # Unique nodes
+        ccm_node_list = list(set(ccm_nodes))
+        ccm_node_list_length = len(ccm_node_list)
+
+        # Some simple arithmetic
+        self.cores_per_node = ccm_nodes_length / ccm_node_list_length
+
+        self.node_list = ccm_node_list
 
 
 # ==============================================================================
