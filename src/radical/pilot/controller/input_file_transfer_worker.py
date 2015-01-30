@@ -119,7 +119,7 @@ class InputFileTransferWorker(threading.Thread):
                             remote_sandbox = compute_unit["sandbox"]
                             input_staging = compute_unit["FTW_Input_Directives"]
 
-                            # We need to create the cU's directory in case it doesn't exist yet.
+                            # We need to create the CU's directory in case it doesn't exist yet.
                             log_msg = "Creating ComputeUnit sandbox directory %s." % remote_sandbox
                             log_messages.append(log_msg)
                             logger.info(log_msg)
