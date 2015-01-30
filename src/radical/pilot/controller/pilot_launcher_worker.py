@@ -416,7 +416,7 @@ class PilotLauncherWorker(threading.Thread):
                         #   stage  : stage pilot agent from local to target
                         #            resource
                         #
-                        # sourcen  :
+                        # source   :
                         #   tag    : a git tag
                         #   branch : a git branch
                         #   release: pypi release
@@ -450,7 +450,6 @@ class PilotLauncherWorker(threading.Thread):
                                       % (agent_version, DEFAULT_AGENT_VERSION))
                             agent_version = DEFAULT_AGENT_VERSION
 
-
                         agent_mode, agent_source = agent_version.split ('@', 1)
 
                         if not agent_mode or not agent_source :
@@ -466,8 +465,6 @@ class PilotLauncherWorker(threading.Thread):
                             agent_version = DEFAULT_AGENT_VERSION
                             agent_mode, agent_source = agent_version.split ('@', 1)
 
-
-
                         # we only stage the agent on agent_mode==stage --
                         # otherwise the bootstrapper will have to take care of
                         # it
@@ -482,14 +479,14 @@ class PilotLauncherWorker(threading.Thread):
                                 agent_path = os.path.abspath("%s/../agent/%s" % (mod_dir, agent_name))
 
                             else :
-                                # FIX: agent_name not set in this case!
-                                if  agent_source.startswith ('/') :
+                                agent_name = os.path.basename(agent_source)
+                                if  agent_source.startswith('/'):
                                     agent_path = agent_source
                                 else :
                                     agent_path = os.path.abspath("%s/%s" % (mod_dir, agent_source))
 
                             msg = "Using pilot agent %s" % agent_path
-                            logentries.append (Logentry (msg, logger=logger.info))
+                            logentries.append(Logentry (msg, logger=logger.info))
 
                             # --------------------------------------------------
                             # Copy the rp sdist 
