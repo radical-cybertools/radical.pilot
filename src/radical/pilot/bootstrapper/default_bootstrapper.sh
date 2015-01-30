@@ -560,7 +560,7 @@ rp_install()
     # installed.  Failure to do so will only result in a warning though.
     echo "uninstalling RADICAL-Pilot"
     run_cmd "uninstall radical.pilot via pip" \
-            "yes | head -n 1 | pip uninstall radical.pilot || true" \
+            "pip uninstall -y radical.pilot || true" \
          || echo "Couldn't uninstall radical.pilot! Lets see how far we get ..."
 
     echo "Using RADICAL-Pilot update source '$RP_INSTALL_SOURCE'"
