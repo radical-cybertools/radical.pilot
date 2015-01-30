@@ -711,7 +711,14 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     echo "# -------------------------------------------------------------------"
     echo "# Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
 
-    find_available_port $FORWARD_TUNNEL_ENDPOINT
+    # Bind to localhost
+    BIND_ADDRESS=127.0.0.1
+
+    # Look for an available port to bind to.
+    # This might be necessary if multiple agents run on one host.
+    find_available_port $BIND_ADDRESS
+    AVAILABLE_PORT=?$
+
     if [ $AVAILABLE_PORT ]; then
         echo "## Found available port: $AVAILABLE_PORT"
     else
