@@ -564,9 +564,9 @@ def get_mongodb(mongodb_url, mongodb_name, mongodb_auth):
     mongo_db     = mongo_client[mongodb_name]
 
     # do auth on username *and* password (ignore empty split results)
-    auth_elems = filter(None, mongodb_auth.split(':', 1))
-    if len(auth_elems) == 2:
-        mongo_db.authenticate(auth_elems[0], auth_elems[1])
+    if mongodb_auth:
+        username, passwd = mongodb_auth.split(':')
+        mongo_db.authenticate(username, passwd)
 
     return mongo_db
 
