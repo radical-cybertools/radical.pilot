@@ -4513,14 +4513,16 @@ class StageinWorker(threading.Thread):
                                                                     'Agent_Input_Status'              : rp.FAILED}
                                                       })
 
-                # cu staging is all done, unit can go to execution
-                self._agent.update_unit_state(uid    = cu['_id'],
-                                              state  = rp.ALLOCATING,
-                                              msg    = 'agent input staging done')
-                cu_list = blowup (cu, SCHEDULE) 
-                for _cu in cu_list :
-                    prof('push', msg="towards scheduling", uid=_cu['_id'], tag='stagein')
-                    self._schedule_queue.put(_cu)
+                # agent staging is all done, unit can go to execution if it has
+                # no FTW staging
+                if not cu["FTW_Input_Directives"] :
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.ALLOCATING,
+                                                  msg    = 'agent input staging done')
+                    cu_list = blowup (cu, SCHEDULE) 
+                    for _cu in cu_list :
+                        prof('push', msg="towards scheduling", uid=_cu['_id'], tag='stagein')
+                        self._schedule_queue.put(_cu)
 
 
             except Exception as e:
