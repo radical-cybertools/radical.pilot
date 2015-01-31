@@ -3,7 +3,6 @@
         "description"                 : "The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)",
         "notes"                       : "In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.",
         "schemas"                     : ["ssh"],
-        "mandatory_args"              : [],
         "ssh"                         : {
             "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
@@ -59,10 +58,11 @@
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "agent_scheduler"             : "CONTINUOUS",
-        "global_virtenv"              : "/global/project/projectdirs/m2178/shared_pilot_ve_edison_20141205",
+        "virtenv"                     : "%(global_sandbox)s/virtenv_edison",
+        "virtenv_mode"                : "create",
         "pre_bootstrap"               : ["module load python"],
         "default_remote_workdir"      : "$SCRATCH",
-        "valid_roots"                 : ["/global", "/scratch1", "scratch2", "/scratch2"],
+        "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "bootstrapper"                : "default_bootstrapper.sh"
     },
@@ -70,24 +70,26 @@
         "description"                 : "The NERSC Edison Cray XC30 in Cluster Compatibility Mode (https://www.nersc.gov/users/computational-systems/edison/)",
         "notes"                       : "In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.",
         "schemas"                     : ["ssh"],
-        "mandatory_args"              : [],
         "ssh"                         : {
             "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "default_queue"               : "ccm_queue",
-        "lrms"                        : "TORQUE",
-        "task_launch_method"          : "CCMRUN",
-        "mpi_launch_method"           : "MPIRUN_CCMRUN",
+        "lrms"                        : "CCM",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
         "agent_scheduler"             : "CONTINUOUS",
-        "global_virtenv"              : "/global/project/projectdirs/m2178/shared_pilot_ve_edison_20141205",
+        "virtenv"                     : "%(global_sandbox)s/virtenv_edison",
+        "virtenv_mode"                : "create",
         "pre_bootstrap"               : [
             "module load ccm",
             "module load openmpi-ccm",
             "module load python"
         ],
         "default_remote_workdir"      : "$SCRATCH",
-        "valid_roots"                 : ["/global", "/scratch1", "scratch2", "/scratch2"],
+        "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
+        "forward_tunnel_endpoint"     : "localhost",
+        "tunnel_bind_device"          : "ipogif0",
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "bootstrapper"                : "default_bootstrapper.sh"
     }

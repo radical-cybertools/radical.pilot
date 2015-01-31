@@ -802,6 +802,11 @@ echo "# CMDLINE: $AGENT_CMD"
 # enable DebugHelper in agent
 export RADICAL_DEBUG=TRUE
 
+if test "$LRMS" = "CCM"
+then
+    AGENT_CMD="ccmrun $AGENT_CMD"
+fi
+
 profile_event 'agent start'
 
 $AGENT_CMD
