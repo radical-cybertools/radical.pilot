@@ -4440,7 +4440,14 @@ class StageinWorker(threading.Thread):
                 staging_area = os.path.join(self._workdir, STAGING_AREA)
 
                 for directive in cu['Agent_Input_Directives']:
+
                     prof('Agent input_staging queue', uid=cu['_id'], msg=directive)
+
+                    if directive['state'] != rp.PENDING :
+                        # we ignore directives which need no action
+                        prof('Agent input_staging queue', uid=cu['_id'], msg='ignored')
+                        continue
+
 
                     # Perform input staging
                     self._log.info("unit input staging directives %s for cu: %s to %s",
@@ -4493,7 +4500,9 @@ class StageinWorker(threading.Thread):
                                                     'Agent_Input_Directives.target' : directive['target']
                                                 },
                                                 update = {
-                                                    '$set' : {'Agent_Input_Directives.$.state' : rp.DONE}
+                                                    '$set'
+                                                    : {'Agent_Input_Status'                    : rp.DONE,
+                                                              'Agent_Input_Directives.$.state' : rp.DONE}
                                                 })
                     except Exception as e:
 
@@ -4517,14 +4526,16 @@ class StageinWorker(threading.Thread):
                                                                     'Agent_Input_Status'              : rp.FAILED}
                                                       })
 
-                # cu staging is all done, unit can go to execution
-                self._agent.update_unit_state(uid    = cu['_id'],
-                                              state  = rp.ALLOCATING,
-                                              msg    = 'agent input staging done')
-                cu_list = blowup (cu, SCHEDULE) 
-                for _cu in cu_list :
-                    prof('push', msg="towards scheduling", uid=_cu['_id'], tag='stagein')
-                    self._schedule_queue.put(_cu)
+                # agent staging is all done, unit can go to execution if it has
+                # no FTW staging
+                if not cu["FTW_Input_Directives"] :
+                    self._agent.update_unit_state(uid    = cu['_id'],
+                                                  state  = rp.ALLOCATING,
+                                                  msg    = 'agent input staging done')
+                    cu_list = blowup (cu, SCHEDULE) 
+                    for _cu in cu_list :
+                        prof('push', msg="towards scheduling", uid=_cu['_id'], tag='stagein')
+                        self._schedule_queue.put(_cu)
 
 
             except Exception as e:
@@ -5286,7 +5297,8 @@ class Agent(object):
                 prof('Agent get unit mkdir', uid=cu['_id'])
 
                 # and send to staging / execution, respectively
-                if cu['Agent_Input_Directives']:
+                if cu['Agent_Input_Directives'] and \
+                   cu['Agent_Input_Status'] == rp.PENDING :
 
                     self.update_unit_state(uid    = cu['_id'],
                                            state  = rp.STAGING_INPUT,
