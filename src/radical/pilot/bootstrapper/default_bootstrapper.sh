@@ -794,6 +794,11 @@ then
     AGENT_CMD="$AGENT_CMD -a $AUTH"
 fi
 
+if test "$LRMS" = "CCM"
+then
+    AGENT_CMD="ccmrun $AGENT_CMD"
+fi
+
 echo
 echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent for $CORES cores."
@@ -801,11 +806,6 @@ echo "# CMDLINE: $AGENT_CMD"
 
 # enable DebugHelper in agent
 export RADICAL_DEBUG=TRUE
-
-if test "$LRMS" = "CCM"
-then
-    AGENT_CMD="ccmrun $AGENT_CMD"
-fi
 
 profile_event 'agent start'
 
