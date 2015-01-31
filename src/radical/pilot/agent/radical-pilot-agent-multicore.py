@@ -2202,7 +2202,11 @@ class CCMLRMS(LRMS):
 
         CCM_NODEFILE_DIR = os.path.expanduser('~/.crayccm')
 
-        ccm_nodefile_list = os.listdir(CCM_NODEFILE_DIR)
+        ccm_nodefile_list = filter(lambda x: x.startswith('ccm_nodelist'),
+                                   os.listdir(CCM_NODEFILE_DIR))
+        if not ccm_nodefile_list:
+            raise Exception("No CCM nodefiles found in: %s." % CCM_NODEFILE_DIR)
+
         ccm_nodefile_name = max(ccm_nodefile_list, key=lambda x:
                               os.stat(os.path.join(CCM_NODEFILE_DIR, x)).st_mtime)
         ccm_nodefile = os.path.join(CCM_NODEFILE_DIR, ccm_nodefile_name)
