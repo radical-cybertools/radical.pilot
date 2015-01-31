@@ -4315,9 +4315,9 @@ class UpdateWorker(threading.Thread):
                     res  = cinfo['bulk'].execute()
                     self._log.debug("bulk update result: %s", res)
 
-                    prof('state update bulk pushed (%d)' % len(cinfo['uids'].keys ()))
+                    prof('unit update bulk pushed (%d)' % len(cinfo['uids'].keys ()))
                     for uid in cinfo['uids']:
-                        prof('state update pushed (%s)' % cinfo['uids'][uid], uid=uid)
+                        prof('unit update pushed (state: %s)' % cinfo['uids'][uid], uid=uid)
 
                     cinfo['last'] = now
                     cinfo['bulk'] = None
@@ -4354,7 +4354,7 @@ class UpdateWorker(threading.Thread):
                 query_dict  = update_request.get('query', dict())
                 update_dict = update_request.get('update',dict())
 
-                prof('state update pulled (%s)' % state, uid=uid)
+                prof('unit update pulled (state: %s)' % state, uid=uid)
 
                 cname = self._session_id + cbase
 
@@ -4377,10 +4377,10 @@ class UpdateWorker(threading.Thread):
                              .update(update_dict)
 
                 timed_bulk_execute(cinfo)
-              # prof('state update bulked', uid=uid)
+              # prof('unit update bulked', uid=uid)
 
             except Exception as e:
-                self._log.exception("state update failed (%s)", e)
+                self._log.exception("unit update failed (%s)", e)
                 # FIXME: should we fail the pilot at this point?
                 # FIXME: Are the strategies to recover?
 
@@ -5263,10 +5263,7 @@ class Agent(object):
         for cu in cu_list:
 
             try:
-                prof('Agent get unit', uid=cu['_id'], tag='cu arriving',
-                     logger=self._log.info)
-
-                prof('Agent get unit ingest', uid=cu['_id'])
+                prof('Agent unit ingest', uid=cu['_id'], tag='cu arriving', logger=self._log.info)
 
                 cud     = cu['description']
                 workdir = "%s/%s" % (self._workdir, cu['_id'])
