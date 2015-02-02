@@ -82,7 +82,7 @@ if __name__ == "__main__":
             # Concatenate the shared input and the task specific input.
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/bash'
-            cud.arguments = ['-c', 'sleep 10 && cat %s %s > %s' %
+            cud.arguments = ['-c', 'cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
             cud.cores = 1
             cud.input_staging = [sd_shared, input_file]
