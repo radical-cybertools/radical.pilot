@@ -1,8 +1,9 @@
 import os
 import radical.pilot
+import copy
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
-MY_STAGING_AREA = 'staging_area'
+MY_STAGING_AREA = 'staging:///'
 
 #------------------------------------------------------------------------------
 #
@@ -30,9 +31,9 @@ if __name__ == "__main__":
         # Define a C-core on $RESOURCE that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = radical.pilot.ComputePilotDescription()
-        pdesc.resource = "xsede.trestles"
+        pdesc.resource = "local.localhost"
         pdesc.runtime  = 5 # M minutes
-        pdesc.cores    = 8 # C cores
+        pdesc.cores    = 2 # C cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -40,7 +41,7 @@ if __name__ == "__main__":
         # Define the url of the local file in the local directory
         shared_input_file_url = 'file://%s/%s' % (os.getcwd(), SHARED_INPUT_FILE)
 
-        staged_file = "~/%s/%s" % (MY_STAGING_AREA, SHARED_INPUT_FILE)
+        staged_file = "%s%s" % (MY_STAGING_AREA, SHARED_INPUT_FILE)
         print "##########################"
         print staged_file
         print "##########################"
@@ -81,7 +82,7 @@ if __name__ == "__main__":
             # Concatenate the shared input and the task specific input.
             cud = radical.pilot.ComputeUnitDescription()
             cud.executable = '/bin/bash'
-            cud.arguments = ['-c', 'cat %s %s > %s' %
+            cud.arguments = ['-c', 'sleep 10 && cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
             cud.cores = 1
             cud.input_staging = [sd_shared, input_file]
