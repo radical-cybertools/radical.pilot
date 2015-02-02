@@ -74,8 +74,11 @@ List of Pre-Configured Resources
              print "    * JSON PARSING ERROR: %s" % str(ex)
              continue
 
+        resources_rst.write("{0}\n".format(config[:-5].upper()))
+        resources_rst.write("{0}\n\n".format("="*len(config[:-5])))
 
-        for resource_key, resource_config in json_data.iteritems():
+        for host_key, resource_config in json_data.iteritems():
+            resource_key = "%s.%s" % (config[:-5], host_key)
             print "   * %s" % resource_key
             try:
                 default_queue = resource_config["default_queue"]
@@ -97,22 +100,20 @@ List of Pre-Configured Resources
             except Exception, ex:
                 access_schemas = ['n/a']
 
-            resources_rst.write("{0}\n".format(resource_key))
-            resources_rst.write("{0}\n\n".format("-"*len(resource_key)))
+            resources_rst.write("{0}\n".format(host_key.upper()))
+            resources_rst.write("{0}\n\n".format("*"*len(host_key)))
             resources_rst.write("{0}\n\n".format(resource_config["description"]))
+            resources_rst.write("* **Resource label**      : ``{0}``\n".format(resource_key))
+            resources_rst.write("* **Raw config**          : :download:`{0} <../../src/radical/pilot/configs/{0}>`\n".format(config))
             if resource_config["notes"] != "None":
-                resources_rst.write(".. note::  {0}\n\n".format(resource_config["notes"]))
-            resources_rst.write("Default values for ComputePilotDescription attributes:\n\n")
-            resources_rst.write("================== ============================\n")
-            resources_rst.write("Parameter               Value\n")
-            resources_rst.write("================== ============================\n")
-            resources_rst.write("``queue``               {0}\n".format(default_queue))
-            resources_rst.write("``sandbox``             {0}\n".format(working_dir))
-            resources_rst.write("``access_schema``       {0}\n".format(access_schemas[0]))
-            resources_rst.write("================== ============================\n\n")
-            resources_rst.write("Available schemas: ``{0}``\n\n".format(', '.join(access_schemas)))
+                resources_rst.write("* **Note**            : {0}\n".format(resource_config["notes"]))
+            resources_rst.write("* **Default values** for ComputePilotDescription attributes:\n\n")
+            resources_rst.write(" * ``queue         : {0}``\n".format(default_queue))
+            resources_rst.write(" * ``sandbox       : {0}``\n".format(working_dir))
+            resources_rst.write(" * ``access_schema : {0}``\n\n".format(access_schemas[0]))
+            resources_rst.write("* **Available schemas**   : ``{0}``\n".format(', '.join(access_schemas)))
+            resources_rst.write("\n")
 
-            resources_rst.write(":download:`Raw Configuration file: {0} <../../src/radical/pilot/configs/{0}>`\n\n".format(config))
 ##
 ################################################################################
 
