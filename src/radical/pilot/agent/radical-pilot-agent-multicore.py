@@ -276,6 +276,7 @@ LAUNCH_METHOD_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LAUNCH_METHOD_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LAUNCH_METHOD_MPIRUN        = 'MPIRUN'
 LAUNCH_METHOD_MPIRUN_RSH    = 'MPIRUN_RSH'
+LAUNCH_METHOD_ORTE          = 'ORTE'
 LAUNCH_METHOD_POE           = 'POE'
 LAUNCH_METHOD_RUNJOB        = 'RUNJOB'
 LAUNCH_METHOD_SSH           = 'SSH'
@@ -1473,6 +1474,7 @@ class LaunchMethod(object):
                 LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
                 LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
                 LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
+                LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
                 LAUNCH_METHOD_POE           : LaunchMethodPOE,
                 LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
                 LAUNCH_METHOD_SSH           : LaunchMethodSSH
@@ -2056,6 +2058,64 @@ class LaunchMethodIBRUN(LaunchMethod):
         return ibrun_command, None
 
 
+# ==============================================================================
+#
+# NOTE: This requires a development version of Open MPI available.
+#
+class LaunchMethodORTE(LaunchMethod):
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, logger, scheduler)
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
+        self.launch_command = self._which('orte-submit')
+        dvm_command = self._which('orte-dvm')
+
+        orte_vm_uri_filename = os.path.abspath("orte_vm_uri.txt")
+        self._dvm_process = subprocess.Popen([dvm_command, "--report-uri", orte_vm_uri_filename])
+
+        while True:
+            try:
+                # 1302659072.0;usock;tcp://192.168.0.103:58850
+                self._vmuri = open(orte_vm_uri_filename).read().strip()
+                break
+            except:
+                if not self._dvm_process.poll():
+                    # If process is still running, assume we are still waiting
+                    # for the uri file to be created.
+                    time.sleep(1)
+                    continue
+                else:
+                    # Process is gone, URI file will never get created: fatal!
+                    raise Exception("Couldn't read VMURI from: %s." % orte_vm_uri_filename)
+
+    # TODO: Create teardown() function for LauchMethods (in this case to terminate the dvm)
+    #subprocess.Popen([self.launch_command, "--hnp", orte_vm_uri_filename, "--terminate"])
+
+    # --------------------------------------------------------------------------
+    #
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_hop, (task_slots)):
+
+        if task_args:
+            task_command = " ".join([task_exec, task_args])
+        else:
+            task_command = task_exec
+
+        # Construct the hosts_string
+        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+
+        export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+
+        orte_command = '%s --hnp "%s" %s -np %s -host %s %s' % (
+            self.launch_command, self._vmuri, export_vars, task_numcores, hosts_string, task_command)
+
+        return orte_command, None
 
 # ==============================================================================
 #
