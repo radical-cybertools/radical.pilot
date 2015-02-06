@@ -371,19 +371,22 @@ def stat_session (db, session, cachedir) :
 
     stats     = get_stats (docs, events, slothists)
 
+  # print rpu.get_session_frames   (db, session, cachedir=cachedir)
+
     print "Session Statistics"
     print "------------------"
     print ""
     print "  ex-time: %s s" % stats['session']['execution_time']
     print "  pilots : %s"   % len(stats['pilots'])
 
+
     if 'PILOT_IDS' in os.environ :
         pilots = os.environ['PILOT_IDS'].split (',')
-
-    if  not pilots :
+    else :
         pilots = list()
         for doc in docs['pilot'] :
             pilots.append (doc['_id'])
+
     n_pilots = len(pilots)
 
 
@@ -548,7 +551,7 @@ def plot_session (db, session, cachedir, term, pilots=None) :
             queued     = list()
             dequeued   = list()
 
-#           dat.write ("%10.2f  %6d\n" % (0, queue_size))
+            dat.write ("%10.2f  %6d\n" % (0, queue_size))
 
 
             for event in events :
@@ -563,21 +566,21 @@ def plot_session (db, session, cachedir, term, pilots=None) :
                             seconds     = ru.time_diff (start, event[4])
                             queue_size += 1
                             maxqueue    = max (maxqueue, queue_size)
-#                           dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+                            dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
 
                     if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.EXECUTING] :
                         if  not uid in dequeued :
                             dequeued.append (uid)
                             seconds     = ru.time_diff (start, event[4])
                             queue_size -= 1
-#                           dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
+                            dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
 
 
         with open ("/tmp/rp.%s.pilot.slots.%s.dat" % (session, pid), "w") as dat :
 
             if  not 'slothistory' in pilot :
+                print 'no slothistory'
                 slots.append (0)
-
 
             else :
 
@@ -604,18 +607,18 @@ def plot_session (db, session, cachedir, term, pilots=None) :
 
                         if  slotstate == '-' : 
                             if  used :
-#                               dat.write ("%10.2f  %6d\n" % (seconds, number+1))
-#                               dat.write ("\n")
+                                dat.write ("%10.2f  %6d\n" % (seconds, number+1))
+                                dat.write ("\n")
                                 used = False
 
                         elif  slotstate == '+' : 
-#                           dat.write ("%10.2f  %6d\n" % (seconds, number+1))
+                            dat.write ("%10.2f  %6d\n" % (seconds, number+1))
                             used = True
 
                         else :
                             print "oops?  invalid slotstate '%s'" % slotstate
 
-#                   dat.write ("\n")
+                    dat.write ("\n")
                 delete_me.append (dat.name)
 
     pilotnum = len(pids)
@@ -642,17 +645,17 @@ def plot_session (db, session, cachedir, term, pilots=None) :
     scale_25   = 0.25 * mean_scale
 
     if  maxslots > maxqueue :
-        slotsscale = maxslots+(nodesize/2)
-        queuescale = maxslots+(nodesize/2)
+        slotsscale = maxslots+(nodesize/2)+1
+        queuescale = maxslots+(nodesize/2)+1
 
     elif (mean_scale + scale_25) > max_scale and \
         (mean_scale - scale_25) < min_scale :
-        slotsscale = maxslots+(nodesize/2)
-        queuescale = maxslots+(nodesize/2)
+        slotsscale = maxslots+(nodesize/2)+1
+        queuescale = maxslots+(nodesize/2)+1
 
     else :
-        slotsscale = maxslots+(nodesize/2)
-        queuescale = maxqueue+(nodesize/2)
+        slotsscale = maxslots+(nodesize/2)+1
+        queuescale = maxqueue+(nodesize/2)+1
 
     terms = " ".join (term.split (','))
 

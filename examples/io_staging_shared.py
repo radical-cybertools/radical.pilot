@@ -40,7 +40,8 @@ if __name__ == "__main__":
         # Define the url of the local file in the local directory
         shared_input_file_url = 'file://%s/%s' % (os.getcwd(), SHARED_INPUT_FILE)
 
-        staged_file = "~/%s/%s" % (MY_STAGING_AREA, SHARED_INPUT_FILE)
+        import radical.utils as ru
+        staged_file = "%s/%s/%s" % (ru.Url (pilot.sandbox).path, MY_STAGING_AREA, SHARED_INPUT_FILE)
         print "##########################"
         print staged_file
         print "##########################"

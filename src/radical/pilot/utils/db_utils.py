@@ -214,7 +214,7 @@ def get_session_frames (db, sids, cachedir=None) :
 
             unit_dict = {
                 'sid'                  : sid, 
-                'pid'                  : unit.get('pid'), 
+                'pid'                  : unit.get('pilot'), 
                 'uid'                  : uid, 
                 'started'              : started,
                 'finished'             : finished,
