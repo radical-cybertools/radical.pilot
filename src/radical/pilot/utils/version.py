@@ -13,8 +13,20 @@ __license__   = "MIT"
 
 import os
 
-version        = open(os.path.dirname (os.path.abspath (__file__)) + "/../VERSION",     'r').read().strip()
-version_detail = open(os.path.dirname (os.path.abspath (__file__)) + "/../VERSION.git", 'r').read().strip()
+import radical.utils        as ru
+import radical.utils.logger as rul
+
+
+pwd     = os.path.dirname (__file__)
+root    = "%s/.." % pwd
+version, version_detail, version_branch = ru.get_version ([root, pwd])
+
+# FIXME: the logger init will require a 'classical' ini based config, which is
+# different from the json based config we use now.   May need updating once the
+# radical configuration system has changed to json
+_logger = rul.logger.getLogger  ('radical.pilot')
+_logger.info ('radical.pilot        version: %s' % version_detail)
+
 sdist          = open(os.path.dirname (os.path.abspath (__file__)) + "/../SDIST",       'r').read().strip()
 sdist_path     = "%s/../%s" % (os.path.dirname (os.path.abspath (__file__)), sdist)
 
