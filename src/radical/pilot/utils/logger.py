@@ -16,8 +16,6 @@ from logging import Formatter
 from radical.utils.singleton import Singleton
 import radical.utils.logger as rul
 
-from version import version, version_detail
-
 
 # -----------------------------------------------------------------------------
 #
@@ -30,13 +28,12 @@ class _MPLogger(object):
         """Create or get a new logger instance (singleton).
         """
         self._logger = rul.logger.getLogger(name='radical.pilot')
-        mp_formatter = Formatter(fmt='%(asctime)s %(name)s.%(processName)s: [%(levelname)-8s] %(message)s', 
-                                 datefmt='%Y:%m:%d %H:%M:%S')
+   #    mp_formatter = Formatter(fmt='%(asctime)s %(name)s.%(processName)s: [%(levelname)-8s] %(message)s', 
+   #                             datefmt='%Y:%m:%d %H:%M:%S')
+   #
+   #    for handler in self._logger.handlers:
+   #        handler.setFormatter(mp_formatter)
 
-        for handler in self._logger.handlers:
-            handler.setFormatter(mp_formatter)
-
-        self._logger.info('radical.pilot version: %s (%s)' % (version, version_detail))
 
     def get(self):
         """Return the logger.
