@@ -1,6 +1,0 @@
-merzky@thinkie:~/saga/saga-pilot/benchmark (sp1 *%>) $ python redis_vs_mongodb.py 
-Completed mongo_set: 1000 ops in 5.68 seconds : 176.1 ops/sec
-Completed mongo_get: 1000 ops in 136.38 seconds : 7.3 ops/sec
-Completed redis_set: 1000 ops in 137.42 seconds : 7.3 ops/sec
-Completed redis_get: 1000 ops in 134.34 seconds : 7.4 ops/sec
-
