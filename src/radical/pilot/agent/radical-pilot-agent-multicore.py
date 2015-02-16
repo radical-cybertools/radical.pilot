@@ -3663,6 +3663,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
             # The actual command line, constructed per launch-method
             prof('_Process construct command', uid=cu['_id'])
+            cmdline = None
             try:
                 launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
@@ -3670,8 +3671,10 @@ class ExecWorker_POPEN (ExecWorker) :
                                                cu['description']['cores'],
                                                launch_script_hop,
                                                cu['opaque_slot'])
-                if hop_cmd : cmdline = hop_cmd
-                else       : cmdline = launch_script_name
+                if hop_cmd:
+                    cmdline = hop_cmd
+                else:
+                    cmdline = launch_script_name
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
