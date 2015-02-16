@@ -4371,6 +4371,9 @@ class UpdateWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
+        # TODO: Whats the logic to set 'coll'?
+        coll = None
+
         while not self._terminate.is_set():
 
             # ------------------------------------------------------------------
@@ -4418,7 +4421,6 @@ class UpdateWorker(threading.Thread):
 
                     continue
 
-
                 # got a new request.  Add to bulk (create as needed),
                 # and push bulk if time is up.
                 uid         = update_request.get('uid')
@@ -4432,7 +4434,7 @@ class UpdateWorker(threading.Thread):
                 cname = self._session_id + cbase
 
                 if not cname in self._cinfo:
-                    coll =  self._mongo_db[cname]
+                    coll = self._mongo_db[cname]
                     self._cinfo[cname] = {
                             'coll' : coll,
                             'bulk' : None,
