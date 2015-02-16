@@ -411,8 +411,12 @@ def prof(etype, uid="", msg="", tag="", logger=None):
     logged = False
     now    = timestamp_now()
 
-    if   AGENT_MODE == AGENT_THREADS   : tid = threading.current_thread().name
-    elif AGENT_MODE == AGENT_PROCESSES : tid = os.getpid ()
+    if AGENT_MODE == AGENT_THREADS:
+        tid = threading.current_thread().name
+    elif AGENT_MODE == AGENT_PROCESSES:
+        tid = os.getpid()
+    else:
+        raise Exception('Unknown Agent Mode')
 
     if uid and tag:
 
