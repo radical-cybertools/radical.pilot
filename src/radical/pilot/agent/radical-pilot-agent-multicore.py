@@ -4917,15 +4917,15 @@ class HeartbeatMonitor(threading.Thread):
                     fields = [COMMAND_FIELD, 'state']
                     )
 
-        commands = list()
         if retdoc:
             commands = retdoc[COMMAND_FIELD]
-            state    = retdoc['state']
-
+            state = retdoc['state']
+        else:
+            return
 
         for command in commands:
 
-            prof('Monitor get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
+            prof('Monitor get command', msg=str([command[COMMAND_TYPE], command[COMMAND_ARG]]))
 
             if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                 self.stop()
