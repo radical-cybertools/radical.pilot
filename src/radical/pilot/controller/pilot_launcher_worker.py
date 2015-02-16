@@ -340,6 +340,9 @@ class PilotLauncherWorker(threading.Thread):
                         # copy..
                         resource_cfg = self._session.get_resource_config(resource_key, schema)
 
+                        # import pprint
+                        # pprint.pprint (resource_cfg)
+
                         # ------------------------------------------------------
                         # get parameters from cfg, set defaults where needed
                         agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
@@ -516,11 +519,19 @@ class PilotLauncherWorker(threading.Thread):
                             # if the agent was staged, we tell the bootstrapper
                             agent_version = 'stage'
 
-                        else :  # agent_mode == 'virtenv' :
-                            # otherwise, we let the bootstrapper know what
-                            # version to use
+                        elif agent_mode == 'virtenv':
+                            # install agent with RP in virtenv -- let the bootstrapper 
+                            # know what version to use for installation
                             agent_version = agent_source
-                            agent_name = agent_source
+                            agent_name    = agent_source
+
+                        elif agent_mode == 'use':
+                            # use the version which is installed in the
+                            # virtualenv -- do not update/install
+                            # TODO: make sure that the given agent source is the
+                            # one which is in fact installed
+                            agent_version = 'use'
+
 
 
                         # ------------------------------------------------------

@@ -394,6 +394,11 @@ setup_virtenv()
         RP_INSTALL_SOURCE='radical.pilot'
         RP_INSTALL_EASY=TRUE
         RP_MODE_CHECK=FALSE
+    elif test "$PILOT_VERSION" = 'use'
+    then
+        RP_INSTALL_SOURCE='None'
+        RP_INSTALL_EASY=FALSE
+        RP_MODE_CHECK=TRUE
     else
         RP_INSTALL_SOURCE="-e git://github.com/radical-cybertools/radical.pilot.git@$PILOT_VERSION#egg=radical.pilot"
         RP_INSTALL_EASY=FALSE # easy_install cannot handle git...
@@ -454,7 +459,10 @@ setup_virtenv()
     fi
 
     # we always install RP
-    rp_install
+    if ! test -z "$RP_INSTALL_SOURCE"
+    then
+        rp_install
+    fi
 
     unlock "$pid" "$virtenv"
 }
@@ -543,6 +551,8 @@ virtenv_create()
 virtenv_update()
 {
     profile_event 'virtenv_update start'
+
+    # FIXME: ...
 
     profile_event 'virtenv_update done'
 }

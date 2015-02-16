@@ -3909,31 +3909,19 @@ class ExecWorker_SHELL(ExecWorker):
                                      # are not yet known
 
         # get some threads going -- those will do all the work.
-        import saga.utils.pty_shell as sups
-        self.launcher_shell = sups.PTYShell ("fork://localhost/")
-        self.monitor_shell  = sups.PTYShell ("fork://localhost/")
-
         self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
+        opts = {'shell' : "%s/agent/radical-pilot-spawner.sh %s" \
+                        % (os.path.dirname (rp.__file__), self.workdir)}
 
-
-        ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
-        if  ret != 0 :
-            raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
-
-        ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
-        if  ret != 0 :
-            raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
+        import saga.utils.pty_shell as sups
+        self.launcher_shell = sups.PTYShell ("fork://localhost/", opts=opts)
+        self.monitor_shell  = sups.PTYShell ("fork://localhost/", opts=opts)
 
         # run watcher thread
         watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
         self._watcher = threading.Thread(target = self._watch, 
                                          name   = watcher_name)
         self._watcher.start ()
-
 
 
         try:
