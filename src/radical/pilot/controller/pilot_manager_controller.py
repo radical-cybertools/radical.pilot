@@ -411,7 +411,7 @@ class PilotManagerController(threading.Thread):
             url = "%s://%s/" % (fs.schema, fs.host)
 
         logger.debug ("saga.utils.PTYShell ('%s')" % url)
-        shell = sup.PTYShell (url, self._session, logger, opts={})
+        shell = sup.PTYShell(url, self._session, logger)
 
         if pilot.description.sandbox :
             workdir_raw = pilot.description.sandbox
