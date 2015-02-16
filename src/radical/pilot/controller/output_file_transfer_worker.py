@@ -104,6 +104,7 @@ class OutputFileTransferWorker(threading.Thread):
                     time.sleep(IDLE_TIME)
                 else:
                     logger.info("OFTW cu found, progressing ...")
+                    compute_unit_id = None
                     try:
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) wit SAGA.
@@ -189,13 +190,13 @@ class OutputFileTransferWorker(threading.Thread):
                         ts = datetime.datetime.utcnow()
                         log_message = "Output transfer failed: %s" % e
                         # TODO: not only mark the CU as failed, but also the specific Directive
-                        um_col.update(
-                            {'_id': compute_unit_id},
-                            {'$set': {'state': FAILED},
-                             '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
-                             '$push': {'log': {'message': log_message, 'timestamp': ts}}
+                        um_col.update({'_id': compute_unit_id}, {
+                            '$set': {'state': FAILED},
+                            '$push': {
+                                'statehistory': {'state': FAILED, 'timestamp': ts},
+                                'log': {'message': log_message, 'timestamp': ts}
                             }
-                        )
+                        })
                         logger.exception (log_message)
 
 
