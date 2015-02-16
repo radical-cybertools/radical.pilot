@@ -9,8 +9,6 @@ __license__ = "MIT"
 import os
 import time
 import saga
-import datetime
-import traceback
 import threading
 
 from radical.pilot.states import * 
@@ -110,6 +108,7 @@ class InputFileTransferWorker(threading.Thread):
                         time.sleep(IDLE_TIME) 
 
                     else:
+                        compute_unit_id = None
                         try:
                             log_messages = []
 
@@ -209,16 +208,15 @@ class InputFileTransferWorker(threading.Thread):
                             logentry = {'message'  : "Input transfer failed: %s" % e,
                                         'timestamp': ts}
 
-                            um_col.update(
-                                {'_id':   compute_unit_id},
-                                {'$set':  {'state': FAILED},
-                                 '$push': {'statehistory': {'state': FAILED, 'timestamp': ts}},
-                                 '$push': {'log': logentry}
+                            um_col.update({'_id': compute_unit_id}, {
+                                '$set': {'state': FAILED},
+                                '$push': {
+                                    'statehistory': {'state': FAILED, 'timestamp': ts},
+                                    'log': logentry
                                 }
-                            )
+                            })
 
                             logger.exception(str(logentry))
-
 
                     # Code below is only to be run by the "first" or only worker
                     if self._worker_number > 1:
@@ -245,8 +243,8 @@ class InputFileTransferWorker(threading.Thread):
                             # All Input Directives for this FTW are done, mark the CU accordingly
                             um_col.update({"_id": cu["_id"]},
                                           {'$set': {'FTW_Input_Status': DONE},
-                                           '$push': {'log': { 
-                                                'timestamp': datetime.datetime.utcnow(), 
+                                           '$push': {'log': {
+                                                'timestamp': datetime.datetime.utcnow(),
                                                 'message'  : 'All FTW Input Staging Directives done - %d.' % self._worker_number}}
                                            }
                             )
@@ -293,6 +291,3 @@ class InputFileTransferWorker(threading.Thread):
             logger.debug("input file transfer thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
-
-
-

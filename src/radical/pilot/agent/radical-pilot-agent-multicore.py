@@ -194,7 +194,8 @@ elif AGENT_MODE == AGENT_PROCESSES :
     COMPONENT_MODE = multiprocessing
     COMPONENT_TYPE = multiprocessing.Process
     QUEUE_TYPE     = multiprocessing.Queue
-    
+else:
+    raise Exception('Unknown Agent Mode')
 
 
 # this needs git attribute 'ident' set for this file
@@ -411,8 +412,13 @@ def prof(etype, uid="", msg="", tag="", logger=None):
     logged = False
     now    = timestamp_now()
 
-    if   AGENT_MODE == AGENT_THREADS   : tid = threading.current_thread().name
-    elif AGENT_MODE == AGENT_PROCESSES : tid = os.getpid ()
+    # TODO: Layer violation?
+    if AGENT_MODE == AGENT_THREADS:
+        tid = threading.current_thread().name
+    elif AGENT_MODE == AGENT_PROCESSES:
+        tid = os.getpid()
+    else:
+        raise Exception('Unknown Agent Mode')
 
     if uid and tag:
 
@@ -872,7 +878,6 @@ class Scheduler(threading.Thread):
 
                 else:
 
-
                     # we got a new unit.  Either we can place it straight away and
                     # move it to execution, or we have to put it on the wait queue
                     cu = request
@@ -881,7 +886,6 @@ class Scheduler(threading.Thread):
                         # No resources available, put in wait queue
                         self._wait_queue.append(cu)
                         prof('queue', msg="allocation failed", uid=cu['_id'])
-
 
             except Exception as e:
                 self._log.exception('Error in scheduler loop: %s', e)
@@ -2842,6 +2846,9 @@ class LoadLevelerLRMS(LRMS):
     #
     def _configure(self):
 
+        loadl_node_list = None
+        loadl_cpus_per_node = None
+
         # Determine method for determining hosts,
         # either through hostfile or BG/Q environment.
         loadl_hostfile = os.environ.get('LOADL_HOSTFILE')
@@ -2880,16 +2887,8 @@ class LoadLevelerLRMS(LRMS):
 
         elif self.loadl_bg_block is not None:
             # Blue Gene specific.
-
-          # # FIXME: the setting below is unused?
-          # #        So why are we raising an exception?
-          # loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
-          # if loadl_bg_size_str is None:
-          #     msg = "$LOADL_BG_SIZE not set!"
-          #     self._log.error(msg)
-          #     raise Exception(msg)
-          # else:
-          #     loadl_bg_size = int(loadl_bg_size_str)
+            loadl_bg_midplane_list_str = None
+            loadl_bg_block_size_str = None
 
             loadl_job_name = os.environ.get('LOADL_JOB_NAME')
             if loadl_job_name is None:
@@ -3657,6 +3656,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
             # The actual command line, constructed per launch-method
             prof('_Process construct command', uid=cu['_id'])
+            cmdline = None
             try:
                 launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
@@ -3664,8 +3664,10 @@ class ExecWorker_POPEN (ExecWorker) :
                                                cu['description']['cores'],
                                                launch_script_hop,
                                                cu['opaque_slot'])
-                if hop_cmd : cmdline = hop_cmd
-                else       : cmdline = launch_script_name
+                if hop_cmd:
+                    cmdline = hop_cmd
+                else:
+                    cmdline = launch_script_name
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -4350,6 +4352,9 @@ class UpdateWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
+        # TODO: Whats the logic to set 'coll'?
+        coll = None
+
         while not self._terminate.is_set():
 
             # ------------------------------------------------------------------
@@ -4397,7 +4402,6 @@ class UpdateWorker(threading.Thread):
 
                     continue
 
-
                 # got a new request.  Add to bulk (create as needed),
                 # and push bulk if time is up.
                 uid         = update_request.get('uid')
@@ -4411,7 +4415,7 @@ class UpdateWorker(threading.Thread):
                 cname = self._session_id + cbase
 
                 if not cname in self._cinfo:
-                    coll =  self._mongo_db[cname]
+                    coll = self._mongo_db[cname]
                     self._cinfo[cname] = {
                             'coll' : coll,
                             'bulk' : None,
@@ -4894,15 +4898,15 @@ class HeartbeatMonitor(threading.Thread):
                     fields = [COMMAND_FIELD, 'state']
                     )
 
-        commands = list()
         if retdoc:
             commands = retdoc[COMMAND_FIELD]
-            state    = retdoc['state']
-
+            state = retdoc['state']
+        else:
+            return
 
         for command in commands:
 
-            prof('Monitor get command', msg=[command[COMMAND_TYPE], command[COMMAND_ARG]])
+            prof('Monitor get command', msg=str([command[COMMAND_TYPE], command[COMMAND_ARG]]))
 
             if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                 self.stop()
