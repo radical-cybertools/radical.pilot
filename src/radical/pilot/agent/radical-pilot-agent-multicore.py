@@ -878,7 +878,6 @@ class Scheduler(threading.Thread):
 
                 else:
 
-
                     # we got a new unit.  Either we can place it straight away and
                     # move it to execution, or we have to put it on the wait queue
                     cu = request
@@ -887,7 +886,6 @@ class Scheduler(threading.Thread):
                         # No resources available, put in wait queue
                         self._wait_queue.append(cu)
                         prof('queue', msg="allocation failed", uid=cu['_id'])
-
 
             except Exception as e:
                 self._log.exception('Error in scheduler loop: %s', e)
@@ -2848,6 +2846,9 @@ class LoadLevelerLRMS(LRMS):
     #
     def _configure(self):
 
+        loadl_node_list = None
+        loadl_cpus_per_node = None
+
         # Determine method for determining hosts,
         # either through hostfile or BG/Q environment.
         loadl_hostfile = os.environ.get('LOADL_HOSTFILE')
@@ -2886,16 +2887,8 @@ class LoadLevelerLRMS(LRMS):
 
         elif self.loadl_bg_block is not None:
             # Blue Gene specific.
-
-          # # FIXME: the setting below is unused?
-          # #        So why are we raising an exception?
-          # loadl_bg_size_str = os.environ.get('LOADL_BG_SIZE')
-          # if loadl_bg_size_str is None:
-          #     msg = "$LOADL_BG_SIZE not set!"
-          #     self._log.error(msg)
-          #     raise Exception(msg)
-          # else:
-          #     loadl_bg_size = int(loadl_bg_size_str)
+            loadl_bg_midplane_list_str = None
+            loadl_bg_block_size_str = None
 
             loadl_job_name = os.environ.get('LOADL_JOB_NAME')
             if loadl_job_name is None:
