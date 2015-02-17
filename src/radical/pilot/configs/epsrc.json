@@ -17,7 +17,7 @@
         "forward_tunnel_endpoint"     : "10.60.0.52",
         "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150217",
         "virtenv_mode"                : "use",
-        "pilot_agent_version"         : "use@",
+        "pilot_agent_version"         : "virtenv@installed",
         "pre_bootstrap"               : ["module load python"],
         "default_remote_workdir"      : "/work/`id -gn`/`id -gn`/$USER",
         "valid_roots"                 : ["/work"]

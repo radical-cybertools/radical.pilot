@@ -394,7 +394,7 @@ setup_virtenv()
         RP_INSTALL_SOURCE='radical.pilot'
         RP_INSTALL_EASY=TRUE
         RP_MODE_CHECK=FALSE
-    elif test "$PILOT_VERSION" = 'use'
+    elif test "$PILOT_VERSION" = 'installed'
     then
         RP_INSTALL_SOURCE=''
         RP_INSTALL_EASY=FALSE

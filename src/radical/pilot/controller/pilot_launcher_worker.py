@@ -414,23 +414,25 @@ class PilotLauncherWorker(threading.Thread):
                         #
                         # format: mode@source
                         #
-                        # mode     :
-                        #   virtenv: use pilot agent as installed in the
-                        #            virtenv on the target resource
-                        #   stage  : stage pilot agent from local to target
-                        #            resource
+                        # mode       :
+                        #   virtenv  : use pilot agent as installed in the
+                        #              virtenv on the target resource
+                        #   stage    : stage pilot agent from local to target
+                        #              resource
                         #
-                        # source   :
-                        #   tag    : a git tag
-                        #   branch : a git branch
-                        #   release: pypi release
-                        #   local  : locally installed version
-                        #   path   : a specific file on localhost
+                        # source     :
+                        #   tag      : a git tag
+                        #   branch   : a git branch
+                        #   release  : pypi release
+                        #   installed: virtenv installed version
+                        #   local    : locally installed version
+                        #   path     : a specific file on localhost
                         #
-                        # examples :
+                        # examples   :
                         #   virtenv@v0.20
                         #   virtenv@devel
                         #   virtenv@release
+                        #   virtenv@installed
                         #   stage@local
                         #   stage@/tmp/my_agent.py
                         #
