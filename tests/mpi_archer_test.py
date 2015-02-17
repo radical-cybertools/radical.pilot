@@ -52,7 +52,7 @@ if __name__ == "__main__":
     pdesc = rp.ComputePilotDescription()
     pdesc.resource = "epsrc.archer"
     pdesc.project  = "e290"
-    pdesc.queue    = "debug"
+    pdesc.queue    = "short"
     pdesc.runtime  = 10 # N minutes
     pdesc.cores    =  8 # X cores
 
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
         mpi_test_task = rp.ComputeUnitDescription()
         mpi_test_task.pre_exec = ["module load python",
-                                  ". /fs4/e290/e290/marksant/cuve/bin/activate",
+                                  ". /fs4/e290/e290/merzky/ve/bin/activate",
                                   "module swap PrgEnv-cray PrgEnv-gnu"]
         mpi_test_task.input_staging = ["helloworld_mpi.py"]
         mpi_test_task.executable    = "python"

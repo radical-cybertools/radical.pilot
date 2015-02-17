@@ -396,7 +396,7 @@ setup_virtenv()
         RP_MODE_CHECK=FALSE
     elif test "$PILOT_VERSION" = 'use'
     then
-        RP_INSTALL_SOURCE='None'
+        RP_INSTALL_SOURCE=''
         RP_INSTALL_EASY=FALSE
         RP_MODE_CHECK=TRUE
     else
@@ -458,7 +458,7 @@ setup_virtenv()
         fi
     fi
 
-    # we always install RP
+    # install RP
     if ! test -z "$RP_INSTALL_SOURCE"
     then
         rp_install
@@ -816,6 +816,11 @@ echo "# CMDLINE: $AGENT_CMD"
 
 # enable DebugHelper in agent
 export RADICAL_DEBUG=TRUE
+
+export SAGA_VERBOSE=DEBUG
+export RADIAL_VERBOSE=DEBUG
+export RADIAL_UTIL_VERBOSE=DEBUG
+export RADIAL_PILOT_VERBOSE=DEBUG
 
 profile_event 'agent start'
 
