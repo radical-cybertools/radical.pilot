@@ -391,8 +391,7 @@ class ComputePilot (object):
 
     # -------------------------------------------------------------------------
     #
-    def wait(self, state=[DONE, FAILED, CANCELED],
-             timeout=None):
+    def wait(self, state=None, timeout=None):
         """Returns when the pilot reaches a specific state or
         when an optional timeout is reached.
 
@@ -423,7 +422,10 @@ class ComputePilot (object):
         if not self._uid:
             raise IncorrectState("Invalid instance.")
 
-        if not isinstance(state, list):
+        if not state:
+            state = [DONE, FAILED, CANCELED]
+
+        elif not isinstance(state, list):
             state = [state]
 
         start_wait = time.time()
