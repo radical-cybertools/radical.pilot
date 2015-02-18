@@ -340,6 +340,9 @@ class PilotLauncherWorker(threading.Thread):
                         # copy..
                         resource_cfg = self._session.get_resource_config(resource_key, schema)
 
+                        # import pprint
+                        # pprint.pprint (resource_cfg)
+
                         # ------------------------------------------------------
                         # get parameters from cfg, set defaults where needed
                         agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
@@ -411,23 +414,25 @@ class PilotLauncherWorker(threading.Thread):
                         #
                         # format: mode@source
                         #
-                        # mode     :
-                        #   virtenv: use pilot agent as installed in the
-                        #            virtenv on the target resource
-                        #   stage  : stage pilot agent from local to target
-                        #            resource
+                        # mode       :
+                        #   virtenv  : use pilot agent as installed in the
+                        #              virtenv on the target resource
+                        #   stage    : stage pilot agent from local to target
+                        #              resource
                         #
-                        # source   :
-                        #   tag    : a git tag
-                        #   branch : a git branch
-                        #   release: pypi release
-                        #   local  : locally installed version
-                        #   path   : a specific file on localhost
+                        # source     :
+                        #   tag      : a git tag
+                        #   branch   : a git branch
+                        #   release  : pypi release
+                        #   installed: virtenv installed version
+                        #   local    : locally installed version
+                        #   path     : a specific file on localhost
                         #
-                        # examples :
+                        # examples   :
                         #   virtenv@v0.20
                         #   virtenv@devel
                         #   virtenv@release
+                        #   virtenv@installed
                         #   stage@local
                         #   stage@/tmp/my_agent.py
                         #
@@ -516,11 +521,19 @@ class PilotLauncherWorker(threading.Thread):
                             # if the agent was staged, we tell the bootstrapper
                             agent_version = 'stage'
 
-                        else :  # agent_mode == 'virtenv' :
-                            # otherwise, we let the bootstrapper know what
-                            # version to use
+                        elif agent_mode == 'virtenv':
+                            # install agent with RP in virtenv -- let the bootstrapper 
+                            # know what version to use for installation
                             agent_version = agent_source
-                            agent_name = agent_source
+                            agent_name    = agent_source
+
+                        elif agent_mode == 'use':
+                            # use the version which is installed in the
+                            # virtualenv -- do not update/install
+                            # TODO: make sure that the given agent source is the
+                            # one which is in fact installed
+                            agent_version = 'use'
+
 
 
                         # ------------------------------------------------------

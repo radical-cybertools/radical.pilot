@@ -79,7 +79,7 @@ class ComputeUnit(object):
 
         return "%s (%-15s: %s %s) (%s)" % (self.uid, self.state,
                                            self.description.executable, 
-                                           " ".join (self.description.arguments), 
+                                           self.description.arguments, 
                                            id(self))
 
 

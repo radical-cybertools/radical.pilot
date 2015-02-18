@@ -54,7 +54,8 @@ if __name__ == "__main__":
     pdesc.resource = "epsrc.archer"
     pdesc.project  = "e290"  # archer 'project group'
     pdesc.runtime  = 10
-    pdesc.cores    = 56      # there are 24 cores per node on Archer, so this allocates 3 nodes
+    pdesc.cores    = 40      # there are 24 cores per node on Archer, so this allocates 2 nodes
+  # pdesc.queue    = 'short'
     pdesc.sandbox  = "/work/e290/e290/%s/radical.pilot.sandbox/" % USER_ID
     pdesc.cleanup  = False
 

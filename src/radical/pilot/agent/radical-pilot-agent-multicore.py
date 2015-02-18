@@ -413,12 +413,9 @@ def prof(etype, uid="", msg="", tag="", logger=None):
     now    = timestamp_now()
 
     # TODO: Layer violation?
-    if AGENT_MODE == AGENT_THREADS:
-        tid = threading.current_thread().name
-    elif AGENT_MODE == AGENT_PROCESSES:
-        tid = os.getpid()
-    else:
-        raise Exception('Unknown Agent Mode')
+    if   AGENT_MODE == AGENT_THREADS  : tid = threading.current_thread().name
+    elif AGENT_MODE == AGENT_PROCESSES: tid = os.getpid()
+    else: raise Exception('Unknown Agent Mode')
 
     if uid and tag:
 
@@ -802,9 +799,10 @@ class Scheduler(threading.Thread):
     #
     def _reschedule(self):
 
-        prof("try reschedule")
         prof('reschedule')
-        prof(self.slot_status (short=True))
+      # prof(self.slot_status (short=True))
+        self._log.info("slot status before reschedule: %s" % self.slot_status (short=True))
+
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
         # fly
@@ -815,7 +813,8 @@ class Scheduler(threading.Thread):
                 self._wait_queue.remove(cu)
                 prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
-        prof(self.slot_status (short=True))
+        self._log.info("slot status after  reschedule: %s" % self.slot_status (short=True))
+      # prof(self.slot_status (short=True))
         prof('reschedule done')
 
 
@@ -829,7 +828,8 @@ class Scheduler(threading.Thread):
         with self._lock :
 
             prof('unschedule')
-            prof(self.slot_status (short=True))
+          # prof(self.slot_status (short=True))
+            self._log.info("slot status before unschedule: %s" % self.slot_status (short=True))
 
             slots_released = False
 
@@ -845,7 +845,8 @@ class Scheduler(threading.Thread):
             if slots_released:
                 self._schedule_queue.put(COMMAND_RESCHEDULE)
 
-            prof(self.slot_status (short=True))
+            self._log.info("slot status after  unschedule: %s" % self.slot_status (short=True))
+          # prof(self.slot_status (short=True))
             prof('unschedule done - reschedule')
 
 
@@ -3656,7 +3657,6 @@ class ExecWorker_POPEN (ExecWorker) :
 
             # The actual command line, constructed per launch-method
             prof('_Process construct command', uid=cu['_id'])
-            cmdline = None
             try:
                 launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
@@ -3664,10 +3664,8 @@ class ExecWorker_POPEN (ExecWorker) :
                                                cu['description']['cores'],
                                                launch_script_hop,
                                                cu['opaque_slot'])
-                if hop_cmd:
-                    cmdline = hop_cmd
-                else:
-                    cmdline = launch_script_name
+                if hop_cmd : cmdline = hop_cmd
+                else       : cmdline = launch_script_name
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -3901,6 +3899,16 @@ class ExecWorker_SHELL(ExecWorker):
 
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
+        if old_path: os.environ['PATH']        = old_path
+        if old_home: os.environ['PYTHON_HOME'] = old_home
+        if old_ps1:  os.environ['PS1']         = old_ps1
+
+        if 'VIRTUAL_ENV' in os.environ :
+            del(os.environ['VIRTUAL_ENV'])
+
+        # simplify shell startup / prompt detection
+        os.environ['PS1'] = '$ '
+
         # the registry keeps track of units to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
         # watcher thread, we use a lock while accessing it.
@@ -3915,27 +3923,18 @@ class ExecWorker_SHELL(ExecWorker):
         self.launcher_shell = sups.PTYShell ("fork://localhost/")
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
+        # run the spawner on the shells
         self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
-
-
-        ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
-        if  ret != 0 :
-            raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
-
-        ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
-        if  ret != 0 :
-            raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
+        self.launcher_shell.run_sync ("%s/agent/radical-pilot-spawner.sh %s" \
+                % (os.path.dirname (rp.__file__), self.workdir))
+        self.monitor_shell.run_sync ("%s/agent/radical-pilot-spawner.sh %s" \
+                % (os.path.dirname (rp.__file__), self.workdir))
 
         # run watcher thread
         watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
         self._watcher = threading.Thread(target = self._watch, 
                                          name   = watcher_name)
         self._watcher.start ()
-
 
 
         try:
@@ -4364,9 +4363,6 @@ class UpdateWorker(threading.Thread):
 
         self._log.info("started %s.", self)
 
-        # TODO: Whats the logic to set 'coll'?
-        coll = None
-
         while not self._terminate.is_set():
 
             # ------------------------------------------------------------------
@@ -4414,6 +4410,7 @@ class UpdateWorker(threading.Thread):
 
                     continue
 
+
                 # got a new request.  Add to bulk (create as needed),
                 # and push bulk if time is up.
                 uid         = update_request.get('uid')
@@ -4427,9 +4424,8 @@ class UpdateWorker(threading.Thread):
                 cname = self._session_id + cbase
 
                 if not cname in self._cinfo:
-                    coll = self._mongo_db[cname]
                     self._cinfo[cname] = {
-                            'coll' : coll,
+                            'coll' : self._mongo_db[cname],
                             'bulk' : None,
                             'last' : time.time(),  # time of last push
                             'uids' : dict()
@@ -4438,7 +4434,7 @@ class UpdateWorker(threading.Thread):
                 cinfo = self._cinfo[cname]
 
                 if not cinfo['bulk']:
-                    cinfo['bulk']  = coll.initialize_ordered_bulk_op()
+                    cinfo['bulk']  = cinfo['coll'].initialize_ordered_bulk_op()
 
                 cinfo['uids'][uid] = state
                 cinfo['bulk'].find  (query_dict) \
@@ -4912,7 +4908,7 @@ class HeartbeatMonitor(threading.Thread):
 
         if retdoc:
             commands = retdoc[COMMAND_FIELD]
-            state = retdoc['state']
+            state    = retdoc['state']
         else:
             return
 
