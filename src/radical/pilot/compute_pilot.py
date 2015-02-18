@@ -486,37 +486,29 @@ class ComputePilot (object):
             # Convert the target url into a SAGA Url object
             tgt_url = saga.Url(directive['target'])
 
+            if tgt_url.path.endswith('/'):
+                # If the original target was a directory (ends with /),
+                # we assume that the user wants the same filename as the source.
+                tgt_filename = os.path.basename(src_url.path)
+            else:
+                # Otherwise, extract the filename and the directory components
+                tgt_filename = os.path.basename(tgt_url.path)
+                tgt_url.path = os.path.dirname(tgt_url.path)
+
             # Handle special 'staging' scheme
             if tgt_url.scheme == 'staging':
 
                 # Remove the leading slash to get a relative path from the staging area
-                rel_path = tgt_url.path.split('/',1)[1]
+                rel_path = tgt_url.path.split('/', 1)[1]
+                rel_dir = os.path.dirname(rel_path)
 
-                if directive['target'].endswith('/'):
-                    tgt_filename = os.path.basename(src_url.path)
-                    rel_dir = rel_path
-                else:
-                    tgt_filename = os.path.basename(tgt_url.path)
-                    rel_dir = os.path.dirname(rel_path)
-
-                tgt_dir_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA, rel_dir))
-
-            else:
-
-                tgt_dir_url = tgt_url
-
-                # If the original target was a directory (ends with /),
-                # we assume that the user wants the same filename as the source.
-                if directive['target'].endswith('/'):
-                    tgt_filename = os.path.basename(src_url.path)
-                else:
-                    tgt_filename = os.path.basename(tgt_url.path)
-                    tgt_dir_url.path = os.path.dirname(tgt_url.path)
+                # Now base the target directory relative of the sandbox and staging prefix
+                tgt_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA, rel_dir))
 
             # Define and open the staging directory for the pilot
-            # We use the remote dir construct here, so that we can create
+            # We use the target dir construct here, so that we can create
             # the directory if it does not yet exist.
-            remote_dir = saga.filesystem.Directory(tgt_dir_url, flags=saga.filesystem.CREATE_PARENTS)
+            target_dir = saga.filesystem.Directory(tgt_url, flags=saga.filesystem.CREATE_PARENTS)
 
             if action == LINK:
                 # TODO: Does this make sense?
@@ -536,7 +528,7 @@ class ComputePilot (object):
             elif action == TRANSFER:
                 log_message = 'Transferring %s to %s' % (src_url, os.path.join(str(tgt_dir_url), tgt_filename))
                 logger.info(log_message)
-                # Transfer the local file to the remote staging area
-                remote_dir.copy(src_url, tgt_filename)
+                # Transfer the source file to the target staging area
+                target_dir.copy(src_url, tgt_filename)
             else:
                 raise Exception('Action %s not supported' % action)
