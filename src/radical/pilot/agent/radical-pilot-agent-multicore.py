@@ -329,7 +329,9 @@ FREE     = 'Free'
 BUSY     = 'Busy'
 
 # directory for staging files inside the agent sandbox
-STAGING_AREA         = 'staging_area'
+STAGING_AREA = 'staging_area'
+
+STAGING_SCHEME = 'staging'
 
 # max number of cu out/err chars to push to db
 MAX_IO_LOGLENGTH     = 1*1024
@@ -4517,7 +4519,7 @@ class StageinWorker(threading.Thread):
                     source_url = saga.Url(directive['source'])
 
                     # Handle special 'staging' scheme
-                    if source_url.scheme == 'staging':
+                    if source_url.scheme == STAGING_SCHEME:
                         self._log.info('Operating from staging')
                         # Remove the leading slash to get a relative path from the staging area
                         rel2staging = source_url.path.split('/',1)[1]
@@ -4696,7 +4698,7 @@ class StageoutWorker(threading.Thread):
                     target_url = saga.Url(directive['target'])
 
                     # Handle special 'staging' scheme
-                    if target_url.scheme == 'staging':
+                    if target_url.scheme == STAGING_SCHEME:
                         self._log.info('Operating from staging')
                         # Remove the leading slash to get a relative path from
                         # the staging area
@@ -4719,9 +4721,13 @@ class StageoutWorker(threading.Thread):
                     try:
                         self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
 
-                        if   directive['action'] == LINK: os.symlink     (abs_source, target)
-                        elif directive['action'] == COPY: shutil.copyfile(abs_source, target)
-                        elif directive['action'] == MOVE: shutil.move    (abs_source, target)
+                        if directive['action'] == LINK:
+                            # This is probably not a brilliant idea, so at least give a warning
+                            os.symlink(abs_source, target)
+                        elif directive['action'] == COPY:
+                            shutil.copyfile(abs_source, target)
+                        elif directive['action'] == MOVE:
+                            shutil.move(abs_source, target)
                         else:
                             # FIXME: implement TRANSFER mode
                             raise NotImplementedError('Action %s not supported' % directive['action'])
