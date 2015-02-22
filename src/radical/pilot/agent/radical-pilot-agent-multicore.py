@@ -4735,6 +4735,7 @@ class StageoutWorker(threading.Thread):
                         self._agent.update_unit(uid    = cu['_id'],
                                                 msg    = log_message,
                                                 query  = {
+                                                    # TODO: We never set the status to EXECUTION anymore
                                                     'Agent_Output_Status'           : rp.EXECUTING,
                                                     'Agent_Output_Directives.state' : rp.PENDING,
                                                     'Agent_Output_Directives.source': directive['source'],
@@ -4764,6 +4765,7 @@ class StageoutWorker(threading.Thread):
                                                                     'Agent_Output_Status'             : rp.FAILED}
                                                       })
 
+                # TODO: Update Agent_Output_Status here?
 
                 # local staging is done. Now check if there are Directives that
                 # need to be performed by the FTW.
@@ -5292,7 +5294,7 @@ class Agent(object):
                                }})
         else :
             # if we did not find any units which can be executed immediately, we
-            # chack if we have any units for which to do stage-in
+            # check if we have any units for which to do stage-in
             cu_cursor = self._cu.find(multi = True,
                                       spec  = {"pilot" : self._pilot_id,
                                                'Agent_Input_Status': rp.PENDING})

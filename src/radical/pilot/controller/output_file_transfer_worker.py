@@ -248,7 +248,10 @@ class OutputFileTransferWorker(threading.Thread):
                 ts = datetime.datetime.utcnow()
                 um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
-                           "Agent_Output_Status": { "$in": [ None, DONE ] },
+                           # TODO: Now that our state model is linear,
+                           # we probably don't need to check Agent_Output_Status anymore.
+                           # Given that it is not updates by the agent currently, disable it here.
+                           #"Agent_Output_Status": { "$in": [ None, DONE ] },
                            "FTW_Output_Status": { "$in": [ None, DONE ] },
                            "state": STAGING_OUTPUT
                     },
