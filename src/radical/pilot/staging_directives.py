@@ -54,25 +54,26 @@ def expand_staging_directive(staging_directive, logger):
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
             # string.
-            append = False
-            if  '>>'  in sd :
-                src, tgt = sd.split ('>>', 2)
-                append   = True
-            elif '>'  in sd :
-                src, tgt = sd.split ('>',  2)
-                append   = False
-            elif '<<' in sd :
-                tgt, src = sd.split ('<<', 2)
-                append   = True
-            elif '<'  in sd :
-                tgt, src = sd.split ('<',  2)
-                append   = False
-            else :
-                src, tgt = sd, os.path.basename(sd)
-                append   = False
 
-            if  append :
-                logger.warn ("append mode on staging not supported (ignored)")
+            append = False
+            if '>>'  in sd:
+                src, tgt = sd.split('>>', 2)
+                append = True
+            elif '>' in sd :
+                src, tgt = sd.split('>',  2)
+                append  = False
+            elif '<<' in sd:
+                tgt, src = sd.split('<<', 2)
+                append = True
+            elif '<'  in sd:
+                tgt, src = sd.split('<',  2)
+                append = False
+            else:
+                src, tgt = sd, os.path.basename(sd)
+                append = False
+
+            if append:
+                logger.warn("append mode on staging not supported (ignored)")
 
             new_sd = {'source':   src.strip(),
                       'target':   tgt.strip(),
@@ -108,9 +109,15 @@ def expand_staging_directive(staging_directive, logger):
             if 'target' in sd:
                 target = sd['target']
             else:
-                target = os.path.basename(source)
+                # Set target to None, as inferring it depends on the type of source
+                target = None
 
             if isinstance(source, basestring):
+
+                # We had no target specified, assume the basename of source
+                if not target:
+                    target = os.path.basename(source)
+
                 # This is a regular entry, complete and append it
                 new_sd = {'source':   source,
                           'target':   target,
