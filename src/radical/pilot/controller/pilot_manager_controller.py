@@ -410,7 +410,15 @@ class PilotManagerController(threading.Thread):
         if '$' in workdir_raw or '`' in workdir_raw:
             js_url = saga.Url(resource_config['job_manager_endpoint'])
 
-            # TODO: Why is this translation required?
+            # The PTYShell will swallow in the job part of the scheme
+            if js_url.scheme.endswith('+ssh'):
+                js_url.scheme = 'ssh'
+            elif js_url.scheme.endswith('+gsissh'):
+                js_url.scheme = 'gsissh'
+            else:
+                raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
+
+            # TODO: Why is this 'translation' required?
             if js_url.port is not None:
                 url = "%s://%s:%d/" % (js_url.schema, js_url.host, js_url.port)
             else:
