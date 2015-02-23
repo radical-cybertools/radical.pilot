@@ -384,27 +384,33 @@ class PilotLauncherWorker(threading.Thread):
                         # Create a host:port string for use by the bootstrapper.
                         database_hostport = "%s:%d" % (db_url.host, db_url.port)
 
+                        # Open the remote sandbox
+                        sandbox_tgt = saga.filesystem.Directory(pilot_sandbox,
+                                                                session=self._session,
+                                                                flags=saga.filesystem.CREATE_PARENTS)
+
+                        BOOTSTRAPPER_SCRIPT = "default_bootstrapper.sh"
+                        AGENT_SCRIPT = 'radical-pilot-agent.py'
+                        LOCAL_SCHEME = 'file'
+
                         # ------------------------------------------------------
                         # Copy the bootstrap shell script.  This also creates
                         # the sandbox. We use always "default_bootstrapper.sh"
-                        bootstrapper = 'default_bootstrapper.sh'
+                        # TODO: Is this still configurable and/or in the resource configs?
+                        bootstrapper = BOOTSTRAPPER_SCRIPT
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, bootstrapper))
 
                         msg = "Using bootstrapper %s" % bootstrapper_path
-                        logentries.append (Logentry (msg, logger=logger.info))
+                        logentries.append(Logentry(msg, logger=logger.info))
 
-
-                        bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
-                        bs_script_tgt = saga.Url("%s/pilot_bootstrapper.sh" % pilot_sandbox)
+                        bs_script_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, bootstrapper_path))
 
                         msg = "Copying bootstrapper '%s' to agent sandbox (%s)." \
-                                % (bs_script_url, bs_script_tgt)
+                                % (bs_script_url, sandbox_tgt)
                         logentries.append(Logentry (msg, logger=logger.debug))
 
-                        bs_script = saga.filesystem.File(bs_script_url, session=self._session)
-                        bs_script.copy(bs_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
-                        bs_script.close()
+                        sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
 
                         # ------------------------------------------------------
@@ -497,26 +503,22 @@ class PilotLauncherWorker(threading.Thread):
                             # --------------------------------------------------
                             # Copy the rp sdist 
                             #
-                            sdist_url = saga.Url("file://localhost/%s" % sdist_path)
+                            sdist_url = saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, sdist_path))
                             msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
-
-                            sdist_file = saga.filesystem.File(sdist_url)
-                            sdist_file.copy("%s/%s" % (str(pilot_sandbox), sdist))
-                            sdist_file.close()
+                            sandbox_tgt.copy(sdist_url, sdist)
 
 
                             # --------------------------------------------------
                             # Copy the agent script
                             #
-                            agent_url = saga.Url("file://localhost/%s" % agent_path)
+                            agent_url = saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, agent_path))
                             msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
+                            sandbox_tgt.copy(agent_url, AGENT_SCRIPT)
 
-                            agent_file = saga.filesystem.File(agent_url)
-                            agent_file.copy("%s/radical-pilot-agent.py" % str(pilot_sandbox))
-                            agent_file.close()
-
+                            # Done with transfers
+                            sandbox_tgt.close()
 
                             # if the agent was staged, we tell the bootstrapper
                             agent_version = 'stage'
@@ -624,7 +626,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd = saga.job.Description()
 
                         jd.executable            = "/bin/bash"
-                        jd.arguments             = ["-l pilot_bootstrapper.sh", bootstrap_args]
+                        jd.arguments             = ["-l %s" % BOOTSTRAPPER_SCRIPT, bootstrap_args]
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
                         jd.output                = "agent.out"
