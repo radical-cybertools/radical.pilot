@@ -485,30 +485,36 @@ class ComputePilot (object):
 
             # Convert the target url into a SAGA Url object
             tgt_url = saga.Url(directive['target'])
+            # Create a pointer to the directory object that we will use
+            tgt_dir_url = tgt_url
 
             if tgt_url.path.endswith('/'):
                 # If the original target was a directory (ends with /),
                 # we assume that the user wants the same filename as the source.
                 tgt_filename = os.path.basename(src_url.path)
             else:
-                # Otherwise, extract the filename and the directory components
-                tgt_filename = os.path.basename(tgt_url.path)
-                tgt_url.path = os.path.dirname(tgt_url.path)
+                # Otherwise, extract the filename and update the directory
+                tgt_filename = os.path.basename(tgt_dir_url.path)
+                tgt_dir_url.path = os.path.dirname(tgt_dir_url.path)
 
             # Handle special 'staging' scheme
-            if tgt_url.scheme == 'staging':
+            if tgt_dir_url.scheme == 'staging':
+
+                # We expect a staging:///relative/path/file.txt URI,
+                # as hostname would have unclear semantics currently.
+                if tgt_dir_url.host:
+                    raise Exception("hostname not supported with staging:// scheme")
 
                 # Remove the leading slash to get a relative path from the staging area
-                rel_path = tgt_url.path.split('/', 1)[1]
-                rel_dir = os.path.dirname(rel_path)
+                rel_path = os.path.relpath(tgt_dir_url.path, '/')
 
                 # Now base the target directory relative of the sandbox and staging prefix
-                tgt_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA, rel_dir))
+                tgt_dir_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA, rel_path))
 
             # Define and open the staging directory for the pilot
             # We use the target dir construct here, so that we can create
             # the directory if it does not yet exist.
-            target_dir = saga.filesystem.Directory(tgt_url, flags=saga.filesystem.CREATE_PARENTS)
+            target_dir = saga.filesystem.Directory(tgt_dir_url, flags=saga.filesystem.CREATE_PARENTS)
 
             if action == LINK:
                 # TODO: Does this make sense?
