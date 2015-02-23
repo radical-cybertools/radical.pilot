@@ -470,7 +470,7 @@ class ComputePilot (object):
                 logger.info('Operating from staging')
 
                 # Remove the leading slash to get a relative path from the staging area
-                target = target_url.path.split('/',1)[1]
+                target = target_url.path.split('/', 1)[1]
 
                 remote_dir_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA))
             else:
@@ -500,6 +500,6 @@ class ComputePilot (object):
             elif action == TRANSFER:
                 log_message = 'Transferring %s to %s' % (source, remote_dir_url)
                 # Transfer the local file to the remote staging area
-                remote_dir.copy(source, target)
+                remote_dir.copy(source, target, flags=saga.filesystem.CREATE_PARENTS)
             else:
                 raise Exception('Action %s not supported' % action)
