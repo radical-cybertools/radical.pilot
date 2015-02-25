@@ -80,3 +80,7 @@ echo
 echo "---------------------------------------------------------------------"
 echo
 
+SAGA_VERBOSE=$OLD_SAGA_VERBOSE
+RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
+RADICAL_PILOT_VERBOSE=  $OLD_RADICAL_PILOT_VERBOSE
+
