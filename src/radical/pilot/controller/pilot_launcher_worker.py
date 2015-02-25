@@ -30,8 +30,8 @@ JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
 
 DEFAULT_AGENT_TYPE    = 'multicore'
 DEFAULT_AGENT_SPAWNER = 'SHELL'
-DEFAULT_AGENT_VERSION = 'stage@local'
-DEFAULT_VIRTENV       = '%(global_sandbox)s/virtenv'
+DEFAULT_RP_VERSION    = 'local'
+DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 
 # ----------------------------------------------------------------------------
@@ -354,14 +354,15 @@ class PilotLauncherWorker(threading.Thread):
                         js_endpoint             = resource_cfg.get ('job_manager_endpoint')
                         lrms                    = resource_cfg.get ('lrms')
                         mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
-                        agent_type              = resource_cfg.get ('pilot_agent_type',    DEFAULT_AGENT_TYPE)
-                        agent_version           = resource_cfg.get ('pilot_agent_version', DEFAULT_AGENT_VERSION)
                         pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
                         python_interpreter      = resource_cfg.get ('python_interpreter')
                         spmd_variation          = resource_cfg.get ('spmd_variation')
                         task_launch_method      = resource_cfg.get ('task_launch_method')
+                        agent_type              = resource_cfg.get ('pilot_agent_type',    DEFAULT_AGENT_TYPE)
+                        rp_version              = resource_cfg.get ('rp_version',          DEFAULT_RP_VERSION)
                         virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
+
 
                         # expand variables in virtenv string
                         virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path,
@@ -409,25 +410,50 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # the version of the agent is derived from
-                        # pilot_agent_version, which has the following format
+                        # rp_version, which has the following format
                         # and interpretation:
                         #
-                        # format: mode@source
+                        # rp_version:
+                        #   @<token>
+                        #   @tag/@branch/@commit
+                        #      source $ve/bin/activate
+                        #      git clone
+                        #      git checkout token
+                        #      pip uninstall -y radical.pilot
+                        #      pip install .
+                        #      (no sdist staging)
                         #
-                        # mode       :
-                        #   virtenv  : use pilot agent as installed in the
-                        #              virtenv on the target resource
-                        #   stage    : stage pilot agent from local to target
-                        #              resource
+                        #   release
+                        #      source $ve/bin/activate
+                        #      pip uninstall -y radical.pilot
+                        #      pip install radical.pilot
+                        #      (no sdist staging)
                         #
-                        # source     :
-                        #   tag      : a git tag
-                        #   branch   : a git branch
-                        #   release  : pypi release
-                        #   installed: virtenv installed version
-                        #   local    : locally installed version
-                        #   path     : a specific file on localhost
+                        #   local
+                        #      source $ve/bin/activate
+                        #      tar zxvf sdist.tgz
+                        #      pip uninstall -y radical.pilot
+                        #      pip install sdist/
                         #
+                        #   debug
+                        #      source $ve/bin/activate
+                        #      rm -rf debug
+                        #      mkdir debug
+                        #      export PYTHONPATH=`pwd`/debug:$PYTHONPATH
+                        #      tar zxvf sdist.tgz
+                        #      pip install --prefix=`pwd`/debug sdist/
+                        #
+                        #   installed
+                        #      source $ve/bin/activate
+                        #      (no sdist staging)
+                        #
+                        # virtenv_mode
+                        #   private : error  if ve exists, otherwise create, then use
+                        #   update  : update if ve exists, otherwise create, then use
+                        #   create  : use    if ve exists, otherwise create, then use
+                        #   use     : use    if ve exists, otherwise error,  then exit
+                        #   recreate: delete if ve exists, otherwise create, then use
+                        #      
                         # examples   :
                         #   virtenv@v0.20
                         #   virtenv@devel
@@ -447,56 +473,27 @@ class PilotLauncherWorker(threading.Thread):
                         # 'local' source, or with a path to the agent (relative
                         # to mod_dir, or absolute).
                         #
-                        # A pilot_agent_version which does not adhere to the
+                        # A rp_version which does not adhere to the
                         # above syntax is ignored, and the fallback stage@local
                         # is used.
 
-                        if not '@' in agent_version :
-                            logger.warn ("invalid pilot_agent_version '%s', using default '%s'" \
-                                      % (agent_version, DEFAULT_AGENT_VERSION))
-                            agent_version = DEFAULT_AGENT_VERSION
+                        if  not rp_version.startswith('@') and \
+                            not rp_version in ['installed', 'local', 'debug']:
+                            raise ValueError("invalid rp_version '%s'" % rp_version)
 
-                        agent_mode, agent_source = agent_version.split ('@', 1)
+                        stage_sdist=True
+                        if rp_version in ['installed', 'release']:
+                            stage_sdist = False
 
-                        if not agent_mode or not agent_source :
-                            logger.warn ("invalid pilot_agent_version '%s', using default '%s'" \
-                                      % (agent_version, DEFAULT_AGENT_VERSION))
-                            agent_version = DEFAULT_AGENT_VERSION
-                            agent_mode, agent_source = agent_version.split ('@', 1)
+                        if rp_version.startswith('@'):
+                            stage_sdist = False
+                            rp_version  = rp_version[1:]  # strip '@'
 
 
-                        if not agent_mode in ['stage', 'virtenv'] :
-                            logger.error ("invalid pilot_agent_version '%s', using default '%s'" \
-                                      % (agent_version, DEFAULT_AGENT_VERSION))
-                            agent_version = DEFAULT_AGENT_VERSION
-                            agent_mode, agent_source = agent_version.split ('@', 1)
+                        # ------------------------------------------------------
+                        # Copy the rp sdist if needed
+                        if stage_sdist:
 
-                        # we only stage the agent on agent_mode==stage --
-                        # otherwise the bootstrapper will have to take care of
-                        # it
-                        if agent_mode == 'stage' :
-
-                            # staging can handle 'local', which is the old
-                            # behavior of using the locally installed agent, or
-                            # a path, which we expect to be specified if the
-                            # agent_source!=local
-                            if  agent_source == 'local' :
-                                agent_name = "radical-pilot-agent-%s.py" % agent_type
-                                agent_path = os.path.abspath("%s/../agent/%s" % (mod_dir, agent_name))
-
-                            else :
-                                agent_name = os.path.basename(agent_source)
-                                if  agent_source.startswith('/'):
-                                    agent_path = agent_source
-                                else :
-                                    agent_path = os.path.abspath("%s/%s" % (mod_dir, agent_source))
-
-                            msg = "Using pilot agent %s" % agent_path
-                            logentries.append(Logentry (msg, logger=logger.info))
-
-                            # --------------------------------------------------
-                            # Copy the rp sdist 
-                            #
                             sdist_url = saga.Url("file://localhost/%s" % sdist_path)
                             msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
@@ -504,36 +501,6 @@ class PilotLauncherWorker(threading.Thread):
                             sdist_file = saga.filesystem.File(sdist_url)
                             sdist_file.copy("%s/%s" % (str(pilot_sandbox), sdist))
                             sdist_file.close()
-
-
-                            # --------------------------------------------------
-                            # Copy the agent script
-                            #
-                            agent_url = saga.Url("file://localhost/%s" % agent_path)
-                            msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_url, pilot_sandbox)
-                            logentries.append(Logentry (msg, logger=logger.debug))
-
-                            agent_file = saga.filesystem.File(agent_url)
-                            agent_file.copy("%s/radical-pilot-agent.py" % str(pilot_sandbox))
-                            agent_file.close()
-
-
-                            # if the agent was staged, we tell the bootstrapper
-                            agent_version = 'stage'
-
-                        elif agent_mode == 'virtenv':
-                            # install agent with RP in virtenv -- let the bootstrapper 
-                            # know what version to use for installation
-                            agent_version = agent_source
-                            agent_name    = agent_source
-
-                        elif agent_mode == 'use':
-                            # use the version which is installed in the
-                            # virtualenv -- do not update/install
-                            # TODO: make sure that the given agent source is the
-                            # one which is in fact installed
-                            agent_version = 'use'
-
 
 
                         # ------------------------------------------------------
@@ -588,9 +555,9 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -q '%s'" % agent_scheduler
                         bootstrap_args += " -r '%s'" % runtime
                         bootstrap_args += " -s '%s'" % session_uid
-                        bootstrap_args += " -t '%s'" % agent_name
+                        bootstrap_args += " -t '%s'" % agent_type
                         bootstrap_args += " -u '%s'" % virtenv_mode
-                        bootstrap_args += " -v '%s'" % agent_version
+                        bootstrap_args += " -v '%s'" % rp_version
 
                         # set optional args
                         if database_auth:

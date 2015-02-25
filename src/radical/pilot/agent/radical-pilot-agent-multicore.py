@@ -5543,6 +5543,20 @@ def main():
 #
 if __name__ == "__main__":
 
+    import radical.utils as ru
+    import saga          as rs
+    import radical.pilot as rp
+
+    print "---------------------------------------------------------------------"
+    print
+    print "PYTHONPATH: %s" % sys.path
+    print "python:  %s"    % sys.version
+    print "utils : %5s : %s" % (ru.version_detail, ru.__file__)
+    print "saga  : %5s : %s" % (rs.version_detail, rs.__file__)
+    print "pilot : %5s : %s" % (rp.version_detail, rp.__file__)
+    print
+    print "---------------------------------------------------------------------"
+    print
     sys.exit(main())
 
 #

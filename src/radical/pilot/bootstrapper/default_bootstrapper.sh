@@ -1,12 +1,18 @@
 #!/bin/bash -l
 
 # ------------------------------------------------------------------------------
-# Copyright 2013-2014, radical@rutgers.edu
-# License under the MIT License
+# Copyright 2013-2014, radical@rutgers.edu License under the MIT License
 #
-# This script launches a radical.pilot compute pilot.
+# This script launches a radical.pilot compute pilot.  If needed, it creates and
+# populates a virtualenv on the fly, into $VIRTENV.
 #
-
+# A created virtualenv will contain all dependencies for the RADICAL stack (see
+# $VIRTENV_RADICAL_DEPS).  The RADICAL stack itself (or at least parts of it,
+# see $VIRTENV_RADICAL_MODS) will be installed into $VIRTENV/radical/, and
+# PYTHONPATH will be set to include that tree during runtime.  That allows us to
+# use a different RADICAL stack if needed, by rerouting the PYTHONPATH, w/o the
+# need to create a new virtualenv from scratch.
+#
 # ------------------------------------------------------------------------------
 # global variables
 #
@@ -24,8 +30,8 @@ LRMS=
 MPI_LAUNCH_METHOD=
 SPAWNER=
 PILOT_ID=
-PILOT_VERSION=
-PILOT_TYPE=
+RP_VERSION=
+AGENT_TYPE=
 PYTHON=
 RUNTIME=
 SCHEDULER=
@@ -40,6 +46,7 @@ LOCK_TIMEOUT=600
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
+VIRTENV_RADICAL_DEPS="pymongo apache-libcloud colorama python-hostlist"
 
 
 # --------------------------------------------------------------------
@@ -352,7 +359,7 @@ setup_virtenv()
 
     elif test "$virtenv_mode" = "use"
     then
-        if ! test -s "$virtenv"
+        if ! test -d "$virtenv"
         then
             printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
             unlock "$pid" "$virtenv"
@@ -366,7 +373,6 @@ setup_virtenv()
         test -d "$virtenv" && rm -r "$virtenv"
         virtenv_create=TRUE
         virtenv_update=FALSE
-
     fi
 
     echo "virtenv_create   : $virtenv_create"
@@ -378,35 +384,52 @@ setup_virtenv()
     # staged to pwd.  If set to 'release', we install from pypi.  In all other
     # cases, we install from git at a specific tag or branch
     #
-    # Note though that some virtenv modes won't be able to cope with specific
-    # tag or branch requests (RP_MODE_CHECK)
-    #
-    # FIXME: on stage, stage not only pilot, but sdist
-    #
-    if test "$PILOT_VERSION" = 'stage'
+    if test "$RP_VERSION" = 'local'
     then
         tar zxvf "$SDIST".tar.gz
         RP_INSTALL_SOURCE="$SDIST/"
-        RP_INSTALL_EASY=FALSE
-        RP_MODE_CHECK=FALSE
-    elif test "$PILOT_VERSION" = 'release'
+        RP_INSTALL_TARGET="VIRTENV"
+    elif test "$RP_VERSION" = 'debug'
+    then
+        tar zxvf "$SDIST".tar.gz
+        RP_INSTALL_SOURCE="$SDIST/"
+        RP_INSTALL_TARGET="LOCAL"
+    elif test "$RP_VERSION" = 'release'
     then
         RP_INSTALL_SOURCE='radical.pilot'
-        RP_INSTALL_EASY=TRUE
-        RP_MODE_CHECK=FALSE
-    elif test "$PILOT_VERSION" = 'installed'
+        RP_INSTALL_TARGET='VIRTENV'
+    elif test "$RP_VERSION" = 'installed'
     then
         RP_INSTALL_SOURCE=''
-        RP_INSTALL_EASY=FALSE
-        RP_MODE_CHECK=TRUE
+        RP_INSTALL_TARGET=''
     else
-        RP_INSTALL_SOURCE="-e git://github.com/radical-cybertools/radical.pilot.git@$PILOT_VERSION#egg=radical.pilot"
-        RP_INSTALL_EASY=FALSE # easy_install cannot handle git...
-        RP_MODE_CHECK=TRUE
+        RP_INSTALL_SOURCE="-e git://github.com/radical-cybertools/radical.pilot.git@$RP_VERSION#egg=radical.pilot"
+        RP_INSTALL_TARGET='VIRTENV'
+    fi
+
+    # for any immutable virtenv (VIRTENV_MODE==use), we have to choose a LOCAL
+    # install target.  LOCAL installation will only work with 
+    # 'python setup.py install', so we have to use the sdist -- the
+    # RP_INSTALL_SOURCE has to point to a directory
+    if test "$virtenv_mode" = "use"
+    then
+        if test "$RP_INSTALL_TARGET" = "VIRTENV"
+        then
+            echo "WARNING: virtenv immutable - install RP locally"
+            RP_INSTALL_TARGET='LOCAL'
+        fi
+        if ! test -d "$RP_INSTALL_SOURCE"
+        then
+            # TODO: we could in principle download from pypi and extract, and
+            # 'git clone' to local, and then use the setup install.  Not sure if
+            # this is worth the effor (AM)
+            echo "ERROR: local RP install needs sdist based install (not '$RP_INSTALL_SOURCE')"
+            exit 1
+        fi
     fi
 
     echo "rp install source: $RP_INSTALL_SOURCE"
-    echo "rp install easy  : $RP_INSTALL_EASY"
+    echo "rp install target: $RP_INSTALL_TARGET"
 
 
     # create virtenv if needed.  This also activates the virtenv.
@@ -426,16 +449,12 @@ setup_virtenv()
         fi
     else
         echo "do not create virtenv $virtenv"
-        if test "$RP_MODE_CHECK" = "TRUE"
-        then
-            echo "WARNING: the requested pilot version '$PILOT_VERSION' may not be available!"
-        fi
     fi
 
     # creation or not -- at this point it needs activation
     if test "$VIRTENV_IS_ACTIVATED" = "FALSE"
     then
-        source "$virtenv/bin/activate"
+        . "$virtenv/bin/activate"
         VIRTENV_IS_ACTIVATED=TRUE
     fi
 
@@ -452,16 +471,12 @@ setup_virtenv()
        fi
     else
         echo "do not update virtenv $virtenv"
-        if test "$RP_MODE_CHECK" = "TRUE"
-        then
-            echo "WARNING: the requested pilot version '$PILOT_VERSION' may not be available!"
-        fi
     fi
 
     # install RP
     if ! test -z "$RP_INSTALL_SOURCE"
     then
-        rp_install
+        rp_install "$RP_INSTALL_SOURCE" "$RP_INSTALL_TARGET"
     fi
 
     unlock "$pid" "$virtenv"
@@ -517,7 +532,7 @@ virtenv_create()
     fi
 
     # activate the virtualenv
-    source $VIRTENV/bin/activate
+    . $VIRTENV/bin/activate
     VIRTENV_IS_ACTIVATED=TRUE
 
 
@@ -541,6 +556,16 @@ virtenv_create()
     run_cmd "install apache-libcloud" \
             "easy_install --upgrade apache-libcloud" \
          || echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
+
+
+    # now that the virtenv is set up, we install all dependencies 
+    # of the RADICAL stack
+    for dep in "$VIRTENV_RADICAL_DEPS"
+    do
+        run_cmd "install $dep" \
+                "pip install $dep" \
+             || echo "Couldn't install $dep! Lets see how far we get ..."
+    done
 }
 
 
@@ -552,7 +577,21 @@ virtenv_update()
 {
     profile_event 'virtenv_update start'
 
-    # FIXME: ...
+    if test "$VIRTENV_IS_ACTIVATED" = "FALSE"
+    then
+        . "$virtenv/bin/activate"
+        VIRTENV_IS_ACTIVATED=TRUE
+    fi
+
+    # we upgrade all dependencies of the RADICAL stack, one by one.
+    # FIXME: for now, we only do pip upgrades -- that will ignore the
+    # easy_installed modules on india (and posisbly other hosts).
+    for dep in "$VIRTENV_RADICAL_DEPS"
+    do
+        run_cmd "install $dep" \
+                "pip install --upgrade $dep" \
+             || echo "Couldn't update $dep! Lets see how far we get ..."
+    done
 
     profile_event 'virtenv_update done'
 }
@@ -560,35 +599,137 @@ virtenv_update()
 
 # ------------------------------------------------------------------------------
 #
-# install rp - this assumes that the virtenv has been activated
+# Install the radical stack, ie. install RP which pulls the rest. 
+# This assumes that the virtenv has been activated.  Any previously installed
+# stack version is deleted.
+#
+# As the virtenv should have all dependencies set up (see VIRTENV_RADICA__DEPS),
+# we don't expect any additional module pull from pypi.  Some rp_versions will, 
+# however, pull the rp modules from pypi or git.
+#
+# . $VIRTENV/bin/activate
+# rm -rf $VIRTENV/radical
+#
+# case rp_version:
+#   @<token>:
+#   @tag/@branch/@commit: # no sdist staging
+#       git clone $github_base radical.pilot.src
+#       (cd radical.pilot.src && git checkout token)
+#       pip install -t $VIRTENV/radical/ radical.pilot.src
+#       rm -rf radical.pilot.src
+#       export PYTHONPATH=$VIRTENV/radical:$PYTHONPATH
+#
+#   release: # no sdist staging
+#       pip install -t $VIRTENV/radical radical.pilot
+#       export PYTHONPATH=$VIRTENV/radical:$PYTHONPATH
+#
+#   local: # needs sdist staging
+#       tar zxvf $sdist.tgz
+#       pip install -t $VIRTENV/radical $sdist/
+#       export PYTHONPATH=$VIRTENV/radical:$PYTHONPATH
+#
+#   debug: # needs sdist staging
+#       tar zxvf $sdist.tgz
+#       pip install -t $SANDBOX/radical $sdist/
+#       export PYTHONPATH=$SANDBOX/radical:$PYTHONPATH
+#
+#   installed: # no sdist staging
+#       true
+# esac
+#
 #
 rp_install()
 {
+    rp_install_source=$1
+    rp_install_target=$2
+
+    if test -z "$rp_install_source"
+    then
+        echo "no RP install source - skip install"
+        return
+    fi
+
     profile_event 'rp_install start'
 
-    # we first uninstall radical pilot, so that any request for a specific
-    # version can be honored even if the version is lower than what is
-    # installed.  Failure to do so will only result in a warning though.
-    echo "uninstalling RADICAL-Pilot"
-    run_cmd "uninstall radical.pilot via pip" \
-            "pip uninstall -y radical.pilot || true" \
-         || echo "Couldn't uninstall radical.pilot! Lets see how far we get ..."
+    echo "Using RADICAL-Pilot install source '$RP_INSTALL_SOURCE'"
 
-    echo "Using RADICAL-Pilot update source '$RP_INSTALL_SOURCE'"
-
-    if test "$RP_INSTALL_EASY" = 'TRUE'
+    # case 1: install into a mutable virtenv (no matter if that exists in
+    # a local sandbox or elsewhere)
+    if test "$rp_install_target" = 'VIRTENV'
     then
-        run_cmd "update radical.pilot via pip/easy_install" \
-                "pip install  $RP_INSTALL_SOURCE" \
-                "easy_install $RP_INSTALL_SOURCE"
+
+        prefix="$VIRTENV/rp_install"
+        rm -rf "$prefix"
+        mkdir  "$prefix"
+
+    elif test "$rp_install_target" = 'LOCAL'
+    then
+        prefix="$SANDBOX/rp_install"
+        rm -rf "$prefix"
+        mkdir  "$prefix"
+
+    # this should never happen
     else
-        run_cmd "update radical.pilot via pip" \
-                "pip install  $RP_INSTALL_SOURCE"
+        echo "ERROR: invalid RP install target '$RP_INSTALL_TARGET'"
+        exit 1
     fi
+
+    python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
+    mod_prefix="$prefix/lib/python$python_version/site-packages"
+
+    PYTHONPATH="$mod_prefix:$PYTHONPATH"
+    export PYTHONPATH
+
+    PATH="$prefix/bin:$PATH"
+    export PATH
+
+    # NOTE: we need to add the radical name __init__.py manually here --
+    # distutil is broken and will not install it.
+    mkdir -p   "$mod_prefix/radical/"
+    ru_ns_init="$mod_prefix/radical/__init__.py"
+    echo                                              >  $ru_ns_init
+    echo 'import pkg_resources'                       >> $ru_ns_init
+    echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
+    echo                                              >> $ru_ns_init
+
+    pip_flags="--upgrade"
+    pip_flags="$pip_flags --src '$prefix/src'"
+    pip_flags="$pip_flags --build '$prefix/build'"
+    pip_flags="$pip_flags --install-option='--prefix=$prefix'"
+
+    run_cmd "update $rp_install_source via pip" \
+            "pip install $pip_flags $rp_install_source"
+    
     if test $? -ne 0
     then
-        echo "Couldn't install radical.pilot! Lets see how far we get ..."
+        echo "Couldn't install $src! Lets see how far we get ..."
     fi
+
+    OLD_SAGA_VERBOSE=$SAGA_VERBOSE
+    OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
+    OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
+    
+    SAGA_VERBOSE=WARNING
+    RADICAL_VERBOSE=WARNING
+    RADICAL_PILOT_VERBOSE=WARNING
+    
+    # print the ve information and stack versions for verification
+    echo
+    echo "---------------------------------------------------------------------"
+    echo
+    echo             "PYTHONPATH: $PYTHONPATH"
+    echo             "python:  v$python_version `which python`"
+    python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
+    python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__'
+    python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
+    echo
+    echo "---------------------------------------------------------------------"
+    echo
+    
+    SAGA_VERBOSE=$OLD_SAGA_VERBOSE
+    RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
+    RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
+
     profile_event 'rp_install done'
 }
 
@@ -693,9 +834,9 @@ while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
         q)  SCHEDULER=$OPTARG  ;;
         r)  RUNTIME=$OPTARG  ;;
         s)  SESSIONID=$OPTARG  ;;
-        t)  PILOT_TYPE=$OPTARG  ;;
+        t)  AGENT_TYPE=$OPTARG  ;;
         u)  VIRTENV_MODE=$OPTARG  ;;
-        v)  PILOT_VERSION=$OPTARG  ;;
+        v)  RP_VERSION=$OPTARG  ;;
         w)  SANDBOX=$OPTARG  ;;
         x)  CLEANUP=$OPTARG  ;;
         *)  usage "Unknown option: $OPTION=$OPTARG"  ;;
@@ -716,7 +857,7 @@ if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
 if test -z "$SCHEDULER"          ; then  usage "missing SCHEDULER         ";  fi
 if test -z "$SESSIONID"          ; then  usage "missing SESSIONID         ";  fi
 if test -z "$TASK_LAUNCH_METHOD" ; then  usage "missing TASK_LAUNCH_METHOD";  fi
-if test -z "$PILOT_VERSION"      ; then  usage "missing PILOT_VERSION     ";  fi
+if test -z "$RP_VERSION"         ; then  usage "missing RP_VERSION        ";  fi
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -777,12 +918,12 @@ export _OLD_VIRTUAL_PS1
 #
 # the actual agent script lives in PWD if it was staged -- otherwise we use it
 # from the virtenv
-if test "$PILOT_VERSION" = 'stage'
+if test "$RP_INSTALL_TARGET" = 'LOCAL'
 then
-    PILOT_SCRIPT='./radical-pilot-agent.py'
+    PILOT_SCRIPT="./rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
 else
     PYTHON_PATH=`which python`
-    PILOT_SCRIPT="`dirname $PYTHON_PATH`/radical-pilot-agent-${PILOT_TYPE}.py"
+    PILOT_SCRIPT="`dirname $PYTHON_PATH`/radical-pilot-agent-${AGENT_TYPE}.py"
 fi
 
 AGENT_CMD="python $PILOT_SCRIPT \

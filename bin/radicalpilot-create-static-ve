@@ -49,14 +49,17 @@ mod_prefix="$prefix/rp_install/lib/python$python_version/site-packages"
 PYTHONPATH="$mod_prefix:$PYTHONPATH"
 export PYTHONPATH
 
-pip install --install-option="--prefix=$prefix/rp_install" radical.utils
+# NOTE: we need to add the radical name __init__.py manually here --
+# distutil is broken and will not install it.
+mkdir -p   "$mod_prefix/radical/"
 ru_ns_init="$mod_prefix/radical/__init__.py"
 echo                                              >  $ru_ns_init
 echo 'import pkg_resources'                       >> $ru_ns_init
 echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
 echo                                              >> $ru_ns_init
 
-pip install --install-option="--prefix=$prefix/rp_install" saga-python
+# pip install --install-option="--prefix=$prefix/rp_install" radical.utils
+# pip install --install-option="--prefix=$prefix/rp_install" saga-python
 pip install --install-option="--prefix=$prefix/rp_install" radical.pilot
 
 OLD_SAGA_VERBOSE=$SAGA_VERBOSE
@@ -72,7 +75,7 @@ echo
 echo "---------------------------------------------------------------------"
 echo
 echo             "PYTHONPATH: $PYTHONPATH"
-printf           "python:  v$python_version `which python`"
+echo             "python:  v$python_version `which python`"
 python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
 python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__'
 python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'

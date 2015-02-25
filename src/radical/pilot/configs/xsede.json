@@ -19,8 +19,6 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "agent_scheduler"             : "CONTINUOUS",
-        "virtenv"                     : "%(global_sandbox)s/virtenv_stampede",
-        "virtenv_mode"                : "create",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
                                          "module load cluster",
@@ -31,7 +29,11 @@
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"]
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "pilot_agent_type"            : "multicore",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
+        "virtenv_mode"                : "create"
     },
 
     "lonestar": {
@@ -62,7 +64,10 @@
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "pilot_agent_type"            : "multicore",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_lonestar",
+        "virtenv_mode"                : "create"
     },
 
     "trestles": {
@@ -86,7 +91,10 @@
         "agent_scheduler"             : "CONTINUOUS",
         "pre_bootstrap"               : ["module purge", "module load python pgi mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "pilot_agent_type"            : "multicore",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_trestles",
+        "virtenv_mode"                : "create"
     },
 
     "gordon": {
@@ -110,7 +118,10 @@
         "agent_scheduler"             : "CONTINUOUS",
         "pre_bootstrap"               : ["module purge", "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "pilot_agent_type"            : "multicore",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_gordon",
+        "virtenv_mode"                : "create"
     },
 
     "blacklight": {
@@ -136,6 +147,9 @@
                                          "module load python"
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "pilot_agent_type"            : "multicore",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
+        "virtenv_mode"                : "create"
     }
 }

@@ -13,11 +13,13 @@
         "agent_spawner"               : "POPEN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
-        "virtenv"                     : "%(global_sandbox)s/virtenv_bw",
-        "virtenv_mode"                : "create",
         "pre_bootstrap"               : ["module load bw-python"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
-        "valid_roots"                 : ["/scratch/sciteam"]
+        "valid_roots"                 : ["/scratch/sciteam"],
+        "pilot_agent_type"            : "multicore",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_bw",
+        "virtenv_mode"                : "create"
     },
     "bw_ccm": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system in CCM (https://bluewaters.ncsa.illinois.edu/)",
@@ -30,11 +32,9 @@
         "default_queue"               : "normal",
         "lrms"                        : "CCM",
         "agent_scheduler"             : "CONTINUOUS",
-        #"agent_spawner"               : "POPEN",
+      # "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "virtenv"                     : "%(global_sandbox)s/virtenv_bw",
-        "virtenv_mode"                : "create",
         "pre_bootstrap"               :
         [
           "module load ccm",
@@ -42,6 +42,10 @@
           "module load bw-python"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
-        "valid_roots"                 : ["/scratch/sciteam"]
+        "valid_roots"                 : ["/scratch/sciteam"],
+        "pilot_agent_type"            : "multicore",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_bw",
+        "virtenv_mode"                : "create"
     }
 }

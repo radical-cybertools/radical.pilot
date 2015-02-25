@@ -1,3 +1,4 @@
+
 {
     "tutorial": {
         "description"                 : "Our private tutorial VM on EC2",
@@ -20,8 +21,10 @@
         "python_interpreter"          : "/usr/bin/python",
         "pre_bootstrap"               : [],
         "valid_roots"                 : ["/home/","/tmp/"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
-
+        "pilot_agent_type"            : "multicore",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_tutorial",
+        "virtenv_mode"                : "update"
     }
 }
 
