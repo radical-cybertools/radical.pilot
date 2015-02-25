@@ -1,10 +1,9 @@
-
 scriptname="radicalpilot-create-static-ve"
 
 # sanity checks
-if test "`basename $0`" = "$scriptname"
+if test "`basename -- $0`" = "$scriptname"
 then
-    echo "this script is meant to be sourced, not executed (to retain any virtualenv etc.)"
+    echo "This script is meant to be sourced, not executed (to retain any virtualenv etc.)."
     exit
 fi
 
