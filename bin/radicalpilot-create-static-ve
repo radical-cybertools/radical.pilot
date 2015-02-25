@@ -1,0 +1,82 @@
+
+scriptname="radicalpilot-create-static-ve"
+
+# sanity checks
+if test "`basename $0`" = "$scriptname"
+then
+    echo "this script is meant to be sourced, not executed (to retain any virtualenv etc.)"
+    exit
+fi
+
+prefix=$1
+
+if test -z "$prefix"
+then
+    printf "\n\tusage: radicalpilot-create-static-ve <target>\n\n"
+    return
+fi
+
+if test -e "$prefix"
+then
+    echo "error: target '$prefix' exists"
+    return
+fi
+
+if ! test "`echo \"$prefix\" | cut -c 1`" = '/'
+then
+    echo "error: target '$prefix' must be an absolute path"
+    return
+fi
+
+
+# create the ve, install bare necessities
+mkdir -p "$prefix"
+mkdir -p "$prefix/rp_install"
+
+virtualenv "$prefix"
+source "$prefix"/bin/activate
+pip install --upgrade setuptools
+pip install --upgrade pip
+pip install --upgrade colorama python-hostlist pymongo apache-libcloud
+
+
+# install the radical stack (utils, saga, pilot) into a separate tree, so that
+# any local install can use the ve *w/o* the radical stack, by re-routing
+# PYTHONPATH
+python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
+mod_prefix="$prefix/rp_install/lib/python$python_version/site-packages"
+
+PYTHONPATH="$mod_prefix:$PYTHONPATH"
+export PYTHONPATH
+
+pip install --install-option="--prefix=$prefix/rp_install" radical.utils
+ru_ns_init="$mod_prefix/radical/__init__.py"
+echo                                              >  $ru_ns_init
+echo 'import pkg_resources'                       >> $ru_ns_init
+echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
+echo                                              >> $ru_ns_init
+
+pip install --install-option="--prefix=$prefix/rp_install" saga-python
+pip install --install-option="--prefix=$prefix/rp_install" radical.pilot
+
+OLD_SAGA_VERBOSE=$SAGA_VERBOSE
+OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
+OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
+
+SAGA_VERBOSE=WARNING
+RADICAL_VERBOSE=WARNING
+RADICAL_PILOT_VERBOSE=WARNING
+
+# print the ve information and stack versions for verification
+echo
+echo "---------------------------------------------------------------------"
+echo
+echo             "PYTHONPATH: $PYTHONPATH"
+printf           "python:  v$python_version `which python`"
+python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
+python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__'
+python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
+echo
+echo "---------------------------------------------------------------------"
+echo
+
