@@ -15,18 +15,23 @@ then
     return
 fi
 
+# TODO: Are we explicitly not trying to update/overwrite?
+# (Or just not yet?)
 if test -e "$prefix"
 then
     echo "error: target '$prefix' exists"
     return
 fi
 
-if ! test "`echo \"$prefix\" | cut -c 1`" = '/'
-then
-    echo "error: target '$prefix' must be an absolute path"
-    return
-fi
-
+# TODO: Ensure we install in an absolute path because XXX
+case $prefix in
+    /*)
+        ;;
+    *)
+        echo "Error: target '$prefix' must be an absolute path."
+        return
+        ;;
+esac
 
 # create the ve, install bare necessities
 mkdir -p "$prefix"
@@ -38,7 +43,6 @@ pip install --upgrade setuptools
 pip install --upgrade pip
 pip install --upgrade colorama python-hostlist pymongo apache-libcloud
 
-
 # install the radical stack (utils, saga, pilot) into a separate tree, so that
 # any local install can use the ve *w/o* the radical stack, by re-routing
 # PYTHONPATH
@@ -49,6 +53,7 @@ PYTHONPATH="$mod_prefix:$PYTHONPATH"
 export PYTHONPATH
 
 pip install --install-option="--prefix=$prefix/rp_install" radical.utils
+# TODO: Now create an init file that does XXX
 ru_ns_init="$mod_prefix/radical/__init__.py"
 echo                                              >  $ru_ns_init
 echo 'import pkg_resources'                       >> $ru_ns_init
@@ -71,10 +76,10 @@ echo
 echo "---------------------------------------------------------------------"
 echo
 echo             "PYTHONPATH: $PYTHONPATH"
-printf           "python:  v$python_version `which python`"
-python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
-python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__'
-python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
+echo             "python: v$python_version `which python`"
+python -c 'print "utils :",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
+python -c 'print "saga  :",; import saga          as rs; print rs.version_detail,; print rs.__file__'
+python -c 'print "pilot :",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
 echo
 echo "---------------------------------------------------------------------"
 echo
@@ -82,4 +87,3 @@ echo
 SAGA_VERBOSE=$OLD_SAGA_VERBOSE
 RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
 RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
-
