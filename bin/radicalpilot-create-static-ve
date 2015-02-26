@@ -1,10 +1,9 @@
-
 scriptname="radicalpilot-create-static-ve"
 
 # sanity checks
-if test "`basename $0`" = "$scriptname"
+if test "`basename -- $0`" = "$scriptname"
 then
-    echo "this script is meant to be sourced, not executed (to retain any virtualenv etc.)"
+    echo "This script is meant to be sourced, not executed (to retain any virtualenv etc.)."
     exit
 fi
 
@@ -16,18 +15,23 @@ then
     return
 fi
 
+# We don't want to overwrite VE's -- the hack to get the namespace import in
+# place is too invasive to be applied to an existing VE.
 if test -e "$prefix"
 then
     echo "error: target '$prefix' exists"
     return
 fi
 
-if ! test "`echo \"$prefix\" | cut -c 1`" = '/'
-then
-    echo "error: target '$prefix' must be an absolute path"
-    return
-fi
-
+# Ensure we install in an absolute path -- pip seems to like that better...
+case $prefix in
+    /*)
+        ;;
+    *)
+        prefix="`pwd`/$prefix"
+        ;;
+esac
+echo "using install prefix $prefix"
 
 # create the ve, install bare necessities
 mkdir -p "$prefix"
@@ -39,7 +43,6 @@ pip install --upgrade setuptools
 pip install --upgrade pip
 pip install --upgrade colorama python-hostlist pymongo apache-libcloud
 
-
 # install the radical stack (utils, saga, pilot) into a separate tree, so that
 # any local install can use the ve *w/o* the radical stack, by re-routing
 # PYTHONPATH
@@ -49,8 +52,12 @@ mod_prefix="$prefix/rp_install/lib/python$python_version/site-packages"
 PYTHONPATH="$mod_prefix:$PYTHONPATH"
 export PYTHONPATH
 
-# NOTE: we need to add the radical name __init__.py manually here --
-# distutil is broken and will not install it.
+PATH="$prefix/rp_install/bin:$PATH"
+export PATH
+
+# we need to add the radical name __init__.py manually here --
+# distutil is broken and will not install it.  That file is necessary to have
+# the 'radical' namespace searchable by python's import.
 mkdir -p   "$mod_prefix/radical/"
 ru_ns_init="$mod_prefix/radical/__init__.py"
 echo                                              >  $ru_ns_init
@@ -75,10 +82,10 @@ echo
 echo "---------------------------------------------------------------------"
 echo
 echo             "PYTHONPATH: $PYTHONPATH"
-echo             "python:  v$python_version `which python`"
-python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
-python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__'
-python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
+echo             "python: v$python_version `which python`"
+python -c 'print "utils :",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
+python -c 'print "saga  :",; import saga          as rs; print rs.version_detail,; print rs.__file__'
+python -c 'print "pilot :",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
 echo
 echo "---------------------------------------------------------------------"
 echo
