@@ -23,7 +23,7 @@ CORES=
 DBNAME=
 DBURL=
 DEBUG=
-SDIST=
+SDISTS=
 VIRTENV=
 VIRTENV_MODE=
 LRMS=
@@ -270,7 +270,7 @@ This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
    -a      The name of project / allocation to charge.
-   -b      name of sdist tarball for rp staging.
+   -b      name of sdist tarballs for radical stack install
    -c      Number of requested cores.
    -d      Specify debug level.
    -e      List of commands to run before bootstrapping.
@@ -386,33 +386,49 @@ virtenv_setup()
     # staged to pwd.  If set to 'release', we install from pypi.  In all other
     # cases, we install from git at a specific tag or branch
     #
-    if test "$RP_VERSION" = 'local'
-    then
-        tar zxvf "$SDIST".tar.gz
-        RP_INSTALL_SOURCE="$SDIST/"
-        RP_INSTALL_TARGET="VIRTENV"
-    elif test "$RP_VERSION" = 'debug'
-    then
-        tar zxvf "$SDIST".tar.gz
-        RP_INSTALL_SOURCE="$SDIST/"
-        RP_INSTALL_TARGET="LOCAL"
-    elif test "$RP_VERSION" = 'release'
-    then
-        RP_INSTALL_SOURCE='radical.pilot'
-        RP_INSTALL_TARGET='VIRTENV'
-    elif test "$RP_VERSION" = 'installed'
-    then
-        RP_INSTALL_SOURCE=''
-        RP_INSTALL_TARGET=''
-    else
-        RP_INSTALL_SOURCE="-e git://github.com/radical-cybertools/radical.pilot.git@$RP_VERSION#egg=radical.pilot"
-        RP_INSTALL_TARGET='VIRTENV'
-    fi
+    case "$RP_VERSION" in
+
+        local)
+            for sdist in `echo $SDISTS | tr ':' ' '`
+            do
+                src=${sdist%.tgz}
+                src=${sdist%.tar.gz}
+                tar zxvf $sdist
+                RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
+            done
+            RP_INSTALL_TARGET="VIRTENV"
+            ;;
+
+        debug)
+            for sdist in `echo $SDISTS | tr ':' ' '`
+            do
+                src=${sdist%.tgz}
+                src=${sdist%.tar.gz}
+                tar zxvf $sdist
+                RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
+            done
+            RP_INSTALL_TARGET="LOCAL"
+            ;;
+
+        release)
+            RP_INSTALL_SOURCES='radical.pilot'
+            RP_INSTALL_TARGET='VIRTENV'
+            ;;
+
+        installed)
+            RP_INSTALL_SOURCES=''
+            RP_INSTALL_TARGET=''
+            ;;
+
+        *)
+            RP_INSTALL_SOURCES="-e git://github.com/radical-cybertools/radical.pilot.git@$RP_VERSION#egg=radical.pilot"
+            RP_INSTALL_TARGET='VIRTENV'
+    esac
 
     # for any immutable virtenv (VIRTENV_MODE==use), we have to choose a LOCAL
     # install target.  LOCAL installation will only work with 
     # 'python setup.py install', so we have to use the sdist -- the
-    # RP_INSTALL_SOURCE has to point to a directory
+    # RP_INSTALL_SOURCES has to point to directories
     if test "$virtenv_mode" = "use"
     then
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
@@ -423,19 +439,22 @@ virtenv_setup()
 
         if ! test -z "$RP_INSTALL_TARGET"
         then
-            if ! test -d "$RP_INSTALL_SOURCE"
-            then
-                # TODO: we could in principle download from pypi and extract, and
-                # 'git clone' to local, and then use the setup install.  Not sure if
-                # this is worth the effor (AM)
-                echo "ERROR: local RP install needs sdist based install (not '$RP_INSTALL_SOURCE')"
-                exit 1
-            fi
+            for src in $RP_INSTALL_SOURCES
+            do
+                if ! test -d "$src"
+                then
+                    # TODO: we could in principle download from pypi and 
+                    # extract, or 'git clone' to local, and then use the setup
+                    # install.  Not sure if this is worth the effor (AM)
+                    echo "ERROR: local RP install needs sdist based install (not '$src')"
+                    exit 1
+                fi
+            done
         fi
     fi
 
-    echo "rp install source: $RP_INSTALL_SOURCE"
-    echo "rp install target: $RP_INSTALL_TARGET"
+    echo "rp install sources: $RP_INSTALL_SOURCES"
+    echo "rp install target : $RP_INSTALL_TARGET"
 
 
     # create virtenv if needed.  This also activates the virtenv.
@@ -476,10 +495,7 @@ virtenv_setup()
     fi
 
     # install RP
-    if ! test -z "$RP_INSTALL_SOURCE"
-    then
-        rp_install "$RP_INSTALL_SOURCE" "$RP_INSTALL_TARGET"
-    fi
+    rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET"
 
     unlock "$pid" "$virtenv"
 
@@ -666,43 +682,53 @@ virtenv_update()
 #
 rp_install()
 {
-    rp_install_source=$1
-    rp_install_target=$2
+    rp_install_sources="$1"
+    rp_install_target="$2"
 
-    if test -z "$rp_install_source"
+    if test -z "$rp_install_target"
     then
-        echo "no RP install source - skip install"
+        echo "no RP install target - skip install"
         return
     fi
 
     profile_event 'rp_install start'
 
-    echo "Using RADICAL-Pilot install source '$RP_INSTALL_SOURCE'"
+    echo "Using RADICAL-Pilot install sources '$rp_install_sources'"
 
-    # case 1: install into a mutable virtenv (no matter if that exists in
+    # install into a mutable virtenv (no matter if that exists in
     # a local sandbox or elsewhere)
-    if test "$rp_install_target" = 'VIRTENV'
-    then
+    case "$rp_install_target" in
+    
+        VIRTENV)
+            prefix="$VIRTENV/rp_install"
+            ;;
 
-        prefix="$VIRTENV/rp_install"
-        rm -rf "$prefix"
-        mkdir  "$prefix"
+        LOCAL)
+            prefix="$SANDBOX/rp_install"
+            ;;
 
-    elif test "$rp_install_target" = 'LOCAL'
-    then
-        prefix="$SANDBOX/rp_install"
-        rm -rf "$prefix"
-        mkdir  "$prefix"
+        *)
+            # this should never happen
+            echo "ERROR: invalid RP install target '$RP_INSTALL_TARGET'"
+            exit 1
+    esac
 
-    # this should never happen
-    else
-        echo "ERROR: invalid RP install target '$RP_INSTALL_TARGET'"
-        exit 1
-    fi
+    rm -rf "$prefix"
+    mkdir  "$prefix"
 
     python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
     mod_prefix="$prefix/lib/python$python_version/site-packages"
 
+    if test "$rp_install_target" = "LOCAL"
+    then
+        # local PYTHONPATH needs to be pre-pended.  The ve PYTHONPATH is
+        # already set during ve activation...
+        PYTHONPATH="$mod_prefix:$PYTHONPATH"
+        export PYTHONPATH
+
+        PATH="$prefix/bin:$PATH"
+        export PATH
+    fi
 
     # NOTE: we need to add the radical name __init__.py manually here --
     # distutil is broken and will not install it.
@@ -718,13 +744,19 @@ rp_install()
     pip_flags="$pip_flags --build '$prefix/build'"
     pip_flags="$pip_flags --install-option='--prefix=$prefix'"
 
-    run_cmd "update $rp_install_source via pip" \
-            "pip install $pip_flags $rp_install_source"
-    
-    if test $? -ne 0
-    then
-        echo "Couldn't install $src! Lets see how far we get ..."
-    fi
+    for src in $RP_INSTALL_SOURCES
+    do
+        run_cmd "update $src via pip" \
+                "pip install $pip_flags $src"
+        
+        if test $? -ne 0
+        then
+            echo "Couldn't install $src! Lets see how far we get ..."
+        fi
+
+        # why? fuck pip, that's why!
+        rm -rf "$prefix/build"
+    done
 
     OLD_SAGA_VERBOSE=$SAGA_VERBOSE
     OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
@@ -837,7 +869,7 @@ echo "# -------------------------------------------------------------------"
 while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
         a)  AUTH=$OPTARG  ;;
-        b)  SDIST=$OPTARG  ;;
+        b)  SDISTS=$OPTARG  ;;
         c)  CORES=$OPTARG  ;;
         D)  TUNNEL_BIND_DEVICE=$OPTARG ;;
         d)  DEBUG=$OPTARG  ;;

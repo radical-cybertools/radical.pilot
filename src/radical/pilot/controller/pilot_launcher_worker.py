@@ -9,19 +9,22 @@ __license__ = "MIT"
 import os
 import copy
 import time
-import saga
 import datetime
 import traceback
 import threading
 
+import saga
+import radical.utils as ru
+
 from radical.pilot.states import *
 
-from radical.pilot.utils.version import version as VERSION
-from radical.pilot.utils.version import sdist_path, sdist
 from radical.pilot.utils.logger  import logger
 from radical.pilot.context       import Context
 from radical.pilot.logentry      import Logentry
 
+pwd     = os.path.dirname (__file__)
+root    = "%s/../" % pwd
+version, version_detail, version_branch, sdist_name, sdist_path = ru.get_version ([root, pwd])
 
 IDLE_TIMER           =  1  # seconds to sleep if notthing to do
 JOB_CHECK_INTERVAL   = 60  # seconds between runs of the job state check loop
@@ -491,16 +494,20 @@ class PilotLauncherWorker(threading.Thread):
 
 
                         # ------------------------------------------------------
-                        # Copy the rp sdist if needed
+                        # Copy the rp sdist if needed.  We actually also stage
+                        # the sdists for radical.utils and radical.saga, so that
+                        # we have the complete stack to install...
                         if stage_sdist:
 
-                            sdist_url = saga.Url("file://localhost/%s" % sdist_path)
-                            msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
-                            logentries.append(Logentry (msg, logger=logger.debug))
+                            for path in [ru.sdist_path, saga.sdist_path, sdist_path]:
 
-                            sdist_file = saga.filesystem.File(sdist_url)
-                            sdist_file.copy("%s/%s" % (str(pilot_sandbox), sdist))
-                            sdist_file.close()
+                                sdist_url = saga.Url("file://localhost/%s" % path)
+                                msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
+                                logentries.append(Logentry (msg, logger=logger.debug))
+
+                                sdist_file = saga.filesystem.File(sdist_url)
+                                sdist_file.copy("%s/" % (str(pilot_sandbox)))
+                                sdist_file.close()
 
 
                         # ------------------------------------------------------
@@ -538,10 +545,11 @@ class PilotLauncherWorker(threading.Thread):
                             if virtenv_mode is not 'private' :
                                 cleanup = cleanup.replace ('v', '')
 
+                        sdists = ':'.join([ru.sdist_name, saga.sdist_name, sdist_name])
 
                         # set mandatory args
                         bootstrap_args  = ""
-                        bootstrap_args += " -b '%s'" % sdist[:-7] # without '.tgz'
+                        bootstrap_args += " -b '%s'" % sdists
                         bootstrap_args += " -c '%s'" % number_cores
                         bootstrap_args += " -d '%s'" % debug_level
                         bootstrap_args += " -g '%s'" % virtenv
