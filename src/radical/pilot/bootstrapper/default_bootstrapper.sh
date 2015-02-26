@@ -325,8 +325,10 @@ EOF
 # not have a negative impact on the virtenv in the first place, AFAIU -- lock on
 # create is more important, and should be less critical
 #
-setup_virtenv()
+virtenv_setup()
 {
+    profile_event 'virtenv_setup start'
+
     pid="$1"
     virtenv="$2"
     virtenv_mode="$3"
@@ -418,13 +420,17 @@ setup_virtenv()
             echo "WARNING: virtenv immutable - install RP locally"
             RP_INSTALL_TARGET='LOCAL'
         fi
-        if ! test -d "$RP_INSTALL_SOURCE"
+
+        if ! test -z "$RP_INSTALL_TARGET"
         then
-            # TODO: we could in principle download from pypi and extract, and
-            # 'git clone' to local, and then use the setup install.  Not sure if
-            # this is worth the effor (AM)
-            echo "ERROR: local RP install needs sdist based install (not '$RP_INSTALL_SOURCE')"
-            exit 1
+            if ! test -d "$RP_INSTALL_SOURCE"
+            then
+                # TODO: we could in principle download from pypi and extract, and
+                # 'git clone' to local, and then use the setup install.  Not sure if
+                # this is worth the effor (AM)
+                echo "ERROR: local RP install needs sdist based install (not '$RP_INSTALL_SOURCE')"
+                exit 1
+            fi
         fi
     fi
 
@@ -452,17 +458,13 @@ setup_virtenv()
     fi
 
     # creation or not -- at this point it needs activation
-    if test "$VIRTENV_IS_ACTIVATED" = "FALSE"
-    then
-        . "$virtenv/bin/activate"
-        VIRTENV_IS_ACTIVATED=TRUE
-    fi
+    virtenv_activate "$virtenv"
 
 
     # update virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_update" = "TRUE"
     then
-        virtenv_update
+        virtenv_update "$virtenv"
         if ! test "$?" = 0
         then
            echo "Error on virtenv update -- abort"
@@ -480,6 +482,35 @@ setup_virtenv()
     fi
 
     unlock "$pid" "$virtenv"
+
+    profile_event 'virtenv_setup end'
+}
+
+
+# ------------------------------------------------------------------------------
+#
+virtenv_activate()
+{
+    if test "$VIRTENV_IS_ACTIVATED" = "TRUE"
+    then
+        return
+    fi
+
+    . "$VIRTENV/bin/activate"
+    VIRTENV_IS_ACTIVATED=TRUE
+
+    prefix="$VIRTENV/rp_install"
+    if test -d "$prefix"
+    then
+        python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
+        mod_prefix="$prefix/lib/python$python_version/site-packages"
+
+        PYTHONPATH="$mod_prefix:$PYTHONPATH"
+        export PYTHONPATH
+
+        PATH="$prefix/bin:$PATH"
+        export PATH
+    fi
 }
 
 
@@ -496,7 +527,7 @@ virtenv_create()
 {
     profile_event 'virtenv_create start'
 
-    VIRTENV="$1"
+    virtenv="$1"
 
     # create a fresh virtualenv. we use an older 1.9.x version of
     # virtualenv as this seems to work more reliable than newer versions.
@@ -507,7 +538,7 @@ virtenv_create()
     if ! test "$?" = 0
     then
         echo "WARNING: Couldn't download virtualenv via curl! Using system version."
-        BOOTSTRAP_CMD="virtualenv $VIRTENV"
+        BOOTSTRAP_CMD="virtualenv $virtenv"
 
     else :
         run_cmd "unpacking virtualenv tgz" \
@@ -519,7 +550,7 @@ virtenv_create()
             return 1
         fi
 
-        BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $VIRTENV"
+        BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $virtenv"
     fi
 
 
@@ -532,9 +563,7 @@ virtenv_create()
     fi
 
     # activate the virtualenv
-    . $VIRTENV/bin/activate
-    VIRTENV_IS_ACTIVATED=TRUE
-
+    virtenv_activate "$virtenv"
 
   # run_cmd "Downgrade pip to 1.2.1" \
   #         "easy_install pip==1.2.1" \
@@ -577,11 +606,8 @@ virtenv_update()
 {
     profile_event 'virtenv_update start'
 
-    if test "$VIRTENV_IS_ACTIVATED" = "FALSE"
-    then
-        . "$virtenv/bin/activate"
-        VIRTENV_IS_ACTIVATED=TRUE
-    fi
+    virtenv="$1"
+    virtenv_activate "$virtenv"
 
     # we upgrade all dependencies of the RADICAL stack, one by one.
     # FIXME: for now, we only do pip upgrades -- that will ignore the
@@ -677,11 +703,6 @@ rp_install()
     python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
     mod_prefix="$prefix/lib/python$python_version/site-packages"
 
-    PYTHONPATH="$mod_prefix:$PYTHONPATH"
-    export PYTHONPATH
-
-    PATH="$prefix/bin:$PATH"
-    export PATH
 
     # NOTE: we need to add the radical name __init__.py manually here --
     # distutil is broken and will not install it.
@@ -905,7 +926,8 @@ then
     PYTHON=`which python`
 fi
 
-setup_virtenv "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"
+virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"
+virtenv_activate "$VIRTENV"
 
 # Export the variables related to virtualenv,
 # so that we can disable the virtualenv for the cu.
@@ -990,3 +1012,4 @@ echo "# -------------------------------------------------------------------"
 
 # ... and exit
 exit $AGENT_EXITCODE
+

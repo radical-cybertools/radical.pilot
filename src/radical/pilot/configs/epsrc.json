@@ -20,7 +20,7 @@
         "default_remote_workdir"      : "/work/`id -gn`/`id -gn`/$USER",
         "valid_roots"                 : ["/work"],
         "pilot_agent_type"            : "multicore",
-        "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150217",
+        "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150225",
         "virtenv_mode"                : "use",
         "rp_version"                  : "installed"
     }
