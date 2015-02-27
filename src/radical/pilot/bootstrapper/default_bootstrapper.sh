@@ -393,7 +393,7 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxvf $sdist
+                tar zxf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET="VIRTENV"
@@ -404,7 +404,7 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxvf $sdist
+                tar zxf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET="LOCAL"
@@ -516,17 +516,15 @@ virtenv_activate()
     VIRTENV_IS_ACTIVATED=TRUE
 
     prefix="$VIRTENV/rp_install"
-    if test -d "$prefix"
-    then
-        python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
-        mod_prefix="$prefix/lib/python$python_version/site-packages"
 
-        PYTHONPATH="$mod_prefix:$PYTHONPATH"
-        export PYTHONPATH
+    python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
+    mod_prefix="$prefix/lib/python$python_version/site-packages"
 
-        PATH="$prefix/bin:$PATH"
-        export PATH
-    fi
+    PYTHONPATH="$mod_prefix:$PYTHONPATH"
+    export PYTHONPATH
+
+    PATH="$prefix/bin:$PATH"
+    export PATH
 }
 
 
@@ -666,12 +664,12 @@ virtenv_update()
 #       export PYTHONPATH=$VIRTENV/radical:$PYTHONPATH
 #
 #   local: # needs sdist staging
-#       tar zxvf $sdist.tgz
+#       tar zxf $sdist.tgz
 #       pip install -t $VIRTENV/radical $sdist/
 #       export PYTHONPATH=$VIRTENV/radical:$PYTHONPATH
 #
 #   debug: # needs sdist staging
-#       tar zxvf $sdist.tgz
+#       tar zxf $sdist.tgz
 #       pip install -t $SANDBOX/radical $sdist/
 #       export PYTHONPATH=$SANDBOX/radical:$PYTHONPATH
 #
@@ -974,13 +972,12 @@ export _OLD_VIRTUAL_PS1
 # from the virtenv
 if test "$RP_INSTALL_TARGET" = 'LOCAL'
 then
-    PILOT_SCRIPT="./rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
 else
-    PYTHON_PATH=`which python`
-    PILOT_SCRIPT="`dirname $PYTHON_PATH`/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
 fi
 
-AGENT_CMD="python $PILOT_SCRIPT \
+AGENT_CMD="$PILOT_SCRIPT \
 -c $CORES \
 -d $DEBUG \
 -j $TASK_LAUNCH_METHOD \
