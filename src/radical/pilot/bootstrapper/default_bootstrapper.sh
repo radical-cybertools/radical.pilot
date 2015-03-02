@@ -416,8 +416,18 @@ virtenv_setup()
             ;;
 
         installed)
-            RP_INSTALL_SOURCES=''
-            RP_INSTALL_TARGET=''
+            if test -d "$VIRTENV/rp_install"
+            then
+                RP_INSTALL_SOURCES=''
+                RP_INSTALL_TARGET=''
+            else
+                echo "WARNING: 'rp_version' set to 'installed', "
+                echo "         but no installed rp found in '$VIRTENV' ($virtenv_mode)"
+                echo "         Settgins 'rp_version' to 'release'"
+                RP_VERSION='release'
+                RP_INSTALL_SOURCES='radical.pilot'
+                RP_INSTALL_TARGET='VIRTENV'
+            fi 
             ;;
 
         *)
@@ -756,6 +766,16 @@ rp_install()
         rm -rf "$prefix/build"
     done
 
+    profile_event 'rp_install done'
+}
+
+
+# ------------------------------------------------------------------------------
+# Verify that we ended up with a usable installation.  This will also print all
+# versions and module locations, which is nice for debugging...
+#
+verify_rp_install()
+{
     OLD_SAGA_VERBOSE=$SAGA_VERBOSE
     OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
     OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
@@ -768,11 +788,15 @@ rp_install()
     echo
     echo "---------------------------------------------------------------------"
     echo
-    echo             "PYTHONPATH: $PYTHONPATH"
-    echo             "python:  v$python_version `which python`"
-    python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
-    python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__'
-    python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
+    echo "`python --version` (`which python`)"
+    echo "PYTHONPATH: $PYTHONPATH"
+ (  python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
+ && python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
+ && python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
+ && (echo 'install ok!'; true) \
+ ) \
+ || (echo 'install failed!'; false) \
+ || exit 1
     echo
     echo "---------------------------------------------------------------------"
     echo
@@ -780,8 +804,6 @@ rp_install()
     SAGA_VERBOSE=$OLD_SAGA_VERBOSE
     RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
     RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
-
-    profile_event 'rp_install done'
 }
 
 
@@ -972,12 +994,12 @@ export _OLD_VIRTUAL_PS1
 # from the virtenv
 if test "$RP_INSTALL_TARGET" = 'LOCAL'
 then
-    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
 else
-    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
 fi
 
-AGENT_CMD="$PILOT_SCRIPT \
+AGENT_CMD="python $PILOT_SCRIPT \
 -c $CORES \
 -d $DEBUG \
 -j $TASK_LAUNCH_METHOD \
@@ -1000,6 +1022,8 @@ if test "$LRMS" = "CCM"
 then
     AGENT_CMD="ccmrun $AGENT_CMD"
 fi
+
+verify_rp_install
 
 echo
 echo "# -------------------------------------------------------------------"
