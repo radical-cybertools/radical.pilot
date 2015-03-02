@@ -19,6 +19,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "SHELL",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
                                          "module load cluster",
@@ -33,7 +34,7 @@
         "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "update"
     },
 
     "lonestar": {
