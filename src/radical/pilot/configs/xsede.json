@@ -120,7 +120,7 @@
         "pre_bootstrap"               : ["module purge", "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "pilot_agent_type"            : "multicore",
-        "rp_version"                  : "local",
+        "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_gordon",
         "virtenv_mode"                : "create"
     },
@@ -150,7 +150,7 @@
         "valid_roots"                 : ["/usr/users", "/brashear"],
         "stage_cacerts"               : "True",
         "pilot_agent_type"            : "multicore",
-        "rp_version"                  : "local",
+        "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
         "virtenv_mode"                : "create"
     }

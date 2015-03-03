@@ -562,7 +562,7 @@ class PilotManagerController(threading.Thread):
                         job = js.get_job (job_id)
                         job.cancel ()
                     except Exception as e :
-                        logger.exception ('delayed pilot cancelation failed. '
+                        logger.warn ('delayed pilot cancelation failed. '
                                 'This is not necessarily a problem.')
 
                 else :
