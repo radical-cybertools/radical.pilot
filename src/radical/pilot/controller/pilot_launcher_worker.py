@@ -365,7 +365,7 @@ class PilotLauncherWorker(threading.Thread):
                         rp_version              = resource_cfg.get ('rp_version',          DEFAULT_RP_VERSION)
                         virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
-                        stage_cacerts           = resource_cfg.get ('stage_cacerts',       False)
+                        stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
 
                         if stage_cacerts.lower() == 'true':
                             stage_cacerts = True
