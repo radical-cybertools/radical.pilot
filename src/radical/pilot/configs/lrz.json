@@ -16,9 +16,11 @@
         },
         "default_queue"               : "test",
         "lrms"                        : "LOADL",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        "agent_scheduler"             : "CONTINUOUS",
         "forward_tunnel_endpoint"     : "login03",
         "pre_bootstrap"               : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",
@@ -27,7 +29,6 @@
                                          "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
                                         ],
         "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "installed",
         "virtenv"                     : "/home/hpc/pr87be/di29sut/pilotve",
         "virtenv_mode"                : "use"

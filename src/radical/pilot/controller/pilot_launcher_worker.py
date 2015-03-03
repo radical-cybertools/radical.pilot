@@ -32,7 +32,7 @@ JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
                            # declaring it dead
 
 DEFAULT_AGENT_TYPE    = 'multicore'
-DEFAULT_AGENT_SPAWNER = 'SHELL'
+DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
@@ -350,6 +350,7 @@ class PilotLauncherWorker(threading.Thread):
                         # get parameters from cfg, set defaults where needed
                         agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
                         agent_spawner           = resource_cfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
+                        agent_type              = resource_cfg.get ('agent_type',          DEFAULT_AGENT_TYPE)
                         agent_scheduler         = resource_cfg.get ('agent_scheduler')
                         tunnel_bind_device      = resource_cfg.get ('tunnel_bind_device')
                         default_queue           = resource_cfg.get ('default_queue')
@@ -361,7 +362,6 @@ class PilotLauncherWorker(threading.Thread):
                         python_interpreter      = resource_cfg.get ('python_interpreter')
                         spmd_variation          = resource_cfg.get ('spmd_variation')
                         task_launch_method      = resource_cfg.get ('task_launch_method')
-                        agent_type              = resource_cfg.get ('pilot_agent_type',    DEFAULT_AGENT_TYPE)
                         rp_version              = resource_cfg.get ('rp_version',          DEFAULT_RP_VERSION)
                         virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)

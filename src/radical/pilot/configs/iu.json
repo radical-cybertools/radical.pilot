@@ -10,12 +10,13 @@
             "filesystem_endpoint"     : "sftp://bigred2.uits.iu.edu/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
-        "agent_scheduler"             : "CONTINUOUS",
         "pre_bootstrap"               : ["module load python/2.7.8"],
         "valid_roots"                 : ["/N"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
         "virtenv_mode"                : "update"
@@ -30,9 +31,11 @@
             "filesystem_endpoint"     : "sftp://bigred2.uits.iu.edu/"
         },
         "lrms"                        : "CCM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "agent_scheduler"             : "CONTINUOUS",
         "pre_bootstrap"               :
         [
           "module switch PrgEnv-cray PrgEnv-gnu",
@@ -44,7 +47,6 @@
         "tunnel_bind_device"          : "ipogif0",
         "default_remote_workdir"      : "/N/dc2/scratch/$USER",
         "valid_roots"                 : ["/N"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
         "virtenv_mode"                : "update"

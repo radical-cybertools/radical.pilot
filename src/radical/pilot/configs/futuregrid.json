@@ -10,14 +10,15 @@
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "batch",
         "python_interpreter"          : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi/1.4.3-gnu"],
         "valid_roots"                 : ["/N"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_india",
         "virtenv_mode"                : "update"
@@ -32,7 +33,9 @@
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "bravo",
@@ -41,7 +44,6 @@
             "module load openmpi/1.4.3-gnu"
         ],
         "valid_roots"                 : ["/N"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "~marksant/pilot-ve-20141211",
         "virtenv_mode"                : "update"
@@ -57,12 +59,13 @@
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "delta",
         "valid_roots"                 : ["/N"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_delta",
         "virtenv_mode"                : "update"
@@ -78,12 +81,13 @@
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "echo",
         "valid_roots"                 : ["/N"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_echo",
         "virtenv_mode"                : "update"
@@ -98,13 +102,14 @@
             "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "default_queue"               : "batch",
         "default_remote_workdir"      : "/scratch/$USER",
         "valid_roots"                 : ["/scratch", "/home/users"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "~marksant/pilot_ve_20141210",
         "virtenv_mode"                : "update"
@@ -118,14 +123,15 @@
             "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "CCMRUN",
         "mpi_launch_method"           : "APRUN",
         "pre_bootstrap"               : ["module load ccm"],
         "default_queue"               : "ccm_queue",
         "default_remote_workdir"      : "/scratch/$USER",
         "valid_roots"                 : ["/scratch", "/home/users"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "~marksant/pilot_ve_20141210",
         "virtenv_mode"                : "use"

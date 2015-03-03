@@ -15,13 +15,15 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "LOCAL",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "batch",
         "python_interpreter"          : "/usr/bin/python",
         "pre_bootstrap"               : [],
         "valid_roots"                 : ["/home/","/tmp/"],
-        "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_tutorial",
         "virtenv_mode"                : "update"
