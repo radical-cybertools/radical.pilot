@@ -21,9 +21,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "agent_spawner"               : "SHELL",
         "pilot_agent_type"            : "multicore",
-        "rp_version"                  : "local",
+        "rp_version"                  : "@test/bootstrapper",
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "use"
     }
 }
 

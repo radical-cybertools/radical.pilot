@@ -141,6 +141,7 @@ lock()
     done
 
     # one way or the other, we got the lock finally.
+    echo "obtained lock $lockfile"
 }
 
 
@@ -431,14 +432,19 @@ virtenv_setup()
             ;;
 
         *)
-            RP_INSTALL_SOURCES="-e git://github.com/radical-cybertools/radical.pilot.git@$RP_VERSION#egg=radical.pilot"
+            # do *not* use 'pip -e' -- egg linking does not work in PYTHONPATH.
+            # Instead, we manually clone the respective git repository, and
+            # switch to the respective branch/tag/commit.
+            git clone https://github.com/radical-cybertools/radical.pilot.git
+            (cd radical.pilot; git checkout $RP_VERSION)
+            RP_INSTALL_SOURCES="radical.pilot/"
             RP_INSTALL_TARGET='VIRTENV'
     esac
 
-    # for any immutable virtenv (VIRTENV_MODE==use), we have to choose a LOCAL
-    # install target.  LOCAL installation will only work with 
-    # 'python setup.py install', so we have to use the sdist -- the
-    # RP_INSTALL_SOURCES has to point to directories
+    # NOTE: for any immutable virtenv (VIRTENV_MODE==use), we have to choose
+    # a LOCAL install target.  LOCAL installation will only work with 'python
+    # setup.py install', so we have to use the sdist -- the RP_INSTALL_SOURCES
+    # has to point to directories
     if test "$virtenv_mode" = "use"
     then
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
@@ -542,10 +548,10 @@ virtenv_activate()
 #
 # create virtualenv - we always use the latest version from GitHub
 #
-# The virtenv creation will alson install the required packges, but will *not*
-# use '--upgrade', so that will become a noop if the packages have been
-# installed before.  An eventual upgrade will be triggered independently in
-# virtenv_update().
+# The virtenv creation will also install the required packges, but will (mostly)
+# not use '--upgrade' for dependencies, so that will become a noop if the
+# packages have been installed before.  An eventual upgrade will be triggered
+# independently in virtenv_update().
 #
 virtenv_create()
 {
@@ -553,7 +559,7 @@ virtenv_create()
 
     virtenv="$1"
 
-    # create a fresh virtualenv. we use an older 1.9.x version of
+    # NOTE: create a fresh virtualenv. we use an older 1.9.x version of
     # virtualenv as this seems to work more reliable than newer versions.
     # If we can't download, we try to move on with the system virtualenv.
     run_cmd "Download virtualenv tgz" \
@@ -603,7 +609,7 @@ virtenv_create()
          || echo "Couldn't update pip -- using default version"
 
 
-    # On india/fg 'pip install saga-python' does not work as pip fails to
+    # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
     # install apache-libcloud (missing bz2 compression).  We thus install that
     # dependency via easy_install.
     run_cmd "install apache-libcloud" \
@@ -731,6 +737,8 @@ rp_install()
     then
         # local PYTHONPATH needs to be pre-pended.  The ve PYTHONPATH is
         # already set during ve activation...
+        # NOTE: PYTHONPATH is set differently than the 'prefix' used during
+        #       install
         PYTHONPATH="$mod_prefix:$PYTHONPATH"
         export PYTHONPATH
 
@@ -738,8 +746,13 @@ rp_install()
         export PATH
     fi
 
+    # NOTE: we first uninstall RP (for some reason, 'pip install --upgrade' does
+    #       not work with all source types
+    run_cmd "uninstall radical.pilot" "pip uninstall -y radical.pilot"
+    # ignore any errors
+
     # NOTE: we need to add the radical name __init__.py manually here --
-    # distutil is broken and will not install it.
+    #      distutil is broken and will not install it.
     mkdir -p   "$mod_prefix/radical/"
     ru_ns_init="$mod_prefix/radical/__init__.py"
     echo                                              >  $ru_ns_init
@@ -762,7 +775,7 @@ rp_install()
             echo "Couldn't install $src! Lets see how far we get ..."
         fi
 
-        # why? fuck pip, that's why!
+        # NOTE: why? fuck pip, that's why!
         rm -rf "$prefix/build"
     done
 
@@ -992,11 +1005,23 @@ export _OLD_VIRTUAL_PS1
 #
 # the actual agent script lives in PWD if it was staged -- otherwise we use it
 # from the virtenv
+# NOTE: For some reasons, I have seen installations where 'scripts' go into
+# bin/, and some where setuptools only changes them in place.  For now, we allow
+# for both -- but eventually (once the agent itself is small), we may want to
+# move it to bin ourself...
 if test "$RP_INSTALL_TARGET" = 'LOCAL'
 then
-    PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    if ! test -e "$PILOT_SCRIPT"
+    then
+        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
+    fi
 else
-    PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    if ! test -e "$PILOT_SCRIPT"
+    then
+        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
+    fi
 fi
 
 AGENT_CMD="python $PILOT_SCRIPT \
