@@ -148,6 +148,7 @@
                                          "module load python"
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
+        "stage_cacerts"               : "True",
         "pilot_agent_type"            : "multicore",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",

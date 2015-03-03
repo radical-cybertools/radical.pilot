@@ -365,6 +365,12 @@ class PilotLauncherWorker(threading.Thread):
                         rp_version              = resource_cfg.get ('rp_version',          DEFAULT_RP_VERSION)
                         virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
+                        stage_cacerts           = resource_cfg.get ('stage_cacerts',       False)
+
+                        if stage_cacerts.lower() == 'true':
+                            stage_cacerts = True
+                        else:
+                            stage_cacerts = False
 
 
                         # expand variables in virtenv string
@@ -508,6 +514,21 @@ class PilotLauncherWorker(threading.Thread):
                                 sdist_file = saga.filesystem.File(sdist_url)
                                 sdist_file.copy("%s/" % (str(pilot_sandbox)))
                                 sdist_file.close()
+
+
+                        # ------------------------------------------------------
+                        # some machines cannot run pip due to outdated ca certs.
+                        # For those, we also stage an updated cert bundle
+                        if stage_cacerts:
+                          cc_path = os.path.abspath("%s/../bootstrapper/%s" \
+                                  % (mod_dir, 'cacert.pem.gz'))
+
+                          cc_script_url = saga.Url("file://localhost/%s" % cc_path)
+                          cc_script_tgt = saga.Url("%s/cacert.pem.gz"    % pilot_sandbox)
+
+                          cc_script = saga.filesystem.File(cc_script_url, session=self._session)
+                          cc_script.copy(cc_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
+                          cc_script.close()
 
 
                         # ------------------------------------------------------

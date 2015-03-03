@@ -161,7 +161,7 @@ setup_args = {
                             'bin/radicalpilot-stats.plot',
                             'src/radical/pilot/agent/radical-pilot-agent-multicore.py'
                            ],
-    'package_data'       : {'': ['*.sh', '*.json', 'VERSION', 'SDIST', sdist_name]},
+    'package_data'       : {'': ['*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
     'cmdclass'           : {
         'test'           : our_test,
     },

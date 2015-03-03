@@ -601,11 +601,11 @@ virtenv_create()
 
 
     run_cmd "update setuptools" \
-            "pip install --upgrade setuptools" \
+            "$PIP install --upgrade setuptools" \
          || echo "Couldn't update setuptools -- using default version"
 
     run_cmd "update pip" \
-            "pip install --upgrade pip" \
+            "$PIP install --upgrade pip" \
          || echo "Couldn't update pip -- using default version"
 
 
@@ -622,7 +622,7 @@ virtenv_create()
     for dep in "$VIRTENV_RADICAL_DEPS"
     do
         run_cmd "install $dep" \
-                "pip install $dep" \
+                "$PIP install $dep" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 }
@@ -645,7 +645,7 @@ virtenv_update()
     for dep in "$VIRTENV_RADICAL_DEPS"
     do
         run_cmd "install $dep" \
-                "pip install --upgrade $dep" \
+                "$PIP install --upgrade $dep" \
              || echo "Couldn't update $dep! Lets see how far we get ..."
     done
 
@@ -748,7 +748,7 @@ rp_install()
 
     # NOTE: we first uninstall RP (for some reason, 'pip install --upgrade' does
     #       not work with all source types
-    run_cmd "uninstall radical.pilot" "pip uninstall -y radical.pilot"
+    run_cmd "uninstall radical.pilot" "$PIP uninstall -y radical.pilot"
     # ignore any errors
 
     # NOTE: we need to add the radical name __init__.py manually here --
@@ -768,7 +768,7 @@ rp_install()
     for src in $RP_INSTALL_SOURCES
     do
         run_cmd "update $src via pip" \
-                "pip install $pip_flags $src"
+                "$PIP install $pip_flags $src"
         
         if test $? -ne 0
         then
@@ -991,6 +991,21 @@ then
     PYTHON=`which python`
 fi
 
+# NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
+# commands.  Its a sign that the pip cacert (or the system's, dunno) is not up
+# to date.  Easy_install seems to use a different access channel, so does not
+# need the cert bundle.
+#
+if test -f 'cacert.pem.gz'
+then
+    gunzip cacert.pem.gz
+    PIP='pip --cert cacert.pem'
+else
+    PIP='pip'
+fi
+
+
+# ready to setup the virtenv
 virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"
 virtenv_activate "$VIRTENV"
 
