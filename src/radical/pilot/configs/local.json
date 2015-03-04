@@ -18,12 +18,12 @@
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
+        "agent_spawner"               : "SHELL",
         "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "local",
+        "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "use"
     }
 }
 

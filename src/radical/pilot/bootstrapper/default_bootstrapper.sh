@@ -760,7 +760,7 @@ rp_install()
     echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
     echo                                              >> $ru_ns_init
 
-    pip_flags="--upgrade"
+  # pip_flags="--upgrade"
     pip_flags="$pip_flags --src '$prefix/src'"
     pip_flags="$pip_flags --build '$prefix/build'"
     pip_flags="$pip_flags --install-option='--prefix=$prefix'"
