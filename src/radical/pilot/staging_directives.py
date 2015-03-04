@@ -115,8 +115,12 @@ def expand_staging_directive(staging_directive, logger):
 
             if isinstance(source, basestring) or isinstance(source, Url):
 
-                # We had no target specified, assume the basename of source
-                if not target:
+                if target:
+                    # Detect asymmetry in source and target length
+                    if isinstance(target, list):
+                        raise Exception("Source is singular but target is a list")
+                else:
+                    # We had no target specified, assume the basename of source
                     if isinstance(source, basestring):
                         target = os.path.basename(source)
                     elif isinstance(source, Url):
