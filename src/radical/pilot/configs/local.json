@@ -23,7 +23,7 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
-        "virtenv_mode"                : "use"
+        "virtenv_mode"                : "create"
     }
 }
 
