@@ -533,10 +533,12 @@ virtenv_activate()
 
     prefix="$VIRTENV/rp_install"
 
+    # make sure the lib path into the prefix conforms to the python conventions
     python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    ve_mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$VIRTENV|$VIRTENV/rp_install|"`
 
-    PYTHONPATH="$mod_prefix:$PYTHONPATH"
+    PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
     export PYTHONPATH
 
     PATH="$prefix/bin:$PATH"
@@ -709,8 +711,8 @@ rp_install()
 
     echo "Using RADICAL-Pilot install sources '$rp_install_sources'"
 
-    # install into a mutable virtenv (no matter if that exists in
-    # a local sandbox or elsewhere)
+    # install rp into a separate tree -- no matter if in shared ve or a local
+    # sandbox or elsewhere
     case "$rp_install_target" in
     
         VIRTENV)
@@ -727,11 +729,13 @@ rp_install()
             exit 1
     esac
 
+    # make sure the lib path into the prefix conforms to the python conventions
+    python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+    ve_mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$VIRTENV|$prefix|"`
+
     rm -rf "$prefix"
     mkdir  "$prefix"
-
-    python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 
     if test "$rp_install_target" = "LOCAL"
     then
@@ -739,7 +743,7 @@ rp_install()
         # already set during ve activation...
         # NOTE: PYTHONPATH is set differently than the 'prefix' used during
         #       install
-        PYTHONPATH="$mod_prefix:$PYTHONPATH"
+        PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
         export PYTHONPATH
 
         PATH="$prefix/bin:$PATH"
@@ -753,8 +757,8 @@ rp_install()
 
     # NOTE: we need to add the radical name __init__.py manually here --
     #      distutil is broken and will not install it.
-    mkdir -p   "$mod_prefix/radical/"
-    ru_ns_init="$mod_prefix/radical/__init__.py"
+    mkdir -p   "$rp_mod_prefix/radical/"
+    ru_ns_init="$rp_mod_prefix/radical/__init__.py"
     echo                                              >  $ru_ns_init
     echo 'import pkg_resources'                       >> $ru_ns_init
     echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init

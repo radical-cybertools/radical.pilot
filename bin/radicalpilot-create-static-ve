@@ -1,5 +1,7 @@
 scriptname="radicalpilot-create-static-ve"
 
+# set -x
+
 # sanity checks
 if test "`basename -- $0`" = "$scriptname"
 then
@@ -47,9 +49,11 @@ pip install --upgrade colorama python-hostlist pymongo apache-libcloud
 # ($prefix/rp_install(, so that any local install can use the ve *w/o* 
 # the radical stack, by re-routing PYTHONPATH
 python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+ve_mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install|"`
 
-PYTHONPATH="$mod_prefix:$PYTHONPATH"
+
+PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
 export PYTHONPATH
 
 PATH="$prefix/rp_install/bin:$PATH"
@@ -58,8 +62,8 @@ export PATH
 # we need to add the radical name __init__.py manually here --
 # distutil is broken and will not install it.  That file is necessary to have
 # the 'radical' namespace searchable by python's import.
-mkdir -p   "$mod_prefix/radical/"
-ru_ns_init="$mod_prefix/radical/__init__.py"
+mkdir -p   "$rp_mod_prefix/radical/"
+ru_ns_init="$rp_mod_prefix/radical/__init__.py"
 echo                                              >  $ru_ns_init
 echo 'import pkg_resources'                       >> $ru_ns_init
 echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
