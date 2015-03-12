@@ -43,11 +43,11 @@ pip install --upgrade setuptools
 pip install --upgrade pip
 pip install --upgrade colorama python-hostlist pymongo apache-libcloud
 
-# install the radical stack (utils, saga, pilot) into a separate tree, so that
-# any local install can use the ve *w/o* the radical stack, by re-routing
-# PYTHONPATH
-python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
-mod_prefix="$prefix/rp_install/lib/python$python_version/site-packages"
+# install the radical stack (utils, saga, pilot) into a separate tree
+# ($prefix/rp_install(, so that any local install can use the ve *w/o* 
+# the radical stack, by re-routing PYTHONPATH
+python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 
 PYTHONPATH="$mod_prefix:$PYTHONPATH"
 export PYTHONPATH
@@ -81,8 +81,8 @@ RADICAL_PILOT_VERBOSE=WARNING
 echo
 echo "---------------------------------------------------------------------"
 echo
-echo             "PYTHONPATH: $PYTHONPATH"
-echo             "python: v$python_version `which python`"
+echo "PYTHONPATH: $PYTHONPATH"
+echo "python: `which python` (`python --version`)"
 python -c 'print "utils :",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
 python -c 'print "saga  :",; import saga          as rs; print rs.version_detail,; print rs.__file__'
 python -c 'print "pilot :",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'

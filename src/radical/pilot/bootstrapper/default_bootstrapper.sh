@@ -432,9 +432,9 @@ virtenv_setup()
             ;;
 
         *)
-            # do *not* use 'pip -e' -- egg linking does not work in PYTHONPATH.
-            # Instead, we manually clone the respective git repository, and
-            # switch to the respective branch/tag/commit.
+            # NOTE: do *not* use 'pip -e' -- egg linking does not work with 
+            # PYTHONPATH.  # Instead, we manually clone the respective git 
+            # repository, and switch to the respective branch/tag/commit.
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
@@ -533,8 +533,8 @@ virtenv_activate()
 
     prefix="$VIRTENV/rp_install"
 
-    python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
-    mod_prefix="$prefix/lib/python$python_version/site-packages"
+    python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+    mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 
     PYTHONPATH="$mod_prefix:$PYTHONPATH"
     export PYTHONPATH
@@ -659,7 +659,7 @@ virtenv_update()
 # This assumes that the virtenv has been activated.  Any previously installed
 # stack version is deleted.
 #
-# As the virtenv should have all dependencies set up (see VIRTENV_RADICA__DEPS),
+# As the virtenv should have all dependencies set up (see VIRTENV_RADICAL_DEPS),
 # we don't expect any additional module pull from pypi.  Some rp_versions will, 
 # however, pull the rp modules from pypi or git.
 #
@@ -730,8 +730,8 @@ rp_install()
     rm -rf "$prefix"
     mkdir  "$prefix"
 
-    python_version=`python --version 2>&1 | cut -f 2 -d ' ' | cut -f 1-2 -d .`
-    mod_prefix="$prefix/lib/python$python_version/site-packages"
+    python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+    mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 
     if test "$rp_install_target" = "LOCAL"
     then
