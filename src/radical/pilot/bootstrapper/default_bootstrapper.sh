@@ -664,30 +664,30 @@ virtenv_update()
 # however, pull the rp modules from pypi or git.
 #
 # . $VIRTENV/bin/activate
-# rm -rf $VIRTENV/radical
+# rm -rf $VIRTENV/rp_install
 #
 # case rp_version:
 #   @<token>:
 #   @tag/@branch/@commit: # no sdist staging
 #       git clone $github_base radical.pilot.src
 #       (cd radical.pilot.src && git checkout token)
-#       pip install -t $VIRTENV/radical/ radical.pilot.src
+#       pip install -t $VIRTENV/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
-#       export PYTHONPATH=$VIRTENV/radical:$PYTHONPATH
+#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
 #
 #   release: # no sdist staging
-#       pip install -t $VIRTENV/radical radical.pilot
-#       export PYTHONPATH=$VIRTENV/radical:$PYTHONPATH
+#       pip install -t $VIRTENV/rp_install radical.pilot
+#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
 #
 #   local: # needs sdist staging
 #       tar zxf $sdist.tgz
-#       pip install -t $VIRTENV/radical $sdist/
-#       export PYTHONPATH=$VIRTENV/radical:$PYTHONPATH
+#       pip install -t $VIRTENV/rp_install $sdist/
+#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
 #
 #   debug: # needs sdist staging
 #       tar zxf $sdist.tgz
-#       pip install -t $SANDBOX/radical $sdist/
-#       export PYTHONPATH=$SANDBOX/radical:$PYTHONPATH
+#       pip install -t $SANDBOX/rp_install $sdist/
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   installed: # no sdist staging
 #       true

@@ -246,7 +246,7 @@ NUMBER_OF_WORKERS = {
 # '1' will leave the units unchanged.  Any blowup will leave on unit as the
 # original, and will then create clones with an changed unit ID (see blowup()).
 BLOWUP_FACTOR = {
-        AGENT            : 10,
+        AGENT            : 1,
         STAGEIN_QUEUE    : 1,
         STAGEIN_WORKER   : 1,
         SCHEDULE_QUEUE   : 1,
@@ -526,12 +526,12 @@ def blowup(cus, component):
         if drop >= 1:
             # drop clones --> drop matching uid's
             if '.clone_' in uid :
-                prof ('drop (clone - %s)' % component, uid=uid)
+                prof ('drop clone', msg=component, uid=uid)
                 continue
 
         if drop == 2:
             # drop everything, even original units
-            prof ('drop (component)', uid=uid)
+            prof ('drop', msg=component, uid=uid)
             continue
 
         factor -= 1
@@ -547,7 +547,7 @@ def blowup(cus, component):
 
                 idx += 1
                 ret.append (cu_clone)
-                prof('ingest (clone - %s)' % component, uid=clone_id)
+                prof('add clone', msg=component, uid=clone_id)
 
         # append the original unit last, to  increase the likelyhood that
         # application state only advances once all clone states have also
@@ -815,9 +815,10 @@ class Scheduler(threading.Thread):
                 # launcher?)
                 prof('put', msg="scheduler to execution_queue", uid=cu['_id'], tag='allocating')
                 cu_list = blowup (cu, EXECUTION_QUEUE)
+
                 for _cu in cu_list :
-                    prof('put', msg="scheduler to execution_queue", uid=_cu['_id'], tag='allocating')
                     self._execution_queue.put(_cu)
+
                 return True
 
             else:
@@ -919,7 +920,6 @@ class Scheduler(threading.Thread):
                     prof('get', msg="schedule_queue to scheduler", uid=cu['_id'])
                     cu_list = blowup (cu, SCHEDULER)
                     for _cu in cu_list:
-                        prof('get', msg="schedule_queue to scheduler", uid=_cu['_id'])
 
                         if not self._try_allocation(_cu):
                             # No resources available, put in wait queue
@@ -3602,8 +3602,6 @@ class ExecWorker_POPEN (ExecWorker) :
 
                     for _cu in cu_list:
 
-                        prof('get', msg="execution_queue to exec_worker", uid=_cu['_id'], tag='preprocess')
-
                         if _cu['description']['mpi']:
                             launcher = self._mpi_launcher
                         else :
@@ -3768,7 +3766,6 @@ class ExecWorker_POPEN (ExecWorker) :
         cu_list = blowup (cu, WATCH_QUEUE)
 
         for _cu in cu_list :
-            prof('put', msg="exec_worker to watch_queue", uid=_cu['_id'], tag='task launching')
             self._watch_queue.put(_cu)
 
 
@@ -3825,7 +3822,6 @@ class ExecWorker_POPEN (ExecWorker) :
                     cu_list = blowup (cu, WATCHER)
 
                     for _cu in cu_list :
-                        prof('get', msg="watch_queue to watcher", uid=_cu['_id'], tag='launching')
                         self._cus_to_watch.append (_cu)
 
                 # check on the known cus.
@@ -3914,8 +3910,6 @@ class ExecWorker_POPEN (ExecWorker) :
                     cu_list = blowup (cu, STAGEOUT_QUEUE)
 
                     for _cu in cu_list :
-
-                        prof('put', msg="watcher to stageout_queue", uid=_cu['_id'], tag='watching')
                         self._stageout_queue.put(_cu)
 
         return action
@@ -4017,9 +4011,6 @@ class ExecWorker_SHELL(ExecWorker):
                     cu_list = blowup (cu, EXEC_WORKER)
 
                     for _cu in cu_list :
-
-                        prof('get', msg="execution_queue to exec_worker", uid=_cu['_id'], tag='preprocess')
-
 
                         if _cu['description']['mpi']:
                             launcher = self._mpi_launcher
@@ -4383,7 +4374,6 @@ class ExecWorker_SHELL(ExecWorker):
 
             for _cu in cu_list :
 
-                prof('put', msg="watcher toward stageout_queue", uid=_cu['_id'], tag='watching')
                 self._stageout_queue.put(_cu)
 
         # we don't need the cu in the registry anymore
@@ -4505,11 +4495,6 @@ class UpdateWorker(threading.Thread):
                     query_dict  = _update_request.get('query', dict())
                     update_dict = _update_request.get('update',dict())
 
-                    if state :
-                        prof('get', msg="update_queue to updater (%s)" % state, uid=uid)
-                    else:
-                        prof('get', msg="update_queue to updater", uid=uid)
-
                     cname = self._session_id + cbase
 
                     if not cname in self._cinfo:
@@ -4590,8 +4575,6 @@ class StageinWorker(threading.Thread):
                 cu_list = blowup (cu, STAGEIN_WORKER)
 
                 for _cu in cu_list :
-
-                    prof('get', msg="stagein_queue to stagein_worker", uid=_cu['_id'])
 
                     sandbox      = os.path.join(self._workdir, '%s' % _cu['_id'])
                     staging_area = os.path.join(self._workdir, STAGING_AREA)
@@ -4700,7 +4683,6 @@ class StageinWorker(threading.Thread):
 
                         for __cu in cu_list :
 
-                            prof('put', msg="stagein_worker to schedule_queue", uid=__cu['_id'], tag='stagein')
                             self._schedule_queue.put(__cu)
 
 
@@ -4772,8 +4754,6 @@ class StageoutWorker(threading.Thread):
                 cu_list = blowup (cu, STAGEOUT_WORKER)
 
                 for _cu in cu_list :
-
-                    prof('get', msg="stageout_queue to stageout_worker", uid=_cu['_id'])
 
                     sandbox = os.path.join(self._workdir, '%s' % _cu['_id'])
 
@@ -5274,11 +5254,6 @@ class Agent(object):
 
         for _query_dict in query_list :
 
-            if state:
-                prof('put', msg="%s to update_queue (%s)" % (src, state), uid=_query_dict['_id'])
-            else:
-                prof('put', msg="%s to update_queue" % src, uid=_query_dict['_id'])
-
             self._update_queue.put({'_id'    : _query_dict['_id'],
                                     'state'  : state,
                                     'cbase'  : '.cu',
@@ -5465,9 +5440,8 @@ class Agent(object):
 
             prof('get', msg="mongodb to agent", uid=cu['_id'], tag='mongodb', logger=self._log.info)
             _cu_list = blowup (cu, AGENT)
-            for _cu in _cu_list :
 
-                prof('get', msg="mongodb to agent", uid=_cu['_id'], tag='mongodb', logger=self._log.info)
+            for _cu in _cu_list :
 
                 try:
                     cud     = _cu['description']
@@ -5507,7 +5481,6 @@ class Agent(object):
                         cu_list = blowup (_cu, STAGEIN_QUEUE)
 
                         for __cu in cu_list :
-                            prof('put', msg="agent to stagein_queue", uid=__cu['_id'], tag='ingest')
                             self._stagein_queue.put(__cu)
 
                     else:
@@ -5518,7 +5491,6 @@ class Agent(object):
                         prof('put', msg="agent to schedule_queue", uid=_cu['_id'], tag='ingest')
                         cu_list = blowup (_cu, SCHEDULE_QUEUE)
                         for __cu in cu_list :
-                            prof('put', msg="agent to schedule_queue", uid=__cu['_id'], tag='ingest')
                             self._schedule_queue.put(__cu)
 
 
@@ -5627,7 +5599,9 @@ def main():
         logger.info ("agent config merged")
 
         import pprint
-        logger.debug("\n\n%s\n\n" % pprint.pformat (cfg))
+        logger.debug("\n\n%s\n\n" % pprint.pformat (NUMBER_OF_WORKERS))
+        logger.debug("\n\n%s\n\n" % pprint.pformat (BLOWUP_FACTOR))
+        logger.debug("\n\n%s\n\n" % pprint.pformat (DROP_CLONES))
 
     except Exception as e:
         logger.info ("agent config not merged: %s", e)
