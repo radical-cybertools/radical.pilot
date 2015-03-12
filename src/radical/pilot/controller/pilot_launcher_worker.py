@@ -422,39 +422,32 @@ class PilotLauncherWorker(threading.Thread):
                         # rp_version, which has the following format
                         # and interpretation:
                         #
-                        # rp_version:
-                        #   @<token>
-                        #   @tag/@branch/@commit
-                        #      source $ve/bin/activate
-                        #      git clone
-                        #      git checkout token
-                        #      pip uninstall -y radical.pilot
-                        #      pip install .
-                        #      (no sdist staging)
+                        # case rp_version:
+                        #   @<token>:
+                        #   @tag/@branch/@commit: # no sdist staging
+                        #       git clone $github_base radical.pilot.src
+                        #       (cd radical.pilot.src && git checkout token)
+                        #       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+                        #       rm -rf radical.pilot.src
+                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
                         #
-                        #   release
-                        #      source $ve/bin/activate
-                        #      pip uninstall -y radical.pilot
-                        #      pip install radical.pilot
-                        #      (no sdist staging)
+                        #   release: # no sdist staging
+                        #       pip install -t $VIRTENV/rp_install radical.pilot
+                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
                         #
-                        #   local
-                        #      source $ve/bin/activate
-                        #      tar zxvf sdist.tgz
-                        #      pip uninstall -y radical.pilot
-                        #      pip install sdist/
+                        #   local: # needs sdist staging
+                        #       tar zxf $sdist.tgz
+                        #       pip install -t $VIRTENV/rp_install $sdist/
+                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
                         #
-                        #   debug
-                        #      source $ve/bin/activate
-                        #      rm -rf debug
-                        #      mkdir debug
-                        #      export PYTHONPATH=`pwd`/debug:$PYTHONPATH
-                        #      tar zxvf sdist.tgz
-                        #      pip install --prefix=`pwd`/debug sdist/
+                        #   debug: # needs sdist staging
+                        #       tar zxf $sdist.tgz
+                        #       pip install -t $SANDBOX/rp_install $sdist/
+                        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
                         #
-                        #   installed
-                        #      source $ve/bin/activate
-                        #      (no sdist staging)
+                        #   installed: # no sdist staging
+                        #       true
+                        # esac
                         #
                         # virtenv_mode
                         #   private : error  if ve exists, otherwise create, then use
