@@ -545,7 +545,7 @@ virtenv_activate()
     #       system python setup it may not be found even if the rp module is installed
     #       and importable.
     system_rp_loc="`python -c 'import radical.pilot as rp; print rp.__file__' 2>/dev/null`"
-    if test -z "$system_rp_loc"
+    if ! test -z "$system_rp_loc"
     then
         echo "found system RP install at '$system_rp_loc'"
         SYSTEM_RP='TRUE'
