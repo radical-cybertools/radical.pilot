@@ -39,6 +39,9 @@ SESSIONID=
 TASK_LAUNCH_METHOD=
 SANDBOX=`pwd`
 
+# flag which is set when a system level RP installation is found
+SYSTEM_RP='FALSE'
+
 
 # seconds to wait for lock files
 # 10 min should be enough for anybody to create/update a virtenv...
@@ -397,7 +400,8 @@ virtenv_setup()
                 tar zxf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
-            RP_INSTALL_TARGET="VIRTENV"
+            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_SDIST='TRUE'
             ;;
 
         debug)
@@ -408,12 +412,14 @@ virtenv_setup()
                 tar zxf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
-            RP_INSTALL_TARGET="LOCAL"
+            RP_INSTALL_TARGET='LOCAL'
+            RP_INSTALL_SDIST='TRUE'
             ;;
 
         release)
             RP_INSTALL_SOURCES='radical.pilot'
             RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_SDIST='FALSE'
             ;;
 
         installed)
@@ -421,6 +427,7 @@ virtenv_setup()
             then
                 RP_INSTALL_SOURCES=''
                 RP_INSTALL_TARGET=''
+                RP_INSTALL_SDIST=''
             else
                 echo "WARNING: 'rp_version' set to 'installed', "
                 echo "         but no installed rp found in '$VIRTENV' ($virtenv_mode)"
@@ -428,6 +435,7 @@ virtenv_setup()
                 RP_VERSION='release'
                 RP_INSTALL_SOURCES='radical.pilot'
                 RP_INSTALL_TARGET='VIRTENV'
+                RP_INSTALL_SDIST='FALSE'
             fi 
             ;;
 
@@ -439,6 +447,7 @@ virtenv_setup()
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
             RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_SDIST='FALSE'
     esac
 
     # NOTE: for any immutable virtenv (VIRTENV_MODE==use), we have to choose
@@ -511,7 +520,7 @@ virtenv_setup()
     fi
 
     # install RP
-    rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET"
+    rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET" "$RP_INSTALL_SDIST"
 
     unlock "$pid" "$virtenv"
 
@@ -530,6 +539,17 @@ virtenv_activate()
 
     . "$VIRTENV/bin/activate"
     VIRTENV_IS_ACTIVATED=TRUE
+
+
+    # NOTE: calling radicalpilot-version does not work here -- depending on the
+    #       system python setup it may not be found even if the rp module is installed
+    #       and importable.
+    system_rp_loc="`python -c 'import radical.pilot as rp; print rp.__file__' 2>/dev/null`"
+    if test -z "$system_rp_loc"
+    then
+        echo "found system RP install at '$system_rp_loc'"
+        SYSTEM_RP='TRUE'
+    fi
 
     prefix="$VIRTENV/rp_install"
 
@@ -695,11 +715,17 @@ virtenv_update()
 #       true
 # esac
 #
+# NOTE: A 'pip install' (without '--upgrade') will not install anything if an 
+# old version lives in the system space.  A 'pip install --upgrade' will fail 
+# if there is no network connectivity (which otherwise is not really needed 
+# when we install from sdists).  '--upgrade' is not needed when installing from
+# sdists.
 #
 rp_install()
 {
     rp_install_sources="$1"
     rp_install_target="$2"
+    rp_install_sdist="$3"
 
     if test -z "$rp_install_target"
     then
@@ -764,7 +790,32 @@ rp_install()
     echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
     echo                                              >> $ru_ns_init
 
-  # pip_flags="--upgrade"
+    # NOTE: if we find a system level RP install, then pip install will not work
+    #       w/o the upgrade flag -- unless we install from sdist.  It may not
+    #       work with update flag either though...
+    if test "$SYSTEM_RP" = 'FALSE'
+    then
+        # no previous version installed, don't need no upgrade
+        pip_flags=''
+        echo "no previous RP version - no upgrade"
+    else
+        if test "$rp_install_sdist" = "TRUE"
+        then
+            # install from sdist doesn't need uprade either
+            pip_flags=''
+        else
+            pip_flags='--upgrade'
+            # NOTE: --upgrade is unreliable in its results -- depending on the
+            #       VE setup, the resulting installation may be viable or not.
+            echo "-----------------------------------------------------------------"
+            echo " WARNING: found an exisiting installation of radical.pilot!      "
+            echo "          Upgrading to a new version may or may not succeed,     "
+            echo "          depending on the specific system, python and virtenv   "
+            echo "          configuration!                                         "
+            echo "-----------------------------------------------------------------"
+        fi
+    fi
+
     pip_flags="$pip_flags --src '$prefix/src'"
     pip_flags="$pip_flags --build '$prefix/build'"
     pip_flags="$pip_flags --install-option='--prefix=$prefix'"
