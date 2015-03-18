@@ -39,8 +39,11 @@ SESSIONID=
 TASK_LAUNCH_METHOD=
 SANDBOX=`pwd`
 
-# flag which is set when a system level RP installation is found
-SYSTEM_RP='FALSE'
+# flag which is set when a system level RP installation is found, triggers
+# '--upgrade' flag for pip
+# NOTE: this mechanism is disabled, as it affects a minority of machines and
+#       adds too much complexity for too little benefit.
+# SYSTEM_RP='FALSE'
 
 
 # seconds to wait for lock files
@@ -541,15 +544,15 @@ virtenv_activate()
     VIRTENV_IS_ACTIVATED=TRUE
 
 
-    # NOTE: calling radicalpilot-version does not work here -- depending on the
-    #       system python setup it may not be found even if the rp module is installed
-    #       and importable.
-    system_rp_loc="`python -c 'import radical.pilot as rp; print rp.__file__' 2>/dev/null`"
-    if test -z "$system_rp_loc"
-    then
-        echo "found system RP install at '$system_rp_loc'"
-        SYSTEM_RP='TRUE'
-    fi
+  # # NOTE: calling radicalpilot-version does not work here -- depending on the
+  # #       system python setup it may not be found even if the rp module is installed
+  # #       and importable.
+  # system_rp_loc="`python -c 'import radical.pilot as rp; print rp.__file__' 2>/dev/null`"
+  # if test -z "$system_rp_loc"
+  # then
+  #     echo "found system RP install at '$system_rp_loc'"
+  #     SYSTEM_RP='TRUE'
+  # fi
 
     prefix="$VIRTENV/rp_install"
 
@@ -790,31 +793,31 @@ rp_install()
     echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
     echo                                              >> $ru_ns_init
 
-    # NOTE: if we find a system level RP install, then pip install will not work
-    #       w/o the upgrade flag -- unless we install from sdist.  It may not
-    #       work with update flag either though...
-    if test "$SYSTEM_RP" = 'FALSE'
-    then
-        # no previous version installed, don't need no upgrade
-        pip_flags=''
-        echo "no previous RP version - no upgrade"
-    else
-        if test "$rp_install_sdist" = "TRUE"
-        then
-            # install from sdist doesn't need uprade either
-            pip_flags=''
-        else
-            pip_flags='--upgrade'
-            # NOTE: --upgrade is unreliable in its results -- depending on the
-            #       VE setup, the resulting installation may be viable or not.
-            echo "-----------------------------------------------------------------"
-            echo " WARNING: found an exisiting installation of radical.pilot!      "
-            echo "          Upgrading to a new version may or may not succeed,     "
-            echo "          depending on the specific system, python and virtenv   "
-            echo "          configuration!                                         "
-            echo "-----------------------------------------------------------------"
-        fi
-    fi
+  # # NOTE: if we find a system level RP install, then pip install will not work
+  # #       w/o the upgrade flag -- unless we install from sdist.  It may not
+  # #       work with update flag either though...
+  # if test "$SYSTEM_RP" = 'FALSE'
+  # then
+  #     # no previous version installed, don't need no upgrade
+  #     pip_flags=''
+  #     echo "no previous RP version - no upgrade"
+  # else
+  #     if test "$rp_install_sdist" = "TRUE"
+  #     then
+  #         # install from sdist doesn't need uprade either
+  #         pip_flags=''
+  #     else
+  #         pip_flags='--upgrade'
+  #         # NOTE: --upgrade is unreliable in its results -- depending on the
+  #         #       VE setup, the resulting installation may be viable or not.
+  #         echo "-----------------------------------------------------------------"
+  #         echo " WARNING: found an exisiting installation of radical.pilot!      "
+  #         echo "          Upgrading to a new version may or may not succeed,     "
+  #         echo "          depending on the specific system, python and virtenv   "
+  #         echo "          configuration!                                         "
+  #         echo "-----------------------------------------------------------------"
+  #     fi
+  # fi
 
     pip_flags="$pip_flags --src '$prefix/src'"
     pip_flags="$pip_flags --build '$prefix/build'"
@@ -949,7 +952,7 @@ echo "# Bootstrapper started as     : '$0 $@'"
 echo "# Environment of bootstrapper process:"
 echo "#"
 echo "#"
-printenv
+env | sort
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
