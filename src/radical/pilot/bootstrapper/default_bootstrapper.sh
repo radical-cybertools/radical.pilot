@@ -625,6 +625,10 @@ virtenv_create()
   #      || echo "Couldn't downgrade pip! Using default version (if it exists)"
 
 
+    run_cmd "update pkg_resources" \
+            "$PIP install --upgrade pkg_resources" \
+         || echo "Couldn't update pkg_resources -- using default version"
+
     run_cmd "update setuptools" \
             "$PIP install --upgrade setuptools" \
          || echo "Couldn't update setuptools -- using default version"
