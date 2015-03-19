@@ -151,7 +151,8 @@
         "task_launch_method"          : "DPLACE",
         "mpi_launch_method"           : "MPIRUN_DPLACE",
         "pre_bootstrap"               : ["source /usr/share/modules/init/bash",
-                                         "module load python"
+                                         "module load python",
+                                         "unset PYTHONPATH"
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
         "stage_cacerts"               : "True",

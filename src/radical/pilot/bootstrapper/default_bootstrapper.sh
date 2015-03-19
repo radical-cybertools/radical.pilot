@@ -219,7 +219,7 @@ run_cmd()
     echo "# $msg"
     echo "# cmd: $cmd"
     echo "#"
-    eval $cmd
+    eval "$cmd"
     if test "$?" = 0
     then
         echo "#"
@@ -238,7 +238,7 @@ run_cmd()
             echo "# running fallback command:"
             echo "# $fallback"
             echo "#"
-            eval $fallback
+            eval "$fallback"
             if test "$?" = 0
             then
                 echo "#"
@@ -561,10 +561,14 @@ virtenv_activate()
     ve_mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
     rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$VIRTENV|$VIRTENV/rp_install|"`
 
-    PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
+    # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
+    #       include the VE module tree, because some systems set a PYTHONPATH on
+    #       'module load python', and that would supercede the VE module tree,
+    #       leading to unusable versions of setuptools.
+    PYTHONPATH="$rp_mod_prefix:$ve_mod_prefix:$PYTHONPATH"
     export PYTHONPATH
 
-    PATH="$prefix/bin:$PATH"
+    PATH="$prefix/rp_install/bin:$prefix/bin:$PATH"
     export PATH
 }
 
@@ -623,11 +627,6 @@ virtenv_create()
   # run_cmd "Downgrade pip to 1.2.1" \
   #         "easy_install pip==1.2.1" \
   #      || echo "Couldn't downgrade pip! Using default version (if it exists)"
-
-
-    run_cmd "update pkg_resources" \
-            "$PIP install --upgrade pkg_resources" \
-         || echo "Couldn't update pkg_resources -- using default version"
 
     run_cmd "update setuptools" \
             "$PIP install --upgrade setuptools" \
