@@ -1841,9 +1841,6 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
         LaunchMethod.__init__(self, name, logger, scheduler)
 
-        self.mpirun_command = self._which('mpirun')
-
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
@@ -1853,7 +1850,6 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         self.mpirun_command = self._which('mpirun')
         if not self.mpirun_command:
             raise Exception("mpirun not found!")
-
 
     # --------------------------------------------------------------------------
     #
@@ -1889,13 +1885,11 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
         LaunchMethod.__init__(self, name, logger, scheduler)
 
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         # runjob: job launcher for IBM BG/Q systems, e.g. Joule
         self.launch_command= self._which('runjob')
-
 
     # --------------------------------------------------------------------------
     #
@@ -1980,7 +1974,6 @@ class LaunchMethodDPLACE(LaunchMethod):
         return dplace_command, None
 
 
-
 # ==============================================================================
 #
 class LaunchMethodMPIRUNRSH(LaunchMethod):
@@ -1991,13 +1984,11 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
         LaunchMethod.__init__(self, name, logger, scheduler)
 
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         # mpirun_rsh (e.g. on Gordon@ SDSC)
         self.launch_command = self._which('mpirun_rsh')
-
 
     # --------------------------------------------------------------------------
     #
@@ -2031,16 +2022,12 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
 
         LaunchMethod.__init__(self, name, logger, scheduler)
 
-        self.mpirun_command = None
-
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = self._which('dplace')
         self.mpirun_command = self._which('mpirun')
-
 
     # --------------------------------------------------------------------------
     #
