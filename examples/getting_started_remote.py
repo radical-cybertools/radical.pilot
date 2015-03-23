@@ -131,8 +131,8 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
 
         input_sd_pilot = {
-                'source': 'file:///dev/null',
-                'target': 'staging:///p1',
+                'source': 'file:///etc/passwd',
+                'target': 'staging:///f1',
                 'action': rp.TRANSFER
                 }
         pilot.stage_in (input_sd_pilot)
