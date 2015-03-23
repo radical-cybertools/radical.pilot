@@ -3,10 +3,8 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
 import sys
 import radical.pilot as rp
-import time
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
@@ -17,7 +15,7 @@ import time
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state) :
+def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
     # Callbacks happen in a different thread than the main application thread --
@@ -38,7 +36,7 @@ def pilot_state_cb (pilot, state) :
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if state == rp.FAILED:
         print 'Pilot failed -- ABORT!  ABORT!  ABORT!'
         print pilot.log[-1] # Get the last log message
         sys.exit (1)
@@ -46,7 +44,7 @@ def pilot_state_cb (pilot, state) :
 
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state) :
+def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
     # The principle for unit state callbacks is exactly the same as for the
@@ -63,7 +61,7 @@ def unit_state_cb (unit, state) :
 
     print "[Callback]: ComputeUnit '%s' state: %s." % (unit.uid, state)
 
-    if  state == rp.FAILED :
+    if state == rp.FAILED:
         print 'Unit failed -- ABORT!  ABORT!  ABORT!'
         print unit.stderr # Get the unit's stderr
         sys.exit (1)
@@ -72,26 +70,29 @@ def unit_state_cb (unit, state) :
 #-------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
+    # This example shows how simple error handling can be implemented 
+    # synchronously using blocking wait() calls.
+    #
+    # The code launches a pilot with 128 cores on 'localhost'. Unless localhost
+    # has 128 or more cores available, this is bound to fail. This example shows
+    # how this error can be caught and handled. 
 
-    """
-    This example shows how simple error handling can be implemented 
-    synchronously using blocking wait() calls.
-
-    The code launches a pilot with 128 cores on 'localhost'. Unless localhost
-    has 128 or more cores available, this is bound to fail. This example shows
-    how this error can be caught and handled. 
-    """
+    # we can optionally pass session name to RP
+    if len(sys.argv) > 1:
+        session_name = sys.argv[1]
+    else:
+        session_name = None
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session()
+    session = rp.Session(name=session_name)
+    print "session id: %s" % session.uid
 
-    
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
-    try :
+    try:
 
         # do pilot thingies
         pmgr = rp.PilotManager(session=session)
@@ -114,18 +115,19 @@ if __name__ == "__main__":
         # this will basically wait forever (the pilot won't reach DONE state...
         state = pilot.wait (state=[rp.DONE])
 
-    except Exception as e :
+    except Exception as e:
         # Something unexpected happened in the pilot code above
         print "caught Exception: %s" % e
+        raise
 
-    except (KeyboardInterrupt, SystemExit) as e :
+    except (KeyboardInterrupt, SystemExit) as e:
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         print "need to exit now: %s" % e
 
-    finally :
+    finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
         print "closing session"

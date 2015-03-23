@@ -1,5 +1,11 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__license__   = "MIT"
+
 import os
-import radical.pilot
+import sys
+import radical.pilot as rp
 import copy
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
@@ -9,6 +15,21 @@ MY_STAGING_AREA = 'staging:///'
 #
 if __name__ == "__main__":
 
+    # we can optionally pass session name to RP
+    if len(sys.argv) > 1:
+        session_name = sys.argv[1]
+    else:
+        session_name = None
+
+    # Create a new session. No need to try/except this: if session creation
+    # fails, there is not much we can do anyways...
+    session = rp.Session(name=session_name)
+    print "session id: %s" % session.uid
+
+    # all other pilot code is now tried/excepted.  If an exception is caught, we
+    # can rely on the session object to exist and be valid, and we can thus tear
+    # the whole RP stack down via a 'session.close()' call in the 'finally'
+    # clause...
     try:
 
         # Create shared input file
@@ -20,17 +41,12 @@ if __name__ == "__main__":
             input_file = 'input_file-%d.txt' % (idx+1)
             os.system('/bin/echo "%s" > %s' % (occ, input_file))
 
-        # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security credentials.
-        session = radical.pilot.Session()
-
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = radical.pilot.PilotManager(session=session)
+        pmgr = rp.PilotManager(session=session)
 
         # Define a C-core on $RESOURCE that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
-        pdesc = radical.pilot.ComputePilotDescription()
+        pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
         pdesc.runtime  = 5 # M minutes
         pdesc.cores    = 2 # C cores
@@ -50,7 +66,7 @@ if __name__ == "__main__":
         # the pilot staging directory.
         sd_pilot = {'source': shared_input_file_url,
                     'target': staged_file,
-                    'action': radical.pilot.TRANSFER
+                    'action': rp.TRANSFER
         }
         # Synchronously stage the data to the pilot
         pilot.stage_in(sd_pilot)
@@ -58,12 +74,12 @@ if __name__ == "__main__":
         # Configure the staging directive for shared input file.
         sd_shared = {'source': staged_file, 
                      'target': SHARED_INPUT_FILE,
-                     'action': radical.pilot.LINK
+                     'action': rp.LINK
         }
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = radical.pilot.UnitManager(session, radical.pilot.SCHED_BACKFILLING)
+        umgr = rp.UnitManager(session, rp.SCHED_BACKFILLING)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
@@ -80,7 +96,7 @@ if __name__ == "__main__":
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
-            cud = radical.pilot.ComputeUnitDescription()
+            cud = rp.ComputeUnitDescription()
             cud.executable = '/bin/bash'
             cud.arguments = ['-c', 'cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
@@ -104,7 +120,31 @@ if __name__ == "__main__":
             print " STDOUT: %s" % unit.stdout
             print " STDERR: %s" % unit.stderr
 
-        session.close()
+    except Exception as e:
+        # Something unexpected happened in the pilot code above
+        print "caught Exception: %s" % e
+        raise
 
-    except radical.pilot.PilotException, ex:
-        print "Error: %s" % ex
+    except (KeyboardInterrupt, SystemExit) as e:
+        # the callback called sys.exit(), and we can here catch the
+        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+        # SystemExit (which gets raised if the main threads exits for some other
+        # reason).
+        print "need to exit now: %s" % e
+
+    finally:
+        # always clean up the session, no matter if we caught an exception or
+        # not.
+        print "closing session"
+        session.close ()
+
+        # the above is equivalent to
+        #
+        #   session.close (cleanup=True, terminate=True)
+        #
+        # it will thus both clean out the session's database record, and kill
+        # all remaining pilots (none in our example).
+
+
+#-------------------------------------------------------------------------------
+

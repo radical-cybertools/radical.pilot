@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__license__   = "MIT"
 
 import os
 import sys
@@ -13,7 +17,7 @@ import radical.pilot as rp
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state) :
+def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
@@ -21,7 +25,7 @@ def pilot_state_cb (pilot, state) :
 
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state) :
+def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
@@ -38,14 +42,14 @@ def wait_queue_size_cb(umgr, wait_queue_size):
         % (umgr.uid, wait_queue_size)
 
     pilots = umgr.get_pilots ()
-    for pilot in pilots :
+    for pilot in pilots:
         print "pilot %s: %s" % (pilot.uid, pilot.state)
 
-    if  wait_queue_size == 0 :
-        for pilot in pilots :
-            if  pilot.state in [rp.PENDING_LAUNCH,
+    if wait_queue_size == 0:
+        for pilot in pilots:
+            if pilot.state in [rp.PENDING_LAUNCH,
                                 rp.LAUNCHING     ,
-                                rp.PENDING_ACTIVE] :
+                                rp.PENDING_ACTIVE]:
                 print "cancel pilot %s" % pilot.uid
                 umgr.remove_pilot (pilot.uid)
                 pilot.cancel ()
@@ -55,16 +59,26 @@ def wait_queue_size_cb(umgr, wait_queue_size):
 #
 if __name__ == "__main__":
 
-    try :
+    # we can optionally pass session name to RP
+    if len(sys.argv) > 1:
+        session_name = sys.argv[1]
+    else:
+        session_name = None
+
+    # Create a new session. No need to try/except this: if session creation
+    # fails, there is not much we can do anyways...
+    session = rp.Session(name=session_name)
+    print "session id: %s" % session.uid
+
+    # all other pilot code is now tried/excepted.  If an exception is caught, we
+    # can rely on the session object to exist and be valid, and we can thus tear
+    # the whole RP stack down via a 'session.close()' call in the 'finally'
+    # clause...
+    try:
+
         # prepare some input files for the compute units
         os.system ('hostname > file1.dat')
         os.system ('date     > file2.dat')
-    
-        # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security credentials.
-        session = rp.Session ()
-        print "session id: %s" % session.uid
     
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager (session=session)
@@ -153,27 +167,44 @@ if __name__ == "__main__":
         print 'units all completed'
         print '----------------------------------------------------------------------'
     
-        for unit in units :
+        for unit in units:
             unit.wait ()
     
         for unit in units:
             print "* Task %s (executed @ %s) state %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
     
-    except (KeyboardInterrupt, SystemExit) as e :
-
-        print 'exception : %s' % e
-        import traceback
-        traceback.print_exc ()
-
-    finally :
-        # Close automatically cancels the pilot(s).
-        print 'session id: %s' % session.uid
-        session.close (cleanup=False)
-    
         # delete the test data files
         os.system ('rm file1.dat')
         os.system ('rm file2.dat')
+
+    except Exception as e:
+        # Something unexpected happened in the pilot code above
+        print "caught Exception: %s" % e
+        raise
+
+    except (KeyboardInterrupt, SystemExit) as e:
+        # the callback called sys.exit(), and we can here catch the
+        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+        # SystemExit (which gets raised if the main threads exits for some other
+        # reason).
+        print "need to exit now: %s" % e
+
+    finally:
+        # always clean up the session, no matter if we caught an exception or
+        # not.
+        print "closing session"
+        session.close ()
+
+        # the above is equivalent to
+        #
+        #   session.close (cleanup=True, terminate=True)
+        #
+        # it will thus both clean out the session's database record, and kill
+        # all remaining pilots (none in our example).
+
+
+#-------------------------------------------------------------------------------
 
 
 
