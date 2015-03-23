@@ -24,6 +24,8 @@ SCHED_BACKFILLING       = "backfilling"
 # alias:
 SCHED_DIRECT_SUBMISSION = SCHED_DIRECT
 
+# default:
+SCHED_DEFAULT           = SCHED_ROUND_ROBIN
 
 # -----------------------------------------------------------------------------
 # 

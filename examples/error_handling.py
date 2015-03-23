@@ -63,7 +63,7 @@ def unit_state_cb (unit, state):
 
     if state == rp.FAILED:
         print 'Unit failed -- ABORT!  ABORT!  ABORT!'
-        print unit.stderr # Get the unit's stderr
+        print 'stderr: %s' % unit.stderr # Get the unit's stderr
         sys.exit (1)
 
 
@@ -95,25 +95,33 @@ if __name__ == "__main__":
     try:
 
         # do pilot thingies
+        umgr = rp.UnitManager(session=session)
         pmgr = rp.PilotManager(session=session)
 
-        # Register our callback with the PilotManager. This callback will get
-        # called every time any of the pilots managed by the PilotManager
-        # change their state -- in particular also on failing pilots.
+        # Register our callbacks with the managers. The callbacks will get
+        # called every time any of the pilots or units change their state 
+        # -- in particular also on failing ones.
+        umgr.register_callback(unit_state_cb)
         pmgr.register_callback(pilot_state_cb)
 
-        # Create a local pilot with a million cores. This will most likely
-        # fail as not enough cores will be available.  That means the pilot will
-        # go quickly into failed state, and trigger the callback from above.
+        # Create a local pilot.
         pd = rp.ComputePilotDescription()
         pd.resource  = "local.localhost"
-        pd.cores     = 1000000
+        pd.cores     = 1
         pd.runtime   = 60
 
         pilot = pmgr.submit_pilots(pd)
+        umgr.add_pilots(pilot)
 
-        # this will basically wait forever (the pilot won't reach DONE state...
-        state = pilot.wait (state=[rp.DONE])
+        # we submit one compute unit which will just fail
+        cud = rp.ComputeUnitDescription()
+        cud.executable = '/bin/fail'
+
+        # submit the unit...
+        cu = umgr.submit_units(cud)
+
+        # ...and wait for it's successfull 'completion', ie. forever
+        state = umgr.wait_units (state=[rp.DONE])
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
