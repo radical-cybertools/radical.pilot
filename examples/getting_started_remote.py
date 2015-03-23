@@ -92,7 +92,7 @@ def unit_state_cb (unit, state):
 
     if state == rp.FAILED:
         print "stderr: %s" % unit.stderr
-        # do not exit
+        sys.exit(2)
 
 
 #------------------------------------------------------------------------------
@@ -173,6 +173,7 @@ if __name__ == "__main__":
                 % (cu.uid, cu.state, cu.exit_code, cu.start_time, cu.stop_time)
 
       # os.system ("radicalpilot-stats -m stat,plot -s %s > %s.stat" % (session.uid, session_name))
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
