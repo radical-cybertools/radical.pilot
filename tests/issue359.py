@@ -88,7 +88,7 @@ if __name__ == "__main__":
                               "export MPI_DSM_VERBOSE=",
                               "module load python"
                               ]
-        test_task.input_staging = ["helloworld_mpi.py"]
+        test_task.input_staging = ["../examples/helloworld_mpi.py"]
         test_task.executable = "python"
         test_task.arguments = ["helloworld_mpi.py"]
         test_task.mpi = True

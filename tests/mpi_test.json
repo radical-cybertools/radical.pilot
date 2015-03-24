@@ -1,0 +1,218 @@
+
+{
+ "das4.fs2"            : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 8,
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load openmpi/gcc",
+                          "virtualenv ./mpive",
+                          ". ./mpive/bin/activate",
+                          "pip install mpi4py"]
+     },
+ "epsrc.archer"        : {
+     "cp_project"      : "e290",
+     "cp_queue"        : "short",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 8,
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load python",
+                          ". /fs4/e290/e290/merzky/ve/bin/activate",
+                          "module swap PrgEnv-cray PrgEnv-gnu"]
+     },
+ "futuregrid.bravo"    : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 32,
+     "cu_cores"        : 16,
+     "cu_pre_exec"     : [". ~marksant/cu-ve-20141211/bin/activate"]
+     },
+ "futuregrid.hotel"    : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        :  8,
+     "cu_cores"        :  4,
+     "cu_pre_exec"     : ["module load openmpi/1.4.5 python",
+                          "wget --no-check-certificate https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py",
+                          "python virtualenv.py ./mpive",
+                          ". ./mpive/bin/activate",
+                          "pip install mpi4py"]
+     },
+ "futuregrid.india"    : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      : 20,
+     "cp_cores"        :  8,
+     "cu_cores"        :  4,
+     "cu_pre_exec"     : ["module load openmpi",
+                          "virtualenv ./mpive",
+                          ". ./mpive/bin/activate",
+                          "pip install mpi4py"]
+     },
+ "futuregrid.sierra"   : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        :  8,
+     "cu_cores"        :  4,
+     "cu_pre_exec"     : ["module load openmpi/gnu/1.6.3",
+                          "virtualenv ./mpive",
+                          ". ./mpive/bin/activate",
+                          "pip install mpi4py"]
+     },
+ "futuregrid.xray"     : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :   5,
+     "cp_cores"        :  16,
+     "cu_cores"        :   4,
+     "cu_pre_exec"     : [". ~marksant/cu_ve_20141210/bin/activate"]
+     },
+ "futuregrid.xray_ccm" : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :    5,
+     "cp_cores"        :  632,
+     "cu_cores"        :  316,
+     "cu_pre_exec"     : [". ~marksant/cu_ve_20141210/bin/activate"]
+     },
+ "iu.bigred2"          : {
+     "cp_project"      : "",
+     "cp_queue"        : "debug_cpu",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 8,
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load python"]
+     },
+ "lrz.supermuc"        : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 32,
+     "cu_cores"        :  8,
+     "cu_pre_exec"     : []
+     },
+ "local.localhost"     : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        :  4,
+     "cu_cores"        :  2,
+     "cu_pre_exec"     : []
+     },
+ "ncar.yellowstone"    : {
+     "cp_project"      : "URTG0003",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 32,
+     "cu_cores"        : 16,
+     "cu_pre_exec"     : ["module load python mpi4py"]
+     },
+ "ncsa.bw"             : {
+     "cp_project"      : "",
+     "cp_queue"        : "debug",
+     "cp_runtime"      : 10,
+     "cp_cores"        : 32,
+     "cu_cores"        : 16,
+     "cu_pre_exec"     : ["module load bw-python"]
+     },
+ "nersc.edison"        : {
+     "cp_project"      : "",
+     "cp_queue"        : "debug",
+     "cp_runtime"      : 10,
+     "cp_cores"        : 72,
+     "cu_cores"        : 24,
+     "cu_pre_exec"     : ["module load python mpi4py"]
+     },
+ "nersc.edison_ccm"    : {
+     "cp_project"      : "",
+     "cp_queue"        : "ccm_int",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 48,
+     "cu_cores"        : 12,
+     "cu_pre_exec"     : ["module load python",
+                          ". /global/project/projectdirs/m2178/shared_ccm_cu_ve_20141204/bin/activate"]
+     },
+ "nersc.hopper"        : {
+     "cp_project"      : "",
+     "cp_queue"        : "debug",
+     "cp_runtime"      : 10,
+     "cp_cores"        : 72,
+     "cu_cores"        : 32,
+     "cu_pre_exec"     : ["module load python mpi4py"]
+     },
+ "nersc.hopper_ccm"    : {
+     "cp_project"      : "",
+     "cp_queue"        : "ccm_int",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 72,
+     "cu_cores"        : 32,
+     "cu_pre_exec"     : ["module load python",
+                          ". /global/project/projectdirs/m2178/shared_ccm_cu_ve_20141204/bin/activate"]
+     },
+ "radical.tutorial"    : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 4,
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : []
+     },
+ "rice.davinci"        : {
+     "cp_project"      : "",
+     "cp_queue"        : "serial",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 8,
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : []
+     },
+ "stfc.joule"          : {
+     "cp_project"      : "",
+     "cp_queue"        : "serial",
+     "cp_runtime"      :    5,
+     "cp_cores"        : 2048,
+     "cu_cores"        :   32,
+     "cu_pre_exec"     : ["module load python/2.7.5",
+                          ". $HOME/cu_ve_20141205/bin/activate"]
+     },
+ "xsede.blacklight"    : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 32,
+     "cu_cores"        :  4,
+     "cu_pre_exec"     : [". /usr/share/modules/init/bash",
+                          "export MPI_DSM_VERBOSE=",
+                          "module load python"]
+     },
+ "xsede.gordon"        : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 32,
+     "cu_cores"        :  8,
+     "cu_pre_exec"     : ["module load mvapich2_ib python",
+                          ". ~marksant/cuve/bin/activate"]
+     },
+ "xsede.stampede"      : {
+     "cp_project"      : "TG-MCB090174",
+     "cp_queue"        : "",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 8,
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load python intel mvapich2 mpi4py"]
+     },
+ "xsede.trestles"      : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 64,
+     "cu_cores"        : 16,
+     "cu_pre_exec"     : ["module load intel mvapich2_ib python",
+                          ". ~marksant/cuve/bin/activate"]
+     }
+}
+

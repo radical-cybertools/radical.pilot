@@ -61,7 +61,7 @@ if __name__ == "__main__":
     cud_list = []
 
     pilot_globe = {
-        'source':   'go://marksant#netbook/Users/mark/proj/radical.pilot/tests/helloworld_mpi.py',
+        'source':   'go://marksant#netbook/Users/mark/proj/radical.pilot/examples/helloworld_mpi.py',
         'target':   'go://nersc#edison/scratch2/scratchdirs/marksant/go/',
         #'target':   'staging:///go/',
         'action':   rp.TRANSFER

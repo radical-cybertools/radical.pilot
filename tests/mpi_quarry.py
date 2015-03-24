@@ -68,7 +68,7 @@ if __name__ == "__main__":
                                        "python virtualenv ./mpive",
                                        ". ./mpive/bin/activate",
                                        "pip install mpi4py"]
-        mpi_test_task.input_staging = ["helloworld_mpi.py"]
+        mpi_test_task.input_staging = ["../examples/helloworld_mpi.py"]
         mpi_test_task.executable    = "python"
         mpi_test_task.arguments     = ["helloworld_mpi.py"]
         mpi_test_task.mpi           = True
