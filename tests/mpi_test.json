@@ -87,6 +87,18 @@
      "cu_cores"        : 4,
      "cu_pre_exec"     : ["module load python"]
      },
+ "iu.quarry"           : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 8,
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load openmpi/gnu/1.6.3",
+                          "wget --no-check-certificate https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py",
+                          "python virtualenv ./mpive",
+                          ". ./mpive/bin/activate",
+                          "pip install mpi4py"]
+     },
  "lrz.supermuc"        : {
      "cp_project"      : "",
      "cp_queue"        : "",
