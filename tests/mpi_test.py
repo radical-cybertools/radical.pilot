@@ -153,6 +153,9 @@ def run_test (cfg):
 #
 if __name__ == "__main__":
 
+    # TODO: the json config should be converted into an mpi_test kernel, once
+    # the application kernels become maintainable...
+
     configs = ru.read_json_str ('mpi_test.json')
     targets = sys.argv[1:]
     failed  = 0
@@ -160,7 +163,6 @@ if __name__ == "__main__":
     if not targets:
         print "\n\n\tusage: %s <target> [target] ...\n\n"
         sys.exit (-1)
-
 
 
     for target in targets:
