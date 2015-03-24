@@ -121,7 +121,139 @@ def get_session_docs (db, sid, cache=None, cachedir=None) :
     return json_data
 
 
+
 # ------------------------------------------------------------------------------
+#
+def get_session_frames (db, sids, cachedir=None) :
+
+    # use like this: 
+    #
+    # session_frame, pilot_frame, unit_frame = rpu.get_session_frames (db, session, cachedir)
+    # pandas.set_option('display.width', 1000)
+    # print session_frame
+    # print pilot_frame
+    # print unit_frame
+    #
+    # u_min = unit_frame.ix[unit_frame['started'].idxmin()]['started']
+    # u_max = unit_frame.ix[unit_frame['finished'].idxmax()]['finished']
+    # print u_min
+    # print u_max
+    # print u_max - u_min
+
+
+    if not isinstance (sids, list) :
+        sids = [sids]
+
+    session_dicts = list()
+    pilot_dicts   = list()
+    unit_dicts    = list()
+
+    for sid in sids :
+
+        docs = get_session_docs (db, sid, cachedir=cachedir)
+
+        session       = docs['session']
+        session_start = session['created']
+        session_dict  = {
+            'sid'       : sid,
+            'started'   : session['created'],
+            'finished'  : None, 
+            'n_pilots'  : len(docs['pilot']),
+            'n_units'   : 0
+            }
+
+        last_pilot_event = 0
+        for pilot in docs['pilot'] :
+
+            pid         = pilot['_id']
+            description = pilot.get ('description', dict())
+            started     = pilot.get ('started')
+            finished    = pilot.get ('finished')
+
+            if started  : started  -= session_start
+            if finished : finished -= session_start
+
+            pilot_dict = {
+                'sid'          : sid,
+                'pid'          : pid, 
+                'n_units'      : len(pilot.get ('unit_ids', list())), 
+                'started'      : started,
+                'finished'     : finished,
+                'resource'     : description.get ('resource'),
+                'cores'        : description.get ('cores'),
+                'runtime'      : description.get ('runtime'),
+                NEW            : None, 
+                PENDING_LAUNCH : None, 
+                LAUNCHING      : None, 
+                PENDING_ACTIVE : None, 
+                ACTIVE         : None, 
+                DONE           : None, 
+                FAILED         : None, 
+                CANCELED       : None
+            }
+
+            for entry in pilot.get('statehistory', list()):
+                state = entry['state']
+                timer = entry['timestamp'] - session_start
+                pilot_dict[state] = timer
+                last_pilot_event  = max(last_pilot_event, timer)
+
+            pilot_dicts.append (pilot_dict)
+
+
+        for unit in docs['unit']:
+
+            uid         = unit['_id']
+            started     = unit.get ('started')
+            finished    = unit.get ('finished')
+            description = unit.get ('description', dict())
+
+            if started  : started  -= session_start
+            if finished : finished -= session_start
+
+            unit_dict = {
+                'sid'                  : sid, 
+                'pid'                  : unit.get('pilot'), 
+                'uid'                  : uid, 
+                'started'              : started,
+                'finished'             : finished,
+                'cores'                : description.get ('cores'),
+                NEW                    : None, 
+                UNSCHEDULED            : None, 
+                PENDING_INPUT_STAGING  : None, 
+                STAGING_INPUT          : None, 
+                PENDING_EXECUTION      : None, 
+                SCHEDULING             : None, 
+                ALLOCATING             : None, 
+                EXECUTING              : None, 
+                PENDING_OUTPUT_STAGING : None, 
+                STAGING_OUTPUT         : None, 
+                DONE                   : None, 
+                FAILED                 : None, 
+                CANCELED               : None
+            }
+
+            for entry in unit.get('statehistory', list()):
+                state = entry['state']
+                timer = entry['timestamp'] - session_start
+                unit_dict[state] = timer
+
+            unit_dicts.append (unit_dict)
+        
+        session_dict['finished'] = last_pilot_event
+        session_dicts.append (session_dict)
+
+    import pandas 
+    session_frame = pandas.DataFrame (session_dicts)
+    pilot_frame   = pandas.DataFrame (pilot_dicts)
+    unit_frame    = pandas.DataFrame (unit_dicts)
+
+
+    return session_frame, pilot_frame, unit_frame
+
+
+# ------------------------------------------------------------------------------
+#
 def get_session_slothist (db, sid, cache=None, cachedir=None) :
     """
     For all pilots in the session, get the slot lists and slot histories. and
@@ -136,6 +268,10 @@ def get_session_slothist (db, sid, cache=None, cachedir=None) :
     ret = dict()
 
     for pilot_doc in docs['pilot'] :
+
+        # slot configuration was only recently (v0.18) added to the RP agent...
+        if  not 'slots' in pilot_doc :
+            return None
 
         pilot_id     = pilot_doc['_id'] 
         slot_names   = list()
