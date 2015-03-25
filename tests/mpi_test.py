@@ -99,7 +99,7 @@ def run_test (cfg):
             cudesc = rp.ComputeUnitDescription()
             if cfg['cu_pre_exec']:
                 cudesc.pre_exec = cfg['cu_pre_exec']
-            cudesc.executable    = "python"
+            cudesc.executable    = cfg['executable']
             cudesc.arguments     = ["helloworld_mpi.py"]
             cudesc.input_staging = ["../examples/helloworld_mpi.py"]
             cudesc.cores         = cfg['cu_cores']
