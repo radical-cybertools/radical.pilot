@@ -97,7 +97,8 @@ def run_test (cfg):
         for i in range(NUMBER_JOBS):
 
             cudesc = rp.ComputeUnitDescription()
-            cudesc.pre_exec      = cfg['cu_pre_exec']
+            if cfg['cu_pre_exec']:
+                cudesc.pre_exec = cfg['cu_pre_exec']
             cudesc.executable    = "python"
             cudesc.arguments     = ["helloworld_mpi.py"]
             cudesc.input_staging = ["../examples/helloworld_mpi.py"]
