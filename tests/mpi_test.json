@@ -151,7 +151,7 @@
      "cp_cores"        : 72,
      "cu_cores"        : 24,
      "cu_pre_exec"     : ["module load python mpi4py"],
-     "executable"      : "python"
+     "executable"      : "python-mpi"
      },
  "nersc.edison_ccm"    : {
      "cp_project"      : "",
@@ -229,7 +229,7 @@
      "cu_cores"        :  8,
      "cu_pre_exec"     : ["module load mvapich2_ib python",
                           ". ~marksant/cuve/bin/activate"],
-     "executable"      : "python"
+     "executable"      : "~marksant/cuve/bin/python"
      },
  "xsede.stampede"      : {
      "cp_project"      : "TG-MCB090174",
@@ -248,6 +248,6 @@
      "cu_cores"        : 16,
      "cu_pre_exec"     : ["module load intel mvapich2_ib python",
                           ". ~marksant/cuve/bin/activate"],
-     "executable"      : "python"
+     "executable"      : "~marksant/cuve/bin/python"
      }
 }
