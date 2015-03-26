@@ -63,8 +63,10 @@ def run_test (cfg):
 
         pdesc = rp.ComputePilotDescription ()
         pdesc.resource = cfg['cp_resource']
-        pdesc.project  = cfg['cp_project']
-        pdesc.queue    = cfg['cp_queue']
+        if cfg['cp_project']:
+            pdesc.project = cfg['cp_project']
+        if cfg['cp_queue']:
+            pdesc.queue = cfg['cp_queue']
         pdesc.runtime  = cfg['cp_runtime']
         pdesc.cores    = cfg['cp_cores']
         pdesc.cleanup  = True
@@ -95,8 +97,9 @@ def run_test (cfg):
         for i in range(NUMBER_JOBS):
 
             cudesc = rp.ComputeUnitDescription()
-            cudesc.pre_exec      = cfg['cu_pre_exec']
-            cudesc.executable    = "python"
+            if cfg['cu_pre_exec']:
+                cudesc.pre_exec = cfg['cu_pre_exec']
+            cudesc.executable    = cfg['executable']
             cudesc.arguments     = ["helloworld_mpi.py"]
             cudesc.input_staging = ["../examples/helloworld_mpi.py"]
             cudesc.cores         = cfg['cu_cores']
