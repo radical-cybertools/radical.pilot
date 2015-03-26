@@ -55,9 +55,7 @@ class TestResourceConfigs(unittest.TestCase):
         session = radical.pilot.Session(database_url=DBURL)
 
 
-        rc = radical.pilot.ResourceConfig()
-        rc.name = "test"
-
+        rc = radical.pilot.ResourceConfig('test')
         session.add_resource_config(rc)
         session.get_resource_config('test')
 
@@ -70,9 +68,7 @@ class TestResourceConfigs(unittest.TestCase):
         """
         session = radical.pilot.Session(database_url=DBURL)
 
-        rc = radical.pilot.ResourceConfig()
-        rc.name                 = "mylocalhost"
-        rc.lrms                 = "FORK"
+        rc = radical.pilot.ResourceConfig("mylocalhost")
         rc.task_launch_method   = "LOCAL"
         rc.mpi_launch_method    = "MPIRUN"
         rc.job_manager_endpoint = "fork://localhost"

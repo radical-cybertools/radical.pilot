@@ -61,8 +61,7 @@ class TestIssue163(unittest.TestCase):
         s = session.get_resource_config('localhost')
 
         # Build a new one based on localhost
-        rc = radical.pilot.ResourceConfig(s)
-        rc.name = 'testing123-localhost'
+        rc = radical.pilot.ResourceConfig('testing123-localhost', s)
         # And set the queue to development to get a faster turnaround
         rc.default_queue = 'development'
         # Now add the entry back to the PM
