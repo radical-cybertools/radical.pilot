@@ -9,6 +9,7 @@ from radical.pilot.exceptions import *
 
 # -----------------------------------------------------------------------------
 # Attribute description keys
+LABEL                       = 'label'
 JOB_MANAGER_ENDPOINT        = 'job_manager_endpoint'
 FILESYSTEM_ENDPOINT         = 'filesystem_endpoint'
 DEFAULT_QUEUE               = 'default_queue'
@@ -52,8 +53,7 @@ class ResourceConfig(attributes.Attributes):
 
     **Example**::
 
-          rc = radical.pilot.ResourceConfig()
-          rc.name                 = "ec2.my_cluster"
+          rc = radical.pilot.ResourceConfig(label='epsrc.archer_2')
           rc.job_manager_endpoint = "ssh://23.23.23.23/"
           rc.filesystem_endpoint  = "sftp://23.23.23.23"
           rc.default_queue        = "batch"
@@ -68,15 +68,15 @@ class ResourceConfig(attributes.Attributes):
           // [...]
 
           pd = radical.pilot.ComputePilotDescription()
-          pd.resource = "epsrc.archer"
+          pd.resource = "epsrc.archer_2"
 
           // [...]
 
           pmgr.submit_pilots(pd)
 
-    .. data:: name
+    .. parameter:: label
 
-       [Type: `string`] [**`mandatory`**] A unique name for this configuration. 
+       [Type: `string`] [**`mandatory`**] A unique label for this configuration. 
 
     .. data:: remote_job_manager_endpoint
 
@@ -163,14 +163,8 @@ class ResourceConfig(attributes.Attributes):
           for res_name, cfg in rcf_dict.iteritems():
 
               # create config from resource section
-              cls = ResourceConfig(cfg)
-
-            # # make sure all keys are initialized
-            # for key in VALID_KEYS:
-            #     if not key in cls :
-            #         cls[key] = None
-            
-              rcfgs["%s.%s" % (rcf_name, res_name)] = cls
+              label = "%s.%s" % (rcf_name, res_name)
+              rcfgs[label] = ResourceConfig(label, cfg)
 
       except ValueError, err:
           raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (filename, str(err)))
@@ -180,9 +174,12 @@ class ResourceConfig(attributes.Attributes):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, seeding_dict=None):
+    def __init__(self, label, seeding_dict=None):
         """Optionally take a seeding dict to populate the values.
         """
+
+        if not seeding_dict:
+            seeding_dict = dict()
 
         # initialize attributes
         attributes.Attributes.__init__(self, seeding_dict)
@@ -191,6 +188,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_extensible  (True)
         self._attributes_camelcasing (True)
 
+        self._attributes_register(LABEL,                  label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(JOB_MANAGER_ENDPOINT,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(FILESYSTEM_ENDPOINT,     None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
