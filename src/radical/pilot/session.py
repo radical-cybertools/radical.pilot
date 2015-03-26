@@ -530,7 +530,8 @@ class Session (saga.Session, Object):
 
            For example::
 
-                  rc = radical.pilot.ResourceConfig(label="mycluster")
+                  rc = radical.pilot.ResourceConfig
+                  rc.name                 = "mycluster"
                   rc.job_manager_endpoint = "ssh+pbs://mycluster
                   rc.filesystem_endpoint  = "sftp://mycluster
                   rc.default_queue        = "private"
@@ -556,8 +557,7 @@ class Session (saga.Session, Object):
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
         else :
-            print 'add rcfg as %s' % resource_config.label
-            self._resource_configs[resource_config.label] = resource_config.as_dict()
+            self._resource_configs [resource_config.name] = resource_config.as_dict()
 
     # -------------------------------------------------------------------------
     #
@@ -580,15 +580,14 @@ class Session (saga.Session, Object):
             if 'schemas' in resource_cfg :
                 schema = resource_cfg['schemas'][0]
 
-        if  schema:
-            if  schema not in resource_cfg :
-                raise RuntimeError ("schema %s unknown for resource %s" \
-                                  % (schema, resource_key))
+        if  schema not in resource_cfg :
+            raise RuntimeError ("schema %s unknown for resource %s" \
+                             % (schema, resource_key))
 
-            for key in resource_cfg[schema] :
-                # merge schema specific resource keys into the
-                # resource config
-                resource_cfg[key] = resource_cfg[schema][key]
+        for key in resource_cfg[schema] :
+            # merge schema specific resource keys into the
+            # resource config
+            resource_cfg[key] = resource_cfg[schema][key]
 
 
         return resource_cfg
