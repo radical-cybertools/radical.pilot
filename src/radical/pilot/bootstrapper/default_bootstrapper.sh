@@ -557,19 +557,21 @@ virtenv_activate()
     prefix="$VIRTENV/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
-    python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    ve_mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
-    rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$VIRTENV|$VIRTENV/rp_install|"`
+    PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+    VE_MOD_PREFIX=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$VIRTENV/rp_install|"`
+    VE_PYTHONPATH="$PYTHONPATH"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
     #       'module load python', and that would supercede the VE module tree,
     #       leading to unusable versions of setuptools.
-    PYTHONPATH="$rp_mod_prefix:$ve_mod_prefix:$PYTHONPATH"
+    PYTHONPATH="$VE_MOD_PREFIX:$VE_PYTHONPATH"
     export PYTHONPATH
 
-    PATH="$prefix/rp_install/bin:$prefix/bin:$PATH"
-    export PATH
+    echo "activated virtenv"
+    echo "VIRTENV   : $VIRTENV"
+    echo "PYTHONPATH: $PYTHONPATH"
 }
 
 
@@ -736,6 +738,14 @@ rp_install()
     if test -z "$rp_install_target"
     then
         echo "no RP install target - skip install"
+
+        # we just activate the rp_install portion of the used virtenv
+        PYTHONPATH="$RP_MOD_PREFIX:$VE_MOD_PREFIX:$VE_PYTHONPATH"
+        export PYTHONPATH
+
+        PATH="$VIRTENV/rp_install/bin:$PATH"
+        export PATH
+
         return
     fi
 
@@ -748,49 +758,67 @@ rp_install()
     case "$rp_install_target" in
     
         VIRTENV)
-            prefix="$VIRTENV/rp_install"
+            # no local install -- we want to install in the rp_install portion of
+            # the ve.  The pythonpath is set to include that part.
+            PYTHONPATH="$RP_MOD_PREFIX:$VE_MOD_PREFIX:$VE_PYTHONPATH"
+            export PYTHONPATH
+
+            PATH="$VIRTENV/rp_install/bin:$PATH"
+            export PATH
+
+            RADICAL_MOD_PREFIX="$RP_MOD_PREFIX/radical/"
+
+            # NOTE: we first uninstall RP (for some reason, 'pip install --upgrade' does
+            #       not work with all source types
+            # FIXME: how do we handle
+            run_cmd "uninstall radical.pilot" "$PIP uninstall -y radical.pilot"
+            # ignore any errors
+            #
+            echo "using virtenv install tree"
+            echo "PYTHONPATH: $PYTHONPATH"
+            echo "rp_install: $RP_MOD_PREFIX"
+            echo "radicalmod: $RADICAL_MOD_PREFIX"
             ;;
 
         LOCAL)
             prefix="$SANDBOX/rp_install"
+
+            # make sure the lib path into the prefix conforms to the python conventions
+            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$SANDBOX/rp_install|"`
+
+            # local PYTHONPATH needs to be pre-pended.  The ve PYTHONPATH is
+            # already set during ve activation -- but we don't want the rp_install
+            # portion from that ve...
+            # NOTE: PYTHONPATH is set differently than the 'prefix' used during
+            #       install
+            PYTHONPATH="$RP_LOC_PREFIX:$VE_MOD_REFIX:$VE_PYTHONPATH"
+            export PYTHONPATH
+
+            PATH="$SANDBOX/rp_install/bin:$PATH"
+            export PATH
+
+            RADICAL_MOD_PREFIX="$RP_LOC_PREFIX/radical/"
+
+            echo "using local install tree"
+            echo "PYTHONPATH: $PYTHONPATH"
+            echo "rp_install: $RP_LOC_PREFIX"
+            echo "radicalmod: $RADICAL_MOD_PREFIX"
             ;;
 
         *)
             # this should never happen
             echo "ERROR: invalid RP install target '$RP_INSTALL_TARGET'"
             exit 1
+    
     esac
-
-    # make sure the lib path into the prefix conforms to the python conventions
-    python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    ve_mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
-    rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$VIRTENV|$prefix|"`
-
-    rm -rf "$prefix"
-    mkdir  "$prefix"
-
-    if test "$rp_install_target" = "LOCAL"
-    then
-        # local PYTHONPATH needs to be pre-pended.  The ve PYTHONPATH is
-        # already set during ve activation...
-        # NOTE: PYTHONPATH is set differently than the 'prefix' used during
-        #       install
-        PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
-        export PYTHONPATH
-
-        PATH="$prefix/bin:$PATH"
-        export PATH
-    fi
-
-    # NOTE: we first uninstall RP (for some reason, 'pip install --upgrade' does
-    #       not work with all source types
-    run_cmd "uninstall radical.pilot" "$PIP uninstall -y radical.pilot"
-    # ignore any errors
 
     # NOTE: we need to add the radical name __init__.py manually here --
     #      distutil is broken and will not install it.
-    mkdir -p   "$rp_mod_prefix/radical/"
-    ru_ns_init="$rp_mod_prefix/radical/__init__.py"
+    rm -rf "$RADICAL_MOD_PREFIX"
+    mkdir  "$RADICAL_MOD_PREFIX"
+
+    mkdir -p   "$RADICAL_MOD_PREFIX/radical/"
+    ru_ns_init="$RADICAL_MOD_PREFIX/radical/__init__.py"
     echo                                              >  $ru_ns_init
     echo 'import pkg_resources'                       >> $ru_ns_init
     echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
@@ -822,9 +850,9 @@ rp_install()
   #     fi
   # fi
 
-    pip_flags="$pip_flags --src '$prefix/src'"
-    pip_flags="$pip_flags --build '$prefix/build'"
-    pip_flags="$pip_flags --install-option='--prefix=$prefix'"
+    pip_flags="$pip_flags --src '$SANDBOX/rp_install/src'"
+    pip_flags="$pip_flags --build '$SANDBOX/rp_install/build'"
+    pip_flags="$pip_flags --install-option='--prefix=$SANDBOX/rp_install'"
 
     for src in $RP_INSTALL_SOURCES
     do
@@ -837,7 +865,7 @@ rp_install()
         fi
 
         # NOTE: why? fuck pip, that's why!
-        rm -rf "$prefix/build"
+        rm -rf "$SANDBOX/rp_install/build"
     done
 
     profile_event 'rp_install done'
@@ -989,6 +1017,12 @@ while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
         *)  usage "Unknown option: $OPTION=$OPTARG"  ;;
     esac
 done
+
+# NOTE: if the virtenv path contains a symbolic link element, then distutil will
+#       report the absolute representation of it, and thus report a different
+#       module path than one would expect from the virtenv path.  We thus
+#       normalize the virtenv path before we use it.
+VIRTENV=`(cd $VIRTENV; pwd -P)`
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
