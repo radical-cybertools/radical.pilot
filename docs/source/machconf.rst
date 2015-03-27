@@ -196,7 +196,7 @@ the `epsrc.archer` resource.
     
     # create a new config based on the old one, and set a different launch method
     new_cfg = rp.ResourceConfig(RESOURCE, cfg)
-    new_cfg.task_launch_method = 'ORTE'
+    new_cfg.default_queue = 'royal_treatment'
     
     # now add the entry back.  As we did not change the config name, this will
     # replace the original configuration.  A completely new configuration would
