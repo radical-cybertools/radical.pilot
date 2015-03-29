@@ -382,6 +382,10 @@ virtenv_setup()
         test -f "$virtenv/bin/activate" && rm -r "$virtenv"
         virtenv_create=TRUE
         virtenv_update=FALSE
+    else
+        printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
+        unlock "$pid" "$virtenv"
+        exit 1
     fi
 
     echo "virtenv_create   : $virtenv_create"
