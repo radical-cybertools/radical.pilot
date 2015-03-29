@@ -347,7 +347,7 @@ virtenv_setup()
 
     if test "$virtenv_mode" = "private"
     then
-        if test -f "$virtenv/bin/activate"
+        if test -d "$virtenv"
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             unlock "$pid" "$virtenv"
@@ -358,7 +358,7 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "update"
     then
-        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
+        test -d "$virtenv" || virtenv_create=TRUE
         virtenv_update=TRUE
 
     elif test "$virtenv_mode" = "create"
@@ -368,7 +368,7 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "use"
     then
-        if ! test -f "$virtenv/bin/activate"
+        if ! test -d "$virtenv"
         then
             printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
             unlock "$pid" "$virtenv"
@@ -379,7 +379,7 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "recreate"
     then
-        test -f "$virtenv/bin/activate" && rm -r "$virtenv"
+        test -d "$virtenv" && rm -r "$virtenv"
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
@@ -492,7 +492,7 @@ virtenv_setup()
     # create virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_create" = "TRUE"
     then
-        if ! test -f "$virtenv/bin/activate"
+        if ! test -d "$virtenv"
         then
             virtenv_create "$virtenv"
             if ! test "$?" = 0
@@ -818,14 +818,15 @@ rp_install()
 
     # NOTE: we need to add the radical name __init__.py manually here --
     #      distutil is broken and will not install it.
-    rm    -rf  "$RADICAL_MOD_PREFIX/"
-    mkdir -p   "$RADICAL_MOD_PREFIX/"
-    ru_ns_init="$RADICAL_MOD_PREFIX/__init__.py"
+    rm -rf "$RADICAL_MOD_PREFIX"
+    mkdir  "$RADICAL_MOD_PREFIX"
+
+    mkdir -p   "$RADICAL_MOD_PREFIX/radical/"
+    ru_ns_init="$RADICAL_MOD_PREFIX/radical/__init__.py"
     echo                                              >  $ru_ns_init
     echo 'import pkg_resources'                       >> $ru_ns_init
     echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
     echo                                              >> $ru_ns_init
-    echo "created radical namespace in $RADICAL_MOD_PREFIX/__init__.py"
 
   # # NOTE: if we find a system level RP install, then pip install will not work
   # #       w/o the upgrade flag -- unless we install from sdist.  It may not
@@ -1025,7 +1026,6 @@ done
 #       report the absolute representation of it, and thus report a different
 #       module path than one would expect from the virtenv path.  We thus
 #       normalize the virtenv path before we use it.
-mkdir -p "$VIRTENV"
 VIRTENV=`(cd $VIRTENV; pwd -P)`
 
 # Check that mandatory arguments are set
