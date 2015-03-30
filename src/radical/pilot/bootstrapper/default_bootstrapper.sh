@@ -419,7 +419,7 @@ virtenv_setup()
                 tar zxf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
-            RP_INSTALL_TARGET='LOCAL'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='TRUE'
             ;;
 
@@ -458,7 +458,7 @@ virtenv_setup()
     esac
 
     # NOTE: for any immutable virtenv (VIRTENV_MODE==use), we have to choose
-    # a LOCAL install target.  LOCAL installation will only work with 'python
+    # a SANDBOX install target.  SANDBOX installation will only work with 'python
     # setup.py install', so we have to use the sdist -- the RP_INSTALL_SOURCES
     # has to point to directories
     if test "$virtenv_mode" = "use"
@@ -466,7 +466,7 @@ virtenv_setup()
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
         then
             echo "WARNING: virtenv immutable - install RP locally"
-            RP_INSTALL_TARGET='LOCAL'
+            RP_INSTALL_TARGET='SANDBOX'
         fi
 
         if ! test -z "$RP_INSTALL_TARGET"
@@ -762,6 +762,8 @@ rp_install()
     case "$rp_install_target" in
     
         VIRTENV)
+            RP_INSTALL="$VIRTENV/rp_install"
+
             # no local install -- we want to install in the rp_install portion of
             # the ve.  The pythonpath is set to include that part.
             PYTHONPATH="$RP_MOD_PREFIX:$VE_MOD_PREFIX:$VE_PYTHONPATH"
@@ -784,11 +786,16 @@ rp_install()
             echo "radicalmod: $RADICAL_MOD_PREFIX"
             ;;
 
-        LOCAL)
-            prefix="$SANDBOX/rp_install"
+        SANDBOX)
+            RP_INSTALL="$SANDBOX/rp_install"
 
             # make sure the lib path into the prefix conforms to the python conventions
             RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$SANDBOX/rp_install|"`
+
+            echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
+            echo "VIRTENV      : $VIRTENV"
+            echo "SANDBOX      : $SANDBOX"
+            echo "VE_LOC_PREFIX: $VE_LOC_PREFIX"
 
             # local PYTHONPATH needs to be pre-pended.  The ve PYTHONPATH is
             # already set during ve activation -- but we don't want the rp_install
@@ -855,7 +862,7 @@ rp_install()
 
     pip_flags="$pip_flags --src '$SANDBOX/rp_install/src'"
     pip_flags="$pip_flags --build '$SANDBOX/rp_install/build'"
-    pip_flags="$pip_flags --install-option='--prefix=$SANDBOX/rp_install'"
+    pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
 
     for src in $RP_INSTALL_SOURCES
     do
@@ -1026,7 +1033,9 @@ done
 #       module path than one would expect from the virtenv path.  We thus
 #       normalize the virtenv path before we use it.
 mkdir -p "$VIRTENV"
+echo "VIRTENV 1: $VIRTENV"
 VIRTENV=`(cd $VIRTENV; pwd -P)`
+echo "VIRTENV 2: $VIRTENV"
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
@@ -1123,7 +1132,7 @@ export _OLD_VIRTUAL_PS1
 # bin/, and some where setuptools only changes them in place.  For now, we allow
 # for both -- but eventually (once the agent itself is small), we may want to
 # move it to bin ourself...
-if test "$RP_INSTALL_TARGET" = 'LOCAL'
+if test "$RP_INSTALL_TARGET" = 'SANDBOX'
 then
     PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
     if ! test -e "$PILOT_SCRIPT"
