@@ -834,10 +834,14 @@ rp_install()
     
     esac
 
-    # NOTE: we need to add the radical name __init__.py manually here --
-    #      distutil is broken and will not install it.
+    # NOTE: we need to purge the whole install tree (not only the module dir), 
+    #       as pip will otherwise find the eggs and interprete them as satisfied
+    #       dependencies, even if the modules are gone...
     rm    -rf  "$RP_INSTALL/"
     mkdir -p   "$RP_INSTALL/"
+
+    # NOTE: we need to add the radical name __init__.py manually here --
+    #       distutil is broken and will not install it.
     mkdir -p   "$RADICAL_MOD_PREFIX/"
     ru_ns_init="$RADICAL_MOD_PREFIX/__init__.py"
     echo                                              >  $ru_ns_init
