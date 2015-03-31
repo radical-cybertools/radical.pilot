@@ -8,6 +8,7 @@ __license__   = 'MIT'
 
 """ Setup script. Used by easy_install and pip. """
 
+import re
 import os
 import sys
 import subprocess as sp
@@ -55,10 +56,16 @@ def get_version (mod_root):
         # attempt to get version detail information from git
         p   = sp.Popen ('cd %s ; '\
                         'tag=`git describe --tags --always` 2>/dev/null ; '\
-                        'branch=`git branch | grep -e "^*" | cut -f 2 -d " "` 2>/dev/null ; '\
+                        'branch=`git branch | grep -e "^*" | cut -f 2- -d " "` 2>/dev/null ; '\
                         'echo $tag@$branch'  % src_root,
                         stdout=sp.PIPE, stderr=sp.STDOUT, shell=True)
         version_detail = p.communicate()[0].strip()
+        version_detail = version_detail.replace('detached from ', 'detached-')
+
+        # remove all non-alphanumeric (and then some) chars
+        version_detail = re.sub('[/ ]+', '-', version_detail)
+        version_detail = re.sub('[^a-zA-Z0-9_+@.-]+', '', version_detail)
+
 
         if  p.returncode   !=  0  or \
             version_detail == '@' or \
