@@ -650,8 +650,13 @@ virtenv_create()
             "$PIP install --upgrade setuptools" \
          || echo "Couldn't update setuptools -- using default version"
 
+    # NOTE: new releases of pip deprecate options we depend upon.  While the pip
+    #       developers discuss if those options will get un-deprecated again,
+    #       fact is that there are pip versions around which do not work for us
+    #       (hello supermuc!).  So we fix the version to one we know is
+    #       functional.
     run_cmd "update pip" \
-            "$PIP install --upgrade pip" \
+            "$PIP install --upgrade pip==1.4.1" \
          || echo "Couldn't update pip -- using default version"
 
 
