@@ -836,7 +836,8 @@ rp_install()
 
     # NOTE: we need to add the radical name __init__.py manually here --
     #      distutil is broken and will not install it.
-    rm    -rf  "$RADICAL_MOD_PREFIX/"
+    rm    -rf  "$RP_INSTALL/"
+    mkdir -p   "$RP_INSTALL/"
     mkdir -p   "$RADICAL_MOD_PREFIX/"
     ru_ns_init="$RADICAL_MOD_PREFIX/__init__.py"
     echo                                              >  $ru_ns_init
