@@ -42,7 +42,9 @@ SANDBOX=`pwd`
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
 # NOTE: this mechanism is disabled, as it affects a minority of machines and
-#       adds too much complexity for too little benefit.
+#       adds too much complexity for too little benefit.  Also, it will break on
+#       machines where pip has no connectivity, and pip cannot silently ignore
+#       that system version...
 # SYSTEM_RP='FALSE'
 
 
@@ -448,8 +450,9 @@ virtenv_setup()
 
         *)
             # NOTE: do *not* use 'pip -e' -- egg linking does not work with 
-            # PYTHONPATH.  # Instead, we manually clone the respective git 
-            # repository, and switch to the respective branch/tag/commit.
+            #       PYTHONPATH.  # Instead, we manually clone the respective 
+            #       git repository, and switch to the 
+            #       respective branch/tag/commit.
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
@@ -458,9 +461,9 @@ virtenv_setup()
     esac
 
     # NOTE: for any immutable virtenv (VIRTENV_MODE==use), we have to choose
-    # a SANDBOX install target.  SANDBOX installation will only work with 'python
-    # setup.py install', so we have to use the sdist -- the RP_INSTALL_SOURCES
-    # has to point to directories
+    #       a SANDBOX install target.  SANDBOX installation will only work with 
+    #       'python setup.py install' (pip cannot handle it), so we have to use 
+    #       the sdist, and the RP_INSTALL_SOURCES has to point to directories.
     if test "$virtenv_mode" = "use"
     then
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
@@ -549,8 +552,8 @@ virtenv_activate()
 
 
   # # NOTE: calling radicalpilot-version does not work here -- depending on the
-  # #       system python setup it may not be found even if the rp module is installed
-  # #       and importable.
+  # #       system settings, python setup it may not be found even if the 
+  # #       rp module is installed and importable.
   # system_rp_loc="`python -c 'import radical.pilot as rp; print rp.__file__' 2>/dev/null`"
   # if ! test -z "$system_rp_loc"
   # then
@@ -605,8 +608,7 @@ virtenv_create()
     virtenv="$1"
 
     # NOTE: create a fresh virtualenv. we use an older 1.9.x version of
-    # virtualenv as this seems to work more reliable than newer versions.
-    # If we can't download, we try to move on with the system virtualenv.
+    #       virtualenv as this seems to work more reliable than newer versions.
     run_cmd "Download virtualenv tgz" \
             "curl -k -O '$VIRTENV_TGZ_URL'"
 
@@ -654,8 +656,8 @@ virtenv_create()
 
 
     # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
-    # install apache-libcloud (missing bz2 compression).  We thus install that
-    # dependency via easy_install.
+    #       install apache-libcloud (missing bz2 compression).  We thus install 
+    #       that dependency via easy_install.
     run_cmd "install apache-libcloud" \
             "easy_install --upgrade apache-libcloud" \
          || echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
@@ -684,8 +686,8 @@ virtenv_update()
     virtenv_activate "$virtenv"
 
     # we upgrade all dependencies of the RADICAL stack, one by one.
-    # FIXME: for now, we only do pip upgrades -- that will ignore the
-    # easy_installed modules on india (and posisbly other hosts).
+    # NOTE: we only do pip upgrades -- that will ignore the easy_installed 
+    #       modules on india etc.
     for dep in "$VIRTENV_RADICAL_DEPS"
     do
         run_cmd "install $dep" \
@@ -738,10 +740,10 @@ virtenv_update()
 # esac
 #
 # NOTE: A 'pip install' (without '--upgrade') will not install anything if an 
-# old version lives in the system space.  A 'pip install --upgrade' will fail 
-# if there is no network connectivity (which otherwise is not really needed 
-# when we install from sdists).  '--upgrade' is not needed when installing from
-# sdists.
+#       old version lives in the system space.  A 'pip install --upgrade' will 
+#       fail if there is no network connectivity (which otherwise is not really 
+#       needed when we install from sdists).  '--upgrade' is not needed when 
+#       installing from sdists.
 #
 rp_install()
 {
@@ -785,11 +787,10 @@ rp_install()
             RADICAL_MOD_PREFIX="$RP_MOD_PREFIX/radical/"
 
             # NOTE: we first uninstall RP (for some reason, 'pip install --upgrade' does
-            #       not work with all source types
-            # FIXME: how do we handle
+            #       not work with all source types)
             run_cmd "uninstall radical.pilot" "$PIP uninstall -y radical.pilot"
             # ignore any errors
-            #
+
             echo "using virtenv install tree"
             echo "PYTHONPATH: $PYTHONPATH"
             echo "rp_install: $RP_MOD_PREFIX"
@@ -862,8 +863,8 @@ rp_install()
   #         # NOTE: --upgrade is unreliable in its results -- depending on the
   #         #       VE setup, the resulting installation may be viable or not.
   #         echo "-----------------------------------------------------------------"
-  #         echo " WARNING: found an exisiting installation of radical.pilot!      "
-  #         echo "          Upgrading to a new version may or may not succeed,     "
+  #         echo " WARNING: found a system installation of radical.pilot!          "
+  #         echo "          Upgrading to a new version may *or may not* succeed,   "
   #         echo "          depending on the specific system, python and virtenv   "
   #         echo "          configuration!                                         "
   #         echo "-----------------------------------------------------------------"
@@ -1110,10 +1111,9 @@ then
 fi
 
 # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
-# commands.  Its a sign that the pip cacert (or the system's, dunno) is not up
-# to date.  Easy_install seems to use a different access channel, so does not
-# need the cert bundle.
-#
+#       commands.  Its a sign that the pip cacert (or the system's, dunno) 
+#       is not up to date.  Easy_install seems to use a different access 
+#       channel for some reason, so does not need the cert bundle.
 if test -f 'cacert.pem.gz'
 then
     gunzip cacert.pem.gz
@@ -1139,9 +1139,10 @@ export _OLD_VIRTUAL_PS1
 # the actual agent script lives in PWD if it was staged -- otherwise we use it
 # from the virtenv
 # NOTE: For some reasons, I have seen installations where 'scripts' go into
-# bin/, and some where setuptools only changes them in place.  For now, we allow
-# for both -- but eventually (once the agent itself is small), we may want to
-# move it to bin ourself...
+#       bin/, and some where setuptools only changes them in place.  For now, 
+#       we allow for both -- but eventually (once the agent itself is small), 
+#       we may want to move it to bin ourself.  At that point, we probably
+#       have re-implemented pip... :/
 if test "$RP_INSTALL_TARGET" = 'SANDBOX'
 then
     PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
