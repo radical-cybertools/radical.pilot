@@ -563,6 +563,16 @@ virtenv_activate()
     # make sure the lib path into the prefix conforms to the python conventions
     PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
     VE_MOD_PREFIX=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+
+    # NOTE: distutils.sc.get_python_lib() behaves different on different
+    #       systems: on some systems (versions?) it returns a normalized path, 
+    #       on some it does not.  As we need consistent behavior to have
+    #       a chance of the sed below to succeed, we normalize the path ourself.
+    VE_MOD_PREFIX=`(cd $VE_MOD_PREFIX; pwd -P)`
+
+    # we can now derive the pythonpath into the rp_install portion by replacing
+    # the leading path elements.  Note that the same mechnism is used later on
+    # to derive the PYTHONPATH into the sandbox rp_install, if needed.
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$VIRTENV/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
 
