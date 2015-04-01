@@ -202,10 +202,10 @@
      },
  "stfc.joule"          : {
      "cp_project"      : "",
-     "cp_queue"        : "serial",
-     "cp_runtime"      :    5,
+     "cp_queue"        : "interactive",
+     "cp_runtime"      : 5,
      "cp_cores"        : 2048,
-     "cu_cores"        :   32,
+     "cu_cores"        : 32,
      "cu_pre_exec"     : ["module load python/2.7.5",
                           ". $HOME/cu_ve_20141205/bin/activate"],
      "executable"      : "python"
