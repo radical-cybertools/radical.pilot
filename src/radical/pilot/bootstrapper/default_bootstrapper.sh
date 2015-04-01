@@ -50,7 +50,7 @@ SANDBOX=`pwd`
 
 # seconds to wait for lock files
 # 10 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=600
+LOCK_TIMEOUT=1800 # 30 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
