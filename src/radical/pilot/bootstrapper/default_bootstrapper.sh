@@ -117,7 +117,7 @@ lock()
     count=0
 
     err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1`
-    until ! test "$err" = "ok"
+    until test "$err" = "ok"
     do
         if contains "$err" 'no such file or directory'
         then
