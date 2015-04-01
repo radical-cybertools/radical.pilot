@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.25 Release                                               2015-04-01
+---------------------------------------------------------------------
+
+  * hotfix for a stampede configuration change
+
+
 0.24 Release                                               2015-03-30
 ---------------------------------------------------------------------
 
