@@ -133,6 +133,7 @@ lock()
 
         if test $count -gt $timeout
         then
+            echo "### WARNING ###"
             echo "lock timeout for $entry -- removing stale lock for '$owner'"
             rm $lockfile
             # we do not exit the loop here, but race again against other pilots
