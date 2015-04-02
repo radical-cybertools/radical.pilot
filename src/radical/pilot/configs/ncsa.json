@@ -39,9 +39,8 @@
         "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap"               :
         [
-          "module load ccm",
-          "module load platform-mpi",
-          "module load bw-python"
+          "module load bw-python",
+          "module load ccm"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
