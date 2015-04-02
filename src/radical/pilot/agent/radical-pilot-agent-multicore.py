@@ -2103,28 +2103,67 @@ class LaunchMethodORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         self.launch_command = self._which('orte-submit')
+
         dvm_command = self._which('orte-dvm')
+        if not dvm_command:
+            raise Exception("Couldn't find orte-dvm")
 
-        orte_vm_uri_filename = os.path.abspath("orte_vm_uri.txt")
-        self._dvm_process = subprocess.Popen([dvm_command, "--report-uri", orte_vm_uri_filename])
+        # Use (g)stdbuf to disable buffering.
+        # We need this to get the "DVM ready",
+        # without waiting for orte-dvm to complete.
+        # The command seems to be generally available on our Cray's,
+        # if not, we can code some home-coooked pty stuff.
+        stdbuf_cmd =  self._find_executable(['stdbuf', 'gstdbuf'])
+        if not stdbuf_cmd:
+            raise Exception("Couldn't find (g)stdbuf")
+        stdbuf_arg = "-oL"
 
+        self._log.info("Starting ORTE DVM ...")
+
+        self._dvm_process = subprocess.Popen(
+            [stdbuf_cmd, stdbuf_arg, dvm_command],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+
+        self._dvmuri = None
         while True:
-            try:
-                # 1302659072.0;usock;tcp://192.168.0.103:58850
-                self._vmuri = open(orte_vm_uri_filename).read().strip()
-                break
-            except:
-                if not self._dvm_process.poll():
-                    # If process is still running, assume we are still waiting
-                    # for the uri file to be created.
-                    time.sleep(1)
-                    continue
-                else:
-                    # Process is gone, URI file will never get created: fatal!
-                    raise Exception("Couldn't read VMURI from: %s." % orte_vm_uri_filename)
 
-    # TODO: Create teardown() function for LauchMethods (in this case to terminate the dvm)
+            line = self._dvm_process.stdout.readline().strip()
+
+            if line.startswith('VMURI:'):
+
+                if len(line.split(' ')) != 2:
+                    raise Exception("Unknown VMURI format: %s" % line)
+
+                label, self._dvmuri = line.split(' ', 1)
+
+                if label != 'VMURI:':
+                    raise Exception("Unknown VMURI format: %s" % line)
+
+                self._log.info("ORTE DVM URI: %s" % self._dvmuri)
+
+            elif line == 'DVM ready':
+
+                if not self._dvmuri:
+                    raise Exception("VMURI not found!")
+
+                self._log.info("ORTE DVM startup successful!")
+                break
+
+            else:
+
+                # Check if the process is still around,
+                # and log output in debug mode.
+                if not self._dvm_process.poll():
+                    self._log.debug("ORTE: %s" % line)
+                else:
+                    # Process is gone: fatal!
+                    raise Exception("ORTE DVM process disappeared")
+
+
+    # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
     #subprocess.Popen([self.launch_command, "--hnp", orte_vm_uri_filename, "--terminate"])
 
     # --------------------------------------------------------------------------
@@ -2143,7 +2182,7 @@ class LaunchMethodORTE(LaunchMethod):
         export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         orte_command = '%s --hnp "%s" %s -np %s -host %s %s' % (
-            self.launch_command, self._vmuri, export_vars, task_numcores, hosts_string, task_command)
+            self.launch_command, self._dvmuri, export_vars, task_numcores, hosts_string, task_command)
 
         return orte_command, None
 
