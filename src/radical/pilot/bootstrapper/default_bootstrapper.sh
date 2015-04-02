@@ -1125,6 +1125,8 @@ fi
 #       commands.  Its a sign that the pip cacert (or the system's, dunno) 
 #       is not up to date.  Easy_install seems to use a different access 
 #       channel for some reason, so does not need the cert bundle.
+#       https://github.com/pypa/pip/issues/2130
+#       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
 if test -f 'cacert.pem.gz'
 then
     gunzip cacert.pem.gz
