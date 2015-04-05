@@ -103,7 +103,7 @@ if __name__ == "__main__":
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        scheduler=rp.SCHED_BACKFILLING)
+        scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
     # Register our callback with the UnitManager. This callback will get
     # called every time any of the units managed by the UnitManager
@@ -132,12 +132,13 @@ if __name__ == "__main__":
     cuds = []
     for unit_count in range(0, 14):
         cud = rp.ComputeUnitDescription()
-        cud.name          = "unit_%03d" % unit_count
-        cud.executable    = "/bin/sh"
-        cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
-        cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
-        cud.cores         = 1
-        cud.input_staging = ['file1.dat', 'file2.dat']
+        cud.name           = "unit_%03d" % unit_count
+        cud.executable     = "/bin/sh"
+        cud.environment    = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
+        cud.arguments      = ["-l", "-c", "cat $INPUT1 $INPUT2"]
+        cud.cores          = 1
+        cud.input_staging  = ['file1.dat', 'file2.dat']
+        cud.output_staging = ['STDERR', 'STDOUT']
 
         cuds.append(cud)
 

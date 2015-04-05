@@ -234,9 +234,26 @@ def get_session_frames (db, sids, cachedir=None) :
                 CANCELED               : None
             }
 
+            # FIXME: if we see OUTPUT_STAGING twice, and there was no
+            # PENDING_OUTPUT_STAGING seen before, we re-interpret the first
+            # occurence of OUTPUT_STAGING as PENDING_STAGING_OUTPUT.
+            # see comment in agent line 1474:
+            #     TODO: this should ideally be PendingOutputStaging,
+            #     but that introduces a race condition currently
+            saw_staging_output = False
+
             for entry in unit.get('statehistory', list()):
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
+
+                if state == STAGING_OUTPUT:
+                    if saw_staging_output:
+                        if not unit_dict[PENDING_OUTPUT_STAGING]:
+                            unit_dict[PENDING_OUTPUT_STAGING] = unit_dict[STAGING_OUTPUT]
+                    else:
+                        saw_staging_output = True
+
+                # normal case
                 unit_dict[state] = timer
 
             unit_dicts.append (unit_dict)
