@@ -566,7 +566,7 @@ virtenv_activate()
 
     # make sure the lib path into the prefix conforms to the python conventions
     PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    VE_MOD_PREFIX=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    VE_MOD_PREFIX=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
     echo "PYTHON INTERPRETER: `which python`"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
@@ -575,7 +575,26 @@ virtenv_activate()
     #       systems: on some systems (versions?) it returns a normalized path, 
     #       on some it does not.  As we need consistent behavior to have
     #       a chance of the sed below to succeed, we normalize the path ourself.
-    VE_MOD_PREFIX=`(cd $VE_MOD_PREFIX; pwd -P)`
+  # VE_MOD_PREFIX=`(cd $VE_MOD_PREFIX; pwd -P)`
+
+    # NOTE: on other systems again, that above path normalization is resulting in
+    #       paths which are invalid when used in the virtualenv, as that will
+    #       result in the incorrect use of .../lib/ vs. .../lib64/ (it is
+    #       a symlink in the VE, but is created distinct dir by pip).  So we have
+    #       to perform the path normalization only on the part with points to
+    #       the root of the VE.  So we don't apply the path normalization to the
+    #       last three path elements (lib[64]/pythonx.y/site-packages)
+    #       (this probably should be an sed command...)
+    TMP_BASE="$VE_MOD_PREFIX/"
+    TMP_TAIL="`basename $TMP_BASE`"
+    TMP_BASE="`dirname  $TMP_BASE`"
+    TMP_TAIL="`basename $TMP_BASE`/$TMP_TAIL"
+    TMP_BASE="`dirname  $TMP_BASE`"
+    TMP_TAIL="`basename $TMP_BASE`/$TMP_TAIL"
+    TMP_BASE="`dirname  $TMP_BASE`"
+
+    TMP_BASE=`(cd $TMP_BASE; pwd -P)`
+    VE_MOD_PREFIX="$TMP_BASE/$TMP_TAIL"
 
     # we can now derive the pythonpath into the rp_install portion by replacing
     # the leading path elements.  Note that the same mechnism is used later on
@@ -591,8 +610,10 @@ virtenv_activate()
     export PYTHONPATH
 
     echo "activated virtenv"
-    echo "VIRTENV   : $VIRTENV"
-    echo "PYTHONPATH: $PYTHONPATH"
+    echo "VIRTENV      : $VIRTENV"
+    echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
+    echo "RP_MOD_PREFIX: $RP_MOD_PREFIX"
+    echo "PYTHONPATH   : $PYTHONPATH"
 }
 
 
