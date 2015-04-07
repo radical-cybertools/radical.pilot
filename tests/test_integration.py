@@ -27,6 +27,9 @@ def pilot_state_cb (pilot, state):
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
     if state == rp.FAILED:
+        print '\nSTDOUT: %s\n\n' % pilot.stdout
+        print '\nSTDERR: %s\n\n' % pilot.stderr
+        print '\nLOG   : %s\n\n' % pilot.log
         sys.exit (1)
 
 
