@@ -451,9 +451,8 @@ virtenv_setup()
 
         *)
             # NOTE: do *not* use 'pip -e' -- egg linking does not work with 
-            #       PYTHONPATH.  # Instead, we manually clone the respective 
-            #       git repository, and switch to the 
-            #       respective branch/tag/commit.
+            #       PYTHONPATH.  Instead, we manually clone the respective 
+            #       git repository, and switch to the branch/tag/commit.
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
@@ -577,14 +576,14 @@ virtenv_activate()
     #       a chance of the sed below to succeed, we normalize the path ourself.
   # VE_MOD_PREFIX=`(cd $VE_MOD_PREFIX; pwd -P)`
 
-    # NOTE: on other systems again, that above path normalization is resulting in
-    #       paths which are invalid when used in the virtualenv, as that will
-    #       result in the incorrect use of .../lib/ vs. .../lib64/ (it is
-    #       a symlink in the VE, but is created distinct dir by pip).  So we have
-    #       to perform the path normalization only on the part with points to
-    #       the root of the VE.  So we don't apply the path normalization to the
-    #       last three path elements (lib[64]/pythonx.y/site-packages)
-    #       (this probably should be an sed command...)
+    # NOTE: on other systems again, that above path normalization is resulting
+    #       in paths which are invalid when used with pip/PYTHONPATH, as that
+    #       will result in the incorrect use of .../lib/ vs. .../lib64/ (it is
+    #       a symlink in the VE, but is created as distinct dir by pip).  So we
+    #       have to perform the path normalization only on the part with points
+    #       to the root of the VE: we don't apply the path normalization to
+    #       the last three path elements (lib[64]/pythonx.y/site-packages) (this
+    #       probably should be an sed command...)
     TMP_BASE="$VE_MOD_PREFIX/"
     TMP_TAIL="`basename $TMP_BASE`"
     TMP_BASE="`dirname  $TMP_BASE`"
@@ -597,14 +596,14 @@ virtenv_activate()
     VE_MOD_PREFIX="$TMP_BASE/$TMP_TAIL"
 
     # we can now derive the pythonpath into the rp_install portion by replacing
-    # the leading path elements.  Note that the same mechnism is used later on
+    # the leading path elements.  The same mechanism is used later on
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$VIRTENV/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
-    #       'module load python', and that would supercede the VE module tree,
+    #       'module load python', and that would supersede the VE module tree,
     #       leading to unusable versions of setuptools.
     PYTHONPATH="$VE_MOD_PREFIX:$VE_PYTHONPATH"
     export PYTHONPATH
@@ -632,7 +631,7 @@ virtenv_create()
 
     virtenv="$1"
 
-    # NOTE: create a fresh virtualenv. we use an older 1.9.x version of
+    # NOTE: create a fresh virtualenv. We use an older 1.9.x version of
     #       virtualenv as this seems to work more reliable than newer versions.
     run_cmd "Download virtualenv tgz" \
             "curl -k -O '$VIRTENV_TGZ_URL'"
@@ -677,9 +676,9 @@ virtenv_create()
 
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip
     #       developers discuss if those options will get un-deprecated again,
-    #       fact is that there are pip versions around which do not work for us
-    #       (hello supermuc!).  So we fix the version to one we know is
-    #       functional.
+    #       fact is that there are released pip versions around which do not 
+    #       work for us (hello supermuc!).  So we fix the version to one we know
+    #       is functional.
     run_cmd "update pip" \
             "$PIP install --upgrade pip==1.4.1" \
          || echo "Couldn't update pip -- using default version"
@@ -865,8 +864,9 @@ rp_install()
     esac
 
     # NOTE: we need to purge the whole install tree (not only the module dir), 
-    #       as pip will otherwise find the eggs and interprete them as satisfied
-    #       dependencies, even if the modules are gone...
+    #       as pip will otherwise find the eggs and interpret them as satisfied
+    #       dependencies, even if the modules are gone.  Of course, there should
+    #       not be any eggs in the first place, but...
     rm    -rf  "$RP_INSTALL/"
     mkdir -p   "$RP_INSTALL/"
 
@@ -1079,9 +1079,9 @@ done
 #       module path than one would expect from the virtenv path.  We thus
 #       normalize the virtenv path before we use it.
 mkdir -p "$VIRTENV"
-echo "VIRTENV 1: $VIRTENV"
+echo "VIRTENV : $VIRTENV"
 VIRTENV=`(cd $VIRTENV; pwd -P)`
-echo "VIRTENV 2: $VIRTENV"
+echo "VIRTENV : $VIRTENV (normalized)"
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
@@ -1146,10 +1146,10 @@ then
 fi
 
 # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
-#       commands.  Its a sign that the pip cacert (or the system's, dunno) 
-#       is not up to date.  Easy_install seems to use a different access 
+#       commands (It means that the pip cacert [or the system's, dunno] 
+#       is not up to date).  Easy_install seems to use a different access 
 #       channel for some reason, so does not need the cert bundle.
-#       https://github.com/pypa/pip/issues/2130
+#       see https://github.com/pypa/pip/issues/2130
 #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
 if test -f 'cacert.pem.gz'
 then
@@ -1180,7 +1180,8 @@ export _OLD_VIRTUAL_PS1
 #       we allow for both -- but eventually (once the agent itself is small), 
 #       we may want to move it to bin ourself.  At that point, we probably
 #       have re-implemented pip... :/
-# FIXME: the second option should use $RP_MOD_PATH
+# FIXME: the second option should use $RP_MOD_PATH, or should derive the path
+#       from the imported rp modules __file__.
 if test "$RP_INSTALL_TARGET" = 'SANDBOX'
 then
     PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
