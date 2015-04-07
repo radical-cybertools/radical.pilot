@@ -246,7 +246,7 @@
      "executable"      : "python"
      },
  "xsede.gordon"        : {
-     "cp_project"      : "",
+     "cp_project"      : "unc101",
      "cp_queue"        : "",
      "cp_runtime"      :  5,
      "cp_cores"        : 32,
