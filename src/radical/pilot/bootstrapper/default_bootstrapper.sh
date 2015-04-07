@@ -567,6 +567,9 @@ virtenv_activate()
     # make sure the lib path into the prefix conforms to the python conventions
     PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
     VE_MOD_PREFIX=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    echo "PYTHON INTERPRETER: `which python`"
+    echo "PYTHON_VERSION    : $PYTHON_VERSION"
+    echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
 
     # NOTE: distutils.sc.get_python_lib() behaves different on different
     #       systems: on some systems (versions?) it returns a normalized path, 
@@ -1156,6 +1159,7 @@ export _OLD_VIRTUAL_PS1
 #       we allow for both -- but eventually (once the agent itself is small), 
 #       we may want to move it to bin ourself.  At that point, we probably
 #       have re-implemented pip... :/
+# FIXME: the second option should use $RP_MOD_PATH
 if test "$RP_INSTALL_TARGET" = 'SANDBOX'
 then
     PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
