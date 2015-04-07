@@ -3410,7 +3410,7 @@ class ForkLRMS(LRMS):
 
         selected_cpus = self.requested_cores
 
-        # when we profile the agent, we fake any number of CUs, so don't
+        # when we profile the agent, we fake any number of cores, so don't
         # perform any sanity checks
         if not profile_agent :
 
