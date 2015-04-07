@@ -407,7 +407,7 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxf $sdist
+                tar zxmf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET='VIRTENV'
@@ -419,7 +419,7 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxf $sdist
+                tar zxmf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET='SANDBOX'
@@ -620,7 +620,7 @@ virtenv_create()
 
     else :
         run_cmd "unpacking virtualenv tgz" \
-                "tar xvfz '$VIRTENV_TGZ'"
+                "tar zxmf '$VIRTENV_TGZ'"
 
         if test $? -ne 0
         then
@@ -732,12 +732,12 @@ virtenv_update()
 #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
 #
 #   local: # needs sdist staging
-#       tar zxf $sdist.tgz
+#       tar zxmf $sdist.tgz
 #       pip install -t $VIRTENV/rp_install $sdist/
 #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
 #
 #   debug: # needs sdist staging
-#       tar zxf $sdist.tgz
+#       tar zxmf $sdist.tgz
 #       pip install -t $SANDBOX/rp_install $sdist/
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #

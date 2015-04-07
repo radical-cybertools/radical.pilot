@@ -50,7 +50,8 @@ def unit_state_cb (unit, state):
 
 
     if state == rp.FAILED:
-        print "stderr: %s" % unit.stderr
+        print "\nSTDOUT: %s\n\n" % unit.stdout
+        print "\nSTDERR: %s\n\n" % unit.stderr
         sys.exit(2)
 
 
@@ -139,6 +140,7 @@ def run_test(cfg):
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         print "need to exit now: %s" % e
+        raise
 
     finally:
         # always clean up the session, no matter if we caught an exception or

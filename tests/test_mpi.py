@@ -19,6 +19,9 @@ def pilot_state_cb (pilot, state):
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
     if state == rp.FAILED:
+        print '\nSTDOUT: %s\n\n' % pilot.stdout
+        print '\nSTDERR: %s\n\n' % pilot.stderr
+        print '\nLOG   : %s\n\n' % pilot.log
         sys.exit (1)
 
 
@@ -34,7 +37,8 @@ def unit_state_cb (unit, state):
     print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
 
     if state == rp.FAILED:
-        print "stderr: %s" % unit.stderr
+        print "\nSTDOUT: %s\n\n" % unit.stdout
+        print "\nSTDERR: %s\n\n" % unit.stderr
         sys.exit(2)
 
 
@@ -138,6 +142,7 @@ def run_test (cfg):
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         print "need to exit now: %s" % e
+        raise
 
     finally:
         # always clean up the session, no matter if we caught an exception or
