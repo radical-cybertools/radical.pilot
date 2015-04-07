@@ -88,6 +88,9 @@ class ComputePilotDescription(attributes.Attributes):
        [Type: `int`] [**mandatory**] The number of cores the pilot should
        allocate on the target resource.
 
+       NOTE: for local pilots, you can set a number larger than the physical
+       machine limit when setting `RADICAL_PILOT_PROFILE` in your environment.
+
     .. data:: memory
 
        [Type: `int`] [**optional**] The amount of memorty (in MB) the pilot

@@ -3408,16 +3408,22 @@ class ForkLRMS(LRMS):
 
         self._log.info("Using fork on localhost.")
 
-        detected_cpus = multiprocessing.cpu_count()
+        selected_cpus = self.requested_cores
 
-        if profile_agent :
-            # when we profile the agent, we fake any number of CUs...
-            selected_cpus = self.requested_cores
-        else :
-            selected_cpus = max(detected_cpus, self.requested_cores)
+        # when we profile the agent, we fake any number of CUs, so don't
+        # perform any sanity checks
+        if not profile_agent :
 
+            detected_cpus = multiprocessing.cpu_count()
 
-        self._log.info("Detected %d cores on localhost, using %d.", detected_cpus, selected_cpus)
+            if detected_cpus < selected_cpus:
+                self._log.warn("insufficient cores: using %d instead of requested %d.", 
+                        detected_cpus, selected_cpus)
+                selected_cpus = detected_cpus
+
+            elif detected_cpus > selected_cpus:
+                self._log.warn("more cores available: using requested %d instead of available %d.", 
+                        selected_cpus, detected_cpus)
 
         self.node_list = ["localhost"]
         self.cores_per_node = selected_cpus
