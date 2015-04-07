@@ -3,6 +3,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 import sys
 import radical.pilot as rp
 import radical.utils as ru
@@ -101,7 +102,7 @@ def run_test (cfg):
                 cudesc.pre_exec = cfg['cu_pre_exec']
             cudesc.executable    = cfg['executable']
             cudesc.arguments     = ["helloworld_mpi.py"]
-            cudesc.input_staging = ["../examples/helloworld_mpi.py"]
+            cudesc.input_staging = ["%s/../examples/helloworld_mpi.py" % cfg['pwd']]
             cudesc.cores         = cfg['cu_cores']
             cudesc.mpi           = True
 
@@ -159,7 +160,8 @@ if __name__ == "__main__":
     # TODO: the json config should be converted into an mpi_test kernel, once
     # the application kernels become maintainable...
 
-    configs = ru.read_json_str ('mpi_test.json')
+    pwd     = os.path.dirname(__file__)
+    configs = ru.read_json_str ('%s/test.json' % pwd)
     targets = sys.argv[1:]
     failed  = 0
 
@@ -177,6 +179,7 @@ if __name__ == "__main__":
         
         cfg = configs[target]
         cfg['cp_resource'] = target
+        cfg['pwd']         = pwd
 
         try:
             run_test (cfg)
