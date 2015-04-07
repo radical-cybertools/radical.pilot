@@ -135,7 +135,9 @@
      "cp_cores"        :  4,
      "cp_schema"       : "",
      "cu_cores"        :  2,
-     "cu_pre_exec"     : [],
+     "cu_pre_exec"     : ["python virtualenv ./mpive",
+                          ". ./mpive/bin/activate",
+                          "pip install mpi4py"],
      "executable"      : "python"
      },
  "ncar.yellowstone"    : {
