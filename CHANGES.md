@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.26 Release                                               2015-04-08
+---------------------------------------------------------------------
+
+  * hotfix to cope with API changing pymongo release
+
+
 0.25 Release                                               2015-04-01
 ---------------------------------------------------------------------
 

@@ -193,8 +193,8 @@ installvenv()
     fi
     
     # pymongo should be pulled by saga, via utils.  But whatever...
-    PIP_CMD="pip install --upgrade pymongo"
-    EI_CMD="easy_install --upgrade pymongo"
+    PIP_CMD="pip install --upgrade pymongo==2.8"
+    EI_CMD="easy_install --upgrade pymongo==2.8"
     echo ""
     echo "################################################################################"
     echo "## install/upgrade pymongo"
