@@ -40,7 +40,7 @@ do
 
         ( set -e ; "./test_$s.py" "$t" ; echo "$SUCCESS_MARKER") 2>&1 \
         | tee "$log_tgt" | awk "{$progress}"
-        
+
         if grep "$SUCCESS_MARKER" "$log_tgt"
         then
             echo
