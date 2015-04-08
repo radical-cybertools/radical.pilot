@@ -5419,8 +5419,7 @@ class Agent(object):
         # right here...  No idea how to avoid that roundtrip...
         # This also blocks us from using multiple ingest threads, or from doing
         # late binding by unit pull :/
-        cu_cursor  = self._cu.find(multi = True,
-                                   spec  = {"pilot" : self._pilot_id,
+        cu_cursor  = self._cu.find(spec  = {"pilot" : self._pilot_id,
                                             "state" : rp.PENDING_EXECUTION})
         if cu_cursor.count():
 
@@ -5439,8 +5438,7 @@ class Agent(object):
         else :
             # if we did not find any units which can be executed immediately, we
             # check if we have any units for which to do stage-in
-            cu_cursor = self._cu.find(multi = True,
-                                      spec  = {"pilot" : self._pilot_id,
+            cu_cursor = self._cu.find(spec  = {"pilot" : self._pilot_id,
                                                'Agent_Input_Status': rp.PENDING})
             if cu_cursor.count():
 
