@@ -2,7 +2,7 @@
 {
     "joule": {
         "description"                 : "The STFC Joule IBM BG/Q system (http://community.hartree.stfc.ac.uk/wiki/site/admin/home.html)",
-        "notes"                       : "This currently needs an outbound ssh tunnel.",
+        "notes"                       : "This currently needs a centrally administered outbound ssh tunnel.",
         "schemas"                     : ["ssh"],
         "ssh"                         : {
             "job_manager_endpoint"    : "loadl+ssh://login.joule.hartree.stfc.ac.uk/?job_type=bluegene&explicit_exec=true",
