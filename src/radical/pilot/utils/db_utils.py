@@ -209,6 +209,12 @@ def get_session_frames (db, sids, cachedir=None) :
             finished    = unit.get ('finished')
             description = unit.get ('description', dict())
 
+            if unit['_id'] == '5492ad8e23769c168f0ca503':
+                print uid
+                import pprint
+                print pprint.pprint (unit)
+                print 2
+
             if started  : started  -= session_start
             if finished : finished -= session_start
 
@@ -240,11 +246,22 @@ def get_session_frames (db, sids, cachedir=None) :
             # see comment in agent line 1474:
             #     TODO: this should ideally be PendingOutputStaging,
             #     but that introduces a race condition currently
+            # FIXME: some states are recorded in the callback history, but not
+            # in the state history.  This points to (yet another) state
+            # management problem -- but for now, we also evaluate the callback
+            # history (but prefer data from the state history).
             saw_staging_output = False
 
-            for entry in unit.get('statehistory', list()):
-                state = entry['state']
-                timer = entry['timestamp'] - session_start
+            event_history = list()
+            event_history += unit.get('callbackhistory', list())
+            event_history += unit.get('statehistory', list())
+
+            for event in event_history:
+                state = event['state']
+                timer = event['timestamp'] - session_start
+
+                if 'Input' in state:
+                    print state, timer
 
                 if state == STAGING_OUTPUT:
                     if saw_staging_output:
