@@ -13,7 +13,7 @@ do
     export RADICAL_UTILS_LOG_TARGETS="stdout,$log_tgt"
     export SAGA_LOG_TARGETS="stdout,$log_tgt"
     export RADICAL_PILOT_LOG_TARGETS="stdout,$log_tgt"
-    ./test_integration.py "$t" 2>&1 | tee "$out_tgt" | awk '{ printf "." }'
+    ./test_integration.py "$t" 2>&1 > "$out_tgt"
     if test "$?" = 0
     then
         echo
@@ -53,7 +53,7 @@ do
     export RADICAL_UTILS_LOG_TARGETS="stdout,$log_tgt"
     export SAGA_LOG_TARGETS="stdout,$log_tgt"
     export RADICAL_PILOT_LOG_TARGETS="stdout,$log_tgt"
-    ./test_mpi.py "$t" 2>&1 | tee "$out_tgt" | awk '{ printf "." }'
+    ./test_mpi.py "$t" 2>&1 > "$out_tgt"
     if test "$?" = 0
     then
         echo
