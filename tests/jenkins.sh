@@ -1,4 +1,5 @@
 
+failed=0
 tests=`cat jenkins.cfg | sed -e 's/#.*//g' | grep -v '^ *$'  | grep integration | cut -f 1 -d :`
 
 for t in $tests
@@ -35,6 +36,7 @@ do
         echo "# -----------------------------------------------------"
         cat "$out_tgt"
         echo "# -----------------------------------------------------"
+        failed=1
     fi
 done
 
@@ -67,7 +69,9 @@ do
         echo "# -----------------------------------------------------"
         cat "$out_tgt"
         echo "# -----------------------------------------------------"
+        failed=1
     fi
 done
 
+exit $failed
 
