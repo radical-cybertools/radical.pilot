@@ -3,6 +3,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 import sys
 import radical.pilot as rp
 import radical.utils as ru
@@ -18,6 +19,9 @@ def pilot_state_cb (pilot, state):
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
     if state == rp.FAILED:
+        print '\nSTDOUT: %s\n\n' % pilot.stdout
+        print '\nSTDERR: %s\n\n' % pilot.stderr
+        print '\nLOG   : %s\n\n' % pilot.log
         sys.exit (1)
 
 
@@ -33,7 +37,8 @@ def unit_state_cb (unit, state):
     print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
 
     if state == rp.FAILED:
-        print "stderr: %s" % unit.stderr
+        print "\nSTDOUT: %s\n\n" % unit.stdout
+        print "\nSTDERR: %s\n\n" % unit.stderr
         sys.exit(2)
 
 
@@ -101,7 +106,7 @@ def run_test (cfg):
                 cudesc.pre_exec = cfg['cu_pre_exec']
             cudesc.executable    = cfg['executable']
             cudesc.arguments     = ["helloworld_mpi.py"]
-            cudesc.input_staging = ["../examples/helloworld_mpi.py"]
+            cudesc.input_staging = ["%s/../examples/helloworld_mpi.py" % cfg['pwd']]
             cudesc.cores         = cfg['cu_cores']
             cudesc.mpi           = True
 
@@ -137,6 +142,7 @@ def run_test (cfg):
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         print "need to exit now: %s" % e
+        raise
 
     finally:
         # always clean up the session, no matter if we caught an exception or
@@ -159,7 +165,8 @@ if __name__ == "__main__":
     # TODO: the json config should be converted into an mpi_test kernel, once
     # the application kernels become maintainable...
 
-    configs = ru.read_json_str ('mpi_test.json')
+    pwd     = os.path.dirname(__file__)
+    configs = ru.read_json_str ('%s/test.json' % pwd)
     targets = sys.argv[1:]
     failed  = 0
 
@@ -177,6 +184,7 @@ if __name__ == "__main__":
         
         cfg = configs[target]
         cfg['cp_resource'] = target
+        cfg['pwd']         = pwd
 
         try:
             run_test (cfg)
