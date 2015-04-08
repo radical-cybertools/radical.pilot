@@ -164,6 +164,8 @@ if __name__ == "__main__":
     # the application kernels become maintainable...
 
     pwd     = os.path.dirname(__file__)
+    if not pwd:
+        pwd = '.'
     configs = ru.read_json_str ('%s/test.json' % pwd)
     targets = sys.argv[1:]
     failed  = 0
