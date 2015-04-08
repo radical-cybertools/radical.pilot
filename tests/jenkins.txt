@@ -1,32 +1,25 @@
 
 # ---------------------------------------
-# main tests
+# issue tests
 # ---------------------------------------
-test_mpi.py
-test_integration.py
+issue57.py
+issue79.py
+issue87.py
+issue88.py
+# 104 eats too many CPU hours
+# issue104.py
+issue124.py
+issue133.py
+issue165.py
+issue172.py
 
 
-# # ---------------------------------------
-# # issue tests
-# # ---------------------------------------
-# issue57.py
-# issue79.py
-# issue87.py
-# issue88.py
-# # 104 eats too many CPU hours
-# # issue104.py
-# issue124.py
-# issue133.py
-# issue165.py
-# issue172.py
-
-
-# # ---------------------------------------
-# # misc tests
-# # ---------------------------------------
-# multicore.py
-# session_ctx.py
-# state_history_tests.py
-# test_resource_config_update.py
+# ---------------------------------------
+# misc tests
+# ---------------------------------------
+multicore.py
+session_ctx.py
+state_history_tests.py
+test_resource_config_update.py
 
 
