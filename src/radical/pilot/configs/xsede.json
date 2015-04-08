@@ -19,7 +19,7 @@
         "lrms"                        : "SLURM",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
-        "python_interpreter"          : "/opt/apps/python/epd/7.3.2/bin/python",
+        "python_interpreter"          : "python",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
                                          "module load cluster",

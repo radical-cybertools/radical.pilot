@@ -111,8 +111,7 @@ class OutputFileTransferWorker(threading.Thread):
                         # directive(s) wit SAGA.
                         compute_unit_id = str(compute_unit["_id"])
                         remote_sandbox = compute_unit["sandbox"]
-                        staging_directives = compute_unit["description"]["output_staging"]
-
+                        staging_directives = compute_unit["FTW_Output_Directives"]
 
                         logger.info("Processing output file transfers for ComputeUnit %s" % compute_unit_id)
                         # Loop over all staging directives and execute them.
