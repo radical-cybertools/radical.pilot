@@ -164,8 +164,11 @@ if __name__ == "__main__":
 
     # TODO: the json config should be converted into an mpi_test kernel, once
     # the application kernels become maintainable...
+    print __file__
 
     pwd     = os.path.dirname(__file__)
+    if not pwd:
+        pwd = '.'
     configs = ru.read_json_str ('%s/test.json' % pwd)
     targets = sys.argv[1:]
     failed  = 0
