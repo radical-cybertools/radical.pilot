@@ -5,7 +5,7 @@ tests=`cat jenkins.cfg | sed -e 's/#.*//g' | grep -v '^ *$'  | grep integration 
 for t in $tests
 do
     echo "# -----------------------------------------------------"
-    echo "# integration test for $t"
+    echo "# INTEGRATION TEST $T"
     echo "# "
     log_tgt="./rp.test_mpi.$t.log"
     out_tgt="./rp.test_mpi.$t.out"
@@ -18,7 +18,7 @@ do
     then
         echo
         echo "# "
-        echo "# SUCCESS"
+        echo "# INTEGRATION SUCCESS $t"
         echo "# -----------------------------------------------------"
         if test "$JENKINS_VERBOSE" = "TRUE"
         then
@@ -30,7 +30,7 @@ do
     else
         echo
         echo "# "
-        echo "# FAILED"
+        echo "# INTEGRATION FAILED $t"
         echo "# -----------------------------------------------------"
         cat "$log_tgt"
         echo "# -----------------------------------------------------"
@@ -45,7 +45,7 @@ tests=`cat jenkins.cfg | sed -e 's/#.*//g' | grep -v '^ *$'  | grep mpi | cut -f
 for t in $tests
 do
     echo "# -----------------------------------------------------"
-    echo "# mpi test for $t"
+    echo "# MPI TEST $t"
     echo "# "
     log_tgt="./rp.test_mpi.$t.log"
     out_tgt="./rp.test_mpi.$t.out"
@@ -58,7 +58,7 @@ do
     then
         echo
         echo "# "
-        echo "# SUCCESS"
+        echo "# MPI SUCCESS $t"
         echo "# -----------------------------------------------------"
         if test "$JENKINS_VERBOSE" = "TRUE"
         then
@@ -70,7 +70,7 @@ do
     else
         echo
         echo "# "
-        echo "# FAILED"
+        echo "# MPI FAILED $t"
         echo "# -----------------------------------------------------"
         cat "$log_tgt"
         echo "# -----------------------------------------------------"
