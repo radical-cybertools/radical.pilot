@@ -358,7 +358,7 @@ class Session():
             "commands":       []
         }
 
-        self._p.insert(pilot_doc, upsert=False)
+        self._p.insert(pilot_doc)
 
         return str(pilot_uid), pilot_doc
 
