@@ -93,6 +93,7 @@ run_test() {
     fi
 
     (set -e ; $cmd ; printf "\n$TEST_OK\n") 2>&1 | tee "$log" | awk "{$progress}"
+    echo
 
     if grep -q "$TEST_OK" "$log"
     then
