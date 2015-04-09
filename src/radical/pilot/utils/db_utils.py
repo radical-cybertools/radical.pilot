@@ -271,7 +271,7 @@ def get_session_slothist (db, sid, cache=None, cachedir=None) :
 
         # slot configuration was only recently (v0.18) added to the RP agent...
         if  not 'slots' in pilot_doc :
-            return None
+            return ret
 
         pilot_id     = pilot_doc['_id'] 
         slot_names   = list()

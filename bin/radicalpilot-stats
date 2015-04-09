@@ -46,18 +46,17 @@ _EVENT_ENCODING = {
         }, 
         'unit': {
             rp.NEW                     :  1,
-            rp.UNSCHEDULED             :  2,
+            rp.SCHEDULING              :  2,
             rp.PENDING_INPUT_STAGING   :  3,
             rp.STAGING_INPUT           :  4,
             rp.PENDING_EXECUTION       :  5,
-            rp.SCHEDULING              :  6,
-            "Allocating"               :  7,
-            rp.EXECUTING               :  8,
-            rp.PENDING_OUTPUT_STAGING  :  9,
-            rp.STAGING_OUTPUT          : 10,
-            rp.DONE                    : 11,
-            rp.CANCELED                : 12,
-            rp.FAILED                  : 13
+            rp.ALLOCATING              :  6,
+            rp.EXECUTING               :  7,
+            rp.PENDING_OUTPUT_STAGING  :  8,
+            rp.STAGING_OUTPUT          :  9,
+            rp.DONE                    : 10,
+            rp.CANCELED                : 11,
+            rp.FAILED                  : 12
         }
     }
 
@@ -328,11 +327,12 @@ def get_stats (docs, events, slothist) :
                 state = s
                 start = ts
 
-        pilot_runtime = (doc['finished'] - doc['started']) * len (slothist[pid]['slots'])
+        pilot_runtime = (doc['finished'] - doc['started']) * pilot_info['cores']
         pilot_busy = 0.0
-        for slot in slothist[pid]['slot_infos'] :
-            for slot_used in slothist[pid]['slot_infos'][slot] :
-                pilot_busy += slot_used[1] - slot_used[0]
+        if pid in slothist:
+            for slot in slothist[pid]['slot_infos'] :
+                for slot_used in slothist[pid]['slot_infos'][slot] :
+                    pilot_busy += slot_used[1] - slot_used[0]
 
         pilot_info['started']     = doc['started']
         pilot_info['finished']    = doc['finished']
@@ -481,8 +481,12 @@ def plot_session (db, session, cachedir, term) :
     for pilot in pilot_docs :
 
         pid = str(pilot['_id'])
-        pids.append (pid)
+        pids.append  (pid)
         hosts.append (ru.Url (pilot['sandbox']).host.split('.')[0])
+
+        slotnum = pilot['description']['cores']
+        maxslots = max(slotnum,maxslots)
+        slots.append (slotnum)
 
         with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
             for event in pilot['statehistory'] :
@@ -567,28 +571,25 @@ def plot_session (db, session, cachedir, term) :
 
         with open ("/tmp/rp.%s.pilot.slots.%s.dat" % (session, pid), "w") as dat :
 
-            slothist = slothists[pid]
-            slotnum  = len(slothist['slots'])
-            maxslots = max(slotnum,maxslots)
+            if pid in slothists:
+                slothist = slothists[pid]
 
-            slots.append (slotnum)
+                slot_idx = 0
+                for slot in slothist['slots'] :
 
-            slot_idx = 0
-            for slot in slothist['slots'] :
+                    slot_idx += 1
+                    used = False
 
-                slot_idx += 1
-                used = False
+                    for entry in slothist['slot_infos'][slot] :
 
-                for entry in slothist['slot_infos'][slot] :
+                        busy_start = ru.time_diff (start, entry[0])
+                        busy_stop  = ru.time_diff (start, entry[1])
 
-                    busy_start = ru.time_diff (start, entry[0])
-                    busy_stop  = ru.time_diff (start, entry[1])
+                        dat.write ("%10.2f  %6d\n" % (busy_start, slot_idx))
+                        dat.write ("%10.2f  %6d\n" % (busy_stop,  slot_idx))
+                        dat.write ("\n")
 
-                    dat.write ("%10.2f  %6d\n" % (busy_start, slot_idx))
-                    dat.write ("%10.2f  %6d\n" % (busy_stop,  slot_idx))
                     dat.write ("\n")
-
-                dat.write ("\n")
 
             delete_me.append (dat.name)
 
@@ -610,6 +611,8 @@ def plot_session (db, session, cachedir, term) :
 
     # if maxslots and maxqueue differ by max 25% then we use the same scale.  If
     # maxslots is larger we also use the same scale.
+    print slots
+    print maxslots
     max_scale  = max(maxslots, maxqueue)
     min_scale  = min(maxslots, maxqueue)
     mean_scale = (maxslots+maxqueue)/2
@@ -695,18 +698,17 @@ def plot_session (db, session, cachedir, term) :
     END    = "<"
     ONCE   = "!"
     COLORS = {rp.NEW                     : ' 1',
-              rp.UNSCHEDULED             : ' 2',
+              rp.SCHEDULING              : ' 2',
               rp.PENDING_INPUT_STAGING   : ' 3',
               rp.STAGING_INPUT           : ' 4',
               rp.PENDING_EXECUTION       : ' 5',
-              rp.SCHEDULING              : ' 6',
-              "Allocating"               : ' 8',
-              rp.EXECUTING               : ' 8',
-              rp.PENDING_OUTPUT_STAGING  : ' 9',
-              rp.STAGING_OUTPUT          : '10',
-              rp.DONE                    : '11',
-              rp.CANCELED                : '12',
-              rp.FAILED                  : '13'}
+              rp.ALLOCATING              : ' 6',
+              rp.EXECUTING               : ' 7',
+              rp.PENDING_OUTPUT_STAGING  : ' 8',
+              rp.STAGING_OUTPUT          : ' 9',
+              rp.DONE                    : '10',
+              rp.CANCELED                : '11',
+              rp.FAILED                  : '12'}
 
     for pilot in docs['pilot'] :
 

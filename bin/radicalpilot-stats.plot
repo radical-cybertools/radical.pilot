@@ -210,18 +210,17 @@ do for [term_i=1:words(terms)] {
     set xrange [0:maxtime]
     set yrange [0:12]
     set ytics  ("NEW            "  1, \
-                "UNSCHEDULED    "  2, \
+                "SCHEDULING     "  2, \
                 "PEND.   INPUT  "  3, \
                 "TRANSF. INPUT  "  4, \
                 "PEND. EXECUTION"  5, \
-                "SCHEDULING     "  6, \
-                "ALLOCATING     "  7, \
-                "EXECUTING      "  8, \
-                "PEND.   OUTPUT "  9, \
-                "TRANSF. OUTPUT " 10, \
-                "DONE           " 11, \
-                "CANCELED       " 12, \
-                "FAILED         " 13)
+                "ALLOCATING     "  6, \
+                "EXECUTING      "  7, \
+                "PEND.   OUTPUT "  8, \
+                "TRANSF. OUTPUT "  9, \
+                "DONE           " 10, \
+                "CANCELED       " 11, \
+                "FAILED         " 12)
 
     set xlabel ''
     set ylabel "UNITS\n[states]" offset second -0.06,0

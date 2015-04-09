@@ -60,13 +60,17 @@ html_entry()
         echo "   <td> $name    </td> "
         echo "   <td> $result  </td> "
         echo "   <td> <a href=\"$logfile\">log</a> </td> "
-        if test -z "$sid"
+        if test -f "$sid.txt"
         then
-            echo "   <td> - </td> "
-            echo "   <td> - </td> "
-        else
             echo "   <td> <a href=\"$sid.txt\">stat</a> </td> "
+        else
+            echo "   <td> - </td> "
+        fi
+        if test -f "$sid.png"
+        then
             echo "   <td> <a href=\"$sid.png\">plot</a> </td> "
+        else
+            echo "   <td> - </td> "
         fi
         echo " </tr>"
     ) >> $HTML_TARGET
@@ -105,7 +109,7 @@ run_test() {
         progress='printf "."'
     fi
 
-    (set -e ; $cmd ; printf "\n$TEST_OK\n") 2>&1 | tee "$log" | awk "1==NR%50{print \"\"}{$progress}"
+    (set -e ; $cmd ; printf "\n$TEST_OK\n") 2>&1 | tee "$log" | awk "1==NR%80{print \"\"}{$progress}"
     echo
 
     SID=`grep 'SESSION ID' $log | head -n 1 | cut -f 2 -d ':' | tr -d ' '`
