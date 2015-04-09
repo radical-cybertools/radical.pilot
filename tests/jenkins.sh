@@ -92,7 +92,7 @@ run_test() {
         progress='printf "."'
     fi
 
-    (set -e ; $cmd ; printf "\n$TEST_OK\n") 2>&1 | tee "$log" | awk "{$progress}"
+    (set -e ; $cmd ; printf "\n$TEST_OK\n") 2>&1 | tee "$log" | awk "1==NR%50{print \"\"}{$progress}"
     echo
 
     if grep -q "$TEST_OK" "$log"
