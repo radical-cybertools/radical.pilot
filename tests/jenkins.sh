@@ -94,7 +94,7 @@ run_test() {
 
     (set -e ; $cmd ; printf "\n$TEST_OK\n") 2>&1 | tee "$log" | awk "{$progress}"
 
-    if grep "$TEST_OK" "$log"
+    if grep -q "$TEST_OK" "$log"
     then
         html_entry "$s ($t)" "$HTML_SUCCESS" "$log"
         echo "# "
