@@ -62,7 +62,7 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
     
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "archer.ac.uk"
+        pdesc.resource  = "epsrc.archer"
         pdesc.runtime   = 90 # minutes
         pdesc.cores     = 24
         pdesc.cleanup   = True

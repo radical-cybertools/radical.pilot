@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+
+
 import os
 import sys
 import datetime
@@ -24,12 +27,13 @@ def unit_state_cb (unit, state) :
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+session = rp.Session()
+
+try:
 
     # prepare some input files for the compute units
     os.system('head -c %d /dev/urandom > file.dat' % TEST_SIZE)
 
-    session = rp.Session()
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
@@ -47,7 +51,7 @@ if __name__ == "__main__":
         pdesc.runtime   = 30 # minutes
         pdesc.cores     = 16
         pdesc.cleanup   = True
-        pdesc.project   = "TG-MCB140109"
+        pdesc.project   = "TG-MCB090174"
 
         pdescs.append (pdesc)
 
@@ -68,7 +72,15 @@ if __name__ == "__main__":
     units = umgr.submit_units(cuds)
     umgr.wait_units()
 
+except Exception as e:
+    print "TEST FAILED"
+    raise
+
+finally:
+    # Remove session from database
     session.close()
 
-    os.system ('rm file.dat')
+    os.system ('rm -f file.dat')
+
 # ------------------------------------------------------------------------------
+

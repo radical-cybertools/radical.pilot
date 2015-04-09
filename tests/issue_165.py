@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 
 import os
 import sys
@@ -31,12 +33,12 @@ def unit_state_change_cb (unit, state) :
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+# Create a new session. A session is the 'root' object for all other
+# RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+# well as security contexts.
+session = rp.Session()
 
-    # Create a new session. A session is the 'root' object for all other
-    # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-    # well as security contexts.
-    session = rp.Session()
+try:
 
     # prepare some input files for the compute units
     os.system ('hostname > file1.dat')
@@ -105,12 +107,21 @@ if __name__ == "__main__":
 
     pmgr.cancel_pilots()
     pmgr.wait_pilots()
+
+except Exception as e:
+    print "TEST FAILED"
+    raise
+
+finally:
+    # Remove session from database
     session.close()
 
     # delete the test data files
-    os.system ('rm file1.dat')
-    os.system ('rm file2.dat')
-    os.system ('rm result.dat')
+    os.system ('rm -f file1.dat')
+    os.system ('rm -f file2.dat')
+    os.system ('rm -f result.dat')
+
+
 
 #-------------------------------------------------------------------------------
 

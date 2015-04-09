@@ -439,7 +439,7 @@ class UnitManager(object):
 
             units.append (ComputeUnit.create (unit_description=ud,
                                               unit_manager_obj=self, 
-                                              local_state=NEW))
+                                              local_state=SCHEDULING))
 
         self._worker.publish_compute_units (units=units)
 

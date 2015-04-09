@@ -13,10 +13,18 @@
 
 failed=0
 
-SUCCESS_MARKER="JENKINS TEST SUCCESS"
+export SUCCESS_MARKER="JENKINS TEST SUCCESS"
+
+export SAGA_VERBOSE=DEBUG
+export RADICAL_VERBOSE=DEBUG
+export RADICAL_UTILS_VERBOSE=DEBUG
+export RADICAL_PILOT_VERBOSE=DEBUG
+
 
 for s in integration mpi
 do
+    break
+
     tests=`cat jenkins.cfg | sed -e 's/#.*//g' | grep -v '^ *$'  | grep "$s" | cut -f 1 -d :`
     for t in $tests
     do
@@ -32,11 +40,6 @@ do
         else
             progress='printf "."'
         fi
-
-        export SAGA_VERBOSE=DEBUG
-        export RADICAL_VERBOSE=DEBUG
-        export RADICAL_UTILS_VERBOSE=DEBUG
-        export RADICAL_PILOT_VERBOSE=DEBUG
 
         ( set -e ; "./test_$s.py" "$t" ; echo "$SUCCESS_MARKER") 2>&1 \
         | tee "$log_tgt" | awk "{$progress}"
@@ -66,6 +69,51 @@ do
             failed=1
         fi
     done
+done
+
+issues=`cat jenkins_issues.cfg | sed -e 's/#.*//g' | grep -v '^ *$'`
+for i in $issues
+do
+    echo "# -----------------------------------------------------"
+    echo "# TEST ISSUE: $i"
+    echo "# "
+
+    log_tgt="./rp.test_issue_$i.log"
+
+    if test "$JENKINS_VERBOSE" = "TRUE"
+    then
+        progress='print'
+    else
+        progress='printf "."'
+    fi
+
+    ( set -e ; "./$i" ; echo "$SUCCESS_MARKER") 2>&1 \
+    | tee "$log_tgt" | awk "{$progress}"
+
+    if grep "$SUCCESS_MARKER" "$log_tgt"
+    then
+        echo
+        echo "# "
+        echo "# SUCCESS $i"
+        echo "# -----------------------------------------------------"
+    else
+        echo
+        echo "# "
+        echo "# FAILED $i"
+        echo "# -----------------------------------------------------"
+
+        if ! test "$JENKINS_VERBOSE" = "TRUE"
+        then
+            cat "$log_tgt"
+            echo "# -----------------------------------------------------"
+        fi
+
+        if test "$JENKINS_EXIT_ON_FAIL" = "TRUE"
+        then
+            exit 1
+        fi
+        failed=1
+    fi
 done
 
 exit $failed

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 
 import sys
 import radical.pilot as rp
@@ -30,9 +32,9 @@ def unit_state_change_cb (unit, state) :
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+session = rp.Session()
 
-    session = rp.Session()
+try:
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
@@ -73,9 +75,13 @@ if __name__ == "__main__":
     pmgr.cancel_pilots()
     pmgr.wait_pilots()
 
-    session.close ()
+except Exception as e:
+    print "TEST FAILED"
+    raise
 
-    sys.exit (0)
+finally:
+    # Remove session from database
+    session.close()
 
 
 # ------------------------------------------------------------------------------

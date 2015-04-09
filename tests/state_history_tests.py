@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 
 import sys
 import radical.pilot as rp
@@ -26,12 +28,12 @@ def unit_state_change_cb (unit, state) :
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+# Create a new session. A session is the 'root' object for all other
+# RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
+# well as security crendetials.
+session = rp.Session()
 
-    # Create a new session. A session is the 'root' object for all other
-    # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-    # well as security crendetials.
-    session = rp.Session()
+try:
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -95,11 +97,12 @@ if __name__ == "__main__":
         for entry in unit.state_history:
             print " * %s: %s" % (entry.timestamp, entry.state)
             states.append (entry.state)
-        assert (rp.NEW               in states)
-        assert (rp.PENDING_EXECUTION in states)
-        assert (rp.SCHEDULING        in states)
-        assert (rp.EXECUTING         in states)
-        assert (rp.DONE              in states)
+        assert (states)
+     #  assert (rp.NEW        in states)
+        assert (rp.SCHEDULING in states)
+        assert (rp.ALLOCATING in states)
+        assert (rp.EXECUTING  in states)
+        assert (rp.DONE       in states)
 
     print "\n== PILOT STATE HISTORY==\n"
 
@@ -108,12 +111,19 @@ if __name__ == "__main__":
     for entry in pilot.state_history:
         print " * %s: %s" % (entry.timestamp, entry.state)
         states.append (entry.state)
+    assert (states)
     assert (rp.PENDING_LAUNCH in states)
     assert (rp.LAUNCHING      in states)
     assert (rp.PENDING_ACTIVE in states)
     assert (rp.ACTIVE         in states)
     assert (rp.CANCELED       in states)
 
+
+except Exception as e:
+    print "TEST FAILED"
+    raise
+
+finally:
     # Remove session from database
     session.close()
 

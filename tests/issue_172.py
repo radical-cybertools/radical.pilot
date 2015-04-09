@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 
 import os
 import sys
@@ -32,12 +34,12 @@ def unit_state_change_cb (unit, state) :
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+# Create a new session. A session is the 'root' object for all other
+# RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
+# well as security contexts.
+session = rp.Session()
 
-    # Create a new session. A session is the 'root' object for all other
-    # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-    # well as security contexts.
-    session = rp.Session()
+try:
 
     # Add an ssh identity to the session.
     c = rp.Context('ssh')
@@ -138,5 +140,12 @@ if __name__ == "__main__":
 
     pmgr.cancel_pilots()
     pmgr.wait_pilots()
-    session.close(cleanup=False)
+
+except Exception as e:
+    print "TEST FAILED"
+    raise
+
+finally:
+    # Remove session from database
+    session.close()
 

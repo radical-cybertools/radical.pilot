@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+
+
 import sys
 import radical.pilot as rp
 
@@ -7,12 +10,12 @@ import radical.pilot as rp
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+# Create a new session. A session is the 'root' object for all other
+# RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
+# well as security crendetials.
+session = rp.Session()
 
-    # Create a new session. A session is the 'root' object for all other
-    # RADICAL-Pilot objects. It encapsualtes the MongoDB connection(s) as
-    # well as security crendetials.
-    session = rp.Session()
+try:
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -28,8 +31,8 @@ if __name__ == "__main__":
 
     cu = rp.ComputeUnitDescription()
     cu.executable    = "cat"
-    cu.arguments     = ["issue286.txt"]
-    cu.input_staging =  "issue286.txt"
+    cu.arguments     = ["issue_286.txt"]
+    cu.input_staging =  "issue_286.txt"
     cu.cores = 1
 
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -52,6 +55,11 @@ if __name__ == "__main__":
     print "unit.stdout: %s" % unit.stdout
     print "unit.stderr: %s" % unit.stderr
 
+except Exception as e:
+    print "TEST FAILED"
+    raise
+
+finally:
     # Remove session from database
     session.close()
 

@@ -1,11 +1,24 @@
-import os
+#!/usr/bin/env python
+
+
 import radical.pilot as rp
 
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
+session = rp.Session()
 
-if __name__ == "__main__":
+try:
 
-    session = rp.Session(database_url=DBURL)
-    pmgr    = rp.PilotManager(session=session)
+    pmgr = rp.PilotManager(session=session)
     pmgr.wait_pilots(pilot_ids="12", state=rp.ACTIVE)
+    print "TEST FAILED"
+
+except KeyError as e:
+    print "TEST SUCCESS"
+
+except Exception as e:
+    print "TEST FAILED"
+    raise
+
+finally:
+    # Remove session from database
+    session.close()
 
