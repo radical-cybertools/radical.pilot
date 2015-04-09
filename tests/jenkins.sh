@@ -7,76 +7,83 @@
 # JENKINS_EXIT_ON_FAIL:
 #     TRUE : exit immediately when a test fails
 #     else : run all tests, independent of success/failure (exit code reflects
-#            failures though)I
+#            failures though)
+
+\trap shutdown QUIT TERM EXIT
 
 
+export FAILED=0
 
-failed=0
-
-export SUCCESS_MARKER="JENKINS TEST SUCCESS"
+export TEST_OK="\nJENKINS TEST SUCCESS\n"
 
 export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTILS_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
+export HTML_TARGET="../report/test_results.html"
+export HTML_SUCCESS="<font color=\"\#66AA66\">SUCCESS</font>"
+export HTML_FAILURE="<font color=\"\#AA6666\">FAILED</font>"
 
-for s in integration mpi
-do
-    tests=`cat jenkins.cfg | sed -e 's/#.*//g' | grep -v '^ *$'  | grep "$s" | cut -f 1 -d :`
-    for t in $tests
-    do
-        echo "# -----------------------------------------------------"
-        echo "# TEST: $s $t"
-        echo "# "
+# ------------------------------------------------------------------------------
+#
+html_start()
+{
+    (
+        echo "<html>"
+        echo " <body>"
+        echo "  <table>"
+        echo "   <tr>"
+        echo "    <td> <b> Test    </b> </td> "
+        echo "    <td> <b> Result  </b> </td> "
+        echo "    <td> <b> Logfile </b> </td> "
+        echo "  </tr>"
+    ) > $HTML_TARGET
+}
 
-        log_tgt="./rp.test_$s_$t.log"
 
-        if test "$JENKINS_VERBOSE" = "TRUE"
-        then
-            progress='print'
-        else
-            progress='printf "."'
-        fi
+# ------------------------------------------------------------------------------
+#
+html_entry()
+{
+    name=$1
+    result=$2
+    logfile=$3
 
-        ( set -e ; "./test_$s.py" "$t" ; echo "$SUCCESS_MARKER") 2>&1 \
-        | tee "$log_tgt" | awk "{$progress}"
+    (
+        echo "  <tr>"
+        echo "   <td> $name    </td> "
+        echo "   <td> $result  </td> "
+        echo "   <td> <a href=\"$logfile\">log</a> </td> "
+        echo " </tr>"
+    ) >> $HTML_TARGET
+}
 
-        if grep "$SUCCESS_MARKER" "$log_tgt"
-        then
-            echo
-            echo "# "
-            echo "# SUCCESS $s $t"
-            echo "# -----------------------------------------------------"
-        else
-            echo
-            echo "# "
-            echo "# FAILED $s $t"
-            echo "# -----------------------------------------------------"
 
-            if ! test "$JENKINS_VERBOSE" = "TRUE"
-            then
-                cat "$log_tgt"
-                echo "# -----------------------------------------------------"
-            fi
+# ------------------------------------------------------------------------------
+#
+html_stop()
+{
+    (
+        echo "  </table>"
+        echo " </body>"
+        echo "</html>"
+    ) >> $HTML_TARGET
+}
 
-            if test "$JENKINS_EXIT_ON_FAIL" = "TRUE"
-            then
-                exit 1
-            fi
-            failed=1
-        fi
-    done
-done
 
-issues=`cat jenkins_issues.cfg | sed -e 's/#.*//g' | grep -v '^ *$'`
-for i in $issues
-do
+# ------------------------------------------------------------------------------
+#
+run_test() {
+
+    name="$1";  shift
+    cmd="$*"
+
     echo "# -----------------------------------------------------"
-    echo "# TEST ISSUE: $i"
+    echo "# TEST $name: $cmd"
     echo "# "
 
-    log_tgt="./rp.test_issue_$i.log"
+    log="./rp_test.$name.log"
 
     if test "$JENKINS_VERBOSE" = "TRUE"
     then
@@ -85,34 +92,69 @@ do
         progress='printf "."'
     fi
 
-    ( set -e ; "./$i" ; echo "$SUCCESS_MARKER") 2>&1 \
-    | tee "$log_tgt" | awk "{$progress}"
+    (set -e ; $cmd ; printf "$TEST_OK") 2>&1 | tee "$log" | awk "{$progress}"
 
-    if grep "$SUCCESS_MARKER" "$log_tgt"
+    if grep "$TEST_OK" "$log"
     then
-        echo
+        html_entry "$s ($t)" "$HTML_SUCCESS" "$log"
         echo "# "
-        echo "# SUCCESS $i"
+        echo "# SUCCESS $s $t"
         echo "# -----------------------------------------------------"
     else
-        echo
+        html_entry "$s ($t)" "$HTML_FAILURE" "$log"
         echo "# "
-        echo "# FAILED $i"
+        echo "# FAILED $s $t"
         echo "# -----------------------------------------------------"
 
-        if ! test "$JENKINS_VERBOSE" = "TRUE"
-        then
-            cat "$log_tgt"
-            echo "# -----------------------------------------------------"
-        fi
-
-        if test "$JENKINS_EXIT_ON_FAIL" = "TRUE"
-        then
-            exit 1
-        fi
-        failed=1
+        FAILED=1
     fi
+
+
+    if test "$JENKINS_EXIT_ON_FAIL" = "TRUE" -a "$FAILED" = "TRUE"
+    then
+        shutdown
+    fi
+}
+
+
+# ------------------------------------------------------------------------------
+#
+startup()
+{
+    html_start
+}
+
+
+# ------------------------------------------------------------------------------
+#
+shutdown()
+{
+    html_stop
+    mv *.log ../report
+    exit $FAILED
+}
+
+
+# ------------------------------------------------------------------------------
+#
+startup
+
+for s in integration mpi
+do
+    tests=`cat jenkins.cfg | sed -e 's/#.*//g' | grep -v '^ *$'  | grep "$s" | cut -f 1 -d :`
+    for t in $tests
+    do
+        run_test "test_$s_$t" "./test_$s.py $t"
+    done
 done
 
-exit $failed
+issues=`cat jenkins_issues.cfg | sed -e 's/#.*//g' | grep -v '^ *$'`
+for i in $issues
+do
+    run_test "issue_$i" "./$i"
+done
+
+shutdown
+#
+# ------------------------------------------------------------------------------
 
