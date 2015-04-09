@@ -21,7 +21,9 @@ export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTILS_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
-export HTML_TARGET="../report/test_results.html"
+export TGT="../report"
+
+export HTML_TARGET="$TGT/test_results.html"
 export HTML_SUCCESS="<font color=\"\#66AA66\">SUCCESS</font>"
 export HTML_FAILURE="<font color=\"\#AA6666\">FAILED</font>"
 
@@ -37,6 +39,8 @@ html_start()
         echo "    <td> <b> Test    </b> </td> "
         echo "    <td> <b> Result  </b> </td> "
         echo "    <td> <b> Logfile </b> </td> "
+        echo "    <td> <b> Stats   </b> </td> "
+        echo "    <td> <b> Plot    </b> </td> "
         echo "  </tr>"
     ) > $HTML_TARGET
 }
@@ -49,12 +53,21 @@ html_entry()
     name=$1
     result=$2
     logfile=$3
+    sid=$4
 
     (
         echo "  <tr>"
         echo "   <td> $name    </td> "
         echo "   <td> $result  </td> "
         echo "   <td> <a href=\"$logfile\">log</a> </td> "
+        if test -z "$sid"
+        then
+            echo "   <td> - </td> "
+            echo "   <td> - </td> "
+        else
+            echo "   <td> <a href=\"$sid.txt\">stat</a> </td> "
+            echo "   <td> <a href=\"$sid.png\">plot</a> </td> "
+        fi
         echo " </tr>"
     ) >> $HTML_TARGET
 }
@@ -83,7 +96,7 @@ run_test() {
     echo "# TEST $name: $cmd"
     echo "# "
 
-    log="../report/$name.log"
+    log="$TGT/$name.log"
 
     if ! test -z "$JENKINS_VERBOSE"
     then
@@ -95,14 +108,23 @@ run_test() {
     (set -e ; $cmd ; printf "\n$TEST_OK\n") 2>&1 | tee "$log" | awk "1==NR%50{print \"\"}{$progress}"
     echo
 
+    SID=`grep 'SESSION ID' $log | head -n 1 | cut -f 2 -d ':' | tr -d ' '`
+    if ! test -z "$SID"
+    then
+        radicalpilot-stats         -m  stat,plot -s $SID -t png 2>&1 >  $TGT/$SID.txt
+        radicalpilot-close_session -m  purge     -s $SID        2>&1 >> $TGT/$SID.txt
+        test -f $SID.png && mv $SID.png $TGT/
+    fi
+
+
     if grep -q "$TEST_OK" "$log"
     then
-        html_entry "$s ($t)" "$HTML_SUCCESS" "$log"
+        html_entry "$s ($t)" "$HTML_SUCCESS" "$log" $SID
         echo "# "
         echo "# SUCCESS $s $t"
         echo "# -----------------------------------------------------"
     else
-        html_entry "$s ($t)" "$HTML_FAILURE" "$log"
+        html_entry "$s ($t)" "$HTML_FAILURE" "$log" $SID
         echo "# "
         echo "# FAILED $s $t"
         echo "# -----------------------------------------------------"

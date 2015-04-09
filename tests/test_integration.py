@@ -146,7 +146,8 @@ def run_test(cfg):
         # always clean up the session, no matter if we caught an exception or
         # not.
         print "closing session"
-        session.close ()
+        print "SESSION ID: %s" % session.uid
+        session.close (cleanup=False)
 
         # the above is equivalent to
         #
