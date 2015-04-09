@@ -83,7 +83,7 @@ run_test() {
     echo "# TEST $name: $cmd"
     echo "# "
 
-    log="../report/rp_test.$name.log"
+    log="../report/$name.log"
 
     if ! test -z "$JENKINS_VERBOSE"
     then
@@ -148,7 +148,7 @@ do
     tests=`cat jenkins.cfg | sed -e 's/#.*//g' | grep -v '^ *$'  | grep "$s" | cut -f 1 -d :`
     for t in $tests
     do
-        run_test "test_$s_$t" "./test_$s.py $t"
+        run_test "test_${s}_$t" "./test_$s.py $t"
     done
 done
 
