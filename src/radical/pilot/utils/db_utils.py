@@ -209,12 +209,6 @@ def get_session_frames (db, sids, cachedir=None) :
             finished    = unit.get ('finished')
             description = unit.get ('description', dict())
 
-            if unit['_id'] == '5492ad8e23769c168f0ca503':
-                print uid
-                import pprint
-                print pprint.pprint (unit)
-                print 2
-
             if started  : started  -= session_start
             if finished : finished -= session_start
 
@@ -259,9 +253,6 @@ def get_session_frames (db, sids, cachedir=None) :
             for event in event_history:
                 state = event['state']
                 timer = event['timestamp'] - session_start
-
-                if 'Input' in state:
-                    print state, timer
 
                 if state == STAGING_OUTPUT:
                     if saw_staging_output:
