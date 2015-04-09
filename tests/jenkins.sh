@@ -9,12 +9,12 @@
 #     else : run all tests, independent of success/failure (exit code reflects
 #            failures though)
 
+# make sure we exit cleanly
 \trap shutdown QUIT TERM EXIT
-
 
 export FAILED=0
 
-export TEST_OK="\nJENKINS TEST SUCCESS\n"
+export TEST_OK="JENKINS TEST SUCCESS"
 
 export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
@@ -83,16 +83,16 @@ run_test() {
     echo "# TEST $name: $cmd"
     echo "# "
 
-    log="./rp_test.$name.log"
+    log="../report/rp_test.$name.log"
 
-    if test "$JENKINS_VERBOSE" = "TRUE"
+    if $JENKINS_VERBOSE
     then
         progress='print'
     else
         progress='printf "."'
     fi
 
-    (set -e ; $cmd ; printf "$TEST_OK") 2>&1 | tee "$log" | awk "{$progress}"
+    (set -e ; $cmd ; printf "\n$TEST_OK\n") 2>&1 | tee "$log" | awk "{$progress}"
 
     if grep "$TEST_OK" "$log"
     then
@@ -110,7 +110,7 @@ run_test() {
     fi
 
 
-    if test "$JENKINS_EXIT_ON_FAIL" = "TRUE" -a "$FAILED" = "TRUE"
+    if $JENKINS_EXIT_ON_FAIL && test "$FAILED" -eq 0
     then
         shutdown
     fi
@@ -127,11 +127,15 @@ startup()
 
 # ------------------------------------------------------------------------------
 #
+CLOSED=false
 shutdown()
 {
-    html_stop
-    mv *.log ../report
-    exit $FAILED
+    if ! $CLOSED
+    then
+        html_stop
+        exit $FAILED
+        CLOSED=true
+    fi
 }
 
 
