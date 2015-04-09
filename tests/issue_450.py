@@ -6,7 +6,7 @@ import sys
 import datetime
 import radical.pilot as rp
 
-TEST_SIZE=10000000
+TEST_SIZE=10 * 1024 * 1024  # 10 MB
 
 #------------------------------------------------------------------------------
 #

@@ -23,8 +23,6 @@ export RADICAL_PILOT_VERBOSE=DEBUG
 
 for s in integration mpi
 do
-    break
-
     tests=`cat jenkins.cfg | sed -e 's/#.*//g' | grep -v '^ *$'  | grep "$s" | cut -f 1 -d :`
     for t in $tests
     do
