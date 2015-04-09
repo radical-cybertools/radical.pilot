@@ -85,7 +85,7 @@ run_test() {
 
     log="../report/rp_test.$name.log"
 
-    if $JENKINS_VERBOSE
+    if ! test -z "$JENKINS_VERBOSE"
     then
         progress='print'
     else
@@ -110,7 +110,7 @@ run_test() {
     fi
 
 
-    if $JENKINS_EXIT_ON_FAIL && test "$FAILED" -eq 0
+    if test "$JENKINS_EXIT_ON_FAIL" = "TRUE" && test "$FAILED" -eq 0
     then
         shutdown
     fi
