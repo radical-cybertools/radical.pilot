@@ -83,13 +83,11 @@ profile_event()
     then
         timestamp
         NOW=$((TIMESTAMP-TIME_ZERO))
-        printf '  %12s : %-20s : %12.4f : %-17s : %-24s : %-40s : \n' \
-                  ' '    ' '     "$NOW"   ' '     'Bootstrap' "$@"    \
-        >> agent.prof
+        # Format: timestamp, entity, unit id, event type, msg]
+        printf "%.4f,%s,%s,%s,%s\n" \
+            "$NOW" "Bootstrapper" "$PILOT_ID" "$@" "" >> pilot.prof
     fi
 }
-
-profile_event 'bootstrap start'
 
 
 # ------------------------------------------------------------------------------
@@ -1073,6 +1071,11 @@ while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
         *)  usage "Unknown option: $OPTION=$OPTARG"  ;;
     esac
 done
+
+# TODO: By now the pre_process rules are already performed.
+#       We should split the parsing and the execution of those.
+#       "bootstrap start" is here so that $PILOT_ID is known.
+profile_event 'bootstrap start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
 #       report the absolute representation of it, and thus report a different

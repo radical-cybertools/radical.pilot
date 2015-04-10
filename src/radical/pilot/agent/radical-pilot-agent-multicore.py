@@ -401,17 +401,14 @@ def timestamp_now():
 # If 'RADICAL_PILOT_PROFILE' is set in environment, the agent logs timed events.
 #
 if 'RADICAL_PILOT_PROFILE' in os.environ:
-    profile_agent  = True
-    profile_handle = open('agent.prof', 'a')
+    profile_agent = True
+    prof_file = open('pilot.prof', 'a')
 else:
-    profile_agent  = False
-    profile_handle = sys.stdout
+    profile_agent = False
 
 
 # ------------------------------------------------------------------------------
 #
-profile_freqs = dict()
-
 def prof(etype, uid="", msg="", logger=None):
 
     # record a timed event.  We record the thread ID, the uid of the affected
@@ -420,6 +417,7 @@ def prof(etype, uid="", msg="", logger=None):
     # TODO: should this move to utils?  Or at least RP utils, so that we can
     # also use it for the application side?
 
+    # TODO: Why are we logging events when profiling is disabled?
     if logger:
         logger("%s (%10s) : %s", etype, msg, uid)
 
@@ -428,17 +426,13 @@ def prof(etype, uid="", msg="", logger=None):
 
     now = timestamp_now()
 
-    # TODO: Layer violation?
     if   AGENT_MODE == AGENT_THREADS  : tid = threading.current_thread().name
     elif AGENT_MODE == AGENT_PROCESSES: tid = os.getpid()
     else: raise Exception('Unknown Agent Mode')
 
-    profile_handle.write(" %12.4f : %-17s : %-24s : %-40s : %s\n" \
-                         % (now, tid, uid, etype, msg))
-
-    # FIXME: disable flush on production runs
-    profile_handle.flush()
-
+    # NOTE: Don't forget to sync any format changes in the bootstrapper
+    # and downstream analysis tools too!
+    prof_file.write("%.4f,%s,%s,%s,%s\n" % (now, tid, uid, etype, msg))
 
 
 # ------------------------------------------------------------------------------
@@ -464,6 +458,8 @@ def blowup(cus, component):
     # for each cu in cu_list, add 'factor' clones just like it, just with
     # a different ID (<id>.clone_001)
 
+    # TODO: I dont like it that there is non blow-up semantics in the blow-up function.
+    # Probably want to put the conditional somewhere else.
     if not isinstance (cus, list) :
         cus = [cus]
 
