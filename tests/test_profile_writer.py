@@ -41,7 +41,7 @@ def prof_csv(etype, uid="", msg="", logger=None):
 
 # ------------------------------------------------------------------------------
 #
-profile_handle = open('test_profile_writer.prof', 'a')
+profile_handle = open('test_profile_writer.prof', 'wb')
 def prof_write(etype, uid="", msg="", logger=None):
 
     if logger:
@@ -60,6 +60,8 @@ def prof_write(etype, uid="", msg="", logger=None):
     profile_handle.write(" %12.4f : %-17s : %-24s : %-40s : %s\n" \
                          % (now, tid, uid, etype, msg))
 
+    # FIXME: disable flush on production runs
+    #profile_handle.flush()
 
 # ------------------------------------------------------------------------------
 #
