@@ -115,8 +115,8 @@ run_test() {
     SID=`grep 'SESSION ID' $log | head -n 1 | cut -f 2 -d ':' | tr -d ' '`
     if ! test -z "$SID"
     then
-        radicalpilot-stats         -m  stat,plot -s $SID -t png 2>&1 >  $TGT/$SID.txt
-        radicalpilot-close-session -m  purge     -s $SID        2>&1 >> $TGT/$SID.txt
+        radicalpilot-stats         -m  stat,plot -s $SID -t png >  $TGT/$SID.txt 2>&1
+        radicalpilot-close-session -m  purge     -s $SID        >> $TGT/$SID.txt 2>&1
         test -f $SID.png && mv $SID.png $TGT/
     fi
 
