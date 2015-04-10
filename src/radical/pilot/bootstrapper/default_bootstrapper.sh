@@ -1077,7 +1077,7 @@ done
 #       We should split the parsing and the execution of those.
 #       "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-echo "time, component, uid, event, message" > $PROFILE_LOG
+echo "time,component,uid,event,message" > $PROFILE_LOG
 profile_event 'bootstrap start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
