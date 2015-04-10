@@ -5004,7 +5004,7 @@ class HeartbeatMonitor(threading.Thread):
 
         for command in commands:
 
-            command_str = str([command[COMMAND_TYPE], command[COMMAND_ARG]])
+            command_str = '%s:%s' % (command[COMMAND_TYPE], command[COMMAND_ARG])
 
             prof('ingest_cmd', msg="mongodb to heartbeat_monitor (%s)" % command_str)
 
