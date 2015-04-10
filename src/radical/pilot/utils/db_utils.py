@@ -155,7 +155,7 @@ def get_session_frames (db, sids, cachedir=None) :
         session       = docs['session']
         session_start = session['created']
         session_dict  = {
-            'sid'       : sid,
+            'sid'       : session['_id'],
             'started'   : session['created'],
             'finished'  : None, 
             'n_pilots'  : len(docs['pilot']),
