@@ -136,9 +136,8 @@ def usage (msg=None, noexit=False) :
         'pilots > n' : only list sessions with more  than 'n' pilots
         'pilots < n' : only list sessions with fewer than 'n' pilots
 
-      The default command is 'list'.  If no session ID is specified, operations
-      which apply to a single session will choose the last session in the given
-      DB.  The default MongoDB is '%s'
+      The default command is 'list'.
+      The default MongoDB is '%s'
       
 """ % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
 
