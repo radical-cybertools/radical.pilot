@@ -211,6 +211,8 @@ def get_session_frames (db, sids, cachedir=None) :
             if started  : started  -= session_start
             if finished : finished -= session_start
 
+            session_dict['n_units'] += 1
+
             unit_dict = {
                 'sid'                  : sid, 
                 'pid'                  : unit.get('pilot'), 
