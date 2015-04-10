@@ -410,7 +410,6 @@ else:
 
 # ------------------------------------------------------------------------------
 #
-profile_tags  = dict()
 profile_freqs = dict()
 
 def prof(etype, uid="", msg="", logger=None):
@@ -422,7 +421,7 @@ def prof(etype, uid="", msg="", logger=None):
     # also use it for the application side?
 
     if logger:
-        logger("%s -- %s (%s): %s", etype, msg, uid, tag)
+        logger("%s (%10s) : %s", etype, msg, uid)
 
     if not profile_agent:
         return
