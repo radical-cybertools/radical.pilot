@@ -611,8 +611,6 @@ def plot_session (db, session, cachedir, term) :
 
     # if maxslots and maxqueue differ by max 25% then we use the same scale.  If
     # maxslots is larger we also use the same scale.
-    print slots
-    print maxslots
     max_scale  = max(maxslots, maxqueue)
     min_scale  = min(maxslots, maxqueue)
     mean_scale = (maxslots+maxqueue)/2

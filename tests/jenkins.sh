@@ -116,7 +116,7 @@ run_test() {
     if ! test -z "$SID"
     then
         radicalpilot-stats         -m  stat,plot -s $SID -t png 2>&1 >  $TGT/$SID.txt
-        radicalpilot-close_session -m  purge     -s $SID        2>&1 >> $TGT/$SID.txt
+        radicalpilot-close-session -m  purge     -s $SID        2>&1 >> $TGT/$SID.txt
         test -f $SID.png && mv $SID.png $TGT/
     fi
 
