@@ -123,12 +123,12 @@ run_test() {
 
     if grep -q "$TEST_OK" "$log"
     then
-        html_entry "$s ($t)" "$HTML_SUCCESS" "$log" $SID
+        html_entry "$name" "$HTML_SUCCESS" "$log" $SID
         echo "# "
         echo "# SUCCESS $s $t"
         echo "# -----------------------------------------------------"
     else
-        html_entry "$s ($t)" "$HTML_FAILURE" "$log" $SID
+        html_entry "$name" "$HTML_FAILURE" "$log" $SID
         echo "# "
         echo "# FAILED $s $t"
         echo "# -----------------------------------------------------"
