@@ -413,14 +413,10 @@ else:
 profile_tags  = dict()
 profile_freqs = dict()
 
-def prof(etype, uid="", msg="", tag="", logger=None):
+def prof(etype, uid="", msg="", logger=None):
 
     # record a timed event.  We record the thread ID, the uid of the affected
-    # object, a log message, event type, and a tag.  Whenever a tag changes (to
-    # a non-None value), the time since the last tag change is added.  This can
-    # be used to derive, for example, the duration which a uid spent in
-    # a certain state.  Time intervals between the same tags (but different
-    # uids) are recorded, too.
+    # object, an event type, and a log message.
     #
     # TODO: should this move to utils?  Or at least RP utils, so that we can
     # also use it for the application side?
@@ -428,57 +424,18 @@ def prof(etype, uid="", msg="", tag="", logger=None):
     if logger:
         logger("%s -- %s (%s): %s", etype, msg, uid, tag)
 
-
     if not profile_agent:
         return
 
-
-    logged = False
-    now    = timestamp_now()
+    now = timestamp_now()
 
     # TODO: Layer violation?
     if   AGENT_MODE == AGENT_THREADS  : tid = threading.current_thread().name
     elif AGENT_MODE == AGENT_PROCESSES: tid = os.getpid()
     else: raise Exception('Unknown Agent Mode')
 
-    if uid and tag:
-
-        if not uid in profile_tags:
-            profile_tags[uid] = {'tag'  : "",
-                                 'time' : 0.0 }
-
-        old_tag = profile_tags[uid]['tag']
-
-        if tag != old_tag:
-
-            tagged_time = now - profile_tags[uid]['time']
-
-            profile_tags[uid]['tag' ] = tag
-            profile_tags[uid]['time'] = timestamp_now()
-
-            profile_handle.write("> %12.4f : %-20s : %12.4f : %-17s : %-24s : %-40s : %s\n" \
-                                 % (tagged_time, tag, now, tid, uid, etype, msg))
-            logged = True
-
-
-            if not tag in profile_freqs:
-                profile_freqs[tag] = {'last'  : now,
-                                      'diffs' : list()}
-            else:
-                diff = now - profile_freqs[tag]['last']
-                profile_freqs[tag]['diffs'].append(diff)
-                profile_freqs[tag]['last' ] = now
-
-              # freq = sum(profile_freqs[tag]['diffs']) / len(profile_freqs[tag]['diffs'])
-              #
-              # profile_handle.write("> %12s : %-20.4f : %12s : %-17s : %-24s : %-40s : %s\n" \
-              #                      % ('frequency', freq, '', '', '', '', ''))
-
-
-
-    if not logged:
-        profile_handle.write("  %12s : %-20s : %12.4f : %-17s : %-24s : %-40s : %s\n" \
-                             % (' ' , ' ', now, tid, uid, etype, msg))
+    profile_handle.write(" %12.4f : %-17s : %-24s : %-40s : %s\n" \
+                         % (now, tid, uid, etype, msg))
 
     # FIXME: disable flush on production runs
     profile_handle.flush()
@@ -813,7 +770,7 @@ class Scheduler(threading.Thread):
                 # got an allocation, go off and launch the process
                 # FIXME: state update toward EXECUTING (or is that done in
                 # launcher?)
-                prof('put', msg="scheduler to execution_queue", uid=cu['_id'], tag='allocating')
+                prof('put', msg="scheduler to execution_queue", uid=cu['_id'])
                 cu_list = blowup (cu, EXECUTION_QUEUE)
 
                 for _cu in cu_list :
@@ -3629,7 +3586,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
                 try:
 
-                    prof('get', msg="execution_queue to exec_worker", uid=cu['_id'], tag='preprocess')
+                    prof('get', msg="execution_queue to exec_worker", uid=cu['_id'])
                     cu_list = blowup (cu, EXEC_WORKER)
 
                     for _cu in cu_list:
@@ -3765,7 +3722,7 @@ class ExecWorker_POPEN (ExecWorker) :
         _stderr_file_h = open(cu['stderr_file'], "w")
 
         self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
-        prof('spawning pass to popen', uid=cu['_id'], tag='unit spawning')
+        prof('spawning pass to popen', uid=cu['_id'])
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,
@@ -3782,7 +3739,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                 startupinfo        = None,
                                 creationflags      = 0)
 
-        prof('spawning passed to popen', uid=cu['_id'], tag='unit spawning')
+        prof('spawning passed to popen', uid=cu['_id'])
 
         cu['started'] = timestamp()
         cu['state']   = rp.EXECUTING
@@ -3794,7 +3751,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution start")
 
-        prof('put', msg="exec_worker to watch_queue", uid=cu['_id'], tag='task launching')
+        prof('put', msg="exec_worker to watch_queue", uid=cu['_id'])
         cu_list = blowup (cu, WATCH_QUEUE)
 
         for _cu in cu_list :
@@ -3850,7 +3807,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 # add all cus we found to the watchlist
                 for cu in cus :
                     
-                    prof('get', msg="watch_queue to watcher", uid=cu['_id'], tag='launching')
+                    prof('get', msg="watch_queue to watcher", uid=cu['_id'])
                     cu_list = blowup (cu, WATCHER)
 
                     for _cu in cu_list :
@@ -3901,7 +3858,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                                   uid    = cu['_id'],
                                                   state  = rp.CANCELED,
                                                   msg    = "unit execution canceled")
-                    prof('final', msg="execution canceled", uid=cu['_id'], tag='watching')
+                    prof('final', msg="execution canceled", uid=cu['_id'])
                     # NOTE: this is final, cu will not be touched anymore
                     cu = None
 
@@ -3924,7 +3881,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
                                                   msg    = "unit execution failed")
-                    prof('final', msg="execution failed", uid=cu['_id'], tag='watching')
+                    prof('final', msg="execution failed", uid=cu['_id'])
                     # NOTE: this is final, cu will not be touched anymore
                     cu = None
 
@@ -3938,7 +3895,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                                   state  = rp.STAGING_OUTPUT,
                                                   msg    = "unit execution completed")
 
-                    prof('put', msg="watcher to stageout_queue", uid=cu['_id'], tag='watching')
+                    prof('put', msg="watcher to stageout_queue", uid=cu['_id'])
                     cu_list = blowup (cu, STAGEOUT_QUEUE)
 
                     for _cu in cu_list :
@@ -4039,7 +3996,7 @@ class ExecWorker_SHELL(ExecWorker):
 
                 try:
 
-                    prof('get', msg="execution_queue to exec_worker", uid=cu['_id'], tag='preprocess')
+                    prof('get', msg="execution_queue to exec_worker", uid=cu['_id'])
                     cu_list = blowup (cu, EXEC_WORKER)
 
                     for _cu in cu_list :
@@ -4244,7 +4201,7 @@ class ExecWorker_SHELL(ExecWorker):
             raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
                              % (run_cmd, ret, out))
 
-        prof('spawning passed to pty', uid=uid, tag='unit spawning')
+        prof('spawning passed to pty', uid=uid)
 
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
@@ -4401,7 +4358,7 @@ class ExecWorker_SHELL(ExecWorker):
                                           state = rp.STAGING_OUTPUT,
                                           msg   = "unit execution completed")
 
-            prof('put', msg="watcher toward stageout_queue", uid=cu['_id'], tag='watching')
+            prof('put', msg="watcher toward stageout_queue", uid=cu['_id'])
             cu_list = blowup (cu, STAGEOUT_QUEUE)
 
             for _cu in cu_list :
@@ -4710,7 +4667,7 @@ class StageinWorker(threading.Thread):
                                                       uid    = _cu['_id'],
                                                       state  = rp.ALLOCATING,
                                                       msg    = 'agent input staging done')
-                        prof('put', msg="stagein_worker to schedule_queue", uid=_cu['_id'], tag='stagein')
+                        prof('put', msg="stagein_worker to schedule_queue", uid=_cu['_id'])
                         cu_list = blowup (_cu, SCHEDULE_QUEUE)
 
                         for __cu in cu_list :
@@ -4928,7 +4885,7 @@ class StageoutWorker(threading.Thread):
                     else:
                         # no FTW staging is needed, local staging is done -- we can
                         # move the unit into final state.
-                        prof('final', msg="stageout done", uid=_cu['_id'], tag='stageout')
+                        prof('final', msg="stageout done", uid=_cu['_id'])
                         self._agent.update_unit_state(src    = 'stageout_worker',
                                                       uid    = _cu['_id'],
                                                       state  = rp.DONE,
@@ -4957,7 +4914,7 @@ class StageoutWorker(threading.Thread):
                 # *last* actions of the loop above -- otherwise we may get
                 # invalid state transitions...
                 if cu:
-                    prof('final', msg="stageout failed", uid=cu['_id'], tag='stageout')
+                    prof('final', msg="stageout failed", uid=cu['_id'])
                     self._agent.update_unit_state(src    = 'stageout_worker',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
@@ -5468,7 +5425,7 @@ class Agent(object):
 
         for cu in cu_list:
 
-            prof('get', msg="mongodb to agent", uid=cu['_id'], tag='mongodb', logger=self._log.info)
+            prof('get', msg="mongodb to agent", uid=cu['_id'], logger=self._log.info)
             _cu_list = blowup (cu, AGENT)
 
             for _cu in _cu_list :
@@ -5507,7 +5464,7 @@ class Agent(object):
                                                state  = rp.STAGING_INPUT,
                                                msg    = 'unit needs input staging')
 
-                        prof('put', msg="agent to stagein_queue", uid=_cu['_id'], tag='ingest')
+                        prof('put', msg="agent to stagein_queue", uid=_cu['_id'])
                         cu_list = blowup (_cu, STAGEIN_QUEUE)
 
                         for __cu in cu_list :
@@ -5518,7 +5475,7 @@ class Agent(object):
                                                uid    = _cu['_id'],
                                                state  = rp.ALLOCATING,
                                                msg    = 'unit needs no input staging')
-                        prof('put', msg="agent to schedule_queue", uid=_cu['_id'], tag='ingest')
+                        prof('put', msg="agent to schedule_queue", uid=_cu['_id'])
                         cu_list = blowup (_cu, SCHEDULE_QUEUE)
                         for __cu in cu_list :
                             self._schedule_queue.put(__cu)
@@ -5528,7 +5485,7 @@ class Agent(object):
                     # if any unit sorting step failed, the unit did not end up in
                     # a queue (its always the last step).  We set it to FAILED
                     msg = "could not sort unit (%s)" % e
-                    prof('error', msg=msg, tag="failed", uid=_cu['_id'], logger=self._log.exception)
+                    prof('error', msg=msg, uid=_cu['_id'], logger=self._log.exception)
                     self.update_unit_state(src    = 'agent',
                                            uid    = _cu['_id'],
                                            state  = rp.FAILED,
@@ -5584,7 +5541,7 @@ def main():
     if not options.runtime              : parser.error("Missing agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
-    prof('start', tag='bootstrapping', uid=options.pilot_id)
+    prof('start', uid=options.pilot_id)
 
     # configure the agent logger
     logger    = logging.getLogger  ('radical.pilot.agent')
