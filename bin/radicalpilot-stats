@@ -101,11 +101,13 @@ def usage (msg=None, noexit=False) :
         print "\n      Error: %s" % msg
 
     print """
-      usage     : %s -m <mode> [-d dburl] [-s session]
-      example   : %s -m stat    -d mongodb://user:password@localhost/radicalpilot -s 536afe101d41c83696ea0135
+      usage     : %s -m <mode>[,<mode>] [-d <dburl>] [-s <session>[,<session>]]
 
+      examples  : %s -m stat -d mongodb://user:password@localhost/radicalpilot -s 536afe101d41c83696ea0135
+                  %s -m list -d mongodb://user:password@localhost/radicalpilot
+                  %s -m prof -s 536afe101d41c83696ea0135,536afe101d41c83696ea0136
 
-      modes     :
+      mode(s)   :
 
         help    : show this message
         list    : show  a  list   of sessions in the database
@@ -121,7 +123,7 @@ def usage (msg=None, noexit=False) :
       arguments :
         
         -d      : database URL
-        -s      : session id
+        -s      : session id(s)
         -c      : cachedir where <sid>.json caches are kept
         -p      : profile directory where <sid-pid>.prof files are kept
         -f      : filter for listings
@@ -136,10 +138,14 @@ def usage (msg=None, noexit=False) :
         'pilots > n' : only list sessions with more  than 'n' pilots
         'pilots < n' : only list sessions with fewer than 'n' pilots
 
-      The default command is 'list'.
-      The default MongoDB is '%s'
-      
-""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+      Notes     :
+
+        The default mode is 'list'.
+        The default MongoDB is '%s'
+        Multiple modes can be specified as <mode>,<mode>,...
+        For mode 'prof', multiple session ids can be specified as <session>,<session>,...
+
+""" % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
 
     if  msg :
         sys.exit (1)
@@ -419,34 +425,37 @@ def stat_session (db, session, cachedir) :
 
 
 # ------------------------------------------------------------------------------
-def prof_session(db, session, cachedir, profdir):
+def prof_session(db, sessions, cachedir, profdir):
 
     print ""
     print "Collecting agent profiling data"
     print "-------------------------------"
     print ""
 
-    json_docs = rpu.get_session_docs(db, session, cachedir)
+    for session in sessions.split(','):
 
-    pilots = json_docs['pilot']
-    num_pilots = len(pilots)
-    print "Number of pilots in session: %d" % num_pilots
+        json_docs = rpu.get_session_docs(db, session, cachedir)
 
-    for pilot in pilots:
+        pilots = json_docs['pilot']
+        num_pilots = len(pilots)
+        print "Session: %s" % session
+        print "Number of pilots in session: %d" % num_pilots
 
-        print "Processing pilot '%s'" % pilot['_id']
+        for pilot in pilots:
 
-        sandbox = pilot['sandbox']
-        pilot_id = os.path.basename(os.path.dirname(sandbox))
+            print "Processing pilot '%s'" % pilot['_id']
 
-        src = sandbox + 'agent.prof'
-        dst = 'file://%s/%s.prof' % (profdir, pilot_id)
+            sandbox = pilot['sandbox']
+            pilot_id = os.path.basename(os.path.dirname(sandbox))
 
-        print "Copying '%s' to '%s'." % (src, dst)
-        prof_file = saga.filesystem.File(src)
-        prof_file.copy(dst)
+            src = sandbox + 'agent.prof'
+            dst = 'file://%s/%s.prof' % (profdir, pilot_id)
 
-    mongo.disconnect ()
+            print "Copying '%s' to '%s'." % (src, dst)
+            prof_file = saga.filesystem.File(src)
+            prof_file.copy(dst)
+
+        print ""
 
 
 # ------------------------------------------------------------------------------
