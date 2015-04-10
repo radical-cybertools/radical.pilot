@@ -60,13 +60,13 @@ html_entry()
         echo "   <td> $name    </td> "
         echo "   <td> $result  </td> "
         echo "   <td> <a href=\"$logfile\">log</a> </td> "
-        if test -f "$sid.txt"
+        if test -f "$TGT/$sid.txt"
         then
             echo "   <td> <a href=\"$sid.txt\">stat</a> </td> "
         else
             echo "   <td> - </td> "
         fi
-        if test -f "$sid.png"
+        if test -f "$TGT/$sid.png"
         then
             echo "   <td> <a href=\"$sid.png\">plot</a> </td> "
         else
