@@ -402,7 +402,7 @@ def timestamp_now():
 #
 if 'RADICAL_PILOT_PROFILE' in os.environ:
     profile_agent = True
-    prof_file = open('pilot.prof', 'a')
+    prof_file = open('agent.prof', 'a')
 else:
     profile_agent = False
 

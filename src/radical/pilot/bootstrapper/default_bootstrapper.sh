@@ -85,7 +85,7 @@ profile_event()
         NOW=$((TIMESTAMP-TIME_ZERO))
         # Format: timestamp, entity, unit id, event type, msg]
         printf "%.4f,%s,%s,%s,%s\n" \
-            "$NOW" "Bootstrapper" "$PILOT_ID" "$@" "" >> pilot.prof
+            "$NOW" "Bootstrapper" "$PILOT_ID" "$@" "" >> agent.prof
     fi
 }
 
