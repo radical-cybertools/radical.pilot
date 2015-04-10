@@ -77,15 +77,16 @@ fi
 
 # ------------------------------------------------------------------------------
 #
+PROFILE_LOG="agent.prof"
 profile_event()
 {
     if ! test -z "$RADICAL_PILOT_PROFILE"
     then
         timestamp
         NOW=$((TIMESTAMP-TIME_ZERO))
-        # Format: timestamp, entity, unit id, event type, msg]
+        # Format: time, component, uid, event, message"
         printf "%.4f,%s,%s,%s,%s\n" \
-            "$NOW" "Bootstrapper" "$PILOT_ID" "$@" "" >> agent.prof
+            "$NOW" "Bootstrapper" "$PILOT_ID" "$@" "" >> $PROFILE_LOG
     fi
 }
 
@@ -1075,6 +1076,8 @@ done
 # TODO: By now the pre_process rules are already performed.
 #       We should split the parsing and the execution of those.
 #       "bootstrap start" is here so that $PILOT_ID is known.
+# Create header for profile log
+echo "time, component, uid, event, message" > $PROFILE_LOG
 profile_event 'bootstrap start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
