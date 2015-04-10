@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
 import os
+import saga
 import sys
 import pprint
-import pymongo
 import radical.utils       as ru
 import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
 
-_DEFAULT_DBURL = 'mongodb://user:password@localhost:27017/radicalpilot/'
 _DEFAULT_DBURL = 'mongodb://user:password@ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
 
 if  'RADICAL_PILOT_DBURL' in os.environ :
@@ -115,6 +114,7 @@ def usage (msg=None, noexit=False) :
         sort    : show  a  list   of session objects, sorted by type
         hist    : show timeline   of session history
         stat    : show statistics of session history
+        prof    : collect agent profiling file of session
         plot    : save gnuplot representing session history
 
 
@@ -122,7 +122,8 @@ def usage (msg=None, noexit=False) :
         
         -d      : database URL
         -s      : session id
-        -c      : cachedir where <sid>.json caches are kept (also needs -s)
+        -c      : cachedir where <sid>.json caches are kept
+        -p      : profile directory where <sid-pid>.prof files are kept
         -f      : filter for listings
         -t      : terminal type for plotting (pdf and/or png, default is both)
 
@@ -165,11 +166,7 @@ def tree_session (db, dbname, session, cachedir) :
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (db, session, cachedir, filters) :
-
-    if  session :
-        print "invalid session parameter on 'list'"
-        sys.exit (-1)
+def list_sessions (db, cachedir, filters) :
 
     sids = rpu.get_session_ids (db)
 
@@ -421,6 +418,36 @@ def stat_session (db, session, cachedir) :
             data = pilot['unit_states'][us]
             print "        state %-18s : %10.1fs  +/- %8.1fs" % (us, data['mean'], data['std'])
 
+
+# ------------------------------------------------------------------------------
+def prof_session(db, session, cachedir, profdir):
+
+    print ""
+    print "Collecting agent profiling data"
+    print "-------------------------------"
+    print ""
+
+    json_docs = rpu.get_session_docs(db, session, cachedir)
+
+    pilots = json_docs['pilot']
+    num_pilots = len(pilots)
+    print "Number of pilots in session: %d" % num_pilots
+
+    for pilot in pilots:
+
+        print "Processing pilot '%s'" % pilot['_id']
+
+        sandbox = pilot['sandbox']
+        pilot_id = os.path.basename(os.path.dirname(sandbox))
+
+        src = sandbox + 'agent.prof'
+        dst = 'file://%s/%s.prof' % (profdir, pilot_id)
+
+        print "Copying '%s' to '%s'." % (src, dst)
+        prof_file = saga.filesystem.File(src)
+        prof_file.copy(dst)
+
+    mongo.disconnect ()
 
 
 # ------------------------------------------------------------------------------
@@ -948,6 +975,7 @@ if __name__ == '__main__' :
     parser.add_option('-d', '--dburl',     dest='url')
     parser.add_option('-m', '--mode',      dest='mode')
     parser.add_option('-c', '--cachedir',  dest='cachedir')
+    parser.add_option('-p', '--profdir',   dest='profdir')
     parser.add_option('-f', '--filter',    dest='filters')
     parser.add_option('-t', '--terminal',  dest='term')
     parser.add_option('-h', '--help',      dest='help', action="store_true")
@@ -984,6 +1012,7 @@ if __name__ == '__main__' :
     filters  = options.filters
     term     = options.term
     cachedir = options.cachedir
+    profdir  = options.profdir
 
     if  not term :
         term = "pdf,png"
@@ -995,33 +1024,39 @@ if __name__ == '__main__' :
     if  not cachedir :
         cachedir = os.getcwd ()
 
+    if not profdir:
+        profdir = os.getcwd()
+
     if  not os.path.isdir (cachedir) :
         usage ("%s is no valid cachedir" % cachedir)
+
+    if not os.path.isdir(profdir) :
+        usage ("%s is no valid directory to store profile data" % profdir)
 
     print "modes   : %s" % mode
     print "db url  : %s" % url
     print "cachedir: %s" % cachedir
     mongo, db, dbname, cname, pname = ru.mongodb_connect (str(url), default_dburl)
 
-
-    if  not session and mode != 'list' :
-        session = rpu.get_last_session  (db)
-        print "session : %s (last session in database)" % session
-    else :
+    if not session and mode != 'list' :
+        usage("mode %s needs a session id specified" % mode)
+    elif session and mode == 'list':
+        usage("invalid session parameter '%s' on mode 'list'" % session)
+    else:
         print "session : %s" % session
-
 
     for m in mode.split (',') :
 
-        if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'plot', 'help'] : 
+        if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'prof', 'plot', 'help'] :
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'list' : list_sessions (db, session, cachedir, filters)
+        if   m == 'list' : list_sessions (db, cachedir, filters)
         elif m == 'tree' : tree_session  (db, dbname, session, cachedir) 
         elif m == 'dump' : dump_session  (db, dbname, session, cachedir)
         elif m == 'sort' : sort_session  (db, session, cachedir)
         elif m == 'hist' : hist_session  (db, session, cachedir)
         elif m == 'stat' : stat_session  (db, session, cachedir)
+        elif m == 'prof' : prof_session  (db, session, cachedir, profdir)
         elif m == 'plot' : plot_session  (db, session, cachedir, term)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
