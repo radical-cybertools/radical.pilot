@@ -308,14 +308,14 @@ def get_session_frames (db, sids, cachedir=None) :
                 t_pend  = None
 
                 ts_rec  = rec_hist.get (state) #         state time stamp from state hist
-                ts_cb   = rec_hist.get (state) #         state time stamp from cb    hist
+                ts_cb   = cb_hist.get  (state) #         state time stamp from cb    hist
                 tp_rec  = None                 # pending state time stamp from state hist
                 tp_cb   = None                 # pending state time stamp from cb    hist
 
                 if  state in statepairs:
                     pend   = statepairs[state]
                     tp_rec = rec_hist.get (pend)
-                    tp_cb  = rec_hist.get (pend)
+                    tp_cb  = cb_hist.get  (pend)
 
                 # try to find a candidate for state timestamp
                 if   ts_rec : t_state = ts_rec[0]
@@ -329,19 +329,21 @@ def get_session_frames (db, sids, cachedir=None) :
 
                 # if there is no t_pend, check if there are two state times on
                 # record (in the state hist), and if so, reorder
-                if pend and not t_pend and t_state:
-                    if ts_rec and len(ts_rec) == 2:
-                        t_pend  = min (ts_rec)
-                        t_state = max (ts_rec)
-                    else:
-                        print "missing state %s for unit %s" % (pend, uid)
+                if pend :
+                    if t_state and not t_pend:
+                        if ts_rec and len(ts_rec) == 2:
+                            t_pend  = min (ts_rec)
+                            t_state = max (ts_rec)
+                        else:
+                            print "missing state %s for unit %s" % (pend, uid)
 
                 # make sure that any pending time comes before state time
                 if pend:
                     if t_pend > t_state:
+                      # print "%s : %s" % (uid, state)
                         t_med   = (t_pend + t_state) / 2
-                        t_pend  = med
-                        t_state = med
+                        t_pend  = t_med
+                        t_state = t_med
 
                 # record the times for the data frame
                 unit_dict[state] = t_state
