@@ -873,6 +873,16 @@ def frame_session (db, session, cachedir) :
     print 'unit_frame'
     print unit_frame
 
+  # print "---------------------"
+  # uids    = unit_frame['uid']
+  # i_times = unit_frame[rp.PENDING_INPUT_STAGING]
+  # o_times = unit_frame[rp.PENDING_OUTPUT_STAGING]
+  #
+  # print "---------------------"
+  # for idx in range(len(uids)):
+  #     print "%s : %20s : %20s" % (uids[idx], i_times[idx], o_times[idx])
+
+
 # ------------------------------------------------------------------------------
 def handle_session (db, mode, dbname, session, cachedir, pname) :
     """

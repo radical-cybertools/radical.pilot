@@ -236,35 +236,145 @@ def get_session_frames (db, sids, cachedir=None) :
                 CANCELED               : None
             }
 
-            # FIXME: if we see OUTPUT_STAGING twice, and there was no
-            # PENDING_OUTPUT_STAGING seen before, we re-interpret the first
-            # occurence of OUTPUT_STAGING as PENDING_STAGING_OUTPUT.
-            # see comment in agent line 1474:
-            #     TODO: this should ideally be PendingOutputStaging,
-            #     but that introduces a race condition currently
-            # FIXME: some states are recorded in the callback history, but not
-            # in the state history.  This points to (yet another) state
-            # management problem -- but for now, we also evaluate the callback
-            # history (but prefer data from the state history).
-            saw_staging_output = False
+         #  # FIXME: if we see OUTPUT_STAGING twice, and there was no
+         #  # PENDING_OUTPUT_STAGING seen before, we re-interpret the first
+         #  # occurence of OUTPUT_STAGING as PENDING_STAGING_OUTPUT.
+         #  # see comment in agent line 1474:
+         #  #     TODO: this should ideally be PendingOutputStaging,
+         #  #     but that introduces a race condition currently
+         #  # FIXME: some states are recorded in the callback history, but not
+         #  # in the state history.  This points to (yet another) state
+         #  # management problem -- but for now, we also evaluate the callback
+         #  # history (but prefer data from the state history).
+         #  saw_staging_output = False
+         #
+         #  event_history = list()
+         #  event_history += unit.get('callbackhistory', list())
+         #  event_history += unit.get('statehistory', list())
 
-            event_history = list()
-            event_history += unit.get('callbackhistory', list())
-            event_history += unit.get('statehistory', list())
+            # FIXME: there is more state messup afloat: some states are missing,
+            # even though we know they have happened.  For one, we see data
+            # being staged w/o having a record of InputStaging states.  Or we
+            # find callback history entries for states which are not in the
+            # history...
+            #
+            # We try to clean up to some extent.  The policy is like this, for
+            # any [pending_state, state] pair:
+            #
+            # - if both are in the hist: great
+            # - if one is in the hist, and the other in the cb hist, use like
+            #   that, but ensure that pending_state <= state
+            # - if both are in cb_hist, use them, apply same ordering assert.
+            #   Use median if ordering is wrong
+            # - if only on is in cb_host, use the same value for the other one
+            # - if neither is anywhere, leave unset
+            rec_hist = dict()
+            cb_hist  = dict()
 
-            for event in event_history:
-                state = event['state']
-                timer = event['timestamp'] - session_start
+            for e in unit.get('statehistory', list()):
+                state = e['state']
+                timer = e['timestamp'] - session_start
+                if state not in rec_hist:
+                    rec_hist[state] = list()
+                rec_hist[state].append(timer)
 
-                if state == STAGING_OUTPUT:
-                    if saw_staging_output:
-                        if not unit_dict[PENDING_OUTPUT_STAGING]:
-                            unit_dict[PENDING_OUTPUT_STAGING] = unit_dict[STAGING_OUTPUT]
+            for e in unit.get('callbackhistory', list()):
+                state = e['state']
+                timer = e['timestamp'] - session_start
+                if state not in cb_hist:
+                    cb_hist[state] = list()
+                cb_hist[state].append(timer)
+
+            statepairs = {STAGING_INPUT  : PENDING_INPUT_STAGING ,
+                          STAGING_OUTPUT : PENDING_OUTPUT_STAGING}
+
+            primary_states = [NEW                   ,
+                              UNSCHEDULED           ,
+                              STAGING_INPUT         ,
+                              PENDING_EXECUTION     ,
+                              SCHEDULING            ,
+                              EXECUTING             ,
+                              STAGING_OUTPUT        ,
+                              DONE                  ,
+                              CANCELED              ,
+                              FAILED                ]
+
+            for state in primary_states:
+
+                pend    = None
+                t_state = None
+                t_pend  = None
+
+                ts_rec  = rec_hist.get (state) #         state time stamp from state hist
+                ts_cb   = rec_hist.get (state) #         state time stamp from cb    hist
+                tp_rec  = None                 # pending state time stamp from state hist
+                tp_cb   = None                 # pending state time stamp from cb    hist
+
+                if  state in statepairs:
+                    pend   = statepairs[state]
+                    tp_rec = rec_hist.get (pend)
+                    tp_cb  = rec_hist.get (pend)
+
+                # try to find a candidate for state timestamp
+                if   ts_rec : t_state = ts_rec[0]
+                elif ts_cb  : t_state = ts_cb [0]
+                elif tp_rec : t_state = tp_rec[0]
+                elif tp_cb  : t_state = tp_cb [0]
+
+                # try to find a candidate for pending timestamp
+                if   tp_rec : t_pend  = tp_rec[0]
+                elif tp_cb  : t_pend  = tp_cb [0]
+                elif ts_rec : t_pend  = ts_rec[0]
+                elif ts_cb  : t_pend  = ts_cb [0]
+
+                # if there is no t_pend, check if there are two state times on
+                # record (in the state hist), and if so, reorder
+                if pend and not t_pend and t_state:
+                    if ts_rec and len(ts_rec) == 2:
+                        t_pend  = ts_rec[0]
+                        t_state = ts_rec[1] 
                     else:
-                        saw_staging_output = True
+                        print "missing state %s for unit %s" % (pend, uid)
 
-                # normal case
-                unit_dict[state] = timer
+                # make sure that any pending time comes before state time
+                if pend:
+                    if t_pend > t_state:
+                        t_med   = (t_pend + t_state) / 2
+                        t_pend  = med
+                        t_state = med
+
+                # record the times for the data frame
+                unit_dict[state] = t_state
+
+                if pend :
+                    unit_dict[pend] = t_pend
+
+
+          # # -------------------------------
+          # for event in event_history:
+          #     state = event['state']
+          #     timer = event['timestamp'] - session_start
+          #
+          #     if state == STAGING_OUTPUT:
+          #         if saw_staging_output:
+          #             if not unit_dict[PENDING_OUTPUT_STAGING]:
+          #                 unit_dict[PENDING_OUTPUT_STAGING] = unit_dict[STAGING_OUTPUT]
+          #         else:
+          #             saw_staging_output = True
+          #
+          #     # normal case
+          #     unit_dict[state] = timer
+          #
+          # if unit_dict[STAGING_INPUT] :
+          #     if not unit_dict[PENDING_INPUT_STAGING]:
+          #       # import pprint
+          #       # pprint.pprint (unit_dict)
+          #         unit_dict[PENDING_INPUT_STAGING] = unit_dict[STAGING_INPUT]
+          #
+          # if unit_dict[PENDING_OUTPUT_STAGING] - unit_dict[STAGING_OUTPUT] > 0:
+          #     import pprint
+          #     pprint.pprint (unit_dict)
+
 
             unit_dicts.append (unit_dict)
         
