@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import pprint
 import datetime
 import pymongo
 
@@ -205,6 +206,7 @@ def get_session_frames (db, sids, cachedir=None) :
         for unit in docs['unit']:
 
             uid         = unit['_id']
+
             started     = unit.get ('started')
             finished    = unit.get ('finished')
             description = unit.get ('description', dict())
@@ -324,15 +326,13 @@ def get_session_frames (db, sids, cachedir=None) :
                 # try to find a candidate for pending timestamp
                 if   tp_rec : t_pend  = tp_rec[0]
                 elif tp_cb  : t_pend  = tp_cb [0]
-                elif ts_rec : t_pend  = ts_rec[0]
-                elif ts_cb  : t_pend  = ts_cb [0]
 
                 # if there is no t_pend, check if there are two state times on
                 # record (in the state hist), and if so, reorder
                 if pend and not t_pend and t_state:
                     if ts_rec and len(ts_rec) == 2:
-                        t_pend  = ts_rec[0]
-                        t_state = ts_rec[1] 
+                        t_pend  = min (ts_rec)
+                        t_state = max (ts_rec)
                     else:
                         print "missing state %s for unit %s" % (pend, uid)
 
