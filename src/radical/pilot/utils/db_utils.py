@@ -334,8 +334,6 @@ def get_session_frames (db, sids, cachedir=None) :
                         if ts_rec and len(ts_rec) == 2:
                             t_pend  = min (ts_rec)
                             t_state = max (ts_rec)
-                        else:
-                            print "missing state %s for unit %s" % (pend, uid)
 
                 # make sure that any pending time comes before state time
                 if pend:
