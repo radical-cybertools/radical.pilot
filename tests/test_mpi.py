@@ -68,10 +68,8 @@ def run_test (cfg):
 
         pdesc = rp.ComputePilotDescription ()
         pdesc.resource = cfg['cp_resource']
-        if cfg['cp_project']:
-            pdesc.project = cfg['cp_project']
-        if cfg['cp_queue']:
-            pdesc.queue = cfg['cp_queue']
+        pdesc.project  = cfg['cp_project']
+        pdesc.queue    = cfg['cp_queue']
         pdesc.runtime  = cfg['cp_runtime']
         pdesc.cores    = cfg['cp_cores']
         pdesc.cleanup  = True
