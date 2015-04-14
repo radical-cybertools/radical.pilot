@@ -277,19 +277,19 @@ BLOWUP_FACTOR = {
 # 1: drop clones
 # 2: drop everything
 DROP_CLONES = {
-        AGENT            : 1,
-        STAGEIN_QUEUE    : 1,
-        STAGEIN_WORKER   : 1,
-        SCHEDULE_QUEUE   : 1,
-        SCHEDULER        : 1,
-        EXECUTION_QUEUE  : 1,
-        EXEC_WORKER      : 1,
-        WATCH_QUEUE      : 1,
-        WATCHER          : 1,
-        STAGEOUT_QUEUE   : 1,
-        STAGEOUT_WORKER  : 1,
-        UPDATE_QUEUE     : 1,
-        UPDATE_WORKER    : 1
+        AGENT            : 0,
+        STAGEIN_QUEUE    : 0,
+        STAGEIN_WORKER   : 0,
+        SCHEDULE_QUEUE   : 0,
+        SCHEDULER        : 0,
+        EXECUTION_QUEUE  : 0,
+        EXEC_WORKER      : 0,
+        WATCH_QUEUE      : 0,
+        WATCHER          : 0,
+        STAGEOUT_QUEUE   : 0,
+        STAGEOUT_WORKER  : 0,
+        UPDATE_QUEUE     : 0,
+        UPDATE_WORKER    : 0
 }
 #
 # ------------------------------------------------------------------------------
