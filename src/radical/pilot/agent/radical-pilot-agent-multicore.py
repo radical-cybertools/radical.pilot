@@ -219,19 +219,19 @@ git_ident = "$Id$"
 
 # component IDs
 
-AGENT             = 'agent'
+AGENT             = 'Agent'
 STAGEIN_QUEUE     = 'stagein_queue'
-STAGEIN_WORKER    = 'stagein_worker'
+STAGEIN_WORKER    = 'StageinWorker'
 SCHEDULE_QUEUE    = 'schedule_queue'
-SCHEDULER         = 'scheduler'
+SCHEDULER         = 'Scheduler'
 EXECUTION_QUEUE   = 'execution_queue'
-EXEC_WORKER       = 'exec_worker'
+EXEC_WORKER       = 'ExecWorker'
 WATCH_QUEUE       = 'watch_queue'
-WATCHER           = 'watcher'
+WATCHER           = 'ExecWatcher'
 STAGEOUT_QUEUE    = 'stageout_queue'
-STAGEOUT_WORKER   = 'stageout_worker'
+STAGEOUT_WORKER   = 'StageoutWorker'
 UPDATE_QUEUE      = 'update_queue'
-UPDATE_WORKER     = 'updater_worker'
+UPDATE_WORKER     = 'UpdaterWorker'
 
 
 # Number of worker threads
@@ -678,7 +678,7 @@ class Scheduler(threading.Thread):
 
             # notify the scheduling thread of released slots
             if slots_released:
-                rpu.prof('put_cmd', msg="scheduler to schedule_queue (%s)" % COMMAND_RESCHEDULE)
+                rpu.prof('put_cmd', msg="Scheduler to schedule_queue (%s)" % COMMAND_RESCHEDULE)
                 self._schedule_queue.put(COMMAND_RESCHEDULE)
 
             self._log.info("slot status after  unschedule: %s" % self.slot_status ())
@@ -698,7 +698,7 @@ class Scheduler(threading.Thread):
 
                 # shutdown signal
                 if not request:
-                    rpu.prof('get_cmd', msg="schedule_queue to scheduler (wakeup)")
+                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
                     continue
 
                 # we either get a new scheduled CU, or get a trigger that cores were
@@ -706,7 +706,7 @@ class Scheduler(threading.Thread):
                 if isinstance(request, basestring):
 
                     command = request
-                    rpu.prof('get_cmd', msg="schedule_queue to scheduler (%s)" % command)
+                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
 
                     if command == COMMAND_RESCHEDULE:
                         self._reschedule()
@@ -718,7 +718,7 @@ class Scheduler(threading.Thread):
                     cu = request
                     cu['state'] = rp.ALLOCATING
 
-                    rpu.prof('get', msg="schedule_queue to scheduler (%s)" % cu['state'], uid=cu['_id'])
+                    rpu.prof('get', msg="schedule_queue to Scheduler (%s)" % cu['state'], uid=cu['_id'])
 
                     cu_list  = rpu.blowup(self._config, cu, SCHEDULER)
                     for _cu in cu_list:
@@ -3430,7 +3430,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 cu = self._execution_queue.get()
 
                 if not cu :
-                    rpu.prof('get_cmd', msg="execution_queue to exec_worker (wakeup)")
+                    rpu.prof('get_cmd', msg="execution_queue to ExecWorker (wakeup)")
                     # 'None' is the wakeup signal
                     continue
 
@@ -3449,7 +3449,7 @@ class ExecWorker_POPEN (ExecWorker) :
                             launcher = self._task_launcher
 
                         if not launcher:
-                            self._agent.update_unit_state(src    = 'exec_worker',
+                            self._agent.update_unit_state(src    = 'ExecWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
                                                           msg    = "no launcher (mpi=%s)" % _cu['description']['mpi'],
@@ -3479,7 +3479,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     if cu['opaque_slot']:
                         self._scheduler.unschedule(cu)
 
-                    self._agent.update_unit_state(src    = 'exec_worker',
+                    self._agent.update_unit_state(src    = 'ExecWorker',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
                                                   msg    = "unit execution failed",
@@ -3600,12 +3600,12 @@ class ExecWorker_POPEN (ExecWorker) :
         cu['proc']    = proc
 
         # register for state update and watching
-        self._agent.update_unit_state(src    = 'exec_worker',
+        self._agent.update_unit_state(src    = 'ExecWorker',
                                       uid    = cu['_id'],
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution start")
 
-        rpu.prof('put', msg="exec_worker to watch_queue", uid=cu['_id'])
+        rpu.prof('put', msg="ExecWorker to watch_queue", uid=cu['_id'])
         cu_list = rpu.blowup(self._config, cu, WATCH_QUEUE)
 
         for _cu in cu_list :
@@ -3627,7 +3627,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 # See if there are cancel requests, or new units to watch
                 try:
                     command = self._command_queue.get_nowait()
-                    rpu.prof('get_cmd', msg="command_queue to watcher (%s)" % command[COMMAND_TYPE])
+                    rpu.prof('get_cmd', msg="command_queue to ExecWatcher (%s)" % command[COMMAND_TYPE])
 
                     if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                         self._cus_to_cancel.append(command[COMMAND_ARG])
@@ -3661,7 +3661,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 # add all cus we found to the watchlist
                 for cu in cus :
                     
-                    rpu.prof('get', msg="watch_queue to watcher", uid=cu['_id'])
+                    rpu.prof('get', msg="watch_queue to ExecWatcher", uid=cu['_id'])
                     cu_list = rpu.blowup(self._config, cu, WATCHER)
 
                     for _cu in cu_list :
@@ -3709,7 +3709,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     self._cus_to_cancel.remove(cu['_id'])
                     self._scheduler.unschedule(cu)
 
-                    self._agent.update_unit_state(src    = 'watcher',
+                    self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
                                                   state  = rp.CANCELED,
                                                   msg    = "unit execution canceled")
@@ -3732,7 +3732,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 if exit_code != 0:
 
                     # The unit failed, no need to deal with its output data.
-                    self._agent.update_unit_state(src    = 'watcher',
+                    self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
                                                   msg    = "unit execution failed")
@@ -3745,7 +3745,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
 
-                    self._agent.update_unit_state(src    = 'watcher',
+                    self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
                                                   state  = rp.STAGING_OUTPUT,
                                                   msg    = "unit execution completed")
@@ -3853,7 +3853,7 @@ class ExecWorker_SHELL(ExecWorker):
                 cu = self._execution_queue.get()
 
                 if not cu :
-                    rpu.prof('get_cmd', msg="execution_queue to exec_worker (wakeup)")
+                    rpu.prof('get_cmd', msg="execution_queue to ExecWorker (wakeup)")
                     # 'None' is the wakeup signal
                     continue
 
@@ -3873,7 +3873,7 @@ class ExecWorker_SHELL(ExecWorker):
                             launcher = self._task_launcher
 
                         if not launcher:
-                            self._agent.update_unit_state(src    = 'exec_worker',
+                            self._agent.update_unit_state(src    = 'ExecWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
                                                           msg    = "no launcher (mpi=%s)" % _cu['description']['mpi'],
@@ -3903,7 +3903,7 @@ class ExecWorker_SHELL(ExecWorker):
                     if cu['opaque_slot']:
                         self._scheduler.unschedule(cu)
 
-                    self._agent.update_unit_state(src    = 'exec_worker',
+                    self._agent.update_unit_state(src    = 'ExecWorker',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
                                                   msg    = "unit execution failed",
@@ -4077,7 +4077,7 @@ class ExecWorker_SHELL(ExecWorker):
         with self._registry_lock :
             self._registry[pid] = cu
 
-        self._agent.update_unit_state(src    = 'exec_worker',
+        self._agent.update_unit_state(src    = 'ExecWorker',
                                       uid    = cu['_id'],
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution started")
@@ -4216,7 +4216,7 @@ class ExecWorker_SHELL(ExecWorker):
         if rp_state in [rp.FAILED, rp.CANCELED] :
             # final state - no further state transition needed
             self._scheduler.unschedule(cu)
-            self._agent.update_unit_state(src   = 'watcher',
+            self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
                                           state = rp_state,
                                           msg   = "unit execution finished")
@@ -4224,7 +4224,7 @@ class ExecWorker_SHELL(ExecWorker):
         elif rp_state in [rp.DONE] :
             # advance the unit state
             self._scheduler.unschedule(cu)
-            self._agent.update_unit_state(src   = 'watcher',
+            self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
                                           state = rp.STAGING_OUTPUT,
                                           msg   = "unit execution completed")
@@ -4435,7 +4435,7 @@ class StageinWorker(threading.Thread):
                 cu = self._stagein_queue.get()
 
                 if not cu:
-                    rpu.prof('get_cmd', msg="stagein_queue to stagein_worker (wakeup)")
+                    rpu.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
                     continue
 
                 cu['state'] = rp.STAGING_INPUT
@@ -4500,7 +4500,7 @@ class StageinWorker(threading.Thread):
                             # If all went fine, update the state of this
                             # StagingDirective to DONE
                             # FIXME: is this update below really *needed*?
-                            self._agent.update_unit(src    = 'stagein_worker',
+                            self._agent.update_unit(src    = 'StageinWorker',
                                                     uid    = _cu['_id'],
                                                     msg    = log_message,
                                                     query  = {
@@ -4522,7 +4522,7 @@ class StageinWorker(threading.Thread):
                             self._log.exception(log_message)
 
                             # If a staging directive fails, fail the CU also.
-                            self._agent.update_unit_state(src    = 'stagein_worker',
+                            self._agent.update_unit_state(src    = 'StageinWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
                                                           msg    = log_message,
@@ -4543,7 +4543,7 @@ class StageinWorker(threading.Thread):
                     # completion) to push the unit via mongodb to the agebnt again.
                     # Duh! (FIXME)
                     if not _cu["FTW_Input_Directives"] :
-                        self._agent.update_unit_state(src    = 'stagein_worker',
+                        self._agent.update_unit_state(src    = 'StageinWorker',
                                                       uid    = _cu['_id'],
                                                       state  = rp.ALLOCATING,
                                                       msg    = 'agent input staging done')
@@ -4621,7 +4621,7 @@ class StageoutWorker(threading.Thread):
                 cu = self._stageout_queue.get()
 
                 if not cu:
-                    rpu.prof('get_cmd', msg="stageout_queue to stageout_worker (wakeup)")
+                    rpu.prof('get_cmd', msg="stageout_queue to StageoutWorker (wakeup)")
                     continue
 
                 cu['state'] = rp.STAGING_OUTPUT
@@ -4706,7 +4706,7 @@ class StageoutWorker(threading.Thread):
                             # If all went fine, update the state of this
                             # StagingDirective to DONE
                             # FIXME: is this update below really *needed*?
-                            self._agent.update_unit(src    = 'stageout_worker',
+                            self._agent.update_unit(src    = 'StageoutWorker',
                                                     uid    = _cu['_id'],
                                                     msg    = log_message,
                                                     query  = {
@@ -4726,7 +4726,7 @@ class StageoutWorker(threading.Thread):
                             self._log.exception(log_message)
 
                             # If a staging directive fails, fail the CU also.
-                            self._agent.update_unit_state(src    = 'stageout_worker',
+                            self._agent.update_unit_state(src    = 'StageoutWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
                                                           msg    = log_message,
@@ -4751,7 +4751,7 @@ class StageoutWorker(threading.Thread):
                     if _cu['FTW_Output_Directives']:
 
                         rpu.prof('ExecWorker unit needs FTW_O ', uid=_cu['_id'])
-                        self._agent.update_unit(src    = 'stageout_worker',
+                        self._agent.update_unit(src    = 'StageoutWorker',
                                                 uid    = _cu['_id'],
                                                 msg    = 'FTW output staging needed',
                                                 update = {
@@ -4773,7 +4773,7 @@ class StageoutWorker(threading.Thread):
                         # no FTW staging is needed, local staging is done -- we can
                         # move the unit into final state.
                         rpu.prof('final', msg="stageout done", uid=_cu['_id'])
-                        self._agent.update_unit_state(src    = 'stageout_worker',
+                        self._agent.update_unit_state(src    = 'StageoutWorker',
                                                       uid    = _cu['_id'],
                                                       state  = rp.DONE,
                                                       msg    = 'output staging completed',
@@ -4802,7 +4802,7 @@ class StageoutWorker(threading.Thread):
                 # invalid state transitions...
                 if cu:
                     rpu.prof('final', msg="stageout failed", uid=cu['_id'])
-                    self._agent.update_unit_state(src    = 'stageout_worker',
+                    self._agent.update_unit_state(src    = 'StageoutWorker',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
                                                   msg    = 'output staging failed',
@@ -4906,7 +4906,7 @@ class HeartbeatMonitor(threading.Thread):
 
             command_str = '%s:%s' % (command[COMMAND_TYPE], command[COMMAND_ARG])
 
-            rpu.prof('ingest_cmd', msg="mongodb to heartbeat_monitor (%s)" % command_str)
+            rpu.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s)" % command_str)
 
             if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                 self.stop()
@@ -4921,7 +4921,7 @@ class HeartbeatMonitor(threading.Thread):
             elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                 self._log.info("Received Cancel Compute Unit command for: %s", command[COMMAND_ARG])
                 # Put it on the command queue of the ExecWorker
-                rpu.prof('put_cmd', msg="heartbeat_monitor to command_queue (%s)" % command_str,
+                rpu.prof('put_cmd', msg="HeartbeatMonitor to command_queue (%s)" % command_str,
                         uid=command[COMMAND_ARG])
                 self._command_queue.put(command)
 
@@ -5330,7 +5330,7 @@ class Agent(object):
 
         for cu in cu_list:
 
-            rpu.prof('get', msg="mongodb to agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
+            rpu.prof('get', msg="MongoDB to Agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
 
             _cu_list = rpu.blowup(self._config, cu, AGENT)
             for _cu in _cu_list :
@@ -5364,7 +5364,7 @@ class Agent(object):
                     if _cu['Agent_Input_Directives'] and \
                        _cu['Agent_Input_Status'] == rp.PENDING :
 
-                        self.update_unit_state(src    = 'agent',
+                        self.update_unit_state(src    = 'Agent',
                                                uid    = _cu['_id'],
                                                state  = rp.STAGING_INPUT,
                                                msg    = 'unit needs input staging')
@@ -5375,7 +5375,7 @@ class Agent(object):
                             self._stagein_queue.put(__cu)
 
                     else:
-                        self.update_unit_state(src    = 'agent',
+                        self.update_unit_state(src    = 'Agent',
                                                uid    = _cu['_id'],
                                                state  = rp.ALLOCATING,
                                                msg    = 'unit needs no input staging')
@@ -5391,7 +5391,7 @@ class Agent(object):
                     # a queue (its always the last step).  We set it to FAILED
                     msg = "could not sort unit (%s)" % e
                     rpu.prof('error', msg=msg, uid=_cu['_id'], logger=self._log.exception)
-                    self.update_unit_state(src    = 'agent',
+                    self.update_unit_state(src    = 'Agent',
                                            uid    = _cu['_id'],
                                            state  = rp.FAILED,
                                            msg    = msg)
