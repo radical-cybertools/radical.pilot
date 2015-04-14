@@ -110,7 +110,7 @@ if __name__ == "__main__":
         pdesc.resource = "local.localhost"
         pdesc.runtime  = 5 # minutes
         pdesc.cores    = 8
-        pdesc.cleanup  = True
+        pdesc.cleanup  = False
     
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
