@@ -1893,9 +1893,9 @@ class LaunchMethodORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, logger, scheduler):
+    def __init__(self, name, config, logger, scheduler):
 
-        LaunchMethod.__init__(self, name, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger, scheduler)
 
 
     # --------------------------------------------------------------------------
