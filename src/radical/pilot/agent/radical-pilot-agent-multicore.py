@@ -231,7 +231,7 @@ WATCHER           = 'ExecWatcher'
 STAGEOUT_QUEUE    = 'stageout_queue'
 STAGEOUT_WORKER   = 'StageoutWorker'
 UPDATE_QUEUE      = 'update_queue'
-UPDATE_WORKER     = 'UpdaterWorker'
+UPDATE_WORKER     = 'UpdateWorker'
 
 
 # Number of worker threads
