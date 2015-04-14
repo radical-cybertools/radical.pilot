@@ -215,7 +215,7 @@ git_ident = "$Id$"
 #
 # DEBUGGING CONSTANTS -- only change when you know what you are doing.  It is
 # almost guaranteed that any changes will make the agent non-functional (if
-# functionality is definied as executing a set of given CUs).
+# functionality is defined as executing a set of given CUs).
 
 # component IDs
 
@@ -231,7 +231,7 @@ WATCHER           = 'ExecWatcher'
 STAGEOUT_QUEUE    = 'stageout_queue'
 STAGEOUT_WORKER   = 'StageoutWorker'
 UPDATE_QUEUE      = 'update_queue'
-UPDATE_WORKER     = 'UpdaterWorker'
+UPDATE_WORKER     = 'UpdateWorker'
 
 
 # Number of worker threads
@@ -277,19 +277,19 @@ BLOWUP_FACTOR = {
 # 1: drop clones
 # 2: drop everything
 DROP_CLONES = {
-        AGENT            : 1,
-        STAGEIN_QUEUE    : 1,
-        STAGEIN_WORKER   : 1,
-        SCHEDULE_QUEUE   : 1,
-        SCHEDULER        : 1,
-        EXECUTION_QUEUE  : 1,
-        EXEC_WORKER      : 1,
-        WATCH_QUEUE      : 1,
-        WATCHER          : 1,
-        STAGEOUT_QUEUE   : 1,
-        STAGEOUT_WORKER  : 1,
-        UPDATE_QUEUE     : 1,
-        UPDATE_WORKER    : 1
+        AGENT            : 0,
+        STAGEIN_QUEUE    : 0,
+        STAGEIN_WORKER   : 0,
+        SCHEDULE_QUEUE   : 0,
+        SCHEDULER        : 0,
+        EXECUTION_QUEUE  : 0,
+        EXEC_WORKER      : 0,
+        WATCH_QUEUE      : 0,
+        WATCHER          : 0,
+        STAGEOUT_QUEUE   : 0,
+        STAGEOUT_WORKER  : 0,
+        UPDATE_QUEUE     : 0,
+        UPDATE_WORKER    : 0
 }
 #
 # ------------------------------------------------------------------------------
@@ -3722,6 +3722,8 @@ class ExecWorker_POPEN (ExecWorker) :
                     cu = None
 
             else:
+                rpu.prof('execution complete', uid=cu['_id'])
+
                 # we have a valid return code -- unit is final
                 action += 1
                 self._log.info("Unit %s has return code %s.", cu['_id'], exit_code)
@@ -4232,6 +4234,7 @@ class ExecWorker_SHELL(ExecWorker):
                                           msg   = "unit execution finished")
 
         elif rp_state in [rp.DONE] :
+            rpu.prof('execution complete', uid=cu['_id'])
             # advance the unit state
             self._scheduler.unschedule(cu)
             cu['state'] = rp.STAGING_OUTPUT
@@ -5517,7 +5520,8 @@ def main():
 
         logger.info ("agent config merged")
 
-        logger.debug("\n%s\n" % pprint.pformat(agent_config['drop_clones']))
+        import pprint
+        logger.debug("\Agent config:\n%s\n\n" % pprint.pformat (agent_conf))
 
     except Exception as e:
         logger.info ("agent config not merged: %s", e)
