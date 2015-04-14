@@ -102,7 +102,7 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 
 # ------------------------------------------------------------------------------
 #
-def blowup(config, cus, component):
+def blowup(config, cus, component, logger=None):
     # for each cu in cu_list, add 'factor' clones just like it, just with
     # a different ID (<id>.clone_001)
 
