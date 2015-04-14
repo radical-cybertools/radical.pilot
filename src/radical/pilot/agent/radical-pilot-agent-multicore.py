@@ -3449,6 +3449,7 @@ class ExecWorker_POPEN (ExecWorker) :
                             launcher = self._task_launcher
 
                         if not launcher:
+                            _cu['state'] = rp.FAILED
                             self._agent.update_unit_state(src    = 'ExecWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
@@ -3479,6 +3480,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     if cu['opaque_slot']:
                         self._scheduler.unschedule(cu)
 
+                    cu['state'] = rp.FAILED
                     self._agent.update_unit_state(src    = 'ExecWorker',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
@@ -3600,6 +3602,7 @@ class ExecWorker_POPEN (ExecWorker) :
         cu['proc']    = proc
 
         # register for state update and watching
+        cu['state'] = rp.EXECUTING
         self._agent.update_unit_state(src    = 'ExecWorker',
                                       uid    = cu['_id'],
                                       state  = rp.EXECUTING,
@@ -3709,6 +3712,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     self._cus_to_cancel.remove(cu['_id'])
                     self._scheduler.unschedule(cu)
 
+                    cu['state'] = rp.CANCELED
                     self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
                                                   state  = rp.CANCELED,
@@ -3732,6 +3736,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 if exit_code != 0:
 
                     # The unit failed, no need to deal with its output data.
+                    cu['state'] = rp.FAILED
                     self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
@@ -3745,6 +3750,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
 
+                    cu['state'] = rp.STAGING_OUTPUT
                     self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
                                                   state  = rp.STAGING_OUTPUT,
@@ -3752,7 +3758,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
                     cu_list = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
                     for _cu in cu_list :
-                        rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" %_cu['state'], uid=_cu['_id'])
+                        rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
                         self._stageout_queue.put(_cu)
 
         return action
@@ -3873,6 +3879,7 @@ class ExecWorker_SHELL(ExecWorker):
                             launcher = self._task_launcher
 
                         if not launcher:
+                            _cu['state'] = rp.FAILED
                             self._agent.update_unit_state(src    = 'ExecWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
@@ -3903,6 +3910,7 @@ class ExecWorker_SHELL(ExecWorker):
                     if cu['opaque_slot']:
                         self._scheduler.unschedule(cu)
 
+                    cu['state'] = rp.FAILED
                     self._agent.update_unit_state(src    = 'ExecWorker',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
@@ -4077,6 +4085,7 @@ class ExecWorker_SHELL(ExecWorker):
         with self._registry_lock :
             self._registry[pid] = cu
 
+        cu['state'] = rp.EXECUTING
         self._agent.update_unit_state(src    = 'ExecWorker',
                                       uid    = cu['_id'],
                                       state  = rp.EXECUTING,
@@ -4216,6 +4225,7 @@ class ExecWorker_SHELL(ExecWorker):
         if rp_state in [rp.FAILED, rp.CANCELED] :
             # final state - no further state transition needed
             self._scheduler.unschedule(cu)
+            cu['state'] = rp_state
             self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
                                           state = rp_state,
@@ -4224,6 +4234,7 @@ class ExecWorker_SHELL(ExecWorker):
         elif rp_state in [rp.DONE] :
             # advance the unit state
             self._scheduler.unschedule(cu)
+            cu['state'] = rp.STAGING_OUTPUT
             self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
                                           state = rp.STAGING_OUTPUT,
@@ -4522,6 +4533,7 @@ class StageinWorker(threading.Thread):
                             self._log.exception(log_message)
 
                             # If a staging directive fails, fail the CU also.
+                            _cu['state'] = rp.FAILED
                             self._agent.update_unit_state(src    = 'StageinWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
@@ -4543,6 +4555,7 @@ class StageinWorker(threading.Thread):
                     # completion) to push the unit via mongodb to the agebnt again.
                     # Duh! (FIXME)
                     if not _cu["FTW_Input_Directives"] :
+                        _cu['state'] = rp.ALLOCATING
                         self._agent.update_unit_state(src    = 'StageinWorker',
                                                       uid    = _cu['_id'],
                                                       state  = rp.ALLOCATING,
@@ -4626,7 +4639,7 @@ class StageoutWorker(threading.Thread):
 
                 cu['state'] = rp.STAGING_OUTPUT
 
-                rpu.prof('get', msg="stagein_queue to StageoutWorker (%s)" % cu['state'], uid=cu['_id'])
+                rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)" % cu['state'], uid=cu['_id'])
 
                 cu_list = rpu.blowup(self._config, cu, STAGEOUT_WORKER)
                 for _cu in cu_list :
@@ -4726,6 +4739,7 @@ class StageoutWorker(threading.Thread):
                             self._log.exception(log_message)
 
                             # If a staging directive fails, fail the CU also.
+                            _cu['state'] = rp.FAILED
                             self._agent.update_unit_state(src    = 'StageoutWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
@@ -4773,6 +4787,7 @@ class StageoutWorker(threading.Thread):
                         # no FTW staging is needed, local staging is done -- we can
                         # move the unit into final state.
                         rpu.prof('final', msg="stageout done", uid=_cu['_id'])
+                        _cu['state'] = rp.DONE
                         self._agent.update_unit_state(src    = 'StageoutWorker',
                                                       uid    = _cu['_id'],
                                                       state  = rp.DONE,
@@ -4802,6 +4817,7 @@ class StageoutWorker(threading.Thread):
                 # invalid state transitions...
                 if cu:
                     rpu.prof('final', msg="stageout failed", uid=cu['_id'])
+                    cu['state'] = rp.FAILED
                     self._agent.update_unit_state(src    = 'StageoutWorker',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
@@ -5364,6 +5380,7 @@ class Agent(object):
                     if _cu['Agent_Input_Directives'] and \
                        _cu['Agent_Input_Status'] == rp.PENDING :
 
+                        _cu['state'] = rp.STAGING_INPUT
                         self.update_unit_state(src    = 'Agent',
                                                uid    = _cu['_id'],
                                                state  = rp.STAGING_INPUT,
@@ -5375,6 +5392,7 @@ class Agent(object):
                             self._stagein_queue.put(__cu)
 
                     else:
+                        _cu['state'] = rp.ALLOCATING
                         self.update_unit_state(src    = 'Agent',
                                                uid    = _cu['_id'],
                                                state  = rp.ALLOCATING,
@@ -5391,6 +5409,7 @@ class Agent(object):
                     # a queue (its always the last step).  We set it to FAILED
                     msg = "could not sort unit (%s)" % e
                     rpu.prof('error', msg=msg, uid=_cu['_id'], logger=self._log.exception)
+                    _cu['state'] = rp.FAILED
                     self.update_unit_state(src    = 'Agent',
                                            uid    = _cu['_id'],
                                            state  = rp.FAILED,
@@ -5459,7 +5478,7 @@ def main():
 
     logger.info("Using RADICAL-Utils version %s", rs.version)
     logger.info("Using RADICAL-SAGA  version %s", rs.version)
-    logger.info("Using RADICAL-Pilot version %s (%s)", (rp.version, git_ident))
+    logger.info("Using RADICAL-Pilot version %s (%s)", rp.version, git_ident)
 
 
     # --------------------------------------------------------------------------
@@ -5488,16 +5507,17 @@ def main():
         cfg_file = "%s/.radical/pilot/configs/agent.json" % os.environ['HOME']
         cfg      = ru.read_json_str (cfg_file)
 
-        ru.dict_merge (agent_config['number_of_workers'], cfg.get ('NUMBER_OF_WORKERS', {}), policy='overwrite')
-        ru.dict_merge (agent_config['blowup_factor'],     cfg.get ('BLOWUP_FACTOR',     {}), policy='overwrite')
-        ru.dict_merge (agent_config['drop_clones'],       cfg.get ('DROP_CLONES',       {}), policy='overwrite')
+        import pprint
+        logger.debug("\n%s\n" % pprint.pformat(cfg.get('drop_clones', {})))
+        logger.debug("\n%s\n" % pprint.pformat(agent_config['drop_clones']))
+
+        ru.dict_merge (agent_config['number_of_workers'], cfg.get ('number_of_workers', {}), policy='overwrite')
+        ru.dict_merge (agent_config['blowup_factor'],     cfg.get ('blowup_factor',     {}), policy='overwrite')
+        ru.dict_merge (agent_config['drop_clones'],       cfg.get ('drop_clones',       {}), policy='overwrite')
 
         logger.info ("agent config merged")
 
-        import pprint
-        logger.debug("\n\n%s\n\n" % pprint.pformat (NUMBER_OF_WORKERS))
-        logger.debug("\n\n%s\n\n" % pprint.pformat (BLOWUP_FACTOR))
-        logger.debug("\n\n%s\n\n" % pprint.pformat (DROP_CLONES))
+        logger.debug("\n%s\n" % pprint.pformat(agent_config['drop_clones']))
 
     except Exception as e:
         logger.info ("agent config not merged: %s", e)
