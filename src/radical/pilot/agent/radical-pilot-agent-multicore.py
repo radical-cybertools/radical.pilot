@@ -215,7 +215,7 @@ git_ident = "$Id$"
 #
 # DEBUGGING CONSTANTS -- only change when you know what you are doing.  It is
 # almost guaranteed that any changes will make the agent non-functional (if
-# functionality is definied as executing a set of given CUs).
+# functionality is defined as executing a set of given CUs).
 
 # component IDs
 
@@ -3718,6 +3718,8 @@ class ExecWorker_POPEN (ExecWorker) :
                     cu = None
 
             else:
+                rpu.prof('execution complete', uid=cu['_id'])
+
                 # we have a valid return code -- unit is final
                 action += 1
                 self._log.info("Unit %s has return code %s.", cu['_id'], exit_code)
@@ -4222,6 +4224,7 @@ class ExecWorker_SHELL(ExecWorker):
                                           msg   = "unit execution finished")
 
         elif rp_state in [rp.DONE] :
+            rpu.prof('execution complete', uid=cu['_id'])
             # advance the unit state
             self._scheduler.unschedule(cu)
             self._agent.update_unit_state(src   = 'ExecWatcher',
