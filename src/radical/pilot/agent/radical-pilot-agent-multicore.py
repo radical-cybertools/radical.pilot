@@ -5521,7 +5521,7 @@ def main():
         logger.info ("agent config merged")
 
         import pprint
-        logger.debug("\Agent config:\n%s\n\n" % pprint.pformat (agent_conf))
+        logger.debug("\Agent config:\n%s\n\n" % pprint.pformat (agent_config))
 
     except Exception as e:
         logger.info ("agent config not merged: %s", e)
