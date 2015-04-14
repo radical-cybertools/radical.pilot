@@ -671,8 +671,13 @@ virtenv_create()
   #         "easy_install pip==1.2.1" \
   #      || echo "Couldn't downgrade pip! Using default version (if it exists)"
 
+    # NOTE: setuptools 15.0 (which for some reason is the next release afer
+    #       0.6c11) breaks on BlueWaters, and breaks badly (install works, but
+    #       pip complains about some parameter mismatch).  So we fix on the last
+    #       known workable version -- which seems to be acceptable to other
+    #       hosts, too
     run_cmd "update setuptools" \
-            "$PIP install --upgrade setuptools" \
+            "$PIP install --upgrade setuptools==0.6c11" \
          || echo "Couldn't update setuptools -- using default version"
 
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip

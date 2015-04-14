@@ -41,9 +41,9 @@ mkdir -p "$prefix/rp_install"
 
 virtualenv "$prefix"
 source "$prefix"/bin/activate
-pip install --upgrade setuptools
+pip install --upgrade setuptools==0.6c11
 pip install --upgrade pip==1.4.1
-pip install --upgrade colorama python-hostlist pymongo apache-libcloud
+pip install --upgrade colorama python-hostlist pymongo==2.8 apache-libcloud
 
 # install the radical stack (utils, saga, pilot) into a separate tree
 # ($prefix/rp_install(, so that any local install can use the ve *w/o* 
