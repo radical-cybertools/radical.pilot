@@ -568,6 +568,8 @@ virtenv_activate()
     echo "PYTHON INTERPRETER: `which python`"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
+    echo "PIP installer     : `which pip`"
+    echo "PIP version       : `pip --version`"
 
     # NOTE: distutils.sc.get_python_lib() behaves different on different
     #       systems: on some systems (versions?) it returns a normalized path, 
