@@ -5495,9 +5495,9 @@ def main():
         logger.info ("agent config merged")
 
         import pprint
-        logger.debug("\n\n%s\n\n" % pprint.pformat (NUMBER_OF_WORKERS))
-        logger.debug("\n\n%s\n\n" % pprint.pformat (BLOWUP_FACTOR))
-        logger.debug("\n\n%s\n\n" % pprint.pformat (DROP_CLONES))
+        logger.debug("\nNumber of Workers:\n%s\n\n" % pprint.pformat (NUMBER_OF_WORKERS))
+        logger.debug("\nBlowup Factor:\n%s\n\n" % pprint.pformat (BLOWUP_FACTOR))
+        logger.debug("\nDrop Clones:\n%s\n\n" % pprint.pformat (DROP_CLONES))
 
     except Exception as e:
         logger.info ("agent config not merged: %s", e)
