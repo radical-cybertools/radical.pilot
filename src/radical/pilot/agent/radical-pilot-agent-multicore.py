@@ -5459,7 +5459,7 @@ def main():
 
     logger.info("Using RADICAL-Utils version %s", rs.version)
     logger.info("Using RADICAL-SAGA  version %s", rs.version)
-    logger.info("Using RADICAL-Pilot version %s (%s)", (rp.version, git_ident))
+    logger.info("Using RADICAL-Pilot version %s (%s)", rp.version, git_ident)
 
 
     # --------------------------------------------------------------------------
