@@ -4626,7 +4626,7 @@ class StageoutWorker(threading.Thread):
 
                 cu['state'] = rp.STAGING_OUTPUT
 
-                rpu.prof('get', msg="stagein_queue to StageoutWorker (%s)" % cu['state'], uid=cu['_id'])
+                rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)" % cu['state'], uid=cu['_id'])
 
                 cu_list = rpu.blowup(self._config, cu, STAGEOUT_WORKER)
                 for _cu in cu_list :
