@@ -40,12 +40,33 @@ def timestamp_now():
 #
 # If 'RADICAL_PILOT_PROFILE' is set in environment, we log timed events.
 #
+class _ProfileWriter (object) :
+
+    __metaclass__ = ru.Singleton
+
+    def __init__(self):
+
+        self._handle = None
+        self._lock   = None
+
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            self._lock   = threading.RLock()
+            self._handle = open('agent.prof', 'a')
+
+
+    def write(self, data):
+
+        with self._lock:
+            self._handle.write(data)
+
+
+
 if 'RADICAL_PILOT_PROFILE' in os.environ:
-    profile_rp = True
-    _profile_handle = open('agent.prof', 'a')
+    profile_rp     = True
+    profile_writer = _ProfileWriter()
 else:
-    profile_rp = False
-    _profile_handle = sys.stdout
+    profile_rp     = False
+    profile_writer = None
 
 
 # ------------------------------------------------------------------------------
@@ -54,6 +75,8 @@ else:
 AGENT_THREADS   = 'threading'
 AGENT_PROCESSES = 'multiprocessing'
 AGENT_MODE      = AGENT_THREADS
+
+_prof_lock = threading.RLock()
 
 def prof(etype, uid="", msg="", logger=None):
 
@@ -78,7 +101,7 @@ def prof(etype, uid="", msg="", logger=None):
 
     # NOTE: Don't forget to sync any format changes in the bootstrapper
     # and downstream analysis tools too!
-    _profile_handle.write("%.4f,%s,%s,%s,%s\n" % (now, tid, uid, etype, msg))
+    profile_writer.write("%.4f,%s,%s,%s,%s\n" % (now, tid, uid, etype, msg))
 
 
 # ------------------------------------------------------------------------------
