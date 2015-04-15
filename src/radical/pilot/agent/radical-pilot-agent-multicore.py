@@ -2066,9 +2066,10 @@ class LRMS(object):
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
-        if cores_avail < int(requested_cores):
-            raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
-                            % (str(cores_avail), str(requested_cores)))
+        if 'RADICAL_PILOT_PROFILE' not in os.environ:
+            if cores_avail < int(requested_cores):
+                raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
+                                % (str(cores_avail), str(requested_cores)))
 
 
     # --------------------------------------------------------------------------
@@ -4317,9 +4318,10 @@ class UpdateWorker(threading.Thread):
                     res  = cinfo['bulk'].execute()
                     self._log.debug("bulk update result: %s", res)
 
-                    rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids'].keys ()))
-                    for uid in cinfo['uids']:
-                        state = cinfo['uids'][uid]
+                    rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+                    for entry in cinfo['uids']:
+                        uid   = entry[0]
+                        state = entry[1]
                         if state:
                             rpu.prof('unit update pushed (%s)' % state, uid=uid)
                         else:
@@ -4327,7 +4329,7 @@ class UpdateWorker(threading.Thread):
 
                     cinfo['last'] = now
                     cinfo['bulk'] = None
-                    cinfo['uids'] = dict()
+                    cinfo['uids'] = list()
                     return 1
 
                 else:
@@ -4338,6 +4340,8 @@ class UpdateWorker(threading.Thread):
 
                 try:
                     update_request = self._update_queue.get_nowait()
+                    uid   = update_request.get('_id',   None)
+                    state = update_request.get('state', None)
 
                 except Queue.Empty:
 
@@ -4379,7 +4383,7 @@ class UpdateWorker(threading.Thread):
                                 'coll' : self._mongo_db[cname],
                                 'bulk' : None,
                                 'last' : time.time(),  # time of last push
-                                'uids' : dict()
+                                'uids' : list()
                                 }
 
                     cinfo = self._cinfo[cname]
@@ -4387,12 +4391,12 @@ class UpdateWorker(threading.Thread):
                     if not cinfo['bulk']:
                         cinfo['bulk']  = cinfo['coll'].initialize_ordered_bulk_op()
 
-                    cinfo['uids'][uid] = state
+                    cinfo['uids'].append([uid, state])
                     cinfo['bulk'].find  (query_dict) \
                                  .update(update_dict)
 
                     timed_bulk_execute(cinfo)
-                  # rpu.prof('unit update bulked', uid=uid)
+                    rpu.prof('unit update bulked (%s)' % state, uid=uid)
 
             except Exception as e:
                 self._log.exception("unit update failed (%s)", e)
@@ -4464,7 +4468,8 @@ class StageinWorker(threading.Thread):
 
                     for directive in _cu['Agent_Input_Directives']:
 
-                        rpu.prof('Agent input_staging queue', uid=_cu['_id'], msg=directive)
+                        rpu.prof('Agent input_staging queue', uid=_cu['_id'],
+                                 msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
                         if directive['state'] != rp.PENDING :
                             # we ignore directives which need no action
@@ -4841,8 +4846,7 @@ class StageoutWorker(threading.Thread):
                 # forward the exception
                 raise
 
-            finally:
-                rpu.prof ('stop')
+        rpu.prof ('stop')
 
 
 # ==============================================================================
@@ -5259,8 +5263,6 @@ class Agent(object):
                     "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
                 sys.exit(1)
 
-            finally:
-                rpu.prof ('stop')
 
         # main loop terminated, so self._terminate was set
         # we need to signal shut down to all workers
@@ -5284,6 +5286,7 @@ class Agent(object):
         pilot_CANCELED(self._p, self._pilot_id, self._log,
                 "Terminated (_terminate set).")
 
+        rpu.prof ('stop')
         sys.exit(0)
 
 
