@@ -60,7 +60,7 @@ html_entry()
         echo "   <td> $result  </td> "
         if test -f "$FILE_TGT/$name.log"
         then
-            echo "   <td> <a href=\"$LINK_TGT/$name.log\">stat</a> </td> "
+            echo "   <td> <a href=\"$LINK_TGT/$name.log\">log</a> </td> "
         else
             echo "   <td> - </td> "
         fi
