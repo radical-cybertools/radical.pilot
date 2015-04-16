@@ -3610,13 +3610,10 @@ class ExecWorker_POPEN (ExecWorker) :
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution start")
 
-        rpu.prof('put', msg="ExecWorker to watch_queue", uid=cu['_id'])
         cu_list = rpu.blowup(self._config, cu, WATCH_QUEUE)
-
         for _cu in cu_list :
-            rpu.prof('put', msg="ExecWorker to watching (%s)" % _cu['state'], uid=_cu['_id'])
+            rpu.prof('put', msg="ExecWorker to watcher (%s)" % _cu['state'], uid=_cu['_id'])
             self._watch_queue.put(_cu)
-
 
     # --------------------------------------------------------------------------
     #
@@ -4088,6 +4085,7 @@ class ExecWorker_SHELL(ExecWorker):
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
+        rpu.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -4096,7 +4094,6 @@ class ExecWorker_SHELL(ExecWorker):
                                       uid    = cu['_id'],
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution started")
-        # FIXME: add profiling
 
 
     # --------------------------------------------------------------------------
