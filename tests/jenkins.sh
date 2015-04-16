@@ -42,7 +42,7 @@ html_start()
         echo "    <td> <b> Logfile </b> </td> "
         echo "    <td> <b> Stats   </b> </td> "
         echo "    <td> <b> Plot    </b> </td> "
-        echo "  </tr>"
+        echo "   </tr>"
     ) > $HTML_TARGET
 }
 
@@ -55,28 +55,28 @@ html_entry()
     result=$2
 
     (
-        echo "  <tr>"
-        echo "   <td> $name    </td> "
-        echo "   <td> $result  </td> "
+        echo "   <tr>"
+        echo "    <td> $name    </td> "
+        echo "    <td> $result  </td> "
         if test -f "$FILE_TGT/$name.log"
         then
-            echo "   <td> <a href=\"$LINK_TGT/$name.log\">stat</a> </td> "
+            echo "    <td> <a href=\"$LINK_TGT/$name.log\">stat</a> </td> "
         else
-            echo "   <td> - </td> "
+            echo "    <td> - </td> "
         fi
         if test -f "$FILE_TGT/$name.txt"
         then
-            echo "   <td> <a href=\"$LINK_TGT/$name.txt\">stat</a> </td> "
+            echo "    <td> <a href=\"$LINK_TGT/$name.txt\">stat</a> </td> "
         else
-            echo "   <td> - </td> "
+            echo "    <td> - </td> "
         fi
         if test -f "$FILE_TGT/$name.png"
         then
-            echo "   <td> <a href=\"$LINK_TGT/$name.png\">plot</a> </td> "
+            echo "    <td> <a href=\"$LINK_TGT/$name.png\">plot</a> </td> "
         else
-            echo "   <td> - </td> "
+            echo "    <td> - </td> "
         fi
-        echo " </tr>"
+        echo "   </tr>"
     ) >> $HTML_TARGET
 }
 
@@ -100,7 +100,7 @@ run_test() {
     name="$1";  shift
     cmd="$*"
 
-    echo "# -----------------------------------------------------"
+    echo "# ------------------------------------------------------------------------------"
     echo "# TEST $name: $cmd"
     echo "# "
 
@@ -130,12 +130,12 @@ run_test() {
         html_entry "$name" "$HTML_SUCCESS"
         echo "# "
         echo "# SUCCESS $name"
-        echo "# -----------------------------------------------------"
+        echo "# ------------------------------------------------------------------------------"
     else
         html_entry "$name" "$HTML_FAILURE"
         echo "# "
         echo "# FAILED $name"
-        echo "# -----------------------------------------------------"
+        echo "# ------------------------------------------------------------------------------"
 
         FAILED=1
     fi
