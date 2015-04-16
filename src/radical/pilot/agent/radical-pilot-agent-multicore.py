@@ -3543,7 +3543,6 @@ class ExecWorker_POPEN (ExecWorker) :
             launch_script_hop = "/usr/bin/env RP_SPAWNER_HOP=TRUE %s" % launch_script_name
 
             # The actual command line, constructed per launch-method
-            rpu.prof('_Process construct command', uid=cu['_id'])
             try:
                 launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
@@ -3553,6 +3552,8 @@ class ExecWorker_POPEN (ExecWorker) :
                                                cu['opaque_slot'])
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
+
+                rpu.prof('launch script constructed', uid=cu['_id'])
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -4045,7 +4046,9 @@ class ExecWorker_SHELL(ExecWorker):
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
+        rpu.prof('launch script constructed', uid=cu['_id'])
 
+      # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
@@ -4117,7 +4120,7 @@ class ExecWorker_SHELL(ExecWorker):
 
                 if  not line :
 
-                    # just a read timeout, i.e. an opportiunity to check for
+                    # just a read timeout, i.e. an opportunity to check for
                     # termination signals...
                     if  self._terminate.is_set() :
                         self._log.debug ("stop monitoring")
