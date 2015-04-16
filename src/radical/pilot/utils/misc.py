@@ -47,6 +47,9 @@ else:
     profile_rp = False
     _profile_handle = sys.stdout
 
+def flush_prof():
+    if profile_rp:
+        _profile_handle.flush()
 
 # ------------------------------------------------------------------------------
 #
