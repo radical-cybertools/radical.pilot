@@ -21,7 +21,6 @@
         "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "python_interpreter"          : "python",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
                                          "module load cluster",
