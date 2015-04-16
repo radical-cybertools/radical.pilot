@@ -236,18 +236,9 @@ UPDATE_WORKER     = 'UpdateWorker'
 
 # Number of worker threads
 NUMBER_OF_WORKERS = {
-        AGENT            : 1,
-        STAGEIN_QUEUE    : 1,
         STAGEIN_WORKER   : 1,
-        SCHEDULE_QUEUE   : 1,
-        SCHEDULER        : 1,
-        EXECUTION_QUEUE  : 1,
         EXEC_WORKER      : 1,
-        WATCH_QUEUE      : 1,
-        WATCHER          : 1,
-        STAGEOUT_QUEUE   : 1,
         STAGEOUT_WORKER  : 1,
-        UPDATE_QUEUE     : 1,
         UPDATE_WORKER    : 1
 }
 
