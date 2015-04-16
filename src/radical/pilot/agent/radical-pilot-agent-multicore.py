@@ -3843,6 +3843,7 @@ class ExecWorker_SHELL(ExecWorker):
                                          name   = watcher_name)
         self._watcher.start ()
 
+        rpu.prof('run setup done')
 
         try:
             # report initial slot status
