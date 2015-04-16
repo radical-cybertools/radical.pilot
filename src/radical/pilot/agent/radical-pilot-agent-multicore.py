@@ -3663,7 +3663,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 # add all cus we found to the watchlist
                 for cu in cus :
                     
-                    rpu.prof('get', msg="watch_queue to ExecWatcher", uid=cu['_id'])
+                    rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     cu_list = rpu.blowup(self._config, cu, WATCHER)
 
                     for _cu in cu_list :
@@ -4189,9 +4189,11 @@ class ExecWorker_SHELL(ExecWorker):
                     with self._registry_lock :
                         cu = self._registry.get (pid, None)
 
-                    if cu : self._handle_event (cu, pid, state, data)
-                    else  : self._cached_events.append ([pid, state, data])
-
+                    if cu:
+                        rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                        self._handle_event (cu, pid, state, data)
+                    else:
+                        self._cached_events.append ([pid, state, data])
 
         except Exception as e:
 
