@@ -21,9 +21,10 @@ export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTILS_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
-export TGT="../report"
+export FILE_TGT="../report"
+export LINK_TGT="http://ci.radical-project.org/job/radical.pilot.devel/branch/devel/ws/radical.pilot/report/"
 
-export HTML_TARGET="$TGT/test_results.html"
+export HTML_TARGET="$FILE_TGT/test_results.html"
 export HTML_SUCCESS="<font color=\"\#66AA66\">SUCCESS</font>"
 export HTML_FAILURE="<font color=\"\#AA6666\">FAILED</font>"
 
@@ -52,23 +53,26 @@ html_entry()
 {
     name=$1
     result=$2
-    logfile=$3
-    sid=$4
 
     (
         echo "  <tr>"
         echo "   <td> $name    </td> "
         echo "   <td> $result  </td> "
-        echo "   <td> <a href=\"$logfile\">log</a> </td> "
-        if test -f "$TGT/$sid.txt"
+        if test -f "$FILE_TGT/$name.log"
         then
-            echo "   <td> <a href=\"$sid.txt\">stat</a> </td> "
+            echo "   <td> <a href=\"$LINK_TGT/$name.log\">stat</a> </td> "
         else
             echo "   <td> - </td> "
         fi
-        if test -f "$TGT/$sid.png"
+        if test -f "$FILE_TGT/$name.txt"
         then
-            echo "   <td> <a href=\"$sid.png\">plot</a> </td> "
+            echo "   <td> <a href=\"$LINK_TGT/$name.txt\">stat</a> </td> "
+        else
+            echo "   <td> - </td> "
+        fi
+        if test -f "$FILE_TGT/$name.png"
+        then
+            echo "   <td> <a href=\"$LINK_TGT/$name.png\">plot</a> </td> "
         else
             echo "   <td> - </td> "
         fi
@@ -100,7 +104,7 @@ run_test() {
     echo "# TEST $name: $cmd"
     echo "# "
 
-    log="$TGT/$name.log"
+    log="$FILE_TGT/$name.log"
 
     if ! test -z "$JENKINS_VERBOSE"
     then
@@ -115,20 +119,20 @@ run_test() {
     SID=`grep 'SESSION ID' $log | head -n 1 | cut -f 2 -d ':' | tr -d ' '`
     if ! test -z "$SID"
     then
-        radicalpilot-stats         -m  stat,plot -s $SID -t png >  $TGT/$SID.txt 2>&1
-        radicalpilot-close-session -m  purge     -s $SID        >> $TGT/$SID.txt 2>&1
-        test -f $SID.png && mv $SID.png $TGT/
+        radicalpilot-stats         -m  stat,plot -s $SID -t png >  $FILE_TGT/$name.txt 2>&1
+        radicalpilot-close-session -m  purge     -s $SID        >> $FILE_TGT/$name.txt 2>&1
+        test -f $SID.png && mv $SID.png $FILE_TGT/$name.png
     fi
 
 
     if grep -q "$TEST_OK" "$log"
     then
-        html_entry "$name" "$HTML_SUCCESS" "$log" $SID
+        html_entry "$name" "$HTML_SUCCESS"
         echo "# "
         echo "# SUCCESS $s $t"
         echo "# -----------------------------------------------------"
     else
-        html_entry "$name" "$HTML_FAILURE" "$log" $SID
+        html_entry "$name" "$HTML_FAILURE"
         echo "# "
         echo "# FAILED $s $t"
         echo "# -----------------------------------------------------"
