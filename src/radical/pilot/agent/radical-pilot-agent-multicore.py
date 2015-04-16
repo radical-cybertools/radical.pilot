@@ -5350,7 +5350,7 @@ class Agent(object):
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
         if cu_list:
-            rpu.prof('Agent get units', msg="number of units: %d" % cu_cursor.count(),
+            rpu.prof('Agent get units', msg="bulk size: %d" % cu_cursor.count(),
                  logger=self._log.info)
 
 
