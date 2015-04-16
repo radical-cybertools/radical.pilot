@@ -19,8 +19,7 @@
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_bw",
-        "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True"
+        "virtenv_mode"                : "create"
     },
     "bw_ccm": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system in CCM (https://bluewaters.ncsa.illinois.edu/)",
