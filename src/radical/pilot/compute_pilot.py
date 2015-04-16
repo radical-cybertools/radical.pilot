@@ -506,7 +506,7 @@ class ComputePilot (object):
                     raise Exception("hostname not supported with staging:// scheme")
 
                 # Remove the leading slash to get a relative path from the staging area
-                rel_path = os.path.relpath(tgt_dir_url.path, '/')
+                target = os.path.relpath(tgt_dir_url.path, '/')
 
                 # Now base the target directory relative of the sandbox and staging prefix
                 tgt_dir_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA, rel_path))
@@ -541,3 +541,4 @@ class ComputePilot (object):
                 target_dir.copy(src_url, tgt_filename)
             else:
                 raise Exception('Action %s not supported' % action)
+

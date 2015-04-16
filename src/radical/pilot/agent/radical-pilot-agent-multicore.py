@@ -5581,7 +5581,8 @@ if __name__ == "__main__":
     print "utils : %-5s : %s" % (ru.version_detail, ru.__file__)
     print "saga  : %-5s : %s" % (rs.version_detail, rs.__file__)
     print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
-    print "        agent : multicore : %s" % git_ident
+    print "        type  : multicore"
+    print "        gitid : %s" % git_ident
     print
     print "---------------------------------------------------------------------"
     print

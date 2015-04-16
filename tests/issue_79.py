@@ -25,7 +25,7 @@ try:
     umgr.add_pilots (pilot)
     
     unit_descr = rp.ComputeUnitDescription()
-    unit_descr.executable = '/bin/date'
+    unit_descr.executable = '/road/to/nowhere/does_not_exist'
     unit_descr.arguments  = ['-invalid']
     
     unit = umgr.submit_units (unit_descr)
