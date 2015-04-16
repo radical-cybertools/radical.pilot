@@ -129,12 +129,12 @@ run_test() {
     then
         html_entry "$name" "$HTML_SUCCESS"
         echo "# "
-        echo "# SUCCESS $s $t"
+        echo "# SUCCESS $name"
         echo "# -----------------------------------------------------"
     else
         html_entry "$name" "$HTML_FAILURE"
         echo "# "
-        echo "# FAILED $s $t"
+        echo "# FAILED $name"
         echo "# -----------------------------------------------------"
 
         FAILED=1
