@@ -3543,7 +3543,6 @@ class ExecWorker_POPEN (ExecWorker) :
             launch_script_hop = "/usr/bin/env RP_SPAWNER_HOP=TRUE %s" % launch_script_name
 
             # The actual command line, constructed per launch-method
-            rpu.prof('_Process construct command', uid=cu['_id'])
             try:
                 launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
@@ -3553,6 +3552,8 @@ class ExecWorker_POPEN (ExecWorker) :
                                                cu['opaque_slot'])
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
+
+                rpu.prof('launch script constructed', uid=cu['_id'])
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -3609,13 +3610,10 @@ class ExecWorker_POPEN (ExecWorker) :
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution start")
 
-        rpu.prof('put', msg="ExecWorker to watch_queue", uid=cu['_id'])
         cu_list = rpu.blowup(self._config, cu, WATCH_QUEUE)
-
         for _cu in cu_list :
-            rpu.prof('put', msg="ExecWorker to watching (%s)" % _cu['state'], uid=_cu['_id'])
+            rpu.prof('put', msg="ExecWorker to watcher (%s)" % _cu['state'], uid=_cu['_id'])
             self._watch_queue.put(_cu)
-
 
     # --------------------------------------------------------------------------
     #
@@ -3665,7 +3663,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 # add all cus we found to the watchlist
                 for cu in cus :
                     
-                    rpu.prof('get', msg="watch_queue to ExecWatcher", uid=cu['_id'])
+                    rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     cu_list = rpu.blowup(self._config, cu, WATCHER)
 
                     for _cu in cu_list :
@@ -4045,7 +4043,9 @@ class ExecWorker_SHELL(ExecWorker):
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
+        rpu.prof('launch script constructed', uid=cu['_id'])
 
+      # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
@@ -4085,6 +4085,7 @@ class ExecWorker_SHELL(ExecWorker):
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
+        rpu.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -4093,7 +4094,6 @@ class ExecWorker_SHELL(ExecWorker):
                                       uid    = cu['_id'],
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution started")
-        # FIXME: add profiling
 
 
     # --------------------------------------------------------------------------
@@ -4117,7 +4117,7 @@ class ExecWorker_SHELL(ExecWorker):
 
                 if  not line :
 
-                    # just a read timeout, i.e. an opportiunity to check for
+                    # just a read timeout, i.e. an opportunity to check for
                     # termination signals...
                     if  self._terminate.is_set() :
                         self._log.debug ("stop monitoring")
@@ -4138,12 +4138,11 @@ class ExecWorker_SHELL(ExecWorker):
 
                         if static_cnt == 10 :
                             # 10 times cache to check, dump it for debugging
-                            print "cache state"
-                            import pprint
-                            pprint.pprint (self._cached_events)
-                            pprint.pprint (self._registry)
+                            #print "cache state"
+                            #import pprint
+                            #pprint.pprint (self._cached_events)
+                            #pprint.pprint (self._registry)
                             static_cnt = 0
-
 
                         cache_copy          = self._cached_events[:]
                         self._cached_events = list()
@@ -4190,9 +4189,11 @@ class ExecWorker_SHELL(ExecWorker):
                     with self._registry_lock :
                         cu = self._registry.get (pid, None)
 
-                    if cu : self._handle_event (cu, pid, state, data)
-                    else  : self._cached_events.append ([pid, state, data])
-
+                    if cu:
+                        rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                        self._handle_event (cu, pid, state, data)
+                    else:
+                        self._cached_events.append ([pid, state, data])
 
         except Exception as e:
 
