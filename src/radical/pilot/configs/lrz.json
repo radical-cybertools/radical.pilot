@@ -21,7 +21,7 @@
         "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        "forward_tunnel_endpoint"     : "login03",
+        "agent_mongodb_endpoint"      : "mongodb://login03:24242",
         "pre_bootstrap"               : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",
                                          "module load python/2.7.6",

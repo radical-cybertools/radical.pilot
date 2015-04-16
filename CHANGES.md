@@ -5,6 +5,35 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.26 Release                                               2015-04-08
+---------------------------------------------------------------------
+
+  * hotfix to cope with API changing pymongo release
+
+
+0.25 Release                                               2015-04-01
+---------------------------------------------------------------------
+
+  * hotfix for a stampede configuration change
+
+
+0.24 Release                                               2015-03-30
+---------------------------------------------------------------------
+
+  * More support for URLs in StagingDirectives (#489). 
+  * Create parent directories of staged files. 
+  * Only process entries for Output FTW, fixes #490. 
+  * SuperMUC config change. 
+  * switch from bson to json for session dumps 
+  * fixes #451 
+  * update resources.rst 
+  * remove superfluous \n 
+  * fix #438 
+  * add documentation on resource config changes, closes #421 
+  * .ssh/authorized_keys2 is deprecated since 2011 
+  * improved intra-node SSH FAQ item 
+
+
 0.23 Release                                               2014-12-13
 ---------------------------------------------------------------------
 
@@ -233,4 +262,5 @@ API Changes:
 
   * Closed tickets: 
     - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed
+
 
