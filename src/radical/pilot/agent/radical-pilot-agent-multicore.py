@@ -142,6 +142,7 @@ import sys
 import time
 import errno
 import Queue
+import pprint
 import signal
 import shutil
 import optparse
@@ -4130,7 +4131,6 @@ class ExecWorker_SHELL(ExecWorker):
                         if static_cnt == 10 :
                             # 10 times cache to check, dump it for debugging
                             #print "cache state"
-                            #import pprint
                             #pprint.pprint (self._cached_events)
                             #pprint.pprint (self._registry)
                             static_cnt = 0
@@ -5499,28 +5499,26 @@ def main():
 
 
     # --------------------------------------------------------------------------
-    # load the local agent config, and overload the config dicts
-    try :
-        logger.info ("load agent config")
-        cfg_file = "%s/.radical/pilot/configs/agent.json" % os.environ['HOME']
-        cfg      = ru.read_json_str (cfg_file)
+    # load the local agent tweaks config, and overload the config dicts
+    try:
+        logger.info ("Trying to load config file ...")
+        cfg_file = "tweaks.json"
+        cfg = ru.read_json_str(cfg_file)
 
-        import pprint
-        logger.debug("\n%s\n" % pprint.pformat(cfg.get('drop_clones', {})))
-        logger.debug("\n%s\n" % pprint.pformat(agent_config['drop_clones']))
+        ru.dict_merge(agent_config['number_of_workers'], cfg.get('number_of_workers', {}), policy='overwrite')
+        ru.dict_merge(agent_config['blowup_factor'],     cfg.get('blowup_factor',     {}), policy='overwrite')
+        ru.dict_merge(agent_config['drop_clones'],       cfg.get('drop_clones',       {}), policy='overwrite')
 
-        ru.dict_merge (agent_config['number_of_workers'], cfg.get ('number_of_workers', {}), policy='overwrite')
-        ru.dict_merge (agent_config['blowup_factor'],     cfg.get ('blowup_factor',     {}), policy='overwrite')
-        ru.dict_merge (agent_config['drop_clones'],       cfg.get ('drop_clones',       {}), policy='overwrite')
+        logger.info("Default agent config merged with settings from file")
 
-        logger.info ("agent config merged")
-
-        import pprint
-        logger.debug("\Agent config:\n%s\n\n" % pprint.pformat (agent_config))
+    except IOError:
+        # No config file, which is perfectly ok
+        pass
 
     except Exception as e:
-        logger.info ("agent config not merged: %s", e)
+        logger.info ("agent config failed to merge: %s", e)
 
+    logger.info("\Agent config:\n%s\n\n" % pprint.pformat(agent_config))
 
     try:
         # ----------------------------------------------------------------------
