@@ -4141,12 +4141,11 @@ class ExecWorker_SHELL(ExecWorker):
 
                         if static_cnt == 10 :
                             # 10 times cache to check, dump it for debugging
-                            print "cache state"
-                            import pprint
-                            pprint.pprint (self._cached_events)
-                            pprint.pprint (self._registry)
+                            #print "cache state"
+                            #import pprint
+                            #pprint.pprint (self._cached_events)
+                            #pprint.pprint (self._registry)
                             static_cnt = 0
-
 
                         cache_copy          = self._cached_events[:]
                         self._cached_events = list()
