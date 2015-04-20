@@ -27,7 +27,6 @@ def timestamp_epoch():
 # bootstrapper (or 'now' as fallback)
 timestamp_zero = float(os.environ.get('TIME_ZERO', time.time()))
 
-print "timestamp zero: %s" % timestamp_zero
 
 def timestamp_now():
     # relative timestamp seconds since TIME_ZERO (start)
