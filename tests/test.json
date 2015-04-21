@@ -118,16 +118,6 @@
                           "pip install mpi4py"],
      "executable"      : "python"
      },
- "lrz.supermuc"        : {
-     "cp_project"      : "",
-     "cp_queue"        : "",
-     "cp_runtime"      :  5,
-     "cp_cores"        : 32,
-     "cp_schema"       : "",
-     "cu_cores"        :  8,
-     "cu_pre_exec"     : [],
-     "executable"      : "python"
-     },
  "local.localhost"     : {
      "cp_project"      : "",
      "cp_queue"        : "",
@@ -138,6 +128,26 @@
      "cu_pre_exec"     : ["python virtualenv ./mpive",
                           ". ./mpive/bin/activate",
                           "pip install mpi4py"],
+    "executable"      : "python"
+    },
+ "lrz.supermuc"        : {
+     "cp_project"      : "",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 32,
+     "cp_schema"       : "",
+     "cu_cores"        :  8,
+     "cu_pre_exec"     : [],
+     "executable"      : "python"
+     },
+ "lsu.supermic"        : {
+     "cp_project"      : "TG-CCR140028",
+     "cp_queue"        : "workq",
+     "cp_runtime"      : 10,
+     "cp_cores"        : 20,
+     "cp_schema"       : "",
+     "cu_cores"        :  5,
+     "cu_pre_exec"     : ["module load python"],
      "executable"      : "python"
      },
  "ncar.yellowstone"    : {
@@ -200,6 +210,16 @@
      "cu_cores"        : 32,
      "cu_pre_exec"     : ["module load python",
                           ". /global/project/projectdirs/m2178/shared_ccm_cu_ve_20141204/bin/activate"],
+     "executable"      : "python"
+     },
+  "ornl.titan"         : {
+     "cp_project"      : "csc168",
+     "cp_queue"        : "debug",
+     "cp_runtime"      : 10,
+     "cp_cores"        : 16,
+     "cp_schema"       : "",
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load python python_mpi4py"],
      "executable"      : "python"
      },
  "radical.tutorial"    : {
