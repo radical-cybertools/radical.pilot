@@ -329,7 +329,15 @@ def get_stats (docs, events, slothist) :
                 state = s
                 start = ts
 
-        pilot_runtime = (doc['finished'] - doc['started']) * pilot_info['cores']
+        started  = doc.get('started',  None)
+        finished = doc.get('finished', None)
+        cores    = doc.get('cores',    None)
+
+        if not started or not finished or not cores:
+            pilot_runtime = 1
+        else:
+            pilot_runtime = (finished - started) * cores
+
         pilot_busy = 0.0
         if pid in slothist:
             for slot in slothist[pid]['slot_infos'] :
