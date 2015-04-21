@@ -476,6 +476,8 @@ def plot_session (db, session, cachedir, term) :
     events    = rpu.get_session_events   (db, session, cachedir=cachedir)
     slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
 
+    stats     = get_stats (docs, events, slothists)
+
     session_name = docs['session']['name']
 
 
@@ -493,6 +495,7 @@ def plot_session (db, session, cachedir, term) :
     maxslots   = 0
     nodesize   = 0
     slots      = list()
+    nunits     = list()
     hosts      = list()
     delete_me  = list()
     maxqueue   = 0
@@ -530,6 +533,7 @@ def plot_session (db, session, cachedir, term) :
         slotnum = pilot['description']['cores']
         maxslots = max(slotnum,maxslots)
         slots.append (slotnum)
+        nunits.append (stats['pilots'][pid]['n_units'])
 
         with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
             for event in pilot['statehistory'] :
@@ -677,6 +681,10 @@ def plot_session (db, session, cachedir, term) :
 
     terms = " ".join (term.split (','))
 
+    print '=----------------------------------'
+    print slots
+    print '=----------------------------------'
+
                                          
     cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
     cmd +=        " -e  timetics=%d "       % timetics
@@ -689,6 +697,10 @@ def plot_session (db, session, cachedir, term) :
     for idx,pid in enumerate(pids) :
         cmd +=    "%d "     % (slots[idx])
     cmd +=        "\"'"
+    cmd +=        " -e  'unitnum_list=\""
+    for idx,pid in enumerate(pids) :
+        cmd +=    "%d "     % (nunits[idx])
+    cmd +=        "\"'"
     cmd +=        " -e  nodesize=%d "       % nodesize
     cmd +=        " -e 'session=\"%s\"' "   % session
     cmd +=        " -e 'sname=\"%s\"' "     % session_name
@@ -700,7 +712,7 @@ def plot_session (db, session, cachedir, term) :
     cmd +=        " -e  pilot_num=%d "       % len(pids)
     cmd +=        " -e  'pilot_name_list=\""
     for idx,pid in enumerate(pids) :
-        cmd +=    "%s[%d] " % (hosts[idx], slots[idx])
+        cmd +=    "%s " % hosts[idx]
     cmd +=        "\"'"
     cmd +=        " -e  'pilot_id_list=\""
     for idx,pid in enumerate(pids) :

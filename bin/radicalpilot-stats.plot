@@ -74,7 +74,9 @@ hex(i)      = "0123456789ABCDEF"[i:i]
 hexx(i)     = hex(i).hex(i)
 color_1(i)  = word(color_list_1,i)
 color_2(i)  = word(color_list_2,i)
-get_title(i)= sprintf("%s: %-15s (%s cores)", word(pilot_id_list,i), word(pilot_name_list,i), word(slotnum_list,i))
+get_title(i)= sprintf("%s: %-15s (%4s cores / %4s units)", \
+                      word(pilot_id_list,i), word(pilot_name_list,i), \
+                      word(slotnum_list,i),  word(unitnum_list,i))
 
 # print 'palette '
 # do for [i=1:pilot_num] {
@@ -262,7 +264,7 @@ do for [term_i=1:words(terms)] {
          for [i=1:pilot_num] \
          word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.25) title '' with steps  lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
          for [i=1:pilot_num] \
-         word(slotnum_list,i)+0+word(slotnum_list,i)*0.25*offset(i,1) title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
+         word(slotnum_list,i)+offset(i,0.2) title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
 
     # ------------------------------------------------------------------------------------
     # Key plot
