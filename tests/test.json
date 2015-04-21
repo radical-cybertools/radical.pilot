@@ -202,6 +202,16 @@
                           ". /global/project/projectdirs/m2178/shared_ccm_cu_ve_20141204/bin/activate"],
      "executable"      : "python"
      },
+  "ornl.titan"         : {
+     "cp_project"      : "csc168",
+     "cp_queue"        : "debug",
+     "cp_runtime"      : 10,
+     "cp_cores"        : 16,
+     "cp_schema"       : "",
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load python python_mpi4py"],
+     "executable"      : "python"
+     },
  "radical.tutorial"    : {
      "cp_project"      : "",
      "cp_queue"        : "",
