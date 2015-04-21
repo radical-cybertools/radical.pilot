@@ -66,3 +66,17 @@ application should make efficient use of the allocated resources.
     :width: 600pt
     :align: center
 
+Note that the plotting capability needs an up-to-date installation of gnuoplot
+with the cairo-png backend.  For Linux, that can be installed from the usual
+package repositories.  For MacOS, the following should take care of the
+installation:
+
+.. code-block:: bash
+      # Install and configure brew: http://brew.sh/
+      # Install xquartz. Download the dmg package from http://xquartz.macosforge.org/landing/
+      # From a terminal issue the following commands:
+      
+      $ brew install cairo
+      $ brew install -v gnuplot --pdf --cairo --latex --with-x --wx
+
+
