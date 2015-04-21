@@ -113,7 +113,7 @@ The STFC Joule IBM BG/Q system (http://community.hartree.stfc.ac.uk/wiki/site/ad
 
 * **Resource label**      : ``stfc.joule``
 * **Raw config**          : :download:`stfc.json <../../src/radical/pilot/configs/stfc.json>`
-* **Note**            : This currently needs an outbound ssh tunnel.
+* **Note**            : This currently needs a centrally administered outbound ssh tunnel.
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : prod``
@@ -124,6 +124,22 @@ The STFC Joule IBM BG/Q system (http://community.hartree.stfc.ac.uk/wiki/site/ad
 
 NCSA
 ====
+
+BW_CCM
+******
+
+The NCSA Blue Waters Cray XE6/XK7 system in CCM (https://bluewaters.ncsa.illinois.edu/)
+
+* **Resource label**      : ``ncsa.bw_ccm``
+* **Raw config**          : :download:`ncsa.json <../../src/radical/pilot/configs/ncsa.json>`
+* **Note**            : Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : normal``
+ * ``sandbox       : /scratch/sciteam/$USER``
+ * ``access_schema : gsissh``
+
+* **Available schemas**   : ``gsissh``
 
 BW
 **
@@ -264,6 +280,21 @@ Indiana University's Cray XE6/XK7 cluster (https://kb.iu.edu/d/bcqt).
 
  * ``queue         : None``
  * ``sandbox       : $HOME``
+ * ``access_schema : ssh``
+
+* **Available schemas**   : ``ssh``
+
+BIGRED2_CCM
+***********
+
+Indiana University's Cray XE6/XK7 cluster in Cluster Compatibility Mode (CCM) (https://kb.iu.edu/d/bcqt).
+
+* **Resource label**      : ``iu.bigred2_ccm``
+* **Raw config**          : :download:`iu.json <../../src/radical/pilot/configs/iu.json>`
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : None``
+ * ``sandbox       : /N/dc2/scratch/$USER``
  * ``access_schema : ssh``
 
 * **Available schemas**   : ``ssh``
