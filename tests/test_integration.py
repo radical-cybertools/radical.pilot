@@ -151,10 +151,11 @@ def run_test(cfg):
 
         # the above is equivalent to
         #
-        #   session.close (cleanup=True, terminate=True)
+        #   session.close (cleanup=False, terminate=True)
         #
-        # it will thus both clean out the session's database record, and kill
-        # all remaining pilots (none in our example).
+        # it will thus *not* clean out the session's database record (s that is
+        # used for some statistics post-mortem), but will kill all remaining
+        # pilots.
 
 
 #-------------------------------------------------------------------------------

@@ -27,7 +27,7 @@ ERROR             = 'error'
 RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
 PROJECT           = 'project'
-TWEAKS            = 'tweaks'
+_CONFIG           = '_config'
 
 
 # -----------------------------------------------------------------------------
@@ -142,7 +142,7 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
         # Attributes not part of the published API
-        self._attributes_register    (TWEAKS,           None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (_CONFIG,          None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
@@ -154,7 +154,7 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (QUEUE,            None)
         self.set_attribute (PROJECT,          None)
         self.set_attribute (CLEANUP,          None)
-        self.set_attribute (TWEAKS,           None)
+        self.set_attribute (_CONFIG,          None)
 
 
     # -------------------------------------------------------------------------

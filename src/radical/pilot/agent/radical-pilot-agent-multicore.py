@@ -3209,18 +3209,19 @@ class ForkLRMS(LRMS):
         selected_cpus = self.requested_cores
 
         # when we profile the agent, we fake any number of cores, so don't
-        # perform any sanity checks
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
+        # perform any sanity checks.  Otherwise we use at most all available
+        # cores (and informa about unused ones)
+        if 'RADICAL_PILOT_PROFILE' not in os.environ:
 
             detected_cpus = multiprocessing.cpu_count()
 
             if detected_cpus < selected_cpus:
-                self._log.warn("insufficient cores: using %d instead of requested %d.", 
+                self._log.warn("insufficient cores: using available %d instead of requested %d.",
                         detected_cpus, selected_cpus)
                 selected_cpus = detected_cpus
 
             elif detected_cpus > selected_cpus:
-                self._log.warn("more cores available: using requested %d instead of available %d.", 
+                self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
         self.node_list = ["localhost"]
@@ -5514,15 +5515,13 @@ def main():
 
 
     # --------------------------------------------------------------------------
-    # load the local agent tweaks config, and overload the config dicts
+    # load the local agent config, and overload the config dicts
     try:
         logger.info ("Trying to load config file ...")
-        cfg_file = "tweaks.json"
+        cfg_file = "agent.cfg"
         cfg = ru.read_json_str(cfg_file)
 
-        ru.dict_merge(agent_config['number_of_workers'], cfg.get('number_of_workers', {}), policy='overwrite')
-        ru.dict_merge(agent_config['blowup_factor'],     cfg.get('blowup_factor',     {}), policy='overwrite')
-        ru.dict_merge(agent_config['drop_clones'],       cfg.get('drop_clones',       {}), policy='overwrite')
+        ru.dict_merge(agent_config, cfg, policy='overwrite')
 
         logger.info("Default agent config merged with settings from file")
 

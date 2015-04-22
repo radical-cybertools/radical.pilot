@@ -245,7 +245,9 @@ def hist_session (db, session, cachedir) :
 
     if  not slothists :
         print "no slot configuration for session %s" % session
-        print "Please enable benchmarking: export RADICAL_PILOT_BENCHMARK="
+        print "Please enable benchmarking: export RADICAL_PILOT_PROFILE="
+
+
 
     start = events[0][4]
 
@@ -329,7 +331,15 @@ def get_stats (docs, events, slothist) :
                 state = s
                 start = ts
 
-        pilot_runtime = (doc['finished'] - doc['started']) * pilot_info['cores']
+        started  = doc.get('started',  None)
+        finished = doc.get('finished', None)
+        cores    = doc.get('cores',    None)
+
+        if not started or not finished or not cores:
+            pilot_runtime = 1
+        else:
+            pilot_runtime = (finished - started) * cores
+
         pilot_busy = 0.0
         if pid in slothist:
             for slot in slothist[pid]['slot_infos'] :
@@ -468,6 +478,8 @@ def plot_session (db, session, cachedir, term) :
     events    = rpu.get_session_events   (db, session, cachedir=cachedir)
     slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
 
+    stats     = get_stats (docs, events, slothists)
+
     session_name = docs['session']['name']
 
 
@@ -477,7 +489,7 @@ def plot_session (db, session, cachedir, term) :
 
     if  not slothists :
         print "no slot configuration for session %s" % session
-        print "Please enable benchmarking: export RADICAL_PILOT_BENCHMARK="
+        print "Please enable benchmarking: export RADICAL_PILOT_PROFILE="
 
     start      = events[0][4]
     pids       = list()
@@ -485,6 +497,7 @@ def plot_session (db, session, cachedir, term) :
     maxslots   = 0
     nodesize   = 0
     slots      = list()
+    nunits     = list()
     hosts      = list()
     delete_me  = list()
     maxqueue   = 0
@@ -522,6 +535,7 @@ def plot_session (db, session, cachedir, term) :
         slotnum = pilot['description']['cores']
         maxslots = max(slotnum,maxslots)
         slots.append (slotnum)
+        nunits.append (stats['pilots'][pid]['n_units'])
 
         with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
             for event in pilot['statehistory'] :
@@ -612,7 +626,6 @@ def plot_session (db, session, cachedir, term) :
                 slot_idx = 0
                 for slot in slothist['slots'] :
 
-                    slot_idx += 1
                     used = False
 
                     for entry in slothist['slot_infos'][slot] :
@@ -625,6 +638,11 @@ def plot_session (db, session, cachedir, term) :
                         dat.write ("\n")
 
                     dat.write ("\n")
+                    slot_idx += 1
+
+                # sometimes, pilots get more cores than requested (if nodes are
+                # larger etc) -- then we plot them if they are used.
+                maxslots = max(maxslots, slot_idx)
 
             delete_me.append (dat.name)
 
@@ -669,7 +687,6 @@ def plot_session (db, session, cachedir, term) :
 
     terms = " ".join (term.split (','))
 
-                                         
     cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
     cmd +=        " -e  timetics=%d "       % timetics
   # cmd +=        " -e  mtimetics=%d "      % mtimetics
@@ -680,6 +697,10 @@ def plot_session (db, session, cachedir, term) :
     cmd +=        " -e  'slotnum_list=\""
     for idx,pid in enumerate(pids) :
         cmd +=    "%d "     % (slots[idx])
+    cmd +=        "\"'"
+    cmd +=        " -e  'unitnum_list=\""
+    for idx,pid in enumerate(pids) :
+        cmd +=    "%d "     % (nunits[idx])
     cmd +=        "\"'"
     cmd +=        " -e  nodesize=%d "       % nodesize
     cmd +=        " -e 'session=\"%s\"' "   % session
@@ -692,7 +713,7 @@ def plot_session (db, session, cachedir, term) :
     cmd +=        " -e  pilot_num=%d "       % len(pids)
     cmd +=        " -e  'pilot_name_list=\""
     for idx,pid in enumerate(pids) :
-        cmd +=    "%s[%d] " % (hosts[idx], slots[idx])
+        cmd +=    "%s " % hosts[idx]
     cmd +=        "\"'"
     cmd +=        " -e  'pilot_id_list=\""
     for idx,pid in enumerate(pids) :

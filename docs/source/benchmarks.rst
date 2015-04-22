@@ -11,6 +11,12 @@ performance of both RADICAL-Pilot itself and of the applications executed with
 RADICAL-Pilot, we provide some utilities for benchmarking and performance
 analysis.
 
+.. note::
+
+    Performance profiling is enabled by setting `RADICAL_PILOT_PROFILE` in the
+    application environment.  If profiling is enabled, the application can
+    request any number of cores on the resource `local.localhost`.
+
 During operation, RADICAL-Pilot stores time stamps of different events and
 activities in MongoDB, under the ID of the `radical.pilot.Session`.  That
 information can be used for post mortem performance analysis.  To do so, one

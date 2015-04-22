@@ -334,9 +334,16 @@ class Session():
 
         ts = datetime.datetime.utcnow()
 
+        # the SAGA attribute interface does not expose private attribs in
+        # as_dict().  That semantics may change in the future, for now we copy
+        # private elems directly.
+        pd_dict = dict()
+        for k in pilot_description._attributes_i_list (priv=True):
+            pd_dict[k] = pilot_description[k]
+
         pilot_doc = {
             "_id":            pilot_uid,
-            "description":    pilot_description.as_dict(),
+            "description":    pd_dict,
             "submitted":      datetime.datetime.utcnow(),
             "input_transfer_started": None,
             "input_transfer_finished": None,

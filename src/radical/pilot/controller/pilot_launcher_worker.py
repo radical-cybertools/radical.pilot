@@ -340,7 +340,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # Agent configuration that is not part of the API, but
                         # rather for debugging and experimentation purposes for now.
-                        tweaks = compute_pilot['description']['tweaks']
+                        agent_config = compute_pilot['description']['_config']
 
                         # we expand and exchange keys in the resource config,
                         # depending on the selected schema so better use a deep
@@ -531,30 +531,26 @@ class PilotLauncherWorker(threading.Thread):
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
                         # Not to be used by the faint of heart
-                        if tweaks:
+                        if agent_config:
 
-                            import json
-                            if not isinstance(tweaks, dict):
-                                raise Exception("Can't deal with non_dict _config: %s" % tweaks)
+                            if not isinstance(agent_config, dict):
+                                raise Exception("Can't deal with non_dict _config: %s" % agent_config)
 
-                            cf_tmp_file = tempfile.NamedTemporaryFile(
-                                mode='w+b', suffix='.json', prefix='rp_agent_tweaks_')
+                            cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
 
                             # Convert dict to json file
-                            json.dump(tweaks, cf_tmp_file)
+                            ru.write_json(agent_config, cf_tmp_file)
 
-                            # Make sure all info reaches the disk.
-                            cf_tmp_file.flush()
-
-                            cf_src = saga.Url("file://localhost/%s" % cf_tmp_file.name)
-                            cf_tgt = saga.Url("%s/tweaks.json" % pilot_sandbox)
+                            cf_src = saga.Url("file://localhost/%s" % cf_tmp_file)
+                            cf_tgt = saga.Url("%s/agent.cfg" % pilot_sandbox)
 
                             cf_file = saga.filesystem.File(cf_src, session=self._session)
                             cf_file.copy(cf_tgt, flags=saga.filesystem.CREATE_PARENTS)
                             cf_file.close()
 
-                            # Close and thereby remove temp file
-                            cf_tmp_file.close()
+                            # close and remove temp file
+                            os.close(cfg_tmp_handle)
+                            os.unlink(cf_tmp_file)
 
 
                         # ------------------------------------------------------
