@@ -556,7 +556,6 @@ class Session (saga.Session, Object):
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
         else :
-            print 'add rcfg as %s' % resource_config.label
             self._resource_configs[resource_config.label] = resource_config.as_dict()
 
     # -------------------------------------------------------------------------
