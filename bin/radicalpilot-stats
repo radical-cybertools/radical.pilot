@@ -379,7 +379,7 @@ def stat_session (db, session, cachedir) :
 
     session_df, pilot_df, unit_df = rpu.get_session_frames (db, session, cachedir)
 
-    print unit_df
+    print pilot_df
     sys.exit ()
 
     t_x_start  = None   # first unit started executing

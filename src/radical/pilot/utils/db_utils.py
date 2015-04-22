@@ -198,6 +198,12 @@ def get_session_frames (db, sids, cachedir=None) :
                 pilot_dict[state] = timer
                 last_pilot_event  = max(last_pilot_event, timer)
 
+            if not pilot_dict[NEW]:
+                if pilot_dict[PENDING_LAUNCH]:
+                    pilot_dict[NEW] = pilot_dict[PENDING_LAUNCH]
+                else:
+                    pilot_dict[NEW] = pilot_dict[LAUNCHING]
+
             pilot_dicts.append (pilot_dict)
 
 
