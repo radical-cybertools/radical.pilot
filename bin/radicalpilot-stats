@@ -532,7 +532,7 @@ def plot_session (db, session, cachedir, term) :
         pids.append  (pid)
         hosts.append (ru.Url (pilot['sandbox']).host.split('.')[0])
 
-        slotnum = pilot['description']['cores']
+        slotnum  = len(pilot['nodes'] * pilot['cores_per_node'])
         maxslots = max(slotnum,maxslots)
         slots.append (slotnum)
         nunits.append (stats['pilots'][pid]['n_units'])
