@@ -185,7 +185,7 @@ class ResourceConfig(attributes.Attributes):
         attributes.Attributes.__init__(self, seeding_dict)
 
         # set attribute interface properties
-        self._attributes_extensible  (True)
+        self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
         self._attributes_register(LABEL,                  label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
