@@ -229,6 +229,25 @@ Your local machine.
 
 * **Available schemas**   : ``local, ssh``
 
+LSU
+===
+
+SUPERMIC
+********
+
+SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
+
+* **Resource label**      : ``lsu.supermic``
+* **Raw config**          : :download:`lsu.json <../../src/radical/pilot/configs/lsu.json>`
+* **Note**            : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : workq``
+ * ``sandbox       : /work/$USER``
+ * ``access_schema : ssh``
+
+* **Available schemas**   : ``ssh, gsissh``
+
 NCAR
 ====
 
@@ -486,4 +505,23 @@ The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-r
  * ``access_schema : ssh``
 
 * **Available schemas**   : ``ssh, gsissh``
+
+ORNL
+====
+
+TITAN
+*****
+
+The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)
+
+* **Resource label**      : ``ornl.titan``
+* **Raw config**          : :download:`ornl.json <../../src/radical/pilot/configs/ornl.json>`
+* **Note**            : Requires the use of an RSA SecurID on every connection.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : batch``
+ * ``sandbox       : $MEMBERWORK/`groups | cut -d' ' -f2```
+ * ``access_schema : ssh``
+
+* **Available schemas**   : ``ssh``
 
