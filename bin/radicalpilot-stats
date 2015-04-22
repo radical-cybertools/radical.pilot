@@ -491,8 +491,6 @@ def plot_session (db, session, cachedir, term) :
         print "no slot configuration for session %s" % session
         print "Please enable benchmarking: export RADICAL_PILOT_PROFILE="
 
-    pprint.pprint (slothists)
-
     start      = events[0][4]
     pids       = list()
     maxtime    = 0.0
@@ -689,11 +687,6 @@ def plot_session (db, session, cachedir, term) :
 
     terms = " ".join (term.split (','))
 
-    print '=----------------------------------'
-    print slots
-    print '=----------------------------------'
-
-                                         
     cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
     cmd +=        " -e  timetics=%d "       % timetics
   # cmd +=        " -e  mtimetics=%d "      % mtimetics
