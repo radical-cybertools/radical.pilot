@@ -5515,15 +5515,13 @@ def main():
 
 
     # --------------------------------------------------------------------------
-    # load the local agent tweaks config, and overload the config dicts
+    # load the local agent config, and overload the config dicts
     try:
         logger.info ("Trying to load config file ...")
-        cfg_file = "tweaks.json"
+        cfg_file = "agent.cfg"
         cfg = ru.read_json_str(cfg_file)
 
-        ru.dict_merge(agent_config['number_of_workers'], cfg.get('number_of_workers', {}), policy='overwrite')
-        ru.dict_merge(agent_config['blowup_factor'],     cfg.get('blowup_factor',     {}), policy='overwrite')
-        ru.dict_merge(agent_config['drop_clones'],       cfg.get('drop_clones',       {}), policy='overwrite')
+        ru.dict_merge(agent_config, cfg, policy='overwrite')
 
         logger.info("Default agent config merged with settings from file")
 
