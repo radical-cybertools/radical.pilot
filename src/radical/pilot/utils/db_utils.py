@@ -169,6 +169,11 @@ def get_session_frames (db, sids, cachedir=None) :
             description = pilot.get ('description', dict())
             started     = pilot.get ('started')
             finished    = pilot.get ('finished')
+            
+            cores = 0
+
+            if pilot['nodes'] and pilot['cores_per_node']:
+                cores = len(pilot['nodes']) * pilot['cores_per_node']
 
             if started  : started  -= session_start
             if finished : finished -= session_start
@@ -180,7 +185,7 @@ def get_session_frames (db, sids, cachedir=None) :
                 'started'      : started,
                 'finished'     : finished,
                 'resource'     : description.get ('resource'),
-                'cores'        : description.get ('cores'),
+                'cores'        : cores,
                 'runtime'      : description.get ('runtime'),
                 NEW            : None, 
                 PENDING_LAUNCH : None, 
