@@ -169,6 +169,11 @@ def get_session_frames (db, sids, cachedir=None) :
             description = pilot.get ('description', dict())
             started     = pilot.get ('started')
             finished    = pilot.get ('finished')
+            
+            cores = 0
+
+            if pilot['nodes'] and pilot['cores_per_node']:
+                cores = len(pilot['nodes']) * pilot['cores_per_node']
 
             if started  : started  -= session_start
             if finished : finished -= session_start
@@ -180,7 +185,7 @@ def get_session_frames (db, sids, cachedir=None) :
                 'started'      : started,
                 'finished'     : finished,
                 'resource'     : description.get ('resource'),
-                'cores'        : description.get ('cores'),
+                'cores'        : cores,
                 'runtime'      : description.get ('runtime'),
                 NEW            : None, 
                 PENDING_LAUNCH : None, 
@@ -197,6 +202,12 @@ def get_session_frames (db, sids, cachedir=None) :
                 timer = entry['timestamp'] - session_start
                 pilot_dict[state] = timer
                 last_pilot_event  = max(last_pilot_event, timer)
+
+            if not pilot_dict[NEW]:
+                if pilot_dict[PENDING_LAUNCH]:
+                    pilot_dict[NEW] = pilot_dict[PENDING_LAUNCH]
+                else:
+                    pilot_dict[NEW] = pilot_dict[LAUNCHING]
 
             pilot_dicts.append (pilot_dict)
 
@@ -239,6 +250,115 @@ def get_session_frames (db, sids, cachedir=None) :
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
                 unit_dict[state] = timer
+
+            # FIXME: there is more state messup afloat: some states are missing,
+            # even though we know they have happened.  For one, we see data
+            # being staged w/o having a record of InputStaging states.  Or we
+            # find callback history entries for states which are not in the
+            # history...
+            #
+            # We try to clean up to some extent.  The policy is like this, for
+            # any [pending_state, state] pair:
+            #
+            # - if both are in the hist: great
+            # - if one is in the hist, and the other in the cb hist, use like
+            #   that, but ensure that pending_state <= state
+            # - if both are in cb_hist, use them, apply same ordering assert.
+            #   Use median if ordering is wrong
+            # - if only on is in cb_host, use the same value for the other one
+            # - if neither is anywhere, leave unset
+            rec_hist = dict()
+            cb_hist  = dict()
+
+            for e in unit.get('statehistory', list()):
+                state = e['state']
+                timer = e['timestamp'] - session_start
+                if state not in rec_hist:
+                    rec_hist[state] = list()
+                rec_hist[state].append(timer)
+
+            for e in unit.get('callbackhistory', list()):
+                state = e['state']
+                timer = e['timestamp'] - session_start
+                if state not in cb_hist:
+                    cb_hist[state] = list()
+                cb_hist[state].append(timer)
+
+            statepairs = {STAGING_INPUT  : PENDING_INPUT_STAGING ,
+                          STAGING_OUTPUT : PENDING_OUTPUT_STAGING}
+
+            primary_states = [NEW                   ,
+                              UNSCHEDULED           ,
+                              STAGING_INPUT         ,
+                              PENDING_EXECUTION     ,
+                              SCHEDULING            ,
+                              ALLOCATING            ,
+                              EXECUTING             ,
+                              STAGING_OUTPUT        ,
+                              DONE                  ,
+                              CANCELED              ,
+                              FAILED                ]
+
+            for state in primary_states:
+
+                pend    = None
+                t_state = None
+                t_pend  = None
+
+                ts_rec  = rec_hist.get (state) #         state time stamp from state hist
+                ts_cb   = cb_hist.get  (state) #         state time stamp from cb    hist
+                tp_rec  = None                 # pending state time stamp from state hist
+                tp_cb   = None                 # pending state time stamp from cb    hist
+
+                if  state in statepairs:
+                    pend   = statepairs[state]
+                    tp_rec = rec_hist.get (pend)
+                    tp_cb  = cb_hist.get  (pend)
+
+                # try to find a candidate for state timestamp
+                if   ts_rec : t_state = ts_rec[0]
+                elif ts_cb  : t_state = ts_cb [0]
+                elif tp_rec : t_state = tp_rec[0]
+                elif tp_cb  : t_state = tp_cb [0]
+
+                # try to find a candidate for pending timestamp
+                if   tp_rec : t_pend  = tp_rec[0]
+                elif tp_cb  : t_pend  = tp_cb [0]
+
+                # if there is no t_pend, check if there are two state times on
+                # record (in the state hist), and if so, reorder
+                if pend :
+                    if t_state and not t_pend:
+                        if ts_rec and len(ts_rec) == 2:
+                            t_pend  = min (ts_rec)
+                            t_state = max (ts_rec)
+                        else:
+                            t_pend  = t_state
+
+                # make sure that any pending time comes before state time
+                if pend:
+                    if t_pend > t_state:
+                      # print "%s : %s" % (uid, state)
+                        t_med   = (t_pend + t_state) / 2
+                        t_pend  = t_med
+                        t_state = t_med
+
+                # record the times for the data frame
+                unit_dict[state] = t_state
+
+                if pend :
+                    unit_dict[pend] = t_pend
+
+
+            if unit_dict[UNSCHEDULED] and unit_dict[SCHEDULING]:
+                unit_dict[UNSCHEDULED] = min(unit_dict[UNSCHEDULED], unit_dict[SCHEDULING])
+
+            if not unit_dict[NEW]:
+                if unit_dict[UNSCHEDULED]:
+                    unit_dict[NEW] = unit_dict[UNSCHEDULED]
+                if unit_dict[SCHEDULING]:
+                    unit_dict[NEW] = unit_dict[SCHEDULING]
+
 
             unit_dicts.append (unit_dict)
         

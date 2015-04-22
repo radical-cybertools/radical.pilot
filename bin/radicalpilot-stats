@@ -377,6 +377,11 @@ def stat_session (db, session, cachedir) :
 
     stats      = get_stats (docs, events, slothists)
 
+    session_df, pilot_df, unit_df = rpu.get_session_frames (db, session, cachedir)
+
+    print pilot_df
+    sys.exit ()
+
     t_x_start  = None   # first unit started executing
     t_y_start  = None   # last  unit started executing
     t_x_stop   = None   # last unit finished executing
@@ -532,7 +537,7 @@ def plot_session (db, session, cachedir, term) :
         pids.append  (pid)
         hosts.append (ru.Url (pilot['sandbox']).host.split('.')[0])
 
-        slotnum = pilot['description']['cores']
+        slotnum  = len(pilot['nodes'] * pilot['cores_per_node'])
         maxslots = max(slotnum,maxslots)
         slots.append (slotnum)
         nunits.append (stats['pilots'][pid]['n_units'])
