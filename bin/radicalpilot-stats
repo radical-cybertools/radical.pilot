@@ -245,7 +245,9 @@ def hist_session (db, session, cachedir) :
 
     if  not slothists :
         print "no slot configuration for session %s" % session
-        print "Please enable benchmarking: export RADICAL_PILOT_BENCHMARK="
+        print "Please enable benchmarking: export RADICAL_PILOT_PROFILE="
+
+
 
     start = events[0][4]
 
@@ -487,7 +489,9 @@ def plot_session (db, session, cachedir, term) :
 
     if  not slothists :
         print "no slot configuration for session %s" % session
-        print "Please enable benchmarking: export RADICAL_PILOT_BENCHMARK="
+        print "Please enable benchmarking: export RADICAL_PILOT_PROFILE="
+
+    pprint.pprint (slothists)
 
     start      = events[0][4]
     pids       = list()
@@ -624,7 +628,6 @@ def plot_session (db, session, cachedir, term) :
                 slot_idx = 0
                 for slot in slothist['slots'] :
 
-                    slot_idx += 1
                     used = False
 
                     for entry in slothist['slot_infos'][slot] :
@@ -637,6 +640,11 @@ def plot_session (db, session, cachedir, term) :
                         dat.write ("\n")
 
                     dat.write ("\n")
+                    slot_idx += 1
+
+                # sometimes, pilots get more cores than requested (if nodes are
+                # larger etc) -- then we plot them if they are used.
+                maxslots = max(maxslots, slot_idx)
 
             delete_me.append (dat.name)
 

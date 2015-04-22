@@ -271,10 +271,6 @@ def get_session_slothist (db, sid, cache=None, cachedir=None) :
 
     for pilot_doc in docs['pilot'] :
 
-        # slot configuration was only recently (v0.18) added to the RP agent...
-        if  not 'slots' in pilot_doc :
-            return ret
-
         pilot_id     = pilot_doc['_id'] 
         slot_names   = list()
         slot_infos   = dict()
@@ -282,6 +278,10 @@ def get_session_slothist (db, sid, cache=None, cachedir=None) :
 
         nodes   = pilot_doc['nodes']
         n_cores = pilot_doc['cores_per_node']
+
+        if  not nodes:
+          # print "no nodes in pilot doc for %s" % pilot_id
+            continue
 
         for node in nodes :
             for core in range(n_cores):
@@ -304,12 +304,12 @@ def get_session_slothist (db, sid, cache=None, cachedir=None) :
                         started = event['timestamp']
 
                 if not started or not finished :
-                    print "no start/finish for cu %s - ignored" % unit_doc['_id']
+                  # print "no start/finish for cu %s - ignored" % unit_doc['_id']
                     continue
 
                 for slot_id in unit_doc['slots'] :
                     if slot_id not in slot_infos :
-                        print "slot %s for pilot %s unknown - ignored" % (slot_id, pilot_id)
+                      # print "slot %s for pilot %s unknown - ignored" % (slot_id, pilot_id)
                         continue
                     
                     slot_infos[slot_id].append([started, finished])
