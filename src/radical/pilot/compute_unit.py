@@ -102,6 +102,10 @@ class ComputeUnit(object):
              not unit_description['kernel']       )  :
             raise PilotException ("ComputeUnitDescription needs an executable or application kernel")
 
+        # Validate number of cores
+        if not unit_description.cores > 0:
+            raise BadParameter("Can't run a Compute Unit with %d cores." % unit_description.cores)
+
         # If staging directives exist, try to expand them
         if  ud_copy.input_staging:
             ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging, logger)
