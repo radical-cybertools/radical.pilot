@@ -1,11 +1,10 @@
-
 {
     "hopper": {
         "description"                 : "The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)",
         "notes"                       : "In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.",
         "schemas"                     : ["ssh"],
         "ssh"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://hopper.nersc.gov/",
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
         },
         "default_queue"               : "regular",
@@ -29,7 +28,7 @@
         "schemas"                     : ["ssh"],
         "mandatory_args"              : [],
         "ssh"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://hopper.nersc.gov/",
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
         },
         "default_queue"               : "ccm_queue",
@@ -105,4 +104,3 @@
         "virtenv_mode"                : "create"
     }
 }
-
