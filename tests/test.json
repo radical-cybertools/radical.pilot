@@ -217,7 +217,7 @@
      "cp_queue"        : "debug",
      "cp_runtime"      : 10,
      "cp_cores"        : 16,
-     "cp_schema"       : "",
+     "cp_schema"       : "local",
      "cu_cores"        : 4,
      "cu_pre_exec"     : ["module load python python_mpi4py"],
      "executable"      : "python"

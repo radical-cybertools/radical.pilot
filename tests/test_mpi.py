@@ -68,6 +68,8 @@ def run_test (cfg):
 
         pdesc = rp.ComputePilotDescription ()
         pdesc.resource = cfg['cp_resource']
+        if cfg['cp_schema']:
+            pdesc.access_schema = cfg['cp_schema']
         pdesc.project  = cfg['cp_project']
         pdesc.queue    = cfg['cp_queue']
         pdesc.runtime  = cfg['cp_runtime']
