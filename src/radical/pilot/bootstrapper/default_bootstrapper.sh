@@ -440,7 +440,7 @@ virtenv_setup()
             else
                 echo "WARNING: 'rp_version' set to 'installed', "
                 echo "         but no installed rp found in '$VIRTENV' ($virtenv_mode)"
-                echo "         Settgins 'rp_version' to 'release'"
+                echo "         Setting 'rp_version' to 'release'"
                 RP_VERSION='release'
                 RP_INSTALL_SOURCES='radical.pilot'
                 RP_INSTALL_TARGET='VIRTENV'
