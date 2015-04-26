@@ -440,7 +440,7 @@ virtenv_setup()
             else
                 echo "WARNING: 'rp_version' set to 'installed', "
                 echo "         but no installed rp found in '$VIRTENV' ($virtenv_mode)"
-                echo "         Settgins 'rp_version' to 'release'"
+                echo "         Setting 'rp_version' to 'release'"
                 RP_VERSION='release'
                 RP_INSTALL_SOURCES='radical.pilot'
                 RP_INSTALL_TARGET='VIRTENV'
@@ -1139,7 +1139,13 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     # Set up tunnel
     # TODO: Extract port and host
     FORWARD_TUNNEL_ENDPOINT_PORT=22
-    FORWARD_TUNNEL_ENDPOINT_HOST=$FORWARD_TUNNEL_ENDPOINT
+    if test "$FORWARD_TUNNEL_ENDPOINT" = "BIND_ADDRESS"; then
+        # On some systems, e.g. Hopper, sshd on the mom node is not bound to 127.0.0.1
+        # In those situations, and if configured, bind to the just obtained bind address.
+        FORWARD_TUNNEL_ENDPOINT_HOST=$BIND_ADDRESS
+    else
+        FORWARD_TUNNEL_ENDPOINT_HOST=$FORWARD_TUNNEL_ENDPOINT
+    fi
     ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$DBURL -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's

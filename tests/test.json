@@ -204,7 +204,7 @@
  "nersc.hopper_ccm"    : {
      "cp_project"      : "",
      "cp_queue"        : "ccm_int",
-     "cp_runtime"      :  5,
+     "cp_runtime"      : 15,
      "cp_cores"        : 72,
      "cp_schema"       : "",
      "cu_cores"        : 32,
