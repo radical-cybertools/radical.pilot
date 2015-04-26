@@ -331,8 +331,11 @@ COMMAND_KEEP_ALIVE          = "Keep_Alive"
 COMMAND_FIELD               = "commands"
 COMMAND_TYPE                = "type"
 COMMAND_ARG                 = "arg"
-COMMAND_RESCHEDULE          = "Reschedule"
 COMMAND_CANCEL              = "Cancel"
+COMMAND_SCHEDULE            = "schedule"
+COMMAND_RESCHEDULE          = "reschedule"
+COMMAND_UNSCHEDULE          = "unschedule"
+COMMAND_WAKEUP              = "wakeup"
 
 
 # 'enum' for staging action operators
