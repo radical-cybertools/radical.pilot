@@ -9,7 +9,7 @@
 --------------------------------------------------------------------------------
 
   - This release contains a very large set of commits, and covers a fundamental
-    overhaul of the RP agent (amongst others).  It also includes 
+    overhaul of the RP agent (amongst others).  It also includes: 
     - support for agent profiling
     - removes a number of state race conditions
     - support for new backends (ORTE, CCM)

@@ -49,8 +49,8 @@ SANDBOX=`pwd`
 
 
 # seconds to wait for lock files
-# 10 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=1800 # 30 min
+# 3 min should be enough for anybody to create/update a virtenv...
+LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
@@ -115,7 +115,7 @@ lock()
     lockfile="$entry.lock"
     count=0
 
-    err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1`
+    err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && chmod a+r '$lockfile' && echo ok" 2>&1`
     until test "$err" = "ok"
     do
         if contains "$err" 'no such file or directory'
@@ -145,7 +145,7 @@ lock()
         fi
 
         # retry
-        err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && echo ok" 2>&1`
+        err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && chmod a+r '$lockfile' && echo ok" 2>&1`
     done
 
     # one way or the other, we got the lock finally.
@@ -182,7 +182,7 @@ unlock()
         exit 1
     fi
 
-    rm $lockfile
+    rm -vf $lockfile
 }
 
 
