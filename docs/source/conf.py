@@ -171,7 +171,8 @@ try:
     import radical.pilot
     version = radical.pilot.version
     release = radical.pilot.version
-except Exception, ex:
+except Exception as e:
+    print 'Could not determine version: %s' % e
     version = "UNKNOWN"
     release = "UNKNOWN"
 
