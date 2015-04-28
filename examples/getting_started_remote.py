@@ -149,7 +149,7 @@ if __name__ == "__main__":
         umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
         umgr.add_pilots(pilot)
 
-        input_sd_umgr   = {'source':'file:///etc/group', 'target': 'f2',                'action': rp.COPY}
+        input_sd_umgr   = {'source':'file:///etc/group', 'target': 'f2',                'action': rp.TRANSFER}
         input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
         output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
         output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
