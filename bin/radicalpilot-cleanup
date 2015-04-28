@@ -76,7 +76,8 @@ def close_session (dburl, session) :
     print "session : %s" % session
     print "mode    : close"
 
-    rp.Session (database_url=dburl, session_uid=session).close ()
+    rp.Session (database_url=dburl, uid=session).close ()
+
 
 # ------------------------------------------------------------------------------
 # 
