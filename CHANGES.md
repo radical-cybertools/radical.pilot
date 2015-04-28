@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.29 Release                                               2015-04-28
+--------------------------------------------------------------------------------
+
+  - hotfix to handle stale ve locks
+
+
 0.28 Release                                               2015-04-16
 --------------------------------------------------------------------------------
 
