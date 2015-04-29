@@ -595,7 +595,7 @@ virtenv_activate()
     # make sure the lib path into the prefix conforms to the python conventions
     PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
     VE_MOD_PREFIX=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
-    echo "PYTHON INTERPRETER: `which python`"
+    echo "PYTHON INTERPRETER: $PYTHON"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
     echo "PIP installer     : $PIP"
@@ -1003,7 +1003,7 @@ verify_rp_install()
     echo
     echo "---------------------------------------------------------------------"
     echo
-    echo "`python --version` (`which python`)"
+    echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
  (  python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
  && python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
