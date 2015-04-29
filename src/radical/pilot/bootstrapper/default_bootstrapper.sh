@@ -549,6 +549,36 @@ virtenv_activate()
     . "$VIRTENV/bin/activate"
     VIRTENV_IS_ACTIVATED=TRUE
 
+    # make sure we use the new python binary
+    PYTHON=`which python`
+    
+    # also make sure we use pip from the virtenv
+    # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
+    #       commands (It means that the pip cacert [or the system's, dunno] 
+    #       is not up to date).  Easy_install seems to use a different access 
+    #       channel for some reason, so does not need the cert bundle.
+    #       see https://github.com/pypa/pip/issues/2130
+    #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
+    if test -f 'cacert.pem.gz'
+    then
+        gunzip cacert.pem.gz
+        PIP="`which pip` --cert cacert.pem"
+    else
+        PIP="`which pip`"
+    fi
+    # NOTE: some resources define a function pip() to implement the same cacert 
+    #       fix we do above.  On some machines, that is broken (hello archer), 
+    #       thus we undefine that function here.  To be on the save side, we 
+    #       also undefine aliases
+    unalias  pip
+    unset -f pip
+    unset    pip
+
+    echo "PYTHON: $PYTHON"
+    echo "PIP   : $PIP"
+    alias | grep pip
+    set   | grep pip
+
 
   # # NOTE: calling radicalpilot-version does not work here -- depending on the
   # #       system settings, python setup it may not be found even if the 
@@ -568,8 +598,8 @@ virtenv_activate()
     echo "PYTHON INTERPRETER: `which python`"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
-    echo "PIP installer     : `which pip`"
-    echo "PIP version       : `pip --version`"
+    echo "PIP installer     : $PIP"
+    echo "PIP version       : `$PIP --version`"
 
     # NOTE: distutils.sc.get_python_lib() behaves different on different
     #       systems: on some systems (versions?) it returns a normalized path, 
@@ -688,6 +718,27 @@ virtenv_create()
     run_cmd "update pip" \
             "$PIP install --upgrade pip==1.4.1" \
          || echo "Couldn't update pip -- using default version"
+
+    # make sure the new pip version is used
+    if test -f 'cacert.pem.gz'
+    then
+        gunzip cacert.pem.gz
+        PIP="`which pip` --cert cacert.pem"
+    else
+        PIP="`which pip`"
+    fi
+    # NOTE: some resources define a function pip() to implement the same cacert 
+    #       fix we do above.  On some machines, that is broken (hello archer), 
+    #       thus we undefine that function here.  To be on the save side, we 
+    #       also undefine aliases
+    unalias  pip
+    unset -f pip
+    unset    pip
+    
+    echo "PYTHON: $PYTHON"
+    echo "PIP   : $PIP"
+    alias | grep pip
+    set   | grep pip
 
 
     # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
@@ -1153,6 +1204,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
 fi
 
 # If PYTHON was not set as an argument, detect it here.
+# we need to do this again after the virtenv is loaded
 if [[ -z "$PYTHON" ]]
 then
     PYTHON=`which python`
@@ -1167,11 +1219,22 @@ fi
 if test -f 'cacert.pem.gz'
 then
     gunzip cacert.pem.gz
-    PIP='pip --cert cacert.pem'
+    PIP="`which pip` --cert cacert.pem"
 else
-    PIP='pip'
+    PIP="`which pip`"
 fi
+# NOTE: some resources define a function pip() to implement the same cacert 
+#       fix we do above.  On some machines, that is broken (hello archer), 
+#       thus we undefine that function here.  To be on the save side, we 
+#       also undefine aliases
+unalias  pip
+unset -f pip
+unset    pip
 
+echo "PYTHON: $PYTHON"
+echo "PIP   : $PIP"
+alias | grep pip
+set   | grep pip
 
 # ready to setup the virtenv
 virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"
