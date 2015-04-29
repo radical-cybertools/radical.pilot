@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.30 Release                                               2015-04-29
+--------------------------------------------------------------------------------
+
+  - hotfix to handle broken pip/bash combo on archer
+
+
 0.29 Release                                               2015-04-28
 --------------------------------------------------------------------------------
 
