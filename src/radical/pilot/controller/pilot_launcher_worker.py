@@ -8,6 +8,7 @@ __license__ = "MIT"
 
 import os
 import copy
+import math
 import time
 import datetime
 import traceback
@@ -370,6 +371,7 @@ class PilotLauncherWorker(threading.Thread):
                         virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
                         stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
+                        cores_per_node          = resource_cfg.get ('cores_per_node')
 
                         if stage_cacerts.lower() == 'true':
                             stage_cacerts = True
@@ -589,6 +591,13 @@ class PilotLauncherWorker(threading.Thread):
                                 cleanup = cleanup.replace ('v', '')
 
                         sdists = ':'.join([ru.sdist_name, saga.sdist_name, sdist_name])
+
+                        # if cores_per_node is set (!= None), then we need to
+                        # allocation full nodes, and thus round up
+                        if cores_per_node:
+                            cores_per_node = int(cores_per_node)
+                            number_cores = int(cores_per_node
+                                    * math.ceil(float(number_cores)/cores_per_node))
 
                         # set mandatory args
                         bootstrap_args  = ""

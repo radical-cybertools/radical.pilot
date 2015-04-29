@@ -12,14 +12,14 @@ dh = ru.DebugHelper ()
 CNT      =     0
 RUNTIME  =    10
 SLEEP    =     1
-CORES    =    16
-UNITS    =    16
+CORES    =    26
+UNITS    =    50
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
-RESOURCE = 'local.localhost'
-PROJECT  = None
-QUEUE    = None
-SCHEMA   = None
+# RESOURCE = 'local.localhost'
+# PROJECT  = None
+# QUEUE    = None
+# SCHEMA   = None
   
 # RESOURCE = 'home.test'
 # PROJECT  = None
@@ -61,6 +61,11 @@ SCHEMA   = None
 # QUEUE    = None
 # SCHEMA   = None
   
+RESOURCE = 'nersc.hopper'
+PROJECT  = None
+QUEUE    = 'debug'
+SCHEMA   = 'ssh'
+
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
@@ -149,7 +154,7 @@ if __name__ == "__main__":
         umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
         umgr.add_pilots(pilot)
 
-        input_sd_umgr   = {'source':'file:///etc/group', 'target': 'f2',                'action': rp.TRANSFER}
+        input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
         input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
         output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
         output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}

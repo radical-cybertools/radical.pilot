@@ -167,13 +167,14 @@ class Session (saga.Session, Object):
         for config_file in config_files:
 
             try :
+                logger.info("Load resource configurations from %s" % config_file)
                 rcs = ResourceConfig.from_file(config_file)
             except Exception as e :
                 logger.error ("skip config file %s: %s" % (config_file, e))
                 continue
 
             for rc in rcs:
-                logger.info("Loaded resource configurations for %s" % rc)
+                logger.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
         user_cfgs     = "%s/.radical/pilot/configs/*.json" % os.environ.get ('HOME')
