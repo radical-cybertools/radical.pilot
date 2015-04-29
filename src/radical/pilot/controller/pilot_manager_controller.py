@@ -512,7 +512,7 @@ class PilotManagerController(threading.Thread):
                 # change under us...
                 old_state = str(self._shared_data[pilot_id]["data"]["state"])
 
-                logger.warn ("actively cancel pilot %s? state: %s" % (pilot_id, old_state))
+                logger.warn ("actively cancel pilot %s state: %s" % (pilot_id, old_state))
                 if  old_state in [DONE, FAILED, CANCELED] :
                     logger.warn ("can't actively cancel pilot %s: already in final state" % pilot_id)
 
