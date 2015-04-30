@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.31 Release                                               2015-04-30
+--------------------------------------------------------------------------------
+
+  - version bump to trigger pypi release update
+
+
 0.30 Release                                               2015-04-29
 --------------------------------------------------------------------------------
 
