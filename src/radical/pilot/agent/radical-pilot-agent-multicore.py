@@ -1417,7 +1417,6 @@ class LaunchMethodMPIRUN(LaunchMethod):
     def _configure(self):
         self.launch_command = self._find_executable([
             'mpirun',            # General case
-            'mpirun_rsh',        # Gordon @ SDSC
             'mpirun-mpich-mp',   # Mac OSX MacPorts
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
