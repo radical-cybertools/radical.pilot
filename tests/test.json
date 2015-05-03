@@ -104,6 +104,16 @@
      "cu_pre_exec"     : ["module load python"],
      "executable"      : "python"
      },
+ "iu.bigred2_ccm"      : {
+     "cp_project"      : "",
+     "cp_queue"        : "debug_cpu",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 8,
+     "cp_schema"       : "",
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load python"],
+     "executable"      : "python"
+     },
  "iu.quarry"           : {
      "cp_project"      : "",
      "cp_queue"        : "",
