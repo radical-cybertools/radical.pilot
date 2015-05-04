@@ -692,7 +692,7 @@ class Scheduler(threading.Thread):
 
                 request = self._schedule_queue.get()
 
-                if not isinstance(list, request):
+                if not isinstance(request, list):
                     # command only, no cu
                     request = [request, None]
 
