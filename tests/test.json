@@ -222,7 +222,7 @@
      "cp_schema"       : "",
      "cu_cores"        : 32,
      "cu_pre_exec"     : ["module load python",
-                          ". /global/project/projectdirs/m2178/shared_ccm_cu_ve_20141204/bin/activate"],
+                          ". /global/project/projectdirs/m2178/ve_mpitest_hopper_20150504/bin/activate"],
      "executable"      : "python"
      },
   "ornl.titan"         : {
