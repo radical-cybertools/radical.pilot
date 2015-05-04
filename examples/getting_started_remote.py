@@ -16,10 +16,10 @@ CORES    =    26
 UNITS    =    50
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
-# RESOURCE = 'local.localhost'
-# PROJECT  = None
-# QUEUE    = None
-# SCHEMA   = None
+RESOURCE = 'local.localhost'
+PROJECT  = None
+QUEUE    = None
+SCHEMA   = None
   
 # RESOURCE = 'home.test'
 # PROJECT  = None
@@ -61,10 +61,10 @@ SCHED    = rp.SCHED_DIRECT_SUBMISSION
 # QUEUE    = None
 # SCHEMA   = None
   
-RESOURCE = 'nersc.hopper'
-PROJECT  = None
-QUEUE    = 'debug'
-SCHEMA   = 'ssh'
+# RESOURCE = 'nersc.hopper'
+# PROJECT  = None
+# QUEUE    = 'debug'
+# SCHEMA   = 'ssh'
 
 #------------------------------------------------------------------------------
 #
