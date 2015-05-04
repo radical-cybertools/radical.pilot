@@ -104,6 +104,19 @@
      "cu_pre_exec"     : ["module load python"],
      "executable"      : "python"
      },
+ "iu.bigred2_ccm"      : {
+     "cp_project"      : "",
+     "cp_queue"        : "debug_cpu",
+     "cp_runtime"      : 5,
+     "cp_cores"        : 8,
+     "cp_schema"       : "",
+     "cu_cores"        : 4,
+     "cu_pre_exec"     : ["module load python/2.7.8",
+                          "unset PYTHONPATH",
+                          ". ~marksant/ve_mpitest/bin/activate"
+                         ],
+     "executable"      : "python"
+     },
  "iu.quarry"           : {
      "cp_project"      : "",
      "cp_queue"        : "",
@@ -209,7 +222,7 @@
      "cp_schema"       : "",
      "cu_cores"        : 32,
      "cu_pre_exec"     : ["module load python",
-                          ". /global/project/projectdirs/m2178/shared_ccm_cu_ve_20141204/bin/activate"],
+                          ". /global/project/projectdirs/m2178/ve_mpitest_hopper_20150504/bin/activate"],
      "executable"      : "python"
      },
   "ornl.titan"         : {
