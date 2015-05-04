@@ -415,6 +415,8 @@ class PilotManagerController(threading.Thread):
                 js_url.scheme = 'ssh'
             elif js_url.scheme.endswith('+gsissh'):
                 js_url.scheme = 'gsissh'
+            elif js_url.scheme == 'fork':
+                pass
             else:
                 raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
 
