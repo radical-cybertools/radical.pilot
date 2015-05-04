@@ -568,16 +568,11 @@ virtenv_activate()
     fi
     # NOTE: some resources define a function pip() to implement the same cacert 
     #       fix we do above.  On some machines, that is broken (hello archer), 
-    #       thus we undefine that function here.  To be on the save side, we 
-    #       also undefine aliases
-    unalias  pip
+    #       thus we undefine that function here.
     unset -f pip
-    unset    pip
 
     echo "PYTHON: $PYTHON"
     echo "PIP   : $PIP"
-    alias | grep pip
-    set   | grep pip
 
 
   # # NOTE: calling radicalpilot-version does not work here -- depending on the
@@ -727,18 +722,13 @@ virtenv_create()
     else
         PIP="`which pip`"
     fi
-    # NOTE: some resources define a function pip() to implement the same cacert 
-    #       fix we do above.  On some machines, that is broken (hello archer), 
-    #       thus we undefine that function here.  To be on the save side, we 
-    #       also undefine aliases
-    unalias  pip
+    # NOTE: some resources define a function pip() to implement the same cacert
+    #       fix we do above.  On some machines, that is broken (hello archer),
+    #       thus we undefine that function here.
     unset -f pip
-    unset    pip
-    
+
     echo "PYTHON: $PYTHON"
     echo "PIP   : $PIP"
-    alias | grep pip
-    set   | grep pip
 
 
     # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
@@ -1231,16 +1221,11 @@ else
 fi
 # NOTE: some resources define a function pip() to implement the same cacert 
 #       fix we do above.  On some machines, that is broken (hello archer), 
-#       thus we undefine that function here.  To be on the save side, we 
-#       also undefine aliases
-unalias  pip
+#       thus we undefine that function here.
 unset -f pip
-unset    pip
 
 echo "PYTHON: $PYTHON"
 echo "PIP   : $PIP"
-alias | grep pip
-set   | grep pip
 
 # ready to setup the virtenv
 virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"
