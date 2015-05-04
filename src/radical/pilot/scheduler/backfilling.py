@@ -335,8 +335,10 @@ class BackfillingScheduler(Scheduler):
                 if  uid in self.waitq :
                     raise RuntimeError ('Unit cannot be scheduled twice (%s)' % uid)
 
-                if  unit.state not in [NEW, UNSCHEDULED] :
-                    raise RuntimeError ('Unit %s not in NEW or UNSCHEDULED state (%s)' % unit.uid)
+                if  unit.state not in [NEW, SCHEDULING, UNSCHEDULED] :
+                    # FIXME: clean up, unit should actually not be in
+                    #        'SCHEDULING', this is only reached here...
+                    raise RuntimeError ('Unit %s not in NEW or UNSCHEDULED state (%s)' % (unit.uid, unit.state))
 
                 self.waitq[uid] = unit
 
@@ -430,7 +432,7 @@ class BackfillingScheduler(Scheduler):
                 ud  = unit.description
 
                 # sanity check on unit state
-                if  unit.state not in [NEW, UNSCHEDULED] :
+                if  unit.state not in [NEW, SCHEDULING, UNSCHEDULED] :
                     raise RuntimeError ("scheduler queue should only contain NEW or UNSCHEDULED units (%s)" % uid)
 
               # logger.debug ("examine unit  %s (%s cores)" % (uid, ud.cores))

@@ -1,3 +1,4 @@
+
 {
     "fs2": {
         "description"                 : "The Distributed ASCI Supercomputer 4 (http://www.cs.vu.nl/das4/).",
@@ -11,11 +12,17 @@
         "default_queue"               : "all.q",
         "spmd_variation"              : "openmpi",
         "lrms"                        : "SGE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "python_interpreter"          : "/usr/bin/python",
         "pre_bootstrap"               : ["module load openmpi/gcc"],
         "valid_roots"                 : ["/home", "/var/scratch"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_fs2",
+        "virtenv_mode"                : "update"
     }
 }
+

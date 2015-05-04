@@ -113,7 +113,7 @@ The STFC Joule IBM BG/Q system (http://community.hartree.stfc.ac.uk/wiki/site/ad
 
 * **Resource label**      : ``stfc.joule``
 * **Raw config**          : :download:`stfc.json <../../src/radical/pilot/configs/stfc.json>`
-* **Note**            : This currently needs an outbound ssh tunnel.
+* **Note**            : This currently needs a centrally administered outbound ssh tunnel.
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : prod``
@@ -124,6 +124,22 @@ The STFC Joule IBM BG/Q system (http://community.hartree.stfc.ac.uk/wiki/site/ad
 
 NCSA
 ====
+
+BW_CCM
+******
+
+The NCSA Blue Waters Cray XE6/XK7 system in CCM (https://bluewaters.ncsa.illinois.edu/)
+
+* **Resource label**      : ``ncsa.bw_ccm``
+* **Raw config**          : :download:`ncsa.json <../../src/radical/pilot/configs/ncsa.json>`
+* **Note**            : Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : normal``
+ * ``sandbox       : /scratch/sciteam/$USER``
+ * ``access_schema : gsissh``
+
+* **Available schemas**   : ``gsissh``
 
 BW
 **
@@ -213,6 +229,25 @@ Your local machine.
 
 * **Available schemas**   : ``local, ssh``
 
+LSU
+===
+
+SUPERMIC
+********
+
+SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
+
+* **Resource label**      : ``lsu.supermic``
+* **Raw config**          : :download:`lsu.json <../../src/radical/pilot/configs/lsu.json>`
+* **Note**            : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : workq``
+ * ``sandbox       : /work/$USER``
+ * ``access_schema : ssh``
+
+* **Available schemas**   : ``ssh, gsissh``
+
 NCAR
 ====
 
@@ -268,6 +303,21 @@ Indiana University's Cray XE6/XK7 cluster (https://kb.iu.edu/d/bcqt).
 
 * **Available schemas**   : ``ssh``
 
+BIGRED2_CCM
+***********
+
+Indiana University's Cray XE6/XK7 cluster in Cluster Compatibility Mode (CCM) (https://kb.iu.edu/d/bcqt).
+
+* **Resource label**      : ``iu.bigred2_ccm``
+* **Raw config**          : :download:`iu.json <../../src/radical/pilot/configs/iu.json>`
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : None``
+ * ``sandbox       : /N/dc2/scratch/$USER``
+ * ``access_schema : ssh``
+
+* **Available schemas**   : ``ssh``
+
 EPSRC
 =====
 
@@ -297,7 +347,7 @@ The NERSC Edison Cray XC30 in Cluster Compatibility Mode (https://www.nersc.gov/
 
 * **Resource label**      : ``nersc.edison_ccm``
 * **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
-* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Note**            : For CCM you need to use special ccm_ queues.
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : ccm_queue``
@@ -313,7 +363,7 @@ The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/ed
 
 * **Resource label**      : ``nersc.edison``
 * **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
-* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Note**            : Only one CU per node in APRUN mode
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : regular``
@@ -329,7 +379,7 @@ The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hop
 
 * **Resource label**      : ``nersc.hopper``
 * **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
-* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Note**            : Only one CU per node in APRUN mode
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : regular``
@@ -345,7 +395,7 @@ The NERSC Hopper Cray XE6 in Cluster Compatibility Mode (https://www.nersc.gov/u
 
 * **Resource label**      : ``nersc.hopper_ccm``
 * **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
-* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Note**            : For CCM you need to use special ccm_ queues.
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : ccm_queue``
@@ -455,4 +505,23 @@ The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-r
  * ``access_schema : ssh``
 
 * **Available schemas**   : ``ssh, gsissh``
+
+ORNL
+====
+
+TITAN
+*****
+
+The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)
+
+* **Resource label**      : ``ornl.titan``
+* **Raw config**          : :download:`ornl.json <../../src/radical/pilot/configs/ornl.json>`
+* **Note**            : Requires the use of an RSA SecurID on every connection.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : batch``
+ * ``sandbox       : $MEMBERWORK/`groups | cut -d' ' -f2```
+ * ``access_schema : ssh``
+
+* **Available schemas**   : ``ssh, local``
 

@@ -39,8 +39,7 @@ def usage (msg=None, noexit=False) :
         help     : show this message
         list     : list   matching sessions
         purge    : remove matching sessions
-        export   : export matching sessions, then purge them.
-                   Exported sessions are stored in .json files in PWD.
+        export   : export matching sessions to .json files
 
       options :
         -a <age> : apply mode to all sessions older than <age>
@@ -127,13 +126,12 @@ def purge_sessions (dbclient, dbname, age, session) :
     database = dbclient[dbname]
 
     for sid in sessions :
-        database.drop_collection ("%s")
-        database.drop_collection ("%s.p")
-        database.drop_collection ("%s.pm")
-        database.drop_collection ("%s.um")
-        database.drop_collection ("%s.cu")
+        database.drop_collection ("%s"    % sid)
+        database.drop_collection ("%s.p"  % sid)
+        database.drop_collection ("%s.pm" % sid)
+        database.drop_collection ("%s.um" % sid)
+        database.drop_collection ("%s.cu" % sid)
         print 'purged session %s' % sid
-
 
 
 # ------------------------------------------------------------------------------
@@ -147,12 +145,8 @@ def export_sessions (dbclient, dbname, age, session) :
 
         docs = sessions[sid]
 
-        print "export session %s.*.json" % sid
-        with open('%s.json'   %sid, 'w') as f: f.write(pprint.pformat({'sessions':     [docs['session']]})) 
-        with open('%s.p.json' %sid, 'w') as f: f.write(pprint.pformat({'pilots':        docs['pilot']})) 
-        with open('%s.pm.json'%sid, 'w') as f: f.write(pprint.pformat({'pilot_managers':docs['pmgr']})) 
-        with open('%s.cu.json'%sid, 'w') as f: f.write(pprint.pformat({'units':         docs['unit']})) 
-        with open('%s.um.json'%sid, 'w') as f: f.write(pprint.pformat({'unit_managers': docs['umgr']}))
+        print "export session %s.json" % sid
+        ru.write_json (docs, "%s.json" % sid)
 
 
 # ------------------------------------------------------------------------------

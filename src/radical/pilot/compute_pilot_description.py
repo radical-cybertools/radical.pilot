@@ -27,6 +27,7 @@ ERROR             = 'error'
 RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
 PROJECT           = 'project'
+_CONFIG           = '_config'
 
 
 # -----------------------------------------------------------------------------
@@ -88,6 +89,9 @@ class ComputePilotDescription(attributes.Attributes):
        [Type: `int`] [**mandatory**] The number of cores the pilot should
        allocate on the target resource.
 
+       NOTE: for local pilots, you can set a number larger than the physical
+       machine limit when setting `RADICAL_PILOT_PROFILE` in your environment.
+
     .. data:: memory
 
        [Type: `int`] [**optional**] The amount of memorty (in MB) the pilot
@@ -137,6 +141,8 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
+        # Attributes not part of the published API
+        self._attributes_register    (_CONFIG,          None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
@@ -148,6 +154,7 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (QUEUE,            None)
         self.set_attribute (PROJECT,          None)
         self.set_attribute (CLEANUP,          None)
+        self.set_attribute (_CONFIG,          None)
 
 
     # -------------------------------------------------------------------------

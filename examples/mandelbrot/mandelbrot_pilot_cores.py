@@ -1,5 +1,7 @@
+#!/usr/bin/env python
+
 __author__    = "George Chantzialexiou"
-__copyright__ = "Copyright 2012-2013, The RADICAL Group"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 """ A Mandelbrot Fractal Generator Using RADICAL-Pilot
@@ -25,130 +27,134 @@ __license__   = "MIT"
     then we compose the n images into one. The whole fractal Image.
     For every part of the image we create one Compute Unit.
 
-    You can run this code via command line:
+    You can run this code via command line (and example):
 
-    python mandelbrot_pilot.py imgX imgY xBeg xEnd yBeg yEnd
+      mandelbrot_pilot_cores.py imgX imgY xBeg xEnd yBeg yEnd
+      mandelbrot_pilot_cores.py 1024 1024 -2.0 +1.0 -1.5 +1.5
 
 """
 
-import os, sys,  radical.pilot
-from PIL import Image
+import os
+import sys
+import radical.pilot as rp
 import multiprocessing # this library is used to find the number of the cores.
 
-#------------------------------------------------------------------------------
-#
-def pilot_state_cb(pilot, state):
-    """pilot_state_change_cb() is a callback function. It gets called very
-    time a ComputePilot changes its state.
-    """
+from PIL import Image
 
-    if state == radical.pilot.states.FAILED:
-        print "Compute Pilot '%s' failed, exiting ..." % pilot.uid
-        sys.exit(1)
-
-    elif state == radical.pilot.states.ACTIVE:
-        print "Compute Pilot '%s' became active!" % (pilot.uid)
 
 #------------------------------------------------------------------------------
 #
-def unit_state_change_cb(unit, state):
-    """unit_state_change_cb() is a callback function. It gets called very
-    time a ComputeUnit changes its state.
-    """
-    if state == radical.pilot.states.FAILED:
-        print "Compute Unit '%s' failed ..." % unit.uid
-        sys.exit(1)
+def pilot_state_cb (pilot, state):
 
-    elif state == radical.pilot.states.DONE:
-        print "Compute Unit '%s' finished with output:" % (unit.uid)
-        print unit.stdout
+    if not pilot:
+        return
+
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if state == rp.FAILED:
+        sys.exit (1)
+
 
 #------------------------------------------------------------------------------
 #
+def unit_state_cb (unit, state):
+
+    if not unit:
+        return
+
+    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
+
+    if state == rp.FAILED:
+        print "stderr: %s" % unit.stderr
+        sys.exit (2)
 
 
-def main():
+#------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    # Create a new session. No need to try/except this: if session creation
+    # fails, there is not much we can do anyways...
+    session = rp.Session()
+    print "session id: %s" % session.uid
+
+    # all other pilot code is now tried/excepted.  If an exception is caught, we
+    # can rely on the session object to exist and be valid, and we can thus tear
+    # the whole RP stack down via a 'session.close()' call in the 'finally'
+    # clause...
     try:
+
         # reading the input from user:
         args = sys.argv[1:]
 
         if len(args) < 6:
-            print "Usage: python %s imgX imgY xBeg xEnd yBeg yEnd filename" % __file__
+            print "Usage: python %s imgX imgY xBeg xEnd yBeg yEnd" % __file__
             sys.exit(-1)
 
-        imgX = int(sys.argv[1])
-        imgY = int(sys.argv[2])
-        xBeg = int(sys.argv[3])
-        xEnd = int(sys.argv[4])
-        yBeg = int(sys.argv[5])
-        yEnd = int(sys.argv[6])
-        # end of reading  input from the user
-
-        session = radical.pilot.Session()
+        imgX =   int(sys.argv[1])
+        imgY =   int(sys.argv[2])
+        xBeg = float(sys.argv[3])
+        xEnd = float(sys.argv[4])
+        yBeg = float(sys.argv[5])
+        yEnd = float(sys.argv[6])
 
         # Add the following three lines if you want to run remote
-        c = radical.pilot.Context('ssh')
-        #c.user_id = 'user_id'
-        session.add_context(c)
-
+      # c = rp.Context('ssh')
+      # c.user_id = 'user_id'
+      # session.add_context(c)
+  
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         print "Initiliazing Pilot Manager..."
-        pmgr = radical.pilot.PilotManager(session=session)
-
+        pmgr = rp.PilotManager(session=session)
+  
         # Register our callback with our Pilot Manager. This callback will get
         # called every time any of the pilots managed by the PilotManager
         # change their state
         pmgr.register_callback(pilot_state_cb)
-
+  
         # This describes the requirements and the parameters
-        pdesc = radical.pilot.ComputePilotDescription()
+        pdesc = rp.ComputePilotDescription()
         pdesc.resource = "localhost" #  we are running on localhost
         #pdesc.resource = "xsede.stampede" #  we are running on stampede
         pdesc.runtime = 10 # minutes
-        pdesc.cores = multiprocessing.cpu_count() # we use all the cores we have
+        pdesc.cores   = multiprocessing.cpu_count() # we use all the cores we have
         pdesc.cleanup = True  # delete all the files that are created automatically and we don't need anymore  when the job is done
-        pdesc.project  = 'TG-MCB090174'
+      # pdesc.project  = 'TG-MCB090174'
 
         print "Submitting Compute Pilot to PilotManager"
         pilot = pmgr.submit_pilots(pdesc)
 
-        umgr = radical.pilot.UnitManager(session=session, scheduler = radical.pilot.SCHED_DIRECT_SUBMISSION)
-
-        # Combine all the units
-        print "Initializing Unit Manager"
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = radical.pilot.UnitManager(
-            session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+        print "Initializing Unit Manager"
+        umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
         # change their state.
         print 'Registering the callbacks so we can keep an eye on the CUs'
-        umgr.register_callback(unit_state_change_cb)
+        umgr.register_callback(unit_state_cb)
 
         print "Registering Compute Pilot with Unit Manager"
         umgr.add_pilots(pilot)
 
-        output_data_list = []
         mylist = []
 
-        for i in range(1,pdesc.cores+1):
-            output_data_list.append('mandel_%d.gif' % i)
-            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
-            cudesc = radical.pilot.ComputeUnitDescription()
-            cudesc.executable  = "python"
+        for i in range(pdesc.cores):
+            output_file = 'mandel_%d.gif' % i
+            cudesc = rp.ComputeUnitDescription()
             # Pre-execs to configure environment for CU on localhost
             cudesc.pre_exec = ["virtualenv ./ve", "source ./ve/bin/activate", "pip install Pillow"]
             # Pre-execs to configure environment for CU on stampede
-            #cudesc.pre_exec = ["module load python", "python ../virtualenv-1.9/virtualenv.py ./ve", "source ./ve/bin/activate", "pip install Pillow"]
-            cudesc.arguments = ['mandel_lines.py', imgX, imgY, xBeg, xEnd, yBeg, yEnd, pdesc.cores, i]
-            cudesc.input_staging = ['mandel_lines.py']
-            cudesc.output_staging = output_data_list[i-1]
+          # cudesc.pre_exec = ["module load python", 
+          #                    "python ../virtualenv-1.9/virtualenv.py ./ve", 
+          #                    "source ./ve/bin/activate", "pip install Pillow"]
+            cudesc.executable     = "python"
+            cudesc.arguments      = ['mandel_lines.py', imgX, imgY, xBeg, xEnd, yBeg, yEnd, pdesc.cores, i]
+            cudesc.input_staging  = ['mandel_lines.py']
+            cudesc.output_staging = output_file
             mylist.append(cudesc)
-            # -------- END USER DEFINED CU DESCRIPTION --------- #
 
         print 'Submitting the CU to the Unit Manager...'
         mylist_units = umgr.submit_units(mylist)
@@ -159,33 +165,47 @@ def main():
         print "All Compute Units completed successfully! Now.."
 
         # stitch together the final image
-        fullimage = Image.new("RGB", (xEnd-xBeg, yEnd-yBeg))
+        full = Image.new("RGB", (imgX, imgY))
 
         print "Stitching together the whole fractal to: mandelbrot_full.gif"
 
-        for i in range(1,pdesc.cores+1):
-            partimage = Image.open('mandel_%d.gif' % i)
-            box_top = (xBeg, int((yEnd*(i-1))/pdesc.cores), xEnd ,int((yEnd*(i+1))/pdesc.cores))
-            mandel_part = partimage.crop(box_top)
-            fullimage.paste(mandel_part, box_top)
+        y_pixel_slice = int(imgY / pdesc.cores)
 
-        fullimage.save("mandelbrot_full.gif", "GIF")
+        for i in range(pdesc.cores):
+            part = Image.open('mandel_%d.gif' % i)
+            box  = (0, i*y_pixel_slice, imgX, (i+1)*y_pixel_slice)
+            full.paste(part.crop(box), box)
+
+        full.save("mandelbrot_full.gif", "GIF")
 
         print 'Images is now saved at the working directory..'
-        session.close()
 
-        print "Session closed, exiting now ..."
-        sys.exit(0)
 
     except Exception as e:
-            print "AN ERROR OCCURRED: %s" % ((str(e)))
-            return(-1)
+        # Something unexpected happened in the pilot code above
+        print "caught Exception: %s" % e
+        raise
+
+    except (KeyboardInterrupt, SystemExit) as e:
+        # the callback called sys.exit(), and we can here catch the
+        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+        # SystemExit (which gets raised if the main threads exits for some other
+        # reason).
+        print "need to exit now: %s" % e
+
+    finally:
+        # always clean up the session, no matter if we caught an exception or
+        # not.
+        print "closing session"
+        session.close (cleanup=False, terminate=False)
+
+        # the above is equivalent to
+        #
+        #   session.close (cleanup=True, terminate=True)
+        #
+        # it will thus both clean out the session's database record, and kill
+        # all remaining pilots (none in our example).
 
 
-#------------------------------------------------------------------------------
-#
-if __name__ == "__main__":
-    sys.exit(main())
+#-------------------------------------------------------------------------------
 
-#
-#------------------------------------------------------------------------------

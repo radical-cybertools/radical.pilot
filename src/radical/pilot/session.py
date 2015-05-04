@@ -167,13 +167,14 @@ class Session (saga.Session, Object):
         for config_file in config_files:
 
             try :
+                logger.info("Load resource configurations from %s" % config_file)
                 rcs = ResourceConfig.from_file(config_file)
             except Exception as e :
                 logger.error ("skip config file %s: %s" % (config_file, e))
                 continue
 
             for rc in rcs:
-                logger.info("Loaded resource configurations for %s" % rc)
+                logger.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
         user_cfgs     = "%s/.radical/pilot/configs/*.json" % os.environ.get ('HOME')
@@ -222,7 +223,7 @@ class Session (saga.Session, Object):
                         dbSession.new(sid     = self._uid,
                                       name    = self._name,
                                       db_url  = self._database_url,
-                                      db_name = database_name)
+                                      db_name = self._database_name)
 
                 logger.info("New Session created%s." % str(self))
 
@@ -240,9 +241,9 @@ class Session (saga.Session, Object):
 
                 # otherwise, we reconnect to an existing session
                 self._dbs, session_info, self._connection_info = \
-                        dbSession.reconnect(sid=self._uid, 
-                                            db_url=self._database_url,
-                                            db_name=database_name)
+                        dbSession.reconnect(sid     = self._uid, 
+                                            db_url  = self._database_url,
+                                            db_name = self._database_name)
 
                 self._created   = session_info["created"]
                 self._connected = session_info["connected"]
@@ -530,8 +531,7 @@ class Session (saga.Session, Object):
 
            For example::
 
-                  rc = radical.pilot.ResourceConfig
-                  rc.name                 = "mycluster"
+                  rc = radical.pilot.ResourceConfig(label="mycluster")
                   rc.job_manager_endpoint = "ssh+pbs://mycluster
                   rc.filesystem_endpoint  = "sftp://mycluster
                   rc.default_queue        = "private"
@@ -557,7 +557,7 @@ class Session (saga.Session, Object):
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
         else :
-            self._resource_configs [resource_config.name] = resource_config.as_dict()
+            self._resource_configs[resource_config.label] = resource_config.as_dict()
 
     # -------------------------------------------------------------------------
     #
@@ -580,14 +580,15 @@ class Session (saga.Session, Object):
             if 'schemas' in resource_cfg :
                 schema = resource_cfg['schemas'][0]
 
-        if  schema not in resource_cfg :
-            raise RuntimeError ("schema %s unknown for resource %s" \
-                             % (schema, resource_key))
+        if  schema:
+            if  schema not in resource_cfg :
+                raise RuntimeError ("schema %s unknown for resource %s" \
+                                  % (schema, resource_key))
 
-        for key in resource_cfg[schema] :
-            # merge schema specific resource keys into the
-            # resource config
-            resource_cfg[key] = resource_cfg[schema][key]
+            for key in resource_cfg[schema] :
+                # merge schema specific resource keys into the
+                # resource config
+                resource_cfg[key] = resource_cfg[schema][key]
 
 
         return resource_cfg

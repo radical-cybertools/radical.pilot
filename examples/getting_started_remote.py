@@ -1,136 +1,210 @@
-import os
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__license__   = "MIT"
+
 import sys
-import datetime
 import radical.pilot as rp
+import radical.utils as ru
 
-# READ: The RADICAL-Pilot documentation: 
-#   http://radicalpilot.readthedocs.org/en/latest
-#
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scenes!
+dh = ru.DebugHelper ()
 
+CNT      =     0
+RUNTIME  =    10
+SLEEP    =     1
+CORES    =    26
+UNITS    =    50
+SCHED    = rp.SCHED_DIRECT_SUBMISSION
+
+# RESOURCE = 'local.localhost'
+# PROJECT  = None
+# QUEUE    = None
+# SCHEMA   = None
+  
+# RESOURCE = 'home.test'
+# PROJECT  = None
+# QUEUE    = None
+# SCHEMA   = 'ssh'
+
+# RESOURCE = 'epsrc.archer'
+# PROJECT  = 'e290'
+# QUEUE    = 'short'
+# SCHEMA   = None
+
+# RESOURCE = 'lrz.supermuc'
+# PROJECT  = 'e290'
+# QUEUE    = 'short'
+# SCHEMA   = None
+
+# RESOURCE = 'xsede.stampede'
+# PROJECT  = 'TG-MCB090174' 
+# QUEUE    = 'development'
+# SCHEMA   = None
+
+# RESOURCE = 'xsede.gordon'
+# PROJECT  = None
+# QUEUE    = 'debug'
+# SCHEMA   = None
+
+# RESOURCE = 'xsede.blacklight'
+# PROJECT  = None
+# QUEUE    = 'debug'
+# SCHEMA   = 'gsissh'
+
+# RESOURCE = 'xsede.trestles'
+# PROJECT  = 'TG-MCB090174' 
+# QUEUE    = 'shared'
+# SCHEMA   = None
+
+# RESOURCE = 'futuregrid.india'
+# PROJECT  = None
+# QUEUE    = None
+# SCHEMA   = None
+  
+RESOURCE = 'nersc.hopper'
+PROJECT  = None
+QUEUE    = 'debug'
+SCHEMA   = 'ssh'
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state) :
-    """ this callback is invoked on all pilot state changes """
+def pilot_state_cb (pilot, state):
 
-    print "[Callback]: ComputePilot '%s' state changed to %s at %s." % (pilot.uid, state, datetime.datetime.now())
+    if not pilot:
+        return
 
-    if  state == rp.FAILED:
+    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+
+    if state == rp.FAILED:
         sys.exit (1)
 
+
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state) :
-    """ this callback is invoked on all unit state changes """
+def unit_state_cb (unit, state):
 
-    print "[Callback]: ComputeUnit '%s' state changed to %s at %s." % (unit.uid, state, datetime.datetime.now())
+    if not unit:
+        return
 
-    if state in [rp.FAILED] :
-        print "stdout: %s" % unit.stdout
+    global CNT
+
+    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
+
+    if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
+        CNT += 1
+        print "[Callback]: # %6d" % CNT
+
+
+    if state == rp.FAILED:
         print "stderr: %s" % unit.stderr
+        sys.exit(2)
+
+
+#------------------------------------------------------------------------------
+#
+def wait_queue_size_cb(umgr, wait_queue_size):
+
+    print "[Callback]: wait_queue_size: %s." % wait_queue_size
 
 
 #------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
-    # prepare some input files for the compute units
-    os.system ('head -c 100000 /dev/urandom > file1.dat') # ~ 100k input file
-    os.system ('head -c 10000  /dev/urandom > file2.dat') # ~ 10k input file
+    # we can optionally pass session name to RP
+    if len(sys.argv) > 1:
+        session_name = sys.argv[1]
+    else:
+        session_name = None
 
-    # Create a new session. A session is the 'root' object for all other
-    # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-    # well as security credentials.
-    session = rp.Session()
+    # Create a new session. No need to try/except this: if session creation
+    # fails, there is not much we can do anyways...
+    session = rp.Session(name=session_name)
+    print "session id: %s" % session.uid
 
-    # Add an ssh identity to the session.
-    c = rp.Context('ssh')
-    #c.user_id = "alice"
-    #c.user_pass = "ILoveBob!"
-    session.add_context(c)
+    # all other pilot code is now tried/excepted.  If an exception is caught, we
+    # can rely on the session object to exist and be valid, and we can thus tear
+    # the whole RP stack down via a 'session.close()' call in the 'finally'
+    # clause...
+    try:
 
-    # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-    pmgr = rp.PilotManager(session=session)
+        pmgr = rp.PilotManager(session=session)
+        pmgr.register_callback(pilot_state_cb)
 
-    # Register our callback with the PilotManager. This callback will get
-    # called every time any of the pilots managed by the PilotManager
-    # change their state.
-    pmgr.register_callback(pilot_state_cb)
-    pdescs = list()
-
-    for i in range (1) :
-        # Define a 32-core on stampede that runs for 15 minutes and
-        # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "local.localhost"
-        pdesc.runtime   = 15 # minutes
-        pdesc.cores     = 8
-        pdesc.cleanup   = True
-      # pdesc.queue     = "normal"
-      # pdesc.project   = "TG-MCB140109"
+        pdesc.resource      = RESOURCE
+        pdesc.cores         = CORES
+        pdesc.project       = PROJECT
+        pdesc.queue         = QUEUE
+        pdesc.runtime       = RUNTIME
+        pdesc.cleanup       = False
+        pdesc.access_schema = SCHEMA
 
-        pdescs.append (pdesc)
+        pilot = pmgr.submit_pilots(pdesc)
 
-    # Launch the pilot.
-    pilots = pmgr.submit_pilots(pdescs)
+        input_sd_pilot = {
+                'source': 'file:///etc/passwd',
+                'target': 'staging:///f1',
+                'action': rp.TRANSFER
+                }
+        pilot.stage_in (input_sd_pilot)
 
-    # Combine the ComputePilot, the ComputeUnits and a scheduler via
-    # a UnitManager object.
-    umgr = rp.UnitManager(
-        session=session,
-        scheduler=rp.SCHED_DIRECT_SUBMISSION)
+        umgr = rp.UnitManager(session=session, scheduler=SCHED)
+        umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
+        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
+        umgr.add_pilots(pilot)
 
-    # Register our callback with the UnitManager. This callback will get
-    # called every time any of the units managed by the UnitManager
-    # change their state.
-    umgr.register_callback(unit_state_cb)
+        input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
+        input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
+        output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
+        output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
 
-    # Add the previsouly created ComputePilot to the UnitManager.
-    umgr.add_pilots(pilots)
+        cuds = list()
+        for unit_count in range(0, UNITS):
+            cud = rp.ComputeUnitDescription()
+            cud.executable     = "wc"
+            cud.arguments      = ["f1", "f2"]
+            cud.cores          = 1
+            cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
+            cud.output_staging = [output_sd_umgr, output_sd_agent]
+            cuds.append(cud)
 
-    # Create a workload of 8 ComputeUnits (tasks). Each compute unit
-    # uses /bin/cat to concatenate two input files, file1.dat and
-    # file2.dat. The output is written to STDOUT. cu.environment is
-    # used to demonstrate how to set environment variables within a
-    # ComputeUnit - it's not strictly necessary for this example. As
-    # a shell script, the ComputeUnits would look something like this:
-    #
-    #    export INPUT1=file1.dat
-    #    export INPUT2=file2.dat
-    #    /bin/cat $INPUT1 $INPUT2
-    #
-    cuds = list()
+        units = umgr.submit_units(cuds)
 
-    for unit_count in range(0, 32):
-        cud = rp.ComputeUnitDescription()
-        cud.executable    = "/bin/bash"
-        cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
-        cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2"]
-        cud.cores         = 1
-        cud.input_staging = ['file1.dat', 'file2.dat']
-        cuds.append(cud)
+        umgr.wait_units()
 
-    # Submit the previously created ComputeUnit descriptions to the
-    # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
-    units = umgr.submit_units(cuds)
+        for cu in units:
+            print "* Task %s state %s, exit code: %s, started: %s, finished: %s" \
+                % (cu.uid, cu.state, cu.exit_code, cu.start_time, cu.stop_time)
 
-    # Wait for all compute units to reach a terminal state (DONE or FAILED).
-    umgr.wait_units()
+      # os.system ("radicalpilot-stats -m stat,plot -s %s > %s.stat" % (session.uid, session_name))
 
-    for unit in units:
-        print "* Unit %s (executed @ %s) state: %s, exit code: %s, started: %s, finished: %s, output: %s" \
-            % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time,
-               unit.stdout)
 
-    # Close automatically cancels the pilot(s).
-    session.close()
+    except Exception as e:
+        # Something unexpected happened in the pilot code above
+        print "caught Exception: %s" % e
+        raise
 
-    # delete the test data files
-    os.system ('rm file1.dat')
-    os.system ('rm file2.dat')
+    except (KeyboardInterrupt, SystemExit) as e:
+        # the callback called sys.exit(), and we can here catch the
+        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+        # SystemExit (which gets raised if the main threads exits for some other
+        # reason).
+        print "need to exit now: %s" % e
 
-# ------------------------------------------------------------------------------
+    finally:
+        # always clean up the session, no matter if we caught an exception or
+        # not.
+        print "closing session"
+        session.close ()
+
+        # the above is equivalent to
+        #
+        #   session.close (cleanup=True, terminate=True)
+        #
+        # it will thus both clean out the session's database record, and kill
+        # all remaining pilots (none in our example).
+
+
+#-------------------------------------------------------------------------------
 

@@ -1,3 +1,4 @@
+
 {
     "supermuc": {
         "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).",
@@ -15,11 +16,12 @@
         },
         "default_queue"               : "test",
         "lrms"                        : "LOADL",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        "agent_scheduler"             : "CONTINUOUS",
-        "forward_tunnel_endpoint"     : "login03",
-        "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
+        "agent_mongodb_endpoint"      : "mongodb://login03:24242",
         "pre_bootstrap"               : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",
                                          "module load python/2.7.6",
@@ -27,6 +29,9 @@
                                          "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
                                         ],
         "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "installed",
+        "virtenv"                     : "/home/hpc/pr87be/di29sut/pilotve",
+        "virtenv_mode"                : "use"
     }
 }
+

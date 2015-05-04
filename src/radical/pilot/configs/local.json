@@ -14,14 +14,16 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
-        "task_launch_method"          : "FORK",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "mpi_launch_method"           : "MPIEXEC",
         "agent_spawner"               : "SHELL",
-        "virtenv"                     : "/tmp/ve_test",
-        "virtenv_mode"                : "recreate"
+        "task_launch_method"          : "FORK",
+        "mpi_launch_method"           : "MPIEXEC",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
+        "virtenv_mode"                : "create"
     }
 }
+

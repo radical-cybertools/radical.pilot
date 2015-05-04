@@ -1,6 +1,9 @@
+#!/usr/bin/env python
+
 __author__    = "George Chantzialexiou"
-__copyright__ = "Copyright 2012-2013, The RADICAL Group"
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
+
 
 """ A Simple Mandelbrot Fractal Generator.
 
@@ -8,7 +11,7 @@ __license__   = "MIT"
     the Pilot Job and Filesystem APIs. The mandelbrot module
     calculates  partial mandelbrot set fractal and writes it to a 
     PNG image file. To determine which part of the fractal we create
-    we use the iterations variable.
+    we use the index variable.
 
     It requires the Python Image Library (PIL) which can be easily
     installed with 'pip install Pillow'.
@@ -19,7 +22,7 @@ __license__   = "MIT"
 
     On the command line:
 
-        python mandelbrot.py imgX imgY xBeg xEnd yBeg yEnd cores iterations
+        python mandelbrot.py imgX imgY xBeg xEnd yBeg yEnd cores index
 
     The parameters are as follows:
 
@@ -27,33 +30,36 @@ __license__   = "MIT"
         xBeg, xEnd: the x-axis portion of the (sub-)image to calculate
         yBeg, yEnd: the y-axis portion of the (sub-)image to calculate
         cores : the number of the system's cores
-        iterations: the part of the image we create. Can vary from 1 to cores.
+        index: the part of the image we create. Can vary from 1 to cores.
 """
 
 import sys
 from PIL import Image
 
-################################################################################
-##
-def makemandel(mandelx, mandely, xbeg, xend, ybeg, yend, cores, iterations):
+# ------------------------------------------------------------------------------
+#
+def makemandel(x_pixel_max, y_pixel_max, x_real_beg, x_real_end, y_real_beg, y_real_end, cores, index):
 
-    # drawing area (xa < xb and ya < yb)
-    xa = -2.0
-    xb =  1.0
-    ya = -1.5
-    yb =  1.5
+    maxIt  = 128 
+    image  = Image.new("RGB", (x_pixel_max, y_pixel_max))
 
-    # maximum iterations
-    maxIt = 128 
-    # the output image
-    image = Image.new("RGB", (xend-xbeg, yend-ybeg))
-    ybeg2 = int(((yend*(iterations-1))/cores))
-    yend2 = int(((yend*(iterations))/cores))
+    y_real_range   = y_real_end - y_real_beg
+    y_real_slice   = float(y_real_range) / float(cores)
+    y_real_offset  = float(y_real_slice) * float(index)
 
-    for y in range(ybeg2, yend2):
-        cy = y * (yb - ya) / (mandely - 1)  +  ya
-        for x in range(xbeg, xend):
-            cx = x * (xb - xa) / (mandelx - 1) + xa
+    y_pixel_slice  = int(y_pixel_max / cores)
+    y_pixel_offset = y_pixel_slice * index
+
+    x_real_range   = x_real_end - x_real_beg
+    x_real_slice   = float(x_real_range)
+    x_pixel_slice  = int(x_pixel_max)
+    x_pixel_offset = 0
+
+    for y in range(y_pixel_slice):
+        cy = y_real_beg + y_real_offset + (y_real_slice/y_pixel_slice*y)
+        for x in range(x_pixel_slice):
+            cx = x_real_beg + (x_real_slice/x_pixel_slice*x)
+
             c = complex(cx, cy)
             z = 0
             for i in range(maxIt):
@@ -62,26 +68,30 @@ def makemandel(mandelx, mandely, xbeg, xend, ybeg, yend, cores, iterations):
             r = i % 4 * 16
             g = i % 6 * 16
             b = i % 16 * 16
-            image.putpixel((x-xbeg, y-ybeg), b * 65536 + g * 256 + r)
+            image.putpixel((x, y_pixel_slice*index+y), b * 65536 + g * 256 + r)
  
-    image.save('mandel_%d.gif' % iterations , "GIF")
+    image.save('mandel_%d.gif' % index , "GIF")
     
     return image
 
-################################################################################
-##
+# ------------------------------------------------------------------------------
+#
 if __name__ == "__main__":
 
     args = sys.argv[1:]
-    
-    imgX = int(sys.argv[1])
-    imgY = int(sys.argv[2])
-    xBeg = int(sys.argv[3])
-    xEnd = int(sys.argv[4])
-    yBeg = int(sys.argv[5])
-    yEnd = int(sys.argv[6])
-    cores = int(sys.argv[7])
-    iterations = int(sys.argv[8])
 
-    makemandel(imgX, imgY, xBeg, xEnd, yBeg, yEnd, cores, iterations)
+    imgX  =   int(sys.argv[1])
+    imgY  =   int(sys.argv[2])
+    xBeg  = float(sys.argv[3])
+    xEnd  = float(sys.argv[4])
+    yBeg  = float(sys.argv[5])
+    yEnd  = float(sys.argv[6])
+    cores =   int(sys.argv[7])
+    index =   int(sys.argv[8])
+
+    makemandel(imgX, imgY, xBeg, xEnd, yBeg, yEnd, cores, index)
     sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+

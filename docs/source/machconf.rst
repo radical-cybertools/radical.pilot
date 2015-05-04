@@ -183,25 +183,24 @@ the `epsrc.archer` resource.
 
 .. code-block:: python
 
+
     import radical.pilot as rp
+    import pprint
     
-    # create a new session, and get the respective resource config instance
+    RESOURCE = 'epsrc.archer'
+    
+    # get a pre-installed resource configuration
     session = rp.Session()
-    cfg = session.get_resource_config('epsrc.archer')
-    print "Default queue of archer is: %s" % cfg['default_queue']
-
-    # create a new config based on the old one, and set a different queue
-    new_cfg = rp.ResourceConfig(cfg)
-    new_cfg.default_queue = 'quick'
-
+    cfg = session.get_resource_config(RESOURCE)
+    pprint.pprint (cfg)
+    
+    # create a new config based on the old one, and set a different launch method
+    new_cfg = rp.ResourceConfig(RESOURCE, cfg)
+    new_cfg.default_queue = 'royal_treatment'
+    
     # now add the entry back.  As we did not change the config name, this will
     # replace the original configuration.  A completely new configuration would
-    # need a unique name.
+    # need a unique label.
     session.add_resource_config(new_cfg)
-
-    # verify that the changes are in place: retrieve the config again and print
-    # the queue
-    check_cfg = session.get_resource_config('epsrc.archer')
-    print "Default queue of archer after change is: %s." % s['default_queue']
-
+    pprint.pprint (session.get_resource_config(RESOURCE))
 

@@ -1,3 +1,4 @@
+
 {
     "india": {
         "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
@@ -9,16 +10,16 @@
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "SHELL",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "batch",
-        "python_interpreter"          : "/N/soft/python/2.7/bin/python",
         "pre_bootstrap"               : ["module purge", "module load python", "module load openmpi/1.4.3-gnu"],
         "valid_roots"                 : ["/N"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py",
-        "pilot_agent_version"         : "stage@local",
-        "virtenv"                     : "%(global_sandbox)s/ve/",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_india",
         "virtenv_mode"                : "update"
     },
     "bravo": {
@@ -27,12 +28,13 @@
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
+            "job_manager_endpoint"    : "pbs+ssh://bravo.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://bravo.futuregrid.org/"
         },
-        "global_virtenv"              : "~marksant/pilot-ve-20141211",
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "bravo",
@@ -41,7 +43,9 @@
             "module load openmpi/1.4.3-gnu"
         ],
         "valid_roots"                 : ["/N"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "~marksant/pilot-ve-20141211",
+        "virtenv_mode"                : "update"
 
     },
     "delta": {
@@ -50,16 +54,20 @@
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
+            "job_manager_endpoint"    : "pbs+ssh://delta.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://delta.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "delta",
         "valid_roots"                 : ["/N"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_delta",
+        "virtenv_mode"                : "update"
 
     },
     "echo": {
@@ -68,16 +76,20 @@
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://india.futuregrid.org/",
-            "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
+            "job_manager_endpoint"    : "pbs+ssh://echo.futuregrid.org/",
+            "filesystem_endpoint"     : "sftp://echo.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "echo",
         "valid_roots"                 : ["/N"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_echo",
+        "virtenv_mode"                : "update"
 
     },
     "xray": {
@@ -89,14 +101,17 @@
             "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "global_virtenv"              : "~marksant/pilot_ve_20141210",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "default_queue"               : "batch",
         "default_remote_workdir"      : "/scratch/$USER",
         "valid_roots"                 : ["/scratch", "/home/users"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "~marksant/pilot_ve_20141210",
+        "virtenv_mode"                : "update"
     },
     "xray_ccm": {
         "description"                 : "FutureGrid Cray XT5m cluster in Cluster Compatibility Mode (CCM) (https://futuregrid.github.io/manual/hardware.html).",
@@ -107,14 +122,18 @@
             "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "global_virtenv"              : "~marksant/pilot_ve_20141210",
+        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "CCMRUN",
         "mpi_launch_method"           : "APRUN",
         "pre_bootstrap"               : ["module load ccm"],
         "default_queue"               : "ccm_queue",
         "default_remote_workdir"      : "/scratch/$USER",
         "valid_roots"                 : ["/scratch", "/home/users"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "~marksant/pilot_ve_20141210",
+        "virtenv_mode"                : "use"
     }
 }
+

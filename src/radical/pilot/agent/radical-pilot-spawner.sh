@@ -220,6 +220,10 @@ verify_err () {
 create_monitor () {
   \cat > "$BASE/monitor.sh" <<EOT
 
+  # the monitor should never finish when the parent shell dies.  This is
+  # equivalent to starting monitor.sh via 'nohup'
+  trap "" HUP
+
   # create the monitor wrapper script once -- this is used by all job startup
   # scripts to actually run job.sh.  The script gets a PID as argument,
   # denoting the job to monitor.   The monitor will write 3 pids to a named pipe
@@ -271,19 +275,18 @@ create_monitor () {
     \\printf  "RUNNING \\n"          >> "\$DIR/state"
     \\printf  "\$UPID:RUNNING: \\n"  >> "\$NOTIFICATIONS"
     \\exec "\$DIR/cmd"   < "\$DIR/in" > "\$DIR/out" 2> "\$DIR/err"
-  ) 1> /dev/null 2>/dev/null 3</dev/null &
+  ) 1>/dev/null 2>/dev/null 3</dev/null &
 
   # the real job ID (not exposed to user)
   RPID=\$!
 
-  \\printf "RUNNING \\n" >> "\$DIR/state" # declare as running
   \\printf "\$RPID\\n"    > "\$DIR/rpid"  # real process  pid
   \\printf "\$MPID\\n"    > "\$DIR/mpid"  # monitor shell pid
   \\printf "\$UPID\\n"    > "\$DIR/upid"  # unique job    pid
 
   # signal the wrapper that job startup is done, and report job id
   \\printf "\$UPID\\n" >> "$BASE/fifo"
-  
+
   # start monitoring the job
   while true
   do

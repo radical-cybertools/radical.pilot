@@ -38,13 +38,12 @@ def unit_state_cb (unit, state) :
 #
 if __name__ == "__main__":
 
-    session = None
+    session = rp.Session()
 
     try :
         # Create a new session. A session is the 'root' object for all other
         # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
         # well as security credentials.
-        session = rp.Session()
         print "session: %s" % session.uid
     
         # Add an ssh identity to the session.
@@ -62,7 +61,7 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
     
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "archer.ac.uk"
+        pdesc.resource  = "epsrc.archer"
         pdesc.runtime   = 90 # minutes
         pdesc.cores     = 24
         pdesc.cleanup   = True
@@ -124,11 +123,12 @@ if __name__ == "__main__":
     
         # Close automatically cancels the pilot(s).
         print "all is done, closing session %s" % session.uid
-        session.close (delete=True, terminate=True)
 
     except Exception as e :
 
         print "main caught exception: %s" % e
-        session.close (delete=False, terminate=True)
+
+    finally:
+        session.close ()
 
 

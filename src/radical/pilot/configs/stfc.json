@@ -1,7 +1,8 @@
+
 {
     "joule": {
         "description"                 : "The STFC Joule IBM BG/Q system (http://community.hartree.stfc.ac.uk/wiki/site/admin/home.html)",
-        "notes"                       : "This currently needs an outbound ssh tunnel.",
+        "notes"                       : "This currently needs a centrally administered outbound ssh tunnel.",
         "schemas"                     : ["ssh"],
         "ssh"                         : {
             "job_manager_endpoint"    : "loadl+ssh://login.joule.hartree.stfc.ac.uk/?job_type=bluegene&explicit_exec=true",
@@ -13,8 +14,6 @@
         "agent_spawner"               : "POPEN",
         "task_launch_method"          : "RUNJOB",
         "mpi_launch_method"           : "RUNJOB",
-        "virtenv"                     : "%(global_sandbox)s/virtenv_joule",
-        "virtenv_mode"                : "create",
         "pre_bootstrap"               : [
             "llq -l $LOADL_JOB_NAME",
             "source /etc/profile.d/modules.sh",
@@ -28,6 +27,11 @@
             "export ftp_proxy=$http_proxy"
         ],
         "agent_mongodb_endpoint"      : "mongodb://172.31.63.241:12346",
-        "valid_roots"                 : ["/gpfs/home"]
+        "valid_roots"                 : ["/gpfs/home"],
+        "pilot_agent"                 : "radical-pilot-agent-multicore.py",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_joule",
+        "virtenv_mode"                : "create"
     }
 }
+

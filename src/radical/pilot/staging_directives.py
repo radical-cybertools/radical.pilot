@@ -1,5 +1,6 @@
 #from radical.pilot.utils.logger import logger
 import os
+from radical.pilot import Url
 
 # The Staging Directives are specified using a dict in the following form:
 #   staging_directive = {
@@ -54,25 +55,26 @@ def expand_staging_directive(staging_directive, logger):
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
             # string.
-            append = False
-            if  '>>'  in sd :
-                src, tgt = sd.split ('>>', 2)
-                append   = True
-            elif '>'  in sd :
-                src, tgt = sd.split ('>',  2)
-                append   = False
-            elif '<<' in sd :
-                tgt, src = sd.split ('<<', 2)
-                append   = True
-            elif '<'  in sd :
-                tgt, src = sd.split ('<',  2)
-                append   = False
-            else :
-                src, tgt = sd, os.path.basename(sd)
-                append   = False
 
-            if  append :
-                logger.warn ("append mode on staging not supported (ignored)")
+            append = False
+            if '>>'  in sd:
+                src, tgt = sd.split('>>', 2)
+                append = True
+            elif '>' in sd :
+                src, tgt = sd.split('>',  2)
+                append  = False
+            elif '<<' in sd:
+                tgt, src = sd.split('<<', 2)
+                append = True
+            elif '<'  in sd:
+                tgt, src = sd.split('<',  2)
+                append = False
+            else:
+                src, tgt = sd, os.path.basename(sd)
+                append = False
+
+            if append:
+                logger.warn("append mode on staging not supported (ignored)")
 
             new_sd = {'source':   src.strip(),
                       'target':   tgt.strip(),
@@ -108,9 +110,25 @@ def expand_staging_directive(staging_directive, logger):
             if 'target' in sd:
                 target = sd['target']
             else:
-                target = os.path.basename(source)
+                # Set target to None, as inferring it depends on the type of source
+                target = None
 
-            if isinstance(source, basestring):
+            if isinstance(source, basestring) or isinstance(source, Url):
+
+                if target:
+                    # Detect asymmetry in source and target length
+                    if isinstance(target, list):
+                        raise Exception("Source is singular but target is a list")
+                else:
+                    # We had no target specified, assume the basename of source
+                    if isinstance(source, basestring):
+                        target = os.path.basename(source)
+                    elif isinstance(source, Url):
+                        target = os.path.basename(source.path)
+                    else:
+                        raise Exception("Source %s is neither a string nor a Url (%s)!" %
+                                        (source, type(source)))
+
                 # This is a regular entry, complete and append it
                 new_sd = {'source':   source,
                           'target':   target,
@@ -122,7 +140,7 @@ def expand_staging_directive(staging_directive, logger):
                 logger.debug("Completing entry '%s'" % new_sd)
 
             elif isinstance(source, list):
-                # We detected a list of sources, we want to expand that
+                # We detected a list of sources, we need to expand it
 
                 # We will break up the list entries in source into an equal length list of dicts
                 new_sds = []
@@ -152,8 +170,16 @@ def expand_staging_directive(staging_directive, logger):
                     # Go over all entries in the list and create an equal length list of dicts.
                     for src_entry in source:
 
+                        if isinstance(source, basestring):
+                            target = os.path.basename(src_entry),
+                        elif isinstance(source, Url):
+                            target = os.path.basename(src_entry.path),
+                        else:
+                            raise Exception("Source %s is neither a string nor a Url (%s)!" %
+                                             (source, type(source)))
+
                         new_sd = {'source':   src_entry,
-                                  'target':   os.path.basename(src_entry),
+                                  'target':   target,
                                   'action':   action,
                                   'flags':    flags,
                                   'priority': priority
@@ -166,11 +192,10 @@ def expand_staging_directive(staging_directive, logger):
                 new_staging_directive.extend(new_sds)
 
             else:
-                raise Exception("Source %s is neither a list or a string!" %
-                                source, source)
+                raise Exception("Source %s is neither an entry nor a list (%s)!" %
+                                (source, type(source)))
 
         else:
             raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
 
     return new_staging_directive
-

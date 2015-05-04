@@ -8,20 +8,25 @@ __license__ = "MIT"
 
 import os
 import copy
+import math
 import time
-import saga
 import datetime
 import traceback
 import threading
+import tempfile
+
+import saga
+import radical.utils as ru
 
 from radical.pilot.states import *
 
-from radical.pilot.utils.version import version as VERSION
-from radical.pilot.utils.version import sdist_path, sdist
 from radical.pilot.utils.logger  import logger
 from radical.pilot.context       import Context
 from radical.pilot.logentry      import Logentry
 
+pwd = os.path.dirname(__file__)
+root = "%s/../" % pwd
+_, _, _, rp_sdist_name, rp_sdist_path = ru.get_version([root, pwd])
 
 IDLE_TIMER           =  1  # seconds to sleep if notthing to do
 JOB_CHECK_INTERVAL   = 60  # seconds between runs of the job state check loop
@@ -29,9 +34,9 @@ JOB_CHECK_MAX_MISSES =  3  # number of times to find a job missing before
                            # declaring it dead
 
 DEFAULT_AGENT_TYPE    = 'multicore'
-DEFAULT_AGENT_SPAWNER = 'SHELL'
-DEFAULT_AGENT_VERSION = 'stage@local'
-DEFAULT_VIRTENV       = '%(global_sandbox)s/virtenv'
+DEFAULT_AGENT_SPAWNER = 'POPEN'
+DEFAULT_RP_VERSION    = 'local'
+DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 
 # ----------------------------------------------------------------------------
@@ -334,6 +339,9 @@ class PilotLauncherWorker(threading.Thread):
                         pilot_sandbox  = compute_pilot['sandbox']
                         global_sandbox = compute_pilot['global_sandbox']
 
+                        # Agent configuration that is not part of the API, but
+                        # rather for debugging and experimentation purposes for now.
+                        agent_config = compute_pilot['description']['_config']
 
                         # we expand and exchange keys in the resource config,
                         # depending on the selected schema so better use a deep
@@ -347,6 +355,7 @@ class PilotLauncherWorker(threading.Thread):
                         # get parameters from cfg, set defaults where needed
                         agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
                         agent_spawner           = resource_cfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
+                        agent_type              = resource_cfg.get ('agent_type',          DEFAULT_AGENT_TYPE)
                         agent_scheduler         = resource_cfg.get ('agent_scheduler')
                         tunnel_bind_device      = resource_cfg.get ('tunnel_bind_device')
                         default_queue           = resource_cfg.get ('default_queue')
@@ -354,14 +363,21 @@ class PilotLauncherWorker(threading.Thread):
                         js_endpoint             = resource_cfg.get ('job_manager_endpoint')
                         lrms                    = resource_cfg.get ('lrms')
                         mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
-                        agent_type              = resource_cfg.get ('pilot_agent_type',    DEFAULT_AGENT_TYPE)
-                        agent_version           = resource_cfg.get ('pilot_agent_version', DEFAULT_AGENT_VERSION)
                         pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
                         python_interpreter      = resource_cfg.get ('python_interpreter')
                         spmd_variation          = resource_cfg.get ('spmd_variation')
                         task_launch_method      = resource_cfg.get ('task_launch_method')
+                        rp_version              = resource_cfg.get ('rp_version',          DEFAULT_RP_VERSION)
                         virtenv_mode            = resource_cfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
+                        stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
+                        cores_per_node          = resource_cfg.get ('cores_per_node')
+
+                        if stage_cacerts.lower() == 'true':
+                            stage_cacerts = True
+                        else:
+                            stage_cacerts = False
+
 
                         # expand variables in virtenv string
                         virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path,
@@ -415,25 +431,43 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # the version of the agent is derived from
-                        # pilot_agent_version, which has the following format
+                        # rp_version, which has the following format
                         # and interpretation:
                         #
-                        # format: mode@source
+                        # case rp_version:
+                        #   @<token>:
+                        #   @tag/@branch/@commit: # no sdist staging
+                        #       git clone $github_base radical.pilot.src
+                        #       (cd radical.pilot.src && git checkout token)
+                        #       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+                        #       rm -rf radical.pilot.src
+                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
                         #
-                        # mode       :
-                        #   virtenv  : use pilot agent as installed in the
-                        #              virtenv on the target resource
-                        #   stage    : stage pilot agent from local to target
-                        #              resource
+                        #   release: # no sdist staging
+                        #       pip install -t $VIRTENV/rp_install radical.pilot
+                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
                         #
-                        # source     :
-                        #   tag      : a git tag
-                        #   branch   : a git branch
-                        #   release  : pypi release
-                        #   installed: virtenv installed version
-                        #   local    : locally installed version
-                        #   path     : a specific file on localhost
+                        #   local: # needs sdist staging
+                        #       tar zxf $sdist.tgz
+                        #       pip install -t $VIRTENV/rp_install $sdist/
+                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
                         #
+                        #   debug: # needs sdist staging
+                        #       tar zxf $sdist.tgz
+                        #       pip install -t $SANDBOX/rp_install $sdist/
+                        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+                        #
+                        #   installed: # no sdist staging
+                        #       true
+                        # esac
+                        #
+                        # virtenv_mode
+                        #   private : error  if ve exists, otherwise create, then use
+                        #   update  : update if ve exists, otherwise create, then use
+                        #   create  : use    if ve exists, otherwise create, then use
+                        #   use     : use    if ve exists, otherwise error,  then exit
+                        #   recreate: delete if ve exists, otherwise create, then use
+                        #      
                         # examples   :
                         #   virtenv@v0.20
                         #   virtenv@devel
@@ -453,89 +487,79 @@ class PilotLauncherWorker(threading.Thread):
                         # 'local' source, or with a path to the agent (relative
                         # to mod_dir, or absolute).
                         #
-                        # A pilot_agent_version which does not adhere to the
+                        # A rp_version which does not adhere to the
                         # above syntax is ignored, and the fallback stage@local
                         # is used.
 
-                        if not '@' in agent_version :
-                            logger.warn ("invalid pilot_agent_version '%s', using default '%s'" \
-                                      % (agent_version, DEFAULT_AGENT_VERSION))
-                            agent_version = DEFAULT_AGENT_VERSION
+                        if  not rp_version.startswith('@') and \
+                            not rp_version in ['installed', 'local', 'debug']:
+                            raise ValueError("invalid rp_version '%s'" % rp_version)
 
-                        agent_mode, agent_source = agent_version.split ('@', 1)
+                        stage_sdist=True
+                        if rp_version in ['installed', 'release']:
+                            stage_sdist = False
 
-                        if not agent_mode or not agent_source :
-                            logger.warn ("invalid pilot_agent_version '%s', using default '%s'" \
-                                      % (agent_version, DEFAULT_AGENT_VERSION))
-                            agent_version = DEFAULT_AGENT_VERSION
-                            agent_mode, agent_source = agent_version.split ('@', 1)
-
-
-                        if not agent_mode in ['stage', 'virtenv'] :
-                            logger.error ("invalid pilot_agent_version '%s', using default '%s'" \
-                                      % (agent_version, DEFAULT_AGENT_VERSION))
-                            agent_version = DEFAULT_AGENT_VERSION
-                            agent_mode, agent_source = agent_version.split ('@', 1)
-
-                        # we only stage the agent on agent_mode==stage --
-                        # otherwise the bootstrapper will have to take care of
-                        # it
-                        if agent_mode == 'stage' :
-
-                            # staging can handle 'local', which is the old
-                            # behavior of using the locally installed agent, or
-                            # a path, which we expect to be specified if the
-                            # agent_source!=local
-                            if  agent_source == 'local' :
-                                agent_name = "radical-pilot-agent-%s.py" % agent_type
-                                agent_path = os.path.abspath("%s/../agent/%s" % (mod_dir, agent_name))
-
-                            else :
-                                agent_name = os.path.basename(agent_source)
-                                if  agent_source.startswith('/'):
-                                    agent_path = agent_source
-                                else :
-                                    agent_path = os.path.abspath("%s/%s" % (mod_dir, agent_source))
-
-                            msg = "Using pilot agent %s" % agent_path
-                            logentries.append(Logentry (msg, logger=logger.info))
-
-                            # --------------------------------------------------
-                            # Copy the rp sdist 
-                            #
-                            sdist_url = saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, sdist_path))
-                            msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
-                            logentries.append(Logentry (msg, logger=logger.debug))
-                            sandbox_tgt.copy(sdist_url, sdist)
+                        if rp_version.startswith('@'):
+                            stage_sdist = False
+                            rp_version  = rp_version[1:]  # strip '@'
 
 
-                            # --------------------------------------------------
-                            # Copy the agent script
-                            #
-                            agent_url = saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, agent_path))
-                            msg = "Copying agent '%s' to agent sandbox (%s)." % (agent_url, pilot_sandbox)
-                            logentries.append(Logentry (msg, logger=logger.debug))
-                            sandbox_tgt.copy(agent_url, AGENT_SCRIPT)
+                        # ------------------------------------------------------
+                        # Copy the rp sdist if needed.  We actually also stage
+                        # the sdists for radical.utils and radical.saga, so that
+                        # we have the complete stack to install...
+                        if stage_sdist:
 
-                            # Done with transfers
-                            sandbox_tgt.close()
+                            for sdist_path in [ru.sdist_path, saga.sdist_path, rp_sdist_path]:
 
-                            # if the agent was staged, we tell the bootstrapper
-                            agent_version = 'stage'
+                                sdist_url = saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, sdist_path))
+                                msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
+                                logentries.append(Logentry (msg, logger=logger.debug))
+                                sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
 
-                        elif agent_mode == 'virtenv':
-                            # install agent with RP in virtenv -- let the bootstrapper 
-                            # know what version to use for installation
-                            agent_version = agent_source
-                            agent_name    = agent_source
+                        # Done with transfers
+                        # TODO: post-merge - let the other transfers also use this handle.
+                        sandbox_tgt.close()
 
-                        elif agent_mode == 'use':
-                            # use the version which is installed in the
-                            # virtualenv -- do not update/install
-                            # TODO: make sure that the given agent source is the
-                            # one which is in fact installed
-                            agent_version = 'use'
 
+                        # ------------------------------------------------------
+                        # some machines cannot run pip due to outdated ca certs.
+                        # For those, we also stage an updated cert bundle
+                        if stage_cacerts:
+                          cc_path = os.path.abspath("%s/../bootstrapper/%s" \
+                                  % (mod_dir, 'cacert.pem.gz'))
+
+                          cc_script_url = saga.Url("file://localhost/%s" % cc_path)
+                          cc_script_tgt = saga.Url("%s/cacert.pem.gz"    % pilot_sandbox)
+
+                          cc_script = saga.filesystem.File(cc_script_url, session=self._session)
+                          cc_script.copy(cc_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
+                          cc_script.close()
+
+
+                        # ------------------------------------------------------
+                        # Write agent config dict to a json file in pilot sandbox.
+                        # Not to be used by the faint of heart
+                        if agent_config:
+
+                            if not isinstance(agent_config, dict):
+                                raise Exception("Can't deal with non_dict _config: %s" % agent_config)
+
+                            cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
+
+                            # Convert dict to json file
+                            ru.write_json(agent_config, cf_tmp_file)
+
+                            cf_src = saga.Url("file://localhost/%s" % cf_tmp_file)
+                            cf_tgt = saga.Url("%s/agent.cfg" % pilot_sandbox)
+
+                            cf_file = saga.filesystem.File(cf_src, session=self._session)
+                            cf_file.copy(cf_tgt, flags=saga.filesystem.CREATE_PARENTS)
+                            cf_file.close()
+
+                            # close and remove temp file
+                            os.close(cfg_tmp_handle)
+                            os.unlink(cf_tmp_file)
 
 
                         # ------------------------------------------------------
@@ -573,10 +597,18 @@ class PilotLauncherWorker(threading.Thread):
                             if virtenv_mode is not 'private' :
                                 cleanup = cleanup.replace ('v', '')
 
+                        sdists = ':'.join([ru.sdist_name, saga.sdist_name, rp_sdist_name])
+
+                        # if cores_per_node is set (!= None), then we need to
+                        # allocation full nodes, and thus round up
+                        if cores_per_node:
+                            cores_per_node = int(cores_per_node)
+                            number_cores = int(cores_per_node
+                                    * math.ceil(float(number_cores)/cores_per_node))
 
                         # set mandatory args
                         bootstrap_args  = ""
-                        bootstrap_args += " -b '%s'" % sdist[:-7] # without '.tgz'
+                        bootstrap_args += " -b '%s'" % sdists
                         bootstrap_args += " -c '%s'" % number_cores
                         bootstrap_args += " -d '%s'" % debug_level
                         bootstrap_args += " -g '%s'" % virtenv
@@ -590,9 +622,9 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -q '%s'" % agent_scheduler
                         bootstrap_args += " -r '%s'" % runtime
                         bootstrap_args += " -s '%s'" % session_uid
-                        bootstrap_args += " -t '%s'" % agent_name
+                        bootstrap_args += " -t '%s'" % agent_type
                         bootstrap_args += " -u '%s'" % virtenv_mode
-                        bootstrap_args += " -v '%s'" % agent_version
+                        bootstrap_args += " -v '%s'" % rp_version
 
                         # set optional args
                         if database_auth:

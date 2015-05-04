@@ -520,17 +520,20 @@ class ComputePilot (object):
                 # TODO: Does this make sense?
                 #log_message = 'Linking %s to %s' % (source, abs_target)
                 #os.symlink(source, abs_target)
-                pass
+                logger.error("action 'LINK' not supported on pilot level staging")
+                raise ValueError("action 'LINK' not supported on pilot level staging")
             elif action == COPY:
                 # TODO: Does this make sense?
                 #log_message = 'Copying %s to %s' % (source, abs_target)
                 #shutil.copyfile(source, abs_target)
-                pass
+                logger.error("action 'COPY' not supported on pilot level staging")
+                raise ValueError("action 'COPY' not supported on pilot level staging")
             elif action == MOVE:
                 # TODO: Does this make sense?
                 #log_message = 'Moving %s to %s' % (source, abs_target)
                 #shutil.move(source, abs_target)
-                pass
+                logger.error("action 'MOVE' not supported on pilot level staging")
+                raise ValueError("action 'MOVE' not supported on pilot level staging")
             elif action == TRANSFER:
                 log_message = 'Transferring %s to %s' % (src_url, os.path.join(str(tgt_dir_url), tgt_filename))
                 logger.info(log_message)
@@ -538,3 +541,4 @@ class ComputePilot (object):
                 target_dir.copy(src_url, tgt_filename)
             else:
                 raise Exception('Action %s not supported' % action)
+

@@ -21,22 +21,25 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "agent_scheduler"             : "CONTINUOUS",
-        "virtenv"                     : "%(global_sandbox)s/virtenv_stampede",
-        "virtenv_mode"                : "create",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
                                          "module load cluster",
                                          "module load Linux",
                                          "module load mvapich2",
-                                         "module load python/2.7.3-epd-7.3.2",
+                                         "module load python",
                                          "module unload xalt",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"]
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
+        "virtenv_mode"                : "create"
     },
 
     "lonestar": {
@@ -55,19 +58,23 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "SGE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
         "spmd_variation"              : "24way",
-        "python_interpreter"          : "/opt/apps/python/epd/7.2.2/bin/python",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
                                          "module load cluster",
                                          "module load mvapich2",
-                                         "module load python/2.7.2-epd",
+                                         "module load python",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_lonestar",
+        "virtenv_mode"                : "create"
     },
 
     "trestles": {
@@ -86,12 +93,16 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "agent_scheduler"             : "CONTINUOUS",
         "pre_bootstrap"               : ["module purge", "module load python pgi mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_trestles",
+        "virtenv_mode"                : "create"
     },
 
     "gordon": {
@@ -110,12 +121,16 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "agent_scheduler"             : "CONTINUOUS",
         "pre_bootstrap"               : ["module purge", "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_gordon",
+        "virtenv_mode"                : "create"
     },
 
     "blacklight": {
@@ -134,13 +149,19 @@
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "DPLACE",
         "mpi_launch_method"           : "MPIRUN_DPLACE",
-        "agent_scheduler"             : "CONTINUOUS",
         "pre_bootstrap"               : ["source /usr/share/modules/init/bash",
-                                         "module load python"
+                                         "module load python",
+                                         "unset PYTHONPATH"
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "stage_cacerts"               : "True",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
+        "virtenv_mode"                : "create"
     }
 }

@@ -1,7 +1,11 @@
+#!/usr/bin/env python
 
-import os
+__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__license__   = "MIT"
+
 import sys
 import radical.pilot as rp
+
 
 """ DESCRIPTION: Tutorial 1: A Simple Workload consisting of a Bag-of-Tasks
 """
@@ -15,32 +19,53 @@ import radical.pilot as rp
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state) :
-    """ this callback is invoked on all pilot state changes """
+def pilot_state_cb (pilot, state):
+
+    if not pilot:
+        return
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state == rp.FAILED :
+    if state == rp.FAILED:
         sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state) :
-    """ this callback is invoked on all unit state changes """
+def unit_state_cb (unit, state):
 
-    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+    if not unit:
+        return
+
+    global CNT
+
+    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
+
+    if state == rp.FAILED:
+        print "stderr: %s" % unit.stderr
+        sys.exit(2)
 
 
-# ------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
+    # we can optionally pass session name to RP
+    if len(sys.argv) > 1:
+        session_name = sys.argv[1]
+    else:
+        session_name = None
+
+    # Create a new session. No need to try/except this: if session creation
+    # fails, there is not much we can do anyways...
+    session = rp.Session(name=session_name)
+    print "session id: %s" % session.uid
+
+    # all other pilot code is now tried/excepted.  If an exception is caught, we
+    # can rely on the session object to exist and be valid, and we can thus tear
+    # the whole RP stack down via a 'session.close()' call in the 'finally'
+    # clause...
     try:
-        # Create a new session. A session is the 'root' object for all other
-        # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
-        # well as security contexts.
-        session = rp.Session()
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
         # 
@@ -127,17 +152,30 @@ if __name__ == "__main__":
 
 
     except Exception as e:
-        print "An error occurred: %s" % ((str(e)))
-        sys.exit (-1)
+        # Something unexpected happened in the pilot code above
+        print "caught Exception: %s" % e
+        raise
 
-    except KeyboardInterrupt :
-        print "Execution was interrupted"
-        sys.exit (-1)
+    except (KeyboardInterrupt, SystemExit) as e:
+        # the callback called sys.exit(), and we can here catch the
+        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+        # SystemExit (which gets raised if the main threads exits for some other
+        # reason).
+        print "need to exit now: %s" % e
 
-    finally :
-        print "Closing session, exiting now ..."
-        session.close()
+    finally:
+        # always clean up the session, no matter if we caught an exception or
+        # not.
+        print "closing session"
+        session.close ()
 
-#
-# ------------------------------------------------------------------------------
+        # the above is equivalent to
+        #
+        #   session.close (cleanup=True, terminate=True)
+        #
+        # it will thus both clean out the session's database record, and kill
+        # all remaining pilots (none in our example).
+
+
+#-------------------------------------------------------------------------------
 

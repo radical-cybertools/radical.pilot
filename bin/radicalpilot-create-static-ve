@@ -1,0 +1,100 @@
+scriptname="radicalpilot-create-static-ve"
+
+# set -x
+
+# sanity checks
+if test "`basename -- $0`" = "$scriptname"
+then
+    echo "This script is meant to be sourced, not executed (to retain any virtualenv etc.)."
+    exit
+fi
+
+prefix=$1
+
+if test -z "$prefix"
+then
+    printf "\n\tusage: radicalpilot-create-static-ve <target>\n\n"
+    return
+fi
+
+# We don't want to overwrite VE's -- the hack to get the namespace import in
+# place is too invasive to be applied to an existing VE.
+if test -e "$prefix"
+then
+    echo "error: target '$prefix' exists"
+    return
+fi
+
+# Ensure we install in an absolute path -- pip seems to like that better...
+case $prefix in
+    /*)
+        ;;
+    *)
+        prefix="`pwd`/$prefix"
+        ;;
+esac
+echo "using install prefix $prefix"
+
+# create the ve, install bare necessities
+mkdir -p "$prefix"
+mkdir -p "$prefix/rp_install"
+
+virtualenv "$prefix"
+source "$prefix"/bin/activate
+pip install --upgrade setuptools==0.6c11
+pip install --upgrade pip==1.4.1
+pip install --upgrade colorama python-hostlist pymongo==2.8 apache-libcloud
+
+# install the radical stack (utils, saga, pilot) into a separate tree
+# ($prefix/rp_install(, so that any local install can use the ve *w/o* 
+# the radical stack, by re-routing PYTHONPATH
+python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+ve_mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install|"`
+
+
+PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
+export PYTHONPATH
+
+PATH="$prefix/rp_install/bin:$PATH"
+export PATH
+
+# we need to add the radical name __init__.py manually here --
+# distutil is broken and will not install it.  That file is necessary to have
+# the 'radical' namespace searchable by python's import.
+mkdir -p   "$rp_mod_prefix/radical/"
+ru_ns_init="$rp_mod_prefix/radical/__init__.py"
+echo                                              >  $ru_ns_init
+echo 'import pkg_resources'                       >> $ru_ns_init
+echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
+echo                                              >> $ru_ns_init
+
+# pip install --install-option="--prefix=$prefix/rp_install" radical.utils
+# pip install --install-option="--prefix=$prefix/rp_install" saga-python
+pip install --install-option="--prefix=$prefix/rp_install" radical.pilot
+
+OLD_SAGA_VERBOSE=$SAGA_VERBOSE
+OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
+OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
+
+SAGA_VERBOSE=WARNING
+RADICAL_VERBOSE=WARNING
+RADICAL_PILOT_VERBOSE=WARNING
+
+# print the ve information and stack versions for verification
+echo
+echo "---------------------------------------------------------------------"
+echo
+echo "PYTHONPATH: $PYTHONPATH"
+echo "python: `which python` (`python --version`)"
+python -c 'print "utils :",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
+python -c 'print "saga  :",; import saga          as rs; print rs.version_detail,; print rs.__file__'
+python -c 'print "pilot :",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
+echo
+echo "---------------------------------------------------------------------"
+echo
+
+SAGA_VERBOSE=$OLD_SAGA_VERBOSE
+RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
+RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
+

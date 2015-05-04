@@ -1,3 +1,4 @@
+
 {
     "davinci": {
         "description"                 : "The DAVinCI Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+DAVinCI).",
@@ -10,12 +11,17 @@
         },
         "lrms"                        : "TORQUE",
         "default_queue"               : "parallel",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap"               : ["module load openmpi"],
         "valid_roots"                 : ["/dascratch"],
         "default_remote_workdir"      : "$SHARED_SCRATCH/$USER",
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_davinci",
+        "virtenv_mode"                : "create"
     },
     "biou": {
         "description"                 : "The Blue BioU Linux cluster at Rice University (https://docs.rice.edu/confluence/display/ITDIY/Getting+Started+on+Blue+BioU).",
@@ -28,11 +34,17 @@
         },
         "lrms"                        : "TORQUE",
         "default_queue"               : "serial",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap"               : ["module load openmpi/1.4.3-gcc"],
         "valid_roots"                 : ["/gpfs-biou"],
         "default_remote_workdir"      : "$SHARED_SCRATCH/$USER",
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_biou",
+        "virtenv_mode"                : "create"
     }
 }
+

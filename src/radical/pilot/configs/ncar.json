@@ -10,13 +10,16 @@
         },
         "default_queue"               : "premium",
         "lrms"                        : "LSF",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "POE",
-        "agent_scheduler"             : "CONTINUOUS",
         "forward_tunnel_endpoint"     : "yslogin6",
-        "global_virtenv"              : "/glade/u/home/marksant/pilotve",
         "pre_bootstrap"               : ["module purge", "module load ncarenv", "module load ncarbinlibs", "module load python"],
         "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
-        "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+        "rp_version"                  : "installed",
+        "virtenv"                     : "/glade/u/home/marksant/pilotve",
+        "virtenv_mode"                : "use"
     }
 }

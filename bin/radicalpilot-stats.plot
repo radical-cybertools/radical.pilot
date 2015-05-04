@@ -74,7 +74,9 @@ hex(i)      = "0123456789ABCDEF"[i:i]
 hexx(i)     = hex(i).hex(i)
 color_1(i)  = word(color_list_1,i)
 color_2(i)  = word(color_list_2,i)
-get_title(i)= sprintf("%s: %-15s (%s cores)", word(pilot_id_list,i), word(pilot_name_list,i), word(slotnum_list,i))
+get_title(i)= sprintf("%s: %-15s (%4s cores / %4s units)", \
+                      word(pilot_id_list,i), word(pilot_name_list,i), \
+                      word(slotnum_list,i),  word(unitnum_list,i))
 
 # print 'palette '
 # do for [i=1:pilot_num] {
@@ -179,6 +181,10 @@ do for [term_i=1:words(terms)] {
     set rmargin 10
     set border  lw 4.0
 
+  unset y2label
+  unset y2tics
+  unset y2range
+
   # set size 1.0,1.5
     set multiplot layout 4,1 title "\n\n" . plottitle . "\n\n\n\n"
 
@@ -210,18 +216,17 @@ do for [term_i=1:words(terms)] {
     set xrange [0:maxtime]
     set yrange [0:12]
     set ytics  ("NEW            "  1, \
-                "UNSCHEDULED    "  2, \
+                "SCHEDULING     "  2, \
                 "PEND.   INPUT  "  3, \
                 "TRANSF. INPUT  "  4, \
                 "PEND. EXECUTION"  5, \
-                "SCHEDULING     "  6, \
-                "ALLOCATING     "  7, \
-                "EXECUTING      "  8, \
-                "PEND.   OUTPUT "  9, \
-                "TRANSF. OUTPUT " 10, \
-                "DONE           " 11, \
-                "CANCELED       " 12, \
-                "FAILED         " 13)
+                "ALLOCATING     "  6, \
+                "EXECUTING      "  7, \
+                "PEND.   OUTPUT "  8, \
+                "TRANSF. OUTPUT "  9, \
+                "DONE           " 10, \
+                "CANCELED       " 11, \
+                "FAILED         " 12)
 
     set xlabel ''
     set ylabel "UNITS\n[states]" offset second -0.06,0
@@ -246,8 +251,8 @@ do for [term_i=1:words(terms)] {
     set my2tics 0
 
     set xlabel  'time (in seconds)'
-    set ylabel  "PILOT ACTIVITY\n[slots / queue]" offset second -11,0
-    set y2label "UNIT WAIT QUEUE SIZE"            offset second -00,0
+    set ylabel  "PILOT ACTIVITY\n[slots / queue]" offset second -00,0
+    set y2label "UNIT WAIT QUEUE SIZE"            offset second -00.0,0
     set grid 
   unset format
 
@@ -255,37 +260,40 @@ do for [term_i=1:words(terms)] {
   # set style line 106 lt 1 lc rgb '#AA6666' pt 7 ps term_mult*0.6 lw term_mult*2
   # set style line 105 lt 2 lc rgb '#AA6666' pt 7 ps term_mult*0.6 lw term_mult*3
     plot for [i=1:pilot_num] \
-         word(pilot_slots_dat_list,i) using 1:($2+offset(i,0.1))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*3, \
+         word(pilot_slots_dat_list,i) using 1:($2+offset(i,0.25))     title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*3, \
          for [i=1:pilot_num] \
-         word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.05) title '' with steps  lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
+         word(pilot_queue_dat_list,i) using 1:($2+offset(i,0.1)+0.25) title '' with steps  lt 1 lc rgb color_2(i) lw term_mult*2 axes x1y2 , \
          for [i=1:pilot_num] \
-         word(slotnum_list,i)+0+word(slotnum_list,i)*0.05*offset(i,1) title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
+         word(slotnum_list,i)+offset(i,0.2) title '' with lines  lt 2 lc rgb color_1(i) lw term_mult*3
 
-      # ------------------------------------------------------------------------------------
-      # Key plot
-      set   tmargin 7
-      set   lmargin 24
-      set   border  lw 0
-      unset tics
-      unset xlabel
-      set   ylabel ""# "Legend and\nStatistics" offset second -17,0
-      set   yrange [0:1]
+    # ------------------------------------------------------------------------------------
+    # Key plot
+    set   tmargin 7
+    set   lmargin 24
+    set   border  lw 0
+    unset tics
+    unset xlabel
+    set   ylabel ""# "Legend and\nStatistics" offset second -17,0
+    set   yrange [0:1]
+  unset y2label
+  unset y2tics
+  unset y2range
 
 
-      set   key top left reverse maxrows 7
+    set   key top left reverse maxrows 7
 
-    # set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
-      plot for [i=1:pilot_num] \
-           NaN with lines title get_title(i) lt 1 lc rgb color_1(i) lw term_mult*2
+  # set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
+    plot for [i=1:pilot_num] \
+         NaN with lines title get_title(i) lt 1 lc rgb color_1(i) lw term_mult*2
 
-#     plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-#          NaN ls 100 t 'pilot/unit states changes'                        , \
-#          NaN ls 101 t 'pilot/unit states notifications'                  , \
-#          NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
-#          NaN ls 105 t 'total number of slots'                            , \
-#          NaN ls 106 t 'unit queue length'                                , \
-#          NaN lw   0 t ' '
-#     }
+#   plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
+#        NaN ls 100 t 'pilot/unit states changes'                        , \
+#        NaN ls 101 t 'pilot/unit states notifications'                  , \
+#        NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
+#        NaN ls 105 t 'total number of slots'                            , \
+#        NaN ls 106 t 'unit queue length'                                , \
+#        NaN lw   0 t ' '
+#   }
 
     unset multiplot
 }
