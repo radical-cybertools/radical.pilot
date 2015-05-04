@@ -111,7 +111,10 @@
      "cp_cores"        : 8,
      "cp_schema"       : "",
      "cu_cores"        : 4,
-     "cu_pre_exec"     : ["module load python"],
+     "cu_pre_exec"     : ["module load python/2.7.8",
+                          "unset PYTHONPATH",
+                          ". ~marksant/ve_mpitest/bin/activate"
+                         ],
      "executable"      : "python"
      },
  "iu.quarry"           : {
