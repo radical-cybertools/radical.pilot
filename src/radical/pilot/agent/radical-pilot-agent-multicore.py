@@ -708,6 +708,8 @@ class Scheduler(threading.Thread):
 
                 if command == COMMAND_RESCHEDULE:
 
+                    # reschedule is done over all units in the wait queue
+                    assert (cu == None) 
                     self._reschedule()
 
 
@@ -733,8 +735,6 @@ class Scheduler(threading.Thread):
 
 
                 elif command == COMMAND_UNSCHEDULE :
-
-                    cu = data
 
                     # we got a finished unit, and can re-use its cores
                     #
