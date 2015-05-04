@@ -706,7 +706,14 @@ class Scheduler(threading.Thread):
 
                 rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
 
-                if command == COMMAND_RESCHEDULE:
+                if command == COMMAND_WAKEUP:
+
+                    # nothing to do (other then testing self._terminate)
+                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
+                    continue
+
+
+                elif command == COMMAND_RESCHEDULE:
 
                     # reschedule is done over all units in the wait queue
                     assert (cu == None) 
