@@ -559,9 +559,8 @@ virtenv_activate()
     #       channel for some reason, so does not need the cert bundle.
     #       see https://github.com/pypa/pip/issues/2130
     #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
-    if test -f 'cacert.pem.gz'
+    if test -f 'cacert.pem'
     then
-        gunzip cacert.pem.gz
         PIP="`which pip` --cert cacert.pem"
     else
         PIP="`which pip`"
@@ -715,9 +714,8 @@ virtenv_create()
          || echo "Couldn't update pip -- using default version"
 
     # make sure the new pip version is used
-    if test -f 'cacert.pem.gz'
+    if test -f 'cacert.pem'
     then
-        gunzip cacert.pem.gz
         PIP="`which pip` --cert cacert.pem"
     else
         PIP="`which pip`"
