@@ -34,20 +34,6 @@
      "cu_pre_exec"     : [". ~marksant/cu-ve-20141211/bin/activate"],
      "executable"      : "python"
      },
- "futuregrid.hotel"    : {
-     "cp_project"      : "",
-     "cp_queue"        : "",
-     "cp_runtime"      :  5,
-     "cp_cores"        :  8,
-     "cp_schema"       : "",
-     "cu_cores"        :  4,
-     "cu_pre_exec"     : ["module load openmpi/1.4.5 python",
-                          "wget --no-check-certificate https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py",
-                          "python virtualenv.py ./mpive",
-                          ". ./mpive/bin/activate",
-                          "pip install mpi4py"],
-     "executable"      : "python"
-     },
  "futuregrid.india"    : {
      "cp_project"      : "",
      "cp_queue"        : "",
@@ -59,39 +45,6 @@
                           "virtualenv ./mpive",
                           ". ./mpive/bin/activate",
                           "pip install mpi4py"],
-     "executable"      : "python"
-     },
- "futuregrid.sierra"   : {
-     "cp_project"      : "",
-     "cp_queue"        : "",
-     "cp_runtime"      :  5,
-     "cp_cores"        :  8,
-     "cp_schema"       : "",
-     "cu_cores"        :  4,
-     "cu_pre_exec"     : ["module load openmpi/gnu/1.6.3",
-                          "virtualenv ./mpive",
-                          ". ./mpive/bin/activate",
-                          "pip install mpi4py"],
-     "executable"      : "python"
-     },
- "futuregrid.xray"     : {
-     "cp_project"      : "",
-     "cp_queue"        : "",
-     "cp_runtime"      :   5,
-     "cp_cores"        :  16,
-     "cp_schema"       : "",
-     "cu_cores"        :   4,
-     "cu_pre_exec"     : [". ~marksant/cu_ve_20141210/bin/activate"],
-     "executable"      : "python"
-     },
- "futuregrid.xray_ccm" : {
-     "cp_project"      : "",
-     "cp_queue"        : "",
-     "cp_runtime"      :    5,
-     "cp_cores"        :  632,
-     "cp_schema"       : "",
-     "cu_cores"        :  316,
-     "cu_pre_exec"     : [". ~marksant/cu_ve_20141210/bin/activate"],
      "executable"      : "python"
      },
  "iu.bigred2"          : {
@@ -117,20 +70,6 @@
                          ],
      "executable"      : "python"
      },
- "iu.quarry"           : {
-     "cp_project"      : "",
-     "cp_queue"        : "",
-     "cp_runtime"      : 5,
-     "cp_cores"        : 8,
-     "cp_schema"       : "",
-     "cu_cores"        : 4,
-     "cu_pre_exec"     : ["module load openmpi/gnu/1.6.3",
-                          "wget --no-check-certificate https://raw.github.com/pypa/virtualenv/1.9.X/virtualenv.py",
-                          "python virtualenv ./mpive",
-                          ". ./mpive/bin/activate",
-                          "pip install mpi4py"],
-     "executable"      : "python"
-     },
  "local.localhost"     : {
      "cp_project"      : "",
      "cp_queue"        : "",
@@ -138,7 +77,7 @@
      "cp_cores"        :  4,
      "cp_schema"       : "",
      "cu_cores"        :  2,
-     "cu_pre_exec"     : ["python virtualenv ./mpive",
+     "cu_pre_exec"     : ["virtualenv ./mpive",
                           ". ./mpive/bin/activate",
                           "pip install mpi4py"],
     "executable"      : "python"
