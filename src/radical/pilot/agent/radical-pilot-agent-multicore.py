@@ -3968,6 +3968,9 @@ class ExecWorker_SHELL(ExecWorker):
             ret = list()
             for arg in args :
 
+                if not arg:
+                    continue
+
                 # if string is between outer single quotes,
                 #    pass it as is.
                 # if string is between outer double quotes,
