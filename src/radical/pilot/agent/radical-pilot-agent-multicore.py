@@ -692,42 +692,71 @@ class Scheduler(threading.Thread):
 
                 request = self._schedule_queue.get()
 
+                if not isinstance(request, list):
+                    # command only, no cu
+                    request = [request, None]
+
                 # shutdown signal
                 if not request:
                     rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
                     continue
 
-                # we either get a new scheduled CU, or get a trigger that cores were
-                # freed, and we can try to reschedule waiting CUs
-                if isinstance(request, basestring):
+                command = request[0]
+                cu      = request[1]
 
-                    command = request
-                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
+                rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
 
-                    if command == COMMAND_RESCHEDULE:
-                        self._reschedule()
-                    else:
-                        self._log.error("Unknown scheduler command: %s (ignored)", command)
+                if command == COMMAND_WAKEUP:
 
-                else:
+                    # nothing to do (other then testing self._terminate)
+                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
+                    continue
 
-                    cu = request
-                    cu['state'] = rp.ALLOCATING
+
+                elif command == COMMAND_RESCHEDULE:
+
+                    # reschedule is done over all units in the wait queue
+                    assert (cu == None) 
+                    self._reschedule()
+
+
+                elif command == COMMAND_SCHEDULE:
 
                     rpu.prof('get', msg="schedule_queue to Scheduler (%s)" % cu['state'], uid=cu['_id'])
+
+                    # FIXME: this state update is not recorded?
+                    cu['state'] = rp.ALLOCATING
+
 
                     cu_list  = rpu.blowup(self._config, cu, SCHEDULER)
                     for _cu in cu_list:
 
-                        # we got a new unit to schedule.  Either we can place 
-                        # it straight away and move it to execution, or we have
-                        # to put it on the wait queue.
-
+                        # we got a new unit to schedule.  Either we can place it
+                        # straight away and move it to execution, or we have to
+                        # put it on the wait queue.
                         if not self._try_allocation(_cu):
                             # No resources available, put in wait queue
                             with self._wait_queue_lock :
                                 self._wait_pool.append(_cu)
                             rpu.prof('schedule', msg="allocation failed", uid=_cu['_id'])
+
+
+                elif command == COMMAND_UNSCHEDULE :
+
+                    # we got a finished unit, and can re-use its cores
+                    #
+                    # FIXME: we may want to handle this type of requests
+                    # with higher priority, so it might deserve a separate
+                    # queue.  Measure first though, then optimize...
+                    #
+                    # NOTE: unschedule() runs re-schedule, which probably
+                    # should be delayed until this bulk has been worked
+                    # on...
+                    rpu.prof('schedule', msg="unit deallocation", uid=cu['_id'])
+                    self.unschedule(cu)
+
+                else :
+                    raise ValueError ("cannot handle scheduler command '%s'", command)
 
             except Exception as e:
                 self._log.exception('Error in scheduler loop: %s', e)
@@ -3618,6 +3647,7 @@ class ExecWorker_POPEN (ExecWorker) :
             rpu.prof('put', msg="ExecWorker to watcher (%s)" % _cu['state'], uid=_cu['_id'])
             self._watch_queue.put(_cu)
 
+
     # --------------------------------------------------------------------------
     #
     def _watch(self):
@@ -3712,7 +3742,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     action += 1
                     cu['proc'].kill()
                     self._cus_to_cancel.remove(cu['_id'])
-                    self._scheduler.unschedule(cu)
+                    self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
 
                     cu['state'] = rp.CANCELED
                     self._agent.update_unit_state(src    = 'ExecWatcher',
@@ -3735,7 +3765,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
-                self._scheduler.unschedule(cu)
+                self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
 
                 if exit_code != 0:
 
@@ -3913,7 +3943,7 @@ class ExecWorker_SHELL(ExecWorker):
 
                     # Free the Slots, Flee the Flots, Ree the Frots!
                     if cu['opaque_slot']:
-                        self._scheduler.unschedule(cu)
+                        self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
 
                     cu['state'] = rp.FAILED
                     self._agent.update_unit_state(src    = 'ExecWorker',
@@ -3921,7 +3951,6 @@ class ExecWorker_SHELL(ExecWorker):
                                                   state  = rp.FAILED,
                                                   msg    = "unit execution failed",
                                                   logger = self._log.exception)
-
 
         except Exception as e:
             self._log.exception("Error in ExecWorker loop (%s)" % e)
@@ -4142,9 +4171,6 @@ class ExecWorker_SHELL(ExecWorker):
 
                         if static_cnt == 10 :
                             # 10 times cache to check, dump it for debugging
-                            #print "cache state"
-                            #pprint.pprint (self._cached_events)
-                            #pprint.pprint (self._registry)
                             static_cnt = 0
 
                         cache_copy          = self._cached_events[:]
@@ -4231,7 +4257,7 @@ class ExecWorker_SHELL(ExecWorker):
 
         if rp_state in [rp.FAILED, rp.CANCELED] :
             # final state - no further state transition needed
-            self._scheduler.unschedule(cu)
+            self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
             cu['state'] = rp_state
             self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
@@ -4241,7 +4267,7 @@ class ExecWorker_SHELL(ExecWorker):
         elif rp_state in [rp.DONE] :
             rpu.prof('execution complete', uid=cu['_id'])
             # advance the unit state
-            self._scheduler.unschedule(cu)
+            self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
             cu['state'] = rp.STAGING_OUTPUT
             self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
@@ -4462,13 +4488,12 @@ class StageinWorker(threading.Thread):
                     rpu.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
                     continue
 
-                cu['state'] = rp.STAGING_INPUT
-
                 rpu.prof('get', msg="stagein_queue to StageinWorker (%s)" % cu['state'], uid=cu['_id'])
 
                 cu_list = rpu.blowup(self._config, cu, STAGEIN_WORKER)
                 for _cu in cu_list :
 
+                    _cu['state'] = rp.STAGING_INPUT
                     sandbox      = os.path.join(self._workdir, '%s' % _cu['_id'])
                     staging_area = os.path.join(self._workdir, self._config['staging_area'])
 
@@ -4578,7 +4603,7 @@ class StageinWorker(threading.Thread):
                         _cu_list = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
                         for __cu in _cu_list :
                             rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                            self._schedule_queue.put(__cu)
+                            self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
 
 
             except Exception as e:
@@ -4685,8 +4710,10 @@ class StageoutWorker(threading.Thread):
 
                     for directive in _cu['Agent_Output_Directives']:
 
-                        # Perform output staging
+                        rpu.prof('Agent output_staging', uid=_cu['_id'],
+                                 msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
+                        # Perform output staging
                         self._log.info("unit output staging directives %s for cu: %s to %s",
                                 directive, _cu['_id'], sandbox)
 
@@ -4953,9 +4980,9 @@ class HeartbeatMonitor(threading.Thread):
 
             elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                 self._log.info("Received Cancel Compute Unit command for: %s", command[COMMAND_ARG])
-                # Put it on the command queue of the ExecWorker
                 rpu.prof('put_cmd', msg="HeartbeatMonitor to command_queue (%s)" % command_str,
                         uid=command[COMMAND_ARG])
+                # Put it on the command queue of the ExecWorker
                 self._command_queue.put(command)
 
             elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
@@ -5283,7 +5310,7 @@ class Agent(object):
 
         # to make sure that threads are not stuck waiting on a queue, we send
         # a signal on each queue
-        self._schedule_queue.put (None)
+        self._schedule_queue.put (COMMAND_WAKEUP)
         self._execution_queue.put(None)
         self._update_queue.put   (None)
         self._stagein_queue.put  (None)
@@ -5420,7 +5447,7 @@ class Agent(object):
                         _cu_list = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
                         for __cu in _cu_list :
                             rpu.prof('put', msg="Agent to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                            self._schedule_queue.put(__cu)
+                            self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
 
 
                 except Exception as e:
@@ -5526,9 +5553,9 @@ def main():
     try:
         logger.info ("Trying to load config file ...")
         cfg_file = "agent.cfg"
-        cfg = ru.read_json_str(cfg_file)
+        cfg_dict = ru.read_json_str(cfg_file)
 
-        ru.dict_merge(agent_config, cfg, policy='overwrite')
+        ru.dict_merge(agent_config, cfg_dict, policy='overwrite')
 
         logger.info("Default agent config merged with settings from file")
 
