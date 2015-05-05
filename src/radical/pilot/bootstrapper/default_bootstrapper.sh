@@ -1137,12 +1137,15 @@ while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
     esac
 done
 
-# TODO: By now the pre_process rules are already performed.
-#       We should split the parsing and the execution of those.
-#       "bootstrap start" is here so that $PILOT_ID is known.
+# FIXME: By now the pre_process rules are already performed.
+#        We should split the parsing and the execution of those.
+#        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-echo "time,component,uid,event,message" > $PROFILE_LOG
-profile_event 'bootstrap start'
+if ! test -z "$RADICAL_PILOT_PROFILE"
+then
+    echo "time,component,uid,event,message" > $PROFILE_LOG
+    profile_event 'bootstrap start'
+fi
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
 #       report the absolute representation of it, and thus report a different
