@@ -592,12 +592,14 @@ virtenv_setup()
 #
 virtenv_activate()
 {
+    virtenv="$1"
+
     if test "$VIRTENV_IS_ACTIVATED" = "TRUE"
     then
         return
     fi
 
-    . "$VIRTENV/bin/activate"
+    . "$virtenv/bin/activate"
     VIRTENV_IS_ACTIVATED=TRUE
 
     # make sure we use the new python binary
@@ -613,7 +615,7 @@ virtenv_activate()
   #     SYSTEM_RP='TRUE'
   # fi
 
-    prefix="$VIRTENV/rp_install"
+    prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
     PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
@@ -652,7 +654,7 @@ virtenv_activate()
     # we can now derive the pythonpath into the rp_install portion by replacing
     # the leading path elements.  The same mechanism is used later on
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
-    RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$VIRTENV/rp_install|"`
+    RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
@@ -663,7 +665,7 @@ virtenv_activate()
     export PYTHONPATH
 
     echo "activated virtenv"
-    echo "VIRTENV      : $VIRTENV"
+    echo "VIRTENV      : $virtenv"
     echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
     echo "RP_MOD_PREFIX: $RP_MOD_PREFIX"
     echo "PYTHONPATH   : $PYTHONPATH"
