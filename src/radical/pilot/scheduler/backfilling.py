@@ -286,8 +286,7 @@ class BackfillingScheduler(Scheduler):
             self.pilots[pid]['sandbox']  = pilot.sandbox
 
             if  OVERSUBSCRIPTION_RATE :
-                self.pilots[pid]['over']  = int(float(OVERSUBSCRIPTION_RATE * pilot.description.cores)/100.0)
-                self.pilots[pid]['caps'] += self.pilots[pid]['over']
+                self.pilots[pid]['caps'] += int(OVERSUBSCRIPTION_RATE * pilot.description.cores / 100.0)
 
             # make sure we register callback only once per pmgr
             pmgr = pilot.pilot_manager
