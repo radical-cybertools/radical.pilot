@@ -21,7 +21,7 @@ from radical.pilot.states              import *
 
 # to reduce roundtrips, we can oversubscribe a pilot, and schedule more units
 # than it can immediately execute.  Value is in %.
-OVERSUBSCRIPTION_RATE = 200
+OVERSUBSCRIPTION_RATE = 0
 
 # -----------------------------------------------------------------------------
 # 
