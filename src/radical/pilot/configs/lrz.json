@@ -21,16 +21,15 @@
         "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        "agent_mongodb_endpoint"      : "mongodb://login03:24242",
+        "forward_tunnel_endpoint"     : "login03",
         "pre_bootstrap"               : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",
                                          "module load python/2.7.6",
-                                         "module unload mpi.ibm", "module load mpi.intel",
-                                         "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
+                                         "module unload mpi.ibm", "module load mpi.intel"
                                         ],
         "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
-        "rp_version"                  : "installed",
-        "virtenv"                     : "/home/hpc/pr87be/di29sut/pilotve",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "/home/hpc/pr87be/di29sut/ve_supermuc_shared_20150505",
         "virtenv_mode"                : "use"
     }
 }
