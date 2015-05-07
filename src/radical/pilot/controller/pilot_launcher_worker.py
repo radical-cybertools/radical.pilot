@@ -85,10 +85,11 @@ class PilotLauncherWorker(threading.Thread):
     def _get_pilot_logs (self, pilot_col, pilot_id) :
 
         out, err, log = ["", "", ""]
+        # TODO: can this be linked to an #issue ?
         return out, err, log
 
         # attempt to get stdout/stderr/log.  We only expect those if pilot was
-        # attemptint launch at some point
+        # attempting launch at some point
         launched = False
         pilot    = pilot_col.find ({"_id": pilot_id})[0]
 
