@@ -196,7 +196,8 @@ class OutputFileTransferWorker(threading.Thread):
                                 'log': {'message': log_message, 'timestamp': ts}
                             }
                         })
-                        logger.exception (log_message)
+                        logger.exception(log_message)
+                        raise
 
 
                 # Code below is only to be run by the "first" or only worker
@@ -268,4 +269,3 @@ class OutputFileTransferWorker(threading.Thread):
             logger.exception("output file transfer thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
-
