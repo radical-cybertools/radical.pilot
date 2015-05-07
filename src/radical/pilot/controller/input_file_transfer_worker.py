@@ -167,22 +167,16 @@ class InputFileTransferWorker(threading.Thread):
                                 logger.debug(log_msg)
 
                                 # Execute the transfer.
-                                logger.debug ("saga.fs.File ('%s')" % input_file_url)
-                                input_file = saga.filesystem.File(
-                                    input_file_url,
-                                    session=self._session
-                                )
-
                                 if CREATE_PARENTS in sd['flags']:
                                     copy_flags = saga.filesystem.CREATE_PARENTS
                                 else:
                                     copy_flags = 0
 
-                                try :
-                                    input_file.copy(target, flags=copy_flags)
-                                except Exception as e :
-                                    logger.exception (e)
-                                input_file.close()
+                                try:
+                                    saga_dir.copy(input_file_url, target, flags=copy_flags)
+                                except Exception as e:
+                                    logger.exception(e)
+                                    raise Exception("copy failed(%s)" % e.message)
 
                                 # If all went fine, update the state of this StagingDirective to Done
                                 um_col.find_and_modify(
