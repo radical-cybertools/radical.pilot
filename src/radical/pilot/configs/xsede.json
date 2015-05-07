@@ -11,8 +11,8 @@
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu/"
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
         },
         "go":
         {
