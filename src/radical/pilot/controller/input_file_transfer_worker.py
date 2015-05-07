@@ -140,8 +140,7 @@ class InputFileTransferWorker(threading.Thread):
                                 saga_dir = self._saga_dirs[remote_sandbox_key]
                             except Exception as e :
                                 logger.exception('Error: %s' % e)
-                                # FIXME: why is this exception ignored?  AM
-
+                                raise
 
                             logger.info("Processing input file transfers for ComputeUnit %s" % compute_unit_id)
                             # Loop over all transfer directives and execute them.
@@ -215,6 +214,7 @@ class InputFileTransferWorker(threading.Thread):
                             })
 
                             logger.exception(str(logentry))
+                            raise
 
                     # Code below is only to be run by the "first" or only worker
                     if self._worker_number > 1:
