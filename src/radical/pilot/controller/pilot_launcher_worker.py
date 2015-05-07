@@ -513,29 +513,23 @@ class PilotLauncherWorker(threading.Thread):
 
                             for sdist_path in [ru.sdist_path, saga.sdist_path, rp_sdist_path]:
 
-                                sdist_url = saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, sdist_path))
-                                msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
+                                sdist_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, sdist_path))
+                                msg = "Copying sdist '%s' to sandbox (%s)." % (sdist_url, pilot_sandbox)
                                 logentries.append(Logentry (msg, logger=logger.debug))
                                 sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
 
-                        # Done with transfers
-                        # TODO: post-merge - let the other transfers also use this handle.
-                        sandbox_tgt.close()
-
 
                         # ------------------------------------------------------
-                        # some machines cannot run pip due to outdated ca certs.
-                        # For those, we also stage an updated cert bundle
+                        # Some machines cannot run pip due to outdated CA certs.
+                        # For those, we also stage an updated certificate bundle
                         if stage_cacerts:
                           cc_path = os.path.abspath("%s/../bootstrapper/%s" \
                                   % (mod_dir, 'cacert.pem.gz'))
 
-                          cc_script_url = saga.Url("file://localhost/%s" % cc_path)
-                          cc_script_tgt = saga.Url("%s/cacert.pem.gz"    % pilot_sandbox)
-
-                          cc_script = saga.filesystem.File(cc_script_url, session=self._session)
-                          cc_script.copy(cc_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
-                          cc_script.close()
+                          cc_url= saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
+                          msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)
+                          logentries.append(Logentry (msg, logger=logger.debug))
+                          sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
 
                         # ------------------------------------------------------
@@ -549,19 +543,23 @@ class PilotLauncherWorker(threading.Thread):
                             cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
 
                             # Convert dict to json file
+                            msg = "Writing agent configuration to file '%s'." % cf_tmp_file
+                            logentries.append(Logentry (msg, logger=logger.debug))
                             ru.write_json(agent_config, cf_tmp_file)
 
-                            cf_src = saga.Url("file://localhost/%s" % cf_tmp_file)
-                            cf_tgt = saga.Url("%s/agent.cfg" % pilot_sandbox)
-
-                            cf_file = saga.filesystem.File(cf_src, session=self._session)
-                            cf_file.copy(cf_tgt, flags=saga.filesystem.CREATE_PARENTS)
-                            cf_file.close()
+                            cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
+                            msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
+                            logentries.append(Logentry (msg, logger=logger.debug))
+                            sandbox_tgt.copy(cf_url, 'agent.cfg')
 
                             # close and remove temp file
                             os.close(cfg_tmp_handle)
                             os.unlink(cf_tmp_file)
 
+
+                        # ------------------------------------------------------
+                        # Done with all transfers to pilot sandbox, close handle
+                        sandbox_tgt.close()
 
                         # ------------------------------------------------------
                         # sanity checks
