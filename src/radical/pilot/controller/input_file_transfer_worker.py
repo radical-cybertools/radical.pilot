@@ -156,9 +156,9 @@ class InputFileTransferWorker(threading.Thread):
                                     break
 
                                 abs_src = os.path.abspath(sd['source'])
-                                input_file_url = saga.Url("file://localhost/%s" % abs_src)
+                                input_file_url = saga.Url("file://localhost%s" % abs_src)
                                 if not sd['target']:
-                                    target = remote_sandbox
+                                    target = '%s/%s' % (remote_sandbox, os.path.basename(abs_src))
                                 else:
                                     target = "%s/%s" % (remote_sandbox, sd['target'])
 
