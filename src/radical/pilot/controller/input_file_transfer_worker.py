@@ -138,8 +138,6 @@ class InputFileTransferWorker(threading.Thread):
                                                     session=self._session)
 
                                 saga_dir = self._saga_dirs[remote_sandbox_key]
-                                saga_dir.make_dir (remote_sandbox, 
-                                                   flags=saga.filesystem.CREATE_PARENTS)
                             except Exception as e :
                                 logger.exception('Error: %s' % e)
                                 # FIXME: why is this exception ignored?  AM
