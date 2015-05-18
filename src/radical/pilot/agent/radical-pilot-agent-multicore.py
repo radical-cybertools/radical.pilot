@@ -1756,7 +1756,6 @@ class LaunchMethodDPLACE(LaunchMethod):
         return dplace_command, None
 
 
-
 # ==============================================================================
 #
 class LaunchMethodMPIRUNRSH(LaunchMethod):
@@ -1767,13 +1766,18 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
         LaunchMethod.__init__(self, name, config, logger, scheduler)
 
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # mpirun_rsh (e.g. on Gordon@ SDSC)
-        self.launch_command = self._which('mpirun_rsh')
 
+        # mpirun_rsh (e.g. on Gordon@SDSC, Stampede@TACC)
+        if not self._which('mpirun_rsh'):
+            raise Exception("mpirun_rsh could not be found")
+
+        # We don't use the full pathname as the user might load a different
+        # compiler / MPI library suite from his CU pre_exec that requires
+        # the launcher from that version, as experienced on stampede in #572.
+        self.launch_command = 'mpirun_rsh'
 
     # --------------------------------------------------------------------------
     #

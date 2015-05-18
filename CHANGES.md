@@ -4,6 +4,11 @@
   - For a list of open issues and known problems, see
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
+0.32 Release                                               2015-05-18
+--------------------------------------------------------------------------------
+
+  - Hotfix release for MPIRUN_RSH on Stampede (#572).
+
 
 0.31 Release                                               2015-04-30
 --------------------------------------------------------------------------------
