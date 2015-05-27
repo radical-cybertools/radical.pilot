@@ -820,8 +820,7 @@ class SchedulerContinuous(Scheduler):
 
         # TODO: single_node should be enforced for e.g. non-message passing
         #       tasks, but we don't have that info here.
-        # NOTE AM: why should non-messaging tasks be confined to one node?
-        if cores_requested < self._lrms.cores_per_node:
+        if cores_requested <= self._lrms.cores_per_node:
             single_node = True
         else:
             single_node = False
