@@ -4,6 +4,12 @@
   - For a list of open issues and known problems, see
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
+0.33 Release                                               2015-05-27
+--------------------------------------------------------------------------------
+
+  - Hotfix release for off-by-one error (#621)
+
+
 0.32 Release                                               2015-05-18
 --------------------------------------------------------------------------------
 
