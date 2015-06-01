@@ -5500,7 +5500,7 @@ def main():
 
     if args : parser.error("Unused arguments '%s'" % args)
 
-    if not options.cores                : parser.error("Missing number of cores (-c)")
+    if not options.cores                : parser.error("Missing or zero number of cores (-c)")
     if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
     if not options.task_launch_method   : parser.error("Missing unit launch method (-j)")
     if not options.mpi_launch_method    : parser.error("Missing mpi launch method (-k)")
@@ -5510,7 +5510,7 @@ def main():
     if not options.spawner              : parser.error("Missing agent spawner (-o)")
     if not options.pilot_id             : parser.error("Missing pilot id (-p)")
     if not options.agent_scheduler      : parser.error("Missing agent scheduler (-q)")
-    if not options.runtime              : parser.error("Missing agent runtime (-r)")
+    if not options.runtime              : parser.error("Missing or zero agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
     rpu.prof('start', uid=options.pilot_id)
