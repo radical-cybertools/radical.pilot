@@ -85,16 +85,6 @@ _EVENT_ENCODING = {
 
 # ------------------------------------------------------------------------------
 #
-def my_round (x, base=5) :
-
-    # thanks to 
-    # http://stackoverflow.com/questions/2272149/round-to-5-or-other-number-in-python
-
-    return int(base * round(float(x) / base))
-
-
-# ------------------------------------------------------------------------------
-#
 def usage (msg=None, noexit=False) :
 
     if  msg :

@@ -82,24 +82,43 @@ EXIT_VAL=1
 # \trap idle_handler ALRM
 \trap '' ALRM
 
+\trap cleanup_handler_sighup  SIGHUP
+\trap cleanup_handler_sigint  SIGINT
+\trap cleanup_handler_sigterm SIGTERM
+
 cleanup_handler_quit (){
-  \printf "trapped QUIT"
+  \printf "trapped QUIT\n"
   cmd_quit $IDLE
 }
 
 cleanup_handler_term (){
-  \printf "trapped TERM"
+  \printf "trapped TERM\n"
   cmd_quit $IDLE
 }
 
 cleanup_handler_exit (){
-  \printf "trapped EXIT"
+  \printf "trapped EXIT\n"
   cmd_quit $IDLE
 }
 
 idle_handler (){
-  \printf "trapped TIMEOUT"
+  \printf "trapped TIMEOUT\n"
   cmd_quit TIMEOUT
+}
+
+cleanup_handler_sighup (){
+  \printf "trapped SIGHUP\n"
+  cmd_quit $IDLE
+}
+
+cleanup_handler_sigint (){
+  \printf "trapped SIGINT\n"
+  cmd_quit $IDLE
+}
+
+cleanup_handler_sigterm (){
+  \printf "trapped SIGTERM\n"
+  cmd_quit $IDLE
 }
 
 idle_checker () {
