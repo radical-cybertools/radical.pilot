@@ -76,15 +76,29 @@ EXIT_VAL=1
 # idle_checker is running in the background, and will terminate the wrapper
 # shell if it is idle for longer than TIMEOUT seconds
 #
-\trap cleanup_handler QUIT TERM EXIT
+\trap cleanup_handler_quit QUIT
+\trap cleanup_handler_term TERM
+\trap cleanup_handler_exit EXIT
 # \trap idle_handler ALRM
 \trap '' ALRM
 
-cleanup_handler (){
+cleanup_handler_quit (){
+  \printf "trapped QUIT"
+  cmd_quit $IDLE
+}
+
+cleanup_handler_term (){
+  \printf "trapped TERM"
+  cmd_quit $IDLE
+}
+
+cleanup_handler_exit (){
+  \printf "trapped EXIT"
   cmd_quit $IDLE
 }
 
 idle_handler (){
+  \printf "trapped TIMEOUT"
   cmd_quit TIMEOUT
 }
 
@@ -747,6 +761,8 @@ cmd_quit () {
   \stty echo    >/dev/null 2>&1
   \stty echonl  >/dev/null 2>&1
 
+  \printf "cmd_quit called ($EXIT_VAL)"
+
   exit $EXIT_VAL
 }
 
@@ -795,9 +811,9 @@ listen() {
                  BULK_EXITVAL="0"
                  ;;
       BULK_RUN ) IN_BULK=""
-                 \printf "BULK_EVAL\n" >> "$BASE/bulk.$$"
+                 \printf "BULK_EVAL\n"  >> "$BASE/bulk.$$"
                  ;;
-      *        ) \echo   "$CMD $ARGS"  >> "$BASE/bulk.$$"
+      *        ) \printf "$CMD $ARGS\n" >> "$BASE/bulk.$$"
                  ;;
     esac
 
