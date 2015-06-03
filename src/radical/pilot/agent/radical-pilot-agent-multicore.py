@@ -854,8 +854,7 @@ class SchedulerContinuous(Scheduler):
 
         # TODO: single_node should be enforced for e.g. non-message passing
         #       tasks, but we don't have that info here.
-        # NOTE AM: why should non-messaging tasks be confined to one node?
-        if cores_requested < self._lrms.cores_per_node:
+        if cores_requested <= self._lrms.cores_per_node:
             single_node = True
         else:
             single_node = False
@@ -5501,7 +5500,7 @@ def main():
 
     if args : parser.error("Unused arguments '%s'" % args)
 
-    if not options.cores                : parser.error("Missing number of cores (-c)")
+    if not options.cores                : parser.error("Missing or zero number of cores (-c)")
     if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
     if not options.task_launch_method   : parser.error("Missing unit launch method (-j)")
     if not options.mpi_launch_method    : parser.error("Missing mpi launch method (-k)")
@@ -5511,7 +5510,7 @@ def main():
     if not options.spawner              : parser.error("Missing agent spawner (-o)")
     if not options.pilot_id             : parser.error("Missing pilot id (-p)")
     if not options.agent_scheduler      : parser.error("Missing agent scheduler (-q)")
-    if not options.runtime              : parser.error("Missing agent runtime (-r)")
+    if not options.runtime              : parser.error("Missing or zero agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
     rpu.prof('start', uid=options.pilot_id)
