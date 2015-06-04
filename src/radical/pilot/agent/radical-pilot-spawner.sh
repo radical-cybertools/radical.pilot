@@ -80,7 +80,7 @@ EXIT_VAL=1
 \trap cleanup_handler_term TERM
 \trap cleanup_handler_exit EXIT
 # \trap idle_handler ALRM
-\trap '' ALRM
+#\trap '' ALRM
 
 \trap cleanup_handler_sighup  HUP
 \trap cleanup_handler_sigint  INT
@@ -131,7 +131,7 @@ idle_checker () {
 
     if test -e "$BASE/quit.$ppid" 
     then
-      \rm   -f  "$BASE/quit.$ppid" 
+      \rm   -f  "$BASE/quit.$ppid"
       EXIT_VAL=0
       exit 0
     fi
@@ -139,7 +139,7 @@ idle_checker () {
     if test -e "$BASE/idle.$ppid"
     then
       /bin/kill -s ALRM $ppid >/dev/null 2>&1
-      \rm   -f  "$BASE/idle.$ppid" 
+      \rm   -f  "$BASE/idle.$ppid"
       exit 0
     fi
 
@@ -807,8 +807,8 @@ listen() {
   fi
 
   # make sure we get killed when idle
-  ( idle_checker $$ 1>/dev/null 2>/dev/null 3</dev/null & ) &
-  IDLE=$!
+  #( idle_checker $$ 1>/dev/null 2>/dev/null 3</dev/null & ) &
+  #IDLE=$!
 
   # create fifo to communicate with the monitors
   \rm -f  "$BASE/fifo"
