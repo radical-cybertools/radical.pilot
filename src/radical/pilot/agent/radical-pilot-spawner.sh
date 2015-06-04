@@ -82,9 +82,9 @@ EXIT_VAL=1
 # \trap idle_handler ALRM
 \trap '' ALRM
 
-\trap cleanup_handler_sighup  SIGHUP
-\trap cleanup_handler_sigint  SIGINT
-\trap cleanup_handler_sigterm SIGTERM
+\trap cleanup_handler_sighup  HUP
+\trap cleanup_handler_sigint  INT
+\trap cleanup_handler_sigterm TERM
 
 cleanup_handler_quit (){
   \printf "trapped QUIT\n"
@@ -927,9 +927,6 @@ listen() {
 # The first arg to wrapper.sh is the id of the spawning shell, which we need to
 # report, if given
 #
-\stty -echo   2> /dev/null
-\stty -echonl 2> /dev/null
-
 # confirm existence
 \printf "PID: $$\n"
 
@@ -938,6 +935,14 @@ if test "$PURGE_ON_START" = "True"
 then
   cmd_purge
   cmd_purge_tmps
+fi
+
+# disable stty echo to simplify output parsing.  Leave it on though if
+# explicitly requested (mostly for interactive debugging)
+if test -z "$ENABLE_STTY_ECHO"
+then
+  \stty -echo   2> /dev/null
+  \stty -echonl 2> /dev/null
 fi
 
 listen
