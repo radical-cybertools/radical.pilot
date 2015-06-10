@@ -722,9 +722,14 @@ virtenv_create()
     # activate the virtualenv
     virtenv_activate "$virtenv"
 
-  # run_cmd "Downgrade pip to 1.2.1" \
-  #         "easy_install pip==1.2.1" \
-  #      || echo "Couldn't downgrade pip! Using default version (if it exists)"
+    # make sure we have pip
+    PIP=`which pip`
+    if test -z "$PIP"
+    then
+        run_cmd "install pip" \
+                "easy_install pip" \
+             || echo "Couldn't install pip! Uh oh...."
+    fi
 
     # NOTE: setuptools 15.0 (which for some reason is the next release afer
     #       0.6c11) breaks on BlueWaters, and breaks badly (install works, but
