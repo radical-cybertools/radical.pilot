@@ -231,6 +231,7 @@ def get_session_frames (db, sids, cachedir=None) :
                 'started'              : started,
                 'finished'             : finished,
                 'cores'                : description.get ('cores'),
+                'slots'                : unit.get ('slots'),
                 NEW                    : None, 
                 UNSCHEDULED            : None, 
                 PENDING_INPUT_STAGING  : None, 

@@ -187,6 +187,57 @@ unlock()
 
 
 # ------------------------------------------------------------------------------
+#
+# after installing and updating pip, and after activating a VE, we want to make
+# sure we use the correct python and pip executables.  This rehash sets $PIP and
+# $PYTHON to the respective values.  Those variables should be used throughout
+# the code, to avoid any ambiguity due to $PATH, aliases and shell functions.
+#
+# The only argument is optional, and can be used to pin a specific python
+# executable.
+#
+rehash()
+{
+    explicit_python="$1"
+
+    # If PYTHON was not set as an argument, detect it here.
+    # we need to do this again after the virtenv is loaded
+    if test -z "$explicit_python"
+    then
+        PYTHON=`which python`
+    else
+        PYTHON="$explicit_python"
+    fi
+    
+    # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
+    #       commands (It means that the pip cacert [or the system's, dunno] 
+    #       is not up to date).  Easy_install seems to use a different access 
+    #       channel for some reason, so does not need the cert bundle.
+    #       see https://github.com/pypa/pip/issues/2130
+    #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
+    if test -f 'cacert.pem.gz'
+    then
+        gunzip cacert.pem.gz
+    fi
+
+    if test -f 'cacert.pem'
+    then
+        PIP="`which pip` --cert cacert.pem"
+    else
+        PIP="`which pip`"
+    fi
+
+    # NOTE: some resources define a function pip() to implement the same cacert 
+    #       fix we do above.  On some machines, that is broken (hello archer), 
+    #       thus we undefine that function here.
+    unset -f pip
+    
+    echo "PYTHON: $PYTHON"
+    echo "PIP   : $PIP"
+}
+
+
+# ------------------------------------------------------------------------------
 # contains(string, substring)
 #
 # Returns 0 if the specified string contains the specified substring,
@@ -541,44 +592,18 @@ virtenv_setup()
 #
 virtenv_activate()
 {
+    virtenv="$1"
+
     if test "$VIRTENV_IS_ACTIVATED" = "TRUE"
     then
         return
     fi
 
-    . "$VIRTENV/bin/activate"
+    . "$virtenv/bin/activate"
     VIRTENV_IS_ACTIVATED=TRUE
 
     # make sure we use the new python binary
-    PYTHON=`which python`
-    
-    # also make sure we use pip from the virtenv
-    # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
-    #       commands (It means that the pip cacert [or the system's, dunno] 
-    #       is not up to date).  Easy_install seems to use a different access 
-    #       channel for some reason, so does not need the cert bundle.
-    #       see https://github.com/pypa/pip/issues/2130
-    #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
-    if test -f 'cacert.pem.gz'
-    then
-        gunzip cacert.pem.gz
-        PIP="`which pip` --cert cacert.pem"
-    else
-        PIP="`which pip`"
-    fi
-    # NOTE: some resources define a function pip() to implement the same cacert 
-    #       fix we do above.  On some machines, that is broken (hello archer), 
-    #       thus we undefine that function here.  To be on the save side, we 
-    #       also undefine aliases
-    unalias  pip
-    unset -f pip
-    unset    pip
-
-    echo "PYTHON: $PYTHON"
-    echo "PIP   : $PIP"
-    alias | grep pip
-    set   | grep pip
-
+    rehash
 
   # # NOTE: calling radicalpilot-version does not work here -- depending on the
   # #       system settings, python setup it may not be found even if the 
@@ -590,7 +615,7 @@ virtenv_activate()
   #     SYSTEM_RP='TRUE'
   # fi
 
-    prefix="$VIRTENV/rp_install"
+    prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
     PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
@@ -629,7 +654,7 @@ virtenv_activate()
     # we can now derive the pythonpath into the rp_install portion by replacing
     # the leading path elements.  The same mechanism is used later on
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
-    RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$VIRTENV/rp_install|"`
+    RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
@@ -640,7 +665,7 @@ virtenv_activate()
     export PYTHONPATH
 
     echo "activated virtenv"
-    echo "VIRTENV      : $VIRTENV"
+    echo "VIRTENV      : $virtenv"
     echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
     echo "RP_MOD_PREFIX: $RP_MOD_PREFIX"
     echo "PYTHONPATH   : $PYTHONPATH"
@@ -710,6 +735,7 @@ virtenv_create()
             "$PIP install --upgrade setuptools==0.6c11" \
          || echo "Couldn't update setuptools -- using default version"
 
+
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip
     #       developers discuss if those options will get un-deprecated again,
     #       fact is that there are released pip versions around which do not 
@@ -719,26 +745,8 @@ virtenv_create()
             "$PIP install --upgrade pip==1.4.1" \
          || echo "Couldn't update pip -- using default version"
 
-    # make sure the new pip version is used
-    if test -f 'cacert.pem.gz'
-    then
-        gunzip cacert.pem.gz
-        PIP="`which pip` --cert cacert.pem"
-    else
-        PIP="`which pip`"
-    fi
-    # NOTE: some resources define a function pip() to implement the same cacert 
-    #       fix we do above.  On some machines, that is broken (hello archer), 
-    #       thus we undefine that function here.  To be on the save side, we 
-    #       also undefine aliases
-    unalias  pip
-    unset -f pip
-    unset    pip
-    
-    echo "PYTHON: $PYTHON"
-    echo "PIP   : $PIP"
-    alias | grep pip
-    set   | grep pip
+    # make sure the new pip version is used (but keep the python executable)
+    rehash "$PYTHON"
 
 
     # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
@@ -1131,12 +1139,15 @@ while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
     esac
 done
 
-# TODO: By now the pre_process rules are already performed.
-#       We should split the parsing and the execution of those.
-#       "bootstrap start" is here so that $PILOT_ID is known.
+# FIXME: By now the pre_process rules are already performed.
+#        We should split the parsing and the execution of those.
+#        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-echo "time,component,uid,event,message" > $PROFILE_LOG
-profile_event 'bootstrap start'
+if ! test -z "$RADICAL_PILOT_PROFILE"
+then
+    echo "time,component,uid,event,message" > $PROFILE_LOG
+    profile_event 'bootstrap start'
+fi
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
 #       report the absolute representation of it, and thus report a different
@@ -1209,38 +1220,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
 
 fi
 
-# If PYTHON was not set as an argument, detect it here.
-# we need to do this again after the virtenv is loaded
-if [[ -z "$PYTHON" ]]
-then
-    PYTHON=`which python`
-fi
-
-# NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
-#       commands (It means that the pip cacert [or the system's, dunno] 
-#       is not up to date).  Easy_install seems to use a different access 
-#       channel for some reason, so does not need the cert bundle.
-#       see https://github.com/pypa/pip/issues/2130
-#       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
-if test -f 'cacert.pem.gz'
-then
-    gunzip cacert.pem.gz
-    PIP="`which pip` --cert cacert.pem"
-else
-    PIP="`which pip`"
-fi
-# NOTE: some resources define a function pip() to implement the same cacert 
-#       fix we do above.  On some machines, that is broken (hello archer), 
-#       thus we undefine that function here.  To be on the save side, we 
-#       also undefine aliases
-unalias  pip
-unset -f pip
-unset    pip
-
-echo "PYTHON: $PYTHON"
-echo "PIP   : $PIP"
-alias | grep pip
-set   | grep pip
+rehash "$PYTHON"
 
 # ready to setup the virtenv
 virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"

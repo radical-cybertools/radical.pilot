@@ -85,16 +85,6 @@ _EVENT_ENCODING = {
 
 # ------------------------------------------------------------------------------
 #
-def my_round (x, base=5) :
-
-    # thanks to 
-    # http://stackoverflow.com/questions/2272149/round-to-5-or-other-number-in-python
-
-    return int(base * round(float(x) / base))
-
-
-# ------------------------------------------------------------------------------
-#
 def usage (msg=None, noexit=False) :
 
     if  msg :
@@ -377,10 +367,10 @@ def stat_session (db, session, cachedir) :
 
     stats      = get_stats (docs, events, slothists)
 
-    session_df, pilot_df, unit_df = rpu.get_session_frames (db, session, cachedir)
-
-    print pilot_df
-    sys.exit ()
+  # session_df, pilot_df, unit_df = rpu.get_session_frames (db, session, cachedir)
+  #
+  # print unit_df
+  # sys.exit ()
 
     t_x_start  = None   # first unit started executing
     t_y_start  = None   # last  unit started executing

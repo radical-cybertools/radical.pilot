@@ -50,7 +50,7 @@
         "forward_tunnel_endpoint"     : "BIND_ADDRESS",
         "tunnel_bind_device"          : "ipogif0",
         "bootstrapper"                : "default_bootstrapper.sh",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
