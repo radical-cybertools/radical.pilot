@@ -3280,7 +3280,7 @@ class ExecWorker(COMPONENT_TYPE):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, lrms, scheduler,
+    def __init__(self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue, 
                  schedule_queue, pilot_id, session_id):
@@ -3294,7 +3294,6 @@ class ExecWorker(COMPONENT_TYPE):
         self._config           = config
         self._log              = logger
         self._agent            = agent
-        self._lrms             = lrms
         self._scheduler        = scheduler
         self._task_launcher    = task_launcher
         self._mpi_launcher     = mpi_launcher
@@ -3314,7 +3313,7 @@ class ExecWorker(COMPONENT_TYPE):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, config, logger, spawner, agent, lrms, scheduler,
+    def create(cls, name, config, logger, spawner, agent, scheduler,
                task_launcher, mpi_launcher, command_queue,
                execution_queue, update_queue, schedule_queue, 
                stageout_queue, pilot_id, session_id):
@@ -3329,7 +3328,7 @@ class ExecWorker(COMPONENT_TYPE):
                 SPAWNER_NAME_SHELL : ExecWorker_SHELL
             }[spawner]
 
-            impl = implementation(name, config, logger, agent, lrms, scheduler,
+            impl = implementation(name, config, logger, agent, scheduler,
                                   task_launcher, mpi_launcher, command_queue,
                                   execution_queue, stageout_queue, update_queue, 
                                   schedule_queue, pilot_id, session_id)
@@ -3382,7 +3381,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, lrms, scheduler,
+    def __init__(self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue, 
                  schedule_queue, pilot_id, session_id):
@@ -3395,7 +3394,7 @@ class ExecWorker_POPEN (ExecWorker) :
         self._cu_environment = self._populate_cu_environment()
 
 
-        ExecWorker.__init__ (self, name, config, logger, agent, lrms, scheduler,
+        ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue, 
                  schedule_queue, pilot_id, session_id)
@@ -3804,12 +3803,14 @@ class ExecWorker_SHELL(ExecWorker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, lrms, scheduler,
+    def __init__(self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue,
                  schedule_queue, pilot_id, session_id):
 
-        ExecWorker.__init__ (self, name, config, logger, agent, lrms, scheduler,
+        rpu.prof('ExecWorker init')
+
+        ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue,
                  schedule_queue, pilot_id, session_id)
@@ -5108,7 +5109,6 @@ class Agent(object):
                 spawner         = spawner,
                 logger          = self._log,
                 agent           = self,
-                lrms            = self._lrms,
                 scheduler       = self._scheduler,
                 task_launcher   = self._task_launcher,
                 mpi_launcher    = self._mpi_launcher,
