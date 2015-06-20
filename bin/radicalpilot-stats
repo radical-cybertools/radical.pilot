@@ -459,6 +459,7 @@ def prof_session(db, sessions, cachedir, profdir):
             print "Copying '%s' to '%s'." % (src, dst)
             prof_file = saga.filesystem.File(src)
             prof_file.copy(dst)
+            prof_file.close()
 
         print ""
 
