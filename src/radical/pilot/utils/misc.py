@@ -107,19 +107,28 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 def blowup(config, cus, component, logger=None):
     # for each cu in cu_list, add 'factor' clones just like it, just with
     # a different ID (<id>.clone_001)
+    #
+    # This method also *drops* clones as needed!
+    #
+    # return value: [list of original and expanded CUs, list of dropped CUs]
 
     # TODO: I dont like it that there is non blow-up semantics in the blow-up function.
     # Probably want to put the conditional somewhere else.
     if not isinstance (cus, list) :
         cus = [cus]
 
+
     if not profile_rp:
+        prof ("debug", msg="blowup disabled")
         return cus
 
     factor = config['blowup_factor'].get (component, 1)
     drop   = config['drop_clones']  .get (component, 1)
 
-    ret = list()
+    prof ("debug", msg="%s drops with %s" % (component, drop))
+
+    cloned  = list()
+    dropped = list()
 
     for cu in cus :
 
@@ -129,11 +138,13 @@ def blowup(config, cus, component, logger=None):
             # drop clones --> drop matching uid's
             if '.clone_' in uid :
                 prof ('drop clone', msg=component, uid=uid)
+                dropped.append(cu)
                 continue
 
         if drop >= 2:
             # drop everything, even original units
             prof ('drop', msg=component, uid=uid)
+            dropped.append(cu)
             continue
 
         factor -= 1
@@ -148,15 +159,16 @@ def blowup(config, cus, component, logger=None):
                         cu_clone[key] = cu_clone[key].replace (uid, clone_id)
 
                 idx += 1
-                ret.append (cu_clone)
+                cloned.append(cu_clone)
                 prof('add clone', msg=component, uid=clone_id)
 
-        # append the original unit last, to  increase the likelyhood that
+        # append the original unit last, to increase the likelyhood that
         # application state only advances once all clone states have also
-        # advanced (they'll get pushed onto queues earlier)
-        ret.append (cu)
+        # advanced (they'll get pushed onto queues earlier).  This cannot be
+        # relied upon, obviously.
+        cloned.append(cu)
 
-    return ret
+    return cloned, dropped
 
 
 # ------------------------------------------------------------------------------

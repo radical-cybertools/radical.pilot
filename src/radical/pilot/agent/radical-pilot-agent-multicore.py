@@ -620,10 +620,13 @@ class Scheduler(threading.Thread):
         rpu.prof('schedule', msg="allocated", uid=cu['_id'], logger=self._log.warn)
         self._log.info (self.slot_status())
 
-        cu_list = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
+        cu_list, cu_dropped = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
         for _cu in cu_list :
             rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
             self._execution_queue.put(_cu)
+
+        # we need to free allocated cores for dropped CUs
+        self.unschedule(cu_dropped)
 
         return True
 
@@ -728,7 +731,7 @@ class Scheduler(threading.Thread):
                     cu['state'] = rp.ALLOCATING
 
 
-                    cu_list  = rpu.blowup(self._config, cu, SCHEDULER)
+                    cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
                     for _cu in cu_list:
 
                         # we got a new unit to schedule.  Either we can place it
@@ -3471,7 +3474,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
                 try:
 
-                    cu_list = rpu.blowup(self._config, cu, EXEC_WORKER)
+                    cu_list, _ = rpu.blowup(self._config, cu, EXEC_WORKER)
                     for _cu in cu_list:
 
                         if _cu['description']['mpi']:
@@ -3640,7 +3643,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution start")
 
-        cu_list = rpu.blowup(self._config, cu, WATCH_QUEUE)
+        cu_list, _ = rpu.blowup(self._config, cu, WATCH_QUEUE)
         for _cu in cu_list :
             rpu.prof('put', msg="ExecWorker to watcher (%s)" % _cu['state'], uid=_cu['_id'])
             self._watch_queue.put(_cu)
@@ -3695,7 +3698,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 for cu in cus :
                     
                     rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
-                    cu_list = rpu.blowup(self._config, cu, WATCHER)
+                    cu_list, _ = rpu.blowup(self._config, cu, WATCHER)
 
                     for _cu in cu_list :
                         self._cus_to_watch.append (_cu)
@@ -3788,7 +3791,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                                   state  = rp.STAGING_OUTPUT,
                                                   msg    = "unit execution completed")
 
-                    cu_list = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
+                    cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
                     for _cu in cu_list :
                         rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
                         self._stageout_queue.put(_cu)
@@ -3904,7 +3907,7 @@ class ExecWorker_SHELL(ExecWorker):
 
                 try:
 
-                    cu_list = rpu.blowup(self._config, cu, EXEC_WORKER)
+                    cu_list, _ = rpu.blowup(self._config, cu, EXEC_WORKER)
 
                     for _cu in cu_list :
 
@@ -4277,7 +4280,7 @@ class ExecWorker_SHELL(ExecWorker):
                                           state = rp.STAGING_OUTPUT,
                                           msg   = "unit execution completed")
 
-            cu_list = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
+            cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
 
             for _cu in cu_list :
                 rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
@@ -4398,7 +4401,7 @@ class UpdateWorker(threading.Thread):
                 else:
                     rpu.prof('get', msg="update_queue to UpdateWorker", uid=uid)
 
-                update_request_list = rpu.blowup(self._config, update_request, UPDATE_WORKER)
+                update_request_list, _ = rpu.blowup(self._config, update_request, UPDATE_WORKER)
 
                 for _update_request in update_request_list :
 
@@ -4493,7 +4496,7 @@ class StageinWorker(threading.Thread):
 
                 rpu.prof('get', msg="stagein_queue to StageinWorker (%s)" % cu['state'], uid=cu['_id'])
 
-                cu_list = rpu.blowup(self._config, cu, STAGEIN_WORKER)
+                cu_list, _ = rpu.blowup(self._config, cu, STAGEIN_WORKER)
                 for _cu in cu_list :
 
                     _cu['state'] = rp.STAGING_INPUT
@@ -4603,7 +4606,7 @@ class StageinWorker(threading.Thread):
                                                       state  = rp.ALLOCATING,
                                                       msg    = 'agent input staging done')
 
-                        _cu_list = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
+                        _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
                         for __cu in _cu_list :
                             rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
                             self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
@@ -4684,7 +4687,7 @@ class StageoutWorker(threading.Thread):
 
                 rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)" % cu['state'], uid=cu['_id'])
 
-                cu_list = rpu.blowup(self._config, cu, STAGEOUT_WORKER)
+                cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_WORKER)
                 for _cu in cu_list :
 
                     sandbox = os.path.join(self._workdir, '%s' % _cu['_id'])
@@ -5208,7 +5211,7 @@ class Agent(object):
         else:
             rpu.prof('put', msg="%s to update_queue" % src, uid=query_dict['_id'])
 
-        query_list = rpu.blowup(self._config, query_dict, UPDATE_QUEUE)
+        query_list, _ = rpu.blowup(self._config, query_dict, UPDATE_QUEUE)
 
         for _query_dict in query_list :
             self._update_queue.put({'_id'    : _query_dict['_id'],
@@ -5396,7 +5399,7 @@ class Agent(object):
 
             rpu.prof('get', msg="MongoDB to Agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
 
-            _cu_list = rpu.blowup(self._config, cu, AGENT)
+            _cu_list, _ = rpu.blowup(self._config, cu, AGENT)
             for _cu in _cu_list :
 
                 try:
@@ -5434,7 +5437,7 @@ class Agent(object):
                                                state  = rp.STAGING_INPUT,
                                                msg    = 'unit needs input staging')
 
-                        _cu_list = rpu.blowup(self._config, _cu, STAGEIN_QUEUE)
+                        _cu_list, _ = rpu.blowup(self._config, _cu, STAGEIN_QUEUE)
                         for __cu in _cu_list :
                             rpu.prof('put', msg="Agent to stagein_queue (%s)" % __cu['state'], uid=__cu['_id'])
                             self._stagein_queue.put(__cu)
@@ -5446,7 +5449,7 @@ class Agent(object):
                                                state  = rp.ALLOCATING,
                                                msg    = 'unit needs no input staging')
 
-                        _cu_list = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
+                        _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
                         for __cu in _cu_list :
                             rpu.prof('put', msg="Agent to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
                             self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
