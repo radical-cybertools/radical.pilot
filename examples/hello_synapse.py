@@ -169,7 +169,7 @@ if __name__ == "__main__":
         for n in range(1,UNITS+1):
             cud = rp.ComputeUnitDescription()
             cud.pre_exec       = [". $HOME/ve/bin/activate"]
-            cud.executable     = "radical-synapse-emulate"
+            cud.executable     = "radical-synapse-sample"
             cud.arguments      = ("-m sample -f %s -s %d" % (FLOPS, n)).split()
             cud.cores          = n
             cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
