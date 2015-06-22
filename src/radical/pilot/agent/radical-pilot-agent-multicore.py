@@ -3867,14 +3867,18 @@ class ExecWorker_SHELL(ExecWorker):
         rec_makedir(self.workdir)
 
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /tmp/%s" \
+                           % (os.path.dirname (rp.__file__), self.name))
+                         # ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                         # % (os.path.dirname (rp.__file__), self.workdir))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /tmp/%s" \
+                           % (os.path.dirname (rp.__file__), self.name))
+                         # ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                         # % (os.path.dirname (rp.__file__), self.workdir))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
