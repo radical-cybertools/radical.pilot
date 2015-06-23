@@ -162,7 +162,7 @@ def blowup(config, cus, component, logger=None):
 
     if not profile_rp:
         prof ("debug", msg="blowup disabled")
-        return cus
+        return cus, []
 
     factor = config['blowup_factor'].get (component, 1)
     drop   = config['drop_clones']  .get (component, 1)
