@@ -11,6 +11,7 @@ __license__   = 'MIT'
 import re
 import os
 import sys
+import shutil
 import subprocess as sp
 
 from setuptools import setup, Command, find_packages
@@ -86,17 +87,18 @@ def get_version (mod_root):
         sdist_name = sdist_name.replace ('/', '-')
         sdist_name = sdist_name.replace ('@', '-')
         sdist_name = sdist_name.replace ('#', '-')
-        if '--record'  in sys.argv or 'bdist_egg' in sys.argv :   
+        sdist_name = sdist_name.replace ('_', '-')
+        if '--record'  in sys.argv or 'bdist_egg' in sys.argv:
            # pip install stage 2      easy_install stage 1
            # NOTE: pip install will untar the sdist in a tmp tree.  In that tmp
            # tree, we won't be able to derive git version tags -- so we pack the
            # formerly derived version as ./VERSION
-            os.system ("mv VERSION VERSION.bak")        # backup version
-            os.system ("cp %s/VERSION VERSION" % path)  # use full version instead
-            os.system ("python setup.py sdist")         # build sdist
-            os.system ("cp 'dist/%s' '%s/%s'" % \
-                    (sdist_name, mod_root, sdist_name)) # copy into tree
-            os.system ("mv VERSION.bak VERSION")        # restore version
+            shutil.move ("VERSION", "VERSION.bak")           # backup version
+            shutil.copy ("%s/VERSION" % path, "VERSION")     # use full version instead
+            os.system   ("python setup.py sdist")            # build sdist
+            shutil.copy ('dist/%s' % sdist_name,
+                         '%s/%s'   % (mod_root, sdist_name)) # copy into tree
+            shutil.move ("VERSION.bak", "VERSION")           # restore version
 
         print 'creating %s/SDIST' % path
         with open (path + "/SDIST", "w") as f : f.write (sdist_name + "\n")
