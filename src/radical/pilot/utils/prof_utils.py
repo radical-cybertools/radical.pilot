@@ -2,7 +2,7 @@
 import os
 
 # "label", "component", "event", "message"
-_prof_entries = [
+prof_entries = [
     ('a_get_u',         'MainThread',       'get', 'MongoDB to Agent (PendingExecution)'),
     ('a_build_u',       'MainThread',       'Agent get unit meta', ''),
     ('a_mkdir_u',       'MainThread',       'Agent get unit mkdir', ''),
@@ -67,9 +67,15 @@ def _tup2ts(df, uid, tup):
 def _prof2df(rawdf, units): 
     
     import pandas as pd
+
+    print units.keys()
     
-    indices = [unit for unit in units['real']] 
-    info    = [{t[0]:_tup2ts(rawdf, unit, t) for t in _prof_entries} for unit in units['real']]
+    indices = [unit for unit in units['all']] 
+    print "--"
+    print len(indices)
+    info    = [{t[0]:_tup2ts(rawdf, unit, t) for t in prof_entries} for unit in units['all']]
+    print info
+    print "--"
     
     # TODO: Also do this for cloned units
 
@@ -122,12 +128,19 @@ def get_prof_frames(sid, pids, profdir):
         prof_file = os.path.join(profdir, sid + '-' + pid + '.prof')
         prof_data = pd.read_csv(prof_file)
 
+        print "----"
         print prof_file
-      # print raw_prof_data
+        print len(prof_file)
+        print prof_data
+        return []
 
         units = _prof2uids(prof_data)
+        print len(units['all']),
+        print len(units['real']),
+        print len(units['cloned'])
         df    = _prof2df(prof_data, units)
 
+        print "----"
         frames[pid] = df
 
     return frames
