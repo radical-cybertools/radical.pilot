@@ -347,7 +347,7 @@ The NERSC Edison Cray XC30 in Cluster Compatibility Mode (https://www.nersc.gov/
 
 * **Resource label**      : ``nersc.edison_ccm``
 * **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
-* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Note**            : For CCM you need to use special ccm_ queues.
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : ccm_queue``
@@ -363,7 +363,7 @@ The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/ed
 
 * **Resource label**      : ``nersc.edison``
 * **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
-* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Note**            : Only one CU per node in APRUN mode
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : regular``
@@ -379,7 +379,7 @@ The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hop
 
 * **Resource label**      : ``nersc.hopper``
 * **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
-* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Note**            : Only one CU per node in APRUN mode
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : regular``
@@ -395,7 +395,7 @@ The NERSC Hopper Cray XE6 in Cluster Compatibility Mode (https://www.nersc.gov/u
 
 * **Resource label**      : ``nersc.hopper_ccm``
 * **Raw config**          : :download:`nersc.json <../../src/radical/pilot/configs/nersc.json>`
-* **Note**            : In a fresh virtualenv, run 'easy_install pip==1.2.1' to avoid ssl errors.
+* **Note**            : For CCM you need to use special ccm_ queues.
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : ccm_queue``
@@ -523,5 +523,5 @@ The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facilit
  * ``sandbox       : $MEMBERWORK/`groups | cut -d' ' -f2```
  * ``access_schema : ssh``
 
-* **Available schemas**   : ``ssh``
+* **Available schemas**   : ``ssh, local``
 

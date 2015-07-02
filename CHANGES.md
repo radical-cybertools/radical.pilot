@@ -4,6 +4,35 @@
   - For a list of open issues and known problems, see
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
+0.33 Release                                               2015-05-27
+--------------------------------------------------------------------------------
+
+  - Hotfix release for off-by-one error (#621)
+
+
+0.32 Release                                               2015-05-18
+--------------------------------------------------------------------------------
+
+  - Hotfix release for MPIRUN_RSH on Stampede (#572).
+
+
+0.31 Release                                               2015-04-30
+--------------------------------------------------------------------------------
+
+  - version bump to trigger pypi release update
+
+
+0.30 Release                                               2015-04-29
+--------------------------------------------------------------------------------
+
+  - hotfix to handle broken pip/bash combo on archer
+
+
+0.29 Release                                               2015-04-28
+--------------------------------------------------------------------------------
+
+  - hotfix to handle stale ve locks
+
 
 0.28 Release                                               2015-04-16
 --------------------------------------------------------------------------------

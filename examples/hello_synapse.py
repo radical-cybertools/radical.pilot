@@ -9,62 +9,68 @@ import radical.utils as ru
 
 dh = ru.DebugHelper ()
 
-CNT      =     0
-RUNTIME  =    10
-SLEEP    =     1
-CORES    =    26
-UNITS    =    50
-SCHED    = rp.SCHED_DIRECT_SUBMISSION
+CNT       = 0
 
-RESOURCE = 'local.localhost'
-PROJECT  = None
-QUEUE    = None
-SCHEMA   = None
+FLOPS     = 10 * 1000 * 1000 * 1000
+BYTES_IN  = 10 * 1000 * 1000  # not yet supported
+BYTES_OUT = 10 * 1000 * 1000  # not yet supported
+BYTES_MEM = 10 * 1000 * 1000  # not yet supported
+
+RUNTIME   = 10
+UNITS     = 10
+CORES     = 12
+
+SCHED     = rp.SCHED_DIRECT_SUBMISSION
+
+RESOURCE  = 'local.localhost'
+PROJECT   = None
+QUEUE     = None
+SCHEMA    = None
   
-# RESOURCE = 'home.test'
-# PROJECT  = None
-# QUEUE    = None
-# SCHEMA   = 'ssh'
+# RESOURCE  = 'home.test'
+# PROJECT   = None
+# QUEUE     = None
+# SCHEMA    = 'ssh'
 
-# RESOURCE = 'epsrc.archer'
-# PROJECT  = 'e290'
-# QUEUE    = 'short'
-# SCHEMA   = None
+# RESOURCE  = 'epsrc.archer'
+# PROJECT   = 'e290'
+# QUEUE     = 'short'
+# SCHEMA    = None
 
-# RESOURCE = 'lrz.supermuc'
-# PROJECT  = 'e290'
-# QUEUE    = 'short'
-# SCHEMA   = None
+# RESOURCE  = 'lrz.supermuc'
+# PROJECT   = 'e290'
+# QUEUE     = 'short'
+# SCHEMA    = None
 
-# RESOURCE = 'xsede.stampede'
-# PROJECT  = 'TG-MCB090174' 
-# QUEUE    = 'development'
-# SCHEMA   = None
+# RESOURCE  = 'xsede.stampede'
+# PROJECT   = 'TG-MCB090174' 
+# QUEUE     = 'development'
+# SCHEMA    = None
 
-# RESOURCE = 'xsede.gordon'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = None
+# RESOURCE  = 'xsede.gordon'
+# PROJECT   = None
+# QUEUE     = 'debug'
+# SCHEMA    = None
 
-# RESOURCE = 'xsede.blacklight'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = 'gsissh'
+# RESOURCE  = 'xsede.blacklight'
+# PROJECT   = None
+# QUEUE     = 'debug'
+# SCHEMA    = 'gsissh'
 
-# RESOURCE = 'xsede.trestles'
-# PROJECT  = 'TG-MCB090174' 
-# QUEUE    = 'shared'
-# SCHEMA   = None
+# RESOURCE  = 'xsede.trestles'
+# PROJECT   = 'TG-MCB090174' 
+# QUEUE     = 'shared'
+# SCHEMA    = None
 
-# RESOURCE = 'futuregrid.india'
-# PROJECT  = None
-# QUEUE    = None
-# SCHEMA   = None
+# RESOURCE  = 'futuregrid.india'
+# PROJECT   = None
+# QUEUE     = None
+# SCHEMA    = None
   
-# RESOURCE = 'nersc.hopper'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = 'ssh'
+# RESOURCE  = 'nersc.hopper'
+# PROJECT   = None
+# QUEUE     = 'debug'
+# SCHEMA    = 'ssh'
 
 #------------------------------------------------------------------------------
 #
@@ -160,11 +166,12 @@ if __name__ == "__main__":
         output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
 
         cuds = list()
-        for unit_count in range(0, UNITS):
+        for n in range(1,UNITS+1):
             cud = rp.ComputeUnitDescription()
-            cud.executable     = "wc"
-            cud.arguments      = ["f1", "f2"]
-            cud.cores          = 1
+            cud.pre_exec       = [". $HOME/ve/bin/activate"]
+            cud.executable     = "radical-synapse-sample"
+            cud.arguments      = ("-m sample -f %s -s %d" % (FLOPS, n)).split()
+            cud.cores          = n
             cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
             cud.output_staging = [output_sd_umgr, output_sd_agent]
             cuds.append(cud)
@@ -176,6 +183,11 @@ if __name__ == "__main__":
         for cu in units:
             print "* Task %s state %s, exit code: %s, started: %s, finished: %s" \
                 % (cu.uid, cu.state, cu.exit_code, cu.start_time, cu.stop_time)
+            print "out:"
+            print cu.stdout
+            print "err:"
+            print cu.stderr
+            print
 
       # os.system ("radicalpilot-stats -m stat,plot -s %s > %s.stat" % (session.uid, session_name))
 

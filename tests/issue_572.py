@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2015, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
@@ -12,60 +12,16 @@ dh = ru.DebugHelper ()
 CNT      =     0
 RUNTIME  =    10
 SLEEP    =     1
-CORES    =    26
-UNITS    =    50
+CORES    =    16
+UNITS    =    1
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
-RESOURCE = 'local.localhost'
-PROJECT  = None
-QUEUE    = None
-SCHEMA   = None
+RESOURCE = 'xsede.stampede'
+PROJECT  = 'TG-MCB090174'
+QUEUE    = 'development'
+SCHEMA   = 'ssh'
   
-# RESOURCE = 'home.test'
-# PROJECT  = None
-# QUEUE    = None
-# SCHEMA   = 'ssh'
-
-# RESOURCE = 'epsrc.archer'
-# PROJECT  = 'e290'
-# QUEUE    = 'short'
-# SCHEMA   = None
-
-# RESOURCE = 'lrz.supermuc'
-# PROJECT  = 'e290'
-# QUEUE    = 'short'
-# SCHEMA   = None
-
-# RESOURCE = 'xsede.stampede'
-# PROJECT  = 'TG-MCB090174' 
-# QUEUE    = 'development'
-# SCHEMA   = None
-
-# RESOURCE = 'xsede.gordon'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = None
-
-# RESOURCE = 'xsede.blacklight'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = 'gsissh'
-
-# RESOURCE = 'xsede.trestles'
-# PROJECT  = 'TG-MCB090174' 
-# QUEUE    = 'shared'
-# SCHEMA   = None
-
-# RESOURCE = 'futuregrid.india'
-# PROJECT  = None
-# QUEUE    = None
-# SCHEMA   = None
   
-# RESOURCE = 'nersc.hopper'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = 'ssh'
-
 #------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
@@ -142,31 +98,33 @@ if __name__ == "__main__":
 
         pilot = pmgr.submit_pilots(pdesc)
 
-        input_sd_pilot = {
-                'source': 'file:///etc/passwd',
-                'target': 'staging:///f1',
-                'action': rp.TRANSFER
-                }
-        pilot.stage_in (input_sd_pilot)
-
         umgr = rp.UnitManager(session=session, scheduler=SCHED)
         umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
         umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
         umgr.add_pilots(pilot)
 
-        input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
-        input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
-        output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
-        output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
-
         cuds = list()
         for unit_count in range(0, UNITS):
             cud = rp.ComputeUnitDescription()
-            cud.executable     = "wc"
-            cud.arguments      = ["f1", "f2"]
-            cud.cores          = 1
-            cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
-            cud.output_staging = [output_sd_umgr, output_sd_agent]
+            cud.pre_exec = [
+                'module load gromacs',
+                'echo 2 | trjconv -f tmp.gro -s tmp.gro -o tmpha.gro',
+                'module load -intel +intel/14.0.1.106',
+                'export PYTHONPATH=/home1/03036/jp43/.local/lib/python2.7/site-packages',
+                'module load python/2.7.6',
+                'export PATH=/home1/03036/jp43/.local/bin:$PATH',
+                'echo "Using mpirun_rsh: `which mpirun_rsh`"'
+            ]
+            cud.executable = "/opt/apps/intel14/mvapich2_2_0/python/2.7.6/lib/python2.7/site-packages/mpi4py/bin/python-mpi"
+            cud.arguments = ["lsdm.py", "-f", "config.ini", "-c",
+                "tmpha.gro", "-n" "neighbors.nn", "-w", "weight.w"]
+            cud.cores = 4
+            cud.mpi = True
+            cud.input_staging  = [
+                'issue_572_files/config.ini',
+                'issue_572_files/lsdm.py',
+                'issue_572_files/tmp.gro'
+            ]
             cuds.append(cud)
 
         units = umgr.submit_units(cuds)
@@ -176,9 +134,6 @@ if __name__ == "__main__":
         for cu in units:
             print "* Task %s state %s, exit code: %s, started: %s, finished: %s" \
                 % (cu.uid, cu.state, cu.exit_code, cu.start_time, cu.stop_time)
-
-      # os.system ("radicalpilot-stats -m stat,plot -s %s > %s.stat" % (session.uid, session_name))
-
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -207,4 +162,3 @@ if __name__ == "__main__":
 
 
 #-------------------------------------------------------------------------------
-

@@ -167,13 +167,14 @@ class Session (saga.Session, Object):
         for config_file in config_files:
 
             try :
+                logger.info("Load resource configurations from %s" % config_file)
                 rcs = ResourceConfig.from_file(config_file)
             except Exception as e :
                 logger.error ("skip config file %s: %s" % (config_file, e))
                 continue
 
             for rc in rcs:
-                logger.info("Loaded resource configurations for %s" % rc)
+                logger.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
         user_cfgs     = "%s/.radical/pilot/configs/*.json" % os.environ.get ('HOME')
@@ -260,7 +261,7 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
-    def close(self, cleanup=True, terminate=True, delete=None):
+    def close(self, cleanup=None, terminate=None, delete=None):
         """Closes the session.
 
         All subsequent attempts access objects attached to the session will 
@@ -284,11 +285,15 @@ class Session (saga.Session, Object):
             logger.error("Session object already closed.")
             return
 
+        # set defaults
+        if cleanup   == None: cleanup   = True
+        if terminate == None: terminate = True
+
         # we keep 'delete' for backward compatibility.  If it was set, and the
         # other flags (cleanup, terminate) are as defaulted (True), then delete
         # will supercede them.  Delete is considered deprecated though, and
         # we'll thus issue a warning.
-        if  delete != None:
+        if delete != None:
 
             if  cleanup == True and terminate == True :
                 cleanup   = delete

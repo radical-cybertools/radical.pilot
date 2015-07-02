@@ -34,8 +34,7 @@
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
-        "virtenv_mode"                : "update"
-
+        "virtenv_mode"                : "create"
     },
 
     "lonestar": {
