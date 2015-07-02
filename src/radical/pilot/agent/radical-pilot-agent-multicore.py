@@ -731,6 +731,7 @@ class Scheduler(threading.Thread):
                     cu['state'] = rp.ALLOCATING
 
 
+
                     cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
                     for _cu in cu_list:
 
