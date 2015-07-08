@@ -51,29 +51,83 @@ def get_experiment_frames(experiments, datadir=None):
 # ------------------------------------------------------------------------------
 #
 tmp = None
-def add_concurrency (frame, tgt, src, test_in, test_out):
-    # add a column 'tgt' which is a cumulative sum of conditionals of enother row.  
-    # 
-    # The purpose is the following: if a unit enters a component, the tgt row counter is 
-    # increased by 1, if the unit leaves the component, the counter is decreases by 1.
-    # For any time, the resulting row contains the number of units which is in the 
-    # component.  Or state.  Or whatever.
-    #
-    # The arguments are:
-    #   tgt: name of the new column
-    #   src: name of the column to check for condition
-    #   test_in:  list of conditions to increase the cumsum (if src.value in test_in )
-    #   test_out: list of conditions to decrease the cumsum (if src.value in test_out)
-    #
-    # Example:
-    # get_concurrency ('concurrently_running', 'state', ['Executing'], ['Done', 'Failed', 'Canceled']
-    # 
+def add_concurrency (frame, tgt, spec):
+    """
+    add a column 'tgt' which is a cumulative sum of conditionals of enother row.  
+    
+    The purpose is the following: if a unit enters a component, the tgt row counter is 
+    increased by 1, if the unit leaves the component, the counter is decreases by 1.
+    For any time, the resulting row contains the number of units which is in the 
+    component.  Or state.  Or whatever.
+    
+    The arguments are:
+        'tgt'  : name of the new column
+        'spec' : a set of filters to determine if a unit enters or leaves
+    
+    'spec' is expected to be a dict of the following format:
+    
+        spec = { 'in'  : [{'col1' : 'pat1', 
+                           'col2' : 'pat2'},
+                          ...],
+                 'out' : [{'col3' : 'pat3', 
+                           'col4' : 'pat4'},
+                          ...]
+               }
+    
+    where:
+        'in'    : filter set to determine the unit entering
+        'out'   : filter set to determine the unit leaving
+        'col'   : name of column for which filter is defined
+        'event' : event which correlates to entering/leaving
+        'msg'   : qualifier on the event, if event is not unique
+    
+    Example:
+        spec = {'in'  : [{'state' :'Executing'}],
+                'out' : [{'state' :'Done'},
+                         {'state' :'Failed'},
+                         {'state' :'Cancelled'}]
+               }
+        get_concurrency (df, 'concurrently_running', spec)
+    """
+    
+    import numpy
+
     # create a temporary row over which we can do the commulative sum
     # --------------------------------------------------------------------------
-    def _conc (x, xin, xout):
-        if   x in xin : return  1
-        elif x in xout: return -1
-        else          : return  0
+    def _conc (row, spec):
+
+        # row must match any filter dict in 'spec[in/out]' 
+        # for any filter dict it must match all col/pat pairs
+
+        # for each in filter
+        for f in spec['in']:
+            match = 1 
+            # for each col/val in that filter
+            for col, pat in f.iteritems():
+                if row[col] != pat:
+                    match = 0
+                    break
+            if match:
+                # one filter matched!
+              # print " + : %-20s : %.2f : %-20s : %s " % (row['uid'], row['time'], row['event'], row['message'])
+                return 1
+
+        # for each out filter
+        for f in spec['out']:
+            match = 1 
+            # for each col/val in that filter
+            for col, pat in f.iteritems():
+                if row[col] != pat:
+                    match = 0
+                    break
+            if match:
+                # one filter matched!
+              # print " - : %-20s : %.2f : %-20s : %s " % (row['uid'], row['time'], row['event'], row['message'])
+                return -1
+
+        # no filter matched
+      # print "   : %-20s : %.2f : %-20s : %s " % (row['uid'], row['time'], row['event'], row['message'])
+        return  0
     # --------------------------------------------------------------------------
 
     # we only want to later look at changes of the concurrency -- leading or trailing 
@@ -84,14 +138,80 @@ def add_concurrency (frame, tgt, src, test_in, test_out):
     # --------------------------------------------------------------------------
     def _time (x):
         global tmp
-        import numpy
         if     x != tmp: tmp = x
         else           : x   = numpy.NaN
         return x
+
+
     # --------------------------------------------------------------------------
-   
-    frame[tgt] = frame.apply(lambda row: _conc(row[src], test_in, test_out), axis=1).cumsum()
-    frame[tgt] = frame.apply(lambda row: _time(row[tgt]), axis=1)
+    # sanitize concurrency: negative values indicate incorrect event ordering,
+    # so we set the repesctive values to 0
+    # --------------------------------------------------------------------------
+    def _abs (x):
+        if x < 0:
+            return numpy.NaN
+        return x
+    # --------------------------------------------------------------------------
+    
+    frame[tgt] = frame.apply(lambda row: _conc(row, spec), axis=1).cumsum()
+    frame[tgt] = frame.apply(lambda row: _abs (row[tgt]),  axis=1)
+    frame[tgt] = frame.apply(lambda row: _time(row[tgt]),  axis=1)
+  # print frame[[tgt, 'time']]
+
+
+# ------------------------------------------------------------------------------
+#
+t0 = None
+def calibrate_frame(frame, spec):
+    """
+    move the time axis of a profiling frame so that t_0 is at the first event
+    matching the given 'spec'.  'spec' has the same format as described in
+    'add_concurrency' (list of dicts with col:pat filters)
+    """
+
+    # --------------------------------------------------------------------------
+    def _find_t0 (row, spec):
+
+        # row must match any filter dict in 'spec[in/out]' 
+        # for any filter dict it must match all col/pat pairs
+        global t0
+        if t0 is not None:
+            # already found t0
+            return
+
+        # for each col/val in that filter
+        for f in spec:
+            match = 1 
+            for col, pat in f.iteritems():
+                if row[col] != pat:
+                    match = 0
+                    break
+            if match:
+                # one filter matched!
+                t0 = row['time']
+                return
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    def _calibrate (row, t0):
+
+        if t0 is None:
+            # no t0...
+            return
+
+        return row['time'] - t0
+    # --------------------------------------------------------------------------
+
+    # we need to iterate twice over the frame: first to find t0, then to
+    # calibrate the time axis
+    global t0
+    t0 = None # no t0
+    frame.apply(lambda row: _find_t0  (row, spec), axis=1)
+
+    if t0 == None:
+        print "Can't recalibrate, no matching timestamp found"
+        return
+    frame['time'] = frame.apply(lambda row: _calibrate(row, t0  ), axis=1)
 
 
 # ------------------------------------------------------------------------------
@@ -123,7 +243,8 @@ def create_plot():
 
 # ------------------------------------------------------------------------------
 #
-def frame_plot (frames, axis, title=None, logx=False, logy=False, figdir=None):
+def frame_plot (frames, axis, title=None, logx=False, logy=False, 
+                legend=True, figdir=None):
     """
     plot the given axis from the give data frame.  We create a plot, and plot
     all frames given in the list.  The list is expected to contain [frame,label]
@@ -150,9 +271,16 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False, figdir=None):
     #       https://github.com/pydata/pandas/issues/9542
     labels = list()
     for frame, label in frames:
-        frame.dropna().plot(ax=plot, logx=logx, logy=logy, x=axis[0][0], y=axis[1][0], label=label)
-        labels.append(label)
-    plot.legend(labels=labels, loc='upper right', fontsize=14, frameon=True)
+        try:
+            frame.dropna().plot(ax=plot, logx=logx, logy=logy,
+                    x=axis[0][0], y=axis[1][0],
+                    drawstyle='steps',
+                    label=label, legend=False)
+        except Exception as e:
+            print "skipping frame '%s': '%s'" % (label, e)
+
+    if legend:
+        plot.legend(labels=labels, loc='upper right', fontsize=14, frameon=True)
 
     # set axis labels
     plot.set_xlabel(axis[0][1], fontsize=14)
