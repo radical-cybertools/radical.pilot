@@ -220,6 +220,12 @@ rehash()
         gunzip cacert.pem.gz
     fi
 
+    echo "Checking if yarn.gz exists"
+    if test -f 'yarn.gz'
+    then
+        gunzip -N yarn.gz
+    fi
+
     if test -f 'cacert.pem'
     then
         PIP="`which pip` --cert cacert.pem"

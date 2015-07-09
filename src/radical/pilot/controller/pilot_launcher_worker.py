@@ -530,6 +530,22 @@ class PilotLauncherWorker(threading.Thread):
                           cc_script.close()
 
 
+                        #-------------------------------------------------------
+                        # If the task launch method is YARN then the Java applications
+                        # must be uploaded to the remote machine and extracted.
+                        if task_launch_method == 'YARN':
+                          logger.debug("YARN is going to be used.")
+                          cc_path = os.path.abspath("%s/../bootstrapper/%s" \
+                                  % (mod_dir, 'yarn.gz'))
+
+                          cc_script_url = saga.Url("file://localhost/%s" % cc_path)
+                          cc_script_tgt = saga.Url("%s/yarn.gz"    % pilot_sandbox)
+
+                          cc_script = saga.filesystem.File(cc_script_url, session=self._session)
+                          cc_script.copy(cc_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
+                          cc_script.close()
+                          
+
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
                         # Not to be used by the faint of heart

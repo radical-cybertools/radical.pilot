@@ -304,6 +304,7 @@ LAUNCH_METHOD_ORTE          = 'ORTE'
 LAUNCH_METHOD_POE           = 'POE'
 LAUNCH_METHOD_RUNJOB        = 'RUNJOB'
 LAUNCH_METHOD_SSH           = 'SSH'
+LAUNCH_METHOD_YARN          = 'YARN'
 
 # 'enum' for local resource manager types
 LRMS_NAME_CCM               = 'CCM'
@@ -1334,7 +1335,8 @@ class LaunchMethod(object):
                 LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
                 LAUNCH_METHOD_POE           : LaunchMethodPOE,
                 LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
-                LAUNCH_METHOD_SSH           : LaunchMethodSSH
+                LAUNCH_METHOD_SSH           : LaunchMethodSSH,
+                LAUNCH_METHOD_YARN          : LaunchMethodYARN
             }[name]
             return implementation(name, config, logger, scheduler)
 
@@ -1371,6 +1373,7 @@ class LaunchMethod(object):
         for name in names:
             ret = self._which(name)
             if ret is not None:
+                self._log.info("Found %s"%ret)
                 return ret
 
         return None
@@ -1428,6 +1431,7 @@ class LaunchMethodFORK(LaunchMethod):
         else:
             command = task_exec
 
+        self._log.info('LaunchMethodFORK returns command : %s'%command)
         return command, None
 
 
@@ -2065,6 +2069,69 @@ class LaunchMethodPOE(LaunchMethod):
             hosts_string, self.launch_command, task_command)
 
         return poe_command, None
+
+
+# ==============================================================================
+#
+# NOTE: The Launch Method Implementation for Running YARN applications
+#
+class LaunchMethodYARN(LaunchMethod):
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, config, logger, scheduler):
+
+        LaunchMethod.__init__(self, name, config, logger, scheduler)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
+
+        self.launch_command = self._which('yarn')
+
+    # --------------------------------------------------------------------------
+    #
+    def construct_command(self, task_exec, task_args, task_numcores,
+                          launch_script_hop):
+
+        # Construct the args_string which is the arguments given as input to the
+        # shell script. Needs to be a string
+        self._log.debug("Constructing YARN command")
+        if task_args:
+            args_string = '-shell_env '
+            for key,val in task_args.iteritems():
+              args_string+= key+'='+str(val)+' '
+        else:
+            args_string = ''
+
+        # Construct the ncores_string which is the number of cores used by the
+        # container to run the script
+        if task_numcores:
+            ncores_string = '-container_vcores '+str(task_numcores)
+        else:
+            ncores_string = ''
+
+        # Construct the nmem_string which is the size of memory used by the
+        # container to run the script
+        #if task_nummem:
+        #    nmem_string = '-container_memory '+task_nummem
+        #else:
+        #    nmem_string = ''
+
+        #if task_serv_url:
+        #    url_string = '-service_url '+ task_serv_url
+        #else:
+        #    url_string = ''
+
+        yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
+                       ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
+                       ' -shell_script ExecScript.sh %s %s\ncat stdout' % (self.launch_command, 
+                        args_string, ncores_string)
+
+        self._log.debug("Yarn Command %s"%yarn_command)
+
+        return yarn_command, None
 
 
 
@@ -3532,6 +3599,57 @@ class ExecWorker_POPEN (ExecWorker) :
     #
     def spawn(self, launcher, cu):
 
+
+        #-----------------------------------------------------------------------
+        # Create YARN script
+        def yarn_script(cu):
+          # This funcion creates the necessary script for the execution of the
+          # CU's workload in a YARN application. The function is responsible
+          # to set all the necessary variables, stage in, stage out and create
+          # the execution command that will run in the distributed shell that
+          # the YARN application provides. There reason for staging out is
+          # because after the YARN application has finished everything will be
+          # deleted. Question: Should this also be implemented in the other
+          # execution worker??
+
+          print_str ="echo '#!/usr/bin/env bash'>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+          print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
+          if cu['description']['input_staging']:
+            for InputFile in cu['description']['input_staging']:
+              print_str+="echo 'mv %s/%s .'>>ExecScript.sh\n"%(cu['workdir'],InputFile['target'])
+    
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+          print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
+
+          arg_str=str()
+          if cu['description']['arguments']:
+            for Arg in cu['description']['arguments']:
+              arg_str+='%s '%str(Arg)
+
+          print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu['description']['executable'],arg_str)
+
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+          print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
+          print_str+="echo 'mv stdout %s'>>ExecScript.sh\n"%(cu['workdir'])
+          print_str+="echo 'mv stderr %s'>>ExecScript.sh\n"%(cu['workdir'])
+
+          if cu['description']['output_staging']:
+           for OutputFile in cu['description']['output_staging']:
+             print_str+="echo 'mv %s %s'>>ExecScript.sh\n"%(OutputFile['source'],cu['workdir'])
+
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo '#End of File'>>ExecScript.sh\n"
+
+          return print_str
+
         rpu.prof('ExecWorker spawn', uid=cu['_id'])
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
@@ -3577,12 +3695,28 @@ class ExecWorker_POPEN (ExecWorker) :
 
             # The actual command line, constructed per launch-method
             try:
-                launch_command, hop_cmd = \
+                if launcher.name == 'YARN':
+                  #---------------------------------------------------------------------
+                  # 
+                  self._log.debug("There was a YARN Launcher")
+
+                  execscript = yarn_script(cu)
+
+                  launch_script.write('# The YARN Execution Script\n%s\n' % execscript)
+
+                  launch_command, hop_cmd  = \
+                    launcher.construct_command(cu['description']['executable'], 
+                                                  cu['description']['environment'],
+                                                   cu['description']['cores'],
+                                                   ' ')
+                else:
+                  launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
                                                launch_script_hop,
                                                cu['opaque_slot'])
+                
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
@@ -3924,7 +4058,7 @@ class ExecWorker_SHELL(ExecWorker):
                                                           msg    = "no launcher (mpi=%s)" % _cu['description']['mpi'],
                                                           logger = self._log.error)
 
-                        self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+                        self._log.debug("ExecWorkerShell Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
                         assert(_cu['opaque_slot']) # FIXME: no assert, but check
                         rpu.prof('ExecWorker unit launch', uid=_cu['_id'])
@@ -3990,6 +4124,57 @@ class ExecWorker_SHELL(ExecWorker):
                     ret.append ('"%s"' % arg)
 
             return  ret
+
+        #-----------------------------------------------------------------------
+        # Create YARN script
+        def yarn_script(cu):
+          # This funcion creates the necessary script for the execution of the
+          # CU's workload in a YARN application. The function is responsible
+          # to set all the necessary variables, stage in, stage out and create
+          # the execution command that will run in the distributed shell that
+          # the YARN application provides. There reason for staging out is
+          # because after the YARN application has finished everything will be
+          # deleted. Question: Should this also be implemented in the other
+          # execution worker??
+
+          print_str ="echo '#!/usr/bin/env bash'>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+          print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
+          if cu['description']['input_staging']:
+            for InputFile in cu['description']['input_staging']:
+              print_str+="echo 'mv %s/%s .'>>ExecScript.sh\n"%(cu['workdir'],InputFile['target'])
+    
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+          print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
+
+          arg_str=str()
+          if cu['description']['arguments']:
+            for Arg in cu['description']['arguments']:
+              arg_str+='%s '%str(Arg)
+
+          print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu['description']['executable'],arg_str)
+
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+          print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
+          print_str+="echo 'mv stdout %s'>>ExecScript.sh\n"%(cu['workdir'])
+          print_str+="echo 'mv stderr %s'>>ExecScript.sh\n"%(cu['workdir'])
+
+          if cu['description']['output_staging']:
+           for OutputFile in cu['description']['output_staging']:
+             print_str+="echo 'mv %s %s'>>ExecScript.sh\n"%(OutputFile['source'],cu['workdir'])
+
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo ''>>ExecScript.sh\n"
+          print_str+="echo '#End of File'>>ExecScript.sh\n"
+
+          return print_str
+
         # ----------------------------------------------------------------------
 
         args = ""
@@ -4034,7 +4219,19 @@ class ExecWorker_SHELL(ExecWorker):
         if  descr['stderr'] : io  += "2>%s " % descr['stderr']
         else                : io  += "2>%s " %       'STDERR'
 
-        cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
+        if launcher.name == 'YARN':
+          #---------------------------------------------------------------------
+          # 
+          self._log.debug("There was a YARN Launcher")
+
+          execscript = yarn_script(cu)
+
+          cmd, hop_cmd  = launcher.construct_command(descr['executable'], descr['environment'],
+                                                   descr['cores'],
+                                                   '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
+        else:
+
+          cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
                                                    descr['cores'],
                                                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                                                    cu['opaque_slot'])
@@ -4055,10 +4252,17 @@ class ExecWorker_SHELL(ExecWorker):
             script += '    exit\n'
             script += 'fi\n\n'
 
+
         script += "# ------------------------------------------------------\n"
         script += "%s"        %  cwd
         script += "%s"        %  env
         script += "%s"        %  pre
+
+        if execscript:
+            script += "# ------------------------------------------------------\n"
+            script += "# Create Execscript.sh\n"
+            script += '%s\n'%execscript
+
         script += "# CU execution\n"
         script += "%s %s\n\n" % (cmd, io)
         script += "%s"        %  post
