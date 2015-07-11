@@ -23,6 +23,9 @@ def fetch_profiles (sid, dburl=None, target=None):
     if not dburl:
         dburl = os.environ['RADICAL_PILOT_DBURL']
 
+    if not dburl:
+        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+
     if not target:
         target = '.'
 
@@ -69,6 +72,9 @@ def fetch_session (sid, dburl=None, target=None) :
 
     if not dburl:
         dburl = os.environ['RADICAL_PILOT_DBURL']
+
+    if not dburl:
+        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
     if not target:
         target = '.'
