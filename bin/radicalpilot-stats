@@ -164,6 +164,8 @@ def tree_session (db, dbname, session, cachedir) :
 def list_sessions (db, cachedir, filters) :
 
     sids = rpu.get_session_ids (db)
+    print db
+    print sids
 
     if  filters :
 

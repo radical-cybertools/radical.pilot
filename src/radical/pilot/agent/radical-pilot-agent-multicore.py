@@ -194,7 +194,7 @@ import radical.pilot.utils as rpu
 AGENT_THREADS   = 'threading'
 AGENT_PROCESSES = 'multiprocessing'
 
-AGENT_MODE      = AGENT_THREADS
+AGENT_MODE      = AGENT_PROCESSES
 
 if AGENT_MODE == AGENT_THREADS :
     COMPONENT_MODE = threading
@@ -568,7 +568,7 @@ class Scheduler(threading.Thread):
     def stop(self):
         
         rpu.prof ('stop request')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         self._terminate.set()
 
 
@@ -729,6 +729,7 @@ class Scheduler(threading.Thread):
 
                     # FIXME: this state update is not recorded?
                     cu['state'] = rp.ALLOCATING
+
 
 
                     cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
@@ -3353,7 +3354,7 @@ class ExecWorker(COMPONENT_TYPE):
     def stop(self):
 
         rpu.prof ('stop request')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         self._terminate.set()
 
 
@@ -3416,7 +3417,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
         # shut down the watcher thread
         rpu.prof ('stop request')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         self._terminate.set()
         self._watcher.join()
 
@@ -3867,14 +3868,18 @@ class ExecWorker_SHELL(ExecWorker):
         rec_makedir(self.workdir)
 
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /tmp/%s" \
+                           % (os.path.dirname (rp.__file__), self.name))
+                         # ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                         # % (os.path.dirname (rp.__file__), self.workdir))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /tmp/%s" \
+                           % (os.path.dirname (rp.__file__), self.name))
+                         # ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                         # % (os.path.dirname (rp.__file__), self.workdir))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
@@ -4329,7 +4334,7 @@ class UpdateWorker(threading.Thread):
     def stop(self):
 
         rpu.prof ('stop request')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         self._terminate.set()
 
 
@@ -4475,7 +4480,7 @@ class StageinWorker(threading.Thread):
     def stop(self):
 
         rpu.prof ('stop request')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         self._terminate.set()
 
 
@@ -4660,7 +4665,7 @@ class StageoutWorker(threading.Thread):
     def stop(self):
 
         rpu.prof ('stop request')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         self._terminate.set()
 
 
@@ -4922,7 +4927,7 @@ class HeartbeatMonitor(threading.Thread):
     def stop(self):
 
         rpu.prof ('stop request')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         self._terminate.set()
         self._agent.stop()
 
@@ -4975,13 +4980,13 @@ class HeartbeatMonitor(threading.Thread):
             if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                 self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                rpu.flush_prof()
+              # rpu.flush_prof()
                 sys.exit(1)
 
             elif state == rp.CANCELING:
                 self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
-                rpu.flush_prof()
+              # rpu.flush_prof()
                 sys.exit(1)
 
             elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
@@ -5179,7 +5184,7 @@ class Agent(object):
         """
 
         rpu.prof ('stop request')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         self._terminate.set()
 
 
@@ -5304,7 +5309,7 @@ class Agent(object):
                 self.stop()
                 pilot_FAILED(self._p, self._pilot_id, self._log,
                     "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
-                rpu.flush_prof()
+              # rpu.flush_prof()
                 sys.exit(1)
 
 
@@ -5331,7 +5336,7 @@ class Agent(object):
                 "Terminated (_terminate set).")
 
         rpu.prof ('stop')
-        rpu.flush_prof()
+      # rpu.flush_prof()
         sys.exit(0)
 
 
@@ -5537,7 +5542,7 @@ def main():
     def sigint_handler(signum, frame):
         msg = 'Caught SIGINT. EXITING. (%s: %s)' % (signum, frame)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        rpu.flush_prof()
+      # rpu.flush_prof()
         sys.exit(2)
     signal.signal(signal.SIGINT, sigint_handler)
 
@@ -5548,7 +5553,7 @@ def main():
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING (%s: %s)' \
             % (signum, frame)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        rpu.flush_prof()
+      # rpu.flush_prof()
         sys.exit(3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
@@ -5608,14 +5613,14 @@ def main():
 
     except SystemExit:
         logger.error("Caught keyboard interrupt. EXITING")
-        rpu.flush_prof()
+      # rpu.flush_prof()
         return(6)
 
     except Exception as e:
         error_msg = "Error running agent: %s" % str(e)
         logger.exception(error_msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, error_msg)
-        rpu.flush_prof()
+      # rpu.flush_prof()
         sys.exit(7)
 
     finally:
