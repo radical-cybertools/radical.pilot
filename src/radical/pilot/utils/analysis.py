@@ -42,11 +42,17 @@ def get_experiment_frames(experiments, datadir=None):
             import glob
             for prof in glob.glob ("%s/%s-pilot.*.prof" % (datadir, sid)):
                 print "     - %s" % prof
-                frame = pd.read_csv(prof)
+                frame = get_profile_frame (prof)
                 exp_frames[exp].append ([frame, label])
                 
     return exp_frames
 
+
+# ------------------------------------------------------------------------------
+#
+def get_profile_frame (prof):
+    import pandas as pd
+    return pd.read_csv(prof)
 
 # ------------------------------------------------------------------------------
 #
