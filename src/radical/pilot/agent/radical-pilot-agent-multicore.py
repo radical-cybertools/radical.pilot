@@ -3609,8 +3609,7 @@ class ExecWorker_POPEN (ExecWorker) :
           # the execution command that will run in the distributed shell that
           # the YARN application provides. There reason for staging out is
           # because after the YARN application has finished everything will be
-          # deleted. Question: Should this also be implemented in the other
-          # execution worker??
+          # deleted.
 
           print_str ="echo '#!/usr/bin/env bash'>>ExecScript.sh\n"
           print_str+="echo ''>>ExecScript.sh\n"
@@ -4230,6 +4229,8 @@ class ExecWorker_SHELL(ExecWorker):
                                                    descr['cores'],
                                                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
         else:
+
+          execscript = None
 
           cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
                                                    descr['cores'],
