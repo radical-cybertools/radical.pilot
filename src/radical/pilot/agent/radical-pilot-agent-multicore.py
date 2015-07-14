@@ -2093,11 +2093,58 @@ class LaunchMethodYARN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop):
+                          launch_script_hop,(cu_descr,work_dir)):
 
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
+
+        #-----------------------------------------------------------------------
+        # Create YARN script
+        # This funcion creates the necessary script for the execution of the
+        # CU's workload in a YARN application. The function is responsible
+        # to set all the necessary variables, stage in, stage out and create
+        # the execution command that will run in the distributed shell that
+        # the YARN application provides. There reason for staging out is
+        # because after the YARN application has finished everything will be
+        # deleted.
+
+        print_str ="echo '#!/usr/bin/env bash'>>ExecScript.sh\n"
+        print_str+="echo ''>>ExecScript.sh\n"
+        print_str+="echo ''>>ExecScript.sh\n"
+        print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+        print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
+        if cu_descr['input_staging']:
+          for InputFile in cu_descr['input_staging']:
+            print_str+="echo 'mv %s/%s .'>>ExecScript.sh\n"%(work_dir,InputFile['target'])
+    
+        print_str+="echo ''>>ExecScript.sh\n"
+        print_str+="echo ''>>ExecScript.sh\n"
+        print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+        print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
+
+        arg_str=str()
+        if cu_descr['arguments']:
+          for Arg in cu_descr['arguments']:
+            arg_str+='%s '%str(Arg)
+
+        print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu_descr['executable'],arg_str)
+
+        print_str+="echo ''>>ExecScript.sh\n"
+        print_str+="echo ''>>ExecScript.sh\n"
+        print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+        print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
+        print_str+="echo 'mv stdout %s'>>ExecScript.sh\n"%(work_dir)
+        print_str+="echo 'mv stderr %s'>>ExecScript.sh\n"%(work_dir)
+
+        if cu_descr['output_staging']:
+         for OutputFile in cu_descr['output_staging']:
+           print_str+="echo 'mv %s %s'>>ExecScript.sh\n"%(OutputFile['source'],work_dir)
+
+        print_str+="echo ''>>ExecScript.sh\n"
+        print_str+="echo ''>>ExecScript.sh\n"
+        print_str+="echo '#End of File'>>ExecScript.sh\n\n\n"
+
         if task_args:
             args_string = '-shell_env '
             for key,val in task_args.iteritems():
@@ -2131,7 +2178,7 @@ class LaunchMethodYARN(LaunchMethod):
 
         self._log.debug("Yarn Command %s"%yarn_command)
 
-        return yarn_command, None
+        return print_str+yarn_command, None
 
 
 
@@ -3599,56 +3646,6 @@ class ExecWorker_POPEN (ExecWorker) :
     #
     def spawn(self, launcher, cu):
 
-
-        #-----------------------------------------------------------------------
-        # Create YARN script
-        def yarn_script(cu):
-          # This funcion creates the necessary script for the execution of the
-          # CU's workload in a YARN application. The function is responsible
-          # to set all the necessary variables, stage in, stage out and create
-          # the execution command that will run in the distributed shell that
-          # the YARN application provides. There reason for staging out is
-          # because after the YARN application has finished everything will be
-          # deleted.
-
-          print_str ="echo '#!/usr/bin/env bash'>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
-          print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
-          if cu['description']['input_staging']:
-            for InputFile in cu['description']['input_staging']:
-              print_str+="echo 'mv %s/%s .'>>ExecScript.sh\n"%(cu['workdir'],InputFile['target'])
-    
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
-          print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
-
-          arg_str=str()
-          if cu['description']['arguments']:
-            for Arg in cu['description']['arguments']:
-              arg_str+='%s '%str(Arg)
-
-          print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu['description']['executable'],arg_str)
-
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
-          print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
-          print_str+="echo 'mv stdout %s'>>ExecScript.sh\n"%(cu['workdir'])
-          print_str+="echo 'mv stderr %s'>>ExecScript.sh\n"%(cu['workdir'])
-
-          if cu['description']['output_staging']:
-           for OutputFile in cu['description']['output_staging']:
-             print_str+="echo 'mv %s %s'>>ExecScript.sh\n"%(OutputFile['source'],cu['workdir'])
-
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo '#End of File'>>ExecScript.sh\n"
-
-          return print_str
-
         rpu.prof('ExecWorker spawn', uid=cu['_id'])
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
@@ -3699,15 +3696,11 @@ class ExecWorker_POPEN (ExecWorker) :
                   # 
                   self._log.debug("There was a YARN Launcher")
 
-                  execscript = yarn_script(cu)
-
-                  launch_script.write('# The YARN Execution Script\n%s\n' % execscript)
-
                   launch_command, hop_cmd  = \
                     launcher.construct_command(cu['description']['executable'], 
                                                   cu['description']['environment'],
                                                    cu['description']['cores'],
-                                                   ' ')
+                                                   ' ',(cu['description'],cu['workdir']))
                 else:
                   launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
@@ -4124,56 +4117,6 @@ class ExecWorker_SHELL(ExecWorker):
 
             return  ret
 
-        #-----------------------------------------------------------------------
-        # Create YARN script
-        def yarn_script(cu):
-          # This funcion creates the necessary script for the execution of the
-          # CU's workload in a YARN application. The function is responsible
-          # to set all the necessary variables, stage in, stage out and create
-          # the execution command that will run in the distributed shell that
-          # the YARN application provides. There reason for staging out is
-          # because after the YARN application has finished everything will be
-          # deleted. Question: Should this also be implemented in the other
-          # execution worker??
-
-          print_str ="echo '#!/usr/bin/env bash'>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
-          print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
-          if cu['description']['input_staging']:
-            for InputFile in cu['description']['input_staging']:
-              print_str+="echo 'mv %s/%s .'>>ExecScript.sh\n"%(cu['workdir'],InputFile['target'])
-    
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
-          print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
-
-          arg_str=str()
-          if cu['description']['arguments']:
-            for Arg in cu['description']['arguments']:
-              arg_str+='%s '%str(Arg)
-
-          print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu['description']['executable'],arg_str)
-
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
-          print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
-          print_str+="echo 'mv stdout %s'>>ExecScript.sh\n"%(cu['workdir'])
-          print_str+="echo 'mv stderr %s'>>ExecScript.sh\n"%(cu['workdir'])
-
-          if cu['description']['output_staging']:
-           for OutputFile in cu['description']['output_staging']:
-             print_str+="echo 'mv %s %s'>>ExecScript.sh\n"%(OutputFile['source'],cu['workdir'])
-
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo ''>>ExecScript.sh\n"
-          print_str+="echo '#End of File'>>ExecScript.sh\n"
-
-          return print_str
-
         # ----------------------------------------------------------------------
 
         args = ""
@@ -4223,14 +4166,10 @@ class ExecWorker_SHELL(ExecWorker):
           # 
           self._log.debug("There was a YARN Launcher")
 
-          execscript = yarn_script(cu)
-
           cmd, hop_cmd  = launcher.construct_command(descr['executable'], descr['environment'],
                                                    descr['cores'],
-                                                   '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
+                                                   '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',(descr,cu['workdir']))
         else:
-
-          execscript = None
 
           cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
                                                    descr['cores'],
@@ -4259,10 +4198,6 @@ class ExecWorker_SHELL(ExecWorker):
         script += "%s"        %  env
         script += "%s"        %  pre
 
-        if execscript:
-            script += "# ------------------------------------------------------\n"
-            script += "# Create Execscript.sh\n"
-            script += '%s\n'%execscript
 
         script += "# CU execution\n"
         script += "%s %s\n\n" % (cmd, io)
