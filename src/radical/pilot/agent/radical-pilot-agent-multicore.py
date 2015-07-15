@@ -152,6 +152,7 @@ import traceback
 import threading
 import subprocess
 import multiprocessing
+import commands
 
 import saga                as rs
 import radical.utils       as ru
@@ -315,6 +316,7 @@ LRMS_NAME_PBSPRO            = 'PBSPRO'
 LRMS_NAME_SGE               = 'SGE'
 LRMS_NAME_SLURM             = 'SLURM'
 LRMS_NAME_TORQUE            = 'TORQUE'
+LRMS_NAME_YARN              = 'YARN'
 
 # 'enum' for pilot's unit scheduler types
 SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
@@ -2171,10 +2173,13 @@ class LaunchMethodYARN(LaunchMethod):
         #else:
         #    url_string = ''
 
+        #Getting the namenode's address.
+        service_url = 'yarn://localhost?fs=hdfs://' + self._scheduler._lrms.namenode_url
+
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
-                       ' -shell_script ExecScript.sh %s %s\ncat stdout' % (self.launch_command, 
-                        args_string, ncores_string)
+                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat stdout' % (self.launch_command, 
+                        args_string, ncores_string,service_url)
 
         self._log.debug("Yarn Command %s"%yarn_command)
 
@@ -2248,7 +2253,8 @@ class LRMS(object):
                 LRMS_NAME_PBSPRO      : PBSProLRMS,
                 LRMS_NAME_SGE         : SGELRMS,
                 LRMS_NAME_SLURM       : SLURMLRMS,
-                LRMS_NAME_TORQUE      : TORQUELRMS
+                LRMS_NAME_TORQUE      : TORQUELRMS,
+                LRMS_NAME_YARN        : YARNLRMS
             }[name]
             return implementation(name, config, logger, requested_cores)
         except KeyError:
@@ -3379,7 +3385,48 @@ class ForkLRMS(LRMS):
         self.node_list = ["localhost"]
         self.cores_per_node = selected_cpus
 
+# ==============================================================================
+#
+class YARNLRMS(LRMS):
 
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, config, logger, requested_cores):
+
+        LRMS.__init__(self, name, config, logger, requested_cores)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
+
+        self._log.info("Using fork on localhost.")
+
+        selected_cpus = self.requested_cores
+
+        # when we profile the agent, we fake any number of cores, so don't
+        # perform any sanity checks.  Otherwise we use at most all available
+        # cores (and informa about unused ones)
+        if 'RADICAL_PILOT_PROFILE' not in os.environ:
+
+            detected_cpus = multiprocessing.cpu_count()
+
+            if detected_cpus < selected_cpus:
+                self._log.warn("insufficient cores: using available %d instead of requested %d.",
+                        detected_cpus, selected_cpus)
+                selected_cpus = detected_cpus
+
+            elif detected_cpus > selected_cpus:
+                self._log.warn("more cores available: using requested %d instead of available %d.",
+                        selected_cpus, detected_cpus)
+
+        hdfs_conf_ouput = commands.getstatusoutput('hdfs getconf -nnRpcAddresses')[1].split('\n')
+        for output in hdfs_conf_ouput:
+          if ':' in output:
+            self.namenode_url = output
+
+        self.node_list = ["localhost"]
+        self.cores_per_node = selected_cpus
 
 # ==============================================================================
 #
