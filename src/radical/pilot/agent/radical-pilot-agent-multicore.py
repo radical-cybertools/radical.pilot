@@ -3549,7 +3549,10 @@ class ExecWorker_POPEN (ExecWorker) :
                         pre_exec_string += "%s\n" % elem
                 else:
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
-                launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
+                launch_script.write("# Pre-exec commands\n")
+                launch_script.write("awk 'BEGIN{srand(); print \"pre  start \"srand()}' >> %s/PROF\n")
+                launch_script.write(pre_exec_string)
+                launch_script.write("awk 'BEGIN{srand(); print \"pre  stop  \"srand()}' >> %s/PROF\n")
 
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
@@ -3593,7 +3596,8 @@ class ExecWorker_POPEN (ExecWorker) :
                 self._log.exception(msg)
                 raise RuntimeError(msg)
 
-            launch_script.write('# The command to run\n%s\n' % launch_command)
+            launch_script.write("# The command to run\n")
+            launch_script.write("%s\n" % launch_command)
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -3603,7 +3607,10 @@ class ExecWorker_POPEN (ExecWorker) :
                         post_exec_string += "%s\n" % elem
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
+                launch_script.write("# Post-exec commands\n")
+                launch_script.write("awk 'BEGIN{srand(); print \"post start \"srand()}' >> %s/PROF\n" % cu['workdir'])
                 launch_script.write('%s\n' % post_exec_string)
+                launch_script.write("awk 'BEGIN{srand(); print \"post stop  \"srand()}' >> %s/PROF\n" % cu['workdir'])
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
@@ -4022,13 +4029,19 @@ class ExecWorker_SHELL(ExecWorker):
 
         if  descr['pre_exec'] :
             pre += "# CU pre-exec\n"
+            pre += "awk 'BEGIN{srand(); print \"pre  start \"srand()}' >> %s/PROF\n" % cu['workdir']
             pre += '\n'.join(descr['pre_exec' ])
-            pre += "\n\n"
+            pre += "\n"
+            pre += "awk 'BEGIN{srand(); print \"pre  stop  \"srand()}' >> %s/PROF\n" % cu['workdir']
+            pre += "\n"
 
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
+            post += "awk 'BEGIN{srand(); print \"post start \"srand()}' >> %s/PROF\n" % cu['workdir']
             post += '\n'.join(descr['post_exec' ])
-            post += "\n\n"
+            post += "\n"
+            post += "awk 'BEGIN{srand(); print \"post stop  \"srand()}' >> %s/PROF\n" % cu['workdir']
+            post += "\n"
 
         if  descr['arguments']  :
             args  = ' ' .join (quote_args (descr['arguments']))
@@ -5577,7 +5590,7 @@ def main():
     except Exception as e:
         logger.info ("agent config failed to merge: %s", e)
 
-    logger.info("\Agent config:\n%s\n\n" % pprint.pformat(agent_config))
+    logger.info("Agent config:\n%s\n\n" % pprint.pformat(agent_config))
 
     try:
         # ----------------------------------------------------------------------
