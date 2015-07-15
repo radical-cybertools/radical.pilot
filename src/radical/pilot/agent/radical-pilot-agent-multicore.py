@@ -3286,7 +3286,7 @@ class ExecWorker(COMPONENT_TYPE):
     def __init__(self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, session_id):
+                 schedule_queue, pilot_id, number, session_id):
 
         rpu.prof('ExecWorker init')
 
@@ -3306,6 +3306,7 @@ class ExecWorker(COMPONENT_TYPE):
         self._update_queue     = update_queue
         self._schedule_queue   = schedule_queue
         self._pilot_id         = pilot_id
+        self._number           = number
         self._session_id       = session_id
 
         self.configure ()
@@ -3319,7 +3320,7 @@ class ExecWorker(COMPONENT_TYPE):
     def create(cls, name, config, logger, spawner, agent, scheduler,
                task_launcher, mpi_launcher, command_queue,
                execution_queue, update_queue, schedule_queue, 
-               stageout_queue, pilot_id, session_id):
+               stageout_queue, pilot_id, number, session_id):
 
         # Make sure that we are the base-class!
         if cls != ExecWorker:
@@ -3334,7 +3335,7 @@ class ExecWorker(COMPONENT_TYPE):
             impl = implementation(name, config, logger, agent, scheduler,
                                   task_launcher, mpi_launcher, command_queue,
                                   execution_queue, stageout_queue, update_queue, 
-                                  schedule_queue, pilot_id, session_id)
+                                  schedule_queue, pilot_id, number, session_id)
             impl.start ()
             return impl
 
@@ -3387,7 +3388,7 @@ class ExecWorker_POPEN (ExecWorker) :
     def __init__(self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, session_id):
+                 schedule_queue, pilot_id, number, session_id):
 
         rpu.prof('ExecWorker init')
 
@@ -3809,14 +3810,16 @@ class ExecWorker_SHELL(ExecWorker):
     def __init__(self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue,
-                 schedule_queue, pilot_id, session_id):
+                 schedule_queue, pilot_id, number, session_id):
 
         rpu.prof('ExecWorker init')
+
+        self._number = number
 
         ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue,
-                 schedule_queue, pilot_id, session_id)
+                 schedule_queue, pilot_id, number, session_id)
 
 
     # --------------------------------------------------------------------------
@@ -3872,15 +3875,47 @@ class ExecWorker_SHELL(ExecWorker):
         # and then below run
         #   "nc <node_ip> <port>"
         # with unique port numbers for each ExecWorker instance, obviously.
-        ret, out, _  = self.launcher_shell.run_sync \
-                           ("aprun -n 1 %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
+        #
+        # for each exec worker, we run two nc's on consecutive ports.  We start
+        # with port 10000. so use:
+        #
+        #   10000 + 2 * (self._number)
+        #   10000 + 2 * (self._number) + 1
+        #
+        # to avoid collission with the other exec workers.  Only the execworker
+        # 0 will run the remote nc's which are listening for our connections.
+        #
+        port = 10000
+        pwd  = os.path.dirname (rp.__file__)
+        if self._number == 0:
+            # this is exec worker 0 -- we run the remote nc's
+            tot = self._config['number_of_workers'][EXEC_WORKER]
+            cmd = ""
+            for i in range(tot):
+                work = "/tmp/ExecWorker-%s-%s" % (self._pilot_id, i)
+                cmd += "nc -l -p %d -v -e /bin/sh %s/agent/radical-pilot-spawner.sh %s &" \
+                     % (port + i + 0, pwd, work)
+                cmd += "nc -l -p %d -v -e /bin/sh %s/agent/radical-pilot-spawner.sh %s &" \
+                     % (port + i + 1, pwd, work)
+
+            # FIXME MARK: fix, also make this async
+            os.system ('aprun <host> /bin/sh -c "%s"' % cmd)
+
+
+        # we need to give the above command some time to actually start the
+        # listening processes, otherwise the following connections will fail
+        time.sleep (3)
+
+        # now instead of the spawner, launch NCs toward the host on the given
+        # ports
+        host   = '10.0.0.1'  # FIXME MARK
+        myport = port + 2*self._number
+        ret, out, _  = self.launcher_shell.run_sync ("nc %s %d" % (host, myport))
+
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
-        ret, out, _  = self.monitor_shell.run_sync \
-                           ("aprun -n 1 %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
+        ret, out, _  = self.monitor_shell.run_sync ("nc %s %d" % (host, myport + 1))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
@@ -5127,6 +5162,7 @@ class Agent(object):
                 update_queue    = self._update_queue,
                 schedule_queue  = self._schedule_queue,
                 pilot_id        = self._pilot_id,
+                number          = n,
                 session_id      = self._session_id
             )
             self.worker_list.append(exec_worker)
