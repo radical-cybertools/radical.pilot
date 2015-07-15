@@ -150,15 +150,15 @@ if __name__ == "__main__":
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
-            cud.pre_exec      = ["sleep 1"]
-            cud.post_exec     = ["sleep 2"]
+            cud.pre_exec      = ["sleep 5"]
+            cud.post_exec     = ["sleep 5"]
             cud.arguments     = ["5"]
             cud.cores         = 1
     
             cuds.append(cud)
     
         # Submit the previously created ComputeUnit descriptions to the
-        # PilotManager. This will trigger the selected scheduler to start
+        # PilotManager. This will triggee the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
     

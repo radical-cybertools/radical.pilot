@@ -95,7 +95,7 @@ AGENT_THREADS   = 'threading'
 AGENT_PROCESSES = 'multiprocessing'
 AGENT_MODE      = AGENT_THREADS
 
-def prof(etype, uid="", msg="", logger=None):
+def prof(etype, uid="", msg="", logger=None, reltime=None, abstime=None):
 
     prof_init()
 
@@ -114,9 +114,13 @@ def prof(etype, uid="", msg="", logger=None):
     elif AGENT_MODE == AGENT_PROCESSES: tid = os.getpid()
     else: raise Exception('Unknown Agent Mode')
 
+    if   abstime: timestamp = abstime - timestamp_zero
+    elif reltime: timestamp = reltime
+    else        : timestamp = timestamp_now()
+
     # NOTE: Don't forget to sync any format changes in the bootstrapper
     #       and downstream analysis tools too!
-    _profile_handle.write("%.4f,%s,%s,%s,%s\n" % (timestamp_now(), tid, uid, etype, msg))
+    _profile_handle.write("%.4f,%s,%s,%s,%s\n" % (timestamp, tid, uid, etype, msg))
 
     # NOTE: flush_prof() should be called when closing the application process,
     #       to ensure data get correctly written to disk.  Calling flush on
