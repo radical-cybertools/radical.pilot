@@ -94,6 +94,7 @@ class InputFileTransferWorker(threading.Thread):
                     ts = datetime.datetime.utcnow()
                     compute_unit = um_col.find_and_modify(
                         query={"unitmanager": self.unit_manager_id,
+                               "state"      : {'$in' : [STAGING_INPUT, PENDING_INPUT_STAGING]}
                                "FTW_Input_Status": PENDING},
                         update={"$set" : {"FTW_Input_Status": EXECUTING,
                                           "state": STAGING_INPUT},

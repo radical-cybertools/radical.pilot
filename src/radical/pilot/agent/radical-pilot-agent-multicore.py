@@ -5374,6 +5374,7 @@ class Agent(object):
             # if we did not find any units which can be executed immediately, we
             # check if we have any units for which to do stage-in
             cu_cursor = self._cu.find(spec  = {"pilot" : self._pilot_id,
+                                               'state' : {'$in' : [rp.STAGING_INPUT, rp.PENDING_INPUT_STAGING]},
                                                'Agent_Input_Status': rp.PENDING})
             if cu_cursor.count():
 
