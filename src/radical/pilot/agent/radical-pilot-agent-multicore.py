@@ -3415,7 +3415,7 @@ class ExecWorker_POPEN (ExecWorker) :
         ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, session_id)
+                 schedule_queue, pilot_id, number, session_id)
 
 
         # run watcher thread
