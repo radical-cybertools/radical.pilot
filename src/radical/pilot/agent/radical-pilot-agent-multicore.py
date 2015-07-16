@@ -3908,9 +3908,9 @@ class ExecWorker_SHELL(ExecWorker):
             cmd = ""
             for i in range(tot):
                 work = "/tmp/ExecWorker-%s-%s" % (self._pilot_id, i)
-                cmd += "nc -l -p %d -v -e /bin/sh %s/agent/radical-pilot-spawner.sh %s &" \
+                cmd += "(nc -l -p %d -v | /bin/sh %s/agent/radical-pilot-spawner.sh %s) &" \
                      % (port + i + 0, pwd, work)
-                cmd += "nc -l -p %d -v -e /bin/sh %s/agent/radical-pilot-spawner.sh %s &" \
+                cmd += "(nc -l -p %d -v | /bin/sh %s/agent/radical-pilot-spawner.sh %s) &" \
                      % (port + i + 1, pwd, work)
 
             self._remote_process = subprocess.Popen(
