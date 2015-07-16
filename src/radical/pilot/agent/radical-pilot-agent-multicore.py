@@ -1949,10 +1949,24 @@ class LaunchMethodORTE(LaunchMethod):
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"
 
-        self._log.info("Starting ORTE DVM ...")
+        # Reserve compute nodes to offload agent too
+        reserved_size = 1 # TODO: make configurable
+        vm_size = len(self._scheduler._lrms.node_list) - reserved_size
+        reserved_nodes = sorted(self._scheduler._lrms.node_list)[-reserved_size:]
+        self._log.info("Reserving nodes: %s" % reserved_nodes)
+
+        # Mark the reserved node slots BUSY
+        for node in reserved_nodes:
+            slots = []
+            for c in range(32):
+                slots.append('%s:%d' % (node, c))
+            self._scheduler._change_slot_states(slots, BUSY)
+
+        self._log.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
         self._dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_command],
+            [stdbuf_cmd, stdbuf_arg, dvm_command,
+             '--mca', 'orte_max_vm_size', str(vm_size)],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
