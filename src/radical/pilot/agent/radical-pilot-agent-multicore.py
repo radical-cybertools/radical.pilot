@@ -2258,7 +2258,8 @@ class TORQUELRMS(LRMS):
 
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)
-        torque_node_list    = list(set(torque_nodes))
+        torque_node_list = []
+        [torque_node_list.append(i) for i in torque_nodes if not torque_node_list.count(i)]
 
       # if torque_num_nodes and torque_cores_per_node and \
       #     torque_nodes_length < torque_num_nodes * torque_cores_per_node:
@@ -2425,7 +2426,6 @@ class PBSProLRMS(LRMS):
 
         # Return the list of node names
         return node_list
-
 
 
 # ==============================================================================
