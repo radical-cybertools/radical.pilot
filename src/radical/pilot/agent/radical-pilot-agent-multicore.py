@@ -1952,11 +1952,11 @@ class LaunchMethodORTE(LaunchMethod):
         # Reserve compute nodes to offload agent too
         reserved_size = 1 # TODO: make configurable
         vm_size = len(self._scheduler._lrms.node_list) - reserved_size
-        reserved_nodes = sorted(self._scheduler._lrms.node_list)[-reserved_size:]
-        self._log.info("Reserving nodes: %s" % reserved_nodes)
+        self._scheduler.reserved_nodes = sorted(self._scheduler._lrms.node_list)[-reserved_size:]
+        self._log.info("Reserving nodes: %s" % self._scheduler.reserved_nodes)
 
         # Mark the reserved node slots BUSY
-        for node in reserved_nodes:
+        for node in self._scheduler.reserved_nodes:
             slots = []
             for c in range(32):
                 slots.append('%s:%d' % (node, c))
@@ -3899,6 +3899,7 @@ class ExecWorker_SHELL(ExecWorker):
         # to avoid collission with the other exec workers.  Only the execworker
         # 0 will run the remote nc's which are listening for our connections.
         #
+        host = self._scheduler.reserved_nodes[0]
         port = 10000
         pwd  = os.path.dirname (rp.__file__)
         if self._number == 0:
@@ -3912,18 +3913,19 @@ class ExecWorker_SHELL(ExecWorker):
                 cmd += "nc -l -p %d -v -e /bin/sh %s/agent/radical-pilot-spawner.sh %s &" \
                      % (port + i + 1, pwd, work)
 
-            # FIXME MARK: fix, also make this async
-            os.system ('aprun <host> /bin/sh -c "%s"' % cmd)
-
+            self._remote_process = subprocess.Popen(
+                ['aprun', '-n', '1', host, '/bin/sh', '-c', cmd],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            )
 
         # we need to give the above command some time to actually start the
         # listening processes, otherwise the following connections will fail
-        time.sleep (3)
+        # TODO: might want to add a lock here to sync the instances
+        time.sleep(5)
 
         # now instead of the spawner, launch NCs toward the host on the given
         # ports
-        host   = '10.0.0.1'  # FIXME MARK
-        myport = port + 2*self._number
+        myport = port + 2 * self._number
         ret, out, _  = self.launcher_shell.run_sync ("nc %s %d" % (host, myport))
 
         if  ret != 0 :
