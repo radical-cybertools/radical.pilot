@@ -3899,22 +3899,19 @@ class ExecWorker_SHELL(ExecWorker):
         # to avoid collission with the other exec workers.  Only the execworker
         # 0 will run the remote nc's which are listening for our connections.
         #
-        host = self._scheduler.reserved_nodes[0]
+        host = 'nid%.5d' % int(self._scheduler.reserved_nodes[0])
         port = 10000
         pwd  = os.path.dirname (rp.__file__)
         if self._number == 0:
             # this is exec worker 0 -- we run the remote nc's
             tot = self._config['number_of_workers'][EXEC_WORKER]
-            cmd = ""
-            for i in range(tot):
-                work = "/tmp/ExecWorker-%s-%s" % (self._pilot_id, i)
-                cmd += "(nc -l -p %d -v | /bin/sh %s/agent/radical-pilot-spawner.sh %s) &" \
-                     % (port + i + 0, pwd, work)
-                cmd += "(nc -l -p %d -v | /bin/sh %s/agent/radical-pilot-spawner.sh %s) &" \
-                     % (port + i + 1, pwd, work)
+            work = "/tmp/ExecWorker-%s-%s" % (self._pilot_id, 0)
 
             self._remote_process = subprocess.Popen(
-                ['aprun', '-n', '1', host, '/bin/sh', '-c', cmd],
+                ['aprun', '-n', '1',
+                 '/bin/sh', '%s/agent/execworker-wrapper.sh' % pwd,
+                 '%s/agent/radical-pilot-spawner.sh' % pwd,
+                 work, str(port), str(port + 1)],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
 
@@ -3927,7 +3924,6 @@ class ExecWorker_SHELL(ExecWorker):
         # ports
         myport = port + 2 * self._number
         ret, out, _  = self.launcher_shell.run_sync ("nc %s %d" % (host, myport))
-
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
