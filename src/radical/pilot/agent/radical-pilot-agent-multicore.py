@@ -4039,6 +4039,12 @@ class ExecWorker_SHELL(ExecWorker):
         self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
         rec_makedir(self.workdir)
 
+        # to run the spawner shells remote, run the following command on the
+        # target node:
+        #   "nc -l -p <port> -v -e /bin/sh  %s/agent/radical-pilot-spawner.sh %s"
+        # and then below run
+        #   "nc <node_ip> <port>"
+        # with unique port numbers for each ExecWorker instance, obviously.
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
                            % (os.path.dirname (rp.__file__), self.workdir))
