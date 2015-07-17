@@ -3880,8 +3880,8 @@ class ExecWorker_SHELL(ExecWorker):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # run the spawner on the shells
-        self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
-        rec_makedir(self.workdir)
+        #self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
+        #rec_makedir(self.workdir)
 
         # to run the spawner shells remote, run the following command on the
         # target node:
