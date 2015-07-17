@@ -23,7 +23,7 @@ set up a vritualenv):
 
 .. code-block:: bash
  
-    python setup.py install
+    pip install --upgrade .
     
     
 License
