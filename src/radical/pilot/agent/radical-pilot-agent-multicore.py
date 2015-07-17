@@ -3712,6 +3712,14 @@ class ExecWorker_POPEN (ExecWorker) :
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
 
+            # YARN pre execution folder permission change
+            # TODO: This needs to move inside the construct command when the launcher
+            #       takes only the CU description
+            if launcher.name == 'YARN':
+              launch_script.write('\n## Changing Working Directory permissions for YARN\n')
+              launch_script.write('old_perm="`stat -c %a .`"\n')
+              launch_script.write('chmod 777 .\n')
+
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
                 cu['description']['environment'].keys():
@@ -3777,6 +3785,13 @@ class ExecWorker_POPEN (ExecWorker) :
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write('%s\n' % post_exec_string)
+
+            # YARN pre execution folder permission change
+            # TODO: This needs to move inside the construct command when the launcher
+            #       takes only the CU description
+            if launcher.name == 'YARN':
+              launch_script.write('\n## Changing Working Directory permissions for YARN\n')
+              launch_script.write('chmod $old_perm .\n')
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
@@ -4199,10 +4214,26 @@ class ExecWorker_SHELL(ExecWorker):
             pre += '\n'.join(descr['pre_exec' ])
             pre += "\n\n"
 
+        # YARN pre execution folder permission change
+        # TODO: This needs to move inside the construct command when the launcher
+        #       takes only the CU description
+        if launcher.name == 'YARN':
+            pre += '## Changing Working Directory permissions for YARN\n'
+            pre += 'old_perm=`stat -c %a .`\n'
+            pre += 'chmod 777 .\n\n'
+
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
             post += '\n'.join(descr['post_exec' ])
             post += "\n\n"
+        
+        # YARN pre execution folder permission change
+        # TODO: This needs to move inside the construct command when the launcher
+        #       takes only the CU description
+        if launcher.name == 'YARN':
+            post += '## Changing Working Directory permissions for YARN\n'
+            post += 'chmod $old_perm .\n\n'
+        
 
         if  descr['arguments']  :
             args  = ' ' .join (quote_args (descr['arguments']))
