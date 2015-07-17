@@ -592,35 +592,54 @@ class UnitManagerController(threading.Thread):
                     else:
                         logger.warn('Not sure if action %s makes sense for output staging' % action)
 
-                if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
-                    log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
-                    self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
-                    cu_transfer.append(unit)
-                else:
-                    cu_notransfer.append(unit)
+                # if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
+                #     log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
+                #     self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
+                #     cu_transfer.append(unit)
+                # else:
+                #     cu_notransfer.append(unit)
 
-            # Bulk-add all non-transfer units-
+            # Bulk-add all units
             self._db.assign_compute_units_to_pilot(
-                units=cu_notransfer,
+                units=units,
                 pilot_uid=pilot_uid,
                 pilot_sandbox=pilot_sandbox
             )
 
-            self._db.assign_compute_units_to_pilot(
-                units=cu_transfer,
-                pilot_uid=pilot_uid,
-                pilot_sandbox=pilot_sandbox
-            )
+            for unit in units:
+                # DON'T set state before pilot is assigned -- otherwise units
+                # are picked up
+                log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
+                self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
 
-            for unit in cu_notransfer:
-                log = "Scheduled for execution on ComputePilot %s." % pilot_uid
-                self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
-                #self._set_state(uid, PENDING_EXECUTION, log)
 
             logger.info(
-                "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
-                (cu_notransfer, pilot_uid)
+                "Scheduled ComputeUnits %s on ComputePilot '%s'." %
+                (units, pilot_uid)
             )
+
+            # # Bulk-add all non-transfer units-
+            # self._db.assign_compute_units_to_pilot(
+            #     units=cu_notransfer,
+            #     pilot_uid=pilot_uid,
+            #     pilot_sandbox=pilot_sandbox
+            # )
+
+            # self._db.assign_compute_units_to_pilot(
+            #     units=cu_transfer,
+            #     pilot_uid=pilot_uid,
+            #     pilot_sandbox=pilot_sandbox
+            # )
+
+            # for unit in cu_notransfer:
+            #     log = "Scheduled for execution on ComputePilot %s." % pilot_uid
+            #     self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
+            #     #self._set_state(uid, PENDING_EXECUTION, log)
+
+            # logger.info(
+            #     "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
+            #     (cu_notransfer, pilot_uid)
+            # )
         except Exception, e:
             logger.exception ('error in unit manager controller (schedule())')
             raise
