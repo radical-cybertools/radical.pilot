@@ -61,6 +61,7 @@ then
   BASE=$HOME/.saga/adaptors/shell_job/
 fi
 NOTIFICATIONS="$BASE/notifications"
+LOG="$BASE/log"
 
 # this process will terminate when idle for longer than TIMEOUT seconds
 TIMEOUT=30
@@ -272,6 +273,8 @@ create_monitor () {
   MPID=\$\$
   NOTIFICATIONS="$NOTIFICATIONS"
 
+  \\echo "monitor starts (\$MPID)" >> $LOG
+
   # on reuse of process IDs, we need to generate new, unique derivations of the
   # job directory name.  That name is, by default, the job's rpid.  Id the job
   # dies and that rpid is reused, we don't want to remove the old dir (job state
@@ -316,6 +319,8 @@ create_monitor () {
   # the real job ID (not exposed to user)
   RPID=\$!
 
+  \\echo "monitor started job (\$MPID): \$RPID" >> $LOG
+
   \\printf "\$RPID\\n"    > "\$DIR/rpid"  # real process  pid
   \\printf "\$MPID\\n"    > "\$DIR/mpid"  # monitor shell pid
   \\printf "\$UPID\\n"    > "\$DIR/upid"  # unique job    pid
@@ -323,9 +328,12 @@ create_monitor () {
   # signal the wrapper that job startup is done, and report job id
   \\printf "\$UPID\\n" >> "$BASE/fifo.$GID"
 
+  \\echo "monitor sent job id (\$MPID): \$UPID" >> $LOG
+
   # start monitoring the job
   while true
   do
+    \\echo "monitor waits on id (\$MPID): \$RPID" >> $LOG
     \\wait \$RPID
     retv=\$?
 
@@ -366,7 +374,6 @@ create_monitor () {
     test   "\$retv" -eq 0  && \\printf "\$UPID:DONE:\$retv   \\n" >> "\$NOTIFICATIONS"
     test   "\$retv" -eq 0  || \\printf "\$UPID:FAILED:\$retv \\n" >> "\$NOTIFICATIONS"
 
-
     # done waiting
     break
   done
@@ -375,6 +382,7 @@ create_monitor () {
 
 EOT
 
+  echo "monitor created: `ls -la $BASE/monitor.sh`" >> $LOG
 }
 
 
@@ -384,6 +392,8 @@ EOT
 #
 cmd_monitor () {
 
+  echo "start monitoring mode ($GID)" >> $LOG
+
   # 'touch' to make sure the file exists, and use '-n 0' so that we don't 
   # read old notifications'
   # NOTE: tail complains on inotify handle shortage, and then continues 
@@ -391,6 +401,8 @@ cmd_monitor () {
   #       that we don't miss any other notifications... :/
   \touch        "$NOTIFICATIONS"
   \tail -f -n 0 "$NOTIFICATIONS" 2>/dev/null
+
+  echo "end monitoring mode ($GID)" >> $LOG
 
   # if tail dies for some reason, make sure the shell goes down
   \printf "EXIT\n"
@@ -438,6 +450,8 @@ cmd_monitor () {
 
 cmd_run () {
 
+  echo "run command ($@)" >> $LOG
+
   # do a double fork to avoid zombies.  Use 'set -m' to force a new process
   # group for the monitor
   (
@@ -446,15 +460,19 @@ cmd_run () {
    ) 1>/dev/null 2>/dev/null 3</dev/null & exit
   )
 
+  echo "wait for pid" >> $LOG
+
+
   # we wait until the job was really started, and get its pid from the fifo
   \read -r UPID < "$BASE/fifo.$GID"
+
+  echo "got pid ($UPID)" >> $LOG
 
   # report the current state
   \tail -n 1 "$BASE/$UPID/state" || \printf "UNKNOWN\n"
 
   # return job id
   RETVAL="$UPID"
-
 }
 
 
