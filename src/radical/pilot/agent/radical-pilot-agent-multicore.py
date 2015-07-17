@@ -3880,8 +3880,6 @@ class ExecWorker_SHELL(ExecWorker):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # run the spawner on the shells
-        #self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
-        #rec_makedir(self.workdir)
 
         # to run the spawner shells remote, run the following command on the
         # target node:
@@ -3900,20 +3898,22 @@ class ExecWorker_SHELL(ExecWorker):
         # 0 will run the remote nc's which are listening for our connections.
         #
         host = 'nid%.5d' % int(self._scheduler.reserved_nodes[0])
-        port = 10000
-        pwd  = os.path.dirname (rp.__file__)
+        portbase = 10000
+        srcdir  = os.path.dirname(rp.__file__)
         if self._number == 0:
             # this is exec worker 0 -- we run the remote nc's
-            tot = self._config['number_of_workers'][EXEC_WORKER]
-            work = "/tmp/ExecWorker-%s-%s" % (self._pilot_id, 0)
+            #workbase = "/tmp/Spawner-%s" % (self._pilot_id)
+            workbase = "%s/Spawner-%s" % (os.getcwd(), self._pilot_id)
 
-            self._remote_process = subprocess.Popen(
-                ['aprun', '-n', '1',
-                 '/bin/sh', '%s/agent/execworker-wrapper.sh' % pwd,
-                 '%s/agent/radical-pilot-spawner.sh' % pwd,
-                 work, str(port), str(port + 1)],
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-            )
+            # Usage: execworker-wrapper.sh <spawner.sh> <workdir> <port base> <count>
+            self._remote_process = subprocess.Popen([
+                'aprun', '-n', '1',
+                '/bin/sh', '%s/agent/execworker-wrapper.sh' % srcdir,
+                '%s/agent/radical-pilot-spawner.sh' % srcdir,
+                workbase,
+                str(portbase),
+                str(self._config['number_of_workers'][EXEC_WORKER])
+            ])
 
         # we need to give the above command some time to actually start the
         # listening processes, otherwise the following connections will fail
@@ -3922,7 +3922,7 @@ class ExecWorker_SHELL(ExecWorker):
 
         # now instead of the spawner, launch NCs toward the host on the given
         # ports
-        myport = port + 2 * self._number
+        myport = portbase + 2 * self._number
         ret, out, _  = self.launcher_shell.run_sync ("nc %s %d" % (host, myport))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
@@ -4142,10 +4142,11 @@ class ExecWorker_SHELL(ExecWorker):
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
+        self._log.debug("Launched unit %s ret:%s out:%s." % (uid, ret, out))
 
         if  ret != 0 :
-            self._log.error ("failed to run unit '%s': (%s)(%s)" \
-                            , (run_cmd, ret, out))
+            self._log.error ("failed to run unit '%s': (%s)(%s)",
+                             (run_cmd, ret, out))
             return FAIL
 
         lines = filter (None, out.split ("\n"))
