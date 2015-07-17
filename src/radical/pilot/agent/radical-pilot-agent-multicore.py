@@ -2118,7 +2118,7 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
         if cu_descr['input_staging']:
             for InputFile in cu_descr['input_staging']:
-                print_str+="echo 'mv %s/%s .'>>ExecScript.sh\n"%(work_dir,InputFile['target'])
+                print_str+="echo 'cp %s/%s .'>>ExecScript.sh\n"%(work_dir,InputFile['target'])
     
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -2136,21 +2136,24 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
-        print_str+="echo 'mv stdout %s'>>ExecScript.sh\n"%(work_dir)
-        print_str+="echo 'mv stderr %s'>>ExecScript.sh\n"%(work_dir)
+        print_str+="echo 'cp stdout %s'>>ExecScript.sh\n"%(work_dir)
+        print_str+="echo 'cp stderr %s'>>ExecScript.sh\n"%(work_dir)
 
         if cu_descr['output_staging']:
             for OutputFile in cu_descr['output_staging']:
-                print_str+="echo 'mv %s %s'>>ExecScript.sh\n"%(OutputFile['source'],work_dir)
+                print_str+="echo 'cp %s %s'>>ExecScript.sh\n"%(OutputFile['source'],work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#End of File'>>ExecScript.sh\n\n\n"
 
+        #-----------------------------------------------------------------------
+        # TODO: Update YARN application to accept multiple enviroment variables
+        #       as a sequence of values. Print all arguments also.
         if task_args:
-            args_string = '-shell_env '
+            args_string = ''
             for key,val in task_args.iteritems():
-                args_string+= key+'='+str(val)+' '
+                args_string+= '-shell_env '+key+'='+str(val)+' '
         else:
             args_string = ''
 
