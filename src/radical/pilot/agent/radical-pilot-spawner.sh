@@ -52,7 +52,7 @@ ERROR=""
 RETVAL=""
 
 # keep PID as global ID
-UID="$$"
+GID="$$"
 
 # this is where this 'daemon' keeps state for all started jobs
 BASE="$*"
@@ -321,7 +321,7 @@ create_monitor () {
   \\printf "\$UPID\\n"    > "\$DIR/upid"  # unique job    pid
 
   # signal the wrapper that job startup is done, and report job id
-  \\printf "\$UPID\\n" >> "$BASE/fifo.$UID"
+  \\printf "\$UPID\\n" >> "$BASE/fifo.$GID"
 
   # start monitoring the job
   while true
@@ -447,7 +447,7 @@ cmd_run () {
   )
 
   # we wait until the job was really started, and get its pid from the fifo
-  \read -r UPID < "$BASE/fifo.$UID"
+  \read -r UPID < "$BASE/fifo.$GID"
 
   # report the current state
   \tail -n 1 "$BASE/$UPID/state" || \printf "UNKNOWN\n"
@@ -766,20 +766,20 @@ cmd_quit () {
   if test "$1" = "TIMEOUT"
   then
     \printf "IDLE TIMEOUT\n"
-    \touch "$BASE/timed_out.$UID"
+    \touch "$BASE/timed_out.$GID"
     EXIT_VAL=2
 # FIXME: re-enable the lines below when idle-checker is re-enabled
 # else
-#   \touch "$BASE/quit.$UID"
+#   \touch "$BASE/quit.$GID"
   fi
 
   # kill idle checker
   /bin/kill $1 >/dev/null 2>&1
-  \rm -f "$BASE/idle.$UID"
+  \rm -f "$BASE/idle.$GID"
 
   # clean bulk file and other temp files
-  \rm -f $BASE/bulk.$UID
-  \rm -f $BASE/fifo.$UID
+  \rm -f $BASE/bulk.$GID
+  \rm -f $BASE/fifo.$GID
 
   # restore shell echo
   \stty echo    >/dev/null 2>&1
@@ -799,8 +799,8 @@ listen() {
 
   # we need our home base cleaned
   test -d "$BASE" || \mkdir -p  "$BASE"  || exit 1
-  \rm  -f "$BASE/bulk.$UID"
-  \touch  "$BASE/bulk.$UID"
+  \rm  -f "$BASE/bulk.$GID"
+  \touch  "$BASE/bulk.$GID"
 
   # make sure the base has a monitor script....
   create_monitor
@@ -812,12 +812,12 @@ listen() {
   fi
 
   # make sure we get killed when idle
-  #( idle_checker $UID 1>/dev/null 2>/dev/null 3</dev/null & ) &
+  #( idle_checker $GID 1>/dev/null 2>/dev/null 3</dev/null & ) &
   #IDLE=$!
 
   # make sure the fifo to communicate with the monitors exists
-  \rm -f  "$BASE/fifo.$UID"
-  \mkfifo "$BASE/fifo.$UID"
+  \rm -f  "$BASE/fifo.$GID"
+  \mkfifo "$BASE/fifo.$GID"
 
   # prompt for commands...
   \printf "PROMPT-0->\n"
@@ -835,10 +835,10 @@ listen() {
                  BULK_EXITVAL="0"
                  ;;
       BULK_RUN ) IN_BULK=""
-                 \printf "BULK_EVAL\n"  >> "$BASE/bulk.$UID"
+                 \printf "BULK_EVAL\n"  >> "$BASE/bulk.$GID"
                  ;;
-      *        ) test -z "$ARGS" && \printf "$CMD\n"       >> "$BASE/bulk.$UID"
-                 test -z "$ARGS" || \printf "$CMD $ARGS\n" >> "$BASE/bulk.$UID"
+      *        ) test -z "$ARGS" && \printf "$CMD\n"       >> "$BASE/bulk.$GID"
+                 test -z "$ARGS" || \printf "$CMD $ARGS\n" >> "$BASE/bulk.$GID"
                  ;;
     esac
 
@@ -929,17 +929,17 @@ EOT
       fi
 
       # we did hard work - make sure we are not getting killed for idleness!
-      \rm -f "$BASE/idle.$UID"
+      \rm -f "$BASE/idle.$GID"
 
       # well done - prompt for next command (even in bulk mode, for easier
       # parsing and EXITVAL communication)
       \printf "PROMPT-$EXITVAL->\n"
 
     # closing thye read loop for the bulk data file
-    done < "$BASE/bulk.$UID"
+    done < "$BASE/bulk.$GID"
 
     # empty the bulk data file
-    \rm -f "$BASE/bulk.$UID"
+    \rm -f "$BASE/bulk.$GID"
 
     # next main loop read needs IFS reset again
     OLDIFS=$IFS
@@ -958,7 +958,7 @@ EOT
 # report, if given
 #
 # confirm existence
-\printf "PID: $UID\n"
+\printf "PID: $GID\n"
 
 # FIXME: this leads to timing issues -- disable for benchmarking
 if test "$PURGE_ON_START" = "True"
