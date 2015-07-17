@@ -792,13 +792,13 @@ cmd_quit () {
 #
 listen() {
 
-  # make sure the base has a monitor script....
-  create_monitor
-
   # we need our home base cleaned
   test -d "$BASE" || \mkdir -p  "$BASE"  || exit 1
   \rm  -f "$BASE/bulk.$$"
   \touch  "$BASE/bulk.$$"
+
+  # make sure the base has a monitor script....
+  create_monitor
 
   # set up monitoring fifo
   if ! test -f "$NOTIFICATIONS"
