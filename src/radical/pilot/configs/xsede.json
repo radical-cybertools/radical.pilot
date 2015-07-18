@@ -158,5 +158,34 @@
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
         "virtenv_mode"                : "create"
+    },
+
+    "comet": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap"               : ["module load python"],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_comet",
+        "virtenv_mode"                : "create"
     }
 }
