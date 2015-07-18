@@ -3,7 +3,6 @@
 import zmq
 import sys
 import time
-import random
 
 t=float(sys.argv[1])
 

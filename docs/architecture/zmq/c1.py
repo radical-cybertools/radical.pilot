@@ -13,7 +13,7 @@ def producer():
     socket_src.hwm = 10
     socket_src.connect("tcp://127.0.0.1:5000")
 
-    for num in xrange(100000):
+    for num in xrange(1000):
         msg = {name:num}
         socket_src.send_json(msg)
         print 'sent %s' % msg
