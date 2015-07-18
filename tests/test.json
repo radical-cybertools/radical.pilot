@@ -218,7 +218,7 @@
      "executable"      : "python"
      },
  "xsede.comet"         : {
-     "cp_project"      : "TG-MCB090174",
+     "cp_project"      : "unc101",
      "cp_queue"        : "",
      "cp_runtime"      :  5,
      "cp_cores"        : 48,
