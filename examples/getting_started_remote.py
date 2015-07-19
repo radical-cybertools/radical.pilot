@@ -16,10 +16,10 @@ CORES    =    26
 UNITS    =    50
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
-RESOURCE = 'local.localhost'
-PROJECT  = None
-QUEUE    = None
-SCHEMA   = None
+# RESOURCE = 'local.localhost'
+# PROJECT  = None
+# QUEUE    = None
+# SCHEMA   = None
   
 # RESOURCE = 'home.test'
 # PROJECT  = None
@@ -36,10 +36,10 @@ SCHEMA   = None
 # QUEUE    = 'short'
 # SCHEMA   = None
 
-# RESOURCE = 'xsede.stampede'
-# PROJECT  = 'TG-MCB090174' 
-# QUEUE    = 'development'
-# SCHEMA   = None
+RESOURCE = 'xsede.stampede'
+PROJECT  = 'TG-MCB090174' 
+QUEUE    = 'development'
+SCHEMA   = None
 
 # RESOURCE = 'xsede.gordon'
 # PROJECT  = None
