@@ -4509,10 +4509,7 @@ class StageinWorker(threading.Thread):
                     sandbox      = os.path.join(self._workdir, '%s' % _cu['_id'])
                     staging_area = os.path.join(self._workdir, self._config['staging_area'])
 
-                    rpu.prof('log', msg="_cu 2" % cu_list, uid=_cu['_id'])
-
                     for directive in _cu['Agent_Input_Directives']:
-                        rpu.prof('log', msg="_cu 3" % cu_list, uid=_cu['_id'])
 
                         rpu.prof('Agent input_staging queue', uid=_cu['_id'],
                                  msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
@@ -4607,20 +4604,17 @@ class StageinWorker(threading.Thread):
                     # FTW stager to finish (or to pick up on the agent staging
                     # completion) to push the unit via mongodb to the agebnt again.
                     # Duh! (FIXME)
-                  # if not _cu["FTW_Input_Directives"] :
-                    rpu.prof('log', msg="_cu 4" % cu_list, uid=_cu['_id'])
-                    if True:
-                        rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
-                        _cu['state'] = rp.ALLOCATING
-                        self._agent.update_unit_state(src    = 'StageinWorker',
-                                                      uid    = _cu['_id'],
-                                                      state  = rp.ALLOCATING,
-                                                      msg    = 'agent input staging done')
+                    rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
+                    _cu['state'] = rp.ALLOCATING
+                    self._agent.update_unit_state(src    = 'StageinWorker',
+                                                  uid    = _cu['_id'],
+                                                  state  = rp.ALLOCATING,
+                                                  msg    = 'agent input staging done')
 
-                        _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
-                        for __cu in _cu_list :
-                            rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                            self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
+                    _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
+                    for __cu in _cu_list :
+                        rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
+                        self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
 
 
             except Exception as e:

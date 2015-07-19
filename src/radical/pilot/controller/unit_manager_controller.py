@@ -219,41 +219,6 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    # def _set_state(self, unit_uid, state, log):
-
-    #     if not isinstance(log, list):
-    #         log = [log]
-
-    #     # Acquire the shared data lock.
-    #     self._shared_data_lock.acquire()
-
-    #     old_state = self._shared_data[unit_uid]["data"]["state"]
-
-    #     # Update the database.
-    #     self._db.set_compute_unit_state(unit_uid, state, log)
-
-    #     # Update shared data.
-    #     self._shared_data[unit_uid]["data"]["state"] = state
-    #     self._shared_data[unit_uid]["data"]["statehistory"].append(state)
-    #     self._shared_data[unit_uid]["data"]["log"].extend(log)
-
-    #     # Call the callbacks
-    #     if state != old_state:
-    #         # On a state change, we fire zee callbacks.
-    #         logger.info(
-    #             "XX ComputeUnit '%s' state changed from '%s' to '%s'." %
-    #             (unit_uid, old_state, state)
-    #         )
-
-    #         # The state of the unit has changed, We call all
-    #         # unit-level callbacks to propagate this.
-    #         self.call_unit_state_callbacks(unit_uid, state)
-
-    #     # Release the shared data lock.
-    #     self._shared_data_lock.release()
-
-    # ------------------------------------------------------------------------
-    #
     def run(self):
         """run() is called when the process is started via
            PilotManagerController.start().
@@ -592,13 +557,6 @@ class UnitManagerController(threading.Thread):
                     else:
                         logger.warn('Not sure if action %s makes sense for output staging' % action)
 
-                # if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
-                #     log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
-                #     self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
-                #     cu_transfer.append(unit)
-                # else:
-                #     cu_notransfer.append(unit)
-
             # Bulk-add all units
             self._db.assign_compute_units_to_pilot(
                 units=units,
@@ -608,7 +566,7 @@ class UnitManagerController(threading.Thread):
 
             for unit in units:
                 # DON'T set state before pilot is assigned -- otherwise units
-                # are picked up
+                # are picked up by the FTW
                 log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
                 self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
 
@@ -618,28 +576,6 @@ class UnitManagerController(threading.Thread):
                 (units, pilot_uid)
             )
 
-            # # Bulk-add all non-transfer units-
-            # self._db.assign_compute_units_to_pilot(
-            #     units=cu_notransfer,
-            #     pilot_uid=pilot_uid,
-            #     pilot_sandbox=pilot_sandbox
-            # )
-
-            # self._db.assign_compute_units_to_pilot(
-            #     units=cu_transfer,
-            #     pilot_uid=pilot_uid,
-            #     pilot_sandbox=pilot_sandbox
-            # )
-
-            # for unit in cu_notransfer:
-            #     log = "Scheduled for execution on ComputePilot %s." % pilot_uid
-            #     self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
-            #     #self._set_state(uid, PENDING_EXECUTION, log)
-
-            # logger.info(
-            #     "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
-            #     (cu_notransfer, pilot_uid)
-            # )
         except Exception, e:
             logger.exception ('error in unit manager controller (schedule())')
             raise

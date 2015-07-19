@@ -109,10 +109,7 @@ class InputFileTransferWorker(threading.Thread):
 
                     else:
                         compute_unit_id = None
-                      # print 'isc -----------------------------'
-                      # import pprint
-                      # pprint.pprint (compute_unit)
-                      # print '---------------------------------'
+
                         try:
                             log_messages = []
 
