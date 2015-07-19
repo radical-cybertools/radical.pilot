@@ -463,7 +463,7 @@ cmd_lrun () {
   IFS=
   while \read -r IN
   do
-    if test "$IN" = "LRUN_EOT "
+    if test "$IN" = "LRUN_EOT"
     then
       break
     fi
@@ -832,7 +832,8 @@ listen() {
       BULK_RUN ) IN_BULK=""
                  \printf "BULK_EVAL\n"  >> "$BASE/bulk.$$"
                  ;;
-      *        ) \printf "$CMD $ARGS\n" >> "$BASE/bulk.$$"
+      *        ) test -z "$ARGS" && \printf "$CMD\n"       >> "$BASE/bulk.$$"
+                 test -z "$ARGS" || \printf "$CMD $ARGS\n" >> "$BASE/bulk.$$"
                  ;;
     esac
 
