@@ -2117,8 +2117,8 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
         if cu_descr['input_staging']:
-          for InputFile in cu_descr['input_staging']:
-            print_str+="echo 'mv %s/%s .'>>ExecScript.sh\n"%(work_dir,InputFile['target'])
+            for InputFile in cu_descr['input_staging']:
+                print_str+="echo 'cp %s/%s .'>>ExecScript.sh\n"%(work_dir,InputFile['target'])
     
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -2127,8 +2127,8 @@ class LaunchMethodYARN(LaunchMethod):
 
         arg_str=str()
         if cu_descr['arguments']:
-          for Arg in cu_descr['arguments']:
-            arg_str+='%s '%str(Arg)
+            for Arg in cu_descr['arguments']:
+                arg_str+='%s '%str(Arg)
 
         print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu_descr['executable'],arg_str)
 
@@ -2136,21 +2136,24 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
-        print_str+="echo 'mv stdout %s'>>ExecScript.sh\n"%(work_dir)
-        print_str+="echo 'mv stderr %s'>>ExecScript.sh\n"%(work_dir)
+        print_str+="echo 'cp stdout %s'>>ExecScript.sh\n"%(work_dir)
+        print_str+="echo 'cp stderr %s'>>ExecScript.sh\n"%(work_dir)
 
         if cu_descr['output_staging']:
-         for OutputFile in cu_descr['output_staging']:
-           print_str+="echo 'mv %s %s'>>ExecScript.sh\n"%(OutputFile['source'],work_dir)
+            for OutputFile in cu_descr['output_staging']:
+                print_str+="echo 'cp %s %s'>>ExecScript.sh\n"%(OutputFile['source'],work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#End of File'>>ExecScript.sh\n\n\n"
 
+        #-----------------------------------------------------------------------
+        # TODO: Update YARN application to accept multiple enviroment variables
+        #       as a sequence of values. Print all arguments also.
         if task_args:
-            args_string = '-shell_env '
+            args_string = ''
             for key,val in task_args.iteritems():
-              args_string+= key+'='+str(val)+' '
+                args_string+= '-shell_env '+key+'='+str(val)+' '
         else:
             args_string = ''
 
@@ -3422,8 +3425,8 @@ class YARNLRMS(LRMS):
 
         hdfs_conf_ouput = commands.getstatusoutput('hdfs getconf -nnRpcAddresses')[1].split('\n')
         for output in hdfs_conf_ouput:
-          if ':' in output:
-            self.namenode_url = output
+            if ':' in output:
+                self.namenode_url = output
 
         self.node_list = ["localhost"]
         self.cores_per_node = selected_cpus
@@ -3716,9 +3719,9 @@ class ExecWorker_POPEN (ExecWorker) :
             # TODO: This needs to move inside the construct command when the launcher
             #       takes only the CU description
             if launcher.name == 'YARN':
-              launch_script.write('\n## Changing Working Directory permissions for YARN\n')
-              launch_script.write('old_perm="`stat -c %a .`"\n')
-              launch_script.write('chmod 777 .\n')
+                launch_script.write('\n## Changing Working Directory permissions for YARN\n')
+                launch_script.write('old_perm="`stat -c %a .`"\n')
+                launch_script.write('chmod 777 .\n')
 
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
@@ -3747,18 +3750,18 @@ class ExecWorker_POPEN (ExecWorker) :
             # The actual command line, constructed per launch-method
             try:
                 if launcher.name == 'YARN':
-                  #---------------------------------------------------------------------
-                  # 
-                  self._log.debug("There was a YARN Launcher")
+                    #---------------------------------------------------------------------
+                    # 
+                    self._log.debug("There was a YARN Launcher")
 
-                  launch_command, hop_cmd  = \
-                    launcher.construct_command(cu['description']['executable'], 
+                    launch_command, hop_cmd  = \
+                        launcher.construct_command(cu['description']['executable'], 
                                                   cu['description']['environment'],
                                                    cu['description']['cores'],
                                                    ' ',(cu['description'],cu['workdir']))
                 else:
-                  launch_command, hop_cmd = \
-                    launcher.construct_command(cu['description']['executable'],
+                    launch_command, hop_cmd = \
+                        launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
                                                launch_script_hop,
@@ -3790,8 +3793,8 @@ class ExecWorker_POPEN (ExecWorker) :
             # TODO: This needs to move inside the construct command when the launcher
             #       takes only the CU description
             if launcher.name == 'YARN':
-              launch_script.write('\n## Changing Working Directory permissions for YARN\n')
-              launch_script.write('chmod $old_perm .\n')
+                launch_script.write('\n## Changing Working Directory permissions for YARN\n')
+                launch_script.write('chmod $old_perm .\n')
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
@@ -4246,16 +4249,16 @@ class ExecWorker_SHELL(ExecWorker):
         else                : io  += "2>%s " %       'STDERR'
 
         if launcher.name == 'YARN':
-          #---------------------------------------------------------------------
-          # 
-          self._log.debug("There was a YARN Launcher")
+            #---------------------------------------------------------------------
+            # TODO: Change the construct command to use only the CU description
+            self._log.debug("There was a YARN Launcher")
 
-          cmd, hop_cmd  = launcher.construct_command(descr['executable'], descr['environment'],
+            cmd, hop_cmd  = launcher.construct_command(descr['executable'], descr['environment'],
                                                    descr['cores'],
                                                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',(descr,cu['workdir']))
         else:
 
-          cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
+            cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
                                                    descr['cores'],
                                                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                                                    cu['opaque_slot'])
