@@ -94,9 +94,9 @@ class InputFileTransferWorker(threading.Thread):
                     ts = datetime.datetime.utcnow()
                     compute_unit = um_col.find_and_modify(
                         query={"unitmanager": self.unit_manager_id,
-                               "FTW_Input_Status": PENDING},
-                        update={"$set" : {"FTW_Input_Status": EXECUTING,
-                                          "state": STAGING_INPUT},
+                               "state"      : PENDING_INPUT_STAGING, 
+                               "pilot"      : {"$nin" : [None]}},
+                        update={"$set" : {"state": STAGING_INPUT},
                                 "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}},
                         limit=BULK_LIMIT # TODO: bulklimit is probably not the best way to ensure there is just one
                     )
@@ -109,17 +109,19 @@ class InputFileTransferWorker(threading.Thread):
 
                     else:
                         compute_unit_id = None
+
                         try:
                             log_messages = []
 
                             # We have found a new CU. Now we can process the transfer
                             # directive(s) wit SAGA.
                             compute_unit_id = str(compute_unit["_id"])
+                            logger.debug ("InputStagingController: unit found: %s" % compute_unit_id)
                             remote_sandbox = compute_unit["sandbox"]
-                            input_staging = compute_unit["FTW_Input_Directives"]
+                            input_staging = compute_unit.get ("FTW_Input_Directives", [])
 
                             # We need to create the CU's directory in case it doesn't exist yet.
-                            log_msg = "Creating ComputeUnit sandbox directory %s." % remote_sandbox
+                            log_msg = "InputStagingController: Creating ComputeUnit sandbox directory %s." % remote_sandbox
                             log_messages.append(log_msg)
                             logger.info(log_msg)
 
@@ -145,9 +147,11 @@ class InputFileTransferWorker(threading.Thread):
                                 # FIXME: why is this exception ignored?  AM
 
 
-                            logger.info("Processing input file transfers for ComputeUnit %s" % compute_unit_id)
+                            logger.info("InputStagingController: Processing input file transfers for ComputeUnit %s" % compute_unit_id)
                             # Loop over all transfer directives and execute them.
                             for sd in input_staging:
+                            
+                                logger.debug("InputStagingController: sd: %s : %s" % (compute_unit_id, sd))
 
                                 state_doc = um_col.find_one(
                                     {"_id": compute_unit_id},
@@ -195,12 +199,23 @@ class InputFileTransferWorker(threading.Thread):
                                            'FTW_Input_Directives.source': sd['source'],
                                            'FTW_Input_Directives.target': sd['target'],
                                            },
-                                    update={'$set': {'FTW_Input_Directives.$.state': 'Done'},
+                                    update={'$set': {'FTW_Input_Directives.$.state': DONE},
                                             '$push': {'log': {
                                                 'timestamp': datetime.datetime.utcnow(), 
                                                 'message'  : log_msg}}
                                     }
                                 )
+
+                            # all FTW staging done
+                            logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
+                            um_col.find_and_modify(
+                                    query  = {"_id"   : compute_unit_id},
+                                    update = {'$set' : {'state' : PENDING_AGENT_INPUT_STAGING},
+                                              '$push': {'log': {
+                                                  'timestamp': datetime.datetime.utcnow(), 
+                                                  'message'  : 'push unit to agent after ftw staging'}}
+                                }
+                            )
 
                         except Exception as e :
                             # Update the CU's state 'FAILED'.
@@ -225,61 +240,6 @@ class InputFileTransferWorker(threading.Thread):
                     # If the CU was canceled we can skip the remainder of this loop.
                     if state == CANCELED:
                         continue
-
-                    #
-                    # Check to see if there are more pending Directives, if not, we are Done
-                    #
-                    cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
-                                            "$or": [ {"Agent_Input_Status": EXECUTING},
-                                                     {"FTW_Input_Status": EXECUTING}
-                                                   ]
-                                            }
-                                           )
-                    # Iterate over all the returned CUs (if any)
-                    for cu in cursor_w:
-                        # See if there are any FTW Input Directives still pending
-                        if cu['FTW_Input_Status'] == EXECUTING and \
-                                not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['FTW_Input_Directives']):
-                            # All Input Directives for this FTW are done, mark the CU accordingly
-                            um_col.update({"_id": cu["_id"]},
-                                          {'$set': {'FTW_Input_Status': DONE},
-                                           '$push': {'log': {
-                                                'timestamp': datetime.datetime.utcnow(),
-                                                'message'  : 'All FTW Input Staging Directives done - %d.' % self._worker_number}}
-                                           }
-                            )
-
-                        # See if there are any Agent Input Directives still pending or executing,
-                        # if not, mark it DONE.
-                        if cu['Agent_Input_Status'] == EXECUTING and \
-                                not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['Agent_Input_Directives']):
-                            # All Input Directives for this Agent are done, mark the CU accordingly
-                            um_col.update({"_id": cu["_id"]},
-                                           {'$set': {'Agent_Input_Status': DONE},
-                                            '$push': {'log': {
-                                                'timestamp': datetime.datetime.utcnow(), 
-                                                'message'  : 'All Agent Input Staging Directives done - %d.' % self._worker_number}}
-                                           }
-                            )
-
-                    #
-                    # Check for all CUs if both Agent and FTW staging is done, we can then mark the CU PendingExecution
-                    #
-                    ts = datetime.datetime.utcnow()
-                    um_col.find_and_modify(
-                        query={"unitmanager": self.unit_manager_id,
-                               "Agent_Input_Status": { "$in": [ None, DONE ] },
-                               "FTW_Input_Status": { "$in": [ None, DONE ] },
-                               "state": STAGING_INPUT
-                        },
-                        update={"$set": {
-                                    "state": PENDING_EXECUTION
-                                },
-                                "$push": {
-                                    "statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}
-                                }
-                        }
-                    )
 
             except Exception as e :
 
