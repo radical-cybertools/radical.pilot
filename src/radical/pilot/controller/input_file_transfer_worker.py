@@ -244,61 +244,6 @@ class InputFileTransferWorker(threading.Thread):
                     if state == CANCELED:
                         continue
 
-                  # #
-                  # # Check to see if there are more pending Directives, if not, we are Done
-                  # #
-                  # cursor_w = um_col.find({"unitmanager": self.unit_manager_id,
-                  #                         "$or": [ {"Agent_Input_Status": EXECUTING},
-                  #                                  {"FTW_Input_Status": EXECUTING}
-                  #                                ]
-                  #                         }
-                  #                        )
-                  # # Iterate over all the returned CUs (if any)
-                  # for cu in cursor_w:
-                  #     # See if there are any FTW Input Directives still pending
-                  #     if cu['FTW_Input_Status'] == EXECUTING and \
-                  #             not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['FTW_Input_Directives']):
-                  #         # All Input Directives for this FTW are done, mark the CU accordingly
-                  #         um_col.update({"_id": cu["_id"]},
-                  #                       {'$set': {'FTW_Input_Status': DONE},
-                  #                        '$push': {'log': {
-                  #                             'timestamp': datetime.datetime.utcnow(),
-                  #                             'message'  : 'All FTW Input Staging Directives done - %d.' % self._worker_number}}
-                  #                        }
-                  #         )
-                  #
-                  #     # See if there are any Agent Input Directives still pending or executing,
-                  #     # if not, mark it DONE.
-                  #     if cu['Agent_Input_Status'] == EXECUTING and \
-                  #             not any(d['state'] == EXECUTING or d['state'] == PENDING for d in cu['Agent_Input_Directives']):
-                  #         # All Input Directives for this Agent are done, mark the CU accordingly
-                  #         um_col.update({"_id": cu["_id"]},
-                  #                        {'$set': {'Agent_Input_Status': DONE},
-                  #                         '$push': {'log': {
-                  #                             'timestamp': datetime.datetime.utcnow(), 
-                  #                             'message'  : 'All Agent Input Staging Directives done - %d.' % self._worker_number}}
-                  #                        }
-                  #         )
-
-                  # #
-                  # # Check for all CUs if both Agent and FTW staging is done, we can then mark the CU PendingExecution
-                  # #
-                  # ts = datetime.datetime.utcnow()
-                  # um_col.find_and_modify(
-                  #     query={"unitmanager": self.unit_manager_id,
-                  #            "Agent_Input_Status": { "$in": [ None, DONE ] },
-                  #            "FTW_Input_Status": { "$in": [ None, DONE ] },
-                  #            "state": STAGING_INPUT
-                  #     },
-                  #     update={"$set": {
-                  #                 "state": PENDING_EXECUTION
-                  #             },
-                  #             "$push": {
-                  #                 "statehistory": {"state": PENDING_EXECUTION, "timestamp": ts}
-                  #             }
-                  #     }
-                  # )
-
             except Exception as e :
 
                 logger.exception("transfer worker error: %s" % e)
