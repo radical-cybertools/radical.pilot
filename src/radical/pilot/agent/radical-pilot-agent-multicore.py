@@ -3790,7 +3790,7 @@ class ExecWorker_POPEN (ExecWorker) :
                             txt = unicode(prof_f.read(), "utf-8")
                             for line in txt.split("\n"):
                                 x1, x2, x3 = line.split()
-                                rpu.prof(x1, msg=x2, abstime=float(x3), uid=cu['_id'])
+                                rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
                         except UnicodeDecodeError:
                             txt = "unit PROF contains binary data -- use file staging directives"
 
@@ -4766,7 +4766,7 @@ class StageoutWorker(threading.Thread):
                                 txt = unicode(prof_f.read(), "utf-8").strip()
                                 for line in txt.split("\n"):
                                     x1, x2, x3 = line.split()
-                                    rpu.prof(x1, msg=x2, abstime=float(x3), uid=cu['_id'])
+                                    rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
                             except UnicodeDecodeError:
                                 txt = "unit PROF contains binary data -- use file staging directives"
 

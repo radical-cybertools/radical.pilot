@@ -95,7 +95,7 @@ AGENT_THREADS   = 'threading'
 AGENT_PROCESSES = 'multiprocessing'
 AGENT_MODE      = AGENT_THREADS
 
-def prof(etype, uid="", msg="", logger=None, reltime=None, abstime=None):
+def prof(etype, uid="", msg="", logger=None, timestamp=None):
 
     prof_init()
 
@@ -114,9 +114,16 @@ def prof(etype, uid="", msg="", logger=None, reltime=None, abstime=None):
     elif AGENT_MODE == AGENT_PROCESSES: tid = os.getpid()
     else: raise Exception('Unknown Agent Mode')
 
-    if   abstime: timestamp = abstime - timestamp_zero
-    elif reltime: timestamp = reltime
-    else        : timestamp = timestamp_now()
+    if timestamp:
+        if timestamp > timestamp_zero:
+            # this is an absolute timestamp -- convert to relative
+            timestamp = timestamp - timestamp_zero
+        else:
+            # this is an absolute timestamp -- leave as is
+            pass
+    else:
+        # no timestamp provided -- use 'now'
+        timestamp = timestamp_now()
 
     # NOTE: Don't forget to sync any format changes in the bootstrapper
     #       and downstream analysis tools too!
