@@ -1,7 +1,8 @@
 #!/bin/bash -l
 
 # ------------------------------------------------------------------------------
-# Copyright 2013-2014, radical@rutgers.edu License under the MIT License
+# Copyright 2013-2015, RADICAL @ Rutgers
+# Licensed under the MIT License
 #
 # This script launches a radical.pilot compute pilot.  If needed, it creates and
 # populates a virtualenv on the fly, into $VIRTENV.
@@ -12,6 +13,19 @@
 # PYTHONPATH will be set to include that tree during runtime.  That allows us to
 # use a different RADICAL stack if needed, by rerouting the PYTHONPATH, w/o the
 # need to create a new virtualenv from scratch.
+#
+# Arguments passed to the bootstrapper should be required by the bootstrapper
+# itself, and not only to be passed down to the agent.
+# Configuration only used by the agent should go in the agent config file,
+# and not be passed as an argument to the bootstrapper.
+# Configuration used by both should be passed to the bootstrapper and
+# consecutively passed to the agent. Only in cases where it is justified, that
+# information can be "duplicated" in the agent config.
+# The rationale for this is:
+# 1) that the bootstrapper can't (easily) read from MongoDB, so it needs to
+#    to get the information as arguments;
+# 2) that the agent needs information that goes beyond what can be put in
+#    arguments, both qualitative and quantitatively.
 #
 # ------------------------------------------------------------------------------
 # global variables
