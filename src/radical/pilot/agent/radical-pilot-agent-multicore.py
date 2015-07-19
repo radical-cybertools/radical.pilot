@@ -730,8 +730,6 @@ class Scheduler(threading.Thread):
                     # FIXME: this state update is not recorded?
                     cu['state'] = rp.ALLOCATING
 
-
-
                     cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
                     for _cu in cu_list:
 
