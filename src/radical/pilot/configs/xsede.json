@@ -176,6 +176,7 @@
             "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
         },
         "default_queue"               : "compute",
+        "cores_per_node"              : "24",
         "lrms"                        : "SLURM",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",

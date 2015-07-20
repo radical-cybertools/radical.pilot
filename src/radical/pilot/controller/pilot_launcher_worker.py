@@ -657,6 +657,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd.output                = "agent.out"
                         jd.error                 = "agent.err"
                         jd.total_cpu_count       = number_cores
+                        jd.processes_per_host    = cores_per_node
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
