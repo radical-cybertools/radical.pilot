@@ -51,7 +51,11 @@ fi
 ERROR=""
 RETVAL=""
 
-# keep PID as global ID
+# keep PID as global ID.  This is used to uniquely identify some files, in case
+# that the workdir is shared among spawner instances.
+# FIXME: why can't we use $GID for the fifo name?  It seems that in this case,
+#        the spawner never gets anything on the fifo (even though the job
+#        startup goes well)...
 GID="$$"
 
 # this is where this 'daemon' keeps state for all started jobs
@@ -321,7 +325,7 @@ create_monitor () {
   \\printf "\$UPID\\n"    > "\$DIR/upid"  # unique job    pid
 
   # signal the wrapper that job startup is done, and report job id
-  \\printf "\$UPID\\n" >> "$BASE/fifo.$GID"
+  \\printf "\$UPID\\n" >> "$BASE/fifo"
 
   # start monitoring the job
   while true
@@ -447,7 +451,7 @@ cmd_run () {
   )
 
   # we wait until the job was really started, and get its pid from the fifo
-  \read -r UPID < "$BASE/fifo.$GID"
+  \read -r UPID < "$BASE/fifo"
 
   # report the current state
   \tail -n 1 "$BASE/$UPID/state" || \printf "UNKNOWN\n"
@@ -779,7 +783,7 @@ cmd_quit () {
 
   # clean bulk file and other temp files
   \rm -f $BASE/bulk.$GID
-  \rm -f $BASE/fifo.$GID
+  \rm -f $BASE/fifo
 
   # restore shell echo
   \stty echo    >/dev/null 2>&1
@@ -816,8 +820,8 @@ listen() {
   #IDLE=$!
 
   # make sure the fifo to communicate with the monitors exists
-  \rm -f  "$BASE/fifo.$GID"
-  \mkfifo "$BASE/fifo.$GID"
+  \rm -f  "$BASE/fifo"
+  \mkfifo "$BASE/fifo"
 
   # prompt for commands...
   \printf "PROMPT-0->\n"
