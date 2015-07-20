@@ -109,7 +109,7 @@ class OutputFileTransferWorker(threading.Thread):
                         log_messages = []
 
                         # We have found a new CU. Now we can process the transfer
-                        # directive(s) wit SAGA.
+                        # directive(s) with SAGA.
                         compute_unit_id = str(compute_unit["_id"])
                         logger.debug ("OutputStagingController: unit found: %s" % compute_unit_id)
                         remote_sandbox = compute_unit["sandbox"]
@@ -130,8 +130,6 @@ class OutputFileTransferWorker(threading.Thread):
                                 logger.info("Compute Unit Canceled, interrupting output file transfers.")
                                 state = CANCELED
                                 break
-
-                            flags  = sd['flags']
 
                             # Mark the beginning of transfer this StagingDirective
                             um_col.find_and_modify(
@@ -162,7 +160,7 @@ class OutputFileTransferWorker(threading.Thread):
                             output_file = saga.filesystem.File(saga.Url(abs_src),
                                                                session=self._session)
 
-                            if CREATE_PARENTS in flags:
+                            if CREATE_PARENTS in sd['flags']:
                                 copy_flags = saga.filesystem.CREATE_PARENTS
                             else:
                                 copy_flags = 0
