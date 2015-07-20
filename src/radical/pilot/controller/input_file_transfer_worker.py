@@ -118,7 +118,7 @@ class InputFileTransferWorker(threading.Thread):
                             compute_unit_id = str(compute_unit["_id"])
                             logger.debug ("InputStagingController: unit found: %s" % compute_unit_id)
                             remote_sandbox = compute_unit["sandbox"]
-                            input_staging = compute_unit.get ("FTW_Input_Directives", [])
+                            input_staging = compute_unit.get("FTW_Input_Directives", [])
 
                             # We need to create the CU's directory in case it doesn't exist yet.
                             log_msg = "InputStagingController: Creating ComputeUnit sandbox directory %s." % remote_sandbox
@@ -135,7 +135,7 @@ class InputFileTransferWorker(threading.Thread):
 
                                 if  remote_sandbox_key not in self._saga_dirs :
                                     self._saga_dirs[remote_sandbox_key] = \
-                                            saga.filesystem.Directory (remote_sandbox_key,
+                                            saga.filesystem.Directory (remote_sandbox_key, # TODO: Shouldn't this be the Url and not a str?
                                                     flags=saga.filesystem.CREATE_PARENTS,
                                                     session=self._session)
 
@@ -150,6 +150,7 @@ class InputFileTransferWorker(threading.Thread):
                             
                                 logger.debug("InputStagingController: sd: %s : %s" % (compute_unit_id, sd))
 
+                                # Check if there was a cancel request
                                 state_doc = um_col.find_one(
                                     {"_id": compute_unit_id},
                                     fields=["state"]
@@ -178,6 +179,7 @@ class InputFileTransferWorker(threading.Thread):
 
                                 try:
                                     saga_dir.copy(input_file_url, target, flags=copy_flags)
+                                    saga_dir.close()
                                 except Exception as e:
                                     logger.exception(e)
                                     raise Exception("copy failed(%s)" % e.message)

@@ -106,15 +106,20 @@ class OutputFileTransferWorker(threading.Thread):
                     logger.info("OFTW cu found, progressing ...")
                     compute_unit_id = None
                     try:
+                        log_messages = []
+
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) wit SAGA.
                         compute_unit_id = str(compute_unit["_id"])
+                        logger.debug ("OutputStagingController: unit found: %s" % compute_unit_id)
                         remote_sandbox = compute_unit["sandbox"]
-                        staging_directives = compute_unit["FTW_Output_Directives"]
+                        output_staging = compute_unit.get("FTW_Output_Directives", [])
 
-                        logger.info("Processing output file transfers for ComputeUnit %s" % compute_unit_id)
+                        logger.info("OutputStagingController: Processing output file transfers for ComputeUnit %s" % compute_unit_id)
                         # Loop over all staging directives and execute them.
-                        for sd in staging_directives:
+                        for sd in output_staging:
+
+                            logger.debug("OutputStagingController: sd: %s : %s" % (compute_unit_id, sd))
 
                             # Check if there was a cancel request
                             state_doc = um_col.find_one(
@@ -126,9 +131,6 @@ class OutputFileTransferWorker(threading.Thread):
                                 state = CANCELED
                                 break
 
-                            action = sd['action']
-                            source = sd['source']
-                            target = sd['target']
                             flags  = sd['flags']
 
                             # Mark the beginning of transfer this StagingDirective
@@ -142,32 +144,35 @@ class OutputFileTransferWorker(threading.Thread):
                                 update={'$set': {'FTW_Output_Directives.$.state': EXECUTING},
                                         '$push': {'log': {
                                             'timestamp': datetime.datetime.utcnow(),
-                                            'message'  : 'Starting transfer of %s' % source}}
+                                            'message'  : 'Starting transfer of %s' % sd['source']}}
                                 }
                             )
 
-                            abs_source = "%s/%s" % (remote_sandbox, source)
+                            abs_src = "%s/%s" % (remote_sandbox, sd['source'])
 
-                            if os.path.basename(target) == target:
-                                abs_target = "file://localhost%s" % os.path.join(os.getcwd(), target)
+                            if os.path.basename(sd['target']) == sd['target']:
+                                abs_target = "file://localhost%s" % os.path.join(os.getcwd(), sd['target'])
                             else:
-                                abs_target = "file://localhost%s" % os.path.abspath(target)
+                                abs_target = "file://localhost%s" % os.path.abspath(sd['target'])
 
-                            log_msg = "Transferring output file %s -> %s" % (abs_source, abs_target)
+                            log_msg = "Transferring output file %s -> %s" % (abs_src, abs_target)
+                            log_messages.append(log_msg)
                             logger.debug(log_msg)
 
-                            logger.debug ("saga.fs.File ('%s')" % saga.Url(abs_source))
-                            output_file = saga.filesystem.File(saga.Url(abs_source),
-                                session=self._session
-                            )
+                            output_file = saga.filesystem.File(saga.Url(abs_src),
+                                                               session=self._session)
 
                             if CREATE_PARENTS in flags:
                                 copy_flags = saga.filesystem.CREATE_PARENTS
                             else:
                                 copy_flags = 0
-                            logger.debug ("saga.fs.File.copy ('%s')" % saga.Url(abs_target))
-                            output_file.copy(saga.Url(abs_target), flags=copy_flags)
-                            output_file.close()
+
+                            try:
+                                output_file.copy(saga.Url(abs_target), flags=copy_flags)
+                                output_file.close()
+                            except Exception as e:
+                                logger.exception(e)
+                                raise Exception("copy failed(%s)" % e.message)
 
                             # If all went fine, update the state of this StagingDirective to Done
                             um_col.find_and_modify(
