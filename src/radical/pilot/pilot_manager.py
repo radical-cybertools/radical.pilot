@@ -54,7 +54,7 @@ class PilotManager(Object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, pilot_launcher_workers=1, _reconnect=False):
+    def __init__(self, session, pilot_launcher_workers=1):
         """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -102,12 +102,9 @@ class PilotManager(Object):
         self._worker = None
         self._uid = None
 
-        if _reconnect == True:
-            return
 
-        ###############################
-        # Create a new pilot manager. #
-        ###############################
+        # ----------------------------------------------------------------------
+        # Create a new pilot manager
 
         # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
@@ -126,7 +123,6 @@ class PilotManager(Object):
         # of the worker thread is to check and update the state of pilots, fire
         # callbacks and so on.
         self._session._pilot_manager_objects.append(self)
-        self._session._process_registry.register(self._uid, self._worker)
 
     #--------------------------------------------------------------------------
     #
@@ -208,49 +204,8 @@ class PilotManager(Object):
         self._worker.join()
         logger.debug("pmgr    %s stopped  worker %s" % (str(self._uid), self._worker.name))
 
-        # Remove worker from registry
-        self._session._process_registry.remove(self._uid)
-
-
-        logger.debug("pmgr    %s closed" % (str(self._uid)))
         self._uid = None
 
-    #--------------------------------------------------------------------------
-    #
-    @classmethod
-    def _reconnect(cls, session, pilot_manager_id):
-        """PRIVATE: reconnect to an existing pilot manager.
-        """
-        uid_exists = PilotManagerController.uid_exists(
-            db_connection=session._dbs,
-            pilot_manager_uid=pilot_manager_id
-        )
-
-        if not uid_exists:
-            raise BadParameter(
-                "PilotManager with id '%s' not in database." % pilot_manager_id)
-
-        obj = cls(session=session, _reconnect=True)
-        obj._uid = pilot_manager_id
-
-        # Retrieve or start a worker process fo this PilotManager instance.
-        worker = session._process_registry.retrieve(pilot_manager_id)
-        if worker is not None:
-            obj._worker = worker
-        else:
-            obj._worker = PilotManagerController(
-                pilot_manager_uid=pilot_manager_id,
-                pilot_manager_data={},
-                session=session,
-                db_connection=session._dbs,
-                db_connection_info=session._connection_info)
-            session._process_registry.register(pilot_manager_id, obj._worker)
-
-        # start the worker if it's not already running
-        if obj._worker.is_alive() is False:
-            obj._worker.start()
-
-        return obj
 
     # -------------------------------------------------------------------------
     #

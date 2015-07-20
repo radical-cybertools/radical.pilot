@@ -71,7 +71,7 @@ class UnitManager(object):
     # -------------------------------------------------------------------------
     #
     def __init__(self, session, scheduler=None, input_transfer_workers=2,
-                 output_transfer_workers=2, _reconnect=False):
+                 output_transfer_workers=2):
         """Creates a new UnitManager and attaches it to the session.
 
         **Args:**
@@ -104,33 +104,27 @@ class UnitManager(object):
         # keep track of some changing metrics
         self.wait_queue_size = 0
 
-        if _reconnect is False:
-            # Start a worker process fo this UnitManager instance. The worker
-            # process encapsulates database access et al.
-            self._worker = UnitManagerController(
-                unit_manager_uid=None, 
-                scheduler=scheduler,
-                input_transfer_workers=input_transfer_workers,
-                output_transfer_workers=output_transfer_workers, 
-                session=self._session,
-                db_connection=session._dbs,
-                db_connection_info=session._connection_info)
-            self._worker.start()
+        # Start a worker process fo this UnitManager instance. The worker
+        # process encapsulates database access et al.
+        self._worker = UnitManagerController(
+            unit_manager_uid=None, 
+            scheduler=scheduler,
+            input_transfer_workers=input_transfer_workers,
+            output_transfer_workers=output_transfer_workers, 
+            session=self._session,
+            db_connection=session._dbs,
+            db_connection_info=session._connection_info)
+        self._worker.start()
 
-            self._uid = self._worker.unit_manager_uid
-            self._scheduler = get_scheduler(name=scheduler, 
-                                            manager=self, 
-                                            session=self._session)
+        self._uid = self._worker.unit_manager_uid
+        self._scheduler = get_scheduler(name=scheduler, 
+                                        manager=self, 
+                                        session=self._session)
 
-            # Each unit manager has a worker thread associated with it.
-            # The task of the worker thread is to check and update the state
-            # of units, fire callbacks and so on.
-            self._session._unit_manager_objects.append(self)
-            self._session._process_registry.register(self._uid, self._worker)
-
-        else:
-            # re-connect. do nothing
-            pass
+        # Each unit manager has a worker thread associated with it.
+        # The task of the worker thread is to check and update the state
+        # of units, fire callbacks and so on.
+        self._session._unit_manager_objects.append(self)
 
 
     #--------------------------------------------------------------------------
@@ -145,58 +139,10 @@ class UnitManager(object):
 
         if self._worker is not None:
             self._worker.stop()
-            # Remove worker from registry
-            self._session._process_registry.remove(self._uid)
 
         logger.info("Closed UnitManager %s." % str(self._uid))
         self._uid = None
 
-    #--------------------------------------------------------------------------
-    #
-    @classmethod
-    def _reconnect(cls, session, unit_manager_id):
-        """PRIVATE: Reconnect to an existing UnitManager.
-        """
-        uid_exists = UnitManagerController.uid_exists(
-            db_connection=session._dbs,
-            unit_manager_uid=unit_manager_id)
-
-        if not uid_exists:
-            raise BadParameter(
-                "UnitManager with id '%s' not in database." % unit_manager_id)
-
-        # The UnitManager object
-        obj = cls(session=session, scheduler=None, _reconnect=True)
-
-        # Retrieve or start a worker process fo this PilotManager instance.
-        worker = session._process_registry.retrieve(unit_manager_id)
-        if worker is not None:
-            obj._worker = worker
-        else:
-            obj._worker = UnitManagerController(
-                unit_manager_uid=unit_manager_id,
-                session=session,
-                db_connection=session._dbs,
-                db_connection_info=session._connection_info)
-            session._process_registry.register(unit_manager_id, obj._worker)
-
-        # start the worker if it's not already running
-        if obj._worker.is_alive() is False:
-            obj._worker.start()
-
-        # Now that the worker is running (again), we can get more information
-        # about the UnitManager
-        um_data = obj._worker.get_unit_manager_data()
-
-        obj._scheduler = get_scheduler(name=um_data['scheduler'], 
-                                       manager=obj,
-                                       session=obj._session)
-        # FIXME: we need to tell the scheduler about all the pilots...
-
-        obj._uid = unit_manager_id
-
-        logger.info("Reconnected to existing UnitManager %s." % str(obj))
-        return obj
 
     # -------------------------------------------------------------------------
     #

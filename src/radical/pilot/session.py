@@ -31,40 +31,6 @@ from radical.pilot.db              import DBException
 
 # ------------------------------------------------------------------------------
 #
-class _ProcessRegistry(object):
-    """A _ProcessRegistry contains a dictionary of all worker processes 
-    that are currently active.
-    """
-    def __init__(self):
-        self._dict = dict()
-
-    def register(self, key, process):
-        """Add a new process to the registry.
-        """
-        if key not in self._dict:
-            self._dict[key] = process
-
-    def retrieve(self, key):
-        """Retrieve a process from the registry.
-        """
-        if key not in self._dict:
-            return None
-        else:
-            return self._dict[key]
-
-    def keys(self):
-        """List all keys of all process in the registry.
-        """
-        return self._dict.keys()
-
-    def remove(self, key):
-        """Remove a process from the registry.
-        """
-        if key in self._dict:
-            del self._dict[key]
-
-# ------------------------------------------------------------------------------
-#
 class Session (saga.Session, Object):
     """A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
@@ -89,7 +55,7 @@ class Session (saga.Session, Object):
     #
     def __init__ (self, database_url=None, database_name="radicalpilot",
                   uid=None, name=None):
-        """Creates a new or reconnects to an exising session.
+        """Creates a new session.
 
         If called without a uid, a new Session instance is created and 
         stored in the database. If uid is set, an existing session is 
@@ -125,14 +91,8 @@ class Session (saga.Session, Object):
         self._debug_helper = ru.DebugHelper ()
 
         # Dictionaries holding all manager objects created during the session.
-        self._pilot_manager_objects = list()
-        self._unit_manager_objects = list()
-
-        # Create a new process registry. All objects belonging to this 
-        # session will register their worker processes (if they have any)
-        # in this registry. This makes it easier to shut down things in 
-        # a more coordinate fashion. 
-        self._process_registry = _ProcessRegistry()
+        self._pilot_manager_objects = dict()
+        self._unit_manager_objects  = dict()
 
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
@@ -158,6 +118,36 @@ class Session (saga.Session, Object):
             logger.info("using database path %s" % self._database_name)
         else :
             logger.info("using database name %s" % self._database_name)
+
+        # ----------------------------------------------------------------------
+        # create new session
+        try:
+            self._connected  = None
+
+            if name :
+                self._name = name
+                self._uid  = name
+              # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
+            else :
+                self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+                self._name = self._uid
+
+
+            self._dbs, self._created, self._connection_info = \
+                    dbSession.new(sid     = self._uid,
+                                  name    = self._name,
+                                  db_url  = self._database_url,
+                                  db_name = self._database_name)
+
+            logger.info("New Session created%s." % str(self))
+
+        except Exception, ex:
+            logger.exception ('session create failed')
+            raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
+                            % (self._database_url, ex))  
+
+        # initialize profiling
+        rpu.prof_init('rp.%s.prof' % self.uid, 'start', uid=self._uid)
 
         # Loading all "default" resource configurations
         module_path   = os.path.dirname(os.path.abspath(__file__))
@@ -203,55 +193,6 @@ class Session (saga.Session, Object):
         default_aliases = "%s/configs/aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
-        ##########################
-        ## CREATE A NEW SESSION ##
-        ##########################
-        if uid is None:
-            try:
-                self._connected  = None
-
-                if name :
-                    self._name = name
-                    self._uid  = name
-                  # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
-                else :
-                    self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-                    self._name = self._uid
-
-
-                self._dbs, self._created, self._connection_info = \
-                        dbSession.new(sid     = self._uid,
-                                      name    = self._name,
-                                      db_url  = self._database_url,
-                                      db_name = self._database_name)
-
-                logger.info("New Session created%s." % str(self))
-
-            except Exception, ex:
-                logger.exception ('session create failed')
-                raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                                % (self._database_url, ex))  
-
-        ######################################
-        ## RECONNECT TO AN EXISTING SESSION ##
-        ######################################
-        else:
-            try:
-                self._uid = uid
-
-                # otherwise, we reconnect to an existing session
-                self._dbs, session_info, self._connection_info = \
-                        dbSession.reconnect(sid     = self._uid, 
-                                            db_url  = self._database_url,
-                                            db_name = self._database_name)
-
-                self._created   = session_info["created"]
-                self._connected = session_info["connected"]
-
-                logger.info("Reconnected to existing Session %s." % str(self))
-
-            except Exception, ex:
-                raise PilotException("Couldn't re-connect to session: %s" % ex)  
 
     #---------------------------------------------------------------------------
     #
@@ -305,12 +246,12 @@ class Session (saga.Session, Object):
             # cleanup implies terminate
             terminate = True
 
-        for pmgr in self._pilot_manager_objects:
-            logger.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr._uid))
+        for pmgr_uid, pmgr in self._pilot_manager_objects.iteritems():
+            logger.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
             pmgr.close (terminate=terminate)
-            logger.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr._uid))
+            logger.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr_uid))
 
-        for umgr in self._unit_manager_objects:
+        for umgr_uid, umgr in self._unit_manager_objects.iteritems():
             logger.debug("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
             umgr.close()
             logger.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
@@ -408,7 +349,7 @@ class Session (saga.Session, Object):
               or doesn't exist. 
         """
         self._assert_obj_is_valid()
-        return self._dbs.list_pilot_manager_uids()
+        return = self_pilot_manager_objects.keys()
 
 
     # --------------------------------------------------------------------------
@@ -445,13 +386,9 @@ class Session (saga.Session, Object):
             pilot_manager_ids = [pilot_manager_ids]
             return_scalar = True
 
-        pilot_manager_objects = []
-
-        for pilot_manager_id in pilot_manager_ids:
-            pilot_manager = PilotManager._reconnect(session=self, pilot_manager_id=pilot_manager_id)
-            pilot_manager_objects.append(pilot_manager)
-
-            self._pilot_manager_objects.append(pilot_manager)
+        pilot_manager_objects = list()
+        for pid in pilot_manager_ids:
+            pilot_manager_objects.append (self_pilot_manager_objects[pid])
 
         if return_scalar is True:
             pilot_manager_objects = pilot_manager_objects[0]
@@ -478,7 +415,7 @@ class Session (saga.Session, Object):
               or doesn't exist. 
         """
         self._assert_obj_is_valid()
-        return self._dbs.list_unit_manager_uids()
+        return = self_unit_manager_objects.keys()
 
     # --------------------------------------------------------------------------
     #
@@ -513,13 +450,9 @@ class Session (saga.Session, Object):
             unit_manager_ids = [unit_manager_ids]
             return_scalar = True
 
-        unit_manager_objects = []
-
-        for unit_manager_id in unit_manager_ids:
-            unit_manager = UnitManager._reconnect(session=self, unit_manager_id=unit_manager_id)
-            unit_manager_objects.append(unit_manager)
-
-            self._unit_manager_objects.append(unit_manager)
+        pilot_manager_objects = list()
+        for uid in unit_manager_ids:
+            unit_manager_objects.append (self_unit_manager_objects[pid])
 
         if return_scalar is True:
             unit_manager_objects = unit_manager_objects[0]
