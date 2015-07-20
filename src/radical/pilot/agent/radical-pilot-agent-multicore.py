@@ -733,7 +733,6 @@ class Scheduler(threading.Thread):
                     # FIXME: this state update is not recorded?
                     cu['state'] = rp.ALLOCATING
 
-
                     cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
                     for _cu in cu_list:
 
@@ -2075,7 +2074,7 @@ class LaunchMethodPOE(LaunchMethod):
 
 # ==============================================================================
 #
-# NOTE: The Launch Method Implementation for Running YARN applications
+# The Launch Method Implementation for Running YARN applications
 #
 class LaunchMethodYARN(LaunchMethod):
 
@@ -4315,7 +4314,11 @@ class ExecWorker_SHELL(ExecWorker):
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
+        self._log.debug("===================================================")
+        self._log.debug(run_cmd)
+        self._log.debug("===================================================")
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
+        self._log.debug("===================================================")
 
         if  ret != 0 :
             self._log.error ("failed to run unit '%s': (%s)(%s)" \
@@ -4450,6 +4453,7 @@ class ExecWorker_SHELL(ExecWorker):
 
                     with self._registry_lock :
                         cu = self._registry.get (pid, None)
+                        self._log.info ("registry: %s", self._registry.keys())
 
                     if cu:
                         rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
