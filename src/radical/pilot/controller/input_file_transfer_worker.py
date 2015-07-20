@@ -89,8 +89,6 @@ class InputFileTransferWorker(threading.Thread):
                 while not self._stop.is_set():
                     # See if we can find a ComputeUnit that is waiting for
                     # input file transfer.
-                    compute_unit = None
-
                     ts = datetime.datetime.utcnow()
                     compute_unit = um_col.find_and_modify(
                         query={"unitmanager": self.unit_manager_id,
