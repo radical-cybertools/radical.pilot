@@ -4399,7 +4399,7 @@ class ExecWorker_SHELL(ExecWorker):
                         static_cnt += 1
 
                     else :
-                        self._log.info ("monitoring channel checks cache (%d)", len(self._cached_events))
+                      # self._log.info ("monitoring channel checks cache (%d)", len(self._cached_events))
                         static_cnt += 1
 
                         if static_cnt == 10 :
