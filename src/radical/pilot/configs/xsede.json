@@ -18,7 +18,7 @@
         "lrms"                        : "SLURM",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "SHELL",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap"               : ["module purge",
