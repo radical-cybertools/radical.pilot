@@ -185,21 +185,6 @@ class InputFileTransferWorker(threading.Thread):
                                     logger.exception(e)
                                     raise Exception("copy failed(%s)" % e.message)
 
-                                # If all went fine, update the state of this StagingDirective to Done
-                                um_col.find_and_modify(
-                                    query={"_id" : compute_unit_id,
-                                           'FTW_Input_Status': EXECUTING,
-                                           'FTW_Input_Directives.state': PENDING,
-                                           'FTW_Input_Directives.source': sd['source'],
-                                           'FTW_Input_Directives.target': sd['target'],
-                                           },
-                                    update={'$set': {'FTW_Input_Directives.$.state': DONE},
-                                            '$push': {'log': {
-                                                'timestamp': datetime.datetime.utcnow(), 
-                                                'message'  : log_msg}}
-                                    }
-                                )
-
                             # all FTW staging done
                             logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
                             um_col.find_and_modify(
