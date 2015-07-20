@@ -3787,7 +3787,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 if os.path.isfile("%s/PROF" % _cu['workdir']):
                     with open("%s/PROF" % _cu['workdir'], 'r') as prof_f:
                         try:
-                            txt = unicode(prof_f.read(), "utf-8")
+                            txt = prof_f.read()
                             for line in txt.split("\n"):
                                 x1, x2, x3 = line.split()
                                 rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
@@ -4763,7 +4763,7 @@ class StageoutWorker(threading.Thread):
                     if os.path.isfile("%s/PROF" % _cu['workdir']):
                         with open("%s/PROF" % _cu['workdir'], 'r') as prof_f:
                             try:
-                                txt = unicode(prof_f.read(), "utf-8").strip()
+                                txt = prof_f.read()
                                 for line in txt.split("\n"):
                                     x1, x2, x3 = line.split()
                                     rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
