@@ -526,10 +526,10 @@ class PilotLauncherWorker(threading.Thread):
                             cc_path = os.path.abspath("%s/../bootstrapper/%s" \
                                     % (mod_dir, 'cacert.pem.gz'))
 
-                          cc_url= saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
-                          msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)
-                          logentries.append(Logentry (msg, logger=logger.debug))
-                          sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
+                            cc_url= saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
+                            msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)
+                            logentries.append(Logentry (msg, logger=logger.debug))
+                            sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
 
                         # ------------------------------------------------------
