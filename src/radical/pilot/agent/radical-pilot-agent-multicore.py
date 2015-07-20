@@ -5541,7 +5541,7 @@ def main():
     if not options.runtime              : parser.error("Missing or zero agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
-    rpu.prof_init('agent.prof', 'start', uid=options.pilot_id)
+    rpu.prof_init('agent.prof', uid=options.pilot_id)
 
     # configure the agent logger
     logger    = logging.getLogger  ('radical.pilot.agent')

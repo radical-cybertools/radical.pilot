@@ -13,127 +13,143 @@ from   radical.pilot.states import *
 
 # ------------------------------------------------------------------------------
 #
-# time stamp for profiling etc.
+# profile class
 #
-def timestamp():
+class Profiler (object):
+
+    # we want the profiler to be a singleton, to have consistent timing over all
+    # threads.  Each process needs to re-inialize the profiler if it was not
+    # inherited in any other way.  We thus append pid and thread id to the
+    # profiler output files
+    __metaclass__ = ru.Singleton
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__ (self, target, uid=None, logger=None):
+
+        # this init is only called once (globally).  We synchronize clocks and
+        # set timestamp_zero
+
+        # we only profile if so instructed
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            self._enabled = True
+        else:
+            self._enabled = False
+            return
+
+        # open the target output stream
+        if target == '-':
+            self._handle = sys.stdout
+        else:
+            tid = threading.current_thread().name
+            pid = os.getpid()
+            target = "%s.%s.%s.prof" % (target, pid, tid)
+            self._handle = open(target, 'a')
+
+        self._logger = logger
+
+        self._ts_zero, self._ts_abs = self._timestamp_init()
+
+        # log initialization event
+        self.prof (etype='start profile', uid=uid,
+                   msg="%s:%s" % (self._ts_zero, self._ts_abs), 
+                   timestamp=0.0)
+
+    # --------------------------------------------------------------------------
+    #
+    def _timestamp_init(self):
+        """
+        return a tuple of absolute time, system time
+        """
+
+        # retrieve absolute timestamp from an external source
+        #
+        # We first try to contact a network time service for a timestamp, if that
+        # fails we use the current system time.
+        try:
+            import ntplib
+            response = ntplib.NTPClient().request('0.pool.ntp.org')
+            timestamp_abs  = response.tx_time
+            timestamp_zero = response.orig_time
+            return [timestamp_abs, timstamp_zero]
+        except:
+            t = time.time()
+            return [t,t]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _timestamp_now(self):
+
+        # relative timestamp seconds since TIME_ZERO (start)
+        return float(time.time()) - self._ts_zero
+
+
+    # ------------------------------------------------------------------------------
+    #
+    def flush_prof(self):
+
+        if self._enabled:
+            self._handle.flush()
+
+    # ------------------------------------------------------------------------------
+    #
+    def prof(self, etype, uid="", msg="", timestamp=None):
+
+        if not self._enabled:
+            return
+
+        if self._logger:
+            self._logger("%s (%10s) : %s", etype, msg, uid)
+
+        tid = threading.current_thread().name
+        pid = os.getpid()
+
+        if timestamp != None:
+            if timestamp > (100 * 1000 * 1000):
+                # older than 3 years (time after 1973) 
+                # --> this is an absolute timestamp
+                timestamp = timestamp - self._ts_zero
+            else:
+                # this is a relative timestamp -- leave as is
+                pass
+        else:
+            # no timestamp provided -- use 'now'
+            timestamp = self._timestamp_now()
+
+        # NOTE: Don't forget to sync any format changes in the bootstrapper
+        #       and downstream analysis tools too!
+        self._handle.write("%.4f,%s:%s,%s,%s,%s\n" % (timestamp, pid, tid, uid, etype, msg))
+
+        # NOTE: flush_prof() should be called when closing the application process,
+        #       to ensure data get correctly written to disk.  Calling flush on
+        #       every event creates significant overheads, but is useful for
+        #       debugging...
+        # flush_prof()
+
+
+
+# --------------------------------------------------------------------------
+#
+# methods to keep the new Profiler class backward compatible
+#
+_p = None
+def prof_init(target, uid="", logger=None):
+    global _p
+    _p = Profiler (target, uid, logger)
+
+def prof(etype, uid="", msg="", timestamp=None):
+    global _p
+    if not _p:
+        return
+    _p.prof(etype=etype, uid=uid, msg=msg, timestamp=timestamp)
+
+# --------------------------------------------------------------------------
+#
+def timestamp(self):
     # human readable absolute UTC timestamp for log entries in database
     return datetime.datetime.utcnow()
-
-def timestamp_epoch():
-    # absolute timestamp as seconds since epoch
-    return float(time.time())
-
-# absolute timestamp in seconds since epocj pointing at start of
-# bootstrapper (or 'now' as fallback)
-timestamp_zero = float(os.environ.get('TIME_ZERO', time.time()))
-
-
-def timestamp_now():
-    # relative timestamp seconds since TIME_ZERO (start)
-    return float(time.time()) - timestamp_zero
-
-
-# ------------------------------------------------------------------------------
-#
-# profiling support
-#
-# If 'RADICAL_PILOT_PROFILE' is set in environment, we log timed events.
-#
-def flush_prof():
-    if profile_rp:
-        _profile_handle.flush()
-
-# ------------------------------------------------------------------------------
-#
-# FIXME: ugly, ugly, ugly global variablesessss
-#
-profile_rp      = False
-_profile_handle = None
-_profile_init   = False
-
-
-# ------------------------------------------------------------------------------
-#
-# make sure the profile target handle is open, and log initial event (if such
-# one is given)
-#
-def prof_init(target, etype, uid=None, msg=None, logger=None):
-
-    # need write access to global vars
-    global profile_rp
-    global _profile_handle
-    global _profile_init
-
-    if _profile_init:
-        # init only once per process
-        return
-
-    # default profile name
-    # FIXME: we probably should append process id to target -- but OTOH,
-    #        small writes are atomic when data < 256 or so bytes, so this 
-    #        should not be a huge problem (tm)...
-    if not target:
-        target = 'radical.pilot.prof'
-
-    # only open profile if requested
-    if 'RADICAL_PILOT_PROFILE' in os.environ:
-        profile_rp = True
-        _profile_handle = open(target, 'a')
-
-    # initialize only once
-    _profile_init = True
-
-    # log initialization event
-    prof (etype=etype, uid=uid, msg=msg, logger=logger, timestamp=timestamp_abs())
-
-
-# ------------------------------------------------------------------------------
-#
-# FIXME: AGENT_MODE should not live here...
-AGENT_THREADS   = 'threading'
-AGENT_PROCESSES = 'multiprocessing'
-AGENT_MODE      = AGENT_THREADS
-
-def prof(etype, uid="", msg="", logger=None, timestamp=None):
-
-
-    if not profile_rp:
-        # profiling is either not initialized or not enabled
-        return
-
-    # record a timed event.  We record the thread ID, the uid of the affected
-    # object, an event type, and a log message.
-    if logger:
-        logger("%s (%10s) : %s", etype, msg, uid)
-
-    # FIXME: these calls should be very fast -- but they are also very frequent.
-    #        Is there a way to cache them, possibly by some thread-local memory 
-    #        token hash?
-    if   AGENT_MODE == AGENT_THREADS  : tid = threading.current_thread().name
-    elif AGENT_MODE == AGENT_PROCESSES: tid = os.getpid()
-    else: raise Exception('Unknown Agent Mode')
-
-    if timestamp:
-        if timestamp > timestamp_zero:
-            # this is an absolute timestamp -- convert to relative
-            timestamp = timestamp - timestamp_zero
-        else:
-            # this is an absolute timestamp -- leave as is
-            pass
-    else:
-        # no timestamp provided -- use 'now'
-        timestamp = timestamp_now()
-
-    # NOTE: Don't forget to sync any format changes in the bootstrapper
-    #       and downstream analysis tools too!
-    _profile_handle.write("%.4f,%s,%s,%s,%s\n" % (timestamp, tid, uid, etype, msg))
-
-    # NOTE: flush_prof() should be called when closing the application process,
-    #       to ensure data get correctly written to disk.  Calling flush on
-    #       every event creates significant overheads, but is useful for
-    #       debugging...
-    flush_prof()
-
 
 # ------------------------------------------------------------------------------
 #
@@ -170,7 +186,7 @@ def blowup(config, cus, component, logger=None):
         cus = [cus]
 
 
-    if not profile_rp:
+    if not self._enabled:
         prof ("debug", msg="blowup disabled")
         return cus, []
 
@@ -200,7 +216,7 @@ def blowup(config, cus, component, logger=None):
             continue
 
         if factor < 0:
-            # FIXME: we should print a warning or something?  
+            # FIXME: we should print a warning or something?
             # Anyway, we assume the default here, ie. no blowup, no drop.
             factor = 1
 
@@ -238,7 +254,7 @@ def get_rusage():
     self_usage  = resource.getrusage(resource.RUSAGE_SELF)
     child_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
 
-    rtime = time.time() - timestamp_zero
+    rtime = time.time()
     utime = self_usage.ru_utime  + child_usage.ru_utime
     stime = self_usage.ru_stime  + child_usage.ru_stime
     rss   = self_usage.ru_maxrss + child_usage.ru_maxrss

@@ -147,7 +147,7 @@ class Session (saga.Session, Object):
                             % (self._database_url, ex))  
 
         # initialize profiling
-        rpu.prof_init('rp.%s.prof' % self.uid, 'start', uid=self._uid)
+        rpu.prof_init('%s' % self.uid, uid=self._uid)
 
         # Loading all "default" resource configurations
         module_path   = os.path.dirname(os.path.abspath(__file__))
@@ -349,7 +349,7 @@ class Session (saga.Session, Object):
               or doesn't exist. 
         """
         self._assert_obj_is_valid()
-        return = self_pilot_manager_objects.keys()
+        return self._pilot_manager_objects.keys()
 
 
     # --------------------------------------------------------------------------
@@ -388,7 +388,7 @@ class Session (saga.Session, Object):
 
         pilot_manager_objects = list()
         for pid in pilot_manager_ids:
-            pilot_manager_objects.append (self_pilot_manager_objects[pid])
+            pilot_manager_objects.append (self._pilot_manager_objects[pid])
 
         if return_scalar is True:
             pilot_manager_objects = pilot_manager_objects[0]
@@ -415,7 +415,7 @@ class Session (saga.Session, Object):
               or doesn't exist. 
         """
         self._assert_obj_is_valid()
-        return = self_unit_manager_objects.keys()
+        return self._unit_manager_objects.keys()
 
     # --------------------------------------------------------------------------
     #
@@ -452,7 +452,7 @@ class Session (saga.Session, Object):
 
         pilot_manager_objects = list()
         for uid in unit_manager_ids:
-            unit_manager_objects.append (self_unit_manager_objects[pid])
+            unit_manager_objects.append (self._unit_manager_objects[pid])
 
         if return_scalar is True:
             unit_manager_objects = unit_manager_objects[0]
