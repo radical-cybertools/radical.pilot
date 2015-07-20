@@ -12,6 +12,7 @@
             "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org/"
         },
         "default_queue"               : "workq",
+        "cores_per_node"              : "20",
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",

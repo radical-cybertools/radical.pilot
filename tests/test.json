@@ -96,7 +96,7 @@
      "cp_project"      : "TG-CCR140028",
      "cp_queue"        : "workq",
      "cp_runtime"      : 10,
-     "cp_cores"        : 20,
+     "cp_cores"        : 16,
      "cp_schema"       : "",
      "cu_cores"        :  5,
      "cu_pre_exec"     : ["module load python"],
