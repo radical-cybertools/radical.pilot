@@ -179,7 +179,6 @@ class InputFileTransferWorker(threading.Thread):
 
                                 try:
                                     saga_dir.copy(input_file_url, target, flags=copy_flags)
-                                    saga_dir.close()
                                 except Exception as e:
                                     logger.exception(e)
                                     raise Exception("copy failed(%s)" % e.message)
