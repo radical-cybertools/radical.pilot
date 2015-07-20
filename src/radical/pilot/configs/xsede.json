@@ -175,11 +175,11 @@
             "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
             "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
         },
-        "default_queue"               : "normal",
+        "default_queue"               : "compute",
         "lrms"                        : "SLURM",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
+        "agent_spawner"               : "SHELL",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap"               : ["module load python"],
