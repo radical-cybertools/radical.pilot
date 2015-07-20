@@ -30,31 +30,6 @@ COMMAND_TYPE                = "type"
 COMMAND_ARG                 = "arg"
 COMMAND_TIME                = "time"
 
-# -----------------------------------------------------------------------------
-#
-class DBException(Exception):
-
-    # -------------------------------------------------------------------------
-    #
-    def __init__(self, msg, obj=None):
-        """Le constructeur. Creates a new exception object.
-        """
-        Exception.__init__(self, msg)
-        self._obj = obj
-
-
-# -----------------------------------------------------------------------------
-#
-class DBEntryExistsException(Exception):
-
-    # -------------------------------------------------------------------------
-    #
-    def __init__(self, msg, obj=None):
-        """Le constructeur. Creates a new exception object.
-        """
-        Exception.__init__(self, msg)
-        self._obj = obj
-
 
 #-----------------------------------------------------------------------------
 #
@@ -135,7 +110,7 @@ class Session():
         # make sure session doesn't exist already
         if  sid :
             if  self._db[sid].count() != 0 :
-                raise DBEntryExistsException ("Session '%s' already exists." % sid)
+                raise RuntimeError ("Session '%s' already exists." % sid)
 
         # remember session id
         self._session_id = sid
@@ -223,7 +198,7 @@ class Session():
         """ Removes a session and all associated collections from the DB.
         """
         if self._s is None:
-            raise DBException("No active session.")
+            raise RuntimeError("No active session.")
 
         for collection in [self._s, self._w, self._um, self._p, self._pm]:
             collection.drop()
@@ -231,7 +206,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot_manager(self, pilot_manager_data, pilot_launcher_workers):
+    def insert_pilot_manager(self, pmgr_uid, pilot_manager_data, pilot_launcher_workers):
         """ Adds a pilot managers to the list of pilot managers.
 
             Pilot manager IDs are just kept for book-keeping.
@@ -239,7 +214,8 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_manager_json = {"data": pilot_manager_data,
+        pilot_manager_json = {"_id": pmgr_uid,
+                              "data": pilot_manager_data,
                               "pilot_launcher_workers": pilot_launcher_workers}
         result = self._pm.insert(pilot_manager_json)
 
@@ -595,16 +571,17 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_unit_manager(self, scheduler, input_transfer_workers, output_transfer_workers):
+    def insert_unit_manager(self, umgr_uid, scheduler, input_transfer_workers, output_transfer_workers):
         """ Adds a unit managers to the list of unit managers.
 
             Unit manager IDs are just kept for book-keeping.
         """
-        if self._s is None:
+        if not self._s:
             raise Exception("No active session.")
 
         result = self._um.insert(
-            {"scheduler": scheduler,
+            {"_id": umgr_uid,
+             "scheduler": scheduler,
              "input_transfer_workers": input_transfer_workers,
              "output_transfer_workers": output_transfer_workers }
         )
@@ -617,20 +594,20 @@ class Session():
     def get_unit_manager(self, unit_manager_id):
         """ Get a unit manager.
         """
-        if self._s is None:
-            raise DBException("No active session.")
+        if not self._s:
+            raise RuntimeError("No active session.")
 
         cursor = self._um.find({"_id": unit_manager_id})
 
         if cursor.count() != 1:
             msg = "No unit manager with id %s found in DB." % unit_manager_id
-            raise DBException(msg=msg)
+            raise RuntimeError(msg=msg)
 
         try:
             return cursor[0]
         except:
             msg = "No UnitManager with id '%s' found in database." % unit_manager_id
-            raise DBException(msg=msg)
+            raise RuntimeError(msg=msg)
 
     #--------------------------------------------------------------------------
     #
@@ -638,7 +615,7 @@ class Session():
         """ Get a unit manager.
         """
         if self._s is None:
-            raise DBException("No active session.")
+            raise RuntimeError("No active session.")
 
         cursor = self._pm.find({"_id": pilot_manager_id})
 
@@ -646,7 +623,7 @@ class Session():
             return cursor[0]
         except:
             msg = "No pilot manager with id '%s' found in DB." % pilot_manager_id
-            raise DBException(msg=msg)
+            raise RuntimeError(msg=msg)
 
 
     #--------------------------------------------------------------------------
@@ -655,7 +632,7 @@ class Session():
         """ Lists all pilot managers.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         unit_manager_uids = []
         cursor = self._um.find()
@@ -671,7 +648,7 @@ class Session():
         """ Adds a pilot from a unit manager.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         for pilot_id in pilot_ids:
             self._p.update({"_id": pilot_id},
@@ -684,7 +661,7 @@ class Session():
         """ Removes one or more pilots from a unit manager.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         # Add the ids to the pilot's queue
         for pilot_id in pilot_ids:
@@ -693,13 +670,13 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def unit_manager_list_pilots(self, unit_manager_uid):
+    def unit_manager_list_pilots(self, umgr_uid):
         """ Lists all pilots associated with a unit manager.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
-        cursor = self._p.find({"unitmanager": unit_manager_uid})
+        cursor = self._p.find({"unitmanager": umgr_uid})
 
         # cursor -> dict
         pilot_ids = []
@@ -709,18 +686,18 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def unit_manager_list_compute_units(self, unit_manager_uid, pilot_uid=None):
+    def unit_manager_list_compute_units(self, umgr_uid, pilot_uid=None):
         """ Lists all compute units associated with a unit manager.
         """
         # FIXME: why is this call not updating local unit state?
         if  self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         if  pilot_uid :
-            cursor = self._w.find({"unitmanager": unit_manager_uid, 
+            cursor = self._w.find({"unitmanager": umgr_uid, 
                                    "pilot"      : pilot_uid})
         else :
-            cursor = self._w.find({"unitmanager": unit_manager_uid})
+            cursor = self._w.find({"unitmanager": umgr_uid})
 
         # cursor -> dict
         unit_ids = []
@@ -735,7 +712,7 @@ class Session():
         """
         # FIXME: why is this call not updating local unit state?
         if  self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         cursor = self._w.find({"pilot"      : pilot_uid})
 
@@ -755,7 +732,7 @@ class Session():
             return
 
         if  self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         # Make sure we work on a list.
         if not isinstance(units, list):
@@ -790,19 +767,19 @@ class Session():
     def publish_compute_unit_callback_history(self, unit_uid, callback_history):
 
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         self._w.update({"_id": unit_uid},
                        {"$set": {"callbackhistory": callback_history}})
 
     #--------------------------------------------------------------------------
     #
-    def insert_compute_units(self, unit_manager_uid, units, unit_log):
+    def insert_compute_units(self, umgr_uid, units, unit_log):
         """ Adds one or more compute units to the database and sets their state
             to 'PENDING'.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         # Make sure we work on a list.
         if not isinstance(units, list):
@@ -819,7 +796,7 @@ class Session():
                 "_id":           unit.uid,
                 "description":   unit.description.as_dict(),
                 "restartable":   unit.description.restartable,
-                "unitmanager":   unit_manager_uid,
+                "unitmanager":   umgr_uid,
                 "pilot":         None,
                 "pilot_sandbox": None,
                 "state":         unit._local_state,

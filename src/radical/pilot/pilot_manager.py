@@ -16,6 +16,8 @@ import time
 import glob
 import copy
 
+import radical.utils as ru
+
 from radical.pilot.states     import *
 from radical.pilot.exceptions import *
 
@@ -100,13 +102,15 @@ class PilotManager(object):
         self._session = session
         self._worker = None
 
+        self.uid = ru.generate_id ('pmgr')
+
         # ----------------------------------------------------------------------
         # Create a new pilot manager
 
         # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
         self._worker = PilotManagerController(
-            pilot_manager_uid=None,
+            pmgr_uid=self.uid,
             pilot_manager_data={},
             pilot_launcher_workers=pilot_launcher_workers, 
             session=self._session,
@@ -114,12 +118,11 @@ class PilotManager(object):
             db_connection_info=session._connection_info)
         self._worker.start()
 
-        self._uid = self._worker.pilot_manager_uid
 
         # Each pilot manager has a worker thread associated with it. The task
         # of the worker thread is to check and update the state of pilots, fire
         # callbacks and so on.
-        self._session._pilot_manager_objects.append(self)
+        self._session._pilot_manager_objects[self.uid] = self
 
         self._valid = True
 
@@ -144,10 +147,10 @@ class PilotManager(object):
 
         """
 
-        logger.debug("pmgr    %s closing" % (str(self._uid)))
+        logger.debug("pmgr    %s closing" % (str(self.uid)))
 
         # Spit out a warning in case the object was already closed.
-        if not self._uid:
+        if not self.uid:
             logger.error("PilotManager object already closed.")
             return
 
@@ -156,9 +159,9 @@ class PilotManager(object):
         # ongoing state checks...
         if self._worker is not None:
             # Stop the worker process
-            logger.debug("pmgr    %s cancel   worker %s" % (str(self._uid), self._worker.name))
+            logger.debug("pmgr    %s cancel   worker %s" % (str(self.uid), self._worker.name))
             self._worker.cancel_launcher()
-            logger.debug("pmgr    %s canceled worker %s" % (str(self._uid), self._worker.name))
+            logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
 
 
 
@@ -167,7 +170,7 @@ class PilotManager(object):
             # cancel all pilots, make sure they are gone, and close the pilot
             # managers.
             for pilot in self.get_pilots () :
-                logger.debug("pmgr    %s cancels  pilot  %s" % (str(self._uid), pilot._uid))
+                logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
             self.cancel_pilots ()
 
           # FIXME:
@@ -197,19 +200,19 @@ class PilotManager(object):
             while wait_for_cancel :
                 wait_for_cancel = False
                 for pilot in all_pilots :
-                    logger.debug("pmgr    %s wait for pilot  %s (%s)" % (str(self._uid), pilot._uid, pilot.state))
+                    logger.debug("pmgr    %s wait for pilot  %s (%s)" % (str(self.uid), pilot.uid, pilot.state))
                     if  pilot.state not in [DONE, FAILED, CANCELED, CANCELING] :
                         time.sleep (1)
                         wait_for_cancel = True
                         break
             for pilot in self.get_pilots () :
-                logger.debug("pmgr    %s canceled pilot  %s" % (str(self._uid), pilot._uid))
+                logger.debug("pmgr    %s canceled pilot  %s" % (str(self.uid), pilot.uid))
 
 
-        logger.debug("pmgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
+        logger.debug("pmgr    %s stops    worker %s" % (str(self.uid), self._worker.name))
         self._worker.stop()
         self._worker.join()
-        logger.debug("pmgr    %s stopped  worker %s" % (str(self._uid), self._worker.name))
+        logger.debug("pmgr    %s stopped  worker %s" % (str(self.uid), self._worker.name))
 
         self._valid = False
 

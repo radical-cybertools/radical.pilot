@@ -15,6 +15,9 @@ import os
 import time
 import weakref
 
+import radical.utils as ru
+import utils         as rpu
+
 from radical.pilot.compute_unit import ComputeUnit
 from radical.pilot.utils.logger import logger
 
@@ -98,6 +101,8 @@ class UnitManager(object):
         self._worker  = None 
         self._pilots  = list()
 
+        self._uid = ru.generate_id ('umgr') 
+
         if not scheduler:
             scheduler = SCHED_DEFAULT
 
@@ -107,7 +112,7 @@ class UnitManager(object):
         # Start a worker process fo this UnitManager instance. The worker
         # process encapsulates database access et al.
         self._worker = UnitManagerController(
-            unit_manager_uid=None, 
+            umgr_uid=self._uid, 
             scheduler=scheduler,
             input_transfer_workers=input_transfer_workers,
             output_transfer_workers=output_transfer_workers, 
@@ -116,7 +121,6 @@ class UnitManager(object):
             db_connection_info=session._connection_info)
         self._worker.start()
 
-        self._uid = self._worker.unit_manager_uid
         self._scheduler = get_scheduler(name=scheduler, 
                                         manager=self, 
                                         session=self._session)
@@ -124,7 +128,9 @@ class UnitManager(object):
         # Each unit manager has a worker thread associated with it.
         # The task of the worker thread is to check and update the state
         # of units, fire callbacks and so on.
-        self._session._unit_manager_objects.append(self)
+        self._session._unit_manager_objects[self.uid] = self
+
+        self._valid = True
 
 
     #--------------------------------------------------------------------------
@@ -133,15 +139,15 @@ class UnitManager(object):
         """Shuts down the UnitManager and its background workers in a 
         coordinated fashion.
         """
-        if not self._uid:
-            logger.warning("UnitManager object already closed.")
-            return
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
-        if self._worker is not None:
+        if self._worker:
             self._worker.stop()
 
         logger.info("Closed UnitManager %s." % str(self._uid))
-        self._uid = None
+
+        self._valid = False
 
 
     # -------------------------------------------------------------------------
@@ -178,8 +184,8 @@ class UnitManager(object):
     def scheduler(self):
         """Returns the scheduler name.
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         return self._scheduler.name
 
@@ -189,8 +195,8 @@ class UnitManager(object):
     def scheduler_details(self):
         """Returns the scheduler logs.
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         return "NO SCHEDULER DETAILS (Not Implemented)"
 
@@ -209,8 +215,8 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         if not isinstance(pilots, list):
             pilots = [pilots]
@@ -246,8 +252,8 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         return self._worker.get_pilot_uids()
 
@@ -266,8 +272,8 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         return self._pilots
 
@@ -293,8 +299,8 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
@@ -332,8 +338,8 @@ class UnitManager(object):
               * A list of :class:`radical.pilot.ComputeUnit` UIDs [`string`].
 
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         return self._worker.get_compute_unit_uids()
 
@@ -359,8 +365,8 @@ class UnitManager(object):
             * :class:`radical.pilot.PilotException`
         """
 
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         return_list_type = True
         if not isinstance(unit_descriptions, list):
@@ -525,8 +531,8 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         return_list_type = True
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
@@ -581,8 +587,8 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if  not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         if not isinstance(state, list):
             state = [state]
@@ -639,8 +645,8 @@ class UnitManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        if not self._uid:
-            raise IncorrectState(msg="Invalid object instance.")
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
 
         if (not isinstance(unit_ids, list)) and (unit_ids is not None):
             unit_ids = [unit_ids]

@@ -88,20 +88,28 @@ class Profiler (object):
 
     # ------------------------------------------------------------------------------
     #
-    def flush_prof(self):
+    @property
+    def enabled(self):
+
+        return self._enabled
+
+
+    # ------------------------------------------------------------------------------
+    #
+    def flush(self):
 
         if self._enabled:
             self._handle.flush()
 
     # ------------------------------------------------------------------------------
     #
-    def prof(self, etype, uid="", msg="", timestamp=None):
+    def prof(self, etype, uid="", msg="", timestamp=None, logger=None):
 
         if not self._enabled:
             return
 
-        if self._logger:
-            self._logger("%s (%10s) : %s", etype, msg, uid)
+        if         logger:       logger("%s (%10s) : %s", etype, msg, uid)
+        elif self._logger: self._logger("%s (%10s) : %s", etype, msg, uid)
 
         tid = threading.current_thread().name
         pid = os.getpid()
@@ -139,15 +147,21 @@ def prof_init(target, uid="", logger=None):
     global _p
     _p = Profiler (target, uid, logger)
 
-def prof(etype, uid="", msg="", timestamp=None):
+def prof(etype, uid="", msg="", timestamp=None, logger=None):
     global _p
     if not _p:
         return
-    _p.prof(etype=etype, uid=uid, msg=msg, timestamp=timestamp)
+    _p.prof(etype=etype, uid=uid, msg=msg, timestamp=timestamp, logger=logger)
+
+def flush_prof():
+    global _p
+    if not _p:
+        return
+    _p.flush()
 
 # --------------------------------------------------------------------------
 #
-def timestamp(self):
+def timestamp():
     # human readable absolute UTC timestamp for log entries in database
     return datetime.datetime.utcnow()
 
@@ -185,10 +199,10 @@ def blowup(config, cus, component, logger=None):
     if not isinstance (cus, list) :
         cus = [cus]
 
-
-    if not self._enabled:
-        prof ("debug", msg="blowup disabled")
-        return cus, []
+    # blowup is only enabled on profiling
+    global _p
+    if not _p or not _p.enabled: 
+        return
 
     factor = config['blowup_factor'].get (component, 1)
     drop   = config['drop_clones']  .get (component, 1)

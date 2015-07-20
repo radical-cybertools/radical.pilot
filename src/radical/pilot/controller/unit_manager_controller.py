@@ -21,7 +21,7 @@ from radical.pilot.types  import *
 from radical.pilot.states import *
 from radical.pilot.utils.logger import logger
 
-from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
+from radical.pilot.controller.input_file_transfer_worker  import InputFileTransferWorker
 from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
 
 from radical.pilot.staging_directives import TRANSFER, LINK, COPY, MOVE
@@ -37,11 +37,12 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, session, db_connection, db_connection_info,
+    def __init__(self, umgr_uid, session, db_connection, db_connection_info,
         scheduler=None, input_transfer_workers=None,
         output_transfer_workers=None):
 
         self._session = session
+        self.uid      = umgr_uid
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -75,19 +76,13 @@ class UnitManagerController(threading.Thread):
         # The MongoDB database handle.
         self._db = db_connection
 
-        if unit_manager_uid is None:
-            # Try to register the UnitManager with the database.
-            self._um_id = self._db.insert_unit_manager(
-                scheduler=scheduler,
-                input_transfer_workers=input_transfer_workers,
-                output_transfer_workers=output_transfer_workers)
-            self._num_input_transfer_workers = input_transfer_workers
-            self._num_output_transfer_workers = output_transfer_workers
-        else:
-            um_json = self._db.get_unit_manager(unit_manager_id=unit_manager_uid)
-            self._um_id = unit_manager_uid
-            self._num_input_transfer_workers = um_json["input_transfer_workers"]
-            self._num_output_transfer_workers = um_json["output_transfer_workers"]
+        # Try to register the UnitManager with the database.
+        self._db.insert_unit_manager(umgr_uid=self.uid, 
+            scheduler=scheduler,
+            input_transfer_workers=input_transfer_workers,
+            output_transfer_workers=output_transfer_workers)
+        self._num_input_transfer_workers  = input_transfer_workers
+        self._num_output_transfer_workers = output_transfer_workers
 
         # The INPUT transfer worker(s) are autonomous processes that
         # execute input file transfer requests concurrently.
@@ -96,7 +91,7 @@ class UnitManagerController(threading.Thread):
             worker = InputFileTransferWorker(
                 session=self._session,
                 db_connection_info=db_connection_info, 
-                unit_manager_id=self._um_id,
+                unit_manager_id=self.uid,
                 number=worker_number
             )
             self._input_file_transfer_worker_pool.append(worker)
@@ -109,7 +104,7 @@ class UnitManagerController(threading.Thread):
             worker = OutputFileTransferWorker(
                 session=self._session,
                 db_connection_info=db_connection_info, 
-                unit_manager_id=self._um_id,
+                unit_manager_id=self.uid,
                 number=worker_number
             )
             self._output_file_transfer_worker_pool.append(worker)
@@ -117,18 +112,6 @@ class UnitManagerController(threading.Thread):
 
         self._callback_histories = dict ()
 
-    # ------------------------------------------------------------------------
-    #
-    @classmethod
-    def uid_exists(cls, db_connection, unit_manager_uid):
-        """Checks wether a particular unit manager UID exists.
-        """
-        exists = False
-
-        if unit_manager_uid in db_connection.list_unit_manager_uids():
-            exists = True
-
-        return exists
 
     # ------------------------------------------------------------------------
     #
@@ -136,7 +119,7 @@ class UnitManagerController(threading.Thread):
     def unit_manager_uid(self):
         """Returns the uid of the associated UnitManager
         """
-        return self._um_id
+        return self.uid
 
     # ------------------------------------------------------------------------
     #
@@ -148,7 +131,7 @@ class UnitManagerController(threading.Thread):
         self.join()
         logger.debug("uworker  %s stopped" % (self.name))
       # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
-      #             (self.name, self.ident, self._um_id))
+      #             (self.name, self.ident, self.uid))
 
     # ------------------------------------------------------------------------
     #
@@ -228,7 +211,7 @@ class UnitManagerController(threading.Thread):
         try :
 
             logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
-                        (self.name, self.ident, self._um_id))
+                        (self.name, self.ident, self.uid))
 
             # transfer results contains the futures to the results of the
             # asynchronous transfer operations.
@@ -241,7 +224,7 @@ class UnitManagerController(threading.Thread):
                 # Check and update units. This needs to be optimized at
                 # some point, i.e., state pulling should be conditional
                 # or triggered by a tailable MongoDB cursor, etc.
-                unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
+                unit_list = self._db.get_compute_units(unit_manager_id=self.uid)
                 action    = False
 
                 for unit in unit_list:
@@ -362,14 +345,14 @@ class UnitManagerController(threading.Thread):
     def get_unit_manager_data(self):
         """Returns the raw data (JSON dict) for a UnitManger.
         """
-        return self._db.get_unit_manager(self._um_id)
+        return self._db.get_unit_manager(self.uid)
 
     # ------------------------------------------------------------------------
     #
     def get_pilot_uids(self):
         """Returns the UIDs of the pilots registered with the UnitManager.
         """
-        return self._db.unit_manager_list_pilots(self._um_id)
+        return self._db.unit_manager_list_pilots(self.uid)
 
     # ------------------------------------------------------------------------
     #
@@ -377,7 +360,7 @@ class UnitManagerController(threading.Thread):
         """Returns the UIDs of all ComputeUnits registered with the
         UnitManager.
         """
-        return self._db.unit_manager_list_compute_units(self._um_id)
+        return self._db.unit_manager_list_compute_units(self.uid)
 
     # ------------------------------------------------------------------------
     #
@@ -386,7 +369,7 @@ class UnitManagerController(threading.Thread):
         Unitmanager.
         """
         return self._db.get_compute_unit_states(
-            self._um_id, unit_uids)
+            self.uid, unit_uids)
 
     # ------------------------------------------------------------------------
     #
@@ -412,7 +395,7 @@ class UnitManagerController(threading.Thread):
         for pilot in pilots:
             pids.append(pilot.uid)
 
-        self._db.unit_manager_add_pilots(unit_manager_id=self._um_id,
+        self._db.unit_manager_add_pilots(unit_manager_id=self.uid,
                                          pilot_ids=pids)
 
     # ------------------------------------------------------------------------
@@ -420,7 +403,7 @@ class UnitManagerController(threading.Thread):
     def remove_pilots(self, pilot_uids):
         """Unlinks one or more ComputePilots from the UnitManager.
         """
-        self._db.unit_manager_remove_pilots(unit_manager_id=self._um_id,
+        self._db.unit_manager_remove_pilots(unit_manager_id=self.uid,
                                             pilot_ids=pilot_uids)
 
     # ------------------------------------------------------------------------
@@ -430,7 +413,7 @@ class UnitManagerController(threading.Thread):
 
         # Add all units to the database.
         results = self._db.insert_compute_units(
-            unit_manager_uid=self._um_id,
+            umgr_uid=self.uid,
             units=units,
             unit_log=[]
         )
