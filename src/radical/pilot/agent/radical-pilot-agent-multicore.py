@@ -148,6 +148,7 @@ import shutil
 import optparse
 import logging
 import hostlist
+import tempfile
 import traceback
 import threading
 import subprocess
@@ -3867,19 +3868,16 @@ class ExecWorker_SHELL(ExecWorker):
         self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
         rec_makedir(self.workdir)
 
+        tmp = tempfile.gettempdir()
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /tmp/%s-%s" \
-                           % (os.path.dirname (rp.__file__), self._pilot_id, self.name))
-                         # ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                         # % (os.path.dirname (rp.__file__), self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self.name))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /tmp/%s-%s" \
-                           % (os.path.dirname (rp.__file__), self._pilot_id, self.name))
-                         # ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                         # % (os.path.dirname (rp.__file__), self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self.name))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
