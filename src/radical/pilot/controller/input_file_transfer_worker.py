@@ -125,17 +125,21 @@ class InputFileTransferWorker(threading.Thread):
                             log_messages.append(log_msg)
                             logger.info(log_msg)
 
-                            # Creating the sandbox directory.
+                            # Creating/initialising the sandbox directory.
                             try:
                                 logger.debug ("saga.fs.Directory ('%s')" % remote_sandbox)
 
-                                remote_sandbox_keyurl = saga.Url (remote_sandbox)
+                                # url used for saga
+                                remote_sandbox_url = saga.Url(remote_sandbox)
+
+                                # keyurl and key used for cache
+                                remote_sandbox_keyurl = saga.Url(remote_sandbox)
                                 remote_sandbox_keyurl.path = '/'
                                 remote_sandbox_key = str(remote_sandbox_keyurl)
 
                                 if  remote_sandbox_key not in self._saga_dirs :
                                     self._saga_dirs[remote_sandbox_key] = \
-                                            saga.filesystem.Directory (remote_sandbox_key, # TODO: Shouldn't this be the Url and not a str?
+                                            saga.filesystem.Directory(remote_sandbox_url,
                                                     flags=saga.filesystem.CREATE_PARENTS,
                                                     session=self._session)
 
