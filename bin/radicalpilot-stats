@@ -85,16 +85,6 @@ _EVENT_ENCODING = {
 
 # ------------------------------------------------------------------------------
 #
-def my_round (x, base=5) :
-
-    # thanks to 
-    # http://stackoverflow.com/questions/2272149/round-to-5-or-other-number-in-python
-
-    return int(base * round(float(x) / base))
-
-
-# ------------------------------------------------------------------------------
-#
 def usage (msg=None, noexit=False) :
 
     if  msg :
@@ -464,11 +454,16 @@ def prof_session(db, sessions, cachedir, profdir):
             pilot_id = os.path.basename(os.path.dirname(sandbox))
 
             src = sandbox + 'agent.prof'
-            dst = 'file://%s/%s.prof' % (profdir, pilot_id)
+
+            if profdir.startswith('/'):
+                dst = 'file://localhost/%s/%s.prof' % (profdir, pilot_id)
+            else:
+                dst = 'file://localhost/%s/%s/%s.prof' % (os.getcwd(), profdir, pilot_id)
 
             print "Copying '%s' to '%s'." % (src, dst)
             prof_file = saga.filesystem.File(src)
-            prof_file.copy(dst)
+            prof_file.copy(dst, flags=saga.filesystem.CREATE_PARENTS)
+            prof_file.close()
 
         print ""
 
@@ -1058,14 +1053,8 @@ if __name__ == '__main__' :
     if  not cachedir :
         cachedir = os.getcwd ()
 
-    if not profdir:
-        profdir = os.getcwd()
-
     if  not os.path.isdir (cachedir) :
         usage ("%s is no valid cachedir" % cachedir)
-
-    if not os.path.isdir(profdir) :
-        usage ("%s is no valid directory to store profile data" % profdir)
 
     print "modes   : %s" % mode
     print "db url  : %s" % url

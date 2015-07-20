@@ -523,8 +523,8 @@ class PilotLauncherWorker(threading.Thread):
                         # Some machines cannot run pip due to outdated CA certs.
                         # For those, we also stage an updated certificate bundle
                         if stage_cacerts:
-                          cc_path = os.path.abspath("%s/../bootstrapper/%s" \
-                                  % (mod_dir, 'cacert.pem.gz'))
+                            cc_path = os.path.abspath("%s/../bootstrapper/%s" \
+                                    % (mod_dir, 'cacert.pem.gz'))
 
                           cc_url= saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
                           msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)

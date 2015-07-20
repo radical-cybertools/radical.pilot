@@ -130,6 +130,27 @@ setuptools and pip, i.e. do not upgrade them.
 
 
 
+...avoid the error "Received message too long 1903391841"
+---------------------------------------------------------
+
+This error may show up in the DEBUG level logs during file staging or pilot
+startup, when sftp is used as a transfer protocol.  We have seen this error
+being caused by verbose `.bashrc` files (or other login files), which confuses
+sftp startup.  Please make sure that any parts of the bashrc which print
+information etc. are only executed on interactive shell (ie. on shells which
+have a prompt set as `$PS1`).  The snippet below shows how to di that:
+
+.. code-block:: bash
+
+    if [ ! -z "$PS1" ]
+    then
+      echo "hello $USER"
+      date
+    fi
+    
+
+
+
 Other Questions
 ================
 

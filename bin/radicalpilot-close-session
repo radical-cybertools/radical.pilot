@@ -192,8 +192,7 @@ if __name__ == '__main__' :
     session = options.session
     age     = options.age
 
-    host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
-    dbclient = pymongo.MongoClient (host=host, port=port)
+    mongo, db, dbname, cname, pname = ru.mongodb_connect (str(url), _DEFAULT_DBURL)
 
     print "modes   : %s" % mode
     print "db url  : %s" % url
@@ -232,14 +231,14 @@ if __name__ == '__main__' :
         if  m not in ['list', 'purge', 'export', 'help'] : 
             usage ("Unsupported mode '%s'" % m)
 
-        if   m == 'list'  : list_sessions   (dbclient, dbname, age, session)
-        elif m == 'purge' : purge_sessions  (dbclient, dbname, age, session) 
-        elif m == 'export': export_sessions (dbclient, dbname, age, session) 
+        if   m == 'list'  : list_sessions   (db, dbname, age, session)
+        elif m == 'purge' : purge_sessions  (db, dbname, age, session) 
+        elif m == 'export': export_sessions (db, dbname, age, session) 
         elif m == 'help'  : usage (noexit=True)
         else              : usage ("unknown mode '%s'" % mode)
 
     # ------------------------------------------------------------------------------------
-    dbclient.disconnect ()
+    mongo.disconnect ()
 
 # ------------------------------------------------------------------------------
 

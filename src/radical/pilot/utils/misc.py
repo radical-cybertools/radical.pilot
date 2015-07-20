@@ -39,16 +39,54 @@ def timestamp_now():
 #
 # If 'RADICAL_PILOT_PROFILE' is set in environment, we log timed events.
 #
-if 'RADICAL_PILOT_PROFILE' in os.environ:
-    profile_rp = True
-    _profile_handle = open('agent.prof', 'a')
-else:
-    profile_rp = False
-    _profile_handle = sys.stdout
-
 def flush_prof():
     if profile_rp:
         _profile_handle.flush()
+
+# ------------------------------------------------------------------------------
+#
+# FIXME: ugly, ugly, ugly global variablesessss
+#
+profile_rp      = False
+_profile_handle = None
+_profile_init   = False
+
+
+# ------------------------------------------------------------------------------
+#
+# make sure the profile target handle is open, and log initial event (if such
+# one is given)
+#
+def prof_init(target=None, etype=None, uid=None, msg=None, logger=None):
+
+    # need write access to global vars
+    global profile_rp
+    global _profile_handle
+    global _profile_init
+
+    if _profile_init:
+        # init only once per process
+        return
+
+    # default profile name
+    # FIXME: we probably should append process id to target -- but OTOH,
+    #        small writes are atomic when data < 256 or so bytes, so this 
+    #        should not be a huge problem (tm)...
+    if not target:
+        target = 'radical.pilot.prof'
+
+    # only open profile if requested
+    if 'RADICAL_PILOT_PROFILE' in os.environ:
+        profile_rp = True
+        _profile_handle = open(target, 'a')
+
+    # initialize only once
+    _profile_init = True
+
+    # log initialization event
+    if etype:
+        prof (etype=etype, uid=uid, msg=msg, logger=logger)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -59,28 +97,32 @@ AGENT_MODE      = AGENT_THREADS
 
 def prof(etype, uid="", msg="", logger=None):
 
-    # record a timed event.  We record the thread ID, the uid of the affected
-    # object, an event type, and a log message.
-    #
-    # TODO: should this move to utils?  Or at least RP utils, so that we can
-    # also use it for the application side?
-
-    # TODO: Why are we logging events when profiling is disabled?
-    if logger:
-        logger("%s (%10s) : %s", etype, msg, uid)
+    prof_init()
 
     if not profile_rp:
         return
 
-    now = timestamp_now()
+    # record a timed event.  We record the thread ID, the uid of the affected
+    # object, an event type, and a log message.
+    if logger:
+        logger("%s (%10s) : %s", etype, msg, uid)
 
+    # FIXME: these calls should be very fast -- but they are also very frequent.
+    #        Is there a way to cache them, possibly by some thread-local memory 
+    #        token hash?
     if   AGENT_MODE == AGENT_THREADS  : tid = threading.current_thread().name
     elif AGENT_MODE == AGENT_PROCESSES: tid = os.getpid()
     else: raise Exception('Unknown Agent Mode')
 
     # NOTE: Don't forget to sync any format changes in the bootstrapper
-    # and downstream analysis tools too!
-    _profile_handle.write("%.4f,%s,%s,%s,%s\n" % (now, tid, uid, etype, msg))
+    #       and downstream analysis tools too!
+    _profile_handle.write("%.4f,%s,%s,%s,%s\n" % (timestamp_now(), tid, uid, etype, msg))
+
+    # NOTE: flush_prof() should be called when closing the application process,
+    #       to ensure data get correctly written to disk.  Calling flush on
+    #       every event creates significant overheads, but is useful for
+    #       debugging...
+  # flush_prof()
 
 
 # ------------------------------------------------------------------------------
@@ -107,19 +149,28 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 def blowup(config, cus, component, logger=None):
     # for each cu in cu_list, add 'factor' clones just like it, just with
     # a different ID (<id>.clone_001)
+    #
+    # This method also *drops* clones as needed!
+    #
+    # return value: [list of original and expanded CUs, list of dropped CUs]
 
     # TODO: I dont like it that there is non blow-up semantics in the blow-up function.
     # Probably want to put the conditional somewhere else.
     if not isinstance (cus, list) :
         cus = [cus]
 
+
     if not profile_rp:
-        return cus
+        prof ("debug", msg="blowup disabled")
+        return cus, []
 
     factor = config['blowup_factor'].get (component, 1)
     drop   = config['drop_clones']  .get (component, 1)
 
-    ret = list()
+    prof ("debug", msg="%s drops with %s" % (component, drop))
+
+    cloned  = list()
+    dropped = list()
 
     for cu in cus :
 
@@ -129,11 +180,13 @@ def blowup(config, cus, component, logger=None):
             # drop clones --> drop matching uid's
             if '.clone_' in uid :
                 prof ('drop clone', msg=component, uid=uid)
+                dropped.append(cu)
                 continue
 
         if drop >= 2:
             # drop everything, even original units
             prof ('drop', msg=component, uid=uid)
+            dropped.append(cu)
             continue
 
         factor -= 1
@@ -148,15 +201,16 @@ def blowup(config, cus, component, logger=None):
                         cu_clone[key] = cu_clone[key].replace (uid, clone_id)
 
                 idx += 1
-                ret.append (cu_clone)
+                cloned.append(cu_clone)
                 prof('add clone', msg=component, uid=clone_id)
 
-        # append the original unit last, to  increase the likelyhood that
+        # append the original unit last, to increase the likelyhood that
         # application state only advances once all clone states have also
-        # advanced (they'll get pushed onto queues earlier)
-        ret.append (cu)
+        # advanced (they'll get pushed onto queues earlier).  This cannot be
+        # relied upon, obviously.
+        cloned.append(cu)
 
-    return ret
+    return cloned, dropped
 
 
 # ------------------------------------------------------------------------------

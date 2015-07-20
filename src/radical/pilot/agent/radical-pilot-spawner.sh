@@ -76,16 +76,49 @@ EXIT_VAL=1
 # idle_checker is running in the background, and will terminate the wrapper
 # shell if it is idle for longer than TIMEOUT seconds
 #
-\trap cleanup_handler QUIT TERM EXIT
+\trap cleanup_handler_quit QUIT
+\trap cleanup_handler_term TERM
+\trap cleanup_handler_exit EXIT
 # \trap idle_handler ALRM
-\trap '' ALRM
+#\trap '' ALRM
 
-cleanup_handler (){
+\trap cleanup_handler_sighup  HUP
+\trap cleanup_handler_sigint  INT
+\trap cleanup_handler_sigterm TERM
+
+cleanup_handler_quit (){
+  \printf "trapped QUIT\n"
+  cmd_quit $IDLE
+}
+
+cleanup_handler_term (){
+  \printf "trapped TERM\n"
+  cmd_quit $IDLE
+}
+
+cleanup_handler_exit (){
+  \printf "trapped EXIT\n"
   cmd_quit $IDLE
 }
 
 idle_handler (){
+  \printf "trapped TIMEOUT\n"
   cmd_quit TIMEOUT
+}
+
+cleanup_handler_sighup (){
+  \printf "trapped SIGHUP\n"
+  cmd_quit $IDLE
+}
+
+cleanup_handler_sigint (){
+  \printf "trapped SIGINT\n"
+  cmd_quit $IDLE
+}
+
+cleanup_handler_sigterm (){
+  \printf "trapped SIGTERM\n"
+  cmd_quit $IDLE
 }
 
 idle_checker () {
@@ -98,7 +131,7 @@ idle_checker () {
 
     if test -e "$BASE/quit.$ppid" 
     then
-      \rm   -f  "$BASE/quit.$ppid" 
+      \rm   -f  "$BASE/quit.$ppid"
       EXIT_VAL=0
       exit 0
     fi
@@ -106,7 +139,7 @@ idle_checker () {
     if test -e "$BASE/idle.$ppid"
     then
       /bin/kill -s ALRM $ppid >/dev/null 2>&1
-      \rm   -f  "$BASE/idle.$ppid" 
+      \rm   -f  "$BASE/idle.$ppid"
       exit 0
     fi
 
@@ -430,7 +463,7 @@ cmd_lrun () {
   IFS=
   while \read -r IN
   do
-    if test "$IN" = "LRUN_EOT "
+    if test "$IN" = "LRUN_EOT"
     then
       break
     fi
@@ -747,6 +780,8 @@ cmd_quit () {
   \stty echo    >/dev/null 2>&1
   \stty echonl  >/dev/null 2>&1
 
+  \printf "cmd_quit called ($EXIT_VAL)"
+
   exit $EXIT_VAL
 }
 
@@ -772,8 +807,8 @@ listen() {
   fi
 
   # make sure we get killed when idle
-  ( idle_checker $$ 1>/dev/null 2>/dev/null 3</dev/null & ) &
-  IDLE=$!
+  #( idle_checker $$ 1>/dev/null 2>/dev/null 3</dev/null & ) &
+  #IDLE=$!
 
   # create fifo to communicate with the monitors
   \rm -f  "$BASE/fifo"
@@ -795,9 +830,10 @@ listen() {
                  BULK_EXITVAL="0"
                  ;;
       BULK_RUN ) IN_BULK=""
-                 \printf "BULK_EVAL\n" >> "$BASE/bulk.$$"
+                 \printf "BULK_EVAL\n"  >> "$BASE/bulk.$$"
                  ;;
-      *        ) \echo   "$CMD $ARGS"  >> "$BASE/bulk.$$"
+      *        ) test -z "$ARGS" && \printf "$CMD\n"       >> "$BASE/bulk.$$"
+                 test -z "$ARGS" || \printf "$CMD $ARGS\n" >> "$BASE/bulk.$$"
                  ;;
     esac
 
@@ -892,9 +928,6 @@ listen() {
 # The first arg to wrapper.sh is the id of the spawning shell, which we need to
 # report, if given
 #
-\stty -echo   2> /dev/null
-\stty -echonl 2> /dev/null
-
 # confirm existence
 \printf "PID: $$\n"
 
@@ -903,6 +936,14 @@ if test "$PURGE_ON_START" = "True"
 then
   cmd_purge
   cmd_purge_tmps
+fi
+
+# disable stty echo to simplify output parsing.  Leave it on though if
+# explicitly requested (mostly for interactive debugging)
+if test -z "$ENABLE_STTY_ECHO"
+then
+  \stty -echo   2> /dev/null
+  \stty -echonl 2> /dev/null
 fi
 
 listen
