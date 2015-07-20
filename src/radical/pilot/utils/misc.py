@@ -57,7 +57,7 @@ _profile_init   = False
 # make sure the profile target handle is open, and log initial event (if such
 # one is given)
 #
-def prof_init(target=None, etype=None, uid=None, msg=None, logger=None):
+def prof_init(target, etype, uid=None, msg=None, logger=None):
 
     # need write access to global vars
     global profile_rp
@@ -84,8 +84,7 @@ def prof_init(target=None, etype=None, uid=None, msg=None, logger=None):
     _profile_init = True
 
     # log initialization event
-    if etype:
-        prof (etype=etype, uid=uid, msg=msg, logger=logger)
+    prof (etype=etype, uid=uid, msg=msg, logger=logger, timestamp=timestamp_abs())
 
 
 # ------------------------------------------------------------------------------
@@ -97,9 +96,9 @@ AGENT_MODE      = AGENT_THREADS
 
 def prof(etype, uid="", msg="", logger=None):
 
-    prof_init()
 
     if not profile_rp:
+        # profiling is either not initialized or not enabled
         return
 
     # record a timed event.  We record the thread ID, the uid of the affected
