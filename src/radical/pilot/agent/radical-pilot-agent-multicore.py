@@ -4559,22 +4559,6 @@ class StageinWorker(threading.Thread):
                             log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
                             self._log.info(log_message)
 
-                            # If all went fine, update the state of this
-                            # StagingDirective to DONE
-                            # FIXME: is this update below really *needed*?
-                            self._agent.update_unit(src    = 'StageinWorker',
-                                                    uid    = _cu['_id'],
-                                                    msg    = log_message,
-                                                    query  = {
-                                                        'Agent_Input_Status'            : rp.EXECUTING,
-                                                        'Agent_Input_Directives.state'  : rp.PENDING,
-                                                        'Agent_Input_Directives.source' : directive['source'],
-                                                        'Agent_Input_Directives.target' : directive['target']
-                                                    },
-                                                    update = {
-                                                        '$set' : {'Agent_Input_Status'             : rp.DONE,
-                                                                  'Agent_Input_Directives.$.state' : rp.DONE}
-                                                    })
                         except Exception as e:
 
                             # If we catch an exception, assume the staging failed
@@ -4587,23 +4571,9 @@ class StageinWorker(threading.Thread):
                             self._agent.update_unit_state(src    = 'StageinWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
-                                                          msg    = log_message,
-                                                          query  = {
-                                                              'Agent_Input_Status'             : rp.EXECUTING,
-                                                              'Agent_Input_Directives.state'   : rp.PENDING,
-                                                              'Agent_Input_Directives.source'  : directive['source'],
-                                                              'Agent_Input_Directives.target'  : directive['target']
-                                                          },
-                                                          update = {
-                                                              '$set' : {'Agent_Input_Directives.$.state'  : rp.FAILED,
-                                                                        'Agent_Input_Status'              : rp.FAILED}
-                                                          })
+                                                          msg    = log_message)
 
-                    # agent staging is all done, unit can go to execution if it has
-                    # no FTW staging -- with FTP staging, we have to wait for the
-                    # FTW stager to finish (or to pick up on the agent staging
-                    # completion) to push the unit via mongodb to the agebnt again.
-                    # Duh! (FIXME)
+                    # Agent staging is all done, unit can go to ALLOCATING
                     rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
                     _cu['state'] = rp.ALLOCATING
                     self._agent.update_unit_state(src    = 'StageinWorker',
@@ -4615,7 +4585,6 @@ class StageinWorker(threading.Thread):
                     for __cu in _cu_list :
                         rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
                         self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
-
 
             except Exception as e:
                 self._log.exception('worker died')
