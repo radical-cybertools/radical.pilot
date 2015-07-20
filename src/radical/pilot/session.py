@@ -16,9 +16,10 @@ import bson
 import glob
 import copy
 import saga
-import radical.utils as ru
+import radical.utils       as ru
 
-from radical.pilot.object          import Object
+import utils as rpu
+
 from radical.pilot.unit_manager    import UnitManager
 from radical.pilot.pilot_manager   import PilotManager
 from radical.pilot.utils.logger    import logger
@@ -31,7 +32,7 @@ from radical.pilot.db              import DBException
 
 # ------------------------------------------------------------------------------
 #
-class Session (saga.Session, Object):
+class Session (saga.Session):
     """A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
 
@@ -84,7 +85,7 @@ class Session (saga.Session, Object):
 
         # init the base class inits
         saga.Session.__init__ (self)
-        Object.__init__ (self)
+        self._valid = True
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
@@ -147,7 +148,7 @@ class Session (saga.Session, Object):
                             % (self._database_url, ex))  
 
         # initialize profiling
-        rpu.prof_init('%s' % self.uid, uid=self._uid)
+        rpu.prof_init('%s' % self._uid, uid=self._uid)
 
         # Loading all "default" resource configurations
         module_path   = os.path.dirname(os.path.abspath(__file__))
@@ -193,11 +194,20 @@ class Session (saga.Session, Object):
         default_aliases = "%s/configs/aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
+        rpu.prof('configs parsed', uid=self._uid)
+
 
     #---------------------------------------------------------------------------
     #
     def __del__ (self) :
         self.close ()
+
+
+    #---------------------------------------------------------------------------
+    #
+    def _is_valid(self):
+        if not self._valid:
+            raise RuntimeError("instance was closed")
 
 
     #---------------------------------------------------------------------------
@@ -219,6 +229,7 @@ class Session (saga.Session, Object):
         """
 
         logger.debug("session %s closing" % (str(self._uid)))
+        rpu.prof("close", uid=self._uid)
 
         uid = self._uid
 
@@ -257,9 +268,14 @@ class Session (saga.Session, Object):
             logger.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
 
         if  cleanup :
+            rpu.prof("cleaning", uid=self._uid)
             self._destroy_db_entry()
+            rpu.prof("cleaned", uid=self._uid)
 
         logger.debug("session %s closed" % (str(self._uid)))
+        rpu.prof("closed", uid=self._uid)
+
+        self._valid = False
 
 
     #---------------------------------------------------------------------------
@@ -296,7 +312,7 @@ class Session (saga.Session, Object):
     def created(self):
         """Returns the UTC date and time the session was created.
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
         return self._created
 
     #---------------------------------------------------------------------------
@@ -306,7 +322,7 @@ class Session (saga.Session, Object):
         """Returns the most recent UTC date and time the session was
         reconnected to.
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
         return self._connected 
 
 
@@ -323,11 +339,11 @@ class Session (saga.Session, Object):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         self._dbs.delete()
         logger.info("Deleted session %s from database." % self._uid)
-        self._uid = None
+
 
     #---------------------------------------------------------------------------
     #
@@ -348,7 +364,7 @@ class Session (saga.Session, Object):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
         return self._pilot_manager_objects.keys()
 
 
@@ -375,7 +391,7 @@ class Session (saga.Session, Object):
             * :class:`radical.pilot.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         return_scalar = False
 
@@ -414,7 +430,7 @@ class Session (saga.Session, Object):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
         return self._unit_manager_objects.keys()
 
     # --------------------------------------------------------------------------
@@ -440,7 +456,7 @@ class Session (saga.Session, Object):
             * :class:`radical.pilot.pilotException` if a PilotManager with 
               `pilot_manager_uid` doesn't exist in the database.
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         return_scalar = False
         if unit_manager_ids is None:

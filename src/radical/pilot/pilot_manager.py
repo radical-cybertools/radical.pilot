@@ -16,19 +16,18 @@ import time
 import glob
 import copy
 
-from radical.pilot.states import *
+from radical.pilot.states     import *
 from radical.pilot.exceptions import *
 
-from radical.pilot.object import Object
-from radical.pilot.controller import PilotManagerController
-from radical.pilot.compute_pilot import ComputePilot
-from radical.pilot.utils.logger import logger
-from radical.pilot.exceptions import PilotException, BadParameter
+from radical.pilot.controller      import PilotManagerController
+from radical.pilot.compute_pilot   import ComputePilot
+from radical.pilot.utils.logger    import logger
+from radical.pilot.exceptions      import PilotException, BadParameter
 from radical.pilot.resource_config import ResourceConfig
 
 # -----------------------------------------------------------------------------
 #
-class PilotManager(Object):
+class PilotManager(object):
     """A PilotManager holds :class:`radical.pilot.ComputePilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
@@ -100,8 +99,6 @@ class PilotManager(Object):
         """
         self._session = session
         self._worker = None
-        self._uid = None
-
 
         # ----------------------------------------------------------------------
         # Create a new pilot manager
@@ -123,6 +120,16 @@ class PilotManager(Object):
         # of the worker thread is to check and update the state of pilots, fire
         # callbacks and so on.
         self._session._pilot_manager_objects.append(self)
+
+        self._valid = True
+
+
+    #---------------------------------------------------------------------------
+    #
+    def _is_valid(self):
+        if not self._valid:
+            raise RuntimeError("instance was closed")
+
 
     #--------------------------------------------------------------------------
     #
@@ -204,7 +211,7 @@ class PilotManager(Object):
         self._worker.join()
         logger.debug("pmgr    %s stopped  worker %s" % (str(self._uid), self._worker.name))
 
-        self._uid = None
+        self._valid = False
 
 
     # -------------------------------------------------------------------------
@@ -212,7 +219,7 @@ class PilotManager(Object):
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         object_dict = {
             'uid': self.uid
@@ -241,7 +248,7 @@ class PilotManager(Object):
             * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         # Implicit list conversion.
         return_list_type = True
@@ -350,7 +357,7 @@ class PilotManager(Object):
             * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         # Get the pilot list from the worker
         return self._worker.list_pilots()
@@ -375,7 +382,7 @@ class PilotManager(Object):
 
             * :class:`radical.pilot.PilotException`
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         
         return_list_type = True
@@ -428,7 +435,7 @@ class PilotManager(Object):
 
             * :class:`radical.pilot.PilotException`
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         if not isinstance(state, list):
             state = [state]
@@ -488,7 +495,7 @@ class PilotManager(Object):
             * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         # Implicit list conversion.
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
@@ -513,7 +520,7 @@ class PilotManager(Object):
         ``state`` is the new state of that object, and ``data`` are the data
         passed on callback registration.
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         self._worker.register_manager_callback(callback_function, callback_data)
 
