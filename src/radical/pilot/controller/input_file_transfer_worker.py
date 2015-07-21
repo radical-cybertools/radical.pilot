@@ -15,7 +15,6 @@ from radical.pilot.states import *
 from radical.pilot.utils.logger import logger
 from radical.pilot.staging_directives import CREATE_PARENTS
 
-BULK_LIMIT = 1    # max. number of transfer requests to pull from DB.
 IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
 
 # ----------------------------------------------------------------------------
@@ -59,8 +58,6 @@ class InputFileTransferWorker(threading.Thread):
         self._stop.set()
         self.join()
         logger.debug("itransfer %s stopped" % (self.name))
-      # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
-      #             (self.name, self.ident, self.unit_manager_id))
 
 
     # ------------------------------------------------------------------------
@@ -95,10 +92,8 @@ class InputFileTransferWorker(threading.Thread):
                                "state"      : PENDING_INPUT_STAGING, 
                                "pilot"      : {"$nin" : [None]}},
                         update={"$set" : {"state": STAGING_INPUT},
-                                "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}},
-                        limit=BULK_LIMIT # TODO: bulklimit is probably not the best way to ensure there is just one
+                                "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}}
                     )
-                    # FIXME: AM: find_and_modify is not bulkable!
                     state = STAGING_INPUT
 
                     if compute_unit is None:
