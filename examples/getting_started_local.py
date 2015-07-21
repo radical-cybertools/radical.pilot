@@ -146,13 +146,13 @@ if __name__ == "__main__":
         #    /bin/cat $INPUT1 $INPUT2
         #
         cuds = []
-        for unit_count in range(0, 14):
+        for unit_count in range(0, 8):
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
-            cud.pre_exec      = ["sleep 5"]
-            cud.post_exec     = ["sleep 5"]
-            cud.arguments     = ["5"]
+            cud.pre_exec      = ["sleep 1"]
+            cud.post_exec     = ["sleep 1"]
+            cud.arguments     = ["1"]
             cud.cores         = 1
     
             cuds.append(cud)
@@ -196,7 +196,10 @@ if __name__ == "__main__":
         # always clean up the session, no matter if we caught an exception or
         # not.
         print "closing session"
-        session.close ()
+        print session.uid
+        session.close (cleanup=False)
+        print session.fetch_json()
+        print session.fetch_profiles()
 
         # the above is equivalent to
         #

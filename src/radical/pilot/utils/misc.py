@@ -134,7 +134,7 @@ class Profiler (object):
         #       to ensure data get correctly written to disk.  Calling flush on
         #       every event creates significant overheads, but is useful for
         #       debugging...
-        # flush_prof()
+        # self.flush()
 
 
 
@@ -149,15 +149,11 @@ def prof_init(target, uid="", logger=None):
 
 def prof(etype, uid="", msg="", timestamp=None, logger=None):
     global _p
-    if not _p:
-        return
-    _p.prof(etype=etype, uid=uid, msg=msg, timestamp=timestamp, logger=logger)
+    _p and _p.prof(etype=etype, uid=uid, msg=msg, timestamp=timestamp, logger=logger)
 
 def flush_prof():
     global _p
-    if not _p:
-        return
-    _p.flush()
+    _p and _p.flush()
 
 # --------------------------------------------------------------------------
 #

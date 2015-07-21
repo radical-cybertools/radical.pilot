@@ -56,6 +56,13 @@ def get_profile_frame (prof):
 
 # ------------------------------------------------------------------------------
 #
+def combine_profiles(profiles):
+    for prof in profiles:
+        import pandas as pd
+        return pd.read_csv(prof)
+
+# ------------------------------------------------------------------------------
+#
 tmp = None
 def add_concurrency (frame, tgt, spec):
     """

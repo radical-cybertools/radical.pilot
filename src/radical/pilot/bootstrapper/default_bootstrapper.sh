@@ -49,7 +49,7 @@ AGENT_TYPE=
 PYTHON=
 RUNTIME=
 SCHEDULER=
-SESSIONID=
+SESSION_ID=
 TASK_LAUNCH_METHOD=
 SANDBOX=`pwd`
 
@@ -91,17 +91,45 @@ fi
 
 # ------------------------------------------------------------------------------
 #
-PROFILE_LOG="agent.prof"
 profile_event()
 {
-    if ! test -z "$RADICAL_PILOT_PROFILE"
+    if test -z "$RADICAL_PILOT_PROFILE"
     then
+        return
+    fi
+
+    etype=$1
+    msg=$2
+
+    if ! test -f 'gtod.c'
+    then
+        cat > gtod.c <<EOT
+            #include <stdio.h>
+            #include <sys/time.h>
+            
+            int main ()
+            {
+                struct timeval tv;
+                (void) gettimeofday (&tv, NULL);
+                fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
+                return (0);
+            }
+EOT
+        cc -o gtod gtod.c
+    fi
+
+    if test -e "./gtod"
+    then
+        TIMESTAMP=`./gtod`
+        NOW=`echo "$TIMESTAMP" - "$TIME_ZERO" | bc`
+    else
         timestamp
         NOW=$((TIMESTAMP-TIME_ZERO))
-        # Format: time, component, uid, event, message"
-        printf "%.4f,%s,%s,%s,%s\n" \
-            "$NOW" "Bootstrapper" "$PILOT_ID" "$@" "" >> $PROFILE_LOG
     fi
+
+    printf "%.4f,%s,%s,%s,%s\n" \
+        "$NOW" "Bootstrapper" "$PILOT_ID" "$etype" "$msg" \
+        >> "$SESSION_ID.$PILOT_ID.bootstrapper.prof"
 }
 
 
@@ -1148,7 +1176,7 @@ while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
         p)  PILOT_ID=$OPTARG  ;;
         q)  SCHEDULER=$OPTARG  ;;
         r)  RUNTIME=$OPTARG  ;;
-        s)  SESSIONID=$OPTARG  ;;
+        s)  SESSION_ID=$OPTARG  ;;
         t)  AGENT_TYPE=$OPTARG  ;;
         u)  VIRTENV_MODE=$OPTARG  ;;
         v)  RP_VERSION=$OPTARG  ;;
@@ -1164,7 +1192,6 @@ done
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
-    echo "time,component,uid,event,message" > $PROFILE_LOG
     profile_event 'bootstrap start'
 fi
 
@@ -1189,7 +1216,7 @@ if test -z "$SPAWNER"            ; then  usage "missing SPAWNER           ";  fi
 if test -z "$PILOT_ID"           ; then  usage "missing PILOT_ID          ";  fi
 if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
 if test -z "$SCHEDULER"          ; then  usage "missing SCHEDULER         ";  fi
-if test -z "$SESSIONID"          ; then  usage "missing SESSIONID         ";  fi
+if test -z "$SESSION_ID"         ; then  usage "missing SESSION_ID        ";  fi
 if test -z "$TASK_LAUNCH_METHOD" ; then  usage "missing TASK_LAUNCH_METHOD";  fi
 if test -z "$RP_VERSION"         ; then  usage "missing RP_VERSION        ";  fi
 
@@ -1289,7 +1316,7 @@ AGENT_CMD="python $PILOT_SCRIPT \
 -o $SPAWNER \
 -p $PILOT_ID \
 -q $SCHEDULER \
--s $SESSIONID \
+-s $SESSION_ID \
 -r $RUNTIME"
 
 if ! test -z "$AUTH"
@@ -1317,8 +1344,7 @@ export RADIAL_VERBOSE=DEBUG
 export RADIAL_UTIL_VERBOSE=DEBUG
 export RADIAL_PILOT_VERBOSE=DEBUG
 
-profile_event 'agent start'
-
+profile_event 'sync' 'agent start'
 $AGENT_CMD
 AGENT_EXITCODE=$?
 

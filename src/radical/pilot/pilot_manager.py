@@ -163,12 +163,13 @@ class PilotManager(object):
             self._worker.cancel_launcher()
             logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
 
-
-
         # If terminate is set, we cancel all pilots. 
+        print '============================================'
+        print 'terminate: %s' % terminate
         if  terminate :
             # cancel all pilots, make sure they are gone, and close the pilot
             # managers.
+            print self.get_pilots()
             for pilot in self.get_pilots () :
                 logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
             self.cancel_pilots ()
@@ -385,6 +386,7 @@ class PilotManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
+        print 'get pilots: %s' % self._valid
         self._is_valid()
 
         

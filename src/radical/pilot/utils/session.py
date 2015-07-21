@@ -27,7 +27,10 @@ def fetch_profiles (sid, dburl=None, target=None):
         raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
     if not target:
-        target = '.'
+        target = os.getcwd()
+            
+    if not target.startswith('/'):
+        target = "%s/%s" % (os.getcwd, target)
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
@@ -42,29 +45,24 @@ def fetch_profiles (sid, dburl=None, target=None):
 
         print "Processing pilot '%s'" % pilot['_id']
 
-        sandbox = pilot['sandbox']
-        pilot_id = os.path.basename(os.path.dirname(sandbox))
+        sandbox  = saga.filesystem.Directory (pilot['sandbox'])
+        profiles = sandbox.list('*.prof')
 
-        src = sandbox + 'agent.prof'
+        for prof in profiles:
 
-        if target.startswith('/'):
-            dst = 'file://localhost/%s/%s.prof' % (target, pilot_id)
-            ret.append('/%s/%s.prof' % (target, pilot_id))
-        else:
-            dst = 'file://localhost/%s/%s/%s.prof' % (os.getcwd(), target, pilot_id)
-            ret.append('/%s/%s/%s.prof' % (os.getcwd(), target, pilot_id))
+            ret.append('/%s/%s' % (target, prof))
 
-        print "Copying '%s' to '%s'." % (src, dst)
-        prof_file = saga.filesystem.File(src)
-        prof_file.copy(dst, flags=saga.filesystem.CREATE_PARENTS)
-        prof_file.close()
+            print "fetching '%s/%s' to '%s'." % (pilot['sandbox'], prof, target)
+            prof_file = saga.filesystem.File("%s/%s" % (pilot['sandbox'], prof))
+            prof_file.copy(target, flags=saga.filesystem.CREATE_PARENTS)
+            prof_file.close()
 
     return ret
 
 
 # ------------------------------------------------------------------------------
 
-def fetch_session (sid, dburl=None, target=None) :
+def fetch_json (sid, dburl=None, target=None) :
 
     '''
     returns file name

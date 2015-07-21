@@ -97,27 +97,18 @@ class Session (saga.Session):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
-        self._database_url  = database_url
-        self._database_name = database_name 
+        self._database_url  = ru.Url(database_url)
 
-        if  not self._database_url :
-            self._database_url = os.getenv ("RADICAL_PILOT_DBURL", None)
+        if  not str(self._database_url) :
+            self._database_url = ru.Url(os.getenv ("RADICAL_PILOT_DBURL", ""))
 
-        if  not self._database_url :
+        if  not str(self._database_url) :
             raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
 
-        logger.info("using database url  %s" % self._database_url)
+        if database_name:
+            self._database_url.path = database_name
 
-        # if the database url contains a path element, we interpret that as
-        # database name (without the leading slash)
-        tmp_url = ru.Url (self._database_url)
-        if  tmp_url.path            and \
-            tmp_url.path[0]  == '/' and \
-            len(tmp_url.path) >  1  :
-            self._database_name = tmp_url.path[1:]
-            logger.info("using database path %s" % self._database_name)
-        else :
-            logger.info("using database name %s" % self._database_name)
+        logger.info("using database url  %s" % self._database_url)
 
         # ----------------------------------------------------------------------
         # create new session
@@ -136,8 +127,7 @@ class Session (saga.Session):
             self._dbs, self._created, self._connection_info = \
                     dbSession.new(sid     = self.uid,
                                   name    = self._name,
-                                  db_url  = self._database_url,
-                                  db_name = self._database_name)
+                                  db_url  = self._database_url)
 
             logger.info("New Session created%s." % str(self))
 
@@ -543,4 +533,17 @@ class Session (saga.Session):
 
 
         return resource_cfg
+
+
+    # -------------------------------------------------------------------------
+    #
+    def fetch_profiles (self, target=None):
+        return rpu.fetch_profiles (self.uid, dburl=self._database_url, target=target)
+
+
+    # -------------------------------------------------------------------------
+    #
+    def fetch_json (self, target=None):
+        return rpu.fetch_json (self.uid, dburl=self._database_url, target=target)
+
 

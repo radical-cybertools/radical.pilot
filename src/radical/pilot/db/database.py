@@ -37,22 +37,19 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, db_url, db_name="radicalpilot"):
+    def __init__(self, db_url):
         """ Le constructeur. Should not be called directrly, but rather
             via the static methods new() or reconnect().
         """
 
         url = ru.Url (db_url)
 
-        if  db_name :
-            url.path = db_name
-
-        mongo, db, dbname, pname, cname = ru.mongodb_connect (url)
+        mongo, db, dbname, pname, cname = ru.mongodb_connect (str(url))
 
         self._client = mongo
         self._db     = db
         self._dburl  = str(url)
-        self._dbname = dbname
+        self._dbname = url.path.strip('/')
         if url.username and url.password:
             self._dbauth = "%s:%s" % (url.username, url.password)
         else:
@@ -71,12 +68,12 @@ class Session():
     #--------------------------------------------------------------------------
     #
     @staticmethod
-    def new(sid, name, db_url, db_name="radicalpilot"):
+    def new(sid, name, db_url):
         """ Creates a new session (factory method).
         """
         creation_time = datetime.datetime.utcnow()
 
-        dbs = Session(db_url, db_name)
+        dbs = Session(db_url)
         dbs.create(sid, name, creation_time)
 
         connection_info = DBConnectionInfo(
@@ -131,12 +128,12 @@ class Session():
     #--------------------------------------------------------------------------
     #
     @staticmethod
-    def reconnect(sid, db_url, db_name="radical.pilot"):
+    def reconnect(sid, db_url):
         """ Reconnects to an existing session.
 
             Here we simply check if a radical.pilot.<sid> collection exists.
         """
-        dbs = Session(db_url, db_name)
+        dbs = Session(db_url)
         session_info = dbs._reconnect(sid)
 
         connection_info = DBConnectionInfo(

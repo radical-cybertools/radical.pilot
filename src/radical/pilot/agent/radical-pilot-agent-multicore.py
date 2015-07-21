@@ -4025,6 +4025,7 @@ class ExecWorker_SHELL(ExecWorker):
                     ret.append ('"%s"' % arg)
 
             return  ret
+
         # ----------------------------------------------------------------------
 
         args  = ""
@@ -5541,7 +5542,7 @@ def main():
     if not options.runtime              : parser.error("Missing or zero agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
-    rpu.prof_init('agent.prof', uid=options.pilot_id)
+    rpu.prof_init('%s.agent' % options.session_id, uid=options.pilot_id)
 
     # configure the agent logger
     logger    = logging.getLogger  ('radical.pilot.agent')
