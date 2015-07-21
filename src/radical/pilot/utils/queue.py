@@ -10,11 +10,13 @@ import radical.utils as ru
 QUEUE_SOURCE  = 'queue_source'
 QUEUE_BRIDGE  = 'queue_bridge'
 QUEUE_TARGET  = 'queue_target'
+QUEUE_ROLES   = [QUEUE_SOURCE, QUEUE_BRIDGE, QUEUE_TARGET]
 
 # defines for queue types
 QUEUE_THREAD  = 'queue_thread'
 QUEUE_PROCESS = 'queue_process'
 QUEUE_REMOTE  = 'queue_remote'
+QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_REMOTE]
 
 # some other local defines
 _QUEUE_HWM = 1 # high water mark == buffer size
@@ -89,7 +91,6 @@ def _port_inc(address):
 # space use the same identifier, they will get the same queue instance.  Those
 # parameters are obviously mostly useful for the zmq queue.
 #
-ROLES = ['source', 'target', 'bridge']
 class _QueueRegistry(object):
     
     __metaclass__ = ru.Singleton
@@ -98,26 +99,27 @@ class _QueueRegistry(object):
 
         # keep mapping between queue names and instances
         self._lock     = threading.RLock()
-        self._registry = {QUEUE_SOURCE : dict(),
-                          QUEUE_BRIGDE : dict(),
-                          QUEUE_TARGET : dict()}
+        self._registry = {QUEUE_THREAD  : dict(),
+                          QUEUE_PROCESS : dict()}
 
 
-    def get(self, name, role, address, qtype):
+    def get(self, qtype, name, ctor):
 
-        if role not in ROLES:
-            raise ValueError("no such role '%s'" % role)
+        if qtype not in QUEUE_TYPES:
+            raise ValueError("no such type '%s'" % qtype)
 
         with self._lock:
             
-            if name in self._registry[role]:
+            if name in self._registry[qtype]:
                 # queue instance for that name exists - return it
-                return self._registry[role][name]
+                print 'found queue for %s %s' % (qtype, name)
+                return self._registry[qtype][name]
 
             else:
                 # queue does not yet exist: create and register
-                queue = qtype (name, role, address)
-                self._registry[role][name] = queue
+                queue = ctor()
+                self._registry[qtype][name] = queue
+                print 'created queue for %s %s' % (qtype, name)
                 return queue
 
 # create a registry instance
@@ -126,18 +128,16 @@ _registry = _QueueRegistry()
 
 # ==============================================================================
 #
-class QueueBase(object):
+class Queue(object):
     """
     This is really just the queue interface we want to implement
     """
-    def __init__(self, qtype, name, role, address):
+    def __init__(self, qtype, name, role, address=None):
 
         self._qtype = qtype
         self._name  = name
         self._role  = role
-        self._addr  = str(address) # this could have been an ru.Url
-
-        self._configure()
+        self._addr  = address # this could have been an ru.Url
 
 
     # --------------------------------------------------------------------------
@@ -145,19 +145,20 @@ class QueueBase(object):
     # This class-method creates the appropriate sub-class for the Queue.
     #
     @classmethod
-    def create(cls, qtype, name, role, address):
+    def create(cls, qtype, name, role, address=None):
 
         # Make sure that we are the base-class!
-        if cls != QueueBase:
+        if cls != Queue:
             raise TypeError("Queue Factory only available to base class!")
 
         try:
-            implementation = {
+            impl = {
                 QUEUE_THREAD  : QueueThread,
                 QUEUE_PROCESS : QueueProcess,
                 QUEUE_REMOTE  : QueueRemote,
             }[qtype]
-            return implementation(qtype, name, role, address)
+            print 'instantiating %s' % impl
+            return impl(qtype, name, role, address)
         except KeyError:
             raise RuntimeError("Queue type '%s' unknown!" % qtype)
 
@@ -175,19 +176,20 @@ class QueueBase(object):
 
 # ==============================================================================
 #
-class QueueThread(object):
+class QueueThread(Queue):
 
-    def __init__(self, qtype, name, role=None, address=None):
+    def __init__(self, qtype, name, role, address=None):
 
-        QueueBase.__init__(self, qtype, name, role, address)
-        self._q = treading.Queue()
+        Queue.__init__(self, qtype, name, role, address)
+        self._q = _registry.get(qtype, name, threading.Queue)
+
 
     # --------------------------------------------------------------------------
     #
     def put(self, item):
 
         if  self._role == QUEUE_SOURCE:
-            self._q.send_json(item)
+            self._q.put(item)
         else:
             raise RuntimeError('queue %s (%s) cannot call put()' % \
                     (self._name, self._role))
@@ -198,26 +200,28 @@ class QueueThread(object):
         raise NotImplementedError('get() is not implemented')
 
         if  self._role == QUEUE_TARGET:
-            return self._q.recv_json()
+            return self._q.get()
         else:
             raise RuntimeError('queue %s (%s) cannot call get()' % \
                     (self._name, self._role))
 
+
 # ==============================================================================
 #
-class ProcessQueue(multiprocessing.Queue):
+class QueueProcess(Queue):
 
-    def __init__(self, name, role=None, address=None):
+    def __init__(self, qtype, name, role, address=None):
 
-        QueueBase.__init__(self, qtype, name, role, address)
-        self._q = multiprocessing.Queue()
+        Queue.__init__(self, qtype, name, role, address)
+        self._q = _registry.get(qtype, name, multiprocessing.Queue)
+
 
     # --------------------------------------------------------------------------
     #
     def put(self, item):
 
         if  self._role == QUEUE_SOURCE:
-            self._q.send_json(item)
+            self._q.put(item)
         else:
             raise RuntimeError('queue %s (%s) cannot call put()' % \
                     (self._name, self._role))
@@ -225,10 +229,9 @@ class ProcessQueue(multiprocessing.Queue):
     # --------------------------------------------------------------------------
     #
     def get(self):
-        raise NotImplementedError('get() is not implemented')
 
         if  self._role == QUEUE_TARGET:
-            return self._q.recv_json()
+            return self._q.get()
         else:
             raise RuntimeError('queue %s (%s) cannot call get()' % \
                     (self._name, self._role))
@@ -237,10 +240,10 @@ class ProcessQueue(multiprocessing.Queue):
 
 # ==============================================================================
 #
-class RemoteQueue(object):
+class QueueRemote(Queue):
 
 
-    def __init__(self, name, role=None, address=None):
+    def __init__(self, qtype, name, role, address=None):
         """
         This Queue type sets up an zmq channel of this kind:
 
@@ -268,17 +271,17 @@ class RemoteQueue(object):
         the bridge-target port by one.  All given port numbers should be *even*.
 
         """
-        QueueBase.__init__(self, qtype, name, role, address)
+        Queue.__init__(self, qtype, name, role, address)
 
         # sanity check on address
-        if not self._addr:
+        if not self._addr:  # this may break for ru.Url
             self._addr = _QUEUE_PORTS.get(name)
 
         if not self._addr:
             raise RuntimeError("no default address found for '%s'" % self._name)
 
         u = ru.Url(self._addr)
-        if  u.path   is not '/'   or
+        if  u.path   is not '/'   or \
             u.schema is not 'tcp' :
             raise ValueError("url '%s' cannot be used for remote queues" % u)
 
@@ -305,7 +308,7 @@ class RemoteQueue(object):
             self._out.hwm = _QUEUE_HWM
             self._out.bind(_port_inc(self._addr))
 
-        elif self._role == QUEUE_TARGET
+        elif self._role == QUEUE_TARGET:
             self._q       = self._ctx.socket(zmq.REQ)
             self._q.hwm   = _QUEUE_HWM
             self._q.connect(_port_inc(self._addr))
