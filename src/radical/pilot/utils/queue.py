@@ -181,7 +181,7 @@ class QueueThread(Queue):
     def __init__(self, qtype, name, role, address=None):
 
         Queue.__init__(self, qtype, name, role, address)
-        self._q = _registry.get(qtype, name, threading.Queue)
+        self._q = _registry.get(qtype, name, queue.Queue)
 
 
     # --------------------------------------------------------------------------
