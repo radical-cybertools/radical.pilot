@@ -1,6 +1,6 @@
 
 import zmq
-import queue
+import Queue
 import threading
 import multiprocessing
 
@@ -49,8 +49,8 @@ def _port_inc(address):
 
 # ==============================================================================
 #
-# Communication between components is done via Queues.  The semantics we expect
-# (and which is what is matched by the native Python queue.Queue), is:
+# Communication between components is done via queues.  The semantics we expect
+# (and which is what is matched by the native Python Queue.Queue), is:
 #
 #   - multiple upstream   components put messages onto the same queue (source)
 #   - multiple downstream components get messages from the same queue (target)
@@ -59,14 +59,14 @@ def _port_inc(address):
 #     will get the next message (bridge)
 #
 # The queue implementation we use depends on the participating component types:
-# as long as we communicate within threads, treading.Queue can be used.  If
+# as long as we communicate within threads, Queue.Queue can be used.  If
 # processes on the same host are involved, we switch to multiprocessing.Queue.
 # For remote component processes we use zero-mq (zmq) queues.  In the cases
 # where the setup is undetermined, we'll have to use zmq, too, to cater for all
 # options.
 #
 # To make the queue type switching transparent, we provide a set of queue
-# implementations and wrappers, which implement the interface of queue.Queue:
+# implementations and wrappers, which implement the interface of Queue.Queue:
 #
 #   put (item)
 #   get ()
@@ -83,7 +83,7 @@ def _port_inc(address):
 #   task_done
 #   join
 #
-# Our Queue additionally takes 'name', 'role' and 'address' parameter on the
+# Our RPUQueue additionally takes 'name', 'role' and 'address' parameter on the
 # constructor.  'role' can be 'source', 'bridge' or 'target', where 'source' is
 # the sending end of a queue, and 'target' the receiving end, and 'bridge' acts
 # as as a message forwarder.  'address' denominates a connection endpoint, and
@@ -91,7 +91,7 @@ def _port_inc(address):
 # space use the same identifier, they will get the same queue instance.  Those
 # parameters are obviously mostly useful for the zmq queue.
 #
-class _QueueRegistry(object):
+class _RPUQueueRegistry(object):
     
     __metaclass__ = ru.Singleton
 
@@ -123,12 +123,12 @@ class _QueueRegistry(object):
                 return queue
 
 # create a registry instance
-_registry = _QueueRegistry()
+_registry = _RPUQueueRegistry()
 
 
 # ==============================================================================
 #
-class Queue(object):
+class RPUQueue(object):
     """
     This is really just the queue interface we want to implement
     """
@@ -142,25 +142,25 @@ class Queue(object):
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the Queue.
+    # This class-method creates the appropriate sub-class for the RPUQueue.
     #
     @classmethod
     def create(cls, qtype, name, role, address=None):
 
         # Make sure that we are the base-class!
-        if cls != Queue:
-            raise TypeError("Queue Factory only available to base class!")
+        if cls != RPUQueue:
+            raise TypeError("RPUQueue Factory only available to base class!")
 
         try:
             impl = {
-                QUEUE_THREAD  : QueueThread,
-                QUEUE_PROCESS : QueueProcess,
-                QUEUE_REMOTE  : QueueRemote,
+                QUEUE_THREAD  : RPUQueueThread,
+                QUEUE_PROCESS : RPUQueueProcess,
+                QUEUE_REMOTE  : RPUQueueRemote,
             }[qtype]
             print 'instantiating %s' % impl
             return impl(qtype, name, role, address)
         except KeyError:
-            raise RuntimeError("Queue type '%s' unknown!" % qtype)
+            raise RuntimeError("RPUQueue type '%s' unknown!" % qtype)
 
 
     # --------------------------------------------------------------------------
@@ -176,12 +176,12 @@ class Queue(object):
 
 # ==============================================================================
 #
-class QueueThread(Queue):
+class RPUQueueThread(RPUQueue):
 
     def __init__(self, qtype, name, role, address=None):
 
-        Queue.__init__(self, qtype, name, role, address)
-        self._q = _registry.get(qtype, name, queue.Queue)
+        RPUQueue.__init__(self, qtype, name, role, address)
+        self._q = _registry.get(qtype, name, Queue.Queue)
 
 
     # --------------------------------------------------------------------------
@@ -197,7 +197,6 @@ class QueueThread(Queue):
     # --------------------------------------------------------------------------
     #
     def get(self):
-        raise NotImplementedError('get() is not implemented')
 
         if  self._role == QUEUE_TARGET:
             return self._q.get()
@@ -208,11 +207,11 @@ class QueueThread(Queue):
 
 # ==============================================================================
 #
-class QueueProcess(Queue):
+class RPUQueueProcess(RPUQueue):
 
     def __init__(self, qtype, name, role, address=None):
 
-        Queue.__init__(self, qtype, name, role, address)
+        RPUQueue.__init__(self, qtype, name, role, address)
         self._q = _registry.get(qtype, name, multiprocessing.Queue)
 
 
@@ -240,12 +239,12 @@ class QueueProcess(Queue):
 
 # ==============================================================================
 #
-class QueueRemote(Queue):
+class RPUQueueRemote(RPUQueue):
 
 
     def __init__(self, qtype, name, role, address=None):
         """
-        This Queue type sets up an zmq channel of this kind:
+        This RPUQueue type sets up an zmq channel of this kind:
 
         source \            / target
                 -- bridge -- 
@@ -271,7 +270,7 @@ class QueueRemote(Queue):
         the bridge-target port by one.  All given port numbers should be *even*.
 
         """
-        Queue.__init__(self, qtype, name, role, address)
+        RPUQueue.__init__(self, qtype, name, role, address)
 
         # sanity check on address
         if not self._addr:  # this may break for ru.Url
