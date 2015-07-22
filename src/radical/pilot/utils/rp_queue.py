@@ -1,8 +1,8 @@
 
 import zmq
-import Queue
-import threading
-import multiprocessing
+import Queue           as pyq
+import threading       as mt
+import multiprocessing as mp
 
 import radical.utils as ru
 
@@ -23,17 +23,17 @@ _QUEUE_HWM = 1 # high water mark == buffer size
 
 # some predefined port numbers
 _QUEUE_PORTS = {
-        'pilot_update_queue'         : 'tcp://*:10000/',
-        'pilot_launching_queue'      : 'tcp://*:10002/',
-        'unit_update_queue'          : 'tcp://*:10004/',
-        'umgr_scheduling_queue'      : 'tcp://*:10006/',
-        'umgr_input_staging_queue'   : 'tcp://*:10008/',
-        'agent_input_staging_queue'  : 'tcp://*:10010/',
-        'agent_scheduling_queue'     : 'tcp://*:10012/',
-        'agent_executing_queue'      : 'tcp://*:10014/',
-        'agent_output_staging_queue' : 'tcp://*:10016/',
-        'umgr_output_staging_queue'  : 'tcp://*:10018/',
-        'umgr_input_staging_queue'   : 'tcp://*:10020/'
+        'pilot_update_queue'         : 'tcp://*:10000',
+        'pilot_launching_queue'      : 'tcp://*:10002',
+        'unit_update_queue'          : 'tcp://*:10004',
+        'umgr_scheduling_queue'      : 'tcp://*:10006',
+        'umgr_input_staging_queue'   : 'tcp://*:10008',
+        'agent_input_staging_queue'  : 'tcp://*:10010',
+        'agent_scheduling_queue'     : 'tcp://*:10012',
+        'agent_executing_queue'      : 'tcp://*:10014',
+        'agent_output_staging_queue' : 'tcp://*:10016',
+        'umgr_output_staging_queue'  : 'tcp://*:10018',
+        'umgr_input_staging_queue'   : 'tcp://*:10020'
     }
 
 # --------------------------------------------------------------------------
@@ -44,7 +44,26 @@ _QUEUE_PORTS = {
 def _port_inc(address):
     u = ru.Url(address)
     u.port += 1
+    print " -> %s" % u
     return str(u)
+
+
+# --------------------------------------------------------------------------
+#
+# bridges by default bind to all interfaces on a given port, sources and targets
+# connect to localhost (127.0.0.1)
+# bridge-target end...
+#
+def _get_addr(name, role):
+
+    addr = _QUEUE_PORTS.get(name)
+
+    if role != QUEUE_BRIDGE:
+        u = ru.Url(addr)
+        u.host = '127.0.0.1'
+        addr = str(u)
+
+    return addr
 
 
 # ==============================================================================
@@ -98,7 +117,7 @@ class _RPUQueueRegistry(object):
     def __init__(self):
 
         # keep mapping between queue names and instances
-        self._lock     = threading.RLock()
+        self._lock     = mt.RLock()
         self._registry = {QUEUE_THREAD  : dict(),
                           QUEUE_PROCESS : dict()}
 
@@ -181,7 +200,7 @@ class RPUQueueThread(RPUQueue):
     def __init__(self, qtype, name, role, address=None):
 
         RPUQueue.__init__(self, qtype, name, role, address)
-        self._q = _registry.get(qtype, name, Queue.Queue)
+        self._q = _registry.get(qtype, name, pyq.Queue)
 
 
     # --------------------------------------------------------------------------
@@ -212,7 +231,7 @@ class RPUQueueProcess(RPUQueue):
     def __init__(self, qtype, name, role, address=None):
 
         RPUQueue.__init__(self, qtype, name, role, address)
-        self._q = _registry.get(qtype, name, multiprocessing.Queue)
+        self._q = _registry.get(qtype, name, mp.Queue)
 
 
     # --------------------------------------------------------------------------
@@ -259,7 +278,7 @@ class RPUQueueRemote(RPUQueue):
         responsibility to ensure that only one bridge of a given type exists.
 
         All component will specify the same address.  Addresses are of the form
-        'tcp://ip-number:port/'.  
+        'tcp://ip-number:port'.  
         
         Note that the address is both used for binding and connecting -- so if
         any component lives on a remote host, all components need to use
@@ -272,23 +291,26 @@ class RPUQueueRemote(RPUQueue):
         """
         RPUQueue.__init__(self, qtype, name, role, address)
 
+        # the bridge process
+        self._p = None
+
         # sanity check on address
         if not self._addr:  # this may break for ru.Url
-            self._addr = _QUEUE_PORTS.get(name)
+            self._addr = _get_addr(name, role)
 
         if not self._addr:
             raise RuntimeError("no default address found for '%s'" % self._name)
 
         u = ru.Url(self._addr)
-        if  u.path   is not '/'   or \
-            u.schema is not 'tcp' :
+        if  u.path   != ''    or \
+            u.schema != 'tcp' :
             raise ValueError("url '%s' cannot be used for remote queues" % u)
 
         if (u.port % 2):
             raise ValueError("port numbers must be even, not '%d'" % u.port)
 
         self._addr = str(u)
-
+        print self._addr
 
         # set up the channel
         self._ctx = zmq.Context()
@@ -299,13 +321,29 @@ class RPUQueueRemote(RPUQueue):
             self._q.connect(self._addr)
 
         elif self._role == QUEUE_BRIDGE:
-            self._in      = self._c.socket(zmq.PULL)
-            self._in.hwm  = _QUEUE_HWM
-            self._in.bind(address)
 
-            self._out     = self._ctx.socket(zmq.REP)
-            self._out.hwm = _QUEUE_HWM
-            self._out.bind(_port_inc(self._addr))
+            # ------------------------------------------------------------------
+            def _bridge(ctx, addr_in, addr_out):
+                print 'in _bridge: %s %s' % (addr_in, addr_out)
+                _in      = ctx.socket(zmq.PULL)
+                _in.hwm  = _QUEUE_HWM
+                _in.bind(addr_in)
+
+                _out     = ctx.socket(zmq.REP)
+                _out.hwm = _QUEUE_HWM
+                _out.bind(addr_out)
+
+                while True:
+                    req = _out.recv()
+                    msg = _in.recv_json()
+                    # print msg
+                    _out.send_json(msg)
+            # ------------------------------------------------------------------
+            
+            addr_in  = self._addr
+            addr_out = _port_inc(self._addr)
+            self._p = mp.Process(target=_bridge, args=[self._ctx, addr_in, addr_out])
+            self._p.start()
 
         elif self._role == QUEUE_TARGET:
             self._q       = self._ctx.socket(zmq.REQ)
@@ -314,6 +352,21 @@ class RPUQueueRemote(RPUQueue):
 
         else:
             raise RuntimeError ("unsupported queue role '%s'" % self._role)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __del__(self):
+
+        self.close()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def close(self):
+
+        if self._p:
+            self._p.terminate()
 
 
     # --------------------------------------------------------------------------
@@ -329,9 +382,9 @@ class RPUQueueRemote(RPUQueue):
     # --------------------------------------------------------------------------
     #
     def get(self):
-        raise NotImplementedError('get() is not implemented')
 
         if  self._role == QUEUE_TARGET:
+            self._q.send('request')
             return self._q.recv_json()
         else:
             raise RuntimeError('queue %s (%s) cannot call get()' % \
