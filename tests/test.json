@@ -217,6 +217,16 @@
                           "module load python"],
      "executable"      : "python"
      },
+ "xsede.comet"         : {
+     "cp_project"      : "unc100",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 24,
+     "cp_schema"       : "",
+     "cu_cores"        :  8,
+     "cu_pre_exec"     : ["module load python mpi4py"],
+     "executable"      : "python"
+      },
  "xsede.gordon"        : {
      "cp_project"      : "unc101",
      "cp_queue"        : "",
