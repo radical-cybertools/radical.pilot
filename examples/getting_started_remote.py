@@ -16,55 +16,66 @@ CORES    =    26
 UNITS    =    50
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
-RESOURCE = 'local.localhost'
-PROJECT  = None
-QUEUE    = None
-SCHEMA   = None
-  
-# RESOURCE = 'home.test'
-# PROJECT  = None
-# QUEUE    = None
-# SCHEMA   = 'ssh'
+resources = {
+        'local.localhost' : {
+            'project'  : None,
+            'queue'    : None,
+            'schema'   : None
+            },
+        'home.test' : {
+            'project'  : None,
+            'queue'    : None,
+            'schema'   : 'ssh'
+            },
 
-# RESOURCE = 'epsrc.archer'
-# PROJECT  = 'e290'
-# QUEUE    = 'short'
-# SCHEMA   = None
+        'epsrc.archer' : {
+            'project'  : 'e290',
+            'queue'    : 'short',
+            'schema'   : None
+            },
 
-# RESOURCE = 'lrz.supermuc'
-# PROJECT  = 'e290'
-# QUEUE    = 'short'
-# SCHEMA   = None
+        'lrz.supermuc' : {
+            'project'  : 'e290',
+            'queue'    : 'short',
+            'schema'   : None
+            },
 
-# RESOURCE = 'xsede.stampede'
-# PROJECT  = 'TG-MCB090174' 
-# QUEUE    = 'development'
-# SCHEMA   = None
+        'xsede.stampede' : {
+            'project'  : 'TG-CCR140028',
+            'queue'    : 'development',
+            'schema'   : None
+            },
 
-# RESOURCE = 'xsede.gordon'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = None
+        'xsede.gordon' : {
+            'project'  : None,
+            'queue'    : 'debug',
+            'schema'   : None
+            },
 
-# RESOURCE = 'xsede.blacklight'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = 'gsissh'
+        'xsede.blacklight' : {
+            'project'  : None,
+            'queue'    : 'debug',
+            'schema'   : 'gsissh'
+            },
 
-# RESOURCE = 'xsede.trestles'
-# PROJECT  = 'TG-MCB090174' 
-# QUEUE    = 'shared'
-# SCHEMA   = None
+        'xsede.trestles' : {
+            'project'  : 'TG-MCB090174' ,
+            'queue'    : 'shared',
+            'schema'   : None
+            },
 
-# RESOURCE = 'futuregrid.india'
-# PROJECT  = None
-# QUEUE    = None
-# SCHEMA   = None
-  
-# RESOURCE = 'nersc.hopper'
-# PROJECT  = None
-# QUEUE    = 'debug'
-# SCHEMA   = 'ssh'
+        'futuregrid.india' : {
+            'project'  : None,
+            'queue'    : None,
+            'schema'   : None
+            },
+
+        'nersc.hopper' : {
+                'project'  : None,
+                'queue'    : 'debug',
+                'schema'   : 'ssh'
+                }
+        }
 
 #------------------------------------------------------------------------------
 #
@@ -113,13 +124,15 @@ if __name__ == "__main__":
 
     # we can optionally pass session name to RP
     if len(sys.argv) > 1:
-        session_name = sys.argv[1]
+        resource = sys.argv[1]
     else:
-        session_name = None
+        resource = 'local.localhost'
+
+    print 'running on %s' % resource
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
+    session = rp.Session()
     print "session id: %s" % session.uid
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -132,13 +145,13 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource      = RESOURCE
+        pdesc.resource      = resource
         pdesc.cores         = CORES
-        pdesc.project       = PROJECT
-        pdesc.queue         = QUEUE
+        pdesc.project       = resources[resource]['project']
+        pdesc.queue         = resources[resource]['queue']
         pdesc.runtime       = RUNTIME
         pdesc.cleanup       = False
-        pdesc.access_schema = SCHEMA
+        pdesc.access_schema = resources[resource]['schema']
 
         pilot = pmgr.submit_pilots(pdesc)
 

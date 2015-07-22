@@ -44,7 +44,9 @@ def get_session_ids (db) :
     cnames = db.collection_names ()
     sids   = list()
     for cname in cnames :
-        if  not '.' in cname :
+        if cname      not in ['system.indexes']    and \
+           cname[-3:] not in ['.pm', '.um', '.cu'] and \
+           cname[-2:] not in ['.p']:
             sids.append (cname)
 
     return sids
