@@ -1,14 +1,11 @@
-"""
-.. module:: radical.pilot.controller.input_file_transfer_worker
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2015, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import os
 import time
 import saga
+import thread
 import threading
 
 from radical.pilot.states import * 
@@ -82,147 +79,139 @@ class InputFileTransferWorker(threading.Thread):
                 logger.exception("Connection error: %s" % e)
                 raise
 
-            try :
-                while not self._stop.is_set():
-                    # See if we can find a ComputeUnit that is waiting for
-                    # input file transfer.
-                    ts = datetime.datetime.utcnow()
-                    compute_unit = um_col.find_and_modify(
-                        query={"unitmanager": self.unit_manager_id,
-                               "state"      : PENDING_INPUT_STAGING, 
-                               "pilot"      : {"$nin" : [None]}},
-                        update={"$set" : {"state": STAGING_INPUT},
-                                "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}}
-                    )
+            while not self._stop.is_set():
+                # See if we can find a ComputeUnit that is waiting for
+                # input file transfer.
+                ts = datetime.datetime.utcnow()
+                compute_unit = um_col.find_and_modify(
+                    query={"unitmanager": self.unit_manager_id,
+                           "state"      : PENDING_INPUT_STAGING,
+                           },
+                    update={"$set" : {"state": STAGING_INPUT},
+                            "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}}
+                )
+
+                if compute_unit is None:
+                    # Sleep a bit if no new units are available.
+                    time.sleep(IDLE_TIME)
+
+                else:
+                    compute_unit_id = None
                     state = STAGING_INPUT
 
-                    if compute_unit is None:
-                        # Sleep a bit if no new units are available.
-                        time.sleep(IDLE_TIME) 
+                    try:
+                        log_messages = []
 
-                    else:
-                        compute_unit_id = None
+                        # We have found a new CU. Now we can process the transfer
+                        # directive(s) wit SAGA.
+                        compute_unit_id = str(compute_unit["_id"])
+                        logger.debug ("InputStagingController: unit found: %s" % compute_unit_id)
+                        remote_sandbox = compute_unit["sandbox"]
+                        input_staging = compute_unit.get("FTW_Input_Directives", [])
 
+                        # We need to create the CU's directory in case it doesn't exist yet.
+                        log_msg = "InputStagingController: Creating ComputeUnit sandbox directory %s." % remote_sandbox
+                        log_messages.append(log_msg)
+                        logger.info(log_msg)
+
+                        # Creating/initialising the sandbox directory.
                         try:
-                            log_messages = []
+                            logger.debug ("saga.fs.Directory ('%s')" % remote_sandbox)
 
-                            # We have found a new CU. Now we can process the transfer
-                            # directive(s) wit SAGA.
-                            compute_unit_id = str(compute_unit["_id"])
-                            logger.debug ("InputStagingController: unit found: %s" % compute_unit_id)
-                            remote_sandbox = compute_unit["sandbox"]
-                            input_staging = compute_unit.get("FTW_Input_Directives", [])
+                            # url used for saga
+                            remote_sandbox_url = saga.Url(remote_sandbox)
 
-                            # We need to create the CU's directory in case it doesn't exist yet.
-                            log_msg = "InputStagingController: Creating ComputeUnit sandbox directory %s." % remote_sandbox
-                            log_messages.append(log_msg)
-                            logger.info(log_msg)
+                            # keyurl and key used for cache
+                            remote_sandbox_keyurl = saga.Url(remote_sandbox)
+                            remote_sandbox_keyurl.path = '/'
+                            remote_sandbox_key = str(remote_sandbox_keyurl)
 
-                            # Creating/initialising the sandbox directory.
-                            try:
-                                logger.debug ("saga.fs.Directory ('%s')" % remote_sandbox)
+                            if  remote_sandbox_key not in self._saga_dirs :
+                                self._saga_dirs[remote_sandbox_key] = \
+                                        saga.filesystem.Directory(remote_sandbox_url,
+                                                flags=saga.filesystem.CREATE_PARENTS,
+                                                session=self._session)
 
-                                # url used for saga
-                                remote_sandbox_url = saga.Url(remote_sandbox)
-
-                                # keyurl and key used for cache
-                                remote_sandbox_keyurl = saga.Url(remote_sandbox)
-                                remote_sandbox_keyurl.path = '/'
-                                remote_sandbox_key = str(remote_sandbox_keyurl)
-
-                                if  remote_sandbox_key not in self._saga_dirs :
-                                    self._saga_dirs[remote_sandbox_key] = \
-                                            saga.filesystem.Directory(remote_sandbox_url,
-                                                    flags=saga.filesystem.CREATE_PARENTS,
-                                                    session=self._session)
-
-                                saga_dir = self._saga_dirs[remote_sandbox_key]
-                            except Exception as e :
-                                logger.exception('Error: %s' % e)
-                                raise
-
-                            logger.info("InputStagingController: Processing input file transfers for ComputeUnit %s" % compute_unit_id)
-                            # Loop over all transfer directives and execute them.
-                            for sd in input_staging:
-                            
-                                logger.debug("InputStagingController: sd: %s : %s" % (compute_unit_id, sd))
-
-                                # Check if there was a cancel request
-                                state_doc = um_col.find_one(
-                                    {"_id": compute_unit_id},
-                                    fields=["state"]
-                                )
-                                if state_doc['state'] == CANCELED:
-                                    logger.info("Compute Unit Canceled, interrupting input file transfers.")
-                                    state = CANCELED
-                                    break
-
-                                abs_src = os.path.abspath(sd['source'])
-                                input_file_url = saga.Url("file://localhost%s" % abs_src)
-                                if not sd['target']:
-                                    target = '%s/%s' % (remote_sandbox, os.path.basename(abs_src))
-                                else:
-                                    target = "%s/%s" % (remote_sandbox, sd['target'])
-
-                                log_msg = "Transferring input file %s -> %s" % (input_file_url, target)
-                                log_messages.append(log_msg)
-                                logger.debug(log_msg)
-
-                                # Execute the transfer.
-                                if CREATE_PARENTS in sd['flags']:
-                                    copy_flags = saga.filesystem.CREATE_PARENTS
-                                else:
-                                    copy_flags = 0
-
-                                try:
-                                    saga_dir.copy(input_file_url, target, flags=copy_flags)
-                                except Exception as e:
-                                    logger.exception(e)
-                                    raise Exception("copy failed(%s)" % e.message)
-
-                            # all FTW staging done
-                            logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
-                            um_col.find_and_modify(
-                                    query  = {"_id"   : compute_unit_id},
-                                    update = {'$set' : {'state' : PENDING_AGENT_INPUT_STAGING},
-                                              '$push': {'log': {
-                                                  'timestamp': datetime.datetime.utcnow(), 
-                                                  'message'  : 'push unit to agent after ftw staging'}}
-                                }
-                            )
-
+                            saga_dir = self._saga_dirs[remote_sandbox_key]
                         except Exception as e :
-                            # Update the CU's state 'FAILED'.
-                            ts = datetime.datetime.utcnow()
-                            logentry = {'message'  : "Input transfer failed: %s" % e,
-                                        'timestamp': ts}
-
-                            um_col.update({'_id': compute_unit_id}, {
-                                '$set': {'state': FAILED},
-                                '$push': {
-                                    'statehistory': {'state': FAILED, 'timestamp': ts},
-                                    'log': logentry
-                                }
-                            })
-
-                            logger.exception(str(logentry))
+                            logger.exception('Error: %s' % e)
                             raise
 
-                    # Code below is only to be run by the "first" or only worker
-                    if self._worker_number > 1:
-                        continue
+                        logger.info("InputStagingController: Processing input file transfers for ComputeUnit %s" % compute_unit_id)
+                        # Loop over all transfer directives and execute them.
+                        for sd in input_staging:
 
-                    # If the CU was canceled we can skip the remainder of this loop.
-                    if state == CANCELED:
-                        continue
+                            logger.debug("InputStagingController: sd: %s : %s" % (compute_unit_id, sd))
 
-            except Exception as e :
+                            # Check if there was a cancel request
+                            state_doc = um_col.find_one(
+                                {"_id": compute_unit_id},
+                                fields=["state"]
+                            )
+                            if state_doc['state'] == CANCELED:
+                                logger.info("Compute Unit Canceled, interrupting input file transfers.")
+                                state = CANCELED
+                                # Break out of the loop for this CU's SD's
+                                break
 
-                logger.exception("transfer worker error: %s" % e)
-                self._session.close (cleanup=False)
-                raise
+                            abs_src = os.path.abspath(sd['source'])
+                            input_file_url = saga.Url("file://localhost%s" % abs_src)
+                            if not sd['target']:
+                                target = '%s/%s' % (remote_sandbox, os.path.basename(abs_src))
+                            else:
+                                target = "%s/%s" % (remote_sandbox, sd['target'])
+
+                            log_msg = "Transferring input file %s -> %s" % (input_file_url, target)
+                            log_messages.append(log_msg)
+                            logger.debug(log_msg)
+
+                            # Execute the transfer.
+                            if CREATE_PARENTS in sd['flags']:
+                                copy_flags = saga.filesystem.CREATE_PARENTS
+                            else:
+                                copy_flags = 0
+
+                            try:
+                                saga_dir.copy(input_file_url, target, flags=copy_flags)
+                            except Exception as e:
+                                logger.exception(e)
+                                raise Exception("copy failed(%s)" % e.message)
+
+                        # If this CU was canceled we can skip the remainder of this loop,
+                        # to process more CUs.
+                        if state == CANCELED:
+                            continue
+
+                        # All IFTW staging done for this CU, push to Agent.
+                        logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
+                        um_col.update({'_id': compute_unit_id},
+                                      {'$set': {'state': PENDING_AGENT_INPUT_STAGING},
+                                       '$push': {
+                                           'statehistory': {
+                                               'state': PENDING_AGENT_INPUT_STAGING,
+                                               'timestamp': ts},
+                                           'log': {
+                                               'timestamp': datetime.datetime.utcnow(),
+                                               'message': 'push unit to agent after ftw staging'
+                                       }}})
+
+                    except Exception as e :
+
+                        # Update the CU's state to 'FAILED'.
+                        ts = datetime.datetime.utcnow()
+                        logentry = {'message': "Input transfer failed: %s" % e,
+                                    'timestamp': ts}
+
+                        um_col.update({'_id': compute_unit_id},
+                                      {'$set': {'state': FAILED},
+                                       '$push': {
+                                           'statehistory': {'state': FAILED, 'timestamp': ts},
+                                           'log': logentry
+                                       }})
+
+                        logger.exception(str(logentry))
+                        raise
 
         except SystemExit as e :
             logger.debug("input file transfer thread caught system exit -- forcing application shutdown")
-            import thread
             thread.interrupt_main ()
