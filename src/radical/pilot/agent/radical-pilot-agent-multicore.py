@@ -3790,7 +3790,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                 if line:
                                     x1, x2, x3 = line.split()
                                     rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-                        except ValueError as e:
+                        except Exception as e:
                             self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                 if exit_code != 0:
@@ -4728,7 +4728,7 @@ class StageoutWorker(threading.Thread):
                                     if line:
                                         x1, x2, x3 = line.split()
                                         rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-                            except ValueError as e:
+                            except Exception as e:
                                 self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                     for directive in _cu['Agent_Output_Directives']:
