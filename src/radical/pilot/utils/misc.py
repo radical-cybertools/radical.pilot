@@ -133,7 +133,7 @@ def prof(etype, uid="", msg="", logger=None, timestamp=None):
     #       to ensure data get correctly written to disk.  Calling flush on
     #       every event creates significant overheads, but is useful for
     #       debugging...
-  # flush_prof()
+    flush_prof()
 
 
 # ------------------------------------------------------------------------------
@@ -200,26 +200,32 @@ def blowup(config, cus, component, logger=None):
             dropped.append(cu)
             continue
 
-        factor -= 1
-        if factor :
-            for idx in range(factor) :
+        if factor < 0:
+            # FIXME: we should print a warning or something?  
+            # Anyway, we assume the default here, ie. no blowup, no drop.
+            factor = 1
 
-                cu_clone = copy.deepcopy (dict(cu))
-                clone_id = '%s.clone_%05d' % (str(cu['_id']), idx+1)
+        for idx in range(factor-1) :
 
-                for key in cu_clone :
-                    if isinstance (cu_clone[key], basestring) :
-                        cu_clone[key] = cu_clone[key].replace (uid, clone_id)
+            cu_clone = copy.deepcopy (dict(cu))
+            clone_id = '%s.clone_%05d' % (str(cu['_id']), idx+1)
 
-                idx += 1
-                cloned.append(cu_clone)
-                prof('add clone', msg=component, uid=clone_id)
+            for key in cu_clone :
+                if isinstance (cu_clone[key], basestring) :
+                    cu_clone[key] = cu_clone[key].replace (uid, clone_id)
 
-        # append the original unit last, to increase the likelyhood that
+            idx += 1
+            cloned.append(cu_clone)
+            prof('add clone', msg=component, uid=clone_id)
+
+        # For any non-zero factor, append the original unit -- factor==0 lets us
+        # drop the cu.
+        #
+        # Append the original cu last, to increase the likelyhood that
         # application state only advances once all clone states have also
         # advanced (they'll get pushed onto queues earlier).  This cannot be
         # relied upon, obviously.
-        cloned.append(cu)
+        if factor > 0: cloned.append(cu)
 
     return cloned, dropped
 

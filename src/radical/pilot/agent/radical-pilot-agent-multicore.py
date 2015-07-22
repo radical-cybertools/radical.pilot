@@ -148,6 +148,7 @@ import shutil
 import optparse
 import logging
 import hostlist
+import tempfile
 import traceback
 import threading
 import subprocess
@@ -194,7 +195,7 @@ import radical.pilot.utils as rpu
 AGENT_THREADS   = 'threading'
 AGENT_PROCESSES = 'multiprocessing'
 
-AGENT_MODE      = AGENT_THREADS
+AGENT_MODE      = AGENT_PROCESSES
 
 if AGENT_MODE == AGENT_THREADS :
     COMPONENT_MODE = threading
@@ -729,7 +730,6 @@ class Scheduler(threading.Thread):
 
                     # FIXME: this state update is not recorded?
                     cu['state'] = rp.ALLOCATING
-
 
                     cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
                     for _cu in cu_list:
@@ -3887,24 +3887,17 @@ class ExecWorker_SHELL(ExecWorker):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # run the spawner on the shells
-        self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
-        rec_makedir(self.workdir)
-
-        # to run the spawner shells remote, run the following command on the
-        # target node:
-        #   "nc -l -p <port> -v -e /bin/sh  %s/agent/radical-pilot-spawner.sh %s"
-        # and then below run
-        #   "nc <node_ip> <port>"
-        # with unique port numbers for each ExecWorker instance, obviously.
+      # tmp = os.getcwd() # FIXME: see #658
+        tmp = tempfile.gettempdir()
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self.name))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
-                           % (os.path.dirname (rp.__file__), self.workdir))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self.name))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 

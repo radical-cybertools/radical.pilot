@@ -66,7 +66,7 @@ def usage (msg=None, noexit=False) :
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (dbclient, dbname, age, session) :
+def get_sessions (db, dbname, age, session) :
 
     sids = list()
     now  = datetime.datetime.now ()
@@ -74,7 +74,7 @@ def list_sessions (dbclient, dbname, age, session) :
     if  session :
         sids.append (session)
     else :
-        sids = rpu.get_session_ids (dbclient[dbname])
+        sids = rpu.get_session_ids (db)
 
     if not sids :
         print 'no matching session in database at %s' % url
@@ -84,7 +84,7 @@ def list_sessions (dbclient, dbname, age, session) :
     created  = list()
     for sid in sids :
 
-        docs = rpu.get_session_docs (dbclient[dbname], sid)
+        docs = rpu.get_session_docs (db, sid)
         if  not docs or \
             not 'session' in docs or \
             not 'created' in docs['session'] :
@@ -120,12 +120,58 @@ def list_sessions (dbclient, dbname, age, session) :
 
 # ------------------------------------------------------------------------------
 #
-def purge_sessions (dbclient, dbname, age, session) :
+def list_sessions (db, dbname, age, session) :
 
-    sessions = list_sessions (dbclient, dbname, age, session)
-    database = dbclient[dbname]
+    sids = list()
+    now  = datetime.datetime.now ()
 
-    for sid in sessions :
+    if  session :
+        sids.append (session)
+    else :
+        sids = rpu.get_session_ids (db[dbname])
+
+    if not sids :
+        print 'no matching session in database at %s' % url
+        return
+
+    session_ids = list()
+    for sid in sids :
+
+        docs = rpu.get_session_docs (db[dbname], sid)
+        if  not docs or \
+            not 'session' in docs or \
+            not 'created' in docs['session'] :
+            # invalid session
+            print 'check  session %s ? (%17s)' % (sid, '???')
+            continue
+
+        c = docs['session']['created']
+
+        if isinstance (c, float) :
+            c = datetime.datetime.utcfromtimestamp(c) 
+
+        if (now-c) > age :
+            session_ids.append (sid)
+            print 'check  session %s + (%17s)' % (sid, now-c)
+        else :
+            print 'check  session %s - (%17s)' % (sid, now-c)
+            print 'optimignore remaining sessions'
+            break
+
+    for sid in session_ids :
+        print sid
+
+    return session_ids
+
+
+# ------------------------------------------------------------------------------
+#
+def purge_sessions (db, dbname, age, session) :
+
+    session_ids = list_sessions (db, dbname, age, session)
+    database    = db[dbname]
+
+    for sid in session_ids :
         database.drop_collection ("%s"    % sid)
         database.drop_collection ("%s.p"  % sid)
         database.drop_collection ("%s.pm" % sid)
@@ -136,10 +182,10 @@ def purge_sessions (dbclient, dbname, age, session) :
 
 # ------------------------------------------------------------------------------
 #
-def export_sessions (dbclient, dbname, age, session) :
+def export_sessions (db, dbname, age, session) :
 
-    sessions = list_sessions (dbclient, dbname, age, session)
-    database = dbclient[dbname]
+    sessions = get_sessions (db, dbname, age, session)
+    database = db[dbname]
 
     for sid in sessions :
 
