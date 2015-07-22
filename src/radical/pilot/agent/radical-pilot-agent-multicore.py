@@ -3538,7 +3538,12 @@ class ExecWorker_POPEN (ExecWorker) :
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
-            launch_script.write('#!/bin/bash -l\n')
+            launch_script.write('#!/bin/bash -l\n\n')
+            launch_script.write("# timestamp utility: seconds since epoch\n")
+            launch_script.write("timestamp () {\n")
+            launch_script.write("TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`\n")
+            launch_script.write("}\n\n")
+
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
 
             # Before the Big Bang there was nothing
@@ -3549,7 +3554,12 @@ class ExecWorker_POPEN (ExecWorker) :
                         pre_exec_string += "%s\n" % elem
                 else:
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
-                launch_script.write('# Pre-exec commands\n%s' % pre_exec_string)
+                launch_script.write("# Pre-exec commands\n")
+                launch_script.write("timestamp\n")
+                launch_script.write("echo pre  start $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write(pre_exec_string)
+                launch_script.write("timestamp\n")
+                launch_script.write("echo pre  stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
 
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
@@ -3593,7 +3603,8 @@ class ExecWorker_POPEN (ExecWorker) :
                 self._log.exception(msg)
                 raise RuntimeError(msg)
 
-            launch_script.write('# The command to run\n%s\n' % launch_command)
+            launch_script.write("# The command to run\n")
+            launch_script.write("%s\n" % launch_command)
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -3603,7 +3614,12 @@ class ExecWorker_POPEN (ExecWorker) :
                         post_exec_string += "%s\n" % elem
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
+                launch_script.write("# Post-exec commands\n")
+                launch_script.write("timestamp\n")
+                launch_script.write("echo post start $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
                 launch_script.write('%s\n' % post_exec_string)
+                launch_script.write("timestamp\n")
+                launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
@@ -3765,6 +3781,17 @@ class ExecWorker_POPEN (ExecWorker) :
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
                 self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
+
+                if os.path.isfile("%s/PROF" % _cu['workdir']):
+                    with open("%s/PROF" % _cu['workdir'], 'r') as prof_f:
+                        try:
+                            txt = prof_f.read()
+                            for line in txt.split("\n"):
+                                if line:
+                                    x1, x2, x3 = line.split()
+                                    rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                        except Exception as e:
+                            self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                 if exit_code != 0:
 
@@ -3989,37 +4016,46 @@ class ExecWorker_SHELL(ExecWorker):
             return  ret
         # ----------------------------------------------------------------------
 
-        args = ""
-        env  = self._deactivate
-        cwd  = ""
-        pre  = ""
-        post = ""
-        io   = ""
-        cmd  = ""
-
+        args  = ""
+        env   = self._deactivate
+        cwd   = ""
+        pre   = ""
+        post  = ""
+        io    = ""
+        cmd   = ""
         descr = cu['description']
 
         if  cu['workdir'] :
-            cwd += "# CU workdir\n"
-            cwd += "mkdir -p %s\n" % cu['workdir']
-            cwd += "cd       %s\n" % cu['workdir']
-            cwd += "\n"
+            cwd  += "# CU workdir\n"
+            cwd  += "mkdir -p %s\n" % cu['workdir']
+            cwd  += "cd       %s\n" % cu['workdir']
+            cwd  += "\n"
 
         if  descr['environment'] :
-            env += "# CU environment\n"
+            env  += "# CU environment\n"
             for e in descr['environment'] :
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
-            env += "\n"
+            env  += "\n"
 
         if  descr['pre_exec'] :
-            pre += "# CU pre-exec\n"
-            pre += '\n'.join(descr['pre_exec' ])
-            pre += "\n\n"
+            pre  += "# CU pre-exec\n"
+            pre  += "timestamp\n"
+            pre  += "echo pre  start $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            pre  += '\n'.join(descr['pre_exec' ])
+            pre  += "\n"
+            pre  += "timestamp\n"
+            pre  += "echo pre  stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            pre  += "\n"
 
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
+            post += "timestamp\n"
+            post += "echo post start $TIMESTAMP >> %s/PROF\n" % cu['workdir']
             post += '\n'.join(descr['post_exec' ])
-            post += "\n\n"
+            post += "\n"
+            post += "timestamp\n"
+            post += "echo post stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            post += "\n"
 
         if  descr['arguments']  :
             args  = ' ' .join (quote_args (descr['arguments']))
@@ -4037,7 +4073,13 @@ class ExecWorker_SHELL(ExecWorker):
                                                    cu['opaque_slot'])
 
 
-        script = ""
+        script = """
+# timestamp utility: seconds since epocj
+timestamp () {
+  TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`
+}
+
+"""
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
             # the script for the invokation of the real workload (cmd) -- we
@@ -4676,6 +4718,18 @@ class StageoutWorker(threading.Thread):
                                 txt = "unit stderr contains binary data -- use file staging directives"
 
                             _cu['stderr'] += rpu.tail(txt)
+
+
+                    if os.path.isfile("%s/PROF" % _cu['workdir']):
+                        with open("%s/PROF" % _cu['workdir'], 'r') as prof_f:
+                            try:
+                                txt = prof_f.read()
+                                for line in txt.split("\n"):
+                                    if line:
+                                        x1, x2, x3 = line.split()
+                                        rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                            except Exception as e:
+                                self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                     for directive in _cu['Agent_Output_Directives']:
 

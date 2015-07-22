@@ -150,6 +150,8 @@ if __name__ == "__main__":
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
+            cud.pre_exec      = ["sleep 5"]
+            cud.post_exec     = ["sleep 5"]
             cud.arguments     = ["5"]
             cud.cores         = 1
     
