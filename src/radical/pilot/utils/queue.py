@@ -3,9 +3,9 @@ import zmq
 import Queue           as pyq
 import threading       as mt
 import multiprocessing as mp
+import radical.utils   as ru
 
-import radical.utils as ru
-
+# --------------------------------------------------------------------------
 # defines for queue roles
 QUEUE_SOURCE  = 'queue_source'
 QUEUE_BRIDGE  = 'queue_bridge'
@@ -15,14 +15,14 @@ QUEUE_ROLES   = [QUEUE_SOURCE, QUEUE_BRIDGE, QUEUE_TARGET]
 # defines for queue types
 QUEUE_THREAD  = 'queue_thread'
 QUEUE_PROCESS = 'queue_process'
-QUEUE_REMOTE  = 'queue_remote'
-QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_REMOTE]
+QUEUE_ZMQ     = 'queue_zmq'
+QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_ZMQ]
 
 # some other local defines
-_QUEUE_HWM = 1 # high water mark == buffer size
+_QUEUE_HWM    = 1   # high water mark == buffer size
 
 # some predefined port numbers
-_QUEUE_PORTS = {
+_QUEUE_PORTS  = {
         'pilot_update_queue'         : 'tcp://*:10000',
         'pilot_launching_queue'      : 'tcp://*:10002',
         'unit_update_queue'          : 'tcp://*:10004',
@@ -44,7 +44,7 @@ _QUEUE_PORTS = {
 def _port_inc(address):
     u = ru.Url(address)
     u.port += 1
-    print " -> %s" % u
+  # print " -> %s" % u
     return str(u)
 
 
@@ -102,7 +102,7 @@ def _get_addr(name, role):
 #   task_done
 #   join
 #
-# Our RPUQueue additionally takes 'name', 'role' and 'address' parameter on the
+# Our Queue additionally takes 'name', 'role' and 'address' parameter on the
 # constructor.  'role' can be 'source', 'bridge' or 'target', where 'source' is
 # the sending end of a queue, and 'target' the receiving end, and 'bridge' acts
 # as as a message forwarder.  'address' denominates a connection endpoint, and
@@ -110,7 +110,7 @@ def _get_addr(name, role):
 # space use the same identifier, they will get the same queue instance.  Those
 # parameters are obviously mostly useful for the zmq queue.
 #
-class _RPUQueueRegistry(object):
+class _QueueRegistry(object):
     
     __metaclass__ = ru.Singleton
 
@@ -131,23 +131,23 @@ class _RPUQueueRegistry(object):
             
             if name in self._registry[qtype]:
                 # queue instance for that name exists - return it
-                print 'found queue for %s %s' % (qtype, name)
+              # print 'found queue for %s %s' % (qtype, name)
                 return self._registry[qtype][name]
 
             else:
                 # queue does not yet exist: create and register
                 queue = ctor()
                 self._registry[qtype][name] = queue
-                print 'created queue for %s %s' % (qtype, name)
+              # print 'created queue for %s %s' % (qtype, name)
                 return queue
 
 # create a registry instance
-_registry = _RPUQueueRegistry()
+_registry = _QueueRegistry()
 
 
 # ==============================================================================
 #
-class RPUQueue(object):
+class Queue(object):
     """
     This is really just the queue interface we want to implement
     """
@@ -161,25 +161,25 @@ class RPUQueue(object):
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the RPUQueue.
+    # This class-method creates the appropriate sub-class for the Queue.
     #
     @classmethod
     def create(cls, qtype, name, role, address=None):
 
         # Make sure that we are the base-class!
-        if cls != RPUQueue:
-            raise TypeError("RPUQueue Factory only available to base class!")
+        if cls != Queue:
+            raise TypeError("Queue Factory only available to base class!")
 
         try:
             impl = {
-                QUEUE_THREAD  : RPUQueueThread,
-                QUEUE_PROCESS : RPUQueueProcess,
-                QUEUE_REMOTE  : RPUQueueRemote,
+                QUEUE_THREAD  : QueueThread,
+                QUEUE_PROCESS : QueueProcess,
+                QUEUE_ZMQ     : QueueZMQ,
             }[qtype]
-            print 'instantiating %s' % impl
+          # print 'instantiating %s' % impl
             return impl(qtype, name, role, address)
         except KeyError:
-            raise RuntimeError("RPUQueue type '%s' unknown!" % qtype)
+            raise RuntimeError("Queue type '%s' unknown!" % qtype)
 
 
     # --------------------------------------------------------------------------
@@ -187,19 +187,26 @@ class RPUQueue(object):
     def put(self, item):
         raise NotImplementedError('put() is not implemented')
 
+
     # --------------------------------------------------------------------------
     #
     def get(self):
         raise NotImplementedError('get() is not implemented')
 
 
+    # --------------------------------------------------------------------------
+    #
+    def close(self):
+        raise NotImplementedError('close() is not implemented')
+
+
 # ==============================================================================
 #
-class RPUQueueThread(RPUQueue):
+class QueueThread(Queue):
 
     def __init__(self, qtype, name, role, address=None):
 
-        RPUQueue.__init__(self, qtype, name, role, address)
+        Queue.__init__(self, qtype, name, role, address)
         self._q = _registry.get(qtype, name, pyq.Queue)
 
 
@@ -207,30 +214,35 @@ class RPUQueueThread(RPUQueue):
     #
     def put(self, item):
 
-        if  self._role == QUEUE_SOURCE:
-            self._q.put(item)
-        else:
-            raise RuntimeError('queue %s (%s) cannot call put()' % \
-                    (self._name, self._role))
+        if not self._role == QUEUE_SOURCE:
+            raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
+
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        self._q.put(item)
+
 
     # --------------------------------------------------------------------------
     #
     def get(self):
 
-        if  self._role == QUEUE_TARGET:
-            return self._q.get()
-        else:
-            raise RuntimeError('queue %s (%s) cannot call get()' % \
-                    (self._name, self._role))
+        if not self._role == QUEUE_TARGET:
+            raise RuntimeError("queue %s (%s) can't get()" % (self._name, self._role))
+
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        return self._q.get()
 
 
 # ==============================================================================
 #
-class RPUQueueProcess(RPUQueue):
+class QueueProcess(Queue):
 
     def __init__(self, qtype, name, role, address=None):
 
-        RPUQueue.__init__(self, qtype, name, role, address)
+        Queue.__init__(self, qtype, name, role, address)
         self._q = _registry.get(qtype, name, mp.Queue)
 
 
@@ -238,32 +250,36 @@ class RPUQueueProcess(RPUQueue):
     #
     def put(self, item):
 
-        if  self._role == QUEUE_SOURCE:
-            self._q.put(item)
-        else:
-            raise RuntimeError('queue %s (%s) cannot call put()' % \
-                    (self._name, self._role))
+        if not self._role == QUEUE_SOURCE:
+            raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
+
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        self._q.put(item)
+
 
     # --------------------------------------------------------------------------
     #
     def get(self):
 
-        if  self._role == QUEUE_TARGET:
-            return self._q.get()
-        else:
-            raise RuntimeError('queue %s (%s) cannot call get()' % \
-                    (self._name, self._role))
+        if not self._role == QUEUE_TARGET:
+            raise RuntimeError("queue %s (%s) can't get()" % (self._name, self._role))
 
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        return self._q.get()
 
 
 # ==============================================================================
 #
-class RPUQueueRemote(RPUQueue):
+class QueueZMQ(Queue):
 
 
     def __init__(self, qtype, name, role, address=None):
         """
-        This RPUQueue type sets up an zmq channel of this kind:
+        This Queue type sets up an zmq channel of this kind:
 
         source \            / target
                 -- bridge -- 
@@ -289,10 +305,10 @@ class RPUQueueRemote(RPUQueue):
         the bridge-target port by one.  All given port numbers should be *even*.
 
         """
-        RPUQueue.__init__(self, qtype, name, role, address)
+        Queue.__init__(self, qtype, name, role, address)
 
-        # the bridge process
-        self._p = None
+        self._p   = None          # the bridge process
+        self._ctx = zmq.Context() # one zmq context suffices
 
         # sanity check on address
         if not self._addr:  # this may break for ru.Url
@@ -304,27 +320,26 @@ class RPUQueueRemote(RPUQueue):
         u = ru.Url(self._addr)
         if  u.path   != ''    or \
             u.schema != 'tcp' :
-            raise ValueError("url '%s' cannot be used for remote queues" % u)
+            raise ValueError("url '%s' cannot be used for zmq queues" % u)
 
         if (u.port % 2):
             raise ValueError("port numbers must be even, not '%d'" % u.port)
 
         self._addr = str(u)
-        print self._addr
 
-        # set up the channel
-        self._ctx = zmq.Context()
-
+        # ----------------------------------------------------------------------
+        # behavior depends on the role...
         if self._role == QUEUE_SOURCE:
             self._q       = self._ctx.socket(zmq.PUSH)
             self._q.hwm   = _QUEUE_HWM
             self._q.connect(self._addr)
 
+        # ----------------------------------------------------------------------
         elif self._role == QUEUE_BRIDGE:
 
             # ------------------------------------------------------------------
             def _bridge(ctx, addr_in, addr_out):
-                print 'in _bridge: %s %s' % (addr_in, addr_out)
+              # print 'in _bridge: %s %s' % (addr_in, addr_out)
                 _in      = ctx.socket(zmq.PULL)
                 _in.hwm  = _QUEUE_HWM
                 _in.bind(addr_in)
@@ -345,11 +360,13 @@ class RPUQueueRemote(RPUQueue):
             self._p = mp.Process(target=_bridge, args=[self._ctx, addr_in, addr_out])
             self._p.start()
 
+        # ----------------------------------------------------------------------
         elif self._role == QUEUE_TARGET:
             self._q       = self._ctx.socket(zmq.REQ)
             self._q.hwm   = _QUEUE_HWM
             self._q.connect(_port_inc(self._addr))
 
+        # ----------------------------------------------------------------------
         else:
             raise RuntimeError ("unsupported queue role '%s'" % self._role)
 
@@ -373,22 +390,27 @@ class RPUQueueRemote(RPUQueue):
     #
     def put(self, item):
 
-        if  self._role == QUEUE_SOURCE:
-            self._q.send_json(item)
-        else:
-            raise RuntimeError('queue %s (%s) cannot call put()' % \
-                    (self._name, self._role))
+        if not self._role == QUEUE_SOURCE:
+            raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
+
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        self._q.send_json(item)
+
 
     # --------------------------------------------------------------------------
     #
     def get(self):
 
-        if  self._role == QUEUE_TARGET:
-            self._q.send('request')
-            return self._q.recv_json()
-        else:
-            raise RuntimeError('queue %s (%s) cannot call get()' % \
-                    (self._name, self._role))
+        if not self._role == QUEUE_TARGET:
+            raise RuntimeError("queue %s (%s) can't get()" % (self._name, self._role))
+
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        self._q.send('request')
+        return self._q.recv_json()
 
 
 # ------------------------------------------------------------------------------
