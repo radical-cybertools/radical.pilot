@@ -3880,6 +3880,8 @@ class ExecWorker_SHELL(ExecWorker):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # run the spawner on the shells
+        self.workdir = "%s/spawner.%s" % (os.getcwd(), self.name)
+        rec_makedir(self.workdir)
 
         # to run the spawner shells remote, run the following command on the
         # target node:
@@ -3887,47 +3889,15 @@ class ExecWorker_SHELL(ExecWorker):
         # and then below run
         #   "nc <node_ip> <port>"
         # with unique port numbers for each ExecWorker instance, obviously.
-        #
-        # for each exec worker, we run two nc's on consecutive ports.  We start
-        # with port 10000. so use:
-        #
-        #   10000 + 2 * (self._number)
-        #   10000 + 2 * (self._number) + 1
-        #
-        # to avoid collission with the other exec workers.  Only the execworker
-        # 0 will run the remote nc's which are listening for our connections.
-        #
-        host = 'nid%.5d' % int(self._scheduler.reserved_nodes[0])
-        portbase = 10000
-        srcdir  = os.path.dirname(rp.__file__)
-        if self._number == 0:
-            # this is exec worker 0 -- we run the remote nc's
-            #workbase = "/tmp/Spawner-%s" % (self._pilot_id)
-            workbase = "%s/Spawner-%s" % (os.getcwd(), self._pilot_id)
-
-            # Usage: execworker-wrapper.sh <spawner.sh> <workdir> <port base> <count>
-            self._remote_process = subprocess.Popen([
-                'aprun', '-n', '1',
-                '/bin/sh', '%s/agent/execworker-wrapper.sh' % srcdir,
-                '%s/agent/radical-pilot-spawner.sh' % srcdir,
-                workbase,
-                str(portbase),
-                str(self._config['number_of_workers'][EXEC_WORKER])
-            ])
-
-        # we need to give the above command some time to actually start the
-        # listening processes, otherwise the following connections will fail
-        # TODO: might want to add a lock here to sync the instances
-        time.sleep(5)
-
-        # now instead of the spawner, launch NCs toward the host on the given
-        # ports
-        myport = portbase + 2 * self._number
-        ret, out, _  = self.launcher_shell.run_sync ("nc %s %d" % (host, myport))
+        ret, out, _  = self.launcher_shell.run_sync \
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self.workdir))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
-        ret, out, _  = self.monitor_shell.run_sync ("nc %s %d" % (host, myport + 1))
+        ret, out, _  = self.monitor_shell.run_sync \
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self.workdir))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
@@ -5611,20 +5581,17 @@ def main():
     # --------------------------------------------------------------------------
     # load the local agent config, and overload the config dicts
     try:
-        logger.info ("Trying to load config file ...")
-        cfg_file = "agent.cfg"
+        logger.info ("Trying to load config file")
+
+        cfg_file = os.environ.get('RADICAL_PILOT_CONFIG', './agent.cfg')
         cfg_dict = ru.read_json_str(cfg_file)
 
         ru.dict_merge(agent_config, cfg_dict, policy='overwrite')
-
-        logger.info("Default agent config merged with settings from file")
-
-    except IOError:
-        # No config file, which is perfectly ok
-        pass
+        logger.info("Default agent config merged with %s" % cfg_file)
 
     except Exception as e:
-        logger.info ("agent config failed to merge: %s", e)
+        # No config file?
+        logger.exception("error reading config file")
 
     logger.info("\Agent config:\n%s\n\n" % pprint.pformat(agent_config))
 
@@ -5700,4 +5667,49 @@ if __name__ == "__main__":
 
 #
 # ------------------------------------------------------------------------------
+
+##      # to run the spawner shells remote, run the following command on the
+##      # target node:
+##      #   "nc -l -p <port> -v -e /bin/sh  %s/agent/radical-pilot-spawner.sh %s"
+##      # and then below run
+##      #   "nc <node_ip> <port>"
+##      # with unique port numbers for each ExecWorker instance, obviously.
+##      #
+##      # for each exec worker, we run two nc's on consecutive ports.  We start
+##      # with port 10000. so use:
+##      #
+##      #   10000 + 2 * (self._number)
+##      #   10000 + 2 * (self._number) + 1
+##      #
+##      # to avoid collission with the other exec workers.  Only the execworker
+##      # 0 will run the remote nc's which are listening for our connections.
+##      #
+##      host = 'nid%.5d' % int(self._scheduler.reserved_nodes[0])
+##      portbase = 10000
+##      srcdir  = os.path.dirname(rp.__file__)
+##      if self._number == 0:
+##          # this is exec worker 0 -- we run the remote nc's
+##          #workbase = "/tmp/Spawner-%s" % (self._pilot_id)
+##          workbase = "%s/Spawner-%s" % (os.getcwd(), self._pilot_id)
+##
+##          # Usage: execworker-wrapper.sh <spawner.sh> <workdir> <port base> <count>
+##          self._remote_process = subprocess.Popen([
+##              'aprun', '-n', '1',
+##              '/bin/sh', '%s/agent/execworker-wrapper.sh' % srcdir,
+##              '%s/agent/radical-pilot-spawner.sh' % srcdir,
+##              workbase,
+##              str(portbase),
+##              str(self._config['number_of_workers'][EXEC_WORKER])
+##          ])
+##
+##      # we need to give the above command some time to actually start the
+##      # listening processes, otherwise the following connections will fail
+##      # TODO: might want to add a lock here to sync the instances
+##      time.sleep(5)
+##
+##      # now instead of the spawner, launch NCs toward the host on the given
+##      # ports
+##      myport = portbase + 2 * self._number
+##      ret, out, _  = self.launcher_shell.run_sync ("nc %s %d" % (host, myport))
+##      ret, out, _  = self.monitor_shell.run_sync  ("nc %s %d" % (host, myport + 1))
 

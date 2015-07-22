@@ -360,8 +360,8 @@ OPTIONS:
    -o      The agent job spawning mechanism.
    -p      The unique identifier (uid) of the pilot.
    -q      The scheduler to be used by the agent.
-   -s      The unique identifier (uid) of the session.
    -r      Runtime in minutes.
+   -s      The unique identifier (uid) of the session.
    -u      sandbox is user defined
    -v      Version - the RADICAL-Pilot version to install in virtenv
    -w      The working directory (sandbox) of the pilot.

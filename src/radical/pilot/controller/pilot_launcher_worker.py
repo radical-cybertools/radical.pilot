@@ -339,9 +339,31 @@ class PilotLauncherWorker(threading.Thread):
                         pilot_sandbox  = compute_pilot['sandbox']
                         global_sandbox = compute_pilot['global_sandbox']
 
-                        # Agent configuration that is not part of the API, but
-                        # rather for debugging and experimentation purposes for now.
+                        # Agent configuration that is not part of the public API.
                         agent_config = compute_pilot['description']['_config']
+
+                        if not agent_config:
+                            agent_config = os.environ.get('RADICAL_PILOT_CONFIG', "")
+
+                        # The agent config can either be a config dict, or
+                        # a string pointing to a config file.  If neither is
+                        # given, check if 'RADICAL_PILOT_CONFIG' is set.
+                        if isinstance(agent_config, dict):
+                            # nothing to do
+                            pass
+                        elif isinstance(agent_config, basestring):
+                            # read config as json file
+                            try:
+                                agent_config = ru.read_json(agent_config)
+                            except Exception as e:
+                                logger.warn("error reading config file: %s" % e)
+                        elif agent_config:
+                            # we can't handle this type
+                            raise TypeError('agent config must be string or dict')
+
+                        # we *always* want an agent config
+                        if not agent_config:
+                            agent_config = dict()
 
                         # we expand and exchange keys in the resource config,
                         # depending on the selected schema so better use a deep
@@ -533,26 +555,21 @@ class PilotLauncherWorker(threading.Thread):
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
                         # Not to be used by the faint of heart
-                        if agent_config:
+                        cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
+                        # Convert dict to json file
+                        ru.write_json(agent_config, cf_tmp_file)
 
-                            if not isinstance(agent_config, dict):
-                                raise Exception("Can't deal with non_dict _config: %s" % agent_config)
+                        cf_src = saga.Url("file://localhost/%s" % cf_tmp_file)
+                        cf_tgt = saga.Url("%s/agent.cfg" % pilot_sandbox)
+                        cf_env = cf_tgt.path # this is what the pilot sees
 
-                            cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
+                        cf_file = saga.filesystem.File(cf_src, session=self._session)
+                        cf_file.copy(cf_tgt, flags=saga.filesystem.CREATE_PARENTS)
+                        cf_file.close()
 
-                            # Convert dict to json file
-                            ru.write_json(agent_config, cf_tmp_file)
-
-                            cf_src = saga.Url("file://localhost/%s" % cf_tmp_file)
-                            cf_tgt = saga.Url("%s/agent.cfg" % pilot_sandbox)
-
-                            cf_file = saga.filesystem.File(cf_src, session=self._session)
-                            cf_file.copy(cf_tgt, flags=saga.filesystem.CREATE_PARENTS)
-                            cf_file.close()
-
-                            # close and remove temp file
-                            os.close(cfg_tmp_handle)
-                            os.unlink(cf_tmp_file)
+                        # close and remove temp file
+                        os.close(cfg_tmp_handle)
+                        os.unlink(cf_tmp_file)
 
 
                         # ------------------------------------------------------
@@ -660,6 +677,9 @@ class PilotLauncherWorker(threading.Thread):
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
+
+                        # inform the pilot about the location of the config file
+                        jd.environment = {'RADICAL_PILOT_CONFIG' : cf_env}
 
                         # Set the SPMD variation only if required
                         if spmd_variation:

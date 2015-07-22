@@ -27,13 +27,13 @@ _QUEUE_PORTS  = {
         'pilot_launching_queue'      : 'tcp://*:10002',
         'unit_update_queue'          : 'tcp://*:10004',
         'umgr_scheduling_queue'      : 'tcp://*:10006',
-        'umgr_input_staging_queue'   : 'tcp://*:10008',
-        'agent_input_staging_queue'  : 'tcp://*:10010',
-        'agent_scheduling_queue'     : 'tcp://*:10012',
-        'agent_executing_queue'      : 'tcp://*:10014',
-        'agent_output_staging_queue' : 'tcp://*:10016',
-        'umgr_output_staging_queue'  : 'tcp://*:10018',
-        'umgr_input_staging_queue'   : 'tcp://*:10020'
+        'umgr_staging_input_queue'   : 'tcp://*:10008',
+        'agent_update_queue'         : 'tcp://*:10010',
+        'agent_staging_input_queue'  : 'tcp://*:10012',
+        'agent_scheduling_queue'     : 'tcp://*:10014',
+        'agent_executing_queue'      : 'tcp://*:10016',
+        'agent_staging_output_queue' : 'tcp://*:10018',
+        'umgr_staging_output_queue'  : 'tcp://*:10020'
     }
 
 # --------------------------------------------------------------------------
