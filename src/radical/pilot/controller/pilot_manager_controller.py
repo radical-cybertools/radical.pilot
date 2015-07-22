@@ -13,6 +13,7 @@ import bson
 import pprint
 import datetime
 import traceback
+import thread
 import threading
 
 import weakref
@@ -26,6 +27,8 @@ from radical.pilot.utils.logger import logger
 from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
 
 from radical.pilot.db.database import COMMAND_CANCEL_PILOT
+
+import saga.utils.pty_shell as sup
 
 IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
 
@@ -373,7 +376,6 @@ class PilotManagerController(threading.Thread):
 
         except SystemExit as e :
             logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
-            import thread
             thread.interrupt_main ()
 
         finally :
@@ -395,46 +397,54 @@ class PilotManagerController(threading.Thread):
         pilot_uid = ru.generate_id ('pilot')
 
         # switch endpoint type
-        filesystem_endpoint = resource_config['filesystem_endpoint']
+        fs_url = saga.Url(resource_config['filesystem_endpoint'])
 
-        fs = saga.Url(filesystem_endpoint)
-
-        # get the home directory on the remote machine.
-        # Note that this will only work for (gsi)ssh or shell based access
-        # mechanisms (FIXME)
-
-        import saga.utils.pty_shell as sup
-
-        if fs.port is not None:
-            url = "%s://%s:%d/" % (fs.schema, fs.host, fs.port)
-        else:
-            url = "%s://%s/" % (fs.schema, fs.host)
-
-        logger.debug ("saga.utils.PTYShell ('%s')" % url)
-        shell = sup.PTYShell(url, self._session, logger)
-
-        if pilot.description.sandbox :
+        # Get the sandbox from either the pilot_desc or resource conf
+        if pilot.description.sandbox:
             workdir_raw = pilot.description.sandbox
-        else :
-            workdir_raw = resource_config.get ('default_remote_workdir', "$PWD")
+        else:
+            workdir_raw = resource_config.get('default_remote_workdir', "$PWD")
 
-        if '$' in workdir_raw or '`' in workdir_raw :
-            ret, out, err = shell.run_sync (' echo "WORKDIR: %s"' % workdir_raw)
-            if  ret == 0 and 'WORKDIR:' in out :
+        # If the sandbox contains expandables, we need to resolve those remotely.
+        # TODO: Note that this will only work for (gsi)ssh or shell based access mechanisms
+        if '$' in workdir_raw or '`' in workdir_raw:
+            js_url = saga.Url(resource_config['job_manager_endpoint'])
+
+            # The PTYShell will swallow in the job part of the scheme
+            if js_url.scheme.endswith('+ssh'):
+                js_url.scheme = 'ssh'
+            elif js_url.scheme.endswith('+gsissh'):
+                js_url.scheme = 'gsissh'
+            elif js_url.scheme == 'fork':
+                pass
+            else:
+                raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
+
+            # TODO: Why is this 'translation' required?
+            if js_url.port is not None:
+                url = "%s://%s:%d/" % (js_url.schema, js_url.host, js_url.port)
+            else:
+                url = "%s://%s/" % (js_url.schema, js_url.host)
+
+            logger.debug("saga.utils.PTYShell ('%s')" % url)
+            shell = sup.PTYShell(url, self._session, logger)
+
+            ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % workdir_raw)
+            if ret == 0 and 'WORKDIR:' in out :
                 workdir_expanded = out.split(":")[1].strip()
                 logger.debug("Determined remote working directory for %s: '%s'" % (url, workdir_expanded))
             else :
                 error_msg = "Couldn't determine remote working directory."
                 logger.error(error_msg)
                 raise Exception(error_msg)
-        else :
+        else:
             workdir_expanded = workdir_raw
 
-        # At this point we have determined 'pwd'
-        fs.path = "%s/radical.pilot.sandbox" % workdir_expanded
+        # At this point we have determined the remote 'pwd'
+        fs_url.path = "%s/radical.pilot.sandbox" % workdir_expanded
 
         # This is the base URL / 'sandbox' for the pilot!
-        agent_dir_url = saga.Url("%s/%s-%s/" % (str(fs), self._session.uid, pilot_uid))
+        agent_dir_url = saga.Url("%s/%s-%s/" % (str(fs_url), self._session.uid, pilot_uid))
 
         # Create a database entry for the new pilot.
         pilot_uid, pilot_json = self._db.insert_pilot(
@@ -442,7 +452,7 @@ class PilotManagerController(threading.Thread):
             pilot_manager_uid=self._pm_id,
             pilot_description=pilot.description,
             pilot_sandbox=str(agent_dir_url), 
-            global_sandbox=str(fs.path)
+            global_sandbox=str(fs_url.path)
             )
 
         # Create a shared data store entry
