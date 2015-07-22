@@ -3789,8 +3789,8 @@ class ExecWorker_POPEN (ExecWorker) :
                             for line in txt.split("\n"):
                                 x1, x2, x3 = line.split()
                                 rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-                        except UnicodeDecodeError:
-                            txt = "unit PROF contains binary data -- use file staging directives"
+                        except ValueError as e:
+                            self._log.error("prof read failed: `%s`" % e)
 
                 if exit_code != 0:
 
@@ -4726,8 +4726,8 @@ class StageoutWorker(threading.Thread):
                                 for line in txt.split("\n"):
                                     x1, x2, x3 = line.split()
                                     rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-                            except UnicodeDecodeError:
-                                txt = "unit PROF contains binary data -- use file staging directives"
+                            except ValueError as e:
+                                self._log.error("prof read failed: `%s`" % e)
 
                     for directive in _cu['Agent_Output_Directives']:
 
