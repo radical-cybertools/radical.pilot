@@ -2,7 +2,7 @@
     "stampede": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh"],
+        "schemas"                     : ["ssh", "gsissh", "go"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
@@ -11,8 +11,13 @@
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu/"
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#stampede/"
         },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",

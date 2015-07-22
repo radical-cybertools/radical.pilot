@@ -3675,7 +3675,6 @@ class ExecWorker_POPEN (ExecWorker) :
                     # do nothing if we don't have any queued commands
                     pass
 
-
                 try:
 
                     # we don't want to only wait for one CU -- then we would
@@ -3709,7 +3708,6 @@ class ExecWorker_POPEN (ExecWorker) :
                 if not action and not cus :
                     # nothing happend at all!  Zzz for a bit.
                     time.sleep(self._config['queue_poll_sleeptime'])
-
 
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
@@ -3785,10 +3783,10 @@ class ExecWorker_POPEN (ExecWorker) :
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
 
-                    cu['state'] = rp.STAGING_OUTPUT
+                    cu['state'] = rp.PENDING_AGENT_OUTPUT_STAGING
                     self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
-                                                  state  = rp.STAGING_OUTPUT,
+                                                  state  = rp.PENDING_AGENT_OUTPUT_STAGING,
                                                   msg    = "unit execution completed")
 
                     cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
@@ -4280,10 +4278,10 @@ class ExecWorker_SHELL(ExecWorker):
             rpu.prof('execution complete', uid=cu['_id'])
             # advance the unit state
             self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
-            cu['state'] = rp.STAGING_OUTPUT
+            cu['state'] = rp.PENDING_AGENT_OUTPUT_STAGING,
             self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
-                                          state = rp.STAGING_OUTPUT,
+                                          state = rp.PENDING_AGENT_OUTPUT_STAGING,
                                           msg   = "unit execution completed")
 
             cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
@@ -4559,22 +4557,6 @@ class StageinWorker(threading.Thread):
                             log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
                             self._log.info(log_message)
 
-                            # If all went fine, update the state of this
-                            # StagingDirective to DONE
-                            # FIXME: is this update below really *needed*?
-                            self._agent.update_unit(src    = 'StageinWorker',
-                                                    uid    = _cu['_id'],
-                                                    msg    = log_message,
-                                                    query  = {
-                                                        'Agent_Input_Status'            : rp.EXECUTING,
-                                                        'Agent_Input_Directives.state'  : rp.PENDING,
-                                                        'Agent_Input_Directives.source' : directive['source'],
-                                                        'Agent_Input_Directives.target' : directive['target']
-                                                    },
-                                                    update = {
-                                                        '$set' : {'Agent_Input_Status'             : rp.DONE,
-                                                                  'Agent_Input_Directives.$.state' : rp.DONE}
-                                                    })
                         except Exception as e:
 
                             # If we catch an exception, assume the staging failed
@@ -4587,23 +4569,9 @@ class StageinWorker(threading.Thread):
                             self._agent.update_unit_state(src    = 'StageinWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
-                                                          msg    = log_message,
-                                                          query  = {
-                                                              'Agent_Input_Status'             : rp.EXECUTING,
-                                                              'Agent_Input_Directives.state'   : rp.PENDING,
-                                                              'Agent_Input_Directives.source'  : directive['source'],
-                                                              'Agent_Input_Directives.target'  : directive['target']
-                                                          },
-                                                          update = {
-                                                              '$set' : {'Agent_Input_Directives.$.state'  : rp.FAILED,
-                                                                        'Agent_Input_Status'              : rp.FAILED}
-                                                          })
+                                                          msg    = log_message)
 
-                    # agent staging is all done, unit can go to execution if it has
-                    # no FTW staging -- with FTP staging, we have to wait for the
-                    # FTW stager to finish (or to pick up on the agent staging
-                    # completion) to push the unit via mongodb to the agebnt again.
-                    # Duh! (FIXME)
+                    # Agent staging is all done, unit can go to ALLOCATING
                     rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
                     _cu['state'] = rp.ALLOCATING
                     self._agent.update_unit_state(src    = 'StageinWorker',
@@ -4615,7 +4583,6 @@ class StageinWorker(threading.Thread):
                     for __cu in _cu_list :
                         rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
                         self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
-
 
             except Exception as e:
                 self._log.exception('worker died')
@@ -4688,12 +4655,12 @@ class StageoutWorker(threading.Thread):
                     rpu.prof('get_cmd', msg="stageout_queue to StageoutWorker (wakeup)")
                     continue
 
-                cu['state'] = rp.STAGING_OUTPUT
-
-                rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)" % cu['state'], uid=cu['_id'])
+                cu['state'] = rp.AGENT_STAGING_OUTPUT
 
                 cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_WORKER)
                 for _cu in cu_list :
+
+                    rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)" % _cu['state'], uid=_cu['_id'])
 
                     sandbox = os.path.join(self._workdir, '%s' % _cu['_id'])
 
@@ -4708,7 +4675,6 @@ class StageoutWorker(threading.Thread):
 
                             _cu['stdout'] += rpu.tail(txt)
 
-
                     if os.path.isfile(_cu['stderr_file']):
                         with open(_cu['stderr_file'], 'r') as stderr_f:
                             try:
@@ -4717,7 +4683,6 @@ class StageoutWorker(threading.Thread):
                                 txt = "unit stderr contains binary data -- use file staging directives"
 
                             _cu['stderr'] += rpu.tail(txt)
-
 
                     for directive in _cu['Agent_Output_Directives']:
 
@@ -4769,22 +4734,6 @@ class StageoutWorker(threading.Thread):
                             log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
                             self._log.info(log_message)
 
-                            # If all went fine, update the state of this
-                            # StagingDirective to DONE
-                            # FIXME: is this update below really *needed*?
-                            self._agent.update_unit(src    = 'StageoutWorker',
-                                                    uid    = _cu['_id'],
-                                                    msg    = log_message,
-                                                    query  = {
-                                                        # TODO: We never set the status to EXECUTION anymore
-                                                        'Agent_Output_Status'           : rp.EXECUTING,
-                                                        'Agent_Output_Directives.state' : rp.PENDING,
-                                                        'Agent_Output_Directives.source': directive['source'],
-                                                        'Agent_Output_Directives.target': directive['target']
-                                                    },
-                                                    update = {
-                                                        '$set' : {'Agent_Output_Directives.$.state': rp.DONE}
-                                                    })
                         except Exception as e:
                             # If we catch an exception, assume the staging failed
                             log_message = "%s'ed %s to %s - failure (%s)" % \
@@ -4796,67 +4745,28 @@ class StageoutWorker(threading.Thread):
                             self._agent.update_unit_state(src    = 'StageoutWorker',
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
-                                                          msg    = log_message,
-                                                          query  = {
-                                                              'Agent_Output_Status'            : rp.EXECUTING,
-                                                              'Agent_Output_Directives.state'  : rp.PENDING,
-                                                              'Agent_Output_Directives.source' : directive['source'],
-                                                              'Agent_Output_Directives.target' : directive['target']
-                                                          },
-                                                          update = {
-                                                              '$set' : {'Agent_Output_Directives.$.state' : rp.FAILED,
-                                                                        'Agent_Output_Status'             : rp.FAILED}
-                                                          })
+                                                          msg    = log_message)
 
-                    # TODO: Update Agent_Output_Status here?
+                    # Agent output staging is done.
 
-                    # local staging is done. Now check if there are Directives that
-                    # need to be performed by the FTW.
-                    # Obviously these are not executed here (by the Agent),
-                    # but we need this code to set the state so that the FTW
-                    # gets notified that it can start its work.
-                    if _cu['FTW_Output_Directives']:
-
-                        rpu.prof('ExecWorker unit needs FTW_O ', uid=_cu['_id'])
-                        self._agent.update_unit(src    = 'StageoutWorker',
-                                                uid    = _cu['_id'],
-                                                msg    = 'FTW output staging needed',
-                                                update = {
-                                                    '$set': {
-                                                        'FTW_Output_Status' : rp.PENDING,
-                                                        'stdout'            : _cu['stdout'],
-                                                        'stderr'            : _cu['stderr'],
-                                                        'exit_code'         : _cu['exit_code'],
-                                                        'started'           : _cu['started'],
-                                                        'finished'          : _cu['finished'],
-                                                        'slots'             : _cu['opaque_slot'],
-                                                    }
-                                                })
-                        # NOTE: this is final for the agent scope -- further state
-                        # transitions are done by the FTW.
-                        _cu = None
-
-                    else:
-                        # no FTW staging is needed, local staging is done -- we can
-                        # move the unit into final state.
-                        rpu.prof('final', msg="stageout done", uid=_cu['_id'])
-                        _cu['state'] = rp.DONE
-                        self._agent.update_unit_state(src    = 'StageoutWorker',
-                                                      uid    = _cu['_id'],
-                                                      state  = rp.DONE,
-                                                      msg    = 'output staging completed',
-                                                      update = {
-                                                          '$set' : {
-                                                              'stdout'    : _cu['stdout'],
-                                                              'stderr'    : _cu['stderr'],
-                                                              'exit_code' : _cu['exit_code'],
-                                                              'started'   : _cu['started'],
-                                                              'finished'  : _cu['finished'],
-                                                              'slots'     : _cu['opaque_slot'],
-                                                          }
-                                                      })
-                        # NOTE: this is final, the cu is not touched anymore
-                        _cu = None
+                    #rpu.prof('final', msg="stageout done", uid=_cu['_id'])
+                    _cu['state'] = rp.PENDING_OUTPUT_STAGING
+                    self._agent.update_unit_state(src    = 'StageoutWorker',
+                                                  uid    = _cu['_id'],
+                                                  state  = rp.PENDING_OUTPUT_STAGING,
+                                                  msg    = 'Agent output staging completed',
+                                                  update = {
+                                                      '$set' : {
+                                                          'stdout'    : _cu['stdout'],
+                                                          'stderr'    : _cu['stderr'],
+                                                          'exit_code' : _cu['exit_code'],
+                                                          'started'   : _cu['started'],
+                                                          'finished'  : _cu['finished'],
+                                                          'slots'     : _cu['opaque_slot'],
+                                                      }
+                                                  })
+                    # NOTE: this is final, the cu is not touched anymore
+                    _cu = None
 
                 # make sure the CU is not touched anymore (see except below)
                 cu = None
@@ -5240,17 +5150,12 @@ class Agent(object):
         # we alter update, so rather use a copy of the dict...
 
         now = rpu.timestamp()
-        update_dict = {
-                '$set' : {
-                    'state' : state
-                },
-                '$push': {
-                    'statehistory' : {
-                        'state'     : state,
-                        'timestamp' : now
-                    }
-                }
-            }
+        update_dict = {'$set' : {'state': state},
+                       '$push': {'statehistory': {
+                                     'state': state,
+                                     'timestamp': now
+                                }}
+                      }
 
         if '$set' in update:
             for key,val in update['$set'].iteritems():
@@ -5266,7 +5171,6 @@ class Agent(object):
                          msg    = msg,
                          query  = query,
                          update = update_dict)
-
 
     # --------------------------------------------------------------------------
     #
@@ -5294,7 +5198,6 @@ class Agent(object):
         while not self._terminate.is_set():
 
             try:
-
                 # check for new units
                 action = self._check_units()
 
@@ -5311,7 +5214,6 @@ class Agent(object):
                     "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
                 rpu.flush_prof()
                 sys.exit(1)
-
 
         # main loop terminated, so self._terminate was set
         # we need to signal shut down to all workers
@@ -5379,7 +5281,6 @@ class Agent(object):
             rpu.prof('Agent get units', msg="bulk size: %d" % cu_cursor.count(),
                  logger=self._log.info)
 
-
         for cu in cu_list:
 
             rpu.prof('get', msg="MongoDB to Agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
@@ -5406,7 +5307,6 @@ class Agent(object):
                         stderr_file = 'STDERR'
                     _cu['stderr_file'] = os.path.join(workdir, stderr_file)
 
-
                     rpu.prof('Agent get unit meta', uid=_cu['_id'])
                     # create unit sandbox
                     rec_makedir(workdir)
@@ -5424,7 +5324,6 @@ class Agent(object):
                         rpu.prof('put', msg="Agent to stagein_queue (%s)" % __cu['state'], uid=__cu['_id'])
                         self._stagein_queue.put(__cu)
 
-
                 except Exception as e:
                     # if any unit sorting step failed, the unit did not end up in
                     # a queue (its always the last step).  We set it to FAILED
@@ -5438,7 +5337,6 @@ class Agent(object):
                     # NOTE: this is final, the unit will not be touched
                     # anymore.
                     _cu = None
-
 
         # indicate that we did some work (if we did...)
         return len(cu_uids)
@@ -5501,7 +5399,6 @@ def main():
     logger.info("Using RADICAL-SAGA  version %s", rs.version)
     logger.info("Using RADICAL-Pilot version %s (%s)", rp.version, git_ident)
 
-
     # --------------------------------------------------------------------------
     #
     def sigint_handler(signum, frame):
@@ -5510,7 +5407,6 @@ def main():
         rpu.flush_prof()
         sys.exit(2)
     signal.signal(signal.SIGINT, sigint_handler)
-
 
     # --------------------------------------------------------------------------
     #
@@ -5521,7 +5417,6 @@ def main():
         rpu.flush_prof()
         sys.exit(3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
-
 
     # --------------------------------------------------------------------------
     # load the local agent config, and overload the config dicts
@@ -5550,7 +5445,6 @@ def main():
         mongo_db = rpu.get_mongodb(options.mongodb_url, options.mongodb_name,
                                    options.mongodb_auth)
         mongo_p  = mongo_db["%s.p" % options.session_id]
-
 
         # ----------------------------------------------------------------------
         # Launch the agent thread
@@ -5615,4 +5509,3 @@ if __name__ == "__main__":
 
 #
 # ------------------------------------------------------------------------------
-
