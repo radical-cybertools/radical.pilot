@@ -4,11 +4,11 @@
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local"],
         "ssh"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
         "local"                       : {
-            "job_manager_endpoint"    : "pbs://localhost",
+            "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",

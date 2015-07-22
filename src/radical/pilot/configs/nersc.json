@@ -62,7 +62,7 @@
         "schemas"                     : ["ssh"],
         "mandatory_args"              : [],
         "ssh"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "default_queue"               : "regular",
@@ -86,7 +86,7 @@
         "notes"                       : "For CCM you need to use special ccm_ queues.",
         "schemas"                     : ["ssh"],
         "ssh"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "default_queue"               : "ccm_queue",

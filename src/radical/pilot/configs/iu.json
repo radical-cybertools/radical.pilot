@@ -6,7 +6,7 @@
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.iu.edu/",
+            "job_manager_endpoint"    : "torque+ssh://bigred2.uits.iu.edu/",
             "filesystem_endpoint"     : "sftp://bigred2.uits.iu.edu/"
         },
         "lrms"                        : "TORQUE",
@@ -28,7 +28,7 @@
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://bigred2.uits.iu.edu/?gres=ccm",
+            "job_manager_endpoint"    : "torque+ssh://bigred2.uits.iu.edu/?gres=ccm",
             "filesystem_endpoint"     : "sftp://bigred2.uits.iu.edu/"
         },
         "lrms"                        : "CCM",

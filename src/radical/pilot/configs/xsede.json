@@ -78,12 +78,12 @@
         "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://trestles.sdsc.xsede.org/",
+            "job_manager_endpoint"    : "torque+ssh://trestles.sdsc.xsede.org/",
             "filesystem_endpoint"     : "sftp://trestles.sdsc.xsede.org/"
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "pbs+gsissh://trestles.sdsc.xsede.org/",
+            "job_manager_endpoint"    : "torque+gsissh://trestles.sdsc.xsede.org/",
             "filesystem_endpoint"     : "gsisftp://trestles.sdsc.xsede.org/"
         },
         "default_queue"               : "normal",
@@ -106,12 +106,12 @@
         "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://gordon.sdsc.xsede.org/",
+            "job_manager_endpoint"    : "torque+ssh://gordon.sdsc.xsede.org/",
             "filesystem_endpoint"     : "sftp://gordon.sdsc.xsede.org/"
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "pbs+gsissh://gordon.sdsc.xsede.org/",
+            "job_manager_endpoint"    : "torque+gsissh://gordon.sdsc.xsede.org/",
             "filesystem_endpoint"     : "gsisftp://gordon.sdsc.xsede.org/"
         },
         "default_queue"               : "normal",
