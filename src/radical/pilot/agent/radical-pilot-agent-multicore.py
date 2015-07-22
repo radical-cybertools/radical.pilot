@@ -4518,12 +4518,12 @@ class StageinWorker(threading.Thread):
                     rpu.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
                     continue
 
+                cu['state'] = rp.AGENT_STAGING_INPUT
                 rpu.prof('get', msg="stagein_queue to StageinWorker (%s)" % cu['state'], uid=cu['_id'])
 
                 cu_list, _ = rpu.blowup(self._config, cu, STAGEIN_WORKER)
                 for _cu in cu_list :
 
-                    _cu['state'] = rp.STAGING_INPUT
                     sandbox      = os.path.join(self._workdir, '%s' % _cu['_id'])
                     staging_area = os.path.join(self._workdir, self._config['staging_area'])
 
@@ -4590,8 +4590,7 @@ class StageinWorker(threading.Thread):
                                                         'Agent_Input_Directives.target' : directive['target']
                                                     },
                                                     update = {
-                                                        '$set'
-                                                        : {'Agent_Input_Status'                    : rp.DONE,
+                                                        '$set' : {'Agent_Input_Status'             : rp.DONE,
                                                                   'Agent_Input_Directives.$.state' : rp.DONE}
                                                     })
                         except Exception as e:
@@ -4623,17 +4622,17 @@ class StageinWorker(threading.Thread):
                     # FTW stager to finish (or to pick up on the agent staging
                     # completion) to push the unit via mongodb to the agebnt again.
                     # Duh! (FIXME)
-                    if not _cu["FTW_Input_Directives"] :
-                        _cu['state'] = rp.ALLOCATING
-                        self._agent.update_unit_state(src    = 'StageinWorker',
-                                                      uid    = _cu['_id'],
-                                                      state  = rp.ALLOCATING,
-                                                      msg    = 'agent input staging done')
+                    rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
+                    _cu['state'] = rp.ALLOCATING
+                    self._agent.update_unit_state(src    = 'StageinWorker',
+                                                  uid    = _cu['_id'],
+                                                  state  = rp.ALLOCATING,
+                                                  msg    = 'agent input staging done')
 
-                        _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
-                        for __cu in _cu_list :
-                            rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                            self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
+                    _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
+                    for __cu in _cu_list :
+                        rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
+                        self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
 
 
             except Exception as e:
@@ -5364,7 +5363,7 @@ class Agent(object):
     #
     def _check_units(self):
 
-        # Check if there are compute units waiting for execution,
+        # Check if there are compute units waiting for input staging
         # and log that we pulled it.
         #
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
@@ -5373,45 +5372,25 @@ class Agent(object):
         # right here...  No idea how to avoid that roundtrip...
         # This also blocks us from using multiple ingest threads, or from doing
         # late binding by unit pull :/
-        cu_cursor  = self._cu.find(spec  = {"pilot" : self._pilot_id,
-                                            "state" : rp.PENDING_EXECUTION})
-        if cu_cursor.count():
+        cu_cursor = self._cu.find(spec  = {"pilot" : self._pilot_id,
+                                           'state' : rp.PENDING_AGENT_INPUT_STAGING})
+        if not cu_cursor.count():
+            # no units whatsoever...
+            return 0
 
-            cu_list = list(cu_cursor)
-            cu_uids = [_cu['_id'] for _cu in cu_list]
+        # update the unit states to avoid pulling them again next time.
+        cu_list = list(cu_cursor)
+        cu_uids = [_cu['_id'] for _cu in cu_list]
 
-            self._cu.update(multi    = True,
-                            spec     = {"_id"   : {"$in"    : cu_uids}},
-                            document = {"$set"  : {"state"  : rp.ALLOCATING},
-                                        "$push" : {"statehistory":
-                                            {
-                                                "state"     : rp.ALLOCATING,
-                                                "timestamp" : rpu.timestamp()
-                                            }
-                                       }})
-        else :
-            # if we did not find any units which can be executed immediately, we
-            # check if we have any units for which to do stage-in
-            cu_cursor = self._cu.find(spec  = {"pilot" : self._pilot_id,
-                                               'Agent_Input_Status': rp.PENDING})
-            if cu_cursor.count():
-
-                cu_list = list(cu_cursor)
-                cu_uids = [_cu['_id'] for _cu in cu_list]
-
-                self._cu.update(multi    = True,
-                                spec     = {"_id"   : {"$in"    : cu_uids}},
-                                document = {"$set"  : {"state"  : rp.STAGING_INPUT,
-                                                       "Agent_Input_Status": rp.EXECUTING},
-                                            "$push" : {"statehistory":
-                                                {
-                                                    "state"     : rp.STAGING_INPUT,
-                                                    "timestamp" : rpu.timestamp()
-                                                }
-                                           }})
-            else :
-                # no units whatsoever...
-                return 0
+        self._cu.update(multi    = True,
+                        spec     = {"_id"   : {"$in"   : cu_uids}},
+                        document = {"$set"  : {"state" : rp.AGENT_STAGING_INPUT},
+                                    "$push" : {"statehistory":
+                                        {
+                                            "state"     : rp.AGENT_STAGING_INPUT,
+                                            "timestamp" : rpu.timestamp()
+                                        }
+                                   }})
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
@@ -5452,32 +5431,17 @@ class Agent(object):
                     rec_makedir(workdir)
                     rpu.prof('Agent get unit mkdir', uid=_cu['_id'])
 
-                    # and send to staging / execution, respectively
-                    if _cu['Agent_Input_Directives'] and \
-                       _cu['Agent_Input_Status'] == rp.PENDING :
+                    # and send to staging 
+                    _cu['state'] = rp.AGENT_STAGING_INPUT
+                    self.update_unit_state(src    = 'Agent',
+                                           uid    = _cu['_id'],
+                                           state  = rp.AGENT_STAGING_INPUT,
+                                           msg    = 'unit needs input staging')
 
-                        _cu['state'] = rp.STAGING_INPUT
-                        self.update_unit_state(src    = 'Agent',
-                                               uid    = _cu['_id'],
-                                               state  = rp.STAGING_INPUT,
-                                               msg    = 'unit needs input staging')
-
-                        _cu_list, _ = rpu.blowup(self._config, _cu, STAGEIN_QUEUE)
-                        for __cu in _cu_list :
-                            rpu.prof('put', msg="Agent to stagein_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                            self._stagein_queue.put(__cu)
-
-                    else:
-                        _cu['state'] = rp.ALLOCATING
-                        self.update_unit_state(src    = 'Agent',
-                                               uid    = _cu['_id'],
-                                               state  = rp.ALLOCATING,
-                                               msg    = 'unit needs no input staging')
-
-                        _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
-                        for __cu in _cu_list :
-                            rpu.prof('put', msg="Agent to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                            self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
+                    _cu_list, _ = rpu.blowup(self._config, _cu, STAGEIN_QUEUE)
+                    for __cu in _cu_list :
+                        rpu.prof('put', msg="Agent to stagein_queue (%s)" % __cu['state'], uid=__cu['_id'])
+                        self._stagein_queue.put(__cu)
 
 
                 except Exception as e:
