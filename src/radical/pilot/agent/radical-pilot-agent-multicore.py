@@ -3539,10 +3539,10 @@ class ExecWorker_POPEN (ExecWorker) :
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/bash -l\n\n')
-            launch_scritp.write("# timestamp utility: seconds since epoch\n")
-            launch_scritp.write("timestamp () {\n")
-            launch_scritp.write("TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`\n")
-            launch_scritp.write("}\n\n")
+            launch_script.write("# timestamp utility: seconds since epoch\n")
+            launch_script.write("timestamp () {\n")
+            launch_script.write("TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`\n")
+            launch_script.write("}\n\n")
 
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
 
