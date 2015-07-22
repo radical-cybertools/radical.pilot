@@ -3782,8 +3782,8 @@ class ExecWorker_POPEN (ExecWorker) :
                 self._cus_to_watch.remove(cu)
                 self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
 
-                if os.path.isfile("%s/PROF" % _cu['workdir']):
-                    with open("%s/PROF" % _cu['workdir'], 'r') as prof_f:
+                if os.path.isfile("%s/PROF" % cu['workdir']):
+                    with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
                         try:
                             txt = prof_f.read()
                             for line in txt.split("\n"):
