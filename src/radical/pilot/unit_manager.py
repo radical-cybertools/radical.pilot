@@ -112,9 +112,7 @@ class UnitManager(object):
                 scheduler=scheduler,
                 input_transfer_workers=input_transfer_workers,
                 output_transfer_workers=output_transfer_workers, 
-                session=self._session,
-                db_connection=session._dbs,
-                db_connection_info=session._connection_info)
+                session=self._session)
             self._worker.start()
 
             self._uid = self._worker.unit_manager_uid
@@ -158,7 +156,7 @@ class UnitManager(object):
         """PRIVATE: Reconnect to an existing UnitManager.
         """
         uid_exists = UnitManagerController.uid_exists(
-            db_connection=session._dbs,
+            dbs=session.get_dbs(),
             unit_manager_uid=unit_manager_id)
 
         if not uid_exists:
@@ -176,8 +174,7 @@ class UnitManager(object):
             obj._worker = UnitManagerController(
                 unit_manager_uid=unit_manager_id,
                 session=session,
-                db_connection=session._dbs,
-                db_connection_info=session._connection_info)
+                dbs=session.get_dbs())
             session._process_registry.register(unit_manager_id, obj._worker)
 
         # start the worker if it's not already running

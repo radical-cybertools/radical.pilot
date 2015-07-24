@@ -51,7 +51,7 @@ class BackfillingScheduler(Scheduler):
         self.pmgrs   = list()
         self.pilots  = dict()
         self.lock    = threading.RLock ()
-        self._db     = self.manager._worker._db
+        self._dbs    = self.session.get_dbs()
 
         # make sure the UM notifies us on all unit state changes
         manager.register_callback (self._unit_state_callback)
@@ -192,7 +192,7 @@ class BackfillingScheduler(Scheduler):
                     # all others are marked 'FAILED' if they are already
                     # 'EXECUTING' and not restartable
                     timestamp = datetime.datetime.utcnow()
-                    self._db.change_compute_units (
+                    self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "state"       : {"$in": [UNSCHEDULED,
                                                                 PENDING_INPUT_STAGING, 
@@ -207,7 +207,7 @@ class BackfillingScheduler(Scheduler):
                                                         "timestamp" : timestamp}
                                       })
 
-                    self._db.change_compute_units (
+                    self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "restartable" : True, 
                                        "state"       : {"$in": [EXECUTING, 
@@ -221,7 +221,7 @@ class BackfillingScheduler(Scheduler):
                                                         "timestamp" : timestamp}
                                       })
 
-                    self._db.change_compute_units (
+                    self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "restartable" : False, 
                                        "state"       : {"$in": [EXECUTING, 

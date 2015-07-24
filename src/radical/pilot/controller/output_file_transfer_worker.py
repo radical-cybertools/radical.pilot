@@ -29,7 +29,7 @@ class OutputFileTransferWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, session, db_connection_info, unit_manager_id, number=None):
+    def __init__(self, session, unit_manager_id, number=None):
 
         self._session = session
 
@@ -37,7 +37,6 @@ class OutputFileTransferWorker(threading.Thread):
         threading.Thread.__init__(self)
         self.daemon = True
 
-        self.db_connection_info = db_connection_info
         self.unit_manager_id = unit_manager_id
 
         self._worker_number = number
@@ -71,9 +70,8 @@ class OutputFileTransferWorker(threading.Thread):
 
             # Try to connect to the database and create a tailable cursor.
             try:
-                connection = self.db_connection_info.get_db_handle()
-                db = connection[self.db_connection_info.dbname]
-                um_col = db["%s.cu" % self.db_connection_info.session_id]
+                db = self._session.get_db()
+                um_col = db["%s.cu" % self._session.uid]
                 logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
             except Exception as e:

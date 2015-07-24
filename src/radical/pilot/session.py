@@ -87,9 +87,8 @@ class Session (saga.Session, Object):
 
     #---------------------------------------------------------------------------
     #
-    def __init__ (self, database_url=None, database_name="radicalpilot",
-                  uid=None, name=None):
-        """Creates a new or reconnects to an exising session.
+    def __init__ (self, database_url=None, database_name=None, name=None):
+        """Creates a new session.
 
         If called without a uid, a new Session instance is created and 
         stored in the database. If uid is set, an existing session is 
@@ -116,6 +115,12 @@ class Session (saga.Session, Object):
 
         """
 
+
+        if database_name:
+            logger.error("The 'database_name' parameter is deprecated - please specify an URL path") 
+        else:
+            database_name = 'radicalpilot'
+
         # init the base class inits
         saga.Session.__init__ (self)
         Object.__init__ (self)
@@ -126,7 +131,7 @@ class Session (saga.Session, Object):
 
         # Dictionaries holding all manager objects created during the session.
         self._pilot_manager_objects = list()
-        self._unit_manager_objects = list()
+        self._unit_manager_objects  = list()
 
         # Create a new process registry. All objects belonging to this 
         # session will register their worker processes (if they have any)
@@ -137,32 +142,28 @@ class Session (saga.Session, Object):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
-        self._database_url  = database_url
-        self._database_name = database_name 
+        if  not database_url:
+            database_url = os.getenv ("RADICAL_PILOT_DBURL", None)
 
-        if  not self._database_url :
-            self._database_url = os.getenv ("RADICAL_PILOT_DBURL", None)
-
-        if  not self._database_url :
+        if  not database_url:
             raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
 
-        logger.info("using database url  %s" % self._database_url)
+        self._dburl = ru.Url(database_url)
 
         # if the database url contains a path element, we interpret that as
         # database name (without the leading slash)
-        tmp_url = ru.Url (self._database_url)
-        if  tmp_url.path            and \
-            tmp_url.path[0]  == '/' and \
-            len(tmp_url.path) >  1  :
-            self._database_name = tmp_url.path[1:]
-            logger.info("using database path %s" % self._database_name)
-        else :
-            logger.info("using database name %s" % self._database_name)
+        if  not self._dburl.path         or \
+            self._dburl.path[0]   != '/' or \
+            len(self._dburl.path) <=  1  :
+            logger.error("incomplete URLs are deprecated -- missing database name!")
+            self._dburl.path = database_name # defaults to 'radicalpilot'
+
+        logger.info("using database %s" % self._dburl)
 
         # Loading all "default" resource configurations
-        module_path   = os.path.dirname(os.path.abspath(__file__))
-        default_cfgs  = "%s/configs/*.json" % module_path
-        config_files  = glob.glob(default_cfgs)
+        module_path  = os.path.dirname(os.path.abspath(__file__))
+        default_cfgs = "%s/configs/*.json" % module_path
+        config_files = glob.glob(default_cfgs)
 
         for config_file in config_files:
 
@@ -203,55 +204,32 @@ class Session (saga.Session, Object):
         default_aliases = "%s/configs/aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
-        ##########################
-        ## CREATE A NEW SESSION ##
-        ##########################
-        if uid is None:
-            try:
-                self._connected  = None
-
-                if name :
-                    self._name = name
-                    self._uid  = name
-                  # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
-                else :
-                    self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-                    self._name = self._uid
+        # create a new session
+        try:
+            if name :
+                self._name = name
+                self._uid  = name
+              # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
+            else :
+                self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+                self._name = self._uid
 
 
-                self._dbs, self._created, self._connection_info = \
-                        dbSession.new(sid     = self._uid,
-                                      name    = self._name,
-                                      db_url  = self._database_url,
-                                      db_name = self._database_name)
+            self._dbs = dbSession(sid   = self._uid,
+                                  name  = self._name,
+                                  dburl = self._dburl)
+        
+            self._dburl  = self._dbs._dburl.path[1:]
+            self._dbname = self._dbs._dburl.path[1:]
 
-                logger.info("New Session created%s." % str(self))
 
-            except Exception, ex:
-                logger.exception ('session create failed')
-                raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                                % (self._database_url, ex))  
+            logger.info("New Session created%s." % str(self))
 
-        ######################################
-        ## RECONNECT TO AN EXISTING SESSION ##
-        ######################################
-        else:
-            try:
-                self._uid = uid
+        except Exception, ex:
+            logger.exception ('session create failed')
+            raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
+                            % (self._dburl, ex))  
 
-                # otherwise, we reconnect to an existing session
-                self._dbs, session_info, self._connection_info = \
-                        dbSession.reconnect(sid     = self._uid, 
-                                            db_url  = self._database_url,
-                                            db_name = self._database_name)
-
-                self._created   = session_info["created"]
-                self._connected = session_info["connected"]
-
-                logger.info("Reconnected to existing Session %s." % str(self))
-
-            except Exception, ex:
-                raise PilotException("Couldn't re-connect to session: %s" % ex)  
 
     #---------------------------------------------------------------------------
     #
@@ -327,12 +305,10 @@ class Session (saga.Session, Object):
         """Returns a Python dictionary representation of the object.
         """
         object_dict = {
-            "uid"           : self._uid,
-            "created"       : self._created,
-            "connected"     : self._connected ,
-            "database_name" : self._connection_info.dbname,
-            "database_auth" : self._connection_info.dbauth,
-            "database_url"  : self._connection_info.dburl
+            "uid"           : self.uid,
+            "created"       : self._dbs.created,
+            "connected"     : self._dbs.connected,
+            "database_url"  : self._dbs.dburl
         }
         return object_dict
 
@@ -342,6 +318,34 @@ class Session (saga.Session, Object):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def uid(self):
+        return self._uid
+
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def dburl(self):
+        return self._dbs.dburl
+
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def dbname(self):
+        return self._dbs.dbname
+
+    #---------------------------------------------------------------------------
+    #
+    def get_db(self):
+        return self._dbs.get_db()
+
+    #---------------------------------------------------------------------------
+    #
+    def get_dbs(self):
+        return self._dbs
 
     #---------------------------------------------------------------------------
     #
@@ -356,7 +360,7 @@ class Session (saga.Session, Object):
         """Returns the UTC date and time the session was created.
         """
         self._assert_obj_is_valid()
-        return self._created
+        return self._dbs.created
 
     #---------------------------------------------------------------------------
     #
@@ -366,7 +370,7 @@ class Session (saga.Session, Object):
         reconnected to.
         """
         self._assert_obj_is_valid()
-        return self._connected 
+        return self._dbs.connected 
 
 
     #---------------------------------------------------------------------------

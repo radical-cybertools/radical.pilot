@@ -40,13 +40,14 @@ class PilotManagerController(threading.Thread):
     # ------------------------------------------------------------------------
     #
     def __init__(self, pilot_manager_uid, pilot_manager_data, 
-        session, db_connection, db_connection_info, pilot_launcher_workers=1):
+        session, pilot_launcher_workers=1):
         """Le constructeur.
         """
         self._session = session
 
         # The MongoDB database handle.
-        self._db = db_connection
+        self._dbs = self._session.get_dbs()
+        print "db: %s" % self._dbs
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -92,13 +93,13 @@ class PilotManagerController(threading.Thread):
         #
         if pilot_manager_uid is None:
             # Try to register the PilotManager with the database.
-            self._pm_id = self._db.insert_pilot_manager(
+            self._pm_id = self._dbs.insert_pilot_manager(
                 pilot_manager_data=pilot_manager_data,
                 pilot_launcher_workers=pilot_launcher_workers
             )
             self._num_pilot_launcher_workers = pilot_launcher_workers
         else:
-            pm_json = self._db.get_pilot_manager(pilot_manager_id=pilot_manager_uid)
+            pm_json = self._dbs.get_pilot_manager(pilot_manager_id=pilot_manager_uid)
             self._pm_id = pilot_manager_uid
             self._num_pilot_launcher_workers = pm_json["pilot_launcher_workers"]
 
@@ -108,7 +109,6 @@ class PilotManagerController(threading.Thread):
         for worker_number in range(1, self._num_pilot_launcher_workers+1):
             worker = PilotLauncherWorker(
                 session=self._session,
-                db_connection_info=db_connection_info, 
                 pilot_manager_id=self._pm_id,
                 shared_worker_data=self._shared_worker_data,
                 number=worker_number
@@ -144,7 +144,7 @@ class PilotManagerController(threading.Thread):
     def list_pilots(self):
         """List all known pilots.
         """
-        return self._db.list_pilot_uids(self._pm_id)
+        return self._dbs.list_pilot_uids(self._pm_id)
 
     # ------------------------------------------------------------------------
     #
@@ -249,7 +249,7 @@ class PilotManagerController(threading.Thread):
         # if we meet a final state, we record the object's callback history for
         # later evalutation
         if  new_state in (DONE, FAILED, CANCELED) :
-            self._db.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
+            self._dbs.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
       # print 'publishing Callback history for %s' % pilot_id
 
 
@@ -277,7 +277,7 @@ class PilotManagerController(threading.Thread):
                 #     if transfer_result.ready():
                 #         result = transfer_result.get()
 
-                #         self._db.update_pilot_state(
+                #         self._dbs.update_pilot_state(
                 #             pilot_uid=result["pilot_uid"],
                 #             state=result["state"],
                 #             sagajobid=result["saga_job_id"],
@@ -297,7 +297,7 @@ class PilotManagerController(threading.Thread):
                 # Check and update pilots. This needs to be optimized at
                 # some point, i.e., state pulling should be conditional
                 # or triggered by a tailable MongoDB cursor, etc.
-                pilot_list = self._db.get_pilots(pilot_manager_id=self._pm_id)
+                pilot_list = self._dbs.get_pilots(pilot_manager_id=self._pm_id)
                 action = False
 
                 for pilot in pilot_list:
@@ -349,8 +349,8 @@ class PilotManagerController(threading.Thread):
                     # set the state of the compute unit accordingly (but only
                     # for non-final units)
                     if new_state in [FAILED, DONE, CANCELED]:
-                        unit_ids = self._db.pilot_list_compute_units(pilot_uid=pilot_id)
-                        self._db.set_compute_unit_state (
+                        unit_ids = self._dbs.pilot_list_compute_units(pilot_uid=pilot_id)
+                        self._dbs.set_compute_unit_state (
                             unit_ids=unit_ids, 
                             state=CANCELED,
                             src_states=[ PENDING_INPUT_STAGING,
@@ -437,7 +437,7 @@ class PilotManagerController(threading.Thread):
         agent_dir_url = saga.Url("%s/%s-%s/" % (str(fs), self._session.uid, pilot_uid))
 
         # Create a database entry for the new pilot.
-        pilot_uid, pilot_json = self._db.insert_pilot(
+        pilot_uid, pilot_json = self._dbs.insert_pilot(
             pilot_uid=pilot_uid,
             pilot_manager_uid=self._pm_id,
             pilot_description=pilot.description,
@@ -491,11 +491,11 @@ class PilotManagerController(threading.Thread):
 
             pilot_ids = list()
 
-            for pilot in self._db.get_pilots(pilot_manager_id=self._pm_id) :
+            for pilot in self._dbs.get_pilots(pilot_manager_id=self._pm_id) :
                 pilot_ids.append (str(pilot["_id"]))
 
 
-        self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
+        self._dbs.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
         logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
 
         # pilots which are in ACTIVE state should now have time to react on the

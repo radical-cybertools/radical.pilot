@@ -20,7 +20,6 @@ import radical.utils as ru
 from pymongo import *
 
 from radical.pilot.states import *
-from radical.pilot.utils  import DBConnectionInfo
 
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
 COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
@@ -62,61 +61,8 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, db_url, db_name="radicalpilot"):
-        """ Le constructeur. Should not be called directrly, but rather
-            via the static methods new() or reconnect().
-        """
-
-        url = ru.Url (db_url)
-
-        if  db_name :
-            url.path = db_name
-
-        mongo, db, dbname, pname, cname = ru.mongodb_connect (url)
-
-        self._client = mongo
-        self._db     = db
-        self._dburl  = str(url)
-        self._dbname = dbname
-        if url.username and url.password:
-            self._dbauth = "%s:%s" % (url.username, url.password)
-        else:
-            self._dbauth = None
-
-        self._session_id = None
-
-        self._s  = None
-
-        self._w  = None
-        self._um = None
-
-        self._p  = None
-        self._pm = None
-
-    #--------------------------------------------------------------------------
-    #
-    @staticmethod
-    def new(sid, name, db_url, db_name="radicalpilot"):
-        """ Creates a new session (factory method).
-        """
-        creation_time = datetime.datetime.utcnow()
-
-        dbs = Session(db_url, db_name)
-        dbs.create(sid, name, creation_time)
-
-        connection_info = DBConnectionInfo(
-            session_id=sid,
-            dbname=dbs._dbname,
-            dbauth=dbs._dbauth,
-            dburl=dbs._dburl
-        )
-
-        return (dbs, creation_time, connection_info)
-
-    #--------------------------------------------------------------------------
-    #
-    def create(self, sid, name, creation_time):
-        """ Creates a new session (private).
+    def __init__(self, sid, name, dburl):
+        """ Creates a new session
 
             A session is a distinct collection with three sub-collections
             in MongoDB:
@@ -132,19 +78,30 @@ class Session():
             first insert. That's ok.
         """
 
-        # make sure session doesn't exist already
-        if  sid :
-            if  self._db[sid].count() != 0 :
-                raise DBEntryExistsException ("Session '%s' already exists." % sid)
+        # mpongodb_connect wants a string at the moment
+        mongo, db, dbname, _, _ = ru.mongodb_connect(str(dburl))
 
-        # remember session id
+        if not mongo or not db:
+            raise RuntimeError("Could not connect to database at %s" % dburl)
+
+        self._client     = mongo
+        self._db         = db
+        self._dburl      = ru.Url(dburl)
+        self._dbname     = dbname
         self._session_id = sid
+        self._created    = datetime.datetime.utcnow()
+        self._connected  = self._created
 
+        # make sure session doesn't exist already
+        if self._db[sid].count() != 0:
+            raise DBEntryExistsException ("Session '%s' already exists." % sid)
+
+        # create the db entry
         self._s = self._db["%s" % sid]
         self._s.insert({"_id"       : sid,
                         "name"      : name,
-                        "created"   : creation_time,
-                        "connected" : creation_time})
+                        "created"   : self._created,
+                        "connected" : self._created})
 
         # Create the collection shortcut:
         self._w  = self._db["%s.cu" % sid]
@@ -153,61 +110,6 @@ class Session():
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
 
-    #--------------------------------------------------------------------------
-    #
-    @staticmethod
-    def reconnect(sid, db_url, db_name="radical.pilot"):
-        """ Reconnects to an existing session.
-
-            Here we simply check if a radical.pilot.<sid> collection exists.
-        """
-        dbs = Session(db_url, db_name)
-        session_info = dbs._reconnect(sid)
-
-        connection_info = DBConnectionInfo(
-            session_id=sid,
-            dbname=dbs._dbname,
-            dbauth=dbs._dbauth,
-            dburl=dbs._dburl
-        )
-
-        return (dbs, session_info, connection_info)
-
-    #--------------------------------------------------------------------------
-    #
-    def _reconnect(self, sid):
-        """ Reconnects to an existing session (private).
-        """
-        # make sure session exists
-        #if sid not in self._db.collection_names():
-        #    raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
-
-        self._s = self._db["%s" % sid]
-        cursor = self._s.find({"_id": sid})
-
-        self._s.update({"_id"  : sid},
-                       {"$set" : {"connected" : datetime.datetime.utcnow()}}
-        )
-
-        cursor = self._s.find({"_id": sid})
-
-        # cursor -> dict
-        #if len(cursor) != 1:
-        #    raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
-
-        self._session_id = sid
-
-        # Create the collection shortcut:
-        self._w  = self._db["%s.cu" % sid]
-        self._um = self._db["%s.um" % sid]
-
-        self._p  = self._db["%s.p"  % sid]
-        self._pm = self._db["%s.pm" % sid]
-
-        try:
-            return cursor[0]
-        except:
-            raise Exception("Couldn't find Session UID '%s' in database." % sid)
 
     #--------------------------------------------------------------------------
     #
@@ -216,6 +118,51 @@ class Session():
         """ Returns the session id.
         """
         return self._session_id
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def dburl(self):
+        """ Returns the session db url.
+        """
+        return self._dburl
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def dbname(self):
+        """ Returns the session db name.
+        """
+        return self._dbname
+
+
+    #--------------------------------------------------------------------------
+    #
+    def get_db(self):
+        """ Returns the session db.
+        """
+        return self._db
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def created(self):
+        """ Returns the creation time
+        """
+        return self._created
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def connected(self):
+        """ Returns the connection time
+        """
+        return self._connected
+
 
     #--------------------------------------------------------------------------
     #

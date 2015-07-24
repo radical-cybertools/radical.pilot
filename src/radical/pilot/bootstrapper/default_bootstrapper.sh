@@ -30,27 +30,17 @@
 # ------------------------------------------------------------------------------
 # global variables
 #
-AUTH=
 TUNNEL_BIND_DEVICE="lo"
 CLEANUP=
-CORES=
-DBNAME=
-DBURL=
-DEBUG=
+HOSTPORT=
 SDISTS=
 VIRTENV=
 VIRTENV_MODE=
-LRMS=
-MPI_LAUNCH_METHOD=
-SPAWNER=
-PILOT_ID=
+CCM=
+PILOTID=
 RP_VERSION=
-AGENT_TYPE=
 PYTHON=
-RUNTIME=
-SCHEDULER=
 SESSIONID=
-TASK_LAUNCH_METHOD=
 SANDBOX=`pwd`
 
 # flag which is set when a system level RP installation is found, triggers
@@ -100,7 +90,7 @@ profile_event()
         NOW=$((TIMESTAMP-TIME_ZERO))
         # Format: time, component, uid, event, message"
         printf "%.4f,%s,%s,%s,%s\n" \
-            "$NOW" "Bootstrapper" "$PILOT_ID" "$@" "" >> $PROFILE_LOG
+            "$NOW" "Bootstrapper" "$PILOTID" "$@" "" >> $PROFILE_LOG
     fi
 }
 
@@ -343,30 +333,19 @@ usage: $0 options
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
-   -a      The name of project / allocation to charge.
-   -b      name of sdist tarballs for radical stack install
-   -c      Number of requested cores.
-   -d      Specify debug level.
-   -e      List of commands to run before bootstrapping.
-   -f      Tunnel endpoint for connection forwarding.
-   -g      Global shared virtualenv (create if missing)
-   -h      Show this message.
-   -i      The Python interpreter to use, e.g., python2.7.
-   -j      Task launch method.
-   -k      MPI launch method.
-   -l      Type of Local Resource Management System.
-   -m      Address and port of the coordination service host (MongoDB).
-   -n      The name of the database.
-   -o      The agent job spawning mechanism.
-   -p      The unique identifier (uid) of the pilot.
-   -q      The scheduler to be used by the agent.
-   -r      Runtime in minutes.
-   -s      The unique identifier (uid) of the session.
-   -u      sandbox is user defined
-   -v      Version - the RADICAL-Pilot version to install in virtenv
-   -w      The working directory (sandbox) of the pilot.
-           (default is '.')
-   -x      Cleanup - delete pilot sandbox, virtualenv etc. after completion
+   -c   ccm mode of agent startup
+   -d   distribution source tarballs for radical stack install
+   -e   execute commands before bootstrapping
+   -f   tunnel forward endpoint (MongoDB host:port)
+   -h   hostport to create tunnel to
+   -i   python Interpreter to use, e.g., python2.7
+   -m   mode of stack installion
+   -p   pilot ID
+   -r   radical-pilot version version to install in virtenv
+   -s   session ID
+   -t   tunnel device for connection forwarding
+   -v   virtualenv location (create if missing)
+   -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
 
 EOF
 
@@ -1127,32 +1106,20 @@ env | sort
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-# free letters: b h o
-while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
+while getopts "cd:e:f:h:i:m:p:r:s:t:v:x" OPTION; do
     case $OPTION in
-        a)  AUTH=$OPTARG  ;;
-        b)  SDISTS=$OPTARG  ;;
-        c)  CORES=$OPTARG  ;;
-        D)  TUNNEL_BIND_DEVICE=$OPTARG ;;
-        d)  DEBUG=$OPTARG  ;;
+        c)  CCM='TRUE'  ;;
+        d)  SDISTS=$OPTARG  ;;
         e)  preprocess "$OPTARG"  ;;
         f)  FORWARD_TUNNEL_ENDPOINT=$OPTARG  ;;
-        g)  VIRTENV=$(eval echo $OPTARG)  ;;
+        h)  HOSTPORT=$OPTARG  ;;
         i)  PYTHON=$OPTARG  ;;
-        j)  TASK_LAUNCH_METHOD=$OPTARG  ;;
-        k)  MPI_LAUNCH_METHOD=$OPTARG  ;;
-        l)  LRMS=$OPTARG  ;;
-        m)  DBURL=$OPTARG   ;;
-        n)  DBNAME=$OPTARG  ;;
-        o)  SPAWNER=$OPTARG  ;;
-        p)  PILOT_ID=$OPTARG  ;;
-        q)  SCHEDULER=$OPTARG  ;;
-        r)  RUNTIME=$OPTARG  ;;
+        m)  VIRTENV_MODE=$OPTARG  ;;
+        p)  PILOTID=$OPTARG  ;;
+        r)  RP_VERSION=$OPTARG  ;;
         s)  SESSIONID=$OPTARG  ;;
-        t)  AGENT_TYPE=$OPTARG  ;;
-        u)  VIRTENV_MODE=$OPTARG  ;;
-        v)  RP_VERSION=$OPTARG  ;;
-        w)  SANDBOX=$OPTARG  ;;
+        t)  TUNNEL_BIND_DEVICE=$OPTARG ;;
+        v)  VIRTENV=$(eval echo $OPTARG)  ;;
         x)  CLEANUP=$OPTARG  ;;
         *)  usage "Unknown option: $OPTION=$OPTARG"  ;;
     esac
@@ -1160,7 +1127,7 @@ done
 
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
-#        "bootstrap start" is here so that $PILOT_ID is known.
+#        "bootstrap start" is here so that $PILOTID is known.
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
@@ -1179,19 +1146,9 @@ echo "VIRTENV : $VIRTENV (normalized)"
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$CORES"              ; then  usage "missing CORES             ";  fi
-if test -z "$DEBUG"              ; then  usage "missing DEBUG             ";  fi
-if test -z "$DBNAME"             ; then  usage "missing DBNAME            ";  fi
-if test -z "$DBURL"              ; then  usage "missing DBURL             ";  fi
-if test -z "$LRMS"               ; then  usage "missing LRMS              ";  fi
-if test -z "$MPI_LAUNCH_METHOD"  ; then  usage "missing MPI_LAUNCH_METHOD ";  fi
-if test -z "$SPAWNER"            ; then  usage "missing SPAWNER           ";  fi
-if test -z "$PILOT_ID"           ; then  usage "missing PILOT_ID          ";  fi
-if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
-if test -z "$SCHEDULER"          ; then  usage "missing SCHEDULER         ";  fi
-if test -z "$SESSIONID"          ; then  usage "missing SESSIONID         ";  fi
-if test -z "$TASK_LAUNCH_METHOD" ; then  usage "missing TASK_LAUNCH_METHOD";  fi
-if test -z "$RP_VERSION"         ; then  usage "missing RP_VERSION        ";  fi
+if test -z "$PILOTID"     ; then  usage "missing PILOTID      ";  fi
+if test -z "$SESSIONID"   ; then  usage "missing SESSIONID    ";  fi
+if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION   ";  fi
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -1227,13 +1184,13 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     else
         FORWARD_TUNNEL_ENDPOINT_HOST=$FORWARD_TUNNEL_ENDPOINT
     fi
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$DBURL -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$HOSTPORT -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
 
-    # Overwrite DBURL
-    DBURL=$BIND_ADDRESS:$DBPORT
+    # Overwrite HOSTPORT
+    HOSTPORT=$BIND_ADDRESS:$DBPORT
 
     profile_event 'tunnel setup done'
 
@@ -1242,7 +1199,7 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"
+virtenv_setup    "$PILOTID" "$VIRTENV" "$VIRTENV_MODE"
 virtenv_activate "$VIRTENV"
 
 # Export the variables related to virtualenv,
@@ -1265,48 +1222,32 @@ export _OLD_VIRTUAL_PS1
 #       from the imported rp modules __file__.
 if test "$RP_INSTALL_TARGET" = 'SANDBOX'
 then
-    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-multicore.py"
     if ! test -e "$PILOT_SCRIPT"
     then
-        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
+        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-multicore.py"
     fi
 else
-    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-multicore.py"
     if ! test -e "$PILOT_SCRIPT"
     then
-        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
+        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-multicore.py"
     fi
 fi
 
-AGENT_CMD="python $PILOT_SCRIPT \
--c $CORES \
--d $DEBUG \
--j $TASK_LAUNCH_METHOD \
--k $MPI_LAUNCH_METHOD \
--l $LRMS \
--m $DBURL \
--n $DBNAME \
--o $SPAWNER \
--p $PILOT_ID \
--q $SCHEDULER \
--s $SESSIONID \
--r $RUNTIME"
 
-if ! test -z "$AUTH"
+if test -z "$CCM"
 then
-    AGENT_CMD="$AGENT_CMD -a $AUTH"
-fi
-
-if test "$LRMS" = "CCM"
-then
-    AGENT_CMD="ccmrun $AGENT_CMD"
+    AGENT_CMD="$PYTHON $PILOT_SCRIPT"
+else
+    AGENT_CMD="ccmrun $PYTHON $AGENT_CMD"
 fi
 
 verify_rp_install
 
 echo
 echo "# -------------------------------------------------------------------"
-echo "# Launching radical-pilot-agent for $CORES cores."
+echo "# Launching radical-pilot-agent "
 echo "# CMDLINE: $AGENT_CMD"
 
 # enable DebugHelper in agent
@@ -1335,7 +1276,7 @@ echo "# CLEANUP: $CLEANUP"
 echo "#"
 contains $CLEANUP 'l' && rm -r "$SANDBOX/agent.*"
 contains $CLEANUP 'u' && rm -r "$SANDBOX/unit.*"
-contains $CLEANUP 'v' && rm -r "$VIRTENV/"
+contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
 contains $CLEANUP 'e' && rm -r "$SANDBOX/"
 
 profile_event 'cleanup done'

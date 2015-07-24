@@ -4330,7 +4330,7 @@ class UpdateWorker(threading.Thread):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, config, logger, agent, session_id,
-                 update_queue, mongodb_url, mongodb_name, mongodb_auth):
+                 update_queue, mongodb_url):
 
         threading.Thread.__init__(self)
 
@@ -4342,7 +4342,8 @@ class UpdateWorker(threading.Thread):
         self._update_queue  = update_queue
         self._terminate     = threading.Event()
 
-        self._mongo_db      = rpu.get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
+        _, db, _, _, _      = ru.mongodb_connect(mongodb_url)
+        self._mongo_db      = db
         self._cinfo         = dict()  # collection cache
 
         # run worker thread
@@ -5053,8 +5054,7 @@ class Agent(object):
     def __init__(self, name, config, logger, lrms_name, requested_cores,
             task_launch_method, mpi_launch_method, spawner,
             scheduler_name, runtime,
-            mongodb_url, mongodb_name, mongodb_auth,
-            pilot_id, session_id):
+            mongodb_url, pilot_id, session_id):
 
         rpu.prof('Agent init')
 
@@ -5080,7 +5080,7 @@ class Agent(object):
         self._update_queue          = QUEUE_TYPE()
         self._command_queue         = QUEUE_TYPE()
 
-        mongo_db = rpu.get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
+        _, mongo_db, _, _, _      = ru.mongodb_connect(mongodb_url)
 
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
@@ -5172,9 +5172,7 @@ class Agent(object):
                 agent           = self,
                 session_id      = self._session_id,
                 update_queue    = self._update_queue,
-                mongodb_url     = mongodb_url,
-                mongodb_name    = mongodb_name,
-                mongodb_auth    = mongodb_auth
+                mongodb_url     = mongodb_url
             )
             self.worker_list.append(update_worker)
 
@@ -5470,49 +5468,31 @@ class Agent(object):
 # ==============================================================================
 def main():
 
-    mongo_p = None
-    parser  = optparse.OptionParser()
+  # parser  = optparse.OptionParser()
 
-    parser.add_option('-a', dest='mongodb_auth')
-    parser.add_option('-c', dest='cores',       type='int')
-    parser.add_option('-d', dest='debug_level', type='int')
-    parser.add_option('-j', dest='task_launch_method')
-    parser.add_option('-k', dest='mpi_launch_method')
-    parser.add_option('-l', dest='lrms')
-    parser.add_option('-m', dest='mongodb_url')
-    parser.add_option('-n', dest='mongodb_name')
-    parser.add_option('-o', dest='spawner')
-    parser.add_option('-p', dest='pilot_id')
-    parser.add_option('-q', dest='agent_scheduler')
-    parser.add_option('-r', dest='runtime',     type='int')
-    parser.add_option('-s', dest='session_id')
+  # parser.add_option('-c', dest='cores',   type='int')
+  # parser.add_option('-d', dest='debug',   type='int')
+  # parser.add_option('-j', dest='task_launch_method')
+  # parser.add_option('-k', dest='mpi_launch_method')
+  # parser.add_option('-l', dest='lrms')
+  # parser.add_option('-m', dest='mongodb_url')
+  # parser.add_option('-o', dest='spawner')
+  # parser.add_option('-p', dest='pilot_id')
+  # parser.add_option('-q', dest='agent_scheduler')
+  # parser.add_option('-r', dest='runtime', type='int')
+  # parser.add_option('-s', dest='session_id')
 
-    # parse the whole shebang
-    (options, args) = parser.parse_args()
+  # # parse the whole shebang
+  # (options, args) = parser.parse_args()
 
-    if args : parser.error("Unused arguments '%s'" % args)
-
-    if not options.cores                : parser.error("Missing or zero number of cores (-c)")
-    if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
-    if not options.task_launch_method   : parser.error("Missing unit launch method (-j)")
-    if not options.mpi_launch_method    : parser.error("Missing mpi launch method (-k)")
-    if not options.lrms                 : parser.error("Missing LRMS (-l)")
-    if not options.mongodb_url          : parser.error("Missing MongoDB URL (-m)")
-    if not options.mongodb_name         : parser.error("Missing database name (-n)")
-    if not options.spawner              : parser.error("Missing agent spawner (-o)")
-    if not options.pilot_id             : parser.error("Missing pilot id (-p)")
-    if not options.agent_scheduler      : parser.error("Missing agent scheduler (-q)")
-    if not options.runtime              : parser.error("Missing or zero agent runtime (-r)")
-    if not options.session_id           : parser.error("Missing session id (-s)")
-
-    rpu.prof_init('agent.prof', 'start', uid=options.pilot_id)
+  # if args : parser.error("Unused arguments '%s'" % args)
 
     # configure the agent logger
     logger    = logging.getLogger  ('radical.pilot.agent')
     handle    = logging.FileHandler("agent.log")
     formatter = logging.Formatter  ('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    logger.setLevel(options.debug_level)
+    logger.setLevel('INFO')
     handle.setFormatter(formatter)
     logger.addHandler(handle)
 
@@ -5522,10 +5502,46 @@ def main():
 
 
     # --------------------------------------------------------------------------
+    # load the agent config, and overload the config dicts
+    try:
+        logger.info ("load config file")
+
+        cfg_file = os.environ.get('RADICAL_PILOT_CONFIG', './agent.cfg')
+        cfg_dict = ru.read_json_str(cfg_file)
+
+        cfg = agent_config
+        ru.dict_merge(cfg, cfg_dict, policy='overwrite')
+        logger.info("agent config merged with %s" % cfg_file)
+
+    except Exception as e:
+        # No config file?
+        logger.exception("error reading config file")
+
+    logger.info("\Agent config:\n%s\n\n" % pprint.pformat(cfg))
+
+
+    if not 'cores'               in cfg: raise ValueError("Missing number of cores")
+    if not 'debug'               in cfg: raise ValueError("Missing DEBUG level")
+    if not 'lrms'                in cfg: raise ValueError("Missing LRMS")
+    if not 'db_url'              in cfg: raise ValueError("Missing MongoDB URL")
+    if not 'pilot_id'            in cfg: raise ValueError("Missing pilot id")
+    if not 'runtime'             in cfg: raise ValueError("Missing or zero agent runtime")
+    if not 'scheduler'           in cfg: raise ValueError("Missing agent scheduler")
+    if not 'session_id'          in cfg: raise ValueError("Missing session id")
+    if not 'spawner'             in cfg: raise ValueError("Missing agent spawner")
+    if not 'mpi_launch_method'   in cfg: raise ValueError("Missing mpi launch method")
+    if not 'task_launch_method'  in cfg: raise ValueError("Missing unit launch method")
+
+    rpu.prof_init('agent.prof', 'start', uid=cfg['pilot_id'])
+
+    # configure the agent logger
+    logger.setLevel(cfg['debug'])
+
+    # --------------------------------------------------------------------------
     #
     def sigint_handler(signum, frame):
         msg = 'Caught SIGINT. EXITING. (%s: %s)' % (signum, frame)
-        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        pilot_FAILED(mongo_p, cfg['pilot_id'], logger, msg)
         rpu.flush_prof()
         sys.exit(2)
     signal.signal(signal.SIGINT, sigint_handler)
@@ -5536,36 +5552,18 @@ def main():
     def sigalarm_handler(signum, frame):
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING (%s: %s)' \
             % (signum, frame)
-        pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
+        pilot_FAILED(mongo_p, cfg['pilot_id'], logger, msg)
         rpu.flush_prof()
         sys.exit(3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
 
-    # --------------------------------------------------------------------------
-    # load the local agent config, and overload the config dicts
-    try:
-        logger.info ("Trying to load config file")
-
-        cfg_file = os.environ.get('RADICAL_PILOT_CONFIG', './agent.cfg')
-        cfg_dict = ru.read_json_str(cfg_file)
-
-        ru.dict_merge(agent_config, cfg_dict, policy='overwrite')
-        logger.info("Default agent config merged with %s" % cfg_file)
-
-    except Exception as e:
-        # No config file?
-        logger.exception("error reading config file")
-
-    logger.info("\Agent config:\n%s\n\n" % pprint.pformat(agent_config))
-
     try:
         # ----------------------------------------------------------------------
         # Establish database connection
         rpu.prof('db setup')
-        mongo_db = rpu.get_mongodb(options.mongodb_url, options.mongodb_name,
-                                   options.mongodb_auth)
-        mongo_p  = mongo_db["%s.p" % options.session_id]
+        _, mongo_db, _, _, _ = ru.mongodb_connect(cfg['db_url'])
+        mongo_p  = mongo_db["%s.p" % cfg['session_id']]
 
 
         # ----------------------------------------------------------------------
@@ -5573,20 +5571,18 @@ def main():
         rpu.prof('Agent create')
         agent = Agent(
                 name               = 'Agent',
-                config             = agent_config,
+                config             = cfg,
                 logger             = logger,
-                lrms_name          = options.lrms,
-                requested_cores    = options.cores,
-                task_launch_method = options.task_launch_method,
-                mpi_launch_method  = options.mpi_launch_method,
-                spawner            = options.spawner,
-                scheduler_name     = options.agent_scheduler,
-                runtime            = options.runtime,
-                mongodb_url        = options.mongodb_url,
-                mongodb_name       = options.mongodb_name,
-                mongodb_auth       = options.mongodb_auth,
-                pilot_id           = options.pilot_id,
-                session_id         = options.session_id
+                lrms_name          = cfg['lrms'],
+                requested_cores    = cfg['cores'],
+                task_launch_method = cfg['task_launch_method'],
+                mpi_launch_method  = cfg['mpi_launch_method'],
+                spawner            = cfg['spawner'],
+                scheduler_name     = cfg['scheduler'],
+                runtime            = cfg['runtime'],
+                mongodb_url        = cfg['db_url'],
+                pilot_id           = cfg['pilot_id'],
+                session_id         = cfg['session_id']
         )
 
         agent.run()
@@ -5600,7 +5596,7 @@ def main():
     except Exception as e:
         error_msg = "Error running agent: %s" % str(e)
         logger.exception(error_msg)
-        pilot_FAILED(mongo_p, options.pilot_id, logger, error_msg)
+        pilot_FAILED(mongo_p, cfg['pilot_id'], logger, error_msg)
         rpu.flush_prof()
         sys.exit(7)
 

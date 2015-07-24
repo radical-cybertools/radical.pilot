@@ -115,9 +115,7 @@ class PilotManager(Object):
             pilot_manager_uid=None,
             pilot_manager_data={},
             pilot_launcher_workers=pilot_launcher_workers, 
-            session=self._session,
-            db_connection=session._dbs,
-            db_connection_info=session._connection_info)
+            session=self._session)
         self._worker.start()
 
         self._uid = self._worker.pilot_manager_uid
@@ -222,7 +220,7 @@ class PilotManager(Object):
         """PRIVATE: reconnect to an existing pilot manager.
         """
         uid_exists = PilotManagerController.uid_exists(
-            db_connection=session._dbs,
+            db_connection=session._session.get_db(),
             pilot_manager_uid=pilot_manager_id
         )
 
@@ -241,9 +239,7 @@ class PilotManager(Object):
             obj._worker = PilotManagerController(
                 pilot_manager_uid=pilot_manager_id,
                 pilot_manager_data={},
-                session=session,
-                db_connection=session._dbs,
-                db_connection_info=session._connection_info)
+                session=session)
             session._process_registry.register(pilot_manager_id, obj._worker)
 
         # start the worker if it's not already running

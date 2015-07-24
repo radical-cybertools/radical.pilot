@@ -48,7 +48,7 @@ class PilotLauncherWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, session, db_connection_info, pilot_manager_id,
+    def __init__(self, session, pilot_manager_id,
                  shared_worker_data, number=None):
         """Creates a new pilot launcher background process.
         """
@@ -57,7 +57,6 @@ class PilotLauncherWorker(threading.Thread):
         # threading stuff
         threading.Thread.__init__(self)
 
-        self.db_connection_info = db_connection_info
         self.pilot_manager_id   = pilot_manager_id
         self.name               = "PilotLauncherWorker-%s" % str(number)
         self.missing_pilots     = dict()
@@ -266,9 +265,8 @@ class PilotLauncherWorker(threading.Thread):
 
             # Try to connect to the database
             try:
-                connection = self.db_connection_info.get_db_handle()
-                db = connection[self.db_connection_info.dbname]
-                pilot_col = db["%s.p" % self.db_connection_info.session_id]
+                db = self._session.get_db()
+                pilot_col = db["%s.p" % self._session.uid]
                 logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
             except Exception as e :
@@ -321,10 +319,9 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # Database connection parameters
-                        session_uid   = self.db_connection_info.session_id
-                        database_url  = self.db_connection_info.dburl
-                        database_name = self.db_connection_info.dbname
-                        database_auth = self.db_connection_info.dbauth
+                        session_id    = self._session.uid
+                        database_url  = self._session.dburl
+                        database_name = self._session.dbname
 
                         # ------------------------------------------------------
                         # pilot description and resource configuration
@@ -375,7 +372,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # get parameters from cfg, set defaults where needed
-                        agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
+                        agent_dburl             = resource_cfg.get ('agent_mongodb_endpoint', database_url)
                         agent_spawner           = resource_cfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
                         agent_type              = resource_cfg.get ('agent_type',          DEFAULT_AGENT_TYPE)
                         agent_scheduler         = resource_cfg.get ('agent_scheduler')
@@ -412,15 +409,20 @@ class PilotLauncherWorker(threading.Thread):
                             virtenv = global_virtenv
                             virtenv_mode = 'use'
 
-                        # set default scheme, host, port and dbname if not set
-                        db_url = saga.Url(agent_mongodb_endpoint)
-                        if not db_url.scheme: db_url.scheme = 'mongodb'
-                        if not db_url.host  : db_url.host   = 'localhost'
-                        if not db_url.port  : db_url.port   = 27017
-                        if not database_name: database_name = 'radicalpilot'
-
                         # Create a host:port string for use by the bootstrapper.
-                        database_hostport = "%s:%d" % (db_url.host, db_url.port)
+                        db_url = saga.Url(agent_dburl)
+                        print db_url
+                        print db_url.port
+                        if db_url.port:
+                            db_hostport = "%s:%d" % (db_url.host, db_url.port)
+                        else:
+                            db_hostport = "%s:" % db_url.host
+
+                      # if not db_url.scheme: db_url.scheme = 'mongodb'
+                      # if not db_url.host  : db_url.host   = 'localhost'
+                      # if not db_url.port  : db_url.port   = 27017
+                      # if not database_name: database_name = 'radicalpilot'
+
 
                         # ------------------------------------------------------
                         # Copy the bootstrap shell script.  This also creates
@@ -551,27 +553,6 @@ class PilotLauncherWorker(threading.Thread):
                             cc_script.copy(cc_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
                             cc_script.close()
 
-
-                        # ------------------------------------------------------
-                        # Write agent config dict to a json file in pilot sandbox.
-                        # Not to be used by the faint of heart
-                        cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
-                        # Convert dict to json file
-                        ru.write_json(agent_config, cf_tmp_file)
-
-                        cf_src = saga.Url("file://localhost/%s" % cf_tmp_file)
-                        cf_tgt = saga.Url("%s/agent.cfg" % pilot_sandbox)
-                        cf_env = cf_tgt.path # this is what the pilot sees
-
-                        cf_file = saga.filesystem.File(cf_src, session=self._session)
-                        cf_file.copy(cf_tgt, flags=saga.filesystem.CREATE_PARENTS)
-                        cf_file.close()
-
-                        # close and remove temp file
-                        os.close(cfg_tmp_handle)
-                        os.unlink(cf_tmp_file)
-
-
                         # ------------------------------------------------------
                         # sanity checks
                         if not agent_spawner      : raise RuntimeError("missing agent spawner")
@@ -618,40 +599,59 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set mandatory args
                         bootstrap_args  = ""
-                        bootstrap_args += " -b '%s'" % sdists
-                        bootstrap_args += " -c '%s'" % number_cores
-                        bootstrap_args += " -d '%s'" % debug_level
-                        bootstrap_args += " -g '%s'" % virtenv
-                        bootstrap_args += " -j '%s'" % task_launch_method
-                        bootstrap_args += " -k '%s'" % mpi_launch_method
-                        bootstrap_args += " -l '%s'" % lrms
-                        bootstrap_args += " -m '%s'" % database_hostport
-                        bootstrap_args += " -n '%s'" % database_name
-                        bootstrap_args += " -o '%s'" % agent_spawner
+                        bootstrap_args += " -d '%s'" % sdists
+                        bootstrap_args += " -v '%s'" % virtenv
                         bootstrap_args += " -p '%s'" % pilot_id
-                        bootstrap_args += " -q '%s'" % agent_scheduler
-                        bootstrap_args += " -r '%s'" % runtime
-                        bootstrap_args += " -s '%s'" % session_uid
-                        bootstrap_args += " -t '%s'" % agent_type
-                        bootstrap_args += " -u '%s'" % virtenv_mode
-                        bootstrap_args += " -v '%s'" % rp_version
+                        bootstrap_args += " -s '%s'" % session_id
+                        bootstrap_args += " -m '%s'" % virtenv_mode
+                        bootstrap_args += " -r '%s'" % rp_version
 
                         # set optional args
-                        if database_auth:
-                            bootstrap_args += " -a '%s'" % database_auth
-                        if tunnel_bind_device:
-                            bootstrap_args += " -D '%s'" % tunnel_bind_device
-                        if pre_bootstrap:
-                            bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
-                        if forward_tunnel_endpoint:
-                            bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
-                        if python_interpreter:
-                            bootstrap_args += " -i '%s'" % python_interpreter
-                        if cleanup:
-                            bootstrap_args += " -x '%s'" % cleanup
+                        if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
+                        if pre_bootstrap:           bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
+                        if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
+                        if forward_tunnel_endpoint: bootstrap_args += " -h '%s'" % db_hostport
+                        if python_interpreter:      bootstrap_args += " -i '%s'" % python_interpreter
+                        if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
+                        if lrms == "CCM":           bootstrap_args += " -c"
+
+                        # set some agent configuration
+                        agent_config['cores']              = number_cores
+                        agent_config['debug']              = debug_level
+                        agent_config['db_url']             = str(agent_dburl)
+                        agent_config['lrms']               = lrms
+                        agent_config['spawner']            = agent_spawner
+                        agent_config['scheduler']          = agent_scheduler
+                        agent_config['runtime']            = runtime
+                        agent_config['pilot_id']           = pilot_id
+                        agent_config['session_id']         = session_id
+                        agent_config['mpi_launch_method']  = mpi_launch_method
+                        agent_config['task_launch_method'] = task_launch_method
 
                         # ------------------------------------------------------
-                        # now that the script is in place and we know where it is,
+                        # Write agent config dict to a json file in pilot sandbox.
+                        
+                        import pprint
+                        pprint.pprint(agent_config)
+                        cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
+                        # Convert dict to json file
+                        ru.write_json(agent_config, cf_tmp_file)
+
+                        cf_src = saga.Url("file://localhost/%s" % cf_tmp_file)
+                        cf_tgt = saga.Url("%s/agent.cfg" % pilot_sandbox)
+                        cf_env = cf_tgt.path # this is what the pilot sees
+
+                        cf_file = saga.filesystem.File(cf_src, session=self._session)
+                        cf_file.copy(cf_tgt, flags=saga.filesystem.CREATE_PARENTS)
+                        cf_file.close()
+
+                        # close and remove temp file
+                        os.close(cfg_tmp_handle)
+                        os.unlink(cf_tmp_file)
+
+
+                        # ------------------------------------------------------
+                        # now that the scripts are in place and configured, 
                         # we can launch the agent
                         js_url = saga.Url(js_endpoint)
                         logger.debug ("saga.job.Service ('%s')" % js_url)

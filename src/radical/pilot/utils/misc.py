@@ -248,20 +248,4 @@ def rec_makedir(target):
 
 
 # ------------------------------------------------------------------------------
-#
-def get_mongodb(mongodb_url, mongodb_name, mongodb_auth):
-
-    mongo_client = pymongo.MongoClient(mongodb_url)
-    mongo_db     = mongo_client[mongodb_name]
-
-    # do auth on username *and* password (ignore empty split results)
-    if mongodb_auth:
-        username, passwd = mongodb_auth.split(':')
-        mongo_db.authenticate(username, passwd)
-
-    return mongo_db
-
-
-
-# ------------------------------------------------------------------------------
 

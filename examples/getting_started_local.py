@@ -190,18 +190,18 @@ if __name__ == "__main__":
         # reason).
         print "need to exit now: %s" % e
 
-    finally:
-        # always clean up the session, no matter if we caught an exception or
-        # not.
-        print "closing session"
-        session.close ()
-
-        # the above is equivalent to
-        #
-        #   session.close (cleanup=True, terminate=True)
-        #
-        # it will thus both clean out the session's database record, and kill
-        # all remaining pilots (none in our example).
+ #  finally:
+ #      # always clean up the session, no matter if we caught an exception or
+ #      # not.
+ #      print "closing session"
+ #      session.close ()
+ #
+ #      # the above is equivalent to
+ #      #
+ #      #   session.close (cleanup=True, terminate=True)
+ #      #
+ #      # it will thus both clean out the session's database record, and kill
+ #      # all remaining pilots (none in our example).
 
 
 #-------------------------------------------------------------------------------

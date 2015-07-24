@@ -37,7 +37,7 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, session, db_connection, db_connection_info,
+    def __init__(self, unit_manager_uid, session,
         scheduler=None, input_transfer_workers=None,
         output_transfer_workers=None):
 
@@ -71,20 +71,18 @@ class UnitManagerController(threading.Thread):
         # The manager-level list.
         #
         self._manager_callbacks = dict()
-
-        # The MongoDB database handle.
-        self._db = db_connection
+        self._dbs = self._session.get_dbs()
 
         if unit_manager_uid is None:
             # Try to register the UnitManager with the database.
-            self._um_id = self._db.insert_unit_manager(
+            self._um_id = self._dbs.insert_unit_manager(
                 scheduler=scheduler,
                 input_transfer_workers=input_transfer_workers,
                 output_transfer_workers=output_transfer_workers)
             self._num_input_transfer_workers = input_transfer_workers
             self._num_output_transfer_workers = output_transfer_workers
         else:
-            um_json = self._db.get_unit_manager(unit_manager_id=unit_manager_uid)
+            um_json = self._dbs.get_unit_manager(unit_manager_id=unit_manager_uid)
             self._um_id = unit_manager_uid
             self._num_input_transfer_workers = um_json["input_transfer_workers"]
             self._num_output_transfer_workers = um_json["output_transfer_workers"]
@@ -94,8 +92,7 @@ class UnitManagerController(threading.Thread):
         self._input_file_transfer_worker_pool = []
         for worker_number in range(1, self._num_input_transfer_workers+1):
             worker = InputFileTransferWorker(
-                session=self._session,
-                db_connection_info=db_connection_info, 
+                session=self._session, 
                 unit_manager_id=self._um_id,
                 number=worker_number
             )
@@ -107,8 +104,7 @@ class UnitManagerController(threading.Thread):
         self._output_file_transfer_worker_pool = []
         for worker_number in range(1, self._num_output_transfer_workers+1):
             worker = OutputFileTransferWorker(
-                session=self._session,
-                db_connection_info=db_connection_info, 
+                session=self._session, 
                 unit_manager_id=self._um_id,
                 number=worker_number
             )
@@ -120,12 +116,12 @@ class UnitManagerController(threading.Thread):
     # ------------------------------------------------------------------------
     #
     @classmethod
-    def uid_exists(cls, db_connection, unit_manager_uid):
+    def uid_exists(cls, dbs, unit_manager_uid):
         """Checks wether a particular unit manager UID exists.
         """
         exists = False
 
-        if unit_manager_uid in db_connection.list_unit_manager_uids():
+        if unit_manager_uid in dbs.list_unit_manager_uids():
             exists = True
 
         return exists
@@ -214,7 +210,7 @@ class UnitManagerController(threading.Thread):
         # If we meet a final state, we record the object's callback history for
         # later evaluation.
         if  new_state in (DONE, FAILED, CANCELED) :
-            self._db.publish_compute_unit_callback_history (unit_id, self._callback_histories[unit_id])
+            self._dbs.publish_compute_unit_callback_history (unit_id, self._callback_histories[unit_id])
 
 
     # ------------------------------------------------------------------------
@@ -241,7 +237,7 @@ class UnitManagerController(threading.Thread):
                 # Check and update units. This needs to be optimized at
                 # some point, i.e., state pulling should be conditional
                 # or triggered by a tailable MongoDB cursor, etc.
-                unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
+                unit_list = self._dbs.get_compute_units(unit_manager_id=self._um_id)
                 action    = False
 
                 for unit in unit_list:
@@ -362,14 +358,14 @@ class UnitManagerController(threading.Thread):
     def get_unit_manager_data(self):
         """Returns the raw data (JSON dict) for a UnitManger.
         """
-        return self._db.get_unit_manager(self._um_id)
+        return self._dbs.get_unit_manager(self._um_id)
 
     # ------------------------------------------------------------------------
     #
     def get_pilot_uids(self):
         """Returns the UIDs of the pilots registered with the UnitManager.
         """
-        return self._db.unit_manager_list_pilots(self._um_id)
+        return self._dbs.unit_manager_list_pilots(self._um_id)
 
     # ------------------------------------------------------------------------
     #
@@ -377,7 +373,7 @@ class UnitManagerController(threading.Thread):
         """Returns the UIDs of all ComputeUnits registered with the
         UnitManager.
         """
-        return self._db.unit_manager_list_compute_units(self._um_id)
+        return self._dbs.unit_manager_list_compute_units(self._um_id)
 
     # ------------------------------------------------------------------------
     #
@@ -385,7 +381,7 @@ class UnitManagerController(threading.Thread):
         """Returns the states of all ComputeUnits registered with the
         Unitmanager.
         """
-        return self._db.get_compute_unit_states(
+        return self._dbs.get_compute_unit_states(
             self._um_id, unit_uids)
 
     # ------------------------------------------------------------------------
@@ -393,14 +389,14 @@ class UnitManagerController(threading.Thread):
     def get_compute_unit_stdout(self, compute_unit_uid):
         """Returns the stdout for a compute unit.
         """
-        return self._db.get_compute_unit_stdout(compute_unit_uid)
+        return self._dbs.get_compute_unit_stdout(compute_unit_uid)
 
     # ------------------------------------------------------------------------
     #
     def get_compute_unit_stderr(self, compute_unit_uid):
         """Returns the stderr for a compute unit.
         """
-        return self._db.get_compute_unit_stderr(compute_unit_uid)
+        return self._dbs.get_compute_unit_stderr(compute_unit_uid)
 
     # ------------------------------------------------------------------------
     #
@@ -412,7 +408,7 @@ class UnitManagerController(threading.Thread):
         for pilot in pilots:
             pids.append(pilot.uid)
 
-        self._db.unit_manager_add_pilots(unit_manager_id=self._um_id,
+        self._dbs.unit_manager_add_pilots(unit_manager_id=self._um_id,
                                          pilot_ids=pids)
 
     # ------------------------------------------------------------------------
@@ -420,7 +416,7 @@ class UnitManagerController(threading.Thread):
     def remove_pilots(self, pilot_uids):
         """Unlinks one or more ComputePilots from the UnitManager.
         """
-        self._db.unit_manager_remove_pilots(unit_manager_id=self._um_id,
+        self._dbs.unit_manager_remove_pilots(unit_manager_id=self._um_id,
                                             pilot_ids=pilot_uids)
 
     # ------------------------------------------------------------------------
@@ -429,7 +425,7 @@ class UnitManagerController(threading.Thread):
         """register the unscheduled units in the database"""
 
         # Add all units to the database.
-        results = self._db.insert_compute_units(
+        results = self._dbs.insert_compute_units(
             unit_manager_uid=self._um_id,
             units=units,
             unit_log=[]
@@ -459,7 +455,7 @@ class UnitManagerController(threading.Thread):
             cu_notransfer = list()
 
             # Get some information about the pilot sandbox from the database.
-            pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
+            pilot_info = self._dbs.get_pilots(pilot_ids=pilot_uid)
             # TODO: this hack below relies on what?! That there is just one pilot?
             pilot_sandbox = pilot_info[0]['sandbox']
 
@@ -558,7 +554,7 @@ class UnitManagerController(threading.Thread):
                         logger.warn('Not sure if action %s makes sense for output staging' % action)
 
             # Bulk-add all units
-            self._db.assign_compute_units_to_pilot(
+            self._dbs.assign_compute_units_to_pilot(
                 units=units,
                 pilot_uid=pilot_uid,
                 pilot_sandbox=pilot_sandbox
@@ -568,7 +564,7 @@ class UnitManagerController(threading.Thread):
                 # DON'T set state before pilot is assigned -- otherwise units
                 # are picked up by the FTW
                 log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
-                self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
+                self._dbs.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
 
 
             logger.info(
@@ -589,7 +585,7 @@ class UnitManagerController(threading.Thread):
 
         try:
             unit_ids = [unit.uid for unit in units]
-            self._db.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
+            self._dbs.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
 
         except Exception, e:
             logger.exception ('error in unit manager controller (unschedule())')
