@@ -7,7 +7,7 @@
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://login.archer.ac.uk/",
+            "job_manager_endpoint"    : "pbspro+ssh://login.archer.ac.uk/",
             "filesystem_endpoint"     : "sftp://login.archer.ac.uk/"
         },
         "default_queue"               : "standard",

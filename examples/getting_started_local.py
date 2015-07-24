@@ -158,7 +158,7 @@ if __name__ == "__main__":
             cuds.append(cud)
     
         # Submit the previously created ComputeUnit descriptions to the
-        # PilotManager. This will triggee the selected scheduler to start
+        # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
     
