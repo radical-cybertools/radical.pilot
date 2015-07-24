@@ -2,14 +2,18 @@
     "titan": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
-        "schemas"                     : ["ssh", "local"],
+        "schemas"                     : ["ssh", "local", "go"],
         "ssh"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
         "local"                       : {
-            "job_manager_endpoint"    : "pbs://localhost",
+            "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
+        },
+        "go"                          : {
+            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",

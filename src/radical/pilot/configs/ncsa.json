@@ -4,7 +4,7 @@
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
         "gsissh"                      : {
-            "job_manager_endpoint"    : "pbs+gsissh://bw.ncsa.illinois.edu",
+            "job_manager_endpoint"    : "torque+gsissh://bw.ncsa.illinois.edu",
             "filesystem_endpoint"     : "gsisftp://bw.ncsa.illinois.edu/"
         },
         "default_queue"               : "normal",
@@ -27,7 +27,7 @@
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
         "gsissh"                      : {
-            "job_manager_endpoint"    : "pbs+gsissh://bw.ncsa.illinois.edu/?gres=ccm",
+            "job_manager_endpoint"    : "torque+gsissh://bw.ncsa.illinois.edu/?gres=ccm",
             "filesystem_endpoint"     : "gsisftp://bw.ncsa.illinois.edu/"
         },
         "default_queue"               : "normal",
