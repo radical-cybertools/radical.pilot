@@ -638,7 +638,6 @@ cmd_cancel () {
 
   DIR="$BASE/$1"
 
-
   rpid=`\cat "$DIR/rpid"`
   mpid=`\cat "$DIR/mpid"`
 

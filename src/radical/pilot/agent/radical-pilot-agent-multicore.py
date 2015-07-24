@@ -2151,6 +2151,7 @@ class LRMS(object):
 # ==============================================================================
 #
 class CCMLRMS(LRMS):
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, config, logger, requested_cores):
@@ -3288,11 +3289,6 @@ class ExecWorker(COMPONENT_TYPE):
                  execution_queue, stageout_queue, update_queue, 
                  schedule_queue, pilot_id, session_id):
 
-        rpu.prof('ExecWorker init')
-
-        COMPONENT_TYPE.__init__(self)
-        self._terminate = COMPONENT_MODE.Event()
-
         self.name              = name
         self._config           = config
         self._log              = logger
@@ -3307,6 +3303,9 @@ class ExecWorker(COMPONENT_TYPE):
         self._schedule_queue   = schedule_queue
         self._pilot_id         = pilot_id
         self._session_id       = session_id
+        self._terminate        = COMPONENT_MODE.Event()
+
+        COMPONENT_TYPE.__init__(self)
 
         self.configure ()
 
@@ -3389,19 +3388,15 @@ class ExecWorker_POPEN (ExecWorker) :
                  execution_queue, stageout_queue, update_queue, 
                  schedule_queue, pilot_id, session_id):
 
-        rpu.prof('ExecWorker init')
-
         self._cus_to_watch   = list()
         self._cus_to_cancel  = list()
         self._watch_queue    = QUEUE_TYPE ()
         self._cu_environment = self._populate_cu_environment()
 
-
         ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue, 
                  schedule_queue, pilot_id, session_id)
-
 
         # run watcher thread
         watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
@@ -3836,8 +3831,6 @@ class ExecWorker_SHELL(ExecWorker):
                  execution_queue, stageout_queue, update_queue,
                  schedule_queue, pilot_id, session_id):
 
-        rpu.prof('ExecWorker init')
-
         ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
                  task_launcher, mpi_launcher, command_queue,
                  execution_queue, stageout_queue, update_queue,
@@ -3847,6 +3840,8 @@ class ExecWorker_SHELL(ExecWorker):
     # --------------------------------------------------------------------------
     #
     def run(self):
+
+        threading.current_thread().name = self.name
 
         rpu.prof('run')
 
@@ -4998,6 +4993,8 @@ class Agent(object):
 
         rpu.prof('Agent init')
 
+        threading.current_thread().name = name
+
         self.name                   = name
         self._config                = config
         self._log                   = logger
@@ -5432,7 +5429,7 @@ def main():
     if not options.runtime              : parser.error("Missing or zero agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
-    rpu.prof_init('%s.agent' % options.session_id, uid=options.pilot_id)
+    rpu.prof_init(options.session_id, uid=options.pilot_id)
 
     # configure the agent logger
     logger    = logging.getLogger  ('radical.pilot.agent')

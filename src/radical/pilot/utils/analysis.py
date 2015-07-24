@@ -52,14 +52,21 @@ def get_experiment_frames(experiments, datadir=None):
 #
 def get_profile_frame (prof):
     import pandas as pd
+    print 'reading %s' % prof
     return pd.read_csv(prof)
 
 # ------------------------------------------------------------------------------
 #
 def combine_profiles(profiles):
+    import pandas as pd
+    frames = list()
     for prof in profiles:
-        import pandas as pd
-        return pd.read_csv(prof)
+        print 'reading %s' % prof
+        try:
+            frames.append(get_profile_frame(prof))
+        except Exception as e:
+            print "skipping %s: %s (%s)" % (prof, e, type(e))
+    return pd.concat (frames)
 
 # ------------------------------------------------------------------------------
 #

@@ -127,9 +127,17 @@ EOT
         NOW=$((TIMESTAMP-TIME_ZERO))
     fi
 
+    PROFILE="$SESSION_ID.$$.Bootstrapper.prof"
+    if ! test -f "$PROFILE"
+    then
+        # initialize profile
+        echo "#time,name,uid,event,msg"
+        echo "#time,name,uid,event,msg" > "$PROFILE"
+    fi
+
     printf "%.4f,%s,%s,%s,%s\n" \
-        "$NOW" "Bootstrapper" "$PILOT_ID" "$etype" "$msg" \
-        >> "$SESSION_ID.$PILOT_ID.bootstrapper.prof"
+        "$NOW" "$$:Bootstrapper" "$PILOT_ID" "$etype" "$msg" \
+        >> "$PROFILE"
 }
 
 

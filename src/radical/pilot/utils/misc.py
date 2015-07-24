@@ -38,23 +38,95 @@ class Profiler (object):
             self._enabled = False
             return
 
-        # open the target output stream
-        if target == '-':
-            self._handle = sys.stdout
-        else:
-            tid = threading.current_thread().name
-            pid = os.getpid()
-            target = "%s.%s.%s.prof" % (target, pid, tid)
-            self._handle = open(target, 'a')
-
-        self._logger = logger
+        self._target  = target
+        self._handles = dict()
+        self._logger  = logger
 
         self._ts_zero, self._ts_abs = self._timestamp_init()
 
         # log initialization event
-        self.prof (etype='start profile', uid=uid,
-                   msg="%s:%s" % (self._ts_zero, self._ts_abs), 
-                   timestamp=0.0)
+        tid = threading.current_thread().name
+        pid = os.getpid()
+        _ = self._get_handle (pid, tid)
+
+
+    # ------------------------------------------------------------------------------
+    #
+    @property
+    def enabled(self):
+
+        return self._enabled
+
+
+    # ------------------------------------------------------------------------------
+    #
+    def flush(self):
+
+        if self._enabled:
+            for pid in self._handles:
+                for tid in self._handles[pid]:
+                    self._handles[pid][tid].flush()
+
+
+    # ------------------------------------------------------------------------------
+    #
+    def prof(self, etype, uid="", msg="", timestamp=None, logger=None):
+
+        if not self._enabled:
+            return
+
+        if         logger:       logger("%s (%10s) : %s", etype, msg, uid)
+        elif self._logger: self._logger("%s (%10s) : %s", etype, msg, uid)
+
+        tid = threading.current_thread().name
+        pid = os.getpid()
+
+        if timestamp != None:
+            if timestamp > (100 * 1000 * 1000):
+                # older than 3 years (time after 1973) 
+                # --> this is an absolute timestamp
+                timestamp = timestamp - self._ts_zero
+            else:
+                # this is a relative timestamp -- leave as is
+                pass
+        else:
+            # no timestamp provided -- use 'now'
+            timestamp = self._timestamp_now()
+
+        # NOTE: Don't forget to sync any format changes in the bootstrapper
+        #       and downstream analysis tools too!
+        handle = self._get_handle (pid, tid)
+        handle.write("%.4f,%s:%s,%s,%s,%s\n" % (timestamp, pid, tid, uid, etype, msg))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_handle (self, pid, tid):
+
+        # NOTE: Don't forget to sync any format changes in the bootstrapper
+        #       and downstream analysis tools too!
+
+        if not pid in self._handles:
+            self._handles[pid] = dict()
+
+        if not tid in self._handles[pid]:
+
+            if self._target == '-':
+                handle = sys.stdout
+            else:
+                timestamp = self._timestamp_now()
+                handle = open("%s.%s.%s.prof" % (self._target, pid, tid), 'a')
+
+                # write header and time normalization info
+                handle.write("#time,name,uid,event,msg\n")
+                handle.write("%.4f,%s:%s,%s,%s,%s\n" % \
+                        (timestamp, pid, tid, "", 'start profile',\
+                            "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
+
+            self._handles[pid][tid] = handle
+
+        return self._handles[pid][tid]
+
 
     # --------------------------------------------------------------------------
     #
@@ -84,58 +156,6 @@ class Profiler (object):
 
         # relative timestamp seconds since TIME_ZERO (start)
         return float(time.time()) - self._ts_zero
-
-
-    # ------------------------------------------------------------------------------
-    #
-    @property
-    def enabled(self):
-
-        return self._enabled
-
-
-    # ------------------------------------------------------------------------------
-    #
-    def flush(self):
-
-        if self._enabled:
-            self._handle.flush()
-
-    # ------------------------------------------------------------------------------
-    #
-    def prof(self, etype, uid="", msg="", timestamp=None, logger=None):
-
-        if not self._enabled:
-            return
-
-        if         logger:       logger("%s (%10s) : %s", etype, msg, uid)
-        elif self._logger: self._logger("%s (%10s) : %s", etype, msg, uid)
-
-        tid = threading.current_thread().name
-        pid = os.getpid()
-
-        if timestamp != None:
-            if timestamp > (100 * 1000 * 1000):
-                # older than 3 years (time after 1973) 
-                # --> this is an absolute timestamp
-                timestamp = timestamp - self._ts_zero
-            else:
-                # this is a relative timestamp -- leave as is
-                pass
-        else:
-            # no timestamp provided -- use 'now'
-            timestamp = self._timestamp_now()
-
-        # NOTE: Don't forget to sync any format changes in the bootstrapper
-        #       and downstream analysis tools too!
-        self._handle.write("%.4f,%s:%s,%s,%s,%s\n" % (timestamp, pid, tid, uid, etype, msg))
-
-        # NOTE: flush_prof() should be called when closing the application process,
-        #       to ensure data get correctly written to disk.  Calling flush on
-        #       every event creates significant overheads, but is useful for
-        #       debugging...
-        # self.flush()
-
 
 
 # --------------------------------------------------------------------------

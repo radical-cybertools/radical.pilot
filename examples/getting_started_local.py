@@ -199,7 +199,11 @@ if __name__ == "__main__":
         print session.uid
         session.close (cleanup=False)
         print session.fetch_json()
-        print session.fetch_profiles()
+        profs = session.fetch_profiles()
+
+        import radical.pilot.utils as rpu
+        frame = rpu.combine_profiles(profs)
+        print frame
 
         # the above is equivalent to
         #
