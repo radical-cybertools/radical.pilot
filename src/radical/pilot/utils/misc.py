@@ -17,7 +17,7 @@ from   radical.pilot.states import *
 #
 def timestamp():
     # human readable absolute UTC timestamp for log entries in database
-    return datetime.datetime.utcnow()
+    return datetime.datetime.utcnow().isoformat()
 
 def timestamp_epoch():
     # absolute timestamp as seconds since epoch

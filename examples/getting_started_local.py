@@ -6,6 +6,9 @@ __license__   = "MIT"
 import os
 import sys
 import radical.pilot as rp
+import radical.utils as ru
+
+dh = ru.DebugHelper()
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
@@ -108,9 +111,14 @@ if __name__ == "__main__":
         # after itself.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
-        pdesc.runtime  = 5 # minutes
+        pdesc.runtime  = 1 # minutes
         pdesc.cores    = 8
         pdesc.cleanup  = False
+        pdesc._config  = {
+                'exec_worker' : {
+                    'target_host' : '10.0.0.4'
+                    }
+                }
     
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -146,7 +154,7 @@ if __name__ == "__main__":
         #    /bin/cat $INPUT1 $INPUT2
         #
         cuds = []
-        for unit_count in range(0, 14):
+        for unit_count in range(1):
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
@@ -192,18 +200,18 @@ if __name__ == "__main__":
         # reason).
         print "need to exit now: %s" % e
 
- #  finally:
- #      # always clean up the session, no matter if we caught an exception or
- #      # not.
- #      print "closing session"
- #      session.close ()
- #
- #      # the above is equivalent to
- #      #
- #      #   session.close (cleanup=True, terminate=True)
- #      #
- #      # it will thus both clean out the session's database record, and kill
- #      # all remaining pilots (none in our example).
+    finally:
+        # always clean up the session, no matter if we caught an exception or
+        # not.
+        print "closing session"
+        session.close ()
+  
+        # the above is equivalent to
+        #
+        #   session.close (cleanup=True, terminate=True)
+        #
+        # it will thus both clean out the session's database record, and kill
+        # all remaining pilots (none in our example).
 
 
 #-------------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import saga
 import thread
 import threading
 
+from radical.pilot.utils  import timestamp
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
 from radical.pilot.staging_directives import CREATE_PARENTS
@@ -73,7 +74,7 @@ class OutputFileTransferWorker(threading.Thread):
             while not self._stop.is_set():
 
                 # See if we can find a ComputeUnit that is waiting for client output file transfer.
-                ts = datetime.datetime.utcnow()
+                ts = timestamp()
                 compute_unit = um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
                            "state": PENDING_OUTPUT_STAGING},
@@ -148,7 +149,7 @@ class OutputFileTransferWorker(threading.Thread):
                             continue
 
                         # Update the CU's state to 'DONE'.
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
                         log_message = "Output transfer completed."
                         um_col.update({'_id': compute_unit_id}, {
                             '$set': {'state': DONE},
@@ -160,7 +161,7 @@ class OutputFileTransferWorker(threading.Thread):
 
                     except Exception as e :
                         # Update the CU's state to 'FAILED'.
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
                         log_message = "Output transfer failed: %s" % e
                         um_col.update({'_id': compute_unit_id}, {
                             '$set': {'state': FAILED},

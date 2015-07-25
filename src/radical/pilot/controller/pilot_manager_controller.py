@@ -11,7 +11,6 @@ import time
 import saga
 import bson
 import pprint
-import datetime
 import traceback
 import thread
 import threading
@@ -21,6 +20,7 @@ from multiprocessing import Pool
 
 import radical.utils as ru
 
+from radical.pilot.utils        import timestamp
 from radical.pilot.states       import *
 from radical.pilot.utils.logger import logger
 
@@ -217,7 +217,7 @@ class PilotManagerController(threading.Thread):
         if  not pilot_id in self._callback_histories :
             self._callback_histories[pilot_id] = list()
         self._callback_histories[pilot_id].append (
-                {'timestamp' : datetime.datetime.utcnow(), 
+                {'timestamp' : timestamp(), 
                  'state'     : new_state})
 
         for [cb, cb_data] in self._shared_data[pilot_id]['callbacks']:

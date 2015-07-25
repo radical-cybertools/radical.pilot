@@ -8,6 +8,7 @@ import saga
 import thread
 import threading
 
+from radical.pilot.utils  import timestamp
 from radical.pilot.states import * 
 from radical.pilot.utils.logger import logger
 from radical.pilot.staging_directives import CREATE_PARENTS
@@ -80,7 +81,7 @@ class InputFileTransferWorker(threading.Thread):
             while not self._stop.is_set():
                 # See if we can find a ComputeUnit that is waiting for
                 # input file transfer.
-                ts = datetime.datetime.utcnow()
+                ts = timestamp()
                 compute_unit = um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
                            "state"      : PENDING_INPUT_STAGING,
@@ -189,14 +190,14 @@ class InputFileTransferWorker(threading.Thread):
                                                'state': PENDING_AGENT_INPUT_STAGING,
                                                'timestamp': ts},
                                            'log': {
-                                               'timestamp': datetime.datetime.utcnow(),
+                                               'timestamp': timestamp(),
                                                'message': 'push unit to agent after ftw staging'
                                        }}})
 
                     except Exception as e :
 
                         # Update the CU's state to 'FAILED'.
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
                         logentry = {'message': "Input transfer failed: %s" % e,
                                     'timestamp': ts}
 

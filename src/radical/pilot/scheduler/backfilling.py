@@ -15,6 +15,8 @@ import os
 import pprint
 import threading
 
+from radical.pilot.utils import timestamp
+
 from radical.pilot.utils.logger        import logger
 from radical.pilot.scheduler.interface import Scheduler
 from radical.pilot.states              import *
@@ -191,7 +193,7 @@ class BackfillingScheduler(Scheduler):
                     # need to reschedule the units which are reschedulable --
                     # all others are marked 'FAILED' if they are already
                     # 'EXECUTING' and not restartable
-                    timestamp = datetime.datetime.utcnow()
+                    ts = timestamp()
                     self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "state"       : {"$in": [UNSCHEDULED,
@@ -202,9 +204,9 @@ class BackfillingScheduler(Scheduler):
                         set_dict    = {"state"       : UNSCHEDULED, 
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : UNSCHEDULED, 
-                                                        "timestamp" : timestamp}, 
+                                                        "timestamp" : ts}, 
                                        "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : timestamp}
+                                                        "timestamp" : ts}
                                       })
 
                     self._dbs.change_compute_units (
@@ -216,9 +218,9 @@ class BackfillingScheduler(Scheduler):
                         set_dict    = {"state"       : UNSCHEDULED,
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : UNSCHEDULED,
-                                                        "timestamp" : timestamp}, 
+                                                        "timestamp" : ts}, 
                                        "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : timestamp}
+                                                        "timestamp" : ts}
                                       })
 
                     self._dbs.change_compute_units (
@@ -229,9 +231,9 @@ class BackfillingScheduler(Scheduler):
                                                                 STAGING_OUTPUT]}},
                         set_dict    = {"state"       : FAILED},
                         push_dict   = {"statehistory": {"state"     : FAILED, 
-                                                        "timestamp" : timestamp}, 
+                                                        "timestamp" : ts}, 
                                        "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : timestamp}
+                                                        "timestamp" : ts}
                                       })
 
                         # make sure that restartable units got back into the

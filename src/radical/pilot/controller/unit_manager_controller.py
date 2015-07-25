@@ -10,7 +10,6 @@ import os
 import time
 import Queue
 import weakref
-import datetime
 import threading
 
 from multiprocessing import Pool
@@ -19,6 +18,7 @@ from radical.utils        import which
 from radical.utils        import Url
 from radical.pilot.types  import *
 from radical.pilot.states import *
+from radical.pilot.utils  import timestamp
 from radical.pilot.utils.logger import logger
 
 from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
@@ -169,7 +169,7 @@ class UnitManagerController(threading.Thread):
         if  not unit_id in self._callback_histories :
             self._callback_histories[unit_id] = list()
         self._callback_histories[unit_id].append (
-                {'timestamp' : datetime.datetime.utcnow(), 
+                {'timestamp' : timestamp(), 
                  'state'     : new_state})
 
         for [cb, cb_data] in self._shared_data[unit_id]['callbacks']:

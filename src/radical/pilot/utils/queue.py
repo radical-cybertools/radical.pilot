@@ -1,5 +1,7 @@
 
 import zmq
+import bson
+import pprint
 import Queue           as pyq
 import threading       as mt
 import multiprocessing as mp
@@ -33,7 +35,9 @@ _QUEUE_PORTS  = {
         'agent_scheduling_queue'     : 'tcp://*:10014',
         'agent_executing_queue'      : 'tcp://*:10016',
         'agent_staging_output_queue' : 'tcp://*:10018',
-        'umgr_staging_output_queue'  : 'tcp://*:10020'
+        'umgr_staging_output_queue'  : 'tcp://*:10020',
+        'client_command_queue'       : 'tcp://*:10022',
+        'agent_command_queue'        : 'tcp://*:10024',
     }
 
 # --------------------------------------------------------------------------
@@ -57,6 +61,9 @@ def _port_inc(address):
 def _get_addr(name, role):
 
     addr = _QUEUE_PORTS.get(name)
+
+    if not addr:
+        raise LookupError("no addr for queue type '%s'" % name)
 
     if role != QUEUE_BRIDGE:
         u = ru.Url(addr)
@@ -87,7 +94,7 @@ def _get_addr(name, role):
 # To make the queue type switching transparent, we provide a set of queue
 # implementations and wrappers, which implement the interface of Queue.Queue:
 #
-#   put (item)
+#   put (msg)
 #   get ()
 #
 # Not implemented is, at the moment:
@@ -95,10 +102,10 @@ def _get_addr(name, role):
 #   qsize
 #   empty
 #   full 
-#   put (item, block, timeout
+#   put (msg, block, timeout
 #   put_nowait
 #   get (block, timeout)
-#   get_nowait
+#   get_nowait # TODO
 #   task_done
 #   join
 #
@@ -184,13 +191,31 @@ class Queue(object):
 
     # --------------------------------------------------------------------------
     #
-    def put(self, item):
+    def encode(self, msg):
+        return bson.BSON.encode(msg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def decode(self, msg):
+        return bson.BSON.decode(bson.BSON(msg))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def put(self, msg):
         raise NotImplementedError('put() is not implemented')
 
 
     # --------------------------------------------------------------------------
     #
     def get(self):
+        raise NotImplementedError('get() is not implemented')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_nowait(self):
         raise NotImplementedError('get() is not implemented')
 
 
@@ -212,7 +237,7 @@ class QueueThread(Queue):
 
     # --------------------------------------------------------------------------
     #
-    def put(self, item):
+    def put(self, msg):
 
         if not self._role == QUEUE_SOURCE:
             raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
@@ -220,7 +245,7 @@ class QueueThread(Queue):
         if not self._q:
             raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
-        self._q.put(item)
+        self._q.put(msg)
 
 
     # --------------------------------------------------------------------------
@@ -234,6 +259,19 @@ class QueueThread(Queue):
             raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
         return self._q.get()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_nowait(self):
+
+        if not self._role == QUEUE_TARGET:
+            raise RuntimeError("queue %s (%s) can't get_nowait()" % (self._name, self._role))
+
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        return self._q.get_nowait()
 
 
 # ==============================================================================
@@ -248,7 +286,7 @@ class QueueProcess(Queue):
 
     # --------------------------------------------------------------------------
     #
-    def put(self, item):
+    def put(self, msg):
 
         if not self._role == QUEUE_SOURCE:
             raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
@@ -256,7 +294,7 @@ class QueueProcess(Queue):
         if not self._q:
             raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
-        self._q.put(item)
+        self._q.put(msg)
 
 
     # --------------------------------------------------------------------------
@@ -270,6 +308,19 @@ class QueueProcess(Queue):
             raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
         return self._q.get()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_nowait(self):
+
+        if not self._role == QUEUE_TARGET:
+            raise RuntimeError("queue %s (%s) can't get_nowait()" % (self._name, self._role))
+
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        return self._q.get_nowait()
 
 
 # ==============================================================================
@@ -287,7 +338,7 @@ class QueueZMQ(Queue):
 
         ie. any number of sources can 'zmq.push()' to a bridge (which
         'zmq.pull()'s), and any number of targets can 'zmq.request()' 
-        items from the bridge (which 'zmq.response()'s).
+        messages from the bridge (which 'zmq.response()'s).
 
         The bridge is the entity which 'bind()'s network interfaces, both source
         and target type endpoints 'connect()' to it.  It is the callees
@@ -307,8 +358,10 @@ class QueueZMQ(Queue):
         """
         Queue.__init__(self, qtype, name, role, address)
 
-        self._p   = None          # the bridge process
-        self._ctx = zmq.Context() # one zmq context suffices
+        self._p       = None           # the bridge process
+        self._ctx     = zmq.Context()  # one zmq context suffices
+        self._lock    = mt.RLock()     # for _waiting
+        self._waiting = False          # send/recv sync
 
         # sanity check on address
         if not self._addr:  # this may break for ru.Url
@@ -339,19 +392,27 @@ class QueueZMQ(Queue):
 
             # ------------------------------------------------------------------
             def _bridge(ctx, addr_in, addr_out):
-              # print 'in _bridge: %s %s' % (addr_in, addr_out)
-                _in      = ctx.socket(zmq.PULL)
-                _in.hwm  = _QUEUE_HWM
-                _in.bind(addr_in)
+                try:
+                  # print 'in _bridge: %s %s' % (addr_in, addr_out)
+                    _in      = ctx.socket(zmq.PULL)
+                    _in.hwm  = _QUEUE_HWM
+                    _in.bind(addr_in)
+                except Exception as e:
+                    print "exception for bridge %s: %s" % (addr_in, e)
+                    raise
 
-                _out     = ctx.socket(zmq.REP)
-                _out.hwm = _QUEUE_HWM
-                _out.bind(addr_out)
+                try:
+                    _out     = ctx.socket(zmq.REP)
+                    _out.hwm = _QUEUE_HWM
+                    _out.bind(addr_out)
+                except Exception as e:
+                    print "exception for bridge %s: %s" % (addr_out, e)
+                    raise
 
                 while True:
                     req = _out.recv()
                     msg = _in.recv_json()
-                    # print msg
+                    print "Q: bridge log: %s: %s" % (type(msg), msg)
                     _out.send_json(msg)
             # ------------------------------------------------------------------
             
@@ -388,7 +449,7 @@ class QueueZMQ(Queue):
 
     # --------------------------------------------------------------------------
     #
-    def put(self, item):
+    def put(self, msg):
 
         if not self._role == QUEUE_SOURCE:
             raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
@@ -396,7 +457,14 @@ class QueueZMQ(Queue):
         if not self._q:
             raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
-        self._q.send_json(item)
+        print "Q: put   log: %-15s : %s" % (self._name, pprint.pformat(msg))
+
+      # msg = self.encode(msg)
+      # 
+      # if not isinstance(msg, bson.BSON):
+      #     raise TypeError('expected BSON, got %s/%s (%s)' % (type(msg), type(msg), str(msg)))
+
+        self._q.send_json(msg)
 
 
     # --------------------------------------------------------------------------
@@ -410,7 +478,47 @@ class QueueZMQ(Queue):
             raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
         self._q.send('request')
-        return self._q.recv_json()
+
+        msg = self._q.recv_json()
+        print "Q: get   log: %-15s : %s" % (self._name, pprint.pformat(msg))
+        return msg
+
+      # if not isinstance(msg, bson.BSON):
+      #     raise TypeError('expected BSON, got %s (%s)' % (type(msg), str(msg)))
+      # 
+      # return self.decode(msg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_nowait(self):
+
+        if not self._role == QUEUE_TARGET:
+            raise RuntimeError("queue %s (%s) can't get_nowait()" % (self._name, self._role))
+
+        if not self._q:
+            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
+
+        with self._lock:
+
+            if not self._waiting:
+                # we can only send the request once per recieval
+                self._q.send('request')
+                self._waiting = True
+
+            try:
+                msg = self._q.recv_json(flags=zmq.NOBLOCK)
+                self._waiting = False
+                print "Q: getnw log: %-15s : %s" % (self._name, pprint.pformat(msg))
+                return msg
+              # if not isinstance(msg, bson.BSON):
+              #     raise TypeError('expected BSON, got %s (%s)' % (type(msg), str(msg)))
+              # return self.decode(msg)
+
+            except zmq.Again:
+                # FIXME: translating to Queue exceptions for now -- are there better ways?
+                raise pyq.Empty()
+
 
 
 # ------------------------------------------------------------------------------

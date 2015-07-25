@@ -13,12 +13,12 @@ __license__ = "MIT"
 
 import os 
 import saga
-import datetime
 import gridfs
 import radical.utils as ru
 
 from pymongo import *
 
+from radical.pilot.utils  import timestamp
 from radical.pilot.states import *
 
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
@@ -89,7 +89,7 @@ class Session():
         self._dburl      = ru.Url(dburl)
         self._dbname     = dbname
         self._session_id = sid
-        self._created    = datetime.datetime.utcnow()
+        self._created    = timestamp()
         self._connected  = self._created
 
         # make sure session doesn't exist already
@@ -251,7 +251,7 @@ class Session():
 
         if state :
             set_query["state"] = state
-            push_query["statehistory"] = [{'state': state, 'timestamp': datetime.datetime.utcnow()}]
+            push_query["statehistory"] = [{'state': state, 'timestamp': timestamp()}]
 
         if logs  : 
             push_query["log"] = logs
@@ -279,7 +279,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
 
         # the SAGA attribute interface does not expose private attribs in
         # as_dict().  That semantics may change in the future, for now we copy
@@ -291,7 +291,7 @@ class Session():
         pilot_doc = {
             "_id":            pilot_uid,
             "description":    pd_dict,
-            "submitted":      datetime.datetime.utcnow(),
+            "submitted":      ts,
             "input_transfer_started": None,
             "input_transfer_finished": None,
             "started":        None,
@@ -383,7 +383,7 @@ class Session():
 
         command = {COMMAND_FIELD: {COMMAND_TYPE: cmd,
                                    COMMAND_ARG:  arg,
-                                   COMMAND_TIME: datetime.datetime.utcnow()
+                                   COMMAND_TIME: timestamp()
         }}
 
         if pilot_ids is None:
@@ -452,8 +452,6 @@ class Session():
         """Update the state and the log of all compute units belonging to
            a specific pilot.
         """
-        ts = datetime.datetime.utcnow()
-
         if self._s is None:
             raise Exception("No active session.")
 
@@ -471,7 +469,7 @@ class Session():
         If src_states is given, this will only update units which are currently
         in those src states.
         """
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
 
         if  not unit_ids :
             return
@@ -760,7 +758,7 @@ class Session():
 
         for unit in units:
 
-            ts = datetime.datetime.utcnow()
+            ts = timestamp()
 
             unit_json = {
                 "_id":           unit.uid,
@@ -771,7 +769,7 @@ class Session():
                 "pilot_sandbox": None,
                 "state":         unit._local_state,
                 "statehistory":  [{"state": unit._local_state, "timestamp": ts}],
-                "submitted":     datetime.datetime.utcnow(),
+                "submitted":     ts,
                 "started":       None,
                 "finished":      None,
                 "exec_locs":     None,

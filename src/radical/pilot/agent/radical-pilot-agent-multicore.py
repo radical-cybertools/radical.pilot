@@ -195,7 +195,7 @@ import radical.pilot.utils as rpu
 AGENT_THREADS   = 'threading'
 AGENT_PROCESSES = 'multiprocessing'
 
-AGENT_MODE      = AGENT_PROCESSES
+AGENT_MODE      = AGENT_THREADS
 
 if AGENT_MODE == AGENT_THREADS :
     COMPONENT_MODE = threading
@@ -505,14 +505,62 @@ def pilot_DONE(mongo_p, pilot_uid):
 #
 # ==============================================================================
 #
+class QueueManager(object):
+
+    # we only need one queue manager...
+    __metaclass__ = ru.Singleton
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self):
+
+        self._bridges = dict()
+        self._lock    = threading.RLock()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def create_bridge (self, qname):
+
+        # create bridges only once.  
+        # Note that 'once' is process space, not global nor host space!
+        if not qname in self._bridges:
+            self._bridges[qname] = rpu.Queue.create (rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_src (self, qname, bridge_host=None):
+
+        return rpu.Queue.create (rpu.QUEUE_ZMQ, qname, rpu.QUEUE_SOURCE, bridge_host)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_tgt (self, qname, bridge_host=None):
+
+        return rpu.Queue.create (rpu.QUEUE_ZMQ, qname, rpu.QUEUE_TARGET, bridge_host)
+
+
+# ==============================================================================
+QM = QueueManager()
+# ==============================================================================
+
+
+# ==============================================================================
+#
+# Schedulers
+#
+# ==============================================================================
+#
 class Scheduler(threading.Thread):
 
     # FIXME: clarify what can be overloaded by Scheduler classes
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, lrms, schedule_queue, execution_queue,
-                 update_queue):
+    def __init__(self, name, config, logger, lrms):
 
         threading.Thread.__init__(self)
 
@@ -520,9 +568,10 @@ class Scheduler(threading.Thread):
         self._config          = config
         self._log             = logger
         self._lrms            = lrms
-        self._schedule_queue  = schedule_queue
-        self._execution_queue = execution_queue
-        self._update_queue    = update_queue
+        self._schedule_queue  = QM.get_tgt('agent_scheduling_queue')
+        self._reschedule_queue= QM.get_src('agent_scheduling_queue')
+        self._execution_queue = QM.get_src('agent_executing_queue')
+        self._update_queue    = QM.get_src('agent_update_queue')
 
         self._terminate       = threading.Event()
         self._lock            = threading.RLock()
@@ -540,8 +589,7 @@ class Scheduler(threading.Thread):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, config, logger, lrms, schedule_queue, execution_queue,
-               update_queue):
+    def create(cls, name, config, logger, lrms):
 
         # Make sure that we are the base-class!
         if cls != Scheduler:
@@ -554,9 +602,7 @@ class Scheduler(threading.Thread):
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            impl = implementation(name, config, logger, lrms, schedule_queue,
-                                  execution_queue, update_queue)
-
+            impl = implementation(name, config, logger, lrms)
             impl.start()
             return impl
 
@@ -622,8 +668,10 @@ class Scheduler(threading.Thread):
         self._log.info (self.slot_status())
 
         cu_list, cu_dropped = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
+        self._log.warn("Q: blowup: %s / %s" % (cu_list, cu_dropped))
         for _cu in cu_list :
             rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
+            self._log.warn("Q: push: %s" % pprint.pformat(_cu))
             self._execution_queue.put(_cu)
 
         # we need to free allocated cores for dropped CUs
@@ -679,7 +727,7 @@ class Scheduler(threading.Thread):
             # notify the scheduling thread of released slots
             if slots_released:
                 rpu.prof('put_cmd', msg="Scheduler to schedule_queue (%s)" % COMMAND_RESCHEDULE)
-                self._schedule_queue.put(COMMAND_RESCHEDULE)
+                self._reschedule_queue.put({'cmd': COMMAND_RESCHEDULE})
 
             self._log.info("slot status after  unschedule: %s" % self.slot_status ())
             rpu.prof('unschedule done - reschedule')
@@ -696,17 +744,18 @@ class Scheduler(threading.Thread):
 
                 request = self._schedule_queue.get()
 
-                if not isinstance(request, list):
-                    # command only, no cu
-                    request = [request, None]
+              # if not isinstance(request, list):
+              #     # command only, no cu
+              #     request = [request, None]
 
                 # shutdown signal
                 if not request:
                     rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
                     continue
 
-                command = request[0]
-                cu      = request[1]
+                self._log.warn('Q: request 754: %s' % request)
+                command = request.get('cmd')
+                cu      = request.get('cu')
 
                 rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
 
@@ -775,13 +824,11 @@ class SchedulerContinuous(Scheduler):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, lrms, scheduler_queue,
-                 execution_queue, update_queue):
+    def __init__(self, name, config, logger, lrms):
 
         self.slots = None
 
-        Scheduler.__init__(self, name, config, logger, lrms, scheduler_queue,
-                execution_queue, update_queue)
+        Scheduler.__init__(self, name, config, logger, lrms)
 
 
     # --------------------------------------------------------------------------
@@ -1064,14 +1111,12 @@ class SchedulerTorus(Scheduler):
 
 
     # --------------------------------------------------------------------------
-    def __init__(self, name, config, logger, lrms, scheduler_queue,
-                 execution_queue, update_queue):
+    def __init__(self, name, config, logger):
 
         self.slots            = None
         self._cores_per_node  = None
 
-        Scheduler.__init__(self, name, config, logger, lrms, scheduler_queue,
-                execution_queue, update_queue)
+        Scheduler.__init__(self, name, config, logger, lrms)
 
 
     # --------------------------------------------------------------------------
@@ -3298,9 +3343,7 @@ class ExecWorker(COMPONENT_TYPE):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, number, session_id):
+                 task_launcher, mpi_launcher, pilot_id, number, session_id):
 
         rpu.prof('ExecWorker init')
 
@@ -3314,11 +3357,11 @@ class ExecWorker(COMPONENT_TYPE):
         self._scheduler        = scheduler
         self._task_launcher    = task_launcher
         self._mpi_launcher     = mpi_launcher
-        self._command_queue    = command_queue
-        self._execution_queue  = execution_queue
-        self._stageout_queue   = stageout_queue
-        self._update_queue     = update_queue
-        self._schedule_queue   = schedule_queue
+        self._command_queue    = QM.get_tgt('agent_command_queue')
+        self._execution_queue  = QM.get_tgt('agent_executing_queue')
+        self._stageout_queue   = QM.get_src('agent_staging_output_queue')
+        self._update_queue     = QM.get_src('agent_update_queue')
+        self._schedule_queue   = QM.get_src('agent_scheduling_queue')
         self._pilot_id         = pilot_id
         self._number           = number
         self._session_id       = session_id
@@ -3332,9 +3375,7 @@ class ExecWorker(COMPONENT_TYPE):
     #
     @classmethod
     def create(cls, name, config, logger, spawner, agent, scheduler,
-               task_launcher, mpi_launcher, command_queue,
-               execution_queue, update_queue, schedule_queue, 
-               stageout_queue, pilot_id, number, session_id):
+               task_launcher, mpi_launcher, pilot_id, number, session_id):
 
         # Make sure that we are the base-class!
         if cls != ExecWorker:
@@ -3347,9 +3388,7 @@ class ExecWorker(COMPONENT_TYPE):
             }[spawner]
 
             impl = implementation(name, config, logger, agent, scheduler,
-                                  task_launcher, mpi_launcher, command_queue,
-                                  execution_queue, stageout_queue, update_queue, 
-                                  schedule_queue, pilot_id, number, session_id)
+                                  task_launcher, mpi_launcher, pilot_id, number, session_id)
             impl.start ()
             return impl
 
@@ -3400,22 +3439,18 @@ class ExecWorker_POPEN (ExecWorker) :
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, number, session_id):
+                 task_launcher, mpi_launcher, pilot_id, number, session_id):
 
         rpu.prof('ExecWorker init')
 
         self._cus_to_watch   = list()
         self._cus_to_cancel  = list()
-        self._watch_queue    = QUEUE_TYPE ()
+        self._watch_queue    = QUEUE_TYPE()
         self._cu_environment = self._populate_cu_environment()
 
 
         ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, number, session_id)
+                 task_launcher, mpi_launcher, pilot_id, number, session_id)
 
 
         # run watcher thread
@@ -3772,7 +3807,8 @@ class ExecWorker_POPEN (ExecWorker) :
                     action += 1
                     cu['proc'].kill()
                     self._cus_to_cancel.remove(cu['_id'])
-                    self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
+                    self._schedule_queue.put ({'cmd' : COMMAND_UNSCHEDULE, 
+                                               'cu'  : cu})
 
                     cu['state'] = rp.CANCELED
                     self._agent.update_unit_state(src    = 'ExecWatcher',
@@ -3795,7 +3831,8 @@ class ExecWorker_POPEN (ExecWorker) :
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
-                self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
+                self._schedule_queue.put ({'cmd' : COMMAND_UNSCHEDULE, 
+                                           'cu'  : cu})
 
                 if os.path.isfile("%s/PROF" % cu['workdir']):
                     with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
@@ -3847,18 +3884,14 @@ class ExecWorker_SHELL(ExecWorker):
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue,
-                 schedule_queue, pilot_id, number, session_id):
+                 task_launcher, mpi_launcher, pilot_id, number, session_id):
 
         rpu.prof('ExecWorker init')
 
         self._number = number
 
         ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue,
-                 schedule_queue, pilot_id, number, session_id)
+                 task_launcher, mpi_launcher, pilot_id, number, session_id)
 
 
     # --------------------------------------------------------------------------
@@ -3987,7 +4020,8 @@ class ExecWorker_SHELL(ExecWorker):
 
                     # Free the Slots, Flee the Flots, Ree the Frots!
                     if cu['opaque_slot']:
-                        self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
+                        self._schedule_queue.put ({'cmd' : COMMAND_UNSCHEDULE, 
+                                                   'cu'  : cu})
 
                     cu['state'] = rp.FAILED
                     self._agent.update_unit_state(src    = 'ExecWorker',
@@ -4320,7 +4354,8 @@ timestamp () {
 
         if rp_state in [rp.FAILED, rp.CANCELED] :
             # final state - no further state transition needed
-            self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
+            self._schedule_queue.put ({'cmd' : COMMAND_UNSCHEDULE, 
+                                       'cu'  : cu})
             cu['state'] = rp_state
             self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
@@ -4330,7 +4365,8 @@ timestamp () {
         elif rp_state in [rp.DONE] :
             rpu.prof('execution complete', uid=cu['_id'])
             # advance the unit state
-            self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
+            self._schedule_queue.put ({'cmd' : COMMAND_UNSCHEDULE, 
+                                       'cu'  : cu})
             cu['state'] = rp.PENDING_AGENT_OUTPUT_STAGING,
             self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
@@ -4362,8 +4398,7 @@ class UpdateWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, session_id,
-                 update_queue, mongodb_url):
+    def __init__(self, name, config, logger, agent, session_id, mongodb_url):
 
         threading.Thread.__init__(self)
 
@@ -4372,7 +4407,7 @@ class UpdateWorker(threading.Thread):
         self._log           = logger
         self._agent         = agent
         self._session_id    = session_id
-        self._update_queue  = update_queue
+        self._update_queue  = QM.get_tgt('agent_update_queue')
         self._terminate     = threading.Event()
 
         _, db, _, _, _      = ru.mongodb_connect(mongodb_url)
@@ -4435,6 +4470,7 @@ class UpdateWorker(threading.Thread):
 
                 try:
                     update_request = self._update_queue.get_nowait()
+                    self._log.warn('Q: request 447: %s' % update_request)
                     uid   = update_request.get('_id',   None)
                     state = update_request.get('state', None)
 
@@ -4509,8 +4545,7 @@ class StageinWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, execution_queue, schedule_queue,
-                 stagein_queue, update_queue, workdir):
+    def __init__(self, name, config, logger, agent, workdir):
 
         threading.Thread.__init__(self)
 
@@ -4518,10 +4553,9 @@ class StageinWorker(threading.Thread):
         self._config          = config
         self._log             = logger
         self._agent           = agent
-        self._execution_queue = execution_queue
-        self._schedule_queue  = schedule_queue
-        self._stagein_queue   = stagein_queue
-        self._update_queue    = update_queue
+        self._stagein_queue   = QM.get_tgt('agent_staging_input_queue')
+        self._schedule_queue  = QM.get_src('agent_scheduling_queue')
+        self._update_queue    = QM.get_src('agent_update_queue')
         self._workdir         = workdir
         self._terminate       = threading.Event()
 
@@ -4636,7 +4670,8 @@ class StageinWorker(threading.Thread):
                     _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
                     for __cu in _cu_list :
                         rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                        self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
+                        self._schedule_queue.put ({'cmd' : COMMAND_SCHEDULE, 
+                                                   'cu'  : __cu})
 
             except Exception as e:
                 self._log.exception('worker died')
@@ -4663,8 +4698,7 @@ class StageoutWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, execution_queue, 
-                 stageout_queue, update_queue, workdir):
+    def __init__(self, name, config, logger, agent, workdir):
 
         threading.Thread.__init__(self)
 
@@ -4672,9 +4706,8 @@ class StageoutWorker(threading.Thread):
         self._config          = config
         self._log             = logger
         self._agent           = agent
-        self._execution_queue = execution_queue
-        self._stageout_queue  = stageout_queue
-        self._update_queue    = update_queue
+        self._stageout_queue  = QM.get_tgt('agent_staging_output_queue')
+        self._update_queue    = QM.get_src('agent_update_queue')
         self._workdir         = workdir
         self._terminate       = threading.Event()
 
@@ -4709,6 +4742,7 @@ class StageoutWorker(threading.Thread):
                     rpu.prof('get_cmd', msg="stageout_queue to StageoutWorker (wakeup)")
                     continue
 
+                self._log.warn ("Q: cu 4743: '%s'" % cu)
                 cu['state'] = rp.AGENT_STAGING_OUTPUT
 
                 cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_WORKER)
@@ -4880,7 +4914,7 @@ class HeartbeatMonitor(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, command_queue, p, pilot_id, starttime, runtime):
+    def __init__(self, name, config, logger, agent, p, pilot_id, starttime, runtime):
 
         threading.Thread.__init__(self)
 
@@ -4888,7 +4922,7 @@ class HeartbeatMonitor(threading.Thread):
         self._config          = config
         self._log             = logger
         self._agent           = agent
-        self._command_queue   = command_queue
+        self._command_queue   = QM.get_src('agent_command_queue')
         self._p               = p
         self._pilot_id        = pilot_id
         self._starttime       = starttime
@@ -5029,19 +5063,37 @@ class Agent(object):
 
         self.worker_list            = list()
 
-        # we want to own all queues -- that simplifies startup and shutdown
-        self._schedule_queue        = QUEUE_TYPE()
-        self._stagein_queue         = QUEUE_TYPE()
-        self._execution_queue       = QUEUE_TYPE()
-        self._stageout_queue        = QUEUE_TYPE()
-        self._update_queue          = QUEUE_TYPE()
-        self._command_queue         = QUEUE_TYPE()
+      # # we want to own all queues -- that simplifies startup and shutdown
+      # self._stagein_queue         = QUEUE_TYPE()
+      # self._schedule_queue        = QUEUE_TYPE()
+      # self._execution_queue       = QUEUE_TYPE()
+      # self._stageout_queue        = QUEUE_TYPE()
+      # self._update_queue          = QUEUE_TYPE()
+      # self._command_queue         = QUEUE_TYPE()
 
-        _, mongo_db, _, _, _      = ru.mongodb_connect(mongodb_url)
+        # create local bridges for all hosts, and sources, too (to send shutdown
+        # signals)
+        QM.create_bridge('agent_staging_input_queue')
+        QM.create_bridge('agent_scheduling_queue')
+        QM.create_bridge('agent_executing_queue')
+        QM.create_bridge('agent_staging_output_queue')
+        QM.create_bridge('agent_update_queue')
+        QM.create_bridge('agent_command_queue')
+
+        self._stagein_queue   = QM.get_src('agent_staging_input_queue')
+        self._schedule_queue  = QM.get_src('agent_scheduling_queue')
+        self._execution_queue = QM.get_src('agent_executing_queue')
+        self._stageout_queue  = QM.get_src('agent_staging_output_queue')
+        self._update_queue    = QM.get_src('agent_update_queue')
+        self._command_queue   = QM.get_src('agent_command_queue')
+
+        # set up db connection
+        _, mongo_db, _, _, _  = ru.mongodb_connect(mongodb_url)
 
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
 
+        # create component instances
         self._lrms = LRMS.create(
                 name            = lrms_name,
                 config          = self._config,
@@ -5052,10 +5104,7 @@ class Agent(object):
                 name            = scheduler_name,
                 config          = self._config,
                 logger          = self._log,
-                lrms            = self._lrms,
-                schedule_queue  = self._schedule_queue,
-                execution_queue = self._execution_queue,
-                update_queue    = self._update_queue)
+                lrms            = self._lrms)
         self.worker_list.append(self._scheduler)
 
         self._task_launcher = LaunchMethod.create(
@@ -5076,10 +5125,6 @@ class Agent(object):
                 config          = self._config,
                 logger          = self._log,
                 agent           = self,
-                execution_queue = self._execution_queue,
-                schedule_queue  = self._schedule_queue,
-                stagein_queue   = self._stagein_queue,
-                update_queue    = self._update_queue,
                 workdir         = self._workdir
             )
             self.worker_list.append(stagein_worker)
@@ -5095,11 +5140,6 @@ class Agent(object):
                 scheduler       = self._scheduler,
                 task_launcher   = self._task_launcher,
                 mpi_launcher    = self._mpi_launcher,
-                command_queue   = self._command_queue,
-                execution_queue = self._execution_queue,
-                stageout_queue  = self._stageout_queue,
-                update_queue    = self._update_queue,
-                schedule_queue  = self._schedule_queue,
                 pilot_id        = self._pilot_id,
                 number          = n,
                 session_id      = self._session_id
@@ -5113,9 +5153,6 @@ class Agent(object):
                 config          = self._config,
                 agent           = self,
                 logger          = self._log,
-                execution_queue = self._execution_queue,
-                stageout_queue  = self._stageout_queue,
-                update_queue    = self._update_queue,
                 workdir         = self._workdir
             )
             self.worker_list.append(stageout_worker)
@@ -5128,7 +5165,6 @@ class Agent(object):
                 logger          = self._log,
                 agent           = self,
                 session_id      = self._session_id,
-                update_queue    = self._update_queue,
                 mongodb_url     = mongodb_url
             )
             self.worker_list.append(update_worker)
@@ -5139,7 +5175,6 @@ class Agent(object):
                 config          = self._config,
                 logger          = self._log,
                 agent           = self,
-                command_queue   = self._command_queue,
                 p               = self._p,
                 starttime       = self._starttime,
                 runtime         = self._runtime,
@@ -5147,6 +5182,8 @@ class Agent(object):
         self.worker_list.append(hbmon)
 
         rpu.prof('Agent init done')
+
+        self._bridges = dict()
 
 
     # --------------------------------------------------------------------------
@@ -5286,11 +5323,11 @@ class Agent(object):
 
         # to make sure that threads are not stuck waiting on a queue, we send
         # a signal on each queue
-        self._schedule_queue.put (COMMAND_WAKEUP)
-        self._execution_queue.put(None)
-        self._update_queue.put   (None)
-        self._stagein_queue.put  (None)
-        self._stageout_queue.put (None)
+        self._schedule_queue.put ({'cmd' : COMMAND_WAKEUP})
+        self._execution_queue.put({})
+        self._update_queue.put   ({})
+        self._stagein_queue.put  ({})
+        self._stageout_queue.put ({})
 
         # and wait for them to actually finish
         # FIXME: make sure this works when stop was initialized by heartbeat monitor

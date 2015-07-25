@@ -13,25 +13,34 @@ __license__ = "MIT"
 
 import datetime
 
+from radical.pilot.utils import timestamp as ts
+
+_iso = "%Y-%m-%dT%H:%M:%S.%f"
 
 # ------------------------------------------------------------------------------
 # The logentry "struct" encapsulates a log entry and its timestamp.
 class Logentry(object):
 
-    __slots__ = ('message', 'timestamp')
+    __slots__ = ('_message', '_timestamp')
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, message, timestamp=None, logger=None):
 
         if not timestamp :
-            timestamp = datetime.datetime.utcnow()
+            timestamp = ts()
+
+        if isinstance(timestamp, datetime.datetime):
+            timestamp = timestamp.isoformat()
+
+        if not isinstance(timestamp, basestring):
+            timestamp = str(timestamp)
 
         if  logger :
             logger (message)
 
-        self.message   = message
-        self.timestamp = timestamp
+        self._message   = message
+        self._timestamp = timestamp
 
 
     # --------------------------------------------------------------------------
@@ -41,6 +50,22 @@ class Logentry(object):
 
         return Logentry (message=d['message'], timestamp=d['timestamp'])
 
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def message(self):
+        """Returns the message
+        """
+        return self._message
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def timestamp(self):
+        """Returns the timestamp as datetime
+        """
+        return datetime.datetime.strptime(self._timestamp, "%Y-%m-%dT%H:%M:%S.%f")
 
     # --------------------------------------------------------------------------
     #

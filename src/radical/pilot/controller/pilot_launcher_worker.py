@@ -10,7 +10,6 @@ import os
 import copy
 import math
 import time
-import datetime
 import traceback
 import threading
 import tempfile
@@ -18,6 +17,7 @@ import tempfile
 import saga
 import radical.utils as ru
 
+from radical.pilot.utils  import timestamp
 from radical.pilot.states import *
 
 from radical.pilot.utils.logger  import logger
@@ -190,7 +190,7 @@ class PilotLauncherWorker(threading.Thread):
 
             if  pilot_failed :
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = datetime.datetime.utcnow()
+                ts = timestamp()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -220,7 +220,7 @@ class PilotLauncherWorker(threading.Thread):
                 # FIXME: this should only be done if the state is not yet
                 # done...
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = datetime.datetime.utcnow()
+                ts = timestamp()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -295,7 +295,7 @@ class PilotLauncherWorker(threading.Thread):
                 # state to pending, otherwise to failed.
                 compute_pilot = None
 
-                ts = datetime.datetime.utcnow()
+                ts = timestamp()
                 compute_pilot = pilot_col.find_and_modify(
                     query={"pilotmanager": self.pilot_manager_id,
                            "state" : PENDING_LAUNCH},
@@ -722,7 +722,7 @@ class PilotLauncherWorker(threading.Thread):
                             log_dicts.append (le.as_dict())
 
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
                         ret = pilot_col.update(
                             {"_id"  : pilot_id,
                              "state": 'Launching'},
@@ -749,7 +749,7 @@ class PilotLauncherWorker(threading.Thread):
                     except Exception as e:
                         # Update the Pilot's state 'FAILED'.
                         out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
 
                         # FIXME: we seem to be unable to bson/json handle saga
                         # log messages containing an '#'.  This shows up here.
