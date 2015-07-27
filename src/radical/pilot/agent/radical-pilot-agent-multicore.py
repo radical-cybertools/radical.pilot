@@ -3756,6 +3756,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
+                    cu['proc'].wait() # make sure proc is collected
                     self._cus_to_cancel.remove(cu['_id'])
                     self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
 
@@ -3770,6 +3771,9 @@ class ExecWorker_POPEN (ExecWorker) :
 
             else:
                 rpu.prof('execution complete', uid=cu['_id'])
+
+                # make sure proc is collected
+                cu['proc'].wait()
 
                 # we have a valid return code -- unit is final
                 action += 1
