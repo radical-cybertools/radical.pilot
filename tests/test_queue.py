@@ -19,7 +19,7 @@ def test():
         q_out.get()
     stop = time.time()
     diff = stop - start
-    print "mtq : %4.2f (%7.1f)" % (diff, N/diff)
+    print "mtq : %4.2f (%8.1f)" % (diff, N/diff)
     
     q_in  = rpu.Queue.create (rpu.QUEUE_PROCESS, 'ping_queue', rpu.QUEUE_INPUT)
     q_bri = rpu.Queue.create (rpu.QUEUE_PROCESS, 'ping_queue', rpu.QUEUE_BRIDGE)
@@ -31,7 +31,7 @@ def test():
         q_out.get()
     stop = time.time()
     diff = stop - start
-    print "mtp : %4.2f (%7.1f)" % (diff, N/diff)
+    print "mtp : %4.2f (%8.1f)" % (diff, N/diff)
     
     q_in  = rpu.Queue.create (rpu.QUEUE_ZMQ,     'ping_queue', rpu.QUEUE_INPUT)
     q_bri = rpu.Queue.create (rpu.QUEUE_ZMQ,     'ping_queue', rpu.QUEUE_BRIDGE)
@@ -43,7 +43,7 @@ def test():
         q_out.get()
     stop = time.time()
     diff = stop - start
-    print "zmq : %4.2f (%7.1f)" % (diff, N/diff)
+    print "zmq : %4.2f (%8.1f)" % (diff, N/diff)
     
     q_bri.close()
 
