@@ -17,29 +17,21 @@
       "job_manager_endpoint": "condor+gsissh://xd-login.opensciencegrid.org",
       "filesystem_endpoint": "gsisftp://xd-login.opensciencegrid.org/"
     },
-    "default_queue": "normal",
     "lrms": "FORK",
     "agent_type": "multicore",
     "agent_scheduler": "CONTINUOUS",
     "agent_spawner": "POPEN",
-    "task_launch_method": "SSH",
-    #"mpi_launch_method": "MPIRUN_RSH",
+    "task_launch_method": "FORK",
     "pre_bootstrap": [
-      "module load python"
-    ],
-    "default_remote_workdir": "$HOME",
-    "valid_roots": [
-      "/home/$USER",
-      "/local-scratch/$USER",
-      "/work",
-      "$WORK"
+      "module avail python",
+      "module load python/2.7"
     ],
     "rp_version": "debug",
     "virtenv": "%(global_sandbox)s/ve_xd-login",
     "virtenv_mode": "create"
   },
   "connect": {
-    "description": "XSEDE OSG Virtual Cluster is a Condor pool overlay on top of OSG resources. (https://portal.xsede.org/OSG-User-Guide).",
+    "description": "OSG Connect. (https://osgconnect.net).",
     "notes": "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
     "schemas": [
       "ssh",
@@ -56,23 +48,14 @@
       "job_manager_endpoint": "condor+gsissh://login.osgconnect.net",
       "filesystem_endpoint": "gsisftp://login.osgconnect.net/"
     },
-    #"default_queue": "normal",
     "lrms": "FORK",
     "agent_type": "multicore",
     "agent_scheduler": "CONTINUOUS",
     "agent_spawner": "POPEN",
     "task_launch_method": "FORK",
-    "mpi_launch_method": "MPIRUN",
     "pre_bootstrap": [
       "module avail python",
       "module load python/2.7"
-    ],
-    "default_remote_workdir": "$HOME",
-    "valid_roots": [
-      "/home/$USER",
-      "/local-scratch/$USER",
-      "/work",
-      "$WORK"
     ],
     "rp_version": "debug",
     "virtenv": "%(global_sandbox)s/ve_osgconnect",
