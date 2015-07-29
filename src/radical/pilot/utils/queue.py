@@ -21,9 +21,6 @@ QUEUE_PROCESS = 'process'
 QUEUE_ZMQ     = 'zmq'
 QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_ZMQ]
 
-# some other local defines
-_HWM          = 1   # high water mark == buffer size
-
 # some predefined port numbers
 _QUEUE_PORTS  = {
         'pilot_launching_queue'      : 'tcp://*:10002',
@@ -417,7 +414,6 @@ class QueueZMQ(Queue):
         # behavior depends on the role...
         if self._role == QUEUE_INPUT:
             self._q     = self._ctx.socket(zmq.PUSH)
-            self._q.hwm = _HWM
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------
@@ -429,14 +425,12 @@ class QueueZMQ(Queue):
                 # FIXME: should we cache messages coming in at the pull/push 
                 #        side, so as not to block the push end?
 
-                self._log ('in  _bridge: %s %s' % (addr_in, addr_out))
+              # self._log ('in  _bridge: %s %s' % (addr_in, addr_out))
                 _in      = ctx.socket(zmq.PULL)
-                _in.hwm  = _HWM
                 _in.bind(addr_in)
 
-                self._log ('out _bridge: %s %s' % (addr_in, addr_out))
+              # self._log ('out _bridge: %s %s' % (addr_in, addr_out))
                 _out     = ctx.socket(zmq.REP)
-                _out.hwm = _HWM
                 _out.bind(addr_out)
 
                 _poll = zmq.Poller()
@@ -444,19 +438,19 @@ class QueueZMQ(Queue):
 
                 while True:
 
-                    self._log ('run _bridge: %s %s' % (addr_in, addr_out))
+                  # self._log ('run _bridge: %s %s' % (addr_in, addr_out))
 
                     events = dict(_poll.poll(1000)) # timeout in ms
 
                     if _out in events:
                         req = _out.recv()
-                        self._log("-- %s" % req)
+                      # self._log("-- %s" % req)
 
                         msg = _in.recv_json()
-                        self._log("<- %s" % pprint.pformat(msg))
+                      # self._log("<- %s" % pprint.pformat(msg))
 
                         _out.send_json(msg)
-                        self._log("-> %s" % pprint.pformat(msg))
+                      # self._log("-> %s" % pprint.pformat(msg))
             # ------------------------------------------------------------------
             
             addr_in  = self._addr
@@ -467,7 +461,6 @@ class QueueZMQ(Queue):
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_OUTPUT:
             self._q     = self._ctx.socket(zmq.REQ)
-            self._q.hwm = _HWM
             self._q.connect(_port_inc(self._addr))
 
         # ----------------------------------------------------------------------

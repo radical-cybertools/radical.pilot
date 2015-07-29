@@ -22,9 +22,9 @@ PUBSUB_TYPES  = [PUBSUB_ZMQ]
 # some predefined port numbers
 _PUBSUB_PORTS     = {
         'client_command_pubsub'   : 'tcp://*:11000',
-        'agent_unschedule_pubsub' : 'tcp://*:11002',
-        'agent_state_pubsub'      : 'tcp://*:11004'
-        'agent_command_pubsub'    : 'tcp://*:11006',
+        'agent_command_pubsub'    : 'tcp://*:11002',
+        'agent_unschedule_pubsub' : 'tcp://*:11004',
+        'agent_state_pubsub'      : 'tcp://*:11006',
     }
 
 _USE_MULTIPART = False

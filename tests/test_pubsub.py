@@ -13,76 +13,37 @@ import radical.utils       as ru
 import radical.pilot.utils as rpu
 
 
-def pub():
-    ctx   = zmq.Context()
-    q     = ctx.socket(zmq.PUB)
-    q.connect('tcp://127.0.0.1:%d' % 30000)
+b  = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'ps', rpu.PUBSUB_BRIDGE, 'tcp://127.0.0.1:30000')
 
-    i=0
-    while True:
-        i+=1
-        q.send_multipart(["state", json.dumps({"local" : "%d" % i})])
-        time.sleep(1)
+s1 = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'ps', rpu.PUBSUB_SUB,    'tcp://127.0.0.1:30000')
+s1.subscribe('state')
 
+s2 = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'ps', rpu.PUBSUB_SUB,    'tcp://127.0.0.1:30000')
+s2.subscribe('state')
 
-def bridge():
-
-    ctx     = zmq.Context()
-
-    _in      = ctx.socket(zmq.XSUB)
-    _in.bind('tcp://*:%d' % 30000)
-
-    _out      = ctx.socket(zmq.XPUB)
-    _out.bind('tcp://*:%d' % 30001)
-    
-    _poll = zmq.Poller()
-    _poll.register(_in,  zmq.POLLIN)
-    _poll.register(_out, zmq.POLLIN)
-
-    while True:
-
-        events = dict(_poll.poll(1000)) # timeout in ms
-
-        if _in in events:
-            msg = _in.recv_multipart()
-            _out.send_multipart(msg)
-            print "-> %s" % msg
-
-        if _out in events:
-            msg = _out.recv_multipart()
-            _in.send_multipart(msg)
-            print "<- %s" % msg
-
-def sub():
-
-    ctx   = zmq.Context()
-    q     = ctx.socket(zmq.SUB)
-  # q.hwm = 1
-    q.connect('tcp://localhost:%d' % 30001)
-    q.setsockopt(zmq.SUBSCRIBE, "state")
-
-    while True:
-        print '<-%s' % q.recv_multipart()
-
-
-# b = mt.Thread(target=bridge)
-# b.start()
-
-# s = mt.Thread(target=sub)
-# s.start()
-
-b = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'ps', rpu.PUBSUB_BRIDGE, 'tcp://127.0.0.1:30000')
-
-s = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'ps', rpu.PUBSUB_SUB,    'tcp://127.0.0.1:30000')
-s.subscribe('state')
-
+p1 = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'ps', rpu.PUBSUB_PUB,    'tcp://127.0.0.1:30000')
 p2 = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'ps', rpu.PUBSUB_PUB,    'tcp://127.0.0.1:30000')
 
 time.sleep (1)
 
-p2.put('state', {'hey' : 'rpu'})
-print "---------"
+N = 500
+print "n   : %d" % N
 
-while True:
-    print "<= %s" % s.get()
+start = time.time()
+for i in range(N):
+    p1.put('state', {'id' : "p1_%05d" % i})
+    p2.put('state', {'id' : "p2_%05d" % i})
+stop = time.time()
+print "sent: %4.2f (%7.1f)" % (stop-start, 2*N/(stop-start))
+
+start = time.time()
+for i in range(2*N):
+    msg_1 = s1.get()
+    msg_2 = s2.get()
+  # print "<= s1 %s" % msg_1
+  # print "<= s2 %s" % msg_2
+stop = time.time()
+print "recv: %4.2f (%7.1f)" % (stop-start, 2*N/(stop-start))
+
+b.close()
 
