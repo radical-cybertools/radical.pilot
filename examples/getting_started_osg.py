@@ -9,25 +9,23 @@ import radical.utils as ru
 
 dh = ru.DebugHelper ()
 
-CNT      =     0
-RUNTIME  =    10
-SLEEP    =     1
-CORES    =     1 
-UNITS    =    10 
+RUNTIME  =    60
+SLEEP    =    10
+PILOTS   =    50
+UNITS    =  1000
 SCHED    = rp.SCHED_BACKFILLING
 
 resources = {
-        'osg.xsede-virt-clust' : {
-            'project'  : 'TG-CCR140028',
-            'queue'    : None,
-            'schema'   : 'ssh'
-            },
-
-        'osg.connect' : {
-            'project'  : 'RADICAL',
-            'queue'    : None,
-            'schema'   : 'ssh'
-            }
+    'osg.xsede-virt-clust' : {
+        'project'  : 'TG-CCR140028',
+        'queue'    : None,
+        'schema'   : 'ssh'
+    },
+    'osg.connect' : {
+        'project'  : 'RADICAL',
+        'queue'    : None,
+        'schema'   : 'ssh'
+    }
 }
 #------------------------------------------------------------------------------
 #
@@ -38,12 +36,14 @@ def pilot_state_cb (pilot, state):
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if state == rp.FAILED:
-        sys.exit (1)
+    # Hello HTC :-)
+    #if state == rp.FAILED:
+    #    sys.exit (1)
 
 
 #------------------------------------------------------------------------------
 #
+CNT = 0
 def unit_state_cb (unit, state):
 
     if not unit:
@@ -57,10 +57,10 @@ def unit_state_cb (unit, state):
         CNT += 1
         print "[Callback]: # %6d" % CNT
 
-
-    if state == rp.FAILED:
-        print "stderr: %s" % unit.stderr
-        sys.exit(2)
+    # Hello HTC :-)
+    #if state == rp.FAILED:
+    #    print "stderr: %s" % unit.stderr
+    #    sys.exit(2)
 
 
 #------------------------------------------------------------------------------
@@ -96,31 +96,32 @@ if __name__ == "__main__":
         pmgr = rp.PilotManager(session=session)
         pmgr.register_callback(pilot_state_cb)
 
+        umgr = rp.UnitManager(session=session, scheduler=SCHED)
+        umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
+        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
+
+        cuds = list()
+        for unit_count in range(0, UNITS):
+            cud = rp.ComputeUnitDescription()
+            cud.executable     = "/bin/sh"
+            cud.arguments      = ["-c", "echo $HOSTNAME:$OSG_HOSTNAME && sleep %d" % SLEEP]
+            cud.cores          = 1
+            cuds.append(cud)
+
+        units = umgr.submit_units(cuds)
+
         pdesc = rp.ComputePilotDescription()
         pdesc.resource      = resource
-        pdesc.cores         = CORES
+        pdesc.cores         = 1
         pdesc.project       = resources[resource]['project']
         pdesc.queue         = resources[resource]['queue']
         pdesc.runtime       = RUNTIME
         pdesc.cleanup       = False
         pdesc.access_schema = resources[resource]['schema']
 
-        pilot = pmgr.submit_pilots(pdesc)
-
-        umgr = rp.UnitManager(session=session, scheduler=SCHED)
-        umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
-        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
-        umgr.add_pilots(pilot)
-
-        cuds = list()
-        for unit_count in range(0, UNITS):
-            cud = rp.ComputeUnitDescription()
-            cud.executable     = "/bin/echo"
-            cud.arguments      = ["$HOSTNAME.$OSG_HOSTNAME"]
-            cud.cores          = 1
-            cuds.append(cud)
-
-        units = umgr.submit_units(cuds)
+        for p in range(PILOTS):
+            pilot = pmgr.submit_pilots(pdesc)
+            umgr.add_pilots(pilot)
 
         umgr.wait_units()
 
