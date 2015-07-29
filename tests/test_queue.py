@@ -5,6 +5,7 @@ import zmq
 import time
 import copy
 import Queue
+import pprint
 import threading           as mt
 import multiprocessing     as mp
 import radical.utils       as ru
@@ -12,35 +13,8 @@ import radical.pilot.utils as rpu
 
 dh = ru.DebugHelper()
 
-POLL_DELAY = 0.5
-FEED_DELAY = 0.1
-
-# ==============================================================================
-#
-    # we only need one queue manager...
-    __metaclass__ = ru.Singleton
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self):
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def create_bridge(self, qname):
-
-        return rpu.Queue.create(rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
-
-
-
-# ==============================================================================
-#
-# globals
-#
-QM = QueueManager()
-N  = 10000
+POLL_DELAY = 0.001
+UNIT_COUNT = 100
 
 
 # ==============================================================================
@@ -55,17 +29,20 @@ class ComponentBase(mp.Process):
     #
     def __init__(self):
 
-        self._name       = type(self).__name__
-        self._parent     = os.getpid()
-        self._inputs     = list()    # queues to get units from
-        self._outputs    = dict()    # queues to send units to
-        self._notifiers  = list()    # queues to send unit notifications to
-        self._workers    = dict()    # method to send units for work
-        self._feed       = mp.Queue()
-        self._feed_limit = 2  # max number of units in the feed
-        self._terminate  = mt.Event()
+        self._name        = type(self).__name__
+        self._parent      = os.getpid()
+        self._inputs      = list()    # queues to get units from
+        self._outputs     = dict()    # queues to send units to
+        self._publishers  = dict()    # channels to send notifications to
+        self._subscribers = dict()    # callbacks for notifications
+        self._workers     = dict()    # method to send units for work
+        self._feed        = mp.Queue()
+        self._feed_limit  = 2  # max number of units in the feed
+        self._terminate   = mt.Event()
+        self._debug       = False
 
-        print '%-20s: create' % self._name
+        if 'RADICAL_DEBUG' in os.environ:
+            self._debug = True
 
         mp.Process.__init__(self)
         self.start()
@@ -75,7 +52,7 @@ class ComponentBase(mp.Process):
     #
     def initialize(self):
         """
-        This method must be overloaded by the components.  It is called *once*
+        This method MUST be overloaded by the components.  It is called *once*
         in the context of the main run(), and should be used to set up component
         state before units arrive
         """
@@ -85,31 +62,51 @@ class ComponentBase(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self):
+    def finalize(self):
+        """
+        This method CAN be overloaded by the components.  It is called *once* in
+        the context of the main run(), and shuld be used to tear down component
+        states after units have been processed.
+        """
+        pass
+
+    # --------------------------------------------------------------------------
+    #
+    def close(self):
         """
         Shut down worker threads and the process itself.
         """
-        raise NotImplementedError("stop() is not implemented yet")
+        try:
+            self.terminate()
+        except Exception as e:
+            print "kill error: %s" % e
 
 
     # --------------------------------------------------------------------------
     #
-    def feed(self, cus):
+    def _log(self, msg):
+
+        if self._debug:
+            tid = mt.current_thread().name
+            with open("component.%s.%d.log" % (self._name, os.getpid()), 'a') as f:
+                f.write("%15.5f: %s\n" % (time.time(), msg))
+                f.flush()
+          # print("%10.2f: %s\n" % (time.time(), msg))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def feed(self, units):
         """
         call to let units enter the component proggramatically (opposed to the
         canonical way, via a queue)
         """
 
-        if not isinstance(cus, list):
-            cus = [cus]
+        if not isinstance(units, list):
+            units = [units]
 
-        for cu in cus:
-            self._feed.put(cu)
-
-        for cu in cus:
-            # notify arrival (can be out-of-order)
-            for notify_output in self._notifiers:
-                notify_output.put (cu)
+        for unit in units:
+            self._feed.put(unit)
 
 
     # --------------------------------------------------------------------------
@@ -137,19 +134,52 @@ class ComponentBase(mp.Process):
             
             print "%-20s: declare output %s for %s" % (self._name, output, state)
             if state in self._outputs:
-                print "%-20s: WARNING: replacing output for %s : %s -> %s" % (self._name, state, self._outputs[state], output)
+                print "WARNING: %s replaces output for %s : %s -> %s" % (self._name, state, self._outputs[state], output)
             else:
-                self._outputs[state] = \
-                        rpu.Queue.create(rpu.QUEUE_ZMQ, output, rpu.QUEUE_OUTPUT) # FIXME
+                if not output:
+                    # this indicates a final state
+                    self._outputs[state] = None
+                else:
+                    # non-final state, ie. we have a queue to push to
+                    self._outputs[state] = \
+                            rpu.Queue.create(rpu.QUEUE_ZMQ, output, rpu.QUEUE_INPUT)
 
 
     # --------------------------------------------------------------------------
     #
-    def declare_notifier(self, notifier):
+    def declare_publisher(self, topic, channel):
 
-        print "%-20s: declare notifier %s" % (self._name, notifier)
-        q = rpu.Queue.create(rpu.QUEUE_ZMQ, notifier, rpu.QUEUE_OUTPUT) # FIXME
-        self._notifiers.append(q)
+        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, channel, rpu.PUBSUB_PUB)
+        
+        if topic not in self._publishers:
+            self._publishers[topic] = list()
+        
+        self._publishers[topic].append(q)
+
+        print "%-20s: declare publisher %s: %s" % (self._name, topic, channel)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def declare_subscriber(self, topic, channel, cb):
+
+        # ----------------------------------------------------------------------
+        def _subscriber(q, callback):
+
+            while True:
+                topic, msg = q.get()
+                if topic and msg:
+                    callback (topic, msg)
+        # ----------------------------------------------------------------------
+
+        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, channel, rpu.PUBSUB_SUB)
+        q.subscribe(topic)
+
+        t = mt.Thread(target=_subscriber, args=[q,cb])
+        t.start()
+        # FIXME: shutdown
+
+        print "%-20s: declare subscriber %s: %s" % (self._name, topic, channel)
 
 
     # --------------------------------------------------------------------------
@@ -161,7 +191,7 @@ class ComponentBase(mp.Process):
 
         for state in states:
             if state in self._workers:
-                print "%-20s: WARNING: replace worker for %s (%s)" % (self._name, state, self._workers[state])
+                print "WARNING: %s replaces worker for %s (%s)" % (self._name, state, self._workers[state])
             self._workers[state] = worker
 
 
@@ -171,7 +201,7 @@ class ComponentBase(mp.Process):
         """
         cycle over all output queues, and try to gather units.  We only gather
         units until our feed queue has a certain size -- then we let other
-        components try to get those CUs.
+        components try to get those units.
         """
 
         while not self._terminate.is_set():
@@ -180,18 +210,17 @@ class ComponentBase(mp.Process):
 
             if self._feed.qsize() < self._feed_limit:
                 for [input, states] in self._inputs:
-                    cu = input.get_nowait()
-                    if cu:
+                    unit = input.get_nowait()
+                    if unit:
                         idle = False
-                        if cu['state'] not in states:
-                            print "%-20s: ERROR  : %s: cannot handle unit %s from %s (%s != %s)" %\
-                                    (self._name, cu['id'], input.name, cu['state'], states)
+                        if unit['state'] not in states:
+                            print "ERROR  : %s: cannot handle unit %s from %s (%s != %s)" %\
+                                    (self._name, unit['id'], input.name, unit['state'], states)
                         else:
-                            self._feed.put(cu)
+                            self._feed.put(unit)
 
                             # notify arrival
-                            for notify_output in self._notifiers:
-                                notify_output.put (cu)
+                            self.publish('state', unit)
 
             if idle:
                 # avoid busy wait
@@ -212,15 +241,14 @@ class ComponentBase(mp.Process):
             idle = True
 
             try:
-                old_cu    = self._feed.get_nowait()
-                old_state = old_cu['state']
+                unit    = self._feed.get_nowait()
+                state = unit['state']
 
-                if not old_state in self._workers:
-                    print "%-20s: ERROR  : cannot handle state %s: %s" % (self._name, old_state, old_cu)
+                if not state in self._workers:
+                    print "ERROR  : %s cannot handle state %s: %s" % (self._name, state, unit)
 
-                new_cu = self._workers[old_state](old_cu)
-                if new_cu:
-                    self.advance(new_cu)
+                self._log('working on %s [%s]' % (unit['id'], unit['state']))
+                self._workers[state](unit)
 
             except Queue.Empty:
                 pass
@@ -231,28 +259,54 @@ class ComponentBase(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, cus):
+    def advance(self, units):
         """
         Units which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
         state...
         """
 
-        if not isinstance(cus, list):
-            cus = [cus]
+        if not isinstance(units, list):
+            units = [units]
 
-        for cu in cus:
-            state = cu['state']
+        for unit in units:
+            state = unit['state']
 
-            for notify_output in self._notifiers:
-                notify_output.put (cu)
+            # send state notifications
+            self.publish('state', unit)
 
             if state not in self._outputs:
-                print "%-20s: ERROR  : can't route state %s (%s)" % (self._name, state, self._outputs.keys())
+                # unknown target state -- error
+                print "ERROR  : %s can't route state %s (%s)" % (self._name, state, self._outputs.keys())
+                continue
+
+            if not self._outputs[state]:
+                # empty output -- drop unit
+              # print '%s %s ===| %s' % ('state', unit['id'], unit['state'])
                 continue
 
             # push the unit down the drain
-            self._outputs[state].put(cu)
+            self._outputs[state].put(unit)
+
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def publish(self, topic, units):
+        """
+        push information into a publication channel
+        """
+
+        if not isinstance(units, list):
+            units = [units]
+
+        for unit in units:
+
+            # send notifications
+            if topic in self._publishers:
+                for p in self._publishers[topic]:
+                    p.put (topic, unit)
 
 
     # --------------------------------------------------------------------------
@@ -265,6 +319,8 @@ class ComponentBase(mp.Process):
         #   worker is spinning over all units in the feed queue, and works
         #          on them one by one.
         
+        self._log('initialize')
+
         self.initialize()
 
         # start feeder and worker threads
@@ -281,6 +337,7 @@ class ComponentBase(mp.Process):
         self._feeder_thread.join()
         self._worker_thread.join()
 
+        self.finalize()
 
 
 # ==============================================================================
@@ -298,19 +355,32 @@ class Update(ComponentBase):
     #
     def initialize(self):
 
-        all_states = ['STAGING_INPUT', 'SCHEDULING', 'EXECUTING', 'STAGING_OUTPUT', 'DONE']
-
-        self.declare_input (all_states, 'agent_update_queue')
-        self.declare_worker(all_states, self.work)
+        self._stats = dict()
+        self._stats['all'] = 0
+        self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
 
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def state_cb(self, topic, unit):
 
-        print '%s ---> %s' % (cu['id'], cu['state'])
-        # do not advance this cu
-        return None
+        state = unit['state']
+        if state not in self._stats:
+            self._stats[state] = 0
+        self._stats[state] += 1
+        self._stats['all'] += 1
+
+        if self._stats['all'] > 600:
+            self._log(pprint.pformat(self._stats))
+      # print '%s %s ---> %s [%s]' % (topic, unit['id'], unit['state'], self._stats['all'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        self._log('finalize')
+        self._log(pprint.pformat(self._stats))
 
 
 # ==============================================================================
@@ -331,17 +401,17 @@ class StagingInput(ComponentBase):
         self.declare_input ('STAGING_INPUT', 'agent_staging_input_queue')
         self.declare_worker('STAGING_INPUT', self.work)
 
-        self.declare_output('EXECUTING', 'agent_executing_queue')
+        self.declare_output('SCHEDULING', 'agent_scheduling_queue')
 
-        self.declare_notifier('agent_update_queue')
+        self.declare_publisher('state', 'agent_state_pubsub')
 
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, unit):
 
-        cu['state'] = 'EXECUTING'
-        return cu
+        unit['state'] = 'SCHEDULING'
+        self.advance(unit)
 
 
 
@@ -361,16 +431,15 @@ class Scheduler(ComponentBase):
     def initialize(self):
         self._cores     = 5
         self._wait_pool = list()
+        self._wait_lock = mt.RLock()
 
         self.declare_input ('SCHEDULING', 'agent_scheduling_queue')
         self.declare_worker('SCHEDULING', self.work_schedule)
 
-        self.declare_input ('STAGING_OUTPUT', 'agent_unscheduling_queue')
-        self.declare_worker('STAGING_OUTPUT', self.work_unschedule) # FIXME: don't find route afterwards
+        self.declare_output('EXECUTING',  'agent_executing_queue')
 
-        self.declare_output('SCHEDULING', 'agent_executing_queue')
-
-        self.declare_notifier('agent_update_queue')
+        self.declare_publisher ('state',      'agent_state_pubsub')
+        self.declare_subscriber('unschedule', 'agent_unschedule_pubsub', self.unschedule_cb)
 
 
     # --------------------------------------------------------------------------
@@ -380,7 +449,7 @@ class Scheduler(ComponentBase):
         # find a free core
         if self._cores > 0:
             self._cores -= 1
-            print '%-20s: ---> %d' % (self._name, self._cores)
+            self._log('%-20s: ---> %d' % (self._name, self._cores))
             return True
         return False
 
@@ -390,46 +459,43 @@ class Scheduler(ComponentBase):
     def _dealloc(self):
 
         self._cores += 1
-        print '%-20s: ===> %d' % (self._name, self._cores)
+        self._log('%-20s: ===> %d' % (self._name, self._cores))
 
 
     # --------------------------------------------------------------------------
     #
-    def work_schedule(self, cu):
+    def work_schedule(self, unit):
 
-        wait_pool.append(cu)
+        with self._wait_lock:
+            self._wait_pool.append(unit)
         self._reschedule()
-
-        # do not advance this cu
-        return None
 
 
     # --------------------------------------------------------------------------
     #
-    def work_unschedule(self, cu):
+    def unschedule_cb(self, topic, unit):
 
-        self._dealloc()
-        self._reschedule()
-
-        # never advance this cu
-        return None
+        if unit['state'] in ['STAGING_OUTPUT', 'DONE', 'FAILED', 'CANCELED']:
+            self._dealloc()
+            self._reschedule()
 
     
     # --------------------------------------------------------------------------
     #
     def _reschedule(self):
-        # advance any cu which at this point may fit into the set of cores
+        # advance any unit which at this point may fit into the set of cores
 
-        while len(wait_pool):
-           if self._alloc():
-               cu = wait_pool[0]
-               wait_pool.remove(cu)
-               cu['state'] = 'SCHEDULING'
-               # advance cu
-               self.advance(cu)
-           else:
-                # don't look further through the wait pool for now
-                break
+        with self._wait_lock:
+            while len(self._wait_pool):
+               if self._alloc():
+                   unit = self._wait_pool[0]
+                   self._wait_pool.remove(unit)
+                   unit['state'] = 'EXECUTING'
+                   # advance unit
+                   self.advance(unit)
+               else:
+                    # don't look further through the wait pool for now
+                    break
 
 
 
@@ -452,20 +518,21 @@ class ExecWorker(ComponentBase):
         self.declare_worker('EXECUTING', self.work)
 
         self.declare_output('STAGING_OUTPUT', 'agent_staging_output_queue')
-        self.declare_output('STAGING_OUTPUT', 'agent_unscheduling_queue') # FIXME
 
-        self.declare_notifier('agent_update_queue')
+        self.declare_publisher('unschedule', 'agent_unschedule_pubsub')
+        self.declare_publisher('state',      'agent_state_pubsub')
 
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, unit):
 
         # workload
-        time.sleep(2)
+      # time.sleep(1)
 
-        cu['state'] = 'STAGING_OUTPUT'
-        return cu
+        unit['state'] = 'STAGING_OUTPUT'
+        self.publish('unschedule', unit)
+        self.advance(unit)
 
 
 # ==============================================================================
@@ -486,15 +553,17 @@ class StagingOutput(ComponentBase):
         self.declare_input ('STAGING_OUTPUT', 'agent_staging_output_queue')
         self.declare_worker('STAGING_OUTPUT', self.work)
 
-        self.declare_notifier('agent_update_queue')
+        self.declare_output('DONE', None) # drop final units
+
+        self.declare_publisher('state', 'agent_state_pubsub')
 
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, unit):
 
-        cu['state'] = 'DONE'
-        return cu
+        unit['state'] = 'DONE'
+        self.advance(unit)
 
 
 
@@ -502,25 +571,118 @@ class StagingOutput(ComponentBase):
 #
 def agent():
 
-    bridge_agent_staging_input_bridge  = QM.create_bridge('agent_staging_input_queue')
-    bridge_agent_scheduling_bridge     = QM.create_bridge('agent_scheduling_queue')
-    bridge_agent_unscheduling_bridge   = QM.create_bridge('agent_unscheduling_queue')
-    bridge_agent_executing_bridge      = QM.create_bridge('agent_executing_queue')
-    bridge_agent_staging_output_bridge = QM.create_bridge('agent_staging_output_queue')
-    bridge_agent_update_bridge         = QM.create_bridge('agent_update_queue')
+    try:
 
-    staging_input  = StagingInput()
-    scheduler      = Scheduler() 
-    exec_worker    = ExecWorker()
-    staging_output = StagingOutput()
-    update         = Update()
+        # create all communication bridges we need.  Use the default addresses,
+        # ie. they will bind to localhost to ports 10.000++
+        def _create_queue_bridge(qname):
+            return rpu.Queue.create(rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
 
-    time.sleep(2)
+        staging_input_queue  = _create_queue_bridge('agent_staging_input_queue')
+        scheduling_queue     = _create_queue_bridge('agent_scheduling_queue')
+        executing_queue      = _create_queue_bridge('agent_executing_queue')
+        staging_output_queue = _create_queue_bridge('agent_staging_output_queue')
 
-    for i in range(10):
-        staging_input.feed({'state' : 'STAGING_INPUT', 'id' : i})
-        time.sleep(FEED_DELAY)
+        # create all notification channels we need (state update notifications,
+        # unit unschedule notifications).  Use default addresses, ie. they will
+        # bind to to ports 20.000++
+        def _create_pubsub_bridge(channel):
+            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, channel, rpu.PUBSUB_BRIDGE)
+
+        unschedule_pubsub = _create_pubsub_bridge('agent_unschedule_pubsub')
+        state_pubsub      = _create_pubsub_bridge('agent_state_pubsub')
+
+        # create all the components we need.  Those run in separate processes.
+        i1_staging_input  = StagingInput()
+        i1_scheduler      = Scheduler() 
+        i1_exec_worker    = ExecWorker()
+        i1_staging_output = StagingOutput()
+        i1_update         = Update()
+
+      # i2_staging_input  = StagingInput()
+      # i2_scheduler      = Scheduler() 
+      # i2_exec_worker    = ExecWorker()
+      # i2_staging_output = StagingOutput()
+      # i2_update         = Update()
+
+        # to watch unit advancement, we also create a state channel subscriber
+        # and count unit state changes
+        # ----------------------------------------------------------------------
+        def count(q, n):
+
+            count = 0
+
+            while True:
+                  # print '?'
+                    topic, unit = q.get()
+                  # print count, n, unit
+                    if unit['state'] == 'DONE':
+                        count += 1
+                        print ' %d out of %d units are DONE (%s)' % (count, n, unit['id'])
+                        if count > n:
+                            return
+        # ----------------------------------------------------------------------
+        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'agent_state_pubsub', rpu.PUBSUB_SUB)
+        q.subscribe('state')
+        t = mt.Thread(target=count, args=[q,UNIT_COUNT])
+        t.start()
+
+        # FIXME: make sure all communication channels are in place.  This could
+        # be replaced with a proper barrier, but not sure if that is worth it...
+        time.sleep (1)
+
+        # feed a couple of fresh compute units into the system.  This is what
+        # needs to come from the client module / MongoDB.  So, we create a new
+        # input to the StagingInput queue, and send units.  The StagingInput
+        # components will pull from it and start the pipeline.
+        intake = rpu.Queue.create(rpu.QUEUE_ZMQ, 'agent_staging_input_queue', rpu.QUEUE_INPUT)
+
+        start = time.time()
+        for i in range(UNIT_COUNT):
+            print 'intake'
+            intake.put({'state' : 'STAGING_INPUT', 'id' : i})
+
+        t.join()
+        stop = time.time()
+        print "%.2f (%.1f)" % (stop-start, UNIT_COUNT/(stop-start))
 
 
+
+    except Exception as e:
+
+        print "Exception: %s" % e
+
+    finally:
+
+        # FIXME: let logfiles settle before killing the components
+        time.sleep(1)
+        os.system('sync')
+
+        # burn the bridges, burn EVERYTHING
+        i1_staging_input     .close()
+        i1_scheduler         .close()
+        i1_exec_worker       .close()
+        i1_staging_output    .close()
+        i1_update            .close()
+
+      # i2_staging_input     .close()
+      # i2_scheduler         .close()
+      # i2_exec_worker       .close()
+      # i2_staging_output    .close()
+      # i2_update            .close()
+
+        staging_input_queue  .close()
+        scheduling_queue     .close()
+        executing_queue      .close()
+        staging_output_queue .close()
+
+        unschedule_pubsub    .close()
+        state_pubsub         .close()
+
+
+# ==============================================================================
+#
 agent()
+# 
+# ==============================================================================
 

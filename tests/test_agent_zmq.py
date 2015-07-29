@@ -619,7 +619,7 @@ def agent():
                     if unit['state'] == 'DONE':
                         count += 1
                         print ' %d out of %d units are DONE (%s)' % (count, n, unit['id'])
-                        if count > n:
+                        if count >= n:
                             return
         # ----------------------------------------------------------------------
         q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'agent_state_pubsub', rpu.PUBSUB_SUB)
