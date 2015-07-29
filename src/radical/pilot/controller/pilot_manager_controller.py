@@ -331,7 +331,7 @@ class PilotManagerController(threading.Thread):
                             # different than the DB recorded state
                             self._shared_data[pilot_id]["data"]["state"] = old_state 
 
-                            # do not tr igger a state cb!
+                            # do not trigger a state cb!
                             no_cb = True
 
                     if new_state != old_state :

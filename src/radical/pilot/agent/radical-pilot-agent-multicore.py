@@ -5048,11 +5048,14 @@ class Agent(object):
                 logger          = self._log,
                 scheduler       = self._scheduler)
 
-        self._mpi_launcher = LaunchMethod.create(
+        if mpi_launch_method:
+            self._mpi_launcher = LaunchMethod.create(
                 name            = mpi_launch_method,
                 config          = self._config,
                 logger          = self._log,
                 scheduler       = self._scheduler)
+        else:
+            self._mpi_launcher = None
 
         for n in range(self._config['number_of_workers'][STAGEIN_WORKER]):
             stagein_worker = StageinWorker(
@@ -5423,7 +5426,6 @@ def main():
     if not options.cores                : parser.error("Missing or zero number of cores (-c)")
     if not options.debug_level          : parser.error("Missing DEBUG level (-d)")
     if not options.task_launch_method   : parser.error("Missing unit launch method (-j)")
-    if not options.mpi_launch_method    : parser.error("Missing mpi launch method (-k)")
     if not options.lrms                 : parser.error("Missing LRMS (-l)")
     if not options.mongodb_url          : parser.error("Missing MongoDB URL (-m)")
     if not options.mongodb_name         : parser.error("Missing database name (-n)")

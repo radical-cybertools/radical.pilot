@@ -571,7 +571,6 @@ class PilotLauncherWorker(threading.Thread):
                         if not agent_spawner      : raise RuntimeError("missing agent spawner")
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
                         if not lrms               : raise RuntimeError("missing LRMS")
-                        if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
                         if not task_launch_method : raise RuntimeError("missing task launch method")
 
                         # massage some values
@@ -617,7 +616,6 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -d '%s'" % debug_level
                         bootstrap_args += " -g '%s'" % virtenv
                         bootstrap_args += " -j '%s'" % task_launch_method
-                        bootstrap_args += " -k '%s'" % mpi_launch_method
                         bootstrap_args += " -l '%s'" % lrms
                         bootstrap_args += " -m '%s'" % database_hostport
                         bootstrap_args += " -n '%s'" % database_name
@@ -643,6 +641,8 @@ class PilotLauncherWorker(threading.Thread):
                             bootstrap_args += " -i '%s'" % python_interpreter
                         if cleanup:
                             bootstrap_args += " -x '%s'" % cleanup
+                        if mpi_launch_method:
+                            bootstrap_args += " -k '%s'" % mpi_launch_method
 
                         # ------------------------------------------------------
                         # now that the script is in place and we know where it is,

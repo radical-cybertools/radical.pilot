@@ -1184,7 +1184,6 @@ if test -z "$DEBUG"              ; then  usage "missing DEBUG             ";  fi
 if test -z "$DBNAME"             ; then  usage "missing DBNAME            ";  fi
 if test -z "$DBURL"              ; then  usage "missing DBURL             ";  fi
 if test -z "$LRMS"               ; then  usage "missing LRMS              ";  fi
-if test -z "$MPI_LAUNCH_METHOD"  ; then  usage "missing MPI_LAUNCH_METHOD ";  fi
 if test -z "$SPAWNER"            ; then  usage "missing SPAWNER           ";  fi
 if test -z "$PILOT_ID"           ; then  usage "missing PILOT_ID          ";  fi
 if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
@@ -1282,7 +1281,6 @@ AGENT_CMD="python $PILOT_SCRIPT \
 -c $CORES \
 -d $DEBUG \
 -j $TASK_LAUNCH_METHOD \
--k $MPI_LAUNCH_METHOD \
 -l $LRMS \
 -m $DBURL \
 -n $DBNAME \
@@ -1291,6 +1289,11 @@ AGENT_CMD="python $PILOT_SCRIPT \
 -q $SCHEDULER \
 -s $SESSIONID \
 -r $RUNTIME"
+
+if ! test -z "$MPI_LAUNCH_METHOD"
+then
+    AGENT_CMD="$AGENT_CMD -k $MPI_LAUNCH_METHOD"
+fi
 
 if ! test -z "$AUTH"
 then
