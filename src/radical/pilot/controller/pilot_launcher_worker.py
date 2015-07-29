@@ -402,6 +402,7 @@ class PilotLauncherWorker(threading.Thread):
                         database_hostport = "%s:%d" % (db_url.host, db_url.port)
 
                         # Open the remote sandbox
+                        # TODO: make conditional on shared_fs
                         sandbox_tgt = saga.filesystem.Directory(pilot_sandbox,
                                                                 session=self._session,
                                                                 flags=saga.filesystem.CREATE_PARENTS)
@@ -427,6 +428,7 @@ class PilotLauncherWorker(threading.Thread):
                                 % (bs_script_url, sandbox_tgt)
                         logentries.append(Logentry (msg, logger=logger.debug))
 
+                        # TODO: make conditional on shared_fs
                         sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
 
@@ -516,6 +518,7 @@ class PilotLauncherWorker(threading.Thread):
                                 sdist_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, sdist_path))
                                 msg = "Copying sdist '%s' to sandbox (%s)." % (sdist_url, pilot_sandbox)
                                 logentries.append(Logentry (msg, logger=logger.debug))
+                                # TODO: make conditional on shared_fs
                                 sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
 
 
@@ -529,6 +532,7 @@ class PilotLauncherWorker(threading.Thread):
                             cc_url= saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
                             msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
+                            # TODO: make conditional on shared_fs
                             sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
 
@@ -550,11 +554,12 @@ class PilotLauncherWorker(threading.Thread):
                             cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
                             msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
+                            # TODO: make conditional on shared_fs
                             sandbox_tgt.copy(cf_url, 'agent.cfg')
 
                             # close and remove temp file
                             os.close(cfg_tmp_handle)
-                            os.unlink(cf_tmp_file)
+                            #os.unlink(cf_tmp_file)
 
 
                         # ------------------------------------------------------
@@ -667,6 +672,17 @@ class PilotLauncherWorker(threading.Thread):
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
+
+                        # TODO: make conditional on shared_fs
+                        # TODO: not all files might be required, this also needs to be made conditional
+                        jd.file_transfer = [
+                            '%s > %s' % (bootstrapper_path, os.path.basename(bootstrapper_path)),
+                            '%s > %s' % (rp_sdist_path, os.path.basename(rp_sdist_path)),
+                            '%s > %s' % (saga.sdist_path, os.path.basename(saga.sdist_path)),
+                            '%s > %s' % (ru.sdist_path, os.path.basename(ru.sdist_path)),
+                            #'%s > %s' % (cf_tmp_file, os.path.basename(cf_tmp_file)),
+                            #'%s > %s' % (cc_path, os.path.basename(cc_path))
+                        ]
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
