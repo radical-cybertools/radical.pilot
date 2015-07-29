@@ -3,7 +3,7 @@
 import time
 import radical.pilot.utils as rpu
 
-N = 10000
+N = 1000
 
 def test():
 

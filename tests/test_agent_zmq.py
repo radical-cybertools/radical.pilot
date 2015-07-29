@@ -16,6 +16,9 @@ dh = ru.DebugHelper()
 POLL_DELAY = 0.001
 UNIT_COUNT = 100
 
+# TODO: 
+#   - add profiling
+#   - add PENDING states
 
 # ==============================================================================
 #
@@ -30,15 +33,12 @@ class ComponentBase(mp.Process):
     def __init__(self):
 
         self._name        = type(self).__name__
-        self._parent      = os.getpid()
-        self._inputs      = list()    # queues to get units from
-        self._outputs     = dict()    # queues to send units to
-        self._publishers  = dict()    # channels to send notifications to
-        self._subscribers = dict()    # callbacks for notifications
-        self._workers     = dict()    # method to send units for work
-        self._feed        = mp.Queue()
-        self._feed_limit  = 2  # max number of units in the feed
-        self._terminate   = mt.Event()
+        self._parent      = os.getpid() # pid of spawning process
+        self._inputs      = list()      # queues to get units from
+        self._outputs     = dict()      # queues to send units to
+        self._publishers  = dict()      # channels to send notifications to
+        self._subscribers = dict()      # callbacks for received notifications
+        self._workers     = dict()      # where units get worked upon
         self._debug       = False
 
         if 'RADICAL_DEBUG' in os.environ:
@@ -92,21 +92,6 @@ class ComponentBase(mp.Process):
                 f.write("%15.5f: %s\n" % (time.time(), msg))
                 f.flush()
           # print("%10.2f: %s\n" % (time.time(), msg))
-
-
-    # --------------------------------------------------------------------------
-    #
-    def feed(self, units):
-        """
-        call to let units enter the component proggramatically (opposed to the
-        canonical way, via a queue)
-        """
-
-        if not isinstance(units, list):
-            units = [units]
-
-        for unit in units:
-            self._feed.put(unit)
 
 
     # --------------------------------------------------------------------------
@@ -197,64 +182,45 @@ class ComponentBase(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def _feeder(self):
+    def run(self):
         """
-        cycle over all output queues, and try to gather units.  We only gather
-        units until our feed queue has a certain size -- then we let other
-        components try to get those units.
+        This is the main routine of the component, as it runs in the component
+        process.  It will first initialize the component in the process context.
+        Then it will attempt to get new units from all input queues
+        (round-robin).  For each unit received, it will route that unit to the
+        respective worker method.  Once the unit is worked upon, the next
+        attempt ar getting a unit is up.
         """
 
-        while not self._terminate.is_set():
+        self._log('initialize')
+        self.initialize()
 
-            idle = True
+        try:
+            while True:
 
-            if self._feed.qsize() < self._feed_limit:
-                for [input, states] in self._inputs:
+                for input, states in self._inputs:
+
                     unit = input.get_nowait()
-                    if unit:
-                        idle = False
-                        if unit['state'] not in states:
-                            print "ERROR  : %s: cannot handle unit %s from %s (%s != %s)" %\
-                                    (self._name, unit['id'], input.name, unit['state'], states)
-                        else:
-                            self._feed.put(unit)
+                    if not unit:
+                        time.sleep (0.01)
+                        continue
 
-                            # notify arrival
-                            self.publish('state', unit)
+                    # notify unit arrival
+                    self.publish('state', unit)
 
-            if idle:
-                # avoid busy wait
-                time.sleep(POLL_DELAY)
+                    # check if we have a suitable worker
+                    state = unit['state']
+                    if not state in self._workers:
+                        print "ERROR  : %s cannot handle state %s: %s" % (self._name, state, unit)
+                        continue
 
+                    # we do - hand it over
+                    self._workers[state](unit)
+        except Exception as e:
+            print "Exception: %s" % e
 
-    # --------------------------------------------------------------------------
-    #
-    def _worker(self):
-        """
-        cycle again and again over all units in the self._feeder queue, and for
-        all of them, call the work method which is registered for the respective
-        state.
-        """
-
-        while not self._terminate.is_set():
-
-            idle = True
-
-            try:
-                unit    = self._feed.get_nowait()
-                state = unit['state']
-
-                if not state in self._workers:
-                    print "ERROR  : %s cannot handle state %s: %s" % (self._name, state, unit)
-
-                self._log('working on %s [%s]' % (unit['id'], unit['state']))
-                self._workers[state](unit)
-
-            except Queue.Empty:
-                pass
-
-            if idle:
-                time.sleep(POLL_DELAY)
+        finally:
+            self.finalize()
 
 
     # --------------------------------------------------------------------------
@@ -307,37 +273,6 @@ class ComponentBase(mp.Process):
             if topic in self._publishers:
                 for p in self._publishers[topic]:
                     p.put (topic, unit)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def run(self):
-
-        # we are running two threads:
-        #   feeder is spinning over all output queues, and if any unit arrives,
-        #          it is logged and pushed onto our internal feed queue.
-        #   worker is spinning over all units in the feed queue, and works
-        #          on them one by one.
-        
-        self._log('initialize')
-
-        self.initialize()
-
-        # start feeder and worker threads
-        self._feeder_thread = mt.Thread (target=self._feeder)
-        self._worker_thread = mt.Thread (target=self._worker)
-
-        print "%-20s: run" % self._name
-
-        self._feeder_thread.start()
-        self._worker_thread.start()
-
-        print "%-20s: running" % self._name
-
-        self._feeder_thread.join()
-        self._worker_thread.join()
-
-        self.finalize()
 
 
 # ==============================================================================
@@ -573,37 +508,38 @@ def agent():
 
     try:
 
-        # create all communication bridges we need.  Use the default addresses,
-        # ie. they will bind to localhost to ports 10.000++
+        # keep track of objects we need to close in the finally clause
+        bridges    = list()
+        components = list()
+
+        # two shortcuts for bridge creation
         def _create_queue_bridge(qname):
             return rpu.Queue.create(rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
 
-        staging_input_queue  = _create_queue_bridge('agent_staging_input_queue')
-        scheduling_queue     = _create_queue_bridge('agent_scheduling_queue')
-        executing_queue      = _create_queue_bridge('agent_executing_queue')
-        staging_output_queue = _create_queue_bridge('agent_staging_output_queue')
+        def _create_pubsub_bridge(channel):
+            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, channel, rpu.PUBSUB_BRIDGE)
+
+        # create all communication bridges we need.  Use the default addresses,
+        # ie. they will bind to localhost to ports 10.000++
+        bridges.append(_create_queue_bridge('agent_staging_input_queue') )
+        bridges.append(_create_queue_bridge('agent_scheduling_queue')    )
+        bridges.append(_create_queue_bridge('agent_executing_queue')     )
+        bridges.append(_create_queue_bridge('agent_staging_output_queue'))
 
         # create all notification channels we need (state update notifications,
         # unit unschedule notifications).  Use default addresses, ie. they will
         # bind to to ports 20.000++
-        def _create_pubsub_bridge(channel):
-            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, channel, rpu.PUBSUB_BRIDGE)
+        bridges.append(_create_pubsub_bridge('agent_unschedule_pubsub'))
+        bridges.append(_create_pubsub_bridge('agent_state_pubsub')     )
 
-        unschedule_pubsub = _create_pubsub_bridge('agent_unschedule_pubsub')
-        state_pubsub      = _create_pubsub_bridge('agent_state_pubsub')
-
-        # create all the components we need.  Those run in separate processes.
-        i1_staging_input  = StagingInput()
-        i1_scheduler      = Scheduler() 
-        i1_exec_worker    = ExecWorker()
-        i1_staging_output = StagingOutput()
-        i1_update         = Update()
-
-      # i2_staging_input  = StagingInput()
-      # i2_scheduler      = Scheduler() 
-      # i2_exec_worker    = ExecWorker()
-      # i2_staging_output = StagingOutput()
-      # i2_update         = Update()
+        # create all the component types we need.
+        # create n instances for each type
+        for i in range(2): 
+            components.append(StagingInput() )
+            components.append(Scheduler()    )
+            components.append(ExecWorker()   )
+            components.append(StagingOutput())
+            components.append(Update()       )
 
         # to watch unit advancement, we also create a state channel subscriber
         # and count unit state changes
@@ -611,16 +547,12 @@ def agent():
         def count(q, n):
 
             count = 0
-
             while True:
-                  # print '?'
-                    topic, unit = q.get()
-                  # print count, n, unit
-                    if unit['state'] == 'DONE':
-                        count += 1
-                        print ' %d out of %d units are DONE (%s)' % (count, n, unit['id'])
-                        if count >= n:
-                            return
+                topic, unit = q.get()
+                if unit['state'] == 'DONE':
+                    count += 1
+                    if count >= n:
+                        return
         # ----------------------------------------------------------------------
         q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'agent_state_pubsub', rpu.PUBSUB_SUB)
         q.subscribe('state')
@@ -639,13 +571,13 @@ def agent():
 
         start = time.time()
         for i in range(UNIT_COUNT):
-            print 'intake'
             intake.put({'state' : 'STAGING_INPUT', 'id' : i})
+        stop = time.time()
+        print "intake : %4.2f (%8.2f)" % (stop-start, UNIT_COUNT/(stop-start))
 
         t.join()
         stop = time.time()
-        print "%.2f (%.1f)" % (stop-start, UNIT_COUNT/(stop-start))
-
+        print "process: %4.2f (%8.1f)" % (stop-start, UNIT_COUNT/(stop-start))
 
 
     except Exception as e:
@@ -659,25 +591,11 @@ def agent():
         os.system('sync')
 
         # burn the bridges, burn EVERYTHING
-        i1_staging_input     .close()
-        i1_scheduler         .close()
-        i1_exec_worker       .close()
-        i1_staging_output    .close()
-        i1_update            .close()
+        for c in components:
+            c.close()
 
-      # i2_staging_input     .close()
-      # i2_scheduler         .close()
-      # i2_exec_worker       .close()
-      # i2_staging_output    .close()
-      # i2_update            .close()
-
-        staging_input_queue  .close()
-        scheduling_queue     .close()
-        executing_queue      .close()
-        staging_output_queue .close()
-
-        unschedule_pubsub    .close()
-        state_pubsub         .close()
+        for b in bridges:
+            b.close()
 
 
 # ==============================================================================

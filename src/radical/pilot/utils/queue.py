@@ -270,9 +270,6 @@ class QueueThread(Queue):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
 
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
-
         self._q.put(msg)
 
 
@@ -283,9 +280,6 @@ class QueueThread(Queue):
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get()" % (self._name, self._role))
 
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
-
         return self._q.get()
 
 
@@ -295,9 +289,6 @@ class QueueThread(Queue):
 
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get_nowait()" % (self._name, self._role))
-
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
         try:
             return self._q.get_nowait()
@@ -322,9 +313,6 @@ class QueueProcess(Queue):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
 
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
-
         self._q.put(msg)
 
 
@@ -335,9 +323,6 @@ class QueueProcess(Queue):
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get()" % (self._name, self._role))
 
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
-
         return self._q.get()
 
 
@@ -347,9 +332,6 @@ class QueueProcess(Queue):
 
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get_nowait()" % (self._name, self._role))
-
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
         try:
             return self._q.get_nowait()
@@ -393,6 +375,7 @@ class QueueZMQ(Queue):
         Queue.__init__(self, flavor, name, role, address)
 
         self._p         = None           # the bridge process
+        self._q         = None           # the zmq queue
         self._ctx       = zmq.Context()  # one zmq context suffices
         self._lock      = mt.RLock()     # for _requested
         self._requested = False          # send/recv sync
@@ -413,7 +396,7 @@ class QueueZMQ(Queue):
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == QUEUE_INPUT:
-            self._q     = self._ctx.socket(zmq.PUSH)
+            self._q = self._ctx.socket(zmq.PUSH)
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------
@@ -426,11 +409,11 @@ class QueueZMQ(Queue):
                 #        side, so as not to block the push end?
 
               # self._log ('in  _bridge: %s %s' % (addr_in, addr_out))
-                _in      = ctx.socket(zmq.PULL)
+                _in = ctx.socket(zmq.PULL)
                 _in.bind(addr_in)
 
               # self._log ('out _bridge: %s %s' % (addr_in, addr_out))
-                _out     = ctx.socket(zmq.REP)
+                _out = ctx.socket(zmq.REP)
                 _out.bind(addr_out)
 
                 _poll = zmq.Poller()
@@ -444,13 +427,7 @@ class QueueZMQ(Queue):
 
                     if _out in events:
                         req = _out.recv()
-                      # self._log("-- %s" % req)
-
-                        msg = _in.recv_json()
-                      # self._log("<- %s" % pprint.pformat(msg))
-
-                        _out.send_json(msg)
-                      # self._log("-> %s" % pprint.pformat(msg))
+                        _out.send_json(_in.recv_json())
             # ------------------------------------------------------------------
             
             addr_in  = self._addr
@@ -460,7 +437,7 @@ class QueueZMQ(Queue):
 
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_OUTPUT:
-            self._q     = self._ctx.socket(zmq.REQ)
+            self._q = self._ctx.socket(zmq.REQ)
             self._q.connect(_port_inc(self._addr))
 
         # ----------------------------------------------------------------------
@@ -489,10 +466,7 @@ class QueueZMQ(Queue):
 
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
-
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
-
+       
         self._log("-> %s" % pprint.pformat(msg))
         self._q.send_json(msg)
 
@@ -503,10 +477,7 @@ class QueueZMQ(Queue):
 
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get()" % (self._name, self._role))
-
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
-
+       
         self._q.send('request')
 
         msg = self._q.recv_json()
@@ -520,9 +491,6 @@ class QueueZMQ(Queue):
 
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get_nowait()" % (self._name, self._role))
-
-        if not self._q:
-            raise RuntimeError('queue %s (%s) is closed'   % (self._name, self._role))
 
         with self._lock: # need to protect self._requested
 
