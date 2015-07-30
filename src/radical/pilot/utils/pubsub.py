@@ -34,10 +34,10 @@ _USE_MULTIPART = False
 # the pub-to-bridge end of the pubsub uses a different port than the
 # bridge-to-sub end...
 #
-def _port_inc(address):
-    u = ru.Url(address)
+def _port_inc(addr):
+
+    u = ru.Url(addr)
     u.port += 1
-  # print " -> %s" % u
     return str(u)
 
 
@@ -79,15 +79,20 @@ class Pubsub(object):
         self._channel = channel
         self._name    = channel
         self._role    = role
-        self._addr    = address # this could have been an ru.Url
+        self._addr    = ru.Url(address)
         self._debug   = False
 
         if 'RADICAL_DEBUG' in os.environ:
             self._debug = True
 
         # sanity check on address
-        if not self._addr:  # this may break for ru.Url
-            self._addr = _get_addr(channel, role)
+        default_addr = ru.Url(_get_addr(channel, role))
+
+        # we replace only empty parts of the addr with default values
+        if not self._addr       : self._addr        = default_addr
+        if not self._addr.schema: self._addr.schema = default_addr.schema
+        if not self._addr.host  : self._addr.host   = default_addr.host
+        if not self._addr.port  : self._addr.port   = default_addr.port
 
         if not self._addr:
             raise RuntimeError("no default address found for '%s'" % self._channel)
@@ -106,6 +111,7 @@ class Pubsub(object):
     @property
     def addr(self):
         return self._addr
+
 
     # --------------------------------------------------------------------------
     #
@@ -189,23 +195,28 @@ class PubsubZMQ(Pubsub):
         self._ctx = zmq.Context()  # one zmq context suffices
 
         # zmq checks on address
-        u = ru.Url(self._addr)
-        if  u.path   != ''    or \
-            u.schema != 'tcp' :
-            raise ValueError("url '%s' cannot be used for zmq pubsubs" % u)
+        if  self._addr.path   != ''    or \
+            self._addr.schema != 'tcp' :
+            raise ValueError("url '%s' cannot be used for zmq pubsubs" % self._addr)
 
-        if u.port:
-            if (u.port % 2):
-                raise ValueError("port numbers must be even, not '%d'" % u.port)
+        if self._addr.port:
+            if (self._addr.port % 2):
+                raise ValueError("port numbers must be even, not '%d'" % self._addr.port)
 
-        self._addr = str(u)
+        if self._role != PUBSUB_BRIDGE:
+            if self._addr.host == '*':
+                self._addr.host = '127.0.0.1'
+
+        self._log('%s/%s uses addr %s' % (self._channel, self._role, self._addr))
+        print     '%s/%s uses addr %s' % (self._channel, self._role, self._addr)
+
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == PUBSUB_PUB:
 
             self._q = self._ctx.socket(zmq.PUB)
-            self._q.connect(self._addr)
+            self._q.connect(str(self._addr))
 
 
         # ----------------------------------------------------------------------
@@ -248,8 +259,8 @@ class PubsubZMQ(Pubsub):
                         self._log("<- %s" % msg)
             # ------------------------------------------------------------------
 
-            addr_in  = self._addr
-            addr_out = _port_inc(self._addr)
+            addr_in  = str(self._addr)
+            addr_out = str(_port_inc(self._addr))
             self._p  = mp.Process(target=_bridge, args=[self._ctx, addr_in, addr_out])
             self._p.start()
 
@@ -257,7 +268,7 @@ class PubsubZMQ(Pubsub):
         elif self._role == PUBSUB_SUB:
 
             self._q = self._ctx.socket(zmq.SUB)
-            self._q.connect(_port_inc(self._addr))
+            self._q.connect(str(_port_inc(self._addr)))
 
         # ----------------------------------------------------------------------
         else:

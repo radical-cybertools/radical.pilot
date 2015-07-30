@@ -14,7 +14,6 @@ import radical.pilot.utils as rpu
 dh = ru.DebugHelper()
 
 POLL_DELAY = 0.001
-UNIT_COUNT = 100
 
 # TODO:
 #   - add profiling
@@ -111,7 +110,7 @@ class ComponentBase(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, cfg):
         """
         This constructor MUST be called by inheriting classes.  
         
@@ -120,6 +119,8 @@ class ComponentBase(mp.Process):
         initialize() method.
         """
 
+        self._cfg         = cfg
+        self._addr_map    = cfg.get('bridge_addresses', {})
         self._name        = type(self).__name__
         self._parent      = os.getpid() # pid of spawning process
         self._inputs      = list()      # queues to get units from
@@ -217,7 +218,11 @@ class ComponentBase(mp.Process):
         if not isinstance(states, list):
             states = [states]
 
-        q = rpu.Queue.create(rpu.QUEUE_ZMQ, input, rpu.QUEUE_OUTPUT)
+        # check if a remote address is configured for the queue
+        addr = self._addr_map.get (input)
+        self._log("using addr %s for input %s" % (addr, input))
+
+        q = rpu.Queue.create(rpu.QUEUE_ZMQ, input, rpu.QUEUE_OUTPUT, addr)
         self._inputs.append([q, states])
 
 
@@ -251,9 +256,13 @@ class ComponentBase(mp.Process):
                 # this indicates a final state
                 self._outputs[state] = None
             else:
+                # check if a remote address is configured for the queue
+                addr = self._addr_map.get (output)
+                self._log("using addr %s for output %s" % (addr, output))
+
                 # non-final state, ie. we want a queue to push to
                 self._outputs[state] = \
-                        rpu.Queue.create(rpu.QUEUE_ZMQ, output, rpu.QUEUE_INPUT)
+                        rpu.Queue.create(rpu.QUEUE_ZMQ, output, rpu.QUEUE_INPUT, addr)
 
 
     # --------------------------------------------------------------------------
@@ -285,7 +294,7 @@ class ComponentBase(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_publisher(self, topic, channel):
+    def declare_publisher(self, topic, pubsub):
         """
         Using this method, the compinent can declare certain notification topics
         (where topic is a string).  For each topic, a pub/sub network will be
@@ -298,16 +307,20 @@ class ComponentBase(mp.Process):
         if topic not in self._publishers:
             self._publishers[topic] = list()
 
-        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, channel, rpu.PUBSUB_PUB)
+        # check if a remote address is configured for the queue
+        addr = self._addr_map.get (pubsub)
+        self._log("using addr %s for pubsub %s" % (addr, pubsub))
+
+        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pubsub, rpu.PUBSUB_PUB, addr)
         self._publishers[topic].append(q)
 
 
     # --------------------------------------------------------------------------
     #
-    def declare_subscriber(self, topic, channel, cb):
+    def declare_subscriber(self, topic, pubsub, cb):
         """
         This method is complementary to the declare_publisher() above: it
-        declares a subscription to a notification channel.  If a notification
+        declares a subscription to a pubsub channel.  If a notification
         with matching topic is received, the registered callback will be
         invoked.  The callback MUST have the signature:
 
@@ -329,7 +342,7 @@ class ComponentBase(mp.Process):
         # ----------------------------------------------------------------------
 
         # create a pubsub subscriber, and subscribe to the given topic
-        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, channel, rpu.PUBSUB_SUB)
+        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pubsub, rpu.PUBSUB_SUB)
         q.subscribe(topic)
 
         t = mt.Thread(target=_subscriber, args=[q,cb])
@@ -481,16 +494,16 @@ class ComponentBase(mp.Process):
 
 # ==============================================================================
 #
-class Update(ComponentBase):
+class UpdateComponent(ComponentBase):
     """
     This component subscribes for state update messages, and prints them
     """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, cfg):
 
-        ComponentBase.__init__(self)
+        ComponentBase.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -505,7 +518,8 @@ class Update(ComponentBase):
     def state_cb(self, topic, unit):
 
         if self._debug:
-            print '%s %s ---> %s' % (topic, unit['id'], unit['state'])
+          # print '%s %s ---> %s' % (topic, unit['id'], unit['state'])
+            pass
 
 
     # --------------------------------------------------------------------------
@@ -517,7 +531,7 @@ class Update(ComponentBase):
 
 # ==============================================================================
 #
-class StagingInput(ComponentBase):
+class StagingInputComponent(ComponentBase):
     """
     This component will perform input staging for units in STAGING_INPUT state,
     and will advance them to SCHEDULING state.
@@ -525,9 +539,9 @@ class StagingInput(ComponentBase):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, cfg):
 
-        ComponentBase.__init__(self)
+        ComponentBase.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -553,7 +567,7 @@ class StagingInput(ComponentBase):
 
 # ==============================================================================
 #
-class Scheduler(ComponentBase):
+class SchedulingComponent(ComponentBase):
     """
     This component will assign a limited, shared resource (cores) to units it
     receives.  It will do so asynchronously, ie. whenever it receives either
@@ -564,9 +578,9 @@ class Scheduler(ComponentBase):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, cfg):
 
-        ComponentBase.__init__(self)
+        ComponentBase.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -584,7 +598,7 @@ class Scheduler(ComponentBase):
 
         # we need unschedule updates to learn about units which free their
         # allocated cores.  Those updates need to be issued after execution, ie.
-        # by the ExecWorker.
+        # by the ExecutionComponent.
         self.declare_publisher ('state',      'agent_state_pubsub')
         self.declare_subscriber('unschedule', 'agent_unschedule_pubsub', self.unschedule_cb)
 
@@ -666,7 +680,7 @@ class Scheduler(ComponentBase):
 
 # ==============================================================================
 #
-class ExecWorker(ComponentBase):
+class ExecutionComponent(ComponentBase):
     """
     This component expectes scheduled units (in EXECUTING state), and will
     execute their workload.  After execution, it will publish an unschedule
@@ -675,9 +689,9 @@ class ExecWorker(ComponentBase):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, cfg):
 
-        ComponentBase.__init__(self)
+        ComponentBase.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -711,7 +725,7 @@ class ExecWorker(ComponentBase):
 
 # ==============================================================================
 #
-class StagingOutput(ComponentBase):
+class StagingOutputComponent(ComponentBase):
     """
     This component will perform output staging for units in STAGING_OUTPUT state,
     and will advance them to the final DONE state.
@@ -719,9 +733,9 @@ class StagingOutput(ComponentBase):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, cfg):
 
-        ComponentBase.__init__(self)
+        ComponentBase.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -748,16 +762,28 @@ class StagingOutput(ComponentBase):
 
 # ==============================================================================
 #
-def agent():
+def agent(cfg):
     """
     This method will instantiate all communitation and notification channels,
-    and all components.  It will then feed a set of units to the leading channel
+    and all components.  It will then feed a set of units to the lead-in queue
     (staging_input).  A state notification callback will then register all units
     which reached a final state (DONE).  Once all units are accounted for, it
     will tear down all created objects.
+
+    The agent accepts a config, which will specifcy 
+      - what bridges should be started
+      - what components should be started
+      - what are the endpoints for bridges which are not started
     """
 
     try:
+
+        startup_cfg          = cfg.get('startup', {})
+        startup_units        = cfg.get('units', 0)
+        start_components     = startup_cfg.get('components', {})
+        start_bridges        = startup_cfg.get('bridges',    {})
+        start_queue_bridges  = start_bridges.get('queue',   {})
+        start_pubsub_bridges = start_bridges.get('pubsub', {})
 
         # keep track of objects we need to close in the finally clause
         bridges    = list()
@@ -767,71 +793,129 @@ def agent():
         def _create_queue_bridge(qname):
             return rpu.Queue.create(rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
 
-        def _create_pubsub_bridge(channel):
-            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, channel, rpu.PUBSUB_BRIDGE)
+        def _create_pubsub_bridge(pname):
+            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pname, rpu.PUBSUB_BRIDGE)
+
 
         # create all communication bridges we need.  Use the default addresses,
-        # ie. they will bind to localhost to ports 10.000++
-        bridges.append(_create_queue_bridge('agent_staging_input_queue') )
-        bridges.append(_create_queue_bridge('agent_scheduling_queue')    )
-        bridges.append(_create_queue_bridge('agent_executing_queue')     )
-        bridges.append(_create_queue_bridge('agent_staging_output_queue'))
+        # ie. they will bind to localhost to ports 10.000++.  We don't start
+        # bridges where the config contains an address, but instead pass that
+        # address to the component configuration.
+        bridge_addresses = dict() 
+        pprint.pprint(start_queue_bridges)
+        for qname, qaddr in start_queue_bridges.iteritems():
 
-        # create all notification channels we need (state update notifications,
+            if not qaddr:
+                # start new bridge
+                bridge = _create_queue_bridge(qname)
+                bridge_addresses[qname] = bridge.addr
+                bridges.append(bridge)
+            else:
+                # use the bridge at the given address
+                bridge_addresses[qname] = qaddr
+
+      # bridges.append(_create_queue_bridge('agent_staging_input_queue') )
+      # bridges.append(_create_queue_bridge('agent_scheduling_queue')    )
+      # bridges.append(_create_queue_bridge('agent_executing_queue')     )
+      # bridges.append(_create_queue_bridge('agent_staging_output_queue'))
+
+        # create all pubsub channels we need (state update notifications,
         # unit unschedule notifications).  Use default addresses, ie. they will
-        # bind to to ports 20.000++
-        bridges.append(_create_pubsub_bridge('agent_unschedule_pubsub'))
-        bridges.append(_create_pubsub_bridge('agent_state_pubsub')     )
+        # bind to to ports 20.000++. We don't start bridges where the config
+        # contains an address, but instead pass that address to the component
+        # configuration.
+        for pname, paddr in start_pubsub_bridges.iteritems():
 
-        # create all the component types we need.
-        # create n instances for each type
-        for i in range(2):
-            components.append(StagingInput() )
-            components.append(Scheduler()    )
-            components.append(ExecWorker()   )
-            components.append(StagingOutput())
-            components.append(Update()       )
+            if not paddr:
+                # start new bridge
+                bridge = _create_pubsub_bridge(pname)
+                bridge_addresses[pname] = bridge.addr
+                bridges.append(bridge)
+            else:
+                # use the bridge at the given address
+                bridge_addresses[pname] = paddr
 
-        # to watch unit advancement, we also create a state channel subscriber
-        # and count unit state changes
-        # ----------------------------------------------------------------------
-        def count(q, n):
+      # bridges.append(_create_pubsub_bridge('agent_unschedule_pubsub'))
+      # bridges.append(_create_pubsub_bridge('agent_state_pubsub')     )
 
-            count = 0
-            while True:
-                topic, unit = q.get()
-                if unit['state'] == 'DONE':
-                    count += 1
-                    if count >= n:
-                        return
-        # ----------------------------------------------------------------------
-        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'agent_state_pubsub', rpu.PUBSUB_SUB)
-        q.subscribe('state')
-        t = mt.Thread(target=count, args=[q,UNIT_COUNT])
-        t.start()
+        # Based on the bridge setup, we pass a component config to the
+        # components we create -- they need that config to set up communication
+        # channels correctly.
+        ccfg = {
+                'bridge_addresses' : bridge_addresses
+                }
 
-        # FIXME: make sure all communication channels are in place.  This could
-        # be replaced with a proper barrier, but not sure if that is worth it...
-        time.sleep (1)
+        # create all the component types we need. create n instances for each
+        # type.
+        # We use a static map from component names to class types for now --
+        # a factory might be more appropriate (FIXME)
+        cmap = {
+            "UpdateComponent"        : UpdateComponent,
+            "StagingInputComponent"  : StagingInputComponent,
+            "SchedulingComponent"    : SchedulingComponent,
+            "ExecutionComponent"     : ExecutionComponent,
+            "StagingOutputComponent" : StagingOutputComponent
+            }
 
-        # feed a couple of fresh compute units into the system.  This is what
-        # needs to come from the client module / MongoDB.  So, we create a new
-        # input to the StagingInput queue, and send units.  The StagingInput
-        # components will pull from it and start the pipeline.
-        start = time.time()
-        intake = rpu.Queue.create(rpu.QUEUE_ZMQ, 'agent_staging_input_queue', rpu.QUEUE_INPUT)
-        for i in range(UNIT_COUNT):
-            intake.put({'state' : 'STAGING_INPUT', 'id' : i})
-        stop = time.time()
-        print "intake : %4.2f (%8.2f)" % (stop-start, UNIT_COUNT/(stop-start))
+        for cname, cnum in start_components.iteritems():
+            for i in range(cnum):
+                print 'create %s' % cname
+                components.append(cmap[cname](ccfg))
 
-        # wait for the monitoring thread to complete
-        t.join()
-        stop = time.time()
-        print "process: %4.2f (%8.1f)" % (stop-start, UNIT_COUNT/(stop-start))
+      # components.append(StagingInputComponent() )
+      # components.append(SchedulingComponent()    )
+      # components.append(ExecutionComponent()    )
+      # components.append(StagingOutputComponent())
+      # components.append(UpdateComponent()       )
+
+        # to watch unit advancement, we also create a state pubsub subscriber
+        # and count unit state changes.  We only do that for the initial agent
+        # though...
+        if startup_units:
+            # ----------------------------------------------------------------------
+            def count(q, n):
+
+                count = 0
+                while True:
+                    topic, unit = q.get()
+                    if unit['state'] == 'DONE':
+                      # print ' ---> %5d : %s' % (count, unit['state'])
+                        count += 1
+                        if count >= n:
+                            return
+            # ----------------------------------------------------------------------
+            q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'agent_state_pubsub', rpu.PUBSUB_SUB)
+            q.subscribe('state')
+            t = mt.Thread(target=count, args=[q,startup_units])
+            t.start()
+
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep (1)
+
+            # feed a couple of fresh compute units into the system.  This is what
+            # needs to come from the client module / MongoDB.  So, we create a new
+            # input to the StagingInput queue, and send units.  The StagingInput
+            # components will pull from it and start the pipeline.
+            start = time.time()
+            intake = rpu.Queue.create(rpu.QUEUE_ZMQ, 'agent_staging_input_queue', rpu.QUEUE_INPUT)
+            for i in range(startup_units):
+                intake.put({'state' : 'STAGING_INPUT', 'id' : i})
+            stop = time.time()
+            print "intake : %4.2f (%8.2f)" % (stop-start, startup_units/(stop-start))
+
+            # wait for the monitoring thread to complete
+            t.join()
+            stop = time.time()
+            print "process: %4.2f (%8.1f)" % (stop-start, startup_units/(stop-start))
+
+        else:
+            # otherwith (non-intake), we wait forever (FIXME)
+            time.sleep(10000000)
 
 
-    except Exception as e:
+    except RuntimeError as e:
+  # except Exception as e:
 
         print "Exception: %s" % e
 
@@ -851,7 +935,12 @@ def agent():
 
 # ==============================================================================
 #
-agent()
+if __name__ == "__main__":
+    
+    cfg = ru.read_json(os.environ.get('RADICAL_PILOT_CFG', 'agent.cfg'))
+    pprint.pprint (cfg)
+
+    agent(cfg)
 #
 # ==============================================================================
 
