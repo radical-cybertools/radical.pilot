@@ -203,7 +203,7 @@ class Queue(object):
 
         if self._debug:
             with open("queue.%s.%s.%d.log" % (self._name, self._role, os.getpid()), 'a') as f:
-                f.write("%15.5f: %s\n" % (time.time(), msg))
+                f.write("%15.5f: %-30s: %s\n" % (time.time(), self._name, msg))
 
 
     # --------------------------------------------------------------------------
@@ -487,7 +487,7 @@ class QueueZMQ(Queue):
 
     # --------------------------------------------------------------------------
     #
-    def get_nowait(self):
+    def get_nowait(self, timeout=None):
 
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get_nowait()" % (self._name, self._role))
@@ -499,15 +499,20 @@ class QueueZMQ(Queue):
                 self._q.send('request')
                 self._requested = True
 
-            try:
-                msg = self._q.recv_json(flags=zmq.NOBLOCK)
+          # try:
+          #     msg = self._q.recv_json(flags=zmq.NOBLOCK)
+          #     self._requested = False
+          #     self._log("<< %s" % pprint.pformat(msg))
+          #     return msg
+          #
+          # except zmq.Again:
+          #     return None
+
+            if self._q.poll (flags=zmq.POLLIN, timeout=timeout):
+                msg = self._q.recv_json()
                 self._requested = False
                 self._log("<< %s" % pprint.pformat(msg))
                 return msg
-
-            except zmq.Again:
-                return None
-
 
 
 # ------------------------------------------------------------------------------

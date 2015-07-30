@@ -77,6 +77,7 @@ class Pubsub(object):
 
         self._flavor  = flavor
         self._channel = channel
+        self._name    = channel
         self._role    = role
         self._addr    = address # this could have been an ru.Url
         self._debug   = False
@@ -112,7 +113,7 @@ class Pubsub(object):
 
         if self._debug:
             with open("pubsub.%s.%s.%d.log" % (self._channel, self._role, os.getpid()), 'a') as f:
-                f.write("%15.5f: %s\n" % (time.time(), msg))
+                f.write("%15.5f: %-30s: %s\n" % (time.time(), self._name, msg))
 
 
     # --------------------------------------------------------------------------
