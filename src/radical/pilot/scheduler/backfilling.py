@@ -151,6 +151,7 @@ class BackfillingScheduler(Scheduler):
                       #                % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
                     if not found_unit :
+                        # TODO: pid can not be in self.pilots[]
                         logger.warn ('unit %s freed %s cores on %s (== %s) -- not reused'
                                   % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
