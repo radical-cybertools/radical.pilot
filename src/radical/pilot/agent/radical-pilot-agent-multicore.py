@@ -3883,8 +3883,10 @@ class ExecWorker_SHELL(ExecWorker):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # run the spawner on the shells
-      # tmp = os.getcwd() # FIXME: see #658
-        tmp = tempfile.gettempdir()
+        #tmp = tempfile.gettempdir()
+        # Moving back to shared file system again, until it reaches maturity,
+        # as this breaks launch methods with a hop, e.g. ssh.
+        tmp = os.getcwd() # FIXME: see #658
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
                            % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self.name))
