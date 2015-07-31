@@ -120,8 +120,8 @@ class Profiler (object):
                 # write header and time normalization info
                 handle.write("#time,name,uid,event,msg\n")
                 handle.write("%.4f,%s:%s,%s,%s,%s\n" % \
-                        (timestamp, pid, tid, "", 'start profile',\
-                            "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
+                        (timestamp, pid, tid, "", 'sync abs',\
+                         "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
 
             self._handles[pid][tid] = handle
 
@@ -132,7 +132,7 @@ class Profiler (object):
     #
     def _timestamp_init(self):
         """
-        return a tuple of absolute time, system time
+        return a tuple of [system time, absolute time]
         """
 
         # retrieve absolute timestamp from an external source
@@ -142,9 +142,9 @@ class Profiler (object):
         try:
             import ntplib
             response = ntplib.NTPClient().request('0.pool.ntp.org')
+            timestamp_sys  = response.orig_time
             timestamp_abs  = response.tx_time
-            timestamp_zero = response.orig_time
-            return [timestamp_abs, timstamp_zero]
+            return [timestamp_sys, timstamp_abs]
         except:
             t = time.time()
             return [t,t]

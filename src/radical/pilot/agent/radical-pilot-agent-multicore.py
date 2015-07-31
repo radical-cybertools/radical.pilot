@@ -529,7 +529,7 @@ class Scheduler(threading.Thread):
         self._wait_pool       = list()
         self._wait_queue_lock = threading.RLock()
 
-        rpu.prof('start')
+        rpu.prof('sync ref', msg='agent start')
 
         self._configure()
 

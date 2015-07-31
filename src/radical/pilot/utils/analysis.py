@@ -1,5 +1,6 @@
 
 import os
+import csv
 
 # ------------------------------------------------------------------------------
 #
@@ -58,15 +59,129 @@ def get_profile_frame (prof):
 # ------------------------------------------------------------------------------
 #
 def combine_profiles(profiles):
-    import pandas as pd
-    frames = list()
+    """
+    We first read all profiles as CSV files and parse them.  For each profile,
+    we back-calculate global time (epoch) from the synch timestamps.  Then all
+    profiles are merged (time sorted).
+
+    This routine expectes all profiles to have a synchronization time stamp.
+    Two kinds of sync timestamps are supported: absolute and relative.  'sync
+    abs' events have a message which contains system time and ntp time, and thus
+    allow to adjust the whole timeframe toward globally synched 'seconds since 
+    epoch' units.  'sync rel' events have messages which have a corresponding
+    'sync ref' event in another profile.  When that second profile is 'sync
+    abs'ed, then the first profile will be normalized based on the synchronizity
+    of the 'sync rel' and 'sync ref' events.
+
+    This method is somewhat convoluted -- I would not be surprised if it can be
+    written much shorter and clearer with some python or pandas magic...
+    """
+    fields = ['time', 'name', 'uid', 'event', 'msg']
+    
+    rd_abs = dict() # dict of absolute time refs
+    rd_rel = dict() # dict of relative time refs
+    pd_abs = dict() # profiles which have absolute time refs
+    pd_rel = dict() # profiles which have relative time refs
+
     for prof in profiles:
-        print 'reading %s' % prof
-        try:
-            frames.append(get_profile_frame(prof))
-        except Exception as e:
-            print "skipping %s: %s (%s)" % (prof, e, type(e))
-    return pd.concat (frames)
+        print prof
+        p     = list()
+        tref  = None
+        with open(prof) as csvfile:
+            reader = csv.DictReader(csvfile, fieldnames=fields)
+            for row in reader:
+    
+                # skip header
+                if row['time'].startswith('#'):
+                    continue
+    
+                row['time'] = float(row['time'])
+    
+                # find first tref
+                if not tref:
+                    if row['event'] == 'sync rel' : 
+                        tref = 'rel'
+                        rd_rel[prof] = [row['time'], row['msg']]
+                    if row['event'] == 'sync abs' : 
+                        tref = 'abs'
+                        rd_abs[prof] = [row['time']] + row['msg'].split(':')
+    
+                # store row in profile
+                p.append(row)
+    
+        if   tref == 'abs': pd_abs[prof] = p
+        elif tref == 'rel': pd_rel[prof] = p
+        else              : print 'WARNING: skipping profile %s (no sync)' % prof
+    
+    # make all timestamps absolute for pd_abs profiles
+    for prof, p in pd_abs.iteritems():
+    
+        # the profile created an entry t_rel at t_abs.  
+        # The offset is thus t_abs - t_rel, and all timestamps 
+        # in the profile need to be corrected by that to get absolute time
+        t_rel   = float(rd_abs[prof][0])
+        t_stamp = float(rd_abs[prof][1])
+        t_zero  = float(rd_abs[prof][2])
+        t_abs   = float(rd_abs[prof][3])
+        t_off   = t_abs - t_rel
+    
+        for row in p:
+            row['time'] = row['time'] + t_off
+    
+    # combine the abs profiles into a global one.  We will add rel rpfiles as
+    # they are corrected.
+    p_glob = list()
+    for prof, p in pd_abs.iteritems():
+        p_glob += p
+
+    
+    # reference relative profiles
+    for prof, p in pd_rel.iteritems():
+    
+        # a sync message was created at time t_rel
+        t_rel = rd_rel[prof][0]
+        t_msg = rd_rel[prof][1]
+    
+        # now find the referenced sync point in other, absolute profiles
+        t_ref = None
+        for _prof, _p in pd_abs.iteritems():
+            if not t_ref:
+                for _row in _p:
+                    if  _row['event'] == 'sync ref' and \
+                        _row['msg']   == t_msg:
+                        t_ref = _row['time'] # referenced timestamp
+                        break
+    
+        if t_ref == None:
+            print "WARNING: 'sync rel' reference not found %s" % prof
+            continue
+    
+        # the profile's sync reference t_rel was created at the t_abs of the
+        # referenced point (t_ref), so all timestamps in the profile need to be
+        # corrected by (t_ref - t_rel)
+        t_off = t_ref - t_rel
+    
+        for row in p:
+            row['time'] = row['time'] + t_off
+            p_glob.append(row)
+
+    # we now have all profiles combined into one large profile, and can make
+    # timestamps relative to its smallest timestamp again
+    
+    # find the smallest time over all profiles
+    t_min = 9999999999.9 # future...
+    for row in p_glob:
+        t_min = min(t_min, row['time'])
+    
+    # make times relative to t_min again
+    for row in p_glob:
+        row['time'] -= t_min
+    
+    # sort by time and return
+    p_glob = sorted(p_glob[:], key=lambda k: k['time']) 
+
+    return p_glob
+
 
 # ------------------------------------------------------------------------------
 #

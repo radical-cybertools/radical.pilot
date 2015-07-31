@@ -1352,7 +1352,7 @@ export RADIAL_VERBOSE=DEBUG
 export RADIAL_UTIL_VERBOSE=DEBUG
 export RADIAL_PILOT_VERBOSE=DEBUG
 
-profile_event 'sync' 'agent start'
+profile_event 'sync rel' 'agent start'
 $AGENT_CMD
 AGENT_EXITCODE=$?
 
