@@ -832,8 +832,8 @@ listen() {
       BULK_RUN ) IN_BULK=""
                  \printf "BULK_EVAL\n"  >> "$BASE/bulk.$$"
                  ;;
-      *        ) test -z "$ARGS" && \printf "$CMD\n"       >> "$BASE/bulk.$$"
-                 test -z "$ARGS" || \printf "$CMD $ARGS\n" >> "$BASE/bulk.$$"
+      *        ) test -z "$ARGS" && \echo "$CMD"       >> "$BASE/bulk.$$"
+                 test -z "$ARGS" || \echo "$CMD $ARGS" >> "$BASE/bulk.$$"
                  ;;
     esac
 
