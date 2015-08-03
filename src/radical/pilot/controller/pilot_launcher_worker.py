@@ -374,6 +374,7 @@ class PilotLauncherWorker(threading.Thread):
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
                         stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
                         cores_per_node          = resource_cfg.get ('cores_per_node')
+                        shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
 
                         if stage_cacerts.lower() == 'true':
                             stage_cacerts = True
@@ -402,7 +403,7 @@ class PilotLauncherWorker(threading.Thread):
                         database_hostport = "%s:%d" % (db_url.host, db_url.port)
 
                         # Open the remote sandbox
-                        # TODO: make conditional on shared_fs
+                        # TODO: make conditional on shared_fs?
                         sandbox_tgt = saga.filesystem.Directory(pilot_sandbox,
                                                                 session=self._session,
                                                                 flags=saga.filesystem.CREATE_PARENTS)
@@ -428,8 +429,8 @@ class PilotLauncherWorker(threading.Thread):
                                 % (bs_script_url, sandbox_tgt)
                         logentries.append(Logentry (msg, logger=logger.debug))
 
-                        # TODO: make conditional on shared_fs
-                        sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
+                        if shared_filesystem:
+                            sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
 
                         # ------------------------------------------------------
@@ -518,8 +519,8 @@ class PilotLauncherWorker(threading.Thread):
                                 sdist_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, sdist_path))
                                 msg = "Copying sdist '%s' to sandbox (%s)." % (sdist_url, pilot_sandbox)
                                 logentries.append(Logentry (msg, logger=logger.debug))
-                                # TODO: make conditional on shared_fs
-                                sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
+                                if shared_filesystem:
+                                    sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
 
 
                         # ------------------------------------------------------
@@ -532,8 +533,8 @@ class PilotLauncherWorker(threading.Thread):
                             cc_url= saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
                             msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
-                            # TODO: make conditional on shared_fs
-                            sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
+                            if shared_filesystem:
+                                sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
 
                         # ------------------------------------------------------
@@ -554,8 +555,8 @@ class PilotLauncherWorker(threading.Thread):
                             cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
                             msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
-                            # TODO: make conditional on shared_fs
-                            sandbox_tgt.copy(cf_url, 'agent.cfg')
+                            if shared_filesystem:
+                                sandbox_tgt.copy(cf_url, 'agent.cfg')
 
                             # close and remove temp file
                             os.close(cfg_tmp_handle)
@@ -674,16 +675,37 @@ class PilotLauncherWorker(threading.Thread):
                         jd.queue                 = queue
                         jd.candidate_hosts       = candidate_hosts
 
-                        # TODO: make conditional on shared_fs
                         # TODO: not all files might be required, this also needs to be made conditional
-                        jd.file_transfer = [
-                            '%s > %s' % (bootstrapper_path, os.path.basename(bootstrapper_path)),
-                            '%s > %s' % (rp_sdist_path, os.path.basename(rp_sdist_path)),
-                            '%s > %s' % (saga.sdist_path, os.path.basename(saga.sdist_path)),
-                            '%s > %s' % (ru.sdist_path, os.path.basename(ru.sdist_path)),
-                            #'%s > %s' % (cf_tmp_file, os.path.basename(cf_tmp_file)),
-                            #'%s > %s' % (cc_path, os.path.basename(cc_path))
-                        ]
+                        if not shared_filesystem:
+                            jd.file_transfer = [
+                                #'%s > %s' % (bootstrapper_path, os.path.basename(bootstrapper_path)),
+                                '%s > %s' % (bootstrapper_path, os.path.join(jd.working_directory, 'input', os.path.basename(bootstrapper_path))),
+                                #'%s < %s' % ('agent.log', os.path.join(jd.working_directory, 'agent.log')),
+                                #'%s < %s' % (os.path.join(jd.working_directory, 'agent.log'), 'agent.log'),
+                                #'%s < %s' % ('agent.log', 'agent.log'),
+                                #'%s < %s' % (os.path.join(jd.working_directory, 'STDOUT'), 'unit.000000/STDOUT'),
+                                #'%s < %s' % (os.path.join(jd.working_directory, 'unit.000000/STDERR'), 'STDERR')
+                                #'%s < %s' % ('unit.000000/STDERR', 'unit.000000/STDERR')
+                            ]
+
+                            if stage_sdist:
+                                jd.file_transfer.extend([
+                                    #'%s > %s' % (rp_sdist_path, os.path.basename(rp_sdist_path)),
+                                    '%s > %s' % (rp_sdist_path, os.path.join(jd.working_directory, 'input', os.path.basename(rp_sdist_path))),
+                                    #'%s > %s' % (saga.sdist_path, os.path.basename(saga.sdist_path)),
+                                    '%s > %s' % (saga.sdist_path, os.path.join(jd.working_directory, 'input', os.path.basename(saga.sdist_path))),
+                                    #'%s > %s' % (ru.sdist_path, os.path.basename(ru.sdist_path)),
+                                    '%s > %s' % (ru.sdist_path, os.path.join(jd.working_directory, 'input', os.path.basename(ru.sdist_path)))
+                                ])
+
+                            if agent_config:
+                                jd.file_transfer.append('%s > %s' % (cf_tmp_file, os.path.basename(cf_tmp_file)))
+
+                            if stage_cacerts:
+                                jd.file_transfer.append('%s > %s' % (cc_path, os.path.basename(cc_path)))
+
+                            if 'RADICAL_PILOT_PROFILE' in os.environ :
+                                jd.file_transfer.append('%s < %s' % ('agent.prof', 'agent.prof'))
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
@@ -778,5 +800,3 @@ class PilotLauncherWorker(threading.Thread):
             logger.exception("pilot launcher thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
-
-

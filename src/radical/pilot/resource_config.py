@@ -39,6 +39,7 @@ TUNNEL_BIND_DEVICE          = "tunnel_bind_device"
 VALID_ROOTS                 = 'valid_roots'
 VIRTENV                     = 'virtenv'
 VIRTENV_MODE                = 'private'
+SHARED_FILESYSTEM           = 'shared_filesystem'
 
 
 # ------------------------------------------------------------------------------
@@ -215,6 +216,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(VALID_ROOTS            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV_MODE           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SHARED_FILESYSTEM      ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
 
     # --------------------------------------------------------------------------
