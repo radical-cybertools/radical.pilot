@@ -300,9 +300,9 @@ create_monitor () {
   # the subshell instance with the job executable, leaving the I/O redirections
   # intact.
   \\touch  "\$DIR/in"
-  \\printf "#!/bin/sh\n\n" > \$DIR/cmd
-  \\printf "\$@\n"        >> \$DIR/cmd
-  \\chmod 0700               \$DIR/cmd
+  \\echo   "#!/bin/sh\n" > \$DIR/cmd
+  \\echo   "\$@"        >> \$DIR/cmd
+  \\chmod 0700             \$DIR/cmd
 
   (
     \\printf  "RUNNING \\n"          >> "\$DIR/state"
