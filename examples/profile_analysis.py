@@ -83,7 +83,8 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session(name=session_name)
-    print "session id: %s" % session.uid
+    sid = session.uid
+    print "session id: %s" % sid
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -195,16 +196,32 @@ if __name__ == "__main__":
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
-        print session.uid
-        session.close ()
 
-        # the above is equivalent to
-        #
-        #   session.close (cleanup=True, terminate=True)
-        #
-        # it will thus both clean out the session's database record, and kill
-        # all remaining pilots (none in our example).
+        # don't clean the session if you want to retrieve the profiles
+        print "closing session"
+        session.close (cleanup=False)
+
+    # fetch profiles and convert into inspectable data frames
+    if session:
+        import radical.pilot.utils as rpu
+
+        profiles   = session.fetch_profiles(target='/tmp/')
+        profile    = rpu.combine_profiles (profiles)
+        frame      = rpu.prof2frame(profile)
+        sf, pf, uf = rpu.split_frame(frame)
+
+        print len(sf)
+        print len(pf)
+        print len(uf)
+        
+        print sf[0:10]
+        print pf[0:10]
+        print uf[0:10]
+        print uf[uf['uid'] == 'unit.000001']
+        print list(pf['event'])
+
+        for f in profiles:
+            os.unlink(f)
 
 
 #-------------------------------------------------------------------------------
