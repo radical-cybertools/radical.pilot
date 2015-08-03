@@ -232,31 +232,60 @@ class PubsubZMQ(Pubsub):
                 _out = ctx.socket(zmq.XPUB)
                 _out.bind(addr_out)
                 
-                _poll = zmq.Poller()
-                _poll.register(_in,  zmq.POLLIN)
-                _poll.register(_out, zmq.POLLIN)
-
                 while True:
 
-                    events = dict(_poll.poll(1000)) # timeout in ms
+                    idle = True
 
-                    if _in in events:
+                    if _in.poll (flags=zmq.POLLIN, timeout=0.01):
                         if _USE_MULTIPART:
-                            msg = _in.recv_multipart()
+                            msg = _in.recv_multipart(flags=zmq.NOBLOCK)
                             _out.send_multipart(msg)
                         else:
-                            msg = _in.recv()
+                            msg = _in.recv(flags=zmq.NOBLOCK)
                             _out.send(msg)
+                        idle = False
                         self._log("-> %s" % msg)
 
-                    if _out in events:
+
+                    if _out.poll (flags=zmq.POLLIN, timeout=0.01):
                         if _USE_MULTIPART:
                             msg = _out.recv_multipart()
                             _in.send_multipart(msg)
                         else:
                             msg = _out.recv()
                             _in.send(msg)
+                        idle = False
                         self._log("<- %s" % msg)
+
+                    if idle:
+                        time.sleep(0.01)
+
+
+              # _poll = zmq.Poller()
+              # _poll.register(_in,  zmq.POLLIN)
+              # _poll.register(_out, zmq.POLLIN)
+              #
+              # while True:
+              #
+              #     events = dict(_poll.poll(1000)) # timeout in ms
+              #
+              #     if _in in events:
+              #         if _USE_MULTIPART:
+              #             msg = _in.recv_multipart()
+              #             _out.send_multipart(msg)
+              #         else:
+              #             msg = _in.recv()
+              #             _out.send(msg)
+              #         self._log("-> %s" % msg)
+              #
+              #     if _out in events:
+              #         if _USE_MULTIPART:
+              #             msg = _out.recv_multipart()
+              #             _in.send_multipart(msg)
+              #         else:
+              #             msg = _out.recv()
+              #             _in.send(msg)
+              #         self._log("<- %s" % msg)
             # ------------------------------------------------------------------
 
             addr_in  = str(self._addr)
@@ -334,8 +363,17 @@ class PubsubZMQ(Pubsub):
             topic, data = self._q.recv_multipart()
 
         else:
-            raw = self._q.recv()
-            topic, data = raw.split(' ', 1)
+          # raw = self._q.recv()
+          # topic, data = raw.split(' ', 1)
+
+            while True:
+                if self._q.poll (flags=zmq.POLLIN, timeout=0.01):
+                    if _USE_MULTIPART:
+                        raw = self._q.recv_multipart(flags=zmq.NOBLOCK)
+                    else:
+                        raw = self._q.recv(flags=zmq.NOBLOCK)
+                    topic, data = raw.split(' ', 1)
+                    break
 
         msg = json.loads(data)
         self._log("<- %s" % str([topic, pprint.pformat(msg)]))

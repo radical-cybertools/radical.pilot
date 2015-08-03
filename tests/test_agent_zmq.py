@@ -332,20 +332,56 @@ class ComponentBase(mp.Process):
         invokation.
         """
 
-        # ----------------------------------------------------------------------
+      # # ----------------------------------------------------------------------
+      # class _Subscriber(mt.Thread):
+      #
+      #     def __init__ (self, q, cb):
+      #
+      #         self._q  = q
+      #         self._cb = cb
+      #         self._e  = mt.Event()
+      #
+      #         mt.Thread.__init__(self)
+      #
+      #     def stop(self):
+      #         self._e.set()
+      #
+      #     def run(self):
+      #
+      #         while not self._e.is_set():
+      #             topic, unit = self._q.get()
+      #             if topic and unit:
+      #                 self._cb (topic=topic, unit=unit)
+      # # ----------------------------------------------------------------------
         def _subscriber(q, callback):
 
-            while True:
-                topic, unit = q.get()
-                if topic and unit:
-                    callback (topic=topic, unit=unit)
+            import cProfile
+            profile = cProfile.Profile()
+            profile.enable()
+            try:
+                self._log('create subscriber: %s - %s' % (mt.current_thread().name, os.getpid()))
+                i = 0
+                while i < 1000:
+                    i+= 1
+                    topic, unit = q.get()
+                    if topic and unit:
+                        self._log('%.5f: got sub [%s][%s]' % (time.time(), topic, unit))
+                        callback (topic=topic, unit=unit)
+            except:
+                pass
+            finally:
+                profile.disable()
+                profile.create_stats()
+                profile.dump_stats('prof.pstat')
+                profile.print_stats()
         # ----------------------------------------------------------------------
+
 
         # create a pubsub subscriber, and subscribe to the given topic
         q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pubsub, rpu.PUBSUB_SUB)
         q.subscribe(topic)
 
-        t = mt.Thread(target=_subscriber, args=[q,cb])
+        t = mt.Thread (target=_subscriber, args=[q,cb])
         t.start()
         # FIXME: shutdown: this should got to the finalize.
 
@@ -510,7 +546,8 @@ class UpdateComponent(ComponentBase):
     #
     def initialize(self):
 
-        self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
+      # self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
+      pass
 
 
     # --------------------------------------------------------------------------
@@ -518,7 +555,7 @@ class UpdateComponent(ComponentBase):
     def state_cb(self, topic, unit):
 
         if self._debug:
-          # print '%s %s ---> %s' % (topic, unit['id'], unit['state'])
+            print '%s %s ---> %s' % (topic, unit['id'], unit['state'])
             pass
 
 
@@ -911,7 +948,7 @@ def agent(cfg):
 
         else:
             # otherwith (non-intake), we wait forever (FIXME)
-            time.sleep(10000000)
+            time.sleep(100)
 
 
     except RuntimeError as e:
