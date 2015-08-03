@@ -329,16 +329,17 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # pilot description and resource configuration
-                        number_cores   = compute_pilot['description']['cores']
-                        runtime        = compute_pilot['description']['runtime']
-                        queue          = compute_pilot['description']['queue']
-                        project        = compute_pilot['description']['project']
-                        cleanup        = compute_pilot['description']['cleanup']
-                        resource_key   = compute_pilot['description']['resource']
-                        schema         = compute_pilot['description']['access_schema']
-                        memory         = compute_pilot['description']['memory']
-                        pilot_sandbox  = compute_pilot['sandbox']
-                        global_sandbox = compute_pilot['global_sandbox']
+                        number_cores    = compute_pilot['description']['cores']
+                        runtime         = compute_pilot['description']['runtime']
+                        queue           = compute_pilot['description']['queue']
+                        project         = compute_pilot['description']['project']
+                        cleanup         = compute_pilot['description']['cleanup']
+                        resource_key    = compute_pilot['description']['resource']
+                        schema          = compute_pilot['description']['access_schema']
+                        memory          = compute_pilot['description']['memory']
+                        candidate_hosts = compute_pilot['description']['candidate_hosts']
+                        pilot_sandbox   = compute_pilot['sandbox']
+                        global_sandbox  = compute_pilot['global_sandbox']
 
                         # Agent configuration that is not part of the API, but
                         # rather for debugging and experimentation purposes for now.
@@ -378,7 +379,6 @@ class PilotLauncherWorker(threading.Thread):
                             stage_cacerts = True
                         else:
                             stage_cacerts = False
-
 
                         # expand variables in virtenv string
                         virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path,
@@ -672,6 +672,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
+                        jd.candidate_hosts       = candidate_hosts
 
                         # TODO: make conditional on shared_fs
                         # TODO: not all files might be required, this also needs to be made conditional
