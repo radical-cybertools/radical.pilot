@@ -131,7 +131,8 @@ class PilotLauncherWorker(threading.Thread):
 
         pending_pilots = pilot_col.find(
             {"pilotmanager": self.pilot_manager_id,
-             "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]}}
+             "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]},
+             "health_check_enabled": True}
         )
 
         for pending_pilot in pending_pilots:
@@ -319,7 +320,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         logger.info("Launching ComputePilot %s" % pilot_id)
 
-
                         # ------------------------------------------------------
                         # Database connection parameters
                         session_uid   = self.db_connection_info.session_id
@@ -375,6 +375,7 @@ class PilotLauncherWorker(threading.Thread):
                         stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
                         cores_per_node          = resource_cfg.get ('cores_per_node')
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
+                        health_check            = resource_cfg.get ('health_check', True)
 
                         if stage_cacerts.lower() == 'true':
                             stage_cacerts = True
@@ -745,7 +746,8 @@ class PilotLauncherWorker(threading.Thread):
                             {"_id"  : pilot_id,
                              "state": 'Launching'},
                             {"$set" : {"state": PENDING_ACTIVE,
-                                      "saga_job_id": saga_job_id},
+                                      "saga_job_id": saga_job_id,
+                                      "health_check_enabled": health_check},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                              "$pushAll": {"log": log_dicts}
                             }
@@ -758,7 +760,8 @@ class PilotLauncherWorker(threading.Thread):
                             # FIXME: make sure of the agent state!
                             ret = pilot_col.update(
                                 {"_id"  : pilot_id},
-                                {"$set" : {"saga_job_id": saga_job_id},
+                                {"$set" : {"saga_job_id": saga_job_id,
+                                           "health_check_enabled": health_check},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                                  "$pushAll": {"log": log_dicts}}
                             )

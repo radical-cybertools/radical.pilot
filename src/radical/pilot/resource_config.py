@@ -40,6 +40,7 @@ VALID_ROOTS                 = 'valid_roots'
 VIRTENV                     = 'virtenv'
 VIRTENV_MODE                = 'private'
 SHARED_FILESYSTEM           = 'shared_filesystem'
+HEALTH_CHECK                = 'health_check'
 
 
 # ------------------------------------------------------------------------------
@@ -137,6 +138,15 @@ class ResourceConfig(attributes.Attributes):
 
        [Type: `string`] [optional] TODO
 
+    .. data:: shared_filesystem
+
+       [Type: `bool`] [optional] Resource has a shared_filesystem.
+
+    .. data:: health_check
+
+       [Type: `bool`] [optional] Perform periodical healthcheck on agent.
+
+
     """
 
     # --------------------------------------------------------------------------
@@ -217,6 +227,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(VIRTENV                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV_MODE           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SHARED_FILESYSTEM      ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(HEALTH_CHECK           ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
 
     # --------------------------------------------------------------------------
