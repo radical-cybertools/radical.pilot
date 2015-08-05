@@ -702,8 +702,6 @@ class Scheduler(threading.Thread):
 
                 request = self._schedule_queue.get()
 
-                self._log.info('REQUEST MADE to SCHEDULER: {0}'.format(request))
-
                 if not isinstance(request, list):
                     # command only, no cu
                     request = [request, None]
@@ -1314,24 +1312,24 @@ class SchedulerYarn(Scheduler):
     # --------------------------------------------------------------------------
     #
     def slot_status(self):
-        YarnStatus = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
+        yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
 
-        YarnSchedulJson = json.loads(YarnStatus.read())
+        yarn_schedul_json = json.loads(yarn_status.read())
 
-        MaxNumApp = YarnSchedulJson['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
-        NumApp = YarnSchedulJson['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+        max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
+        num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
 
-        return 'Can accept {0} applications'.format(MaxNumApp-NumApp)
+        return 'Can accept {0} applications'.format(max_num_app-num_app)
 
 
     # --------------------------------------------------------------------------
     #
     def _allocate_slot(self, cores_requested):
-        ClusterMetrics = ul.urlopen('http://localhost:8088/ws/v1/cluster/metrics')
+        cluster_metrics = ul.urlopen('http://localhost:8088/ws/v1/cluster/metrics')
 
-        Metrics = json.loads(ClusterMetrics.read())
-        num_of_cores = Metrics['clusterMetrics']['totalVirtualCores']
-        mem_size = Metrics['clusterMetrics']['totalMB']
+        metrics = json.loads(cluster_metrics.read())
+        num_of_cores = metrics['clusterMetrics']['totalVirtualCores']
+        mem_size = metrics['clusterMetrics']['totalMB']
         #TODO: Add provision for memory request
         if cores_requested <= num_of_cores:
             return True
@@ -1349,16 +1347,16 @@ class SchedulerYarn(Scheduler):
     #
     def _try_allocation(self, cu):        
 
-        YarnStatus = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
+        yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
 
-        YarnSchedulJson = json.loads(YarnStatus.read())
+        yarn_schedul_json = json.loads(yarn_status.read())
 
-        MaxNumApp = YarnSchedulJson['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
-        NumApp = YarnSchedulJson['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+        max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
+        num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
 
         self._log.info(self.slot_status())
 
-        if NumApp == MaxNumApp or not self._allocate_slot(cu['description']['cores']):
+        if num_app == max_num_app or not self._allocate_slot(cu['description']['cores']):
             return False
 
         cu_list, cu_dropped = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
