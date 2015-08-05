@@ -153,6 +153,8 @@ import threading
 import subprocess
 import multiprocessing
 import commands
+import json
+import urllib2 as ul
 
 import saga                as rs
 import radical.utils       as ru
@@ -322,6 +324,7 @@ LRMS_NAME_YARN              = 'YARN'
 SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
 SCHEDULER_NAME_SCATTERED    = "SCATTERED"
 SCHEDULER_NAME_TORUS        = "TORUS"
+SCHEDULER_NAME_YARN         = "YARN"
 
 # 'enum' for pilot's unit spawner types
 SPAWNER_NAME_POPEN          = "POPEN"
@@ -553,7 +556,8 @@ class Scheduler(threading.Thread):
             implementation = {
                 SCHEDULER_NAME_CONTINUOUS : SchedulerContinuous,
                 SCHEDULER_NAME_SCATTERED  : SchedulerScattered,
-                SCHEDULER_NAME_TORUS      : SchedulerTorus
+                SCHEDULER_NAME_TORUS      : SchedulerTorus,
+                SCHEDULER_NAME_YARN       : SchedulerYarn
             }[name]
 
             impl = implementation(name, config, logger, lrms, schedule_queue,
@@ -697,6 +701,8 @@ class Scheduler(threading.Thread):
             try:
 
                 request = self._schedule_queue.get()
+
+                self._log.info('REQUEST MADE to SCHEDULER: {0}'.format(request))
 
                 if not isinstance(request, list):
                     # command only, no cu
@@ -1273,6 +1279,182 @@ class SchedulerTorus(Scheduler):
             offset += 1
 
         return offset
+
+#===============================================================================
+#
+class SchedulerYarn(Scheduler):
+
+    # FIXME: clarify what can be overloaded by Scheduler classes
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, config, logger, lrms, schedule_queue, execution_queue,
+                 update_queue):
+
+        Scheduler.__init__(self,name,config,logger,lrms,scheduler_queue,
+            execution_queue,update_queue)
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+        
+        rpu.prof ('stop request')
+        rpu.flush_prof()
+        self._terminate.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
+        raise NotImplementedError("_configure() not implemented for Scheduler '%s'." % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def slot_status(self):
+        YarnStatus = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
+
+        YarnSchedulJson = json.loads(YarnStatus.read())
+
+        MaxNumApp = YarnSchedulJson['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
+        NumApp = YarnSchedulJson['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+
+        return 'Can accept {0} applications'.format(MaxNumApp-NumApp)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _allocate_slot(self, cores_requested):
+        ClusterMetrics = ul.urlopen('http://localhost:8088/ws/v1/cluster/metrics')
+
+        Metrics = json.loads(ClusterMetrics.read())
+        num_of_cores = Metrics['clusterMetrics']['totalVirtualCores']
+        mem_size = Metrics['clusterMetrics']['totalMB']
+        #TODO: Add provision for memory request
+        if cores_requested <= num_of_cores:
+            return True
+        else:
+            return False
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _release_slot(self, opaque_slot):
+        raise NotImplementedError("_release_slot() not implemented for Scheduler '%s'." % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _try_allocation(self, cu):        
+
+        YarnStatus = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
+
+        YarnSchedulJson = json.loads(YarnStatus.read())
+
+        MaxNumApp = YarnSchedulJson['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
+        NumApp = YarnSchedulJson['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+
+        self._log.info(self.slot_status())
+
+        if NumApp == MaxNumApp or not self._allocate_slot(cu['description']['cores']):
+            return False
+
+        cu_list, cu_dropped = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
+        for _cu in cu_list :
+            rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
+            self._execution_queue.put(_cu)
+
+        # we need to free allocated cores for dropped CUs
+        self.unschedule(cu_dropped)
+
+        return True
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        rpu.prof('run')
+        while not self._terminate.is_set():
+
+            try:
+
+                request = self._schedule_queue.get()
+
+                self._log.info('REQUEST MADE to SCHEDULER: {0}'.format(request))
+
+                if not isinstance(request, list):
+                    # command only, no cu
+                    request = [request, None]
+
+                # shutdown signal
+                if not request:
+                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
+                    continue
+
+                command = request[0]
+                cu      = request[1]
+
+                rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
+
+                if command == COMMAND_WAKEUP:
+
+                    # nothing to do (other then testing self._terminate)
+                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
+                    continue
+
+
+                elif command == COMMAND_RESCHEDULE:
+
+                    # reschedule is done over all units in the wait queue
+                    assert (cu == None) 
+                    self._reschedule()
+
+
+                elif command == COMMAND_SCHEDULE:
+
+                    rpu.prof('get', msg="schedule_queue to Scheduler (%s)" % cu['state'], uid=cu['_id'])
+
+                    # FIXME: this state update is not recorded?
+                    cu['state'] = rp.ALLOCATING
+
+                    cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
+                    for _cu in cu_list:
+
+                        # we got a new unit to schedule.  Either we can place it
+                        # straight away and move it to execution, or we have to
+                        # put it on the wait queue.
+                        if not self._try_allocation(_cu):
+                            # No resources available, put in wait queue
+                            with self._wait_queue_lock :
+                                self._wait_pool.append(_cu)
+                            rpu.prof('schedule', msg="allocation failed", uid=_cu['_id'])
+
+
+                elif command == COMMAND_UNSCHEDULE :
+
+                    # we got a finished unit, and can re-use its cores
+                    #
+                    # FIXME: we may want to handle this type of requests
+                    # with higher priority, so it might deserve a separate
+                    # queue.  Measure first though, then optimize...
+                    #
+                    # NOTE: unschedule() runs re-schedule, which probably
+                    # should be delayed until this bulk has been worked
+                    # on...
+                    rpu.prof('schedule', msg="unit deallocation", uid=cu['_id'])
+                    self.unschedule(cu)
+
+                else :
+                    raise ValueError ("cannot handle scheduler command '%s'", command)
+
+            except Exception as e:
+                self._log.exception('Error in scheduler loop: %s', e)
+                raise
+
+            finally:
+                rpu.prof ('stop')
 
 
 
