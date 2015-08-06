@@ -21,7 +21,7 @@ from scheduler import *
 
 # ------------------------------------------------------------------------------
 #
-from url import Url
+from constants  import *
 from exceptions import *
 from session import Session 
 from context import Context

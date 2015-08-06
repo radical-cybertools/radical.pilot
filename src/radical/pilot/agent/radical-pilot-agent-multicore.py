@@ -213,80 +213,6 @@ git_ident = "$Id$"
 
 
 # ------------------------------------------------------------------------------
-#
-# DEBUGGING CONSTANTS -- only change when you know what you are doing.  It is
-# almost guaranteed that any changes will make the agent non-functional (if
-# functionality is defined as executing a set of given CUs).
-
-# component IDs
-
-AGENT             = 'Agent'
-STAGEIN_QUEUE     = 'stagein_queue'
-STAGEIN_WORKER    = 'StageinWorker'
-SCHEDULE_QUEUE    = 'schedule_queue'
-SCHEDULER         = 'Scheduler'
-EXECUTION_QUEUE   = 'execution_queue'
-EXEC_WORKER       = 'ExecWorker'
-WATCH_QUEUE       = 'watch_queue'
-WATCHER           = 'ExecWatcher'
-STAGEOUT_QUEUE    = 'stageout_queue'
-STAGEOUT_WORKER   = 'StageoutWorker'
-UPDATE_QUEUE      = 'update_queue'
-UPDATE_WORKER     = 'UpdateWorker'
-
-
-# Number of worker threads
-NUMBER_OF_WORKERS = {
-        STAGEIN_WORKER   : 1,
-        EXEC_WORKER      : 1,
-        STAGEOUT_WORKER  : 1,
-        UPDATE_WORKER    : 1
-}
-
-# factor by which the number of units are increased at a certain step.  Value of
-# '1' will leave the units unchanged.  Any blowup will leave on unit as the
-# original, and will then create clones with an changed unit ID (see blowup()).
-BLOWUP_FACTOR = {
-        AGENT            : 1,
-        STAGEIN_QUEUE    : 1,
-        STAGEIN_WORKER   : 1,
-        SCHEDULE_QUEUE   : 1,
-        SCHEDULER        : 1,
-        EXECUTION_QUEUE  : 1,
-        EXEC_WORKER      : 1,
-        WATCH_QUEUE      : 1,
-        WATCHER          : 1,
-        STAGEOUT_QUEUE   : 1,
-        STAGEOUT_WORKER  : 1,
-        UPDATE_QUEUE     : 1,
-        UPDATE_WORKER    : 1
-}
-
-# flag to drop all blown-up units at some point in the pipeline.  The units
-# with the original IDs will again be left untouched, but all other units are
-# silently discarded.
-# 0: drop nothing
-# 1: drop clones
-# 2: drop everything
-DROP_CLONES = {
-        AGENT            : 1,
-        STAGEIN_QUEUE    : 1,
-        STAGEIN_WORKER   : 1,
-        SCHEDULE_QUEUE   : 1,
-        SCHEDULER        : 1,
-        EXECUTION_QUEUE  : 1,
-        EXEC_WORKER      : 1,
-        WATCH_QUEUE      : 1,
-        WATCHER          : 1,
-        STAGEOUT_QUEUE   : 1,
-        STAGEOUT_WORKER  : 1,
-        UPDATE_QUEUE     : 1,
-        UPDATE_WORKER    : 1
-}
-#
-# ------------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------------
 # CONSTANTS
 #
 # 'enum' for unit launch method types
@@ -353,33 +279,6 @@ RETRY    = 'RETRY'
 # two-state for slot occupation.
 FREE     = 'Free'
 BUSY     = 'Busy'
-
-agent_config = {
-    # directory for staging files inside the agent sandbox
-    'staging_area'         : 'staging_area',
-    
-    # url scheme to indicate the use of staging_area
-    'staging_scheme'       : 'staging',
-    
-    # max number of cu out/err chars to push to db
-    'max_io_loglength'     : 1*1024,
-    
-    # max time period to collec db requests into bulks (seconds)
-    'bulk_collection_time' : 1.0,
-    
-    # time to sleep between queue polls (seconds)
-    'queue_poll_sleeptime' : 0.1,
-    
-    # time to sleep between database polls (seconds)
-    'db_poll_sleeptime'    : 0.1,
-    
-    # time between checks of internal state and commands from mothership (seconds)
-    'heartbeat_interval'   : 10,
-}
-agent_config['blowup_factor']     = BLOWUP_FACTOR
-agent_config['drop_clones']       = DROP_CLONES
-agent_config['number_of_workers'] = NUMBER_OF_WORKERS
-
 
 # ----------------------------------------------------------------------------------
 #
@@ -459,7 +358,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
     msg = [{"message": message,          "timestamp": now},
            {"message": rpu.get_rusage(), "timestamp": now}]
 
-    ret = mongo_p.update({"_id": pilot_uid},
+    mongo_p.update({"_id": pilot_uid},
         {"$pushAll": {"log"         : msg},
          "$push"   : {"statehistory": {"state"     : rp.CANCELED,
                                        "timestamp" : now}},
@@ -469,7 +368,6 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
                       "logfile"     : rpu.tail(log),
                       "finished"    : now}
         })
-    logger.warning(ret)
 
 
 # ------------------------------------------------------------------------------
@@ -502,56 +400,6 @@ def pilot_DONE(mongo_p, pilot_uid):
                       "finished"    : now}
         })
 
-
-# ==============================================================================
-#
-# Queue Manager (helper class)
-#
-# ==============================================================================
-#
-class QueueManager(object):
-
-    # we only need one queue manager...
-    __metaclass__ = ru.Singleton
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self):
-
-        self._bridges = dict()
-        self._lock    = threading.RLock()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def create_bridge (self, qname):
-
-        # create bridges only once.  
-        # Note that 'once' is process space, not global nor host space!  Trying
-        # to use recreate bridges will fail, as ports are being used by the
-        # first bridge of that type...)
-        if not qname in self._bridges:
-            self._bridges[qname] = rpu.Queue.create (rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_src (self, qname, bridge_host=None):
-
-        return rpu.Queue.create (rpu.QUEUE_ZMQ, qname, rpu.QUEUE_SOURCE, bridge_host)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_tgt (self, qname, bridge_host=None):
-
-        return rpu.Queue.create (rpu.QUEUE_ZMQ, qname, rpu.QUEUE_TARGET, bridge_host)
-
-
-# ==============================================================================
-QM = QueueManager()
-# ==============================================================================
 
 
 # ==============================================================================
